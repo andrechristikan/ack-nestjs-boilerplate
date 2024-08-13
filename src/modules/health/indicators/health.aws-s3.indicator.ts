@@ -4,7 +4,7 @@ import {
     HealthIndicator,
     HealthIndicatorResult,
 } from '@nestjs/terminus';
-import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
+import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
 
 @Injectable()
 export class HealthAwsS3Indicator extends HealthIndicator {
@@ -16,9 +16,9 @@ export class HealthAwsS3Indicator extends HealthIndicator {
         try {
             await this.awsS3Service.checkBucketExistence();
             return this.getStatus(key, true);
-        } catch (err: unknown) {
+        } catch (err: any) {
             throw new HealthCheckError(
-                'HealthAwsS3Indicator failed',
+                `HealthAwsS3Indicator Failed - ${err?.message}`,
                 this.getStatus(key, false)
             );
         }

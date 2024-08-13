@@ -1,17 +1,17 @@
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
-import { AwsS3Schema } from 'src/common/aws/repository/entities/aws.s3.entity';
-import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
+import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
 import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { AwsS3Schema } from 'src/modules/aws/repository/entities/aws.s3.entity';
 
 export const CountryTableName = 'Countries';
 
 @DatabaseEntity({ collection: CountryTableName })
-export class CountryEntity extends DatabaseMongoUUIDEntityAbstract {
+export class CountryEntity extends DatabaseEntityAbstract {
     @DatabaseProp({
         required: true,
         index: true,
@@ -89,13 +89,6 @@ export class CountryEntity extends DatabaseMongoUUIDEntityAbstract {
         schema: AwsS3Schema,
     })
     image?: AwsS3Dto;
-
-    @DatabaseProp({
-        required: true,
-        index: true,
-        default: true,
-    })
-    isActive: boolean;
 }
 
 export const CountrySchema = DatabaseSchema(CountryEntity);

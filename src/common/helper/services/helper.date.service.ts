@@ -4,7 +4,7 @@ import moment, { ISO_8601 } from 'moment-timezone';
 import {
     ENUM_HELPER_DATE_DIFF,
     ENUM_HELPER_DATE_FORMAT,
-} from 'src/common/helper/constants/helper.enum.constant';
+} from 'src/common/helper/enums/helper.enum';
 import { IHelperDateService } from 'src/common/helper/interfaces/helper.date-service.interface';
 import {
     IHelperDateSetTimeOptions,

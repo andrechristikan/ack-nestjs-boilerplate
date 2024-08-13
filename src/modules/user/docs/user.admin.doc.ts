@@ -1,6 +1,5 @@
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
     DocAuth,
@@ -9,16 +8,15 @@ import {
     DocResponse,
     DocResponsePaging,
 } from 'src/common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
 import {
     UserDocParamsId,
-    UserDocQueryBlocked,
+    UserDocQueryCountry,
     UserDocQueryRole,
     UserDocQueryStatus,
 } from 'src/modules/user/constants/user.doc.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
-import { UserLoginHistoryListResponseDto } from 'src/modules/user/dtos/response/user-login-history.list.response.dto';
-import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
-import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
+import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 
@@ -30,8 +28,8 @@ export function UserAdminListDoc(): MethodDecorator {
         DocRequest({
             queries: [
                 ...UserDocQueryStatus,
-                ...UserDocQueryBlocked,
                 ...UserDocQueryRole,
+                ...UserDocQueryCountry,
             ],
         }),
         DocAuth({
@@ -42,72 +40,6 @@ export function UserAdminListDoc(): MethodDecorator {
         DocResponsePaging<UserListResponseDto>('user.list', {
             dto: UserListResponseDto,
         })
-    );
-}
-
-export function UserAdminGetStateHistoryListDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'get all user state histories',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponsePaging<UserStateHistoryListResponseDto>(
-            'user.stateHistoryList',
-            {
-                dto: UserStateHistoryListResponseDto,
-            }
-        )
-    );
-}
-
-export function UserAdminGetPasswordHistoryListDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'get all user history change password',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponsePaging<UserPasswordHistoryListResponseDto>(
-            'user.passwordHistoryList',
-            {
-                dto: UserPasswordHistoryListResponseDto,
-            }
-        )
-    );
-}
-
-export function UserAdminGetLoginHistoryListDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'get all user login history',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponsePaging<UserLoginHistoryListResponseDto>(
-            'user.loginHistoryList',
-            {
-                dto: UserLoginHistoryListResponseDto,
-            }
-        )
     );
 }
 
@@ -168,6 +100,25 @@ export function UserAdminActiveDoc(): MethodDecorator {
     );
 }
 
+export function UserAdminUpdateDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'update a user',
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: UserUpdateRequestDto,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('user.update')
+    );
+}
+
 export function UserAdminInactiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
@@ -199,22 +150,5 @@ export function UserAdminBlockedDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true }),
         DocResponse('user.blocked')
-    );
-}
-
-export function UserAdminUpdatePasswordDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'update user password',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('user.updatePassword')
     );
 }

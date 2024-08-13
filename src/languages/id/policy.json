@@ -1,6 +1,0 @@
-{
-    "error": {
-        "abilityForbidden": "Anda tidak memiliki izin yang diperlukan untuk melakukan tindakan ini.",
-        "roleForbidden": "Peran Anda tidak memberikan akses ke sumber daya ini."
-    }
-}

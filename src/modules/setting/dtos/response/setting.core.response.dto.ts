@@ -7,7 +7,7 @@ import { SettingTimezoneResponseDto } from 'src/modules/setting/dtos/response/se
 export class SettingCoreResponseDto {
     @ApiProperty({
         required: true,
-        type: () => SettingFileResponseDto,
+        type: SettingFileResponseDto,
         oneOf: [{ $ref: getSchemaPath(SettingFileResponseDto) }],
     })
     @Type(() => SettingFileResponseDto)
@@ -15,7 +15,7 @@ export class SettingCoreResponseDto {
 
     @ApiProperty({
         required: true,
-        type: () => SettingLanguageResponseDto,
+        type: SettingLanguageResponseDto,
         oneOf: [{ $ref: getSchemaPath(SettingLanguageResponseDto) }],
     })
     @Type(() => SettingLanguageResponseDto)
@@ -23,7 +23,7 @@ export class SettingCoreResponseDto {
 
     @ApiProperty({
         required: true,
-        type: () => SettingTimezoneResponseDto,
+        type: SettingTimezoneResponseDto,
         oneOf: [{ $ref: getSchemaPath(SettingTimezoneResponseDto) }],
     })
     @Type(() => SettingTimezoneResponseDto)

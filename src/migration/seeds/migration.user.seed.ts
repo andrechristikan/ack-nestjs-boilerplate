@@ -1,24 +1,19 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { AuthService } from 'src/common/auth/services/auth.service';
+import { AuthService } from 'src/modules/auth/services/auth.service';
 import { UserService } from 'src/modules/user/services/user.service';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/enums/user.enum';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 import { CountryService } from 'src/modules/country/services/country.service';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
-import { UserPasswordHistoryService } from 'src/modules/user/services/user-password-history.service';
-import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
+import { faker } from '@faker-js/faker';
 
 @Injectable()
 export class MigrationUserSeed {
     constructor(
         private readonly authService: AuthService,
         private readonly userService: UserService,
-        private readonly userPasswordHistoryService: UserPasswordHistoryService,
-        private readonly userStateHistoryService: UserStateHistoryService,
         private readonly roleService: RoleService,
         private readonly countryService: CountryService
     ) {}
@@ -34,15 +29,14 @@ export class MigrationUserSeed {
             await this.roleService.findOneByName('superadmin');
         const adminRole: RoleDoc =
             await this.roleService.findOneByName('admin');
+        const country: CountryDoc =
+            await this.countryService.findOneByAlpha2('ID');
+
         const memberRole: RoleDoc =
             await this.roleService.findOneByName('member');
         const userRole: RoleDoc = await this.roleService.findOneByName('user');
-        const country: CountryDoc = await this.countryService.findOneByAlpha2(
-            ENUM_MESSAGE_LANGUAGE.EN
-        );
-
         try {
-            const user1: UserDoc = await this.userService.create(
+            await this.userService.create(
                 {
                     role: superAdminRole._id,
                     name: 'superadmin',
@@ -50,10 +44,10 @@ export class MigrationUserSeed {
                     country: country._id,
                 },
                 passwordHash,
-                ENUM_USER_SIGN_UP_FROM.ADMIN
+                ENUM_USER_SIGN_UP_FROM.SEED
             );
 
-            const user2: UserDoc = await this.userService.create(
+            await this.userService.create(
                 {
                     role: adminRole._id,
                     name: 'admin',
@@ -61,19 +55,10 @@ export class MigrationUserSeed {
                     country: country._id,
                 },
                 passwordHash,
-                ENUM_USER_SIGN_UP_FROM.ADMIN
+                ENUM_USER_SIGN_UP_FROM.SEED
             );
-            const user3: UserDoc = await this.userService.create(
-                {
-                    role: userRole._id,
-                    name: 'user',
-                    email: 'user@mail.com',
-                    country: country._id,
-                },
-                passwordHash,
-                ENUM_USER_SIGN_UP_FROM.ADMIN
-            );
-            const user4: UserDoc = await this.userService.create(
+
+            await this.userService.create(
                 {
                     role: memberRole._id,
                     name: 'member',
@@ -81,31 +66,38 @@ export class MigrationUserSeed {
                     country: country._id,
                 },
                 passwordHash,
-                ENUM_USER_SIGN_UP_FROM.ADMIN
+                ENUM_USER_SIGN_UP_FROM.SEED
+            );
+            await this.userService.create(
+                {
+                    role: userRole._id,
+                    name: 'user',
+                    email: 'user@mail.com',
+                    country: country._id,
+                },
+                passwordHash,
+                ENUM_USER_SIGN_UP_FROM.SEED
             );
 
-            await this.userStateHistoryService.createCreated(user1, user1._id);
-            await this.userStateHistoryService.createCreated(user2, user2._id);
-            await this.userStateHistoryService.createCreated(user3, user3._id);
-            await this.userStateHistoryService.createCreated(user4, user4._id);
-            await this.userPasswordHistoryService.createByAdmin(
-                user1,
-                user1._id
-            );
-            await this.userPasswordHistoryService.createByAdmin(
-                user2,
-                user1._id
-            );
-            await this.userPasswordHistoryService.createByAdmin(
-                user3,
-                user1._id
-            );
-            await this.userPasswordHistoryService.createByAdmin(
-                user4,
-                user1._id
-            );
+            // Add random user
+            const randomUser = Array(30)
+                .fill(0)
+                .map(() =>
+                    this.userService.create(
+                        {
+                            role: userRole._id,
+                            name: faker.person.fullName(),
+                            email: faker.internet.email(),
+                            country: country._id,
+                        },
+                        passwordHash,
+                        ENUM_USER_SIGN_UP_FROM.SEED
+                    )
+                );
+
+            await Promise.all(randomUser);
         } catch (err: any) {
-            throw new Error(err.message);
+            throw new Error(err);
         }
 
         return;
@@ -119,7 +111,7 @@ export class MigrationUserSeed {
         try {
             await this.userService.deleteMany({});
         } catch (err: any) {
-            throw new Error(err.message);
+            throw new Error(err);
         }
 
         return;

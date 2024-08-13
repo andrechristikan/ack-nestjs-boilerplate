@@ -1,8 +1,8 @@
 import { HttpStatus } from '@nestjs/common';
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { ClassConstructor } from 'class-transformer';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
-import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
+import { ENUM_FILE_MIME } from 'src/common/file/enums/file.enum';
 
 export interface IDocOptions {
     summary?: string;
@@ -36,8 +36,7 @@ export interface IDocRequestOptions<T = any> {
     dto?: ClassConstructor<T>;
 }
 
-export interface IDocRequestFileOptions
-    extends Omit<IDocRequestOptions, 'bodyType'> {}
+export type IDocRequestFileOptions = Omit<IDocRequestOptions, 'bodyType'>;
 
 export interface IDocGuardOptions {
     policy?: boolean;
@@ -50,16 +49,7 @@ export interface IDocResponseOptions<T = any> {
     dto?: ClassConstructor<T>;
 }
 
-export interface IDocResponsePagingOptions<T = any>
-    extends Omit<IDocResponseOptions<T>, 'dto'> {
-    dto: ClassConstructor<T>;
-}
-
 export interface IDocResponseFileOptions
     extends Omit<IDocResponseOptions, 'dto' | 'statusCode'> {
     fileType?: ENUM_FILE_MIME;
-}
-
-export interface IDocErrorOptions<T> extends IDocResponseOptions<T> {
-    messagePath: string;
 }

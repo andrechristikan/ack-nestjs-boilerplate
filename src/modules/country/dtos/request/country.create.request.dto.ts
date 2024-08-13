@@ -24,7 +24,7 @@ export class CountryCreateRequestDto {
     @IsString()
     @MaxLength(100)
     @MinLength(1)
-    readonly name: string;
+    name: string;
 
     @ApiProperty({
         required: true,
@@ -39,7 +39,7 @@ export class CountryCreateRequestDto {
     @MaxLength(2)
     @MinLength(2)
     @Transform(({ value }) => value.toUpperCase())
-    readonly alpha2Code: string;
+    alpha2Code: string;
 
     @ApiProperty({
         required: true,
@@ -54,7 +54,7 @@ export class CountryCreateRequestDto {
     @MaxLength(3)
     @MinLength(3)
     @Transform(({ value }) => value.toUpperCase())
-    readonly alpha3Code: string;
+    alpha3Code: string;
 
     @ApiProperty({
         required: true,
@@ -68,7 +68,7 @@ export class CountryCreateRequestDto {
     @IsString()
     @MaxLength(3)
     @MinLength(1)
-    readonly numericCode: string;
+    numericCode: string;
 
     @ApiProperty({
         required: true,
@@ -82,7 +82,7 @@ export class CountryCreateRequestDto {
     @IsString()
     @MaxLength(2)
     @MinLength(2)
-    readonly fipsCode: string;
+    fipsCode: string;
 
     @ApiProperty({
         required: true,
@@ -98,7 +98,7 @@ export class CountryCreateRequestDto {
     @IsNotEmpty({ each: true })
     @IsString({ each: true })
     @MaxLength(4, { each: true })
-    readonly phoneCode: string[];
+    phoneCode: string[];
 
     @ApiProperty({
         required: true,
@@ -106,7 +106,7 @@ export class CountryCreateRequestDto {
     })
     @IsNotEmpty()
     @IsString()
-    readonly continent: string;
+    continent: string;
 
     @ApiProperty({
         required: true,
@@ -114,7 +114,7 @@ export class CountryCreateRequestDto {
     })
     @IsNotEmpty()
     @IsString()
-    readonly timeZone: string;
+    timeZone: string;
 
     @ApiProperty({
         required: false,
@@ -123,5 +123,5 @@ export class CountryCreateRequestDto {
     })
     @IsOptional()
     @IsString()
-    readonly domain?: string;
+    domain?: string;
 }

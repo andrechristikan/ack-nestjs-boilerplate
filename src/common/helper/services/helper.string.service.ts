@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import {
     IHelperStringCurrencyOptions,
     IHelperStringPasswordOptions,
-    IHelperStringRandomOptions,
 } from 'src/common/helper/interfaces/helper.interface';
 import { IHelperStringService } from 'src/common/helper/interfaces/helper.string-service.interface';
 
@@ -11,21 +10,15 @@ import { IHelperStringService } from 'src/common/helper/interfaces/helper.string
 export class HelperStringService implements IHelperStringService {
     randomReference(length: number): string {
         const timestamp = `${new Date().getTime()}`;
-        const randomString: string = this.random(length, {
-            safe: true,
-        });
+        const randomString: string = this.random(length);
 
         return `${timestamp}${randomString}`.toUpperCase();
     }
 
-    random(length: number, options?: IHelperStringRandomOptions): string {
-        return options?.safe
-            ? faker.string.alphanumeric({
-                  length: { min: length, max: length },
-              })
-            : faker.string.numeric({
-                  length: { min: length, max: length },
-              });
+    random(length: number): string {
+        return faker.string.alphanumeric({
+            length: { min: length, max: length },
+        });
     }
 
     censor(text: string): string {

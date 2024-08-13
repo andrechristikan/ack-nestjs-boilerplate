@@ -2,14 +2,14 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 import { SafeString } from 'src/common/request/validations/request.safe-string.validation';
-import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
+import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/enums/setting.enum';
 
 export class SettingCreateRequestDto {
     @IsString()
     @IsNotEmpty()
     @SafeString()
     @Type(() => String)
-    readonly name: string;
+    name: string;
 
     @IsString()
     @IsOptional()
@@ -20,7 +20,7 @@ export class SettingCreateRequestDto {
         description: 'The description about setting',
         nullable: true,
     })
-    readonly description?: string;
+    description?: string;
 
     @IsString()
     @IsNotEmpty()
@@ -30,7 +30,7 @@ export class SettingCreateRequestDto {
         required: true,
         enum: ENUM_SETTING_DATA_TYPE,
     })
-    readonly type: ENUM_SETTING_DATA_TYPE;
+    type: ENUM_SETTING_DATA_TYPE;
 
     @IsNotEmpty()
     @Type(() => String)
@@ -44,5 +44,5 @@ export class SettingCreateRequestDto {
             { type: 'boolean', readOnly: true, examples: [true, false] },
         ],
     })
-    readonly value: string;
+    value: string;
 }

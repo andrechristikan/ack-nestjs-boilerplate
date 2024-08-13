@@ -1,37 +1,38 @@
 import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import {
     ENUM_USER_GENDER,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
-} from 'src/modules/user/constants/user.enum.constant';
+} from 'src/modules/user/enums/user.enum';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { DatabaseDto } from 'src/common/database/dtos/database.dto';
+import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 
-export class UserGetResponseDto extends DatabaseIdResponseDto {
+export class UserGetResponseDto extends DatabaseDto {
     @ApiProperty({
         required: true,
         nullable: false,
         maxLength: 100,
         minLength: 1,
     })
-    readonly name: string;
+    name: string;
 
     @ApiProperty({
-        required: false,
+        required: true,
+        nullable: false,
         maxLength: 50,
-        minLength: 1,
+        minLength: 3,
     })
-    readonly familyName?: string;
+    username: string;
 
     @ApiProperty({
         required: false,
-        type: () => UserUpdateMobileNumberRequestDto,
+        type: UserUpdateMobileNumberRequestDto,
     })
     @Type(() => UserUpdateMobileNumberRequestDto)
-    readonly mobileNumber?: UserUpdateMobileNumberRequestDto;
+    mobileNumber?: UserUpdateMobileNumberRequestDto;
 
     @ApiProperty({
         required: true,
@@ -39,83 +40,70 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
         example: faker.internet.email(),
         maxLength: 100,
     })
-    readonly email: string;
+    email: string;
 
     @ApiProperty({
         required: true,
         nullable: false,
         example: faker.string.uuid(),
     })
-    readonly role: string;
+    role: string;
 
     @ApiHideProperty()
     @Exclude()
-    readonly password: string;
+    password: string;
 
     @ApiProperty({
         required: true,
         nullable: false,
         example: faker.date.future(),
     })
-    readonly passwordExpired: Date;
+    passwordExpired: Date;
 
     @ApiProperty({
         required: true,
         nullable: false,
         example: faker.date.past(),
     })
-    readonly passwordCreated: Date;
+    passwordCreated: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly passwordAttempt: number;
+    passwordAttempt: number;
 
     @ApiProperty({
         required: true,
         nullable: false,
         example: faker.date.recent(),
     })
-    readonly signUpDate: Date;
+    signUpDate: Date;
 
     @ApiProperty({
         required: true,
         nullable: false,
         example: ENUM_USER_SIGN_UP_FROM.ADMIN,
     })
-    readonly signUpFrom: ENUM_USER_SIGN_UP_FROM;
+    signUpFrom: ENUM_USER_SIGN_UP_FROM;
 
     @ApiHideProperty()
     @Exclude()
-    readonly salt: string;
+    salt: string;
 
     @ApiProperty({
         required: true,
         nullable: false,
         example: ENUM_USER_STATUS.ACTIVE,
     })
-    readonly status: ENUM_USER_STATUS;
-
-    @ApiProperty({
-        required: true,
-        nullable: false,
-        example: false,
-    })
-    readonly blocked: boolean;
+    status: ENUM_USER_STATUS;
 
     @ApiProperty({
         nullable: true,
         required: false,
-        type: () => AwsS3Dto,
+        type: AwsS3Dto,
         oneOf: [{ $ref: getSchemaPath(AwsS3Dto) }],
     })
     @Type(() => AwsS3Dto)
-    readonly photo?: AwsS3Dto;
-
-    @ApiProperty({
-        required: false,
-        nullable: true,
-    })
-    readonly address?: string;
+    photo?: AwsS3Dto;
 
     @ApiProperty({
         example: ENUM_USER_GENDER.MALE,
@@ -123,31 +111,27 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
         required: false,
         nullable: true,
     })
-    readonly gender?: ENUM_USER_GENDER;
+    gender?: ENUM_USER_GENDER;
 
     @ApiProperty({
         example: faker.string.uuid(),
         required: true,
     })
-    readonly country: string;
+    country: string;
 
     @ApiProperty({
-        description: 'Date created at',
-        example: faker.date.recent(),
-        required: true,
-        nullable: false,
+        example: faker.location.streetAddress(),
+        required: false,
+        nullable: true,
+        maxLength: 200,
     })
-    readonly createdAt: Date;
+    address?: string;
 
     @ApiProperty({
-        description: 'Date updated at',
-        example: faker.date.recent(),
-        required: true,
-        nullable: false,
+        example: faker.person.lastName(),
+        required: false,
+        nullable: true,
+        maxLength: 50,
     })
-    readonly updatedAt: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    readonly deletedAt?: Date;
+    familyName?: string;
 }

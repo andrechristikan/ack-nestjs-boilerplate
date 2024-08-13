@@ -1,10 +1,4 @@
-import {
-    ExceptionFilter,
-    Catch,
-    ArgumentsHost,
-    HttpStatus,
-    Logger,
-} from '@nestjs/common';
+import { ExceptionFilter, Catch, ArgumentsHost, Logger } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
@@ -44,12 +38,6 @@ export class AppValidationImportFilter implements ExceptionFilter {
             this.logger.error(exception);
         }
 
-        // set default
-        const responseException =
-            exception.getResponse() as IAppImportException;
-        const statusHttp: HttpStatus = exception.getStatus();
-        const statusCode = responseException.statusCode;
-
         // metadata
         const xLanguage: string =
             request.__language ?? this.messageService.getLanguage();
@@ -69,22 +57,19 @@ export class AppValidationImportFilter implements ExceptionFilter {
         };
 
         // set response
-        const message = this.messageService.setMessage(
-            responseException.message,
-            {
-                customLanguage: xLanguage,
-            }
-        );
+        const message = this.messageService.setMessage(exception.message, {
+            customLanguage: xLanguage,
+        });
         const errors: IMessageValidationImportError[] =
             this.messageService.setValidationImportMessage(
-                responseException.errors as IMessageValidationImportErrorParam[],
+                exception.errors as IMessageValidationImportErrorParam[],
                 {
                     customLanguage: xLanguage,
                 }
             );
 
         const responseBody: IAppImportException = {
-            statusCode,
+            statusCode: exception.statusCode,
             message,
             errors,
             _metadata: metadata,
@@ -96,7 +81,7 @@ export class AppValidationImportFilter implements ExceptionFilter {
             .setHeader('x-timezone', xTimezone)
             .setHeader('x-version', xVersion)
             .setHeader('x-repo-version', xRepoVersion)
-            .status(statusHttp)
+            .status(exception.httpStatus)
             .json(responseBody);
 
         return;

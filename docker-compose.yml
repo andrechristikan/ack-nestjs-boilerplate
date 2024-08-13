@@ -1,16 +1,158 @@
+
 version: '3.8'
+name: ack
+
 services:
-  boilerack:
+  service:
     build: 
       context: .
       args:
         NODE_ENV: 'development'
-    container_name: boilerack
-    hostname: boilerack
+    container_name: service
+    hostname: service
     ports:
       - 3000:3000
     volumes:
       - ./src/:/app/src/
       - .env/:/app/.env
     restart: always
+    networks:
+      - app-network
 
+  redis:
+      image: redis:latest
+      container_name: redis
+      hostname: redis
+      restart: always
+      ports:
+          - '6379:6379'
+      volumes:
+          - redis_data:/data
+      networks:
+          - app-network
+      healthcheck:
+          test: ['CMD', 'redis-cli', 'ping']
+          interval: 10s
+          timeout: 30s
+          retries: 5
+
+  redis-bullboard:
+    image: deadly0/bull-board:latest
+    container_name: redis-bullboard
+    hostname: redis-bullboard
+    restart: always
+    ports:
+      - 3010:3000
+    networks:
+      - app-network
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - USER_LOGIN=admin
+      - USER_PASSWORD=admin123
+    depends_on:
+      - redis
+
+  redis-commander:
+    image: ghcr.io/joeferner/redis-commander:latest
+    container_name: redis-commander
+    hostname: redis-commander
+    restart: always
+    ports:
+      - 3011:8081
+    networks:
+      - app-network
+    environment:
+    - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    hostname: mongo-express
+    environment:
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+      ME_CONFIG_MONGODB_URL: mongodb://host.docker.internal:27017,host.docker.internal:27018,host.docker.internal:27019/ack?retryWrites=true&w=majority&replicaSet=rs0
+    ports:
+      - 3012:8081
+    networks:
+      - app-network
+    depends_on:
+      - mongodb1
+      - mongodb2
+      - mongodb3
+
+  mongodb1:
+    container_name: mongodb1
+    hostname: mongodb1
+    image: mongo:latest
+    restart: always
+    ports:
+      - "27017:27017"
+    links:
+      - mongodb2
+      - mongodb3
+    depends_on:
+      mongodb2:
+        condition: service_started
+      mongodb3:
+        condition: service_started
+    networks:
+      - app-network
+    volumes:
+      - mongodb1_data:/data/db
+      - mongodb1_config:/data/configdb
+    command: mongod --bind_ip_all --replSet rs0 --port 27017
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017',priority:1},{_id:1,host:'host.docker.internal:27018',priority:0.5},{_id:2,host:'host.docker.internal:27019',priority:0.5}]}) }" | mongosh --port 27017 --quiet
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 1s
+      retries: 5
+
+  mongodb2:
+    container_name: mongodb2
+    hostname: mongodb2
+    image: mongo:latest
+    networks:
+      - app-network
+    restart: always
+    ports:
+      - "27018:27018"
+    volumes:
+      - mongodb2_data:/data/db
+      - mongodb2_config:/data/configdb
+    command: mongod --bind_ip_all --replSet rs0 --port 27018
+
+  mongodb3:
+    container_name: mongodb3
+    hostname: mongodb3
+    image: mongo:latest
+    networks:
+      - app-network
+    restart: always
+    ports:
+      - "27019:27019"
+    volumes:
+      - mongodb3_data:/data/db
+      - mongodb3_config:/data/configdb
+    command: mongod --bind_ip_all --replSet rs0 --port 27019
+
+volumes:
+  mongodb1_data:
+  mongodb2_data:
+  mongodb3_data:
+  mongodb1_config:
+  mongodb2_config:
+  mongodb3_config:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge

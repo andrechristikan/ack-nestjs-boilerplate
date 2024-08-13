@@ -1,11 +1,6 @@
-import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { PickType } from '@nestjs/swagger';
+import { DatabaseDto } from 'src/common/database/dtos/database.dto';
 
-export class DatabaseIdResponseDto {
-    @ApiProperty({
-        description: 'Alias id of api key',
-        example: faker.string.uuid(),
-        required: true,
-    })
-    _id: string;
-}
+export class DatabaseIdResponseDto extends PickType(DatabaseDto, [
+    '_id',
+] as const) {}

@@ -5,9 +5,9 @@ import {
     ValidationPipe,
 } from '@nestjs/common';
 import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { RequestTimeoutInterceptor } from 'src/common/request/interceptors/request.timeout.interceptor';
 import { ValidationError } from 'class-validator';
 import { RequestValidationException } from 'src/common/request/exceptions/request.validation.exception';
+import { RequestTimeoutInterceptor } from 'src/common/request/interceptors/request.timeout.interceptor';
 import {
     DateGreaterThanConstraint,
     DateGreaterThanEqualConstraint,

@@ -9,6 +9,7 @@ import RequestConfig from 'src/configs/request.config';
 import DocConfig from 'src/configs/doc.config';
 import MessageConfig from 'src/configs/message.config';
 import EmailConfig from 'src/configs/email.config';
+import RedisConfig from 'src/configs/redis.config';
 
 export default [
     AppConfig,
@@ -22,4 +23,5 @@ export default [
     DocConfig,
     MessageConfig,
     EmailConfig,
+    RedisConfig,
 ];

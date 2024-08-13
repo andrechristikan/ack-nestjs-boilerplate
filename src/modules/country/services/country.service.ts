@@ -1,17 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { Document } from 'mongoose';
 import { DatabaseQueryContain } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateManyOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseManyOptions,
-    IDatabaseSaveOptions,
+    IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
 import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
+import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
 import { ICountryService } from 'src/modules/country/interfaces/country.service.interface';
 import {
     CountryDoc,
@@ -27,21 +28,21 @@ export class CountryService implements ICountryService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<CountryDoc[]> {
-        return this.countryRepository.findAll<CountryDoc>(find, options);
+        return this.countryRepository.findAll(find, options);
     }
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc> {
-        return this.countryRepository.findOne<CountryDoc>(find, options);
+        return this.countryRepository.findOne(find, options);
     }
 
     async findOneByName(
         name: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc> {
-        return this.countryRepository.findOne<CountryDoc>(
+        return this.countryRepository.findOne(
             DatabaseQueryContain('name', name),
             options
         );
@@ -49,9 +50,9 @@ export class CountryService implements ICountryService {
 
     async findOneByAlpha2(
         alpha2: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc> {
-        return this.countryRepository.findOne<CountryDoc>(
+        return this.countryRepository.findOne(
             DatabaseQueryContain('alpha2Code', alpha2),
             options
         );
@@ -59,9 +60,9 @@ export class CountryService implements ICountryService {
 
     async findOneActiveByPhoneCode(
         phoneCode: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc> {
-        return this.countryRepository.findOne<CountryDoc>(
+        return this.countryRepository.findOne(
             {
                 phoneCode,
                 isActive: true,
@@ -72,19 +73,16 @@ export class CountryService implements ICountryService {
 
     async findOneById(
         _id: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc> {
-        return this.countryRepository.findOneById<CountryDoc>(_id, options);
+        return this.countryRepository.findOneById(_id, options);
     }
 
     async findOneActiveById(
         _id: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc> {
-        return this.countryRepository.findOne<CountryDoc>(
-            { _id, isActive: true },
-            options
-        );
+        return this.countryRepository.findOne({ _id, isActive: true }, options);
     }
 
     async getTotal(
@@ -94,44 +92,25 @@ export class CountryService implements ICountryService {
         return this.countryRepository.getTotal(find, options);
     }
 
-    async active(
-        repository: CountryDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<CountryDoc> {
-        repository.isActive = true;
-
-        return this.countryRepository.save(repository, options);
-    }
-
-    async inactive(
-        repository: CountryDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<CountryDoc> {
-        repository.isActive = false;
-
-        return this.countryRepository.save(repository, options);
-    }
-
-    async delete(
-        repository: CountryDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<CountryDoc> {
-        return this.countryRepository.softDelete(repository, options);
-    }
-
     async deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseManyOptions
+        options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
-        return this.countryRepository.deleteMany(find, options);
+        try {
+            await this.countryRepository.deleteMany(find, options);
+
+            return true;
+        } catch (error: unknown) {
+            throw error;
+        }
     }
 
     async createMany(
         data: CountryCreateRequestDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
-        return this.countryRepository.createMany(
-            data.map(
+        try {
+            const entities: CountryEntity[] = data.map(
                 ({
                     name,
                     alpha2Code,
@@ -153,20 +132,47 @@ export class CountryService implements ICountryService {
                     create.phoneCode = phoneCode;
                     create.timeZone = timeZone;
                     create.domain = domain;
-                    create.isActive = true;
 
                     return create;
                 }
-            ),
-            options
+            ) as CountryEntity[];
+
+            await this.countryRepository.createMany(entities, options);
+
+            return true;
+        } catch (error: unknown) {
+            throw error;
+        }
+    }
+
+    async mapList(
+        countries: CountryDoc[] | CountryEntity[]
+    ): Promise<CountryListResponseDto[]> {
+        return plainToInstance(
+            CountryListResponseDto,
+            countries.map((e: CountryDoc | CountryEntity) =>
+                e instanceof Document ? e.toObject() : e
+            )
         );
     }
 
-    async mapList(countries: CountryDoc[]): Promise<CountryListResponseDto[]> {
-        return plainToInstance(CountryListResponseDto, countries);
+    async mapGet(
+        country: CountryDoc | CountryEntity
+    ): Promise<CountryGetResponseDto> {
+        return plainToInstance(
+            CountryGetResponseDto,
+            country instanceof Document ? country.toObject() : country
+        );
     }
 
-    async mapGet(county: CountryDoc): Promise<CountryGetResponseDto> {
-        return plainToInstance(CountryGetResponseDto, county);
+    async mapShort(
+        countries: CountryDoc[] | CountryEntity[]
+    ): Promise<CountryShortResponseDto[]> {
+        return plainToInstance(
+            CountryShortResponseDto,
+            countries.map((e: CountryDoc | CountryEntity) =>
+                e instanceof Document ? e.toObject() : e
+            )
+        );
     }
 }

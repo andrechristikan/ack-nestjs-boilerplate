@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
+import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 
 export const UserDocParamsId = [
     {
@@ -21,6 +21,16 @@ export const UserDocQueryRole = [
     },
 ];
 
+export const UserDocQueryCountry = [
+    {
+        name: 'country',
+        allowEmptyValue: true,
+        required: false,
+        type: 'string',
+        example: faker.string.uuid(),
+    },
+];
+
 export const UserDocQueryStatus = [
     {
         name: 'status',
@@ -28,17 +38,6 @@ export const UserDocQueryStatus = [
         required: false,
         type: 'string',
         example: Object.values(ENUM_USER_STATUS).join(','),
-        description: "value with ',' delimiter",
-    },
-];
-
-export const UserDocQueryBlocked = [
-    {
-        name: 'blocked',
-        allowEmptyValue: true,
-        required: false,
-        type: 'string',
-        example: 'true,false',
         description: "value with ',' delimiter",
     },
 ];

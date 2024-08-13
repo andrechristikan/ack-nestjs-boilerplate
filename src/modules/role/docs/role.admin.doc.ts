@@ -1,6 +1,5 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
     DocAuth,
@@ -9,6 +8,7 @@ import {
     DocResponse,
     DocResponsePaging,
 } from 'src/common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
 import {
     RoleDocParamsId,
     RoleDocQueryIsActive,
@@ -130,22 +130,5 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
         DocResponse<DatabaseIdResponseDto>('role.update', {
             dto: DatabaseIdResponseDto,
         })
-    );
-}
-
-export function RoleAdminDeleteDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'delete a role',
-        }),
-        DocRequest({
-            params: RoleDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('role.delete')
     );
 }

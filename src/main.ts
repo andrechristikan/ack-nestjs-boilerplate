@@ -7,15 +7,21 @@ import swaggerInit from 'src/swagger';
 import { plainToInstance } from 'class-transformer';
 import { AppEnvDto } from 'src/app/dtos/app.env.dto';
 import { MessageService } from 'src/common/message/services/message.service';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 
 async function bootstrap() {
-    const app: NestApplication = await NestFactory.create(AppModule);
+    const app: NestApplication = await NestFactory.create(AppModule, {
+        abortOnError: false,
+    });
     const configService = app.get(ConfigService);
     const databaseUri: string = configService.get<string>('database.uri');
     const env: string = configService.get<string>('app.env');
     const timezone: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
-    const port: number = configService.get<number>('app.http.port');
+    const port: number =
+        env !== ENUM_APP_ENVIRONMENT.MIGRATION
+            ? configService.get<number>('app.http.port')
+            : 9999;
     const globalPrefix: string = configService.get<string>('app.globalPrefix');
     const versioningPrefix: string = configService.get<string>(
         'app.urlVersion.prefix'
@@ -29,7 +35,7 @@ async function bootstrap() {
     );
     const jobEnable: boolean = configService.get<boolean>('app.jobEnable');
 
-    const logger = new Logger();
+    const logger = new Logger('NestJs-Main');
     process.env.NODE_ENV = env;
     process.env.TZ = timezone;
 
@@ -48,6 +54,17 @@ async function bootstrap() {
         });
     }
 
+    // Validate Env
+    const classEnv = plainToInstance(AppEnvDto, process.env);
+    const errors = await validate(classEnv);
+    if (errors.length > 0) {
+        const messageService = app.get(MessageService);
+        const errorsMessage = messageService.setValidationMessage(errors);
+        logger.log(errorsMessage);
+
+        throw new Error('Env Variable Invalid');
+    }
+
     // Swagger
     await swaggerInit(app);
 
@@ -56,36 +73,39 @@ async function bootstrap() {
 
     logger.log(`==========================================================`);
 
-    logger.log(`Environment Variable`, 'NestApplication');
+    logger.log(`Environment Variable`);
 
-    // Validate Env
-    const classEnv = plainToInstance(AppEnvDto, process.env);
-    const errors = await validate(classEnv);
-    if (errors.length > 0) {
-        const messageService = app.get(MessageService);
-        const errorsMessage = messageService.setValidationMessage(errors);
-        logger.log(errorsMessage, 'NestApplication');
-        throw new Error('Env Variable Invalid');
-    }
-
-    logger.log(JSON.parse(JSON.stringify(process.env)), 'NestApplication');
+    logger.log(JSON.parse(JSON.stringify(process.env)));
 
     logger.log(`==========================================================`);
 
-    logger.log(`Job is ${jobEnable}`, 'NestApplication');
+    if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
+        logger.log(`On migrate the schema`);
+
+        await app.close();
+
+        logger.log(`Migrate done`);
+        logger.log(
+            `==========================================================`
+        );
+
+        return;
+    }
+
+    logger.log(`Job is ${jobEnable}`);
     logger.log(
         `Http is ${httpEnable}, ${
             httpEnable ? 'routes registered' : 'no routes registered'
         }`,
         'NestApplication'
     );
-    logger.log(`Http versioning is ${versionEnable}`, 'NestApplication');
+    logger.log(`Http versioning is ${versionEnable}`);
 
     logger.log(
         `Http Server running on ${await app.getUrl()}`,
         'NestApplication'
     );
-    logger.log(`Database uri ${databaseUri}`, 'NestApplication');
+    logger.log(`Database uri ${databaseUri}`);
 
     logger.log(`==========================================================`);
 }

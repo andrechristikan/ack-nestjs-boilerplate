@@ -9,19 +9,19 @@ export class HelloResponseDto {
         example: faker.date.recent(),
     })
     @Type(() => String)
-    readonly date: Date;
+    date: Date;
 
     @ApiProperty({
         required: true,
         nullable: false,
         example: faker.date.recent(),
     })
-    readonly format: string;
+    format: string;
 
     @ApiProperty({
         required: true,
         nullable: false,
         example: 1660190937231,
     })
-    readonly timestamp: number;
+    timestamp: number;
 }

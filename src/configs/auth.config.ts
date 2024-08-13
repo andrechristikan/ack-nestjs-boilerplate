@@ -6,34 +6,30 @@ export default registerAs(
     (): Record<string, any> => ({
         jwt: {
             accessToken: {
-                secretKey:
-                    process.env.AUTH_JWT_ACCESS_TOKEN_SECRET_KEY ?? '123456',
-                expirationTime: ms(
-                    process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED ?? '1h'
-                ), // 1 hours
+                secretKey: process.env.AUTH_JWT_ACCESS_TOKEN_SECRET_KEY,
+                expirationTime:
+                    ms(process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED) / 1000, // 1 hours
             },
 
             refreshToken: {
-                secretKey:
-                    process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY ??
-                    '123456000',
-                expirationTime: ms(
-                    process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED ?? '90d'
-                ), // 1 hours
+                secretKey: process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY,
+                expirationTime:
+                    ms(process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED) / 1000, // 1 hours
             },
 
-            subject: process.env.AUTH_JWT_SUBJECT ?? 'ackDevelopment',
-            audience: process.env.AUTH_JWT_AUDIENCE ?? 'https://example.com',
-            issuer: process.env.AUTH_JWT_ISSUER ?? 'ack',
+            subject: process.env.AUTH_JWT_SUBJECT,
+            audience: process.env.AUTH_JWT_AUDIENCE,
+            issuer: process.env.AUTH_JWT_ISSUER,
             prefixAuthorization: 'Bearer',
         },
 
         password: {
-            attempt: false,
+            attempt: true,
             maxAttempt: 5,
             saltLength: 8,
-            expiredIn: ms('182d') / 1000, // 182 days
-            period: ms('90d') / 1000,
+            expiredIn: ms('182d') / 1000, // 0.5 years
+            expiredInTemporary: ms('3d') / 1000, // 3 days
+            period: ms('90d') / 1000, // 3 months
         },
 
         apple: {

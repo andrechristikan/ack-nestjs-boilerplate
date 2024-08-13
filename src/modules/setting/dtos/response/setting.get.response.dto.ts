@@ -1,17 +1,15 @@
-import { faker } from '@faker-js/faker';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude } from 'class-transformer';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
+import { ApiProperty } from '@nestjs/swagger';
+import { DatabaseDto } from 'src/common/database/dtos/database.dto';
+import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/enums/setting.enum';
 
-export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
+export class SettingGetResponseDto<T = any> extends DatabaseDto {
     @ApiProperty({
         description: 'Name of setting',
         example: 'MaintenanceOn',
         required: true,
         nullable: false,
     })
-    readonly name: string;
+    name: string;
 
     @ApiProperty({
         description: 'Description of setting',
@@ -19,7 +17,7 @@ export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
         required: false,
         nullable: true,
     })
-    readonly description?: string;
+    description?: string;
 
     @ApiProperty({
         description: 'Data type of setting',
@@ -28,7 +26,7 @@ export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
         nullable: false,
         enum: ENUM_SETTING_DATA_TYPE,
     })
-    readonly type: ENUM_SETTING_DATA_TYPE;
+    type: ENUM_SETTING_DATA_TYPE;
 
     @ApiProperty({
         description: 'Value of string, can be type string/boolean/number',
@@ -40,25 +38,5 @@ export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly value: T;
-
-    @ApiProperty({
-        description: 'Date created at',
-        example: faker.date.recent(),
-        required: true,
-        nullable: false,
-    })
-    readonly createdAt: Date;
-
-    @ApiProperty({
-        description: 'Date updated at',
-        example: faker.date.recent(),
-        required: true,
-        nullable: false,
-    })
-    readonly updatedAt: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    readonly deletedAt?: Date;
+    value: T;
 }

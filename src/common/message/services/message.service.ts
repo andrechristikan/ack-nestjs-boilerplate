@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ValidationError } from 'class-validator';
 import { I18nService } from 'nestjs-i18n';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 import {
     IMessageErrorOptions,
     IMessageSetOptions,
@@ -67,8 +67,23 @@ export class MessageService implements IMessageService {
     ): IMessageValidationError[] {
         const messages: IMessageValidationError[] = [];
         for (const error of errors) {
-            const property = error.property ?? 'unknown';
+            const property = error.property;
             const constraints: string[] = Object.keys(error.constraints ?? []);
+
+            if (constraints.length === 0) {
+                messages.push({
+                    property,
+                    message: this.setMessage('request.unknownMessage', {
+                        customLanguage: options?.customLanguage,
+                        properties: {
+                            property,
+                            value: error.value,
+                        },
+                    }),
+                });
+
+                continue;
+            }
 
             for (const constraint of constraints) {
                 const message = this.setMessage(`request.${constraint}`, {
@@ -96,7 +111,7 @@ export class MessageService implements IMessageService {
         return errors.map(val => ({
             row: val.row,
             sheetName: val.sheetName,
-            errors: this.setValidationMessage(val.error, options),
+            errors: this.setValidationMessage(val.errors, options),
         }));
     }
 }

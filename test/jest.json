@@ -6,7 +6,37 @@
     "testMatch": ["<rootDir>/test/**/*.spec.ts"],
     "collectCoverage": true,
     "coverageDirectory": "coverage",
-    "collectCoverageFrom": [],
+    "collectCoverageFrom": [
+        "<rootDir>/src/app/dtos/*.dto.ts",
+        "<rootDir>/src/app/filters/*.filter.ts",
+        "<rootDir>/src/app/middlewares/*.middleware.ts",
+
+        "<rootDir>/src/common/**/services/**/*.service.ts",
+        "<rootDir>/src/common/**/pipes/**/*.pipe.ts",
+        "<rootDir>/src/common/**/guards/**/*.guard.ts",
+        "<rootDir>/src/common/**/guards/**/*.strategy.ts",
+        "<rootDir>/src/common/**/interceptors/**/*.interceptor.ts",
+        "<rootDir>/src/common/**/dtos/**/*.dto.ts",
+        "<rootDir>/src/common/**/decorators/**/*.decorator.ts",
+        "<rootDir>/src/common/**/exceptions/**/*.exception.ts",
+        "<rootDir>/src/common/**/filters/**/*.filter.ts",
+        "<rootDir>/src/common/**/middlewares/**/*.middleware.ts",
+        "<rootDir>/src/common/**/indicators/**/*.indicator.ts",
+        "<rootDir>/src/common/**/factories/**/*.factory.ts",
+
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/services/**/*.service.ts",
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/pipes/**/*.pipe.ts",
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/guards/**/*.guard.ts",
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/guards/**/*.strategy.ts",
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/interceptors/**/*.interceptor.ts",
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/dtos/**/*.dto.ts",
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/decorators/**/*.decorator.ts",
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/exceptions/**/*.exception.ts",
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/filters/**/*.filter.ts",
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/middlewares/**/*.middleware.ts",
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/indicators/**/*.indicator.ts",
+        "<rootDir>/src/modules/{api-key,auth,aws,country,policy}/factories/**/*.factory.ts"
+    ],
     "coverageThreshold": {
         "global": {
             "branches": 100,

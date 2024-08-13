@@ -74,6 +74,8 @@ export const FilePartNumber: () => ParameterDecorator = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): number => {
         const request = ctx.switchToHttp().getRequest<IRequestApp>();
         const { headers } = request;
-        return Number(headers['x-part-number']) ?? 0;
+        return headers['x-part-number']
+            ? Number(headers['x-part-number'])
+            : undefined;
     }
 );

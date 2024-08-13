@@ -6,12 +6,13 @@ import {
     IsNumber,
     IsOptional,
     IsString,
+    IsUrl,
 } from 'class-validator';
 import {
     ENUM_APP_ENVIRONMENT,
     ENUM_APP_TIMEZONE,
-} from 'src/app/constants/app.enum.constant';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
+} from 'src/app/enums/app.enum';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 
 export class AppEnvDto {
     @IsString()
@@ -62,11 +63,6 @@ export class AppEnvDto {
     @Type(() => Number)
     URL_VERSION: number;
 
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    JOB_ENABLE: boolean;
-
     @IsNotEmpty()
     @IsString()
     DATABASE_URI: string;
@@ -75,10 +71,6 @@ export class AppEnvDto {
     @IsNotEmpty()
     @Type(() => Boolean)
     DATABASE_DEBUG: boolean;
-
-    @IsNotEmpty()
-    @IsString()
-    AUTH_JWT_SUBJECT: string;
 
     @IsNotEmpty()
     @IsString()
@@ -148,7 +140,30 @@ export class AppEnvDto {
     @IsString()
     AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID?: string;
 
+    @IsNotEmpty()
+    @IsString()
+    REDIS_HOST: string;
+
+    @IsNumber()
+    @IsNotEmpty()
+    @Type(() => Number)
+    REDIS_PORT: number;
+
+    @IsOptional()
+    @IsString()
+    REDIS_PASSWORD?: string;
+
+    @IsNotEmpty()
+    @IsBoolean()
+    @Type(() => Boolean)
+    REDIS_TLS: boolean;
+
     @IsOptional()
     @IsString()
     SENTRY_DSN?: string;
+
+    @IsNotEmpty()
+    @IsUrl()
+    @IsString()
+    CLIENT_URL: string;
 }

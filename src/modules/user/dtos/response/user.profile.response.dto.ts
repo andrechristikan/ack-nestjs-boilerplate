@@ -1,6 +1,6 @@
 import { ApiProperty, OmitType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
+import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
 import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';
 import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
@@ -17,15 +17,15 @@ export class UserProfileResponseDto extends OmitType(UserGetResponseDto, [
         type: RoleGetResponseDto,
     })
     @Type(() => RoleGetResponseDto)
-    readonly role: RoleGetResponseDto;
+    role: RoleGetResponseDto;
 
     @ApiProperty({
         required: true,
         nullable: false,
-        type: CountryGetResponseDto,
+        type: CountryShortResponseDto,
     })
-    @Type(() => CountryGetResponseDto)
-    readonly country: CountryGetResponseDto;
+    @Type(() => CountryShortResponseDto)
+    country: CountryShortResponseDto;
 
     @ApiProperty({
         required: false,
@@ -33,5 +33,5 @@ export class UserProfileResponseDto extends OmitType(UserGetResponseDto, [
         type: UserMobileNumberResponseDto,
     })
     @Type(() => RoleListResponseDto)
-    readonly mobileNumber?: UserMobileNumberResponseDto;
+    mobileNumber?: UserMobileNumberResponseDto;
 }

@@ -1,9 +1,16 @@
-import { Module } from '@nestjs/common';
+import { DynamicModule, Global, Module } from '@nestjs/common';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 
-@Module({
-    providers: [PaginationService],
-    exports: [PaginationService],
-    imports: [],
-})
-export class PaginationModule {}
+@Global()
+@Module({})
+export class PaginationModule {
+    static forRoot(): DynamicModule {
+        return {
+            module: PaginationModule,
+            providers: [PaginationService],
+            exports: [PaginationService],
+            imports: [],
+            controllers: [],
+        };
+    }
+}

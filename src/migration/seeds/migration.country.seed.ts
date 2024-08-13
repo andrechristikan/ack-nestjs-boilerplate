@@ -1,8 +1,6 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { CountryService } from 'src/modules/country/services/country.service';
-import path from 'path';
-import { readFileSync } from 'fs';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
 
 @Injectable()
@@ -15,13 +13,21 @@ export class MigrationCountrySeed {
     })
     async seeds(): Promise<void> {
         try {
-            const data = readFileSync(
-                path.resolve(__dirname, '../data/country.json'),
-                'utf8'
-            );
-            const countries = JSON.parse(data) as CountryCreateRequestDto[];
+            const data: CountryCreateRequestDto[] = [
+                {
+                    name: 'Indonesia',
+                    alpha2Code: 'ID',
+                    alpha3Code: 'IDN',
+                    domain: 'id',
+                    fipsCode: 'ID',
+                    numericCode: '360',
+                    phoneCode: ['62'],
+                    continent: 'Asia',
+                    timeZone: 'Asia/Jakarta',
+                },
+            ];
 
-            await this.countryService.createMany(countries);
+            await this.countryService.createMany(data);
         } catch (err: any) {
             throw new Error(err.message);
         }

@@ -4,5 +4,5 @@ export class SettingFileResponseDto {
     @ApiProperty({
         required: true,
     })
-    readonly sizeInBytes: number;
+    sizeInBytes: number;
 }

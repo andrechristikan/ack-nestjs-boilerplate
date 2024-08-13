@@ -20,7 +20,7 @@ export class UserCreateRequestDto {
     @IsNotEmpty()
     @MaxLength(100)
     @Type(() => String)
-    readonly email: string;
+    email: string;
 
     @ApiProperty({
         example: faker.string.uuid(),
@@ -28,7 +28,7 @@ export class UserCreateRequestDto {
     })
     @IsNotEmpty()
     @IsUUID()
-    readonly role: string;
+    role: string;
 
     @ApiProperty({
         example: faker.person.fullName(),
@@ -41,7 +41,7 @@ export class UserCreateRequestDto {
     @MinLength(1)
     @MaxLength(100)
     @Type(() => String)
-    readonly name: string;
+    name: string;
 
     @ApiProperty({
         example: faker.string.uuid(),
@@ -50,5 +50,5 @@ export class UserCreateRequestDto {
     @IsString()
     @IsUUID()
     @IsNotEmpty()
-    readonly country: string;
+    country: string;
 }

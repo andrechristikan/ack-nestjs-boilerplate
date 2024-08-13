@@ -12,25 +12,25 @@ export class CountryListResponseDto extends OmitType(CountryGetResponseDto, [
 ] as const) {
     @ApiHideProperty()
     @Exclude()
-    readonly alpha3Code: string;
+    alpha3Code: string;
 
     @ApiHideProperty()
     @Exclude()
-    readonly fipsCode: string;
+    fipsCode: string;
 
     @ApiHideProperty()
     @Exclude()
-    readonly continent: string;
+    continent: string;
 
     @ApiHideProperty()
     @Exclude()
-    readonly domain?: string;
+    domain?: string;
 
     @ApiHideProperty()
     @Exclude()
-    readonly timeZone: string;
+    timeZone: string;
 
     @ApiHideProperty()
     @Exclude()
-    readonly numericCode: string;
+    numericCode: string;
 }

@@ -19,7 +19,7 @@ export function PaginationSearchPipe(
         ): Promise<Record<string, any>> {
             if (availableSearch.length === 0 || !value?.search) {
                 this.addToRequestInstance(value?.search, availableSearch);
-                return undefined;
+                return value;
             }
 
             const search: Record<string, any> = this.paginationService.search(

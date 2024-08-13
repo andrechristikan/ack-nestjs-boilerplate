@@ -3,7 +3,7 @@ import {
     Injectable,
     UnprocessableEntityException,
 } from '@nestjs/common';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
+import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/enums/file.status-code.enum';
 import { IFile } from 'src/common/file/interfaces/file.interface';
 
 @Injectable()
@@ -24,11 +24,11 @@ export class FileRequiredPipe implements PipeTransform {
     async validate(value: IFile | IFile[]): Promise<void> {
         if (
             !value ||
-            Object.keys(value).length === 0 ||
-            (Array.isArray(value) && value.length === 0)
+            (Array.isArray(value) && value.length === 0) ||
+            Object.keys(value).length === 0
         ) {
             throw new UnprocessableEntityException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.REQUIRED_ERROR,
+                statusCode: ENUM_FILE_STATUS_CODE_ERROR.REQUIRED,
                 message: 'file.error.required',
             });
         }

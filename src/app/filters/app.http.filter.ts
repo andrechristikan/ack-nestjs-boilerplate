@@ -11,10 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { IAppException } from 'src/app/interfaces/app.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import {
-    IMessageOptionsProperties,
-    IMessageValidationError,
-} from 'src/common/message/interfaces/message.interface';
+import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
@@ -58,9 +55,8 @@ export class AppHttpFilter implements ExceptionFilter {
         let statusHttp: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
         let messagePath = `http.${statusHttp}`;
         let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-        const errors: IMessageValidationError[] = undefined;
-        let messageProperties: IMessageOptionsProperties = undefined;
-        let data: Record<string, any> = undefined;
+        let messageProperties: IMessageOptionsProperties;
+        let data: Record<string, any>;
 
         // metadata
         const xLanguage: string =
@@ -109,7 +105,6 @@ export class AppHttpFilter implements ExceptionFilter {
         const responseBody: IAppException = {
             statusCode,
             message,
-            errors,
             _metadata: metadata,
             data,
         };

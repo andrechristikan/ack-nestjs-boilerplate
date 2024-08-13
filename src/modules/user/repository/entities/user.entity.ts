@@ -1,21 +1,21 @@
-import {
-    AwsS3Entity,
-    AwsS3Schema,
-} from 'src/common/aws/repository/entities/aws.s3.entity';
-import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
+import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
 import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+import {
+    AwsS3Entity,
+    AwsS3Schema,
+} from 'src/modules/aws/repository/entities/aws.s3.entity';
 import { CountryEntity } from 'src/modules/country/repository/entities/country.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import {
     ENUM_USER_GENDER,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
-} from 'src/modules/user/constants/user.enum.constant';
+} from 'src/modules/user/enums/user.enum';
 
 export const UserTableName = 'Users';
 
@@ -28,6 +28,7 @@ export class UserMobileNumberEntity {
         required: true,
         type: String,
         ref: CountryEntity.name,
+        trim: true,
     })
     country: string;
 
@@ -45,7 +46,7 @@ export const UserMobileNumberSchema = DatabaseSchema(UserMobileNumberEntity);
 export type UserMobileNumberDoc = IDatabaseDocument<UserMobileNumberEntity>;
 
 @DatabaseEntity({ collection: UserTableName })
-export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
+export class UserEntity extends DatabaseEntityAbstract {
     @DatabaseProp({
         required: true,
         index: true,
@@ -56,12 +57,15 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     name: string;
 
     @DatabaseProp({
-        required: false,
+        required: true,
+        index: true,
         trim: true,
         type: String,
         maxlength: 50,
+        minlength: 3,
+        unique: true,
     })
-    familyName?: string;
+    username: string;
 
     @DatabaseProp({
         required: false,
@@ -74,7 +78,6 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         unique: true,
         index: true,
         trim: true,
-        lowercase: true,
         type: String,
         maxlength: 100,
     })
@@ -84,12 +87,14 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         required: true,
         ref: RoleEntity.name,
         index: true,
+        trim: true,
     })
     role: string;
 
     @DatabaseProp({
         required: true,
         type: String,
+        trim: true,
     })
     password: string;
 
@@ -115,6 +120,7 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
         required: true,
         type: Date,
+        trim: true,
     })
     signUpDate: Date;
 
@@ -140,24 +146,10 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     status: ENUM_USER_STATUS;
 
     @DatabaseProp({
-        required: true,
-        default: false,
-        index: true,
-        type: Boolean,
-    })
-    blocked: boolean;
-
-    @DatabaseProp({
         required: false,
         schema: AwsS3Schema,
     })
     photo?: AwsS3Entity;
-
-    @DatabaseProp({
-        required: false,
-        maxlength: 200,
-    })
-    address?: string;
 
     @DatabaseProp({
         required: false,
@@ -166,16 +158,26 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     gender?: ENUM_USER_GENDER;
 
     @DatabaseProp({
-        required: false,
-    })
-    selfDeletion?: boolean;
-
-    @DatabaseProp({
         required: true,
         type: String,
         ref: CountryEntity.name,
+        trim: true,
     })
     country: string;
+
+    @DatabaseProp({
+        required: false,
+        maxlength: 200,
+        trim: true,
+    })
+    address?: string;
+
+    @DatabaseProp({
+        required: false,
+        maxlength: 50,
+        trim: true,
+    })
+    familyName?: string;
 }
 
 export const UserSchema = DatabaseSchema(UserEntity);

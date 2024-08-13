@@ -1,11 +1,11 @@
-import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
+import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
 import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/common/policy/constants/policy.enum.constant';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import {
     RolePermissionEntity,
     RolePermissionSchema,
@@ -14,7 +14,7 @@ import {
 export const RoleTableName = 'Roles';
 
 @DatabaseEntity({ collection: RoleTableName })
-export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
+export class RoleEntity extends DatabaseEntityAbstract {
     @DatabaseProp({
         required: true,
         index: true,

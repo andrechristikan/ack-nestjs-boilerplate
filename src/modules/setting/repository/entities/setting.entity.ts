@@ -1,16 +1,16 @@
-import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
+import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
 import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
-import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
+import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/enums/setting.enum';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
 export const SettingTableName = 'Settings';
 
 @DatabaseEntity({ collection: SettingTableName })
-export class SettingEntity extends DatabaseMongoUUIDEntityAbstract {
+export class SettingEntity extends DatabaseEntityAbstract {
     @DatabaseProp({
         required: true,
         index: true,

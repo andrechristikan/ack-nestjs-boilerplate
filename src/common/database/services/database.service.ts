@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { MongooseModuleOptions } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 import { IDatabaseService } from 'src/common/database/interfaces/database.service.interface';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 
 @Injectable()
 export class DatabaseService implements IDatabaseService {
@@ -25,8 +25,8 @@ export class DatabaseService implements IDatabaseService {
 
         const mongooseOptions: MongooseModuleOptions = {
             uri,
-            autoCreate: true,
-            autoIndex: true,
+            autoCreate: env === ENUM_APP_ENVIRONMENT.MIGRATION,
+            autoIndex: env === ENUM_APP_ENVIRONMENT.MIGRATION,
             ...timeoutOptions,
         };
 

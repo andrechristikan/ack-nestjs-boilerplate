@@ -1,35 +1,30 @@
 import {
     Body,
+    ConflictException,
     Controller,
     Delete,
-    InternalServerErrorException,
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ClientSession } from 'mongoose';
-import { Connection } from 'mongoose';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
-import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
+import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from 'src/common/auth/decorators/auth.jwt.decorator';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/common/policy/constants/policy.enum.constant';
-import { PolicyRoleProtected } from 'src/common/policy/decorators/policy.decorator';
+} from 'src/modules/auth/decorators/auth.jwt.decorator';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
+import { PolicyRoleProtected } from 'src/modules/policy/decorators/policy.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
+import { UserService } from 'src/modules/user/services/user.service';
 import {
-    User,
-    UserProtected,
-} from 'src/modules/user/decorators/user.decorator';
-import {
-    UserAuthUpdateMobileNumberDoc,
-    UserUserDeleteSelfDoc,
+    UserUserDeleteDoc,
+    UserUserUpdateMobileNumberDoc,
+    UserUserUpdateUsernameDoc,
 } from 'src/modules/user/docs/user.user.doc';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
+import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
-import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.user.user')
 @Controller({
@@ -37,20 +32,30 @@ import { UserService } from 'src/modules/user/services/user.service';
     path: '/user',
 })
 export class UserUserController {
-    constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
-        private readonly userService: UserService,
-        private readonly userStateHistoryService: UserStateHistoryService
-    ) {}
+    constructor(private readonly userService: UserService) {}
 
-    @UserAuthUpdateMobileNumberDoc()
-    @Response('user.updateMobileNumber')
-    @UserProtected()
+    @UserUserDeleteDoc()
+    @Response('user.delete')
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
+    @Delete('/delete')
+    async delete(
+        @AuthJwtPayload('_id', UserParsePipe) user: UserDoc
+    ): Promise<void> {
+        await this.userService.delete(user, { deletedBy: user._id });
+
+        return;
+    }
+
+    @UserUserUpdateMobileNumberDoc()
+    @Response('user.updateMobileNumber')
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
     @Put('/update/mobile-number')
     async updateMobileNumber(
-        @User() user: UserDoc,
+        @AuthJwtPayload('_id', UserParsePipe) user: UserDoc,
         @Body()
         body: UserUpdateMobileNumberRequestDto
     ): Promise<void> {
@@ -59,42 +64,27 @@ export class UserUserController {
         return;
     }
 
-    @UserUserDeleteSelfDoc()
-    @Response('user.deleteSelf')
-    @UserProtected()
+    @UserUserUpdateUsernameDoc()
+    @Response('user.updateClaimUsername')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
-    @Delete('/delete')
-    async deleteSelf(
-        @User() user: UserDoc,
-        @AuthJwtPayload('_id') _id: string
+    @ApiKeyProtected()
+    @Put('/update/claim-username')
+    async updateUsername(
+        @AuthJwtPayload('_id', UserParsePipe) user: UserDoc,
+        @Body()
+        { username }: UserUpdateClaimUsernameRequestDto
     ): Promise<void> {
-        const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
-
-        try {
-            await this.userService.selfDelete(user, {
-                session,
-            });
-            await this.userStateHistoryService.createBlocked(user, _id, {
-                session,
-            });
-
-            await session.commitTransaction();
-            await session.endSession();
-
-            return;
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
-
-            throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
+        const checkUsername = await this.userService.existByUsername(username);
+        if (checkUsername) {
+            throw new ConflictException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_EXIST,
+                message: 'user.error.usernameExist',
             });
         }
+
+        await this.userService.updateClaimUsername(user, { username });
+
+        return;
     }
 }

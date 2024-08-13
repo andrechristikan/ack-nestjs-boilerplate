@@ -45,37 +45,3 @@ export function CountryAdminGetDoc(): MethodDecorator {
         })
     );
 }
-
-export function CountryAdminActiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'make country be active',
-        }),
-        DocRequest({
-            params: CountryDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('country.active')
-    );
-}
-
-export function CountryAdminInactiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'make country be inactive',
-        }),
-        DocRequest({
-            params: CountryDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('country.inactive')
-    );
-}

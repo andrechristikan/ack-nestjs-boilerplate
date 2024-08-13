@@ -12,22 +12,22 @@ import {
     ThrottlerModuleOptions,
 } from '@nestjs/throttler';
 import { SentryModule } from '@ntegral/nestjs-sentry';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 import { AppGeneralFilter } from 'src/app/filters/app.general.filter';
 import { AppHttpFilter } from 'src/app/filters/app.http.filter';
 import { AppValidationImportFilter } from 'src/app/filters/app.validation-import.filter';
 import { AppValidationFilter } from 'src/app/filters/app.validation.filter';
 import {
-    JsonBodyParserMiddleware,
-    RawBodyParserMiddleware,
-    TextBodyParserMiddleware,
-    UrlencodedBodyParserMiddleware,
-} from 'src/app/middlewares/body-parser.middleware';
-import { CorsMiddleware } from 'src/app/middlewares/cors.middleware';
-import { MessageCustomLanguageMiddleware } from 'src/app/middlewares/custom-language.middleware';
-import { HelmetMiddleware } from 'src/app/middlewares/helmet.middleware';
-import { ResponseTimeMiddleware } from 'src/app/middlewares/response-time.middleware';
-import { UrlVersionMiddleware } from 'src/app/middlewares/url-version.middleware';
+    AppJsonBodyParserMiddleware,
+    AppRawBodyParserMiddleware,
+    AppTextBodyParserMiddleware,
+    AppUrlencodedBodyParserMiddleware,
+} from 'src/app/middlewares/app.body-parser.middleware';
+import { AppCorsMiddleware } from 'src/app/middlewares/app.cors.middleware';
+import { AppCustomLanguageMiddleware } from 'src/app/middlewares/app.custom-language.middleware';
+import { AppHelmetMiddleware } from 'src/app/middlewares/app.helmet.middleware';
+import { AppResponseTimeMiddleware } from 'src/app/middlewares/app.response-time.middleware';
+import { AppUrlVersionMiddleware } from 'src/app/middlewares/app.url-version.middleware';
 
 @Module({
     controllers: [],
@@ -68,6 +68,7 @@ import { UrlVersionMiddleware } from 'src/app/middlewares/url-version.middleware
             }),
         }),
         SentryModule.forRootAsync({
+            inject: [ConfigService],
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
                 dsn: configService.get('debug.sentry.dsn'),
@@ -82,7 +83,6 @@ import { UrlVersionMiddleware } from 'src/app/middlewares/url-version.middleware
                     timeout: configService.get<number>('debug.sentry.timeout'),
                 },
             }),
-            inject: [ConfigService],
         }),
     ],
 })
@@ -90,15 +90,15 @@ export class AppMiddlewareModule implements NestModule {
     configure(consumer: MiddlewareConsumer): void {
         consumer
             .apply(
-                HelmetMiddleware,
-                JsonBodyParserMiddleware,
-                TextBodyParserMiddleware,
-                RawBodyParserMiddleware,
-                UrlencodedBodyParserMiddleware,
-                CorsMiddleware,
-                UrlVersionMiddleware,
-                ResponseTimeMiddleware,
-                MessageCustomLanguageMiddleware
+                AppHelmetMiddleware,
+                AppJsonBodyParserMiddleware,
+                AppTextBodyParserMiddleware,
+                AppRawBodyParserMiddleware,
+                AppUrlencodedBodyParserMiddleware,
+                AppCorsMiddleware,
+                AppUrlVersionMiddleware,
+                AppResponseTimeMiddleware,
+                AppCustomLanguageMiddleware
             )
             .forRoutes('*');
     }

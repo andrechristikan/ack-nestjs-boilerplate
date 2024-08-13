@@ -13,11 +13,47 @@ export class MigrationEmailSeed {
     async migrate(): Promise<void> {
         try {
             await this.emailService.createWelcome();
-        } catch (err: any) {}
+        } catch (err: any) {
+            throw new Error(err);
+        }
 
         try {
             await this.emailService.createChangePassword();
-        } catch (err: any) {}
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.createTempPassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        return;
+    }
+
+    @Command({
+        command: 'rollback:email',
+        describe: 'rollback emails',
+    })
+    async rollback(): Promise<void> {
+        try {
+            await this.emailService.deleteWelcome();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.deleteChangePassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.deleteTempPassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
 
         return;
     }

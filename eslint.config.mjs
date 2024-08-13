@@ -15,16 +15,14 @@ export default [
             '.github/*',
             '.husky/*',
             'coverage/*',
-            'data/*',
             'dist/*',
             'docs/*',
-            'logs/*',
             'node_modules/*',
         ],
     },
     {
         name: 'ts/default',
-        files: ['src/**/*.{ts,tsx}', 'test/**/*.{ts,tsx}'],
+        files: ['src/**/*.ts'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',
@@ -36,6 +34,30 @@ export default [
         },
         linterOptions: {
             noInlineConfig: true,
+            reportUnusedDisableDirectives: true,
+        },
+        plugins: {
+            '@typescript-eslint': tsEsLintPlugin,
+        },
+        rules: {
+            ...rules,
+            '@typescript-eslint/no-explicit-any': 'off',
+        },
+    },
+    {
+        name: 'ts/test',
+        files: ['test/**/*.ts'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            parser: tsParser,
+            parserOptions: {
+                project: 'tsconfig.json',
+                tsconfigRootDir: '.',
+            },
+        },
+        linterOptions: {
+            noInlineConfig: false,
             reportUnusedDisableDirectives: true,
         },
         plugins: {

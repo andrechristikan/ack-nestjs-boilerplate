@@ -9,9 +9,9 @@ export default registerAs(
 
         debug: process.env.DATABASE_DEBUG === 'true',
         timeoutOptions: {
-            serverSelectionTimeoutMS: 10000,
-            socketTimeoutMS: 10000,
-            heartbeatFrequencyMS: 30000,
+            serverSelectionTimeoutMS: 30 * 1000, // 30 secs
+            socketTimeoutMS: 30 * 1000, // 30 secs
+            heartbeatFrequencyMS: 30 * 1000, // 30 secs
         },
     })
 );

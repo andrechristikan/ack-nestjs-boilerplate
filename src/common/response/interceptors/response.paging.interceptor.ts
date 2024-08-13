@@ -11,7 +11,6 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
-import qs from 'qs';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 import {
@@ -19,10 +18,8 @@ import {
     RESPONSE_MESSAGE_PROPERTIES_META_KEY,
 } from 'src/common/response/constants/response.constant';
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
-import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import {
     ResponsePagingDto,
-    ResponsePagingMetadataCursorDto,
     ResponsePagingMetadataDto,
 } from 'src/common/response/dtos/response.paging.dto';
 import { ConfigService } from '@nestjs/config';
@@ -35,7 +32,6 @@ export class ResponsePagingInterceptor
     constructor(
         private readonly reflector: Reflector,
         private readonly messageService: MessageService,
-        private readonly helperArrayService: HelperArrayService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -120,71 +116,14 @@ export class ResponsePagingInterceptor
                     delete _metadata?.customProperty;
 
                     // metadata pagination
-                    const { query } = request;
-                    delete query.perPage;
-                    delete query.page;
-
-                    const total: number = responseData._pagination.total;
-                    const totalPage: number =
-                        responseData._pagination.totalPage;
-                    const perPage: number = xPagination.perPage;
-                    const page: number = xPagination.page;
-
-                    const queryString = qs.stringify(query, {
-                        encode: false,
-                    });
-
-                    const cursorPaginationMetadata: ResponsePagingMetadataCursorDto =
-                        {
-                            nextPage:
-                                page < totalPage
-                                    ? queryString
-                                        ? `${xPath}?perPage=${perPage}&page=${
-                                              page + 1
-                                          }&${queryString}`
-                                        : `${xPath}?perPage=${perPage}&page=${page + 1}`
-                                    : undefined,
-                            previousPage:
-                                page > 1
-                                    ? queryString
-                                        ? `${xPath}?perPage=${perPage}&page=${
-                                              page - 1
-                                          }&${queryString}`
-                                        : `${xPath}?perPage=${perPage}&page=${page - 1}`
-                                    : undefined,
-                            firstPage:
-                                totalPage > 1
-                                    ? queryString
-                                        ? `${xPath}?perPage=${perPage}&page=${1}&${queryString}`
-                                        : `${xPath}?perPage=${perPage}&page=${1}`
-                                    : undefined,
-                            lastPage:
-                                totalPage > 1
-                                    ? queryString
-                                        ? `${xPath}?perPage=${perPage}&page=${totalPage}&${queryString}`
-                                        : `${xPath}?perPage=${perPage}&page=${totalPage}`
-                                    : undefined,
-                        };
-
                     metadata = {
                         ...metadata,
                         ..._metadata,
                         pagination: {
                             ...xPagination,
-                            ...metadata._pagination,
-                            total,
-                            totalPage: data.length > 0 ? totalPage : 0,
+                            ...responseData._pagination,
                         },
                     };
-
-                    if (
-                        !this.helperArrayService.notIn(
-                            Object.values(cursorPaginationMetadata),
-                            undefined
-                        )
-                    ) {
-                        metadata.cursor = cursorPaginationMetadata;
-                    }
 
                     const message: string = this.messageService.setMessage(
                         messagePath,

@@ -1,0 +1,298 @@
+name: CI_CD
+on:
+  push:
+    branches: 
+    - main
+    - staging
+  workflow_dispatch:
+
+jobs:
+  build_image:
+    runs-on: ubuntu-latest
+
+    env:
+      DOCKERFILE: ci/dockerfile
+
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DOCKERHUB_REPO_NAME: ${{ vars.DOCKERHUB_REPO_NAME }}
+    
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+        
+      - name: Get short sha commit
+        id: git
+        run: |
+          echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
+
+      - name: Get latest version
+        id: version
+        uses: ActionsTools/read-json-action@main
+        with:
+          file_path: "package.json"  
+
+      - name: Git
+        run: |
+          echo Short sha: ${{ steps.git.outputs.short_sha }}
+          echo Version is: ${{ steps.version.outputs.version }}
+
+      - name: Environment
+        run: |
+          echo DOCKERFILE is: ${{ env.DOCKERFILE }}
+          echo DOCKERHUB_USERNAME is: ${{ env.DOCKERHUB_USERNAME }}
+          echo DOCKERHUB_TOKEN is: ${{ env.DOCKERHUB_TOKEN }}
+          echo DOCKERHUB_REPO_NAME is: ${{ env.DOCKERHUB_REPO_NAME }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx for Builder
+        uses: docker/setup-buildx-action@v3
+        id: builder
+
+      - name: Set up Docker Buildx for Main
+        uses: docker/setup-buildx-action@v3
+        id: main
+
+      - name: Builder name
+        run: echo ${{ steps.builder.outputs.name }}
+
+      - name: Main name
+        run: echo ${{ steps.main.outputs.name }}
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Build builder
+        uses: docker/build-push-action@v4
+        with:
+          builder: ${{ steps.builder.outputs.name }}
+          file: ${{ env.DOCKERFILE }}
+          target: builder
+
+      - name: Build main and push
+        uses: docker/build-push-action@v4
+        if: ${{ github.ref_name == 'main' }}
+        with:
+          builder: ${{ steps.main.outputs.name }}
+          file: ${{ env.DOCKERFILE }}
+          build-args: |
+            NODE_ENV=production
+          target: main
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:latest
+            ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:main_v${{ steps.version.outputs.version }}
+            ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:main_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
+          push: true
+
+      - name: Build staging and push 
+        uses: docker/build-push-action@v4
+        if: ${{ github.ref_name == 'staging' }}
+        with:
+          builder: ${{ steps.main.outputs.name }}
+          file: ${{ env.DOCKERFILE }}
+          build-args: |
+            NODE_ENV=staging
+          target: main
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:staging_v${{ steps.version.outputs.version }}
+            ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:staging_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
+          push: true
+
+  deploy_production:
+    needs: [ build_image ]
+    runs-on: ubuntu-latest
+    if: ${{ github.ref_name == 'main' }}
+    environment: 'production'
+
+    env:
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DOCKERHUB_REPO_NAME: ${{ vars.DOCKERHUB_REPO_NAME }}
+
+      DOCKER_CONTAINER_NAME: ${{ vars.DOCKER_CONTAINER_NAME }}
+      DOCKER_CONTAINER_PORT: 3000
+      DOCKER_CONTAINER_PORT_EXPOSE: ${{ vars.DOCKER_CONTAINER_PORT_EXPOSE }}
+      DOCKER_CONTAINER_NETWORK: app-network
+
+      SSH_HOST: ${{ vars.SSH_HOST }}
+      SSH_PORT: ${{ vars.SSH_PORT }}
+      SSH_USER: ${{ vars.SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+        
+      - name: Get short sha commit
+        id: git
+        run: |
+          echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
+      
+      - name: Get latest version
+        id: version
+        uses: ActionsTools/read-json-action@main
+        with:
+          file_path: "package.json"  
+
+      - name: Git
+        run: |
+          echo Short sha: ${{ steps.git.outputs.short_sha }}
+          echo Version is: ${{ steps.version.outputs.version }}
+
+      - name: Environment
+        run: |
+          echo DOCKERHUB_USERNAME is: ${{ env.DOCKERHUB_USERNAME }}
+          echo DOCKERHUB_TOKEN is: ${{ env.DOCKERHUB_TOKEN }}
+          echo DOCKERHUB_REPO_NAME is: ${{ env.DOCKERHUB_REPO_NAME }}
+          echo DOCKER_CONTAINER_NAME is: ${{ env.DOCKER_CONTAINER_NAME }}
+          echo DOCKER_CONTAINER_PORT is: ${{ env.DOCKER_CONTAINER_PORT }}
+          echo DOCKER_CONTAINER_PORT_EXPOSE is: ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}
+          echo DOCKER_CONTAINER_NETWORK is: ${{ env.DOCKER_CONTAINER_NETWORK }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+  
+      - name: Deploy
+        uses: fifsky/ssh-action@master
+        with:
+          command: |
+            docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:main_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
+            docker stop ${{ env.DOCKER_CONTAINER_NAME }} && docker rm ${{ env.DOCKER_CONTAINER_NAME }}
+            docker network create ${{ env.DOCKER_CONTAINER_NETWORK }} --driver=bridge
+            docker run -itd \
+              --env NODE_ENV=production \
+              --hostname ${{ env.DOCKER_CONTAINER_NAME }} \
+              --publish ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}:${{ env.DOCKER_CONTAINER_PORT }} \
+              --network ${{ env.DOCKER_CONTAINER_NETWORK }} \
+              --volume /app/${{ env.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ \
+              --volume /app/${{ env.DOCKER_CONTAINER_NAME }}/.env:/app/.env \
+              --restart unless-stopped \
+              --name ${{ env.DOCKER_CONTAINER_NAME }} ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:main_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
+          host: ${{ env.SSH_HOST }}
+          port: ${{ env.SSH_PORT }}
+          user: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+
+      - name: Clean
+        uses: fifsky/ssh-action@master
+        continue-on-error: true
+        with:
+          command: |
+            docker container prune --force
+            docker image prune --force
+            docker rmi $(docker images ${{ env.DOCKERHUB_USERNAME }}/** -q) --force
+          host: ${{ env.SSH_HOST }}
+          port: ${{ env.SSH_PORT }}
+          user: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+
+  deploy_staging:
+    needs: [ build_image ]
+    runs-on: ubuntu-latest
+    if: ${{ github.ref_name == 'staging' }}
+    environment: 'staging'
+
+    env:
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DOCKERHUB_REPO_NAME: ${{ vars.DOCKERHUB_REPO_NAME }}
+
+      DOCKER_CONTAINER_NAME: ${{ vars.DOCKER_CONTAINER_NAME }}
+      DOCKER_CONTAINER_PORT: 3000
+      DOCKER_CONTAINER_PORT_EXPOSE: ${{ vars.DOCKER_CONTAINER_PORT_EXPOSE }}
+      DOCKER_CONTAINER_NETWORK: app-network
+
+      SSH_HOST: ${{ vars.SSH_HOST }}
+      SSH_PORT: ${{ vars.SSH_PORT }}
+      SSH_USER: ${{ vars.SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+        
+      - name: Get short sha commit
+        id: git
+        run: |
+          echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
+      
+      - name: Get latest version
+        id: version
+        uses: ActionsTools/read-json-action@main
+        with:
+          file_path: "package.json"  
+
+      - name: Git
+        run: |
+          echo Short sha: ${{ steps.git.outputs.short_sha }}
+          echo Version is: ${{ steps.version.outputs.version }}
+
+      - name: Environment
+        run: |
+          echo DOCKERHUB_USERNAME is: ${{ env.DOCKERHUB_USERNAME }}
+          echo DOCKERHUB_TOKEN is: ${{ env.DOCKERHUB_TOKEN }}
+          echo DOCKERHUB_REPO_NAME is: ${{ env.DOCKERHUB_REPO_NAME }}
+          echo DOCKER_CONTAINER_NAME is: ${{ env.DOCKER_CONTAINER_NAME }}
+          echo DOCKER_CONTAINER_PORT is: ${{ env.DOCKER_CONTAINER_PORT }}
+          echo DOCKER_CONTAINER_PORT_EXPOSE is: ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}
+          echo DOCKER_CONTAINER_NETWORK is: ${{ env.DOCKER_CONTAINER_NETWORK }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+  
+      - name: Deploy
+        uses: fifsky/ssh-action@master
+        with:
+          command: |
+            docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:staging_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
+            docker stop ${{ env.DOCKER_CONTAINER_NAME }} && docker rm ${{ env.DOCKER_CONTAINER_NAME }}
+            docker network create ${{ env.DOCKER_CONTAINER_NETWORK }} --driver=bridge
+            docker run -itd \
+              --env NODE_ENV=development \
+              --hostname ${{ env.DOCKER_CONTAINER_NAME }} \
+              --publish ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}:${{ env.DOCKER_CONTAINER_PORT }} \
+              --network ${{ env.DOCKER_CONTAINER_NETWORK }} \
+              --volume /app/${{ env.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ \
+              --volume /app/${{ env.DOCKER_CONTAINER_NAME }}/.env:/app/.env \
+              --restart unless-stopped \
+              --name ${{ env.DOCKER_CONTAINER_NAME }} ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:staging_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
+          host: ${{ env.SSH_HOST }}
+          port: ${{ env.SSH_PORT }}
+          user: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+
+      - name: Clean
+        uses: fifsky/ssh-action@master
+        continue-on-error: true
+        with:
+          command: |
+            docker container prune --force
+            docker image prune --force
+            docker rmi $(docker images ${{ env.DOCKERHUB_USERNAME }}/** -q) --force
+          host: ${{ env.SSH_HOST }}
+          port: ${{ env.SSH_PORT }}
+          user: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}

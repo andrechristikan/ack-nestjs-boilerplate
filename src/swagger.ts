@@ -2,13 +2,13 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 import { writeFileSync } from 'fs';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 
 export default async function (app: NestApplication) {
     const configService = app.get(ConfigService);
     const env: string = configService.get<string>('app.env');
-    const logger = new Logger();
+    const logger = new Logger('NestJs-Swagger');
 
     const docName: string = configService.get<string>('doc.name');
     const docDesc: string = configService.get<string>('doc.description');

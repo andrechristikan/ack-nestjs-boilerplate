@@ -1,15 +1,18 @@
 import {
     IDatabaseCreateManyOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseManyOptions,
-    IDatabaseSaveOptions,
+    IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
 import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
-import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
+import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
+import {
+    CountryDoc,
+    CountryEntity,
+} from 'src/modules/country/repository/entities/country.entity';
 
 export interface ICountryService {
     findAll(
@@ -18,52 +21,42 @@ export interface ICountryService {
     ): Promise<CountryDoc[]>;
     findOne(
         find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
-    ): Promise<CountryDoc>;
-    findOneByAlpha2(
-        alpha2: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc>;
     findOneByName(
         name: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
+    ): Promise<CountryDoc>;
+    findOneByAlpha2(
+        alpha2: string,
+        options?: IDatabaseOptions
     ): Promise<CountryDoc>;
     findOneActiveByPhoneCode(
         phoneCode: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc>;
-    findOneById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<CountryDoc>;
+    findOneById(_id: string, options?: IDatabaseOptions): Promise<CountryDoc>;
     findOneActiveById(
         _id: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc>;
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-    active(
-        repository: CountryDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<CountryDoc>;
-    inactive(
-        repository: CountryDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<CountryDoc>;
-    delete(
-        repository: CountryDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<CountryDoc>;
     deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseManyOptions
+        options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
     createMany(
         data: CountryCreateRequestDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
-    mapList(data: CountryDoc[]): Promise<CountryListResponseDto[]>;
-    mapGet(county: CountryDoc): Promise<CountryGetResponseDto>;
+    mapList(
+        countries: CountryDoc[] | CountryEntity[]
+    ): Promise<CountryListResponseDto[]>;
+    mapGet(country: CountryDoc | CountryEntity): Promise<CountryGetResponseDto>;
+    mapShort(
+        countries: CountryDoc[] | CountryEntity[]
+    ): Promise<CountryShortResponseDto[]>;
 }
