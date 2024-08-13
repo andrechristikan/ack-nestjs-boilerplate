@@ -63,11 +63,6 @@ export class AppEnvDto {
     @Type(() => Number)
     URL_VERSION: number;
 
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    JOB_ENABLE: boolean;
-
     @IsNotEmpty()
     @IsString()
     DATABASE_URI: string;

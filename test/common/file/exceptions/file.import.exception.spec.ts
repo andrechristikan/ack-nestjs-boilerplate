@@ -25,7 +25,7 @@ describe('FileImportException', () => {
         expect(exception).toBeInstanceOf(FileImportException);
         expect(exception.httpStatus).toBe(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(exception.statusCode).toEqual(
-            ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR
+            ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION
         );
         expect(exception.message).toEqual('file.error.validationDto');
         expect(exception.errors).toEqual(errors);

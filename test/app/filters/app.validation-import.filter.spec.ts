@@ -106,7 +106,7 @@ describe('AppValidationImportFilter', () => {
         );
         expect(mockResponse.status).toHaveBeenCalledWith(422);
         expect(mockResponse.json).toHaveBeenCalledWith({
-            statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR,
+            statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
             message: 'file.error.validationDto',
             errors: [],
             _metadata: {

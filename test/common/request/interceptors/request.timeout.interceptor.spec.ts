@@ -114,8 +114,7 @@ describe('RequestTimeoutInterceptor', () => {
                     '2000ms #',
                     undefined,
                     new RequestTimeoutException({
-                        statusCode:
-                            ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT_ERROR,
+                        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT,
                         message: 'http.clientError.requestTimeOut',
                     })
                 );
@@ -215,8 +214,7 @@ describe('RequestTimeoutInterceptor', () => {
                     '1000ms #',
                     undefined,
                     new RequestTimeoutException({
-                        statusCode:
-                            ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT_ERROR,
+                        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT,
                         message: 'http.clientError.requestTimeOut',
                     })
                 );

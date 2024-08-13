@@ -19,6 +19,7 @@ export interface IResponseMetadata {
 // decorator options
 export interface IResponseOptions {
     messageProperties?: IMessageOptionsProperties;
+    cached?: IResponseCacheOptions | boolean;
 }
 
 export interface IResponseFileExcelOptions {
@@ -45,4 +46,10 @@ export interface IResponsePaging<T> {
 
 export interface IResponseFileExcel {
     data: IFileRows[];
+}
+
+// cached
+export interface IResponseCacheOptions {
+    key?: string;
+    ttl?: number;
 }

@@ -1,3 +1,4 @@
+import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import { SetMetadata, UseInterceptors } from '@nestjs/common';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/enums/helper.enum';
 import {
@@ -18,6 +19,12 @@ jest.mock('@nestjs/common', () => ({
     ...jest.requireActual('@nestjs/common'),
     SetMetadata: jest.fn(),
     UseInterceptors: jest.fn(),
+}));
+
+jest.mock('@nestjs/cache-manager', () => ({
+    ...jest.requireActual('@nestjs/cache-manager'),
+    CacheKey: jest.fn(),
+    CacheTTL: jest.fn(),
 }));
 
 describe('Response Decorators', () => {
@@ -57,6 +64,39 @@ describe('Response Decorators', () => {
                 }
             );
         });
+
+        it('Should return applyDecorators with cached', async () => {
+            const result = Response('default', {
+                cached: true,
+            });
+
+            expect(result).toBeTruthy();
+            expect(UseInterceptors).toHaveBeenCalledWith(ResponseInterceptor);
+            expect(SetMetadata).toHaveBeenCalledWith(
+                RESPONSE_MESSAGE_PATH_META_KEY,
+                'default'
+            );
+            expect(UseInterceptors).toHaveBeenCalledWith(CacheInterceptor);
+        });
+
+        it('Should return applyDecorators with custom cached', async () => {
+            const result = Response('default', {
+                cached: {
+                    key: 'default-test',
+                    ttl: 60,
+                },
+            });
+
+            expect(result).toBeTruthy();
+            expect(UseInterceptors).toHaveBeenCalledWith(ResponseInterceptor);
+            expect(SetMetadata).toHaveBeenCalledWith(
+                RESPONSE_MESSAGE_PATH_META_KEY,
+                'default'
+            );
+            expect(UseInterceptors).toHaveBeenCalledWith(CacheInterceptor);
+            expect(CacheKey).toHaveBeenCalledWith('default-test');
+            expect(CacheTTL).toHaveBeenCalledWith(60);
+        });
     });
 
     describe('ResponsePaging', () => {
@@ -94,6 +134,43 @@ describe('Response Decorators', () => {
                     test: 'aaa',
                 }
             );
+        });
+
+        it('Should return applyDecorators with cached', async () => {
+            const result = ResponsePaging('default', {
+                cached: true,
+            });
+
+            expect(result).toBeTruthy();
+            expect(UseInterceptors).toHaveBeenCalledWith(
+                ResponsePagingInterceptor
+            );
+            expect(SetMetadata).toHaveBeenCalledWith(
+                RESPONSE_MESSAGE_PATH_META_KEY,
+                'default'
+            );
+            expect(UseInterceptors).toHaveBeenCalledWith(CacheInterceptor);
+        });
+
+        it('Should return applyDecorators with custom cached', async () => {
+            const result = ResponsePaging('default', {
+                cached: {
+                    key: 'default-test',
+                    ttl: 60,
+                },
+            });
+
+            expect(result).toBeTruthy();
+            expect(UseInterceptors).toHaveBeenCalledWith(
+                ResponsePagingInterceptor
+            );
+            expect(SetMetadata).toHaveBeenCalledWith(
+                RESPONSE_MESSAGE_PATH_META_KEY,
+                'default'
+            );
+            expect(UseInterceptors).toHaveBeenCalledWith(CacheInterceptor);
+            expect(CacheKey).toHaveBeenCalledWith('default-test');
+            expect(CacheTTL).toHaveBeenCalledWith(60);
         });
     });
 

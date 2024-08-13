@@ -474,7 +474,7 @@ describe('DocDecorators', () => {
                 DocDefault({
                     httpStatus: HttpStatus.REQUEST_TIMEOUT,
                     messagePath: 'http.serverError.requestTimeout',
-                    statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT_ERROR,
+                    statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT,
                 })
             );
 
@@ -496,7 +496,7 @@ describe('DocDecorators', () => {
                 ApiConsumes('multipart/form-data'),
                 DocDefault({
                     httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
-                    statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR,
+                    statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
                     messagePath: 'request.validation',
                 })
             );
@@ -517,7 +517,7 @@ describe('DocDecorators', () => {
                 ApiConsumes('text/plain'),
                 DocDefault({
                     httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
-                    statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR,
+                    statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
                     messagePath: 'request.validation',
                 })
             );
@@ -538,7 +538,7 @@ describe('DocDecorators', () => {
                 ApiConsumes('application/json'),
                 DocDefault({
                     httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
-                    statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR,
+                    statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
                     messagePath: 'request.validation',
                 })
             );

@@ -8,11 +8,14 @@ import { HelperModule } from 'src/common/helper/helper.module';
 import { RequestModule } from 'src/common/request/request.module';
 import { PolicyModule } from 'src/modules/policy/policy.module';
 import { AuthModule } from 'src/modules/auth/auth.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import configs from 'src/configs';
 import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
 import { FileModule } from 'src/common/file/file.module';
+import { redisStore } from 'cache-manager-redis-store';
+import { CacheModule, CacheStore } from '@nestjs/cache-manager';
+import type { RedisClientOptions } from 'redis';
 
 @Module({
     controllers: [],
@@ -32,6 +35,23 @@ import { FileModule } from 'src/common/file/file.module';
             inject: [DatabaseService],
             useFactory: (databaseService: DatabaseService) =>
                 databaseService.createOptions(),
+        }),
+        CacheModule.registerAsync<RedisClientOptions>({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            isGlobal: true,
+            useFactory: async (configService: ConfigService) => ({
+                store: (await redisStore({
+                    socket: {
+                        host: configService.get<string>('redis.host'),
+                        port: configService.get<number>('redis.port'),
+                        tls: configService.get<any>('redis.tls'),
+                    },
+                    username: configService.get<string>('redis.username'),
+                    password: configService.get<string>('redis.password'),
+                    ttl: configService.get<number>('redis.cached.ttl'),
+                })) as unknown as CacheStore,
+            }),
         }),
         MessageModule.forRoot(),
         HelperModule.forRoot(),

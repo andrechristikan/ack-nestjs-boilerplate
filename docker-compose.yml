@@ -36,12 +36,13 @@ services:
           timeout: 30s
           retries: 5
 
-  bullboard:
+  redis-bullboard:
     image: deadly0/bull-board:latest
-    container_name: bullboard
+    container_name: redis-bullboard
+    hostname: redis-bullboard
     restart: always
     ports:
-      - 3001:3000
+      - 3010:3000
     networks:
       - app-network
     environment:
@@ -50,6 +51,39 @@ services:
       - REDIS_DB=0
       - USER_LOGIN=admin
       - USER_PASSWORD=admin123
+    depends_on:
+      - redis
+
+  redis-commander:
+    image: ghcr.io/joeferner/redis-commander:latest
+    container_name: redis-commander
+    hostname: redis-commander
+    restart: always
+    ports:
+      - 3011:8081
+    networks:
+      - app-network
+    environment:
+    - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    hostname: mongo-express
+    environment:
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+      ME_CONFIG_MONGODB_URL: mongodb://host.docker.internal:27017,host.docker.internal:27018,host.docker.internal:27019/ack?retryWrites=true&w=majority&replicaSet=rs0
+    ports:
+      - 3012:8081
+    networks:
+      - app-network
+    depends_on:
+      - mongodb1
+      - mongodb2
+      - mongodb3
 
   mongodb1:
     container_name: mongodb1

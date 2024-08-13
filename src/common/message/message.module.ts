@@ -15,6 +15,9 @@ export class MessageModule {
             exports: [MessageService],
             imports: [
                 I18nModule.forRootAsync({
+                    loader: I18nJsonLoader,
+                    inject: [ConfigService],
+                    resolvers: [new HeaderResolver(['x-custom-lang'])],
                     useFactory: (configService: ConfigService) => ({
                         fallbackLanguage: configService
                             .get<string[]>('message.availableLanguage')
@@ -28,9 +31,6 @@ export class MessageModule {
                             watch: true,
                         },
                     }),
-                    loader: I18nJsonLoader,
-                    inject: [ConfigService],
-                    resolvers: [new HeaderResolver(['x-custom-lang'])],
                 }),
             ],
             controllers: [],

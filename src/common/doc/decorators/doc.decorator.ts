@@ -241,7 +241,7 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         DocDefault({
             httpStatus: HttpStatus.REQUEST_TIMEOUT,
             messagePath: 'http.serverError.requestTimeout',
-            statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT_ERROR,
+            statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT,
         })
     );
 }
@@ -261,7 +261,7 @@ export function DocRequest(options?: IDocRequestOptions) {
         docs.push(
             DocDefault({
                 httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
-                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR,
+                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
                 messagePath: 'request.validation',
             })
         );

@@ -35,7 +35,7 @@ describe('RequestValidationException', () => {
         expect(exception.message).toEqual('request.validation');
         expect(exception.httpStatus).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(exception.statusCode).toEqual(
-            ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR
+            ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION
         );
         expect(exception.errors).toEqual(errors);
     });

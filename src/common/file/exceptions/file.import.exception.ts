@@ -4,8 +4,7 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/enums/request
 
 export class FileImportException extends Error {
     readonly httpStatus: HttpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
-    readonly statusCode: number =
-        ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR;
+    readonly statusCode: number = ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION;
     readonly errors: IMessageValidationImportErrorParam[];
 
     constructor(errors: IMessageValidationImportErrorParam[]) {

@@ -28,8 +28,6 @@ describe('AppEnvDto', () => {
             URL_VERSIONING_ENABLE: true,
             URL_VERSION: 1,
 
-            JOB_ENABLE: false,
-
             DATABASE_URI: faker.internet.url(),
             DATABASE_DEBUG: false,
 

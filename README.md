@@ -46,6 +46,9 @@
     - [User](#user)
   - [BullMQ Board](#bullmq-board)
     - [User](#user-1)
+  - [Redis Client Web Base](#redis-client-web-base)
+  - [MongoDB Client Web Base](#mongodb-client-web-base)
+    - [User](#user-2)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
@@ -129,15 +132,17 @@ Describes which version.
 * Typescript 🚀
 * Production ready 🔥
 * MongoDB integrate by using [mongoose][ref-mongoose] 🎉
+* Cached response with redis
+* Queue bullmq with redis
+* Authorization, Role Management.
 * Repository Design Pattern (Multi Repository, can mix with other orm)
 * Authentication (`Access Token`, `Refresh Token`, `API Key`, `Google SSO`, `Apple SSO`)
-* Swagger / OpenAPI 3 included
-* Authorization, Role Management.
+* Import and export data with CSV or Excel by using `decorator`
 * Support multi-language `i18n` 🗣, can controllable with request header `x-custom-lang`
 * Request validation for all request params, query, dan body with `class-validation`
+* Swagger / OpenAPI 3 included
 * Url Versioning, default version is `1`
 * Server Side Pagination
-* Import and export data with CSV or Excel by using `decorator`
 * Sentry.io for Monitoring Tools
 * Support Docker installation
 * Support CI/CD (Eg: Github Action) 
@@ -153,6 +158,7 @@ The recommended version is the LTS version for every tool and package.
 
 1. [NodeJs][ref-nodejs]
 2. [MongoDB][ref-mongodb]
+2. [Redis][ref-redis]
 3. [Yarn][ref-yarn]
 4. [Git][ref-git]
 
@@ -271,12 +277,29 @@ api key secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
   
 ## BullMQ Board
 
-You can check and monitor your queue. Url `localhost:3001`
+> This available with docker installation
+
+You can check and monitor your queue. Url `localhost:3010`
 
 ### User
  - email: `admin`
  - password: `admin123`
+  
+## Redis Client Web Base
 
+> This available with docker installation
+
+You can check redis data using `redis-commander`. Url `localhost:3011`
+
+## MongoDB Client Web Base
+
+> This available with docker installation
+
+You can check mongodb data using `mongo-express`. Url `localhost:3012`
+
+### User
+ - email: `admin`
+ - password: `admin123`
 
 ## License
 
@@ -348,4 +371,4 @@ If your code behind commit with the `original/main branch`, please update your c
 [ref-jwt]: https://jwt.io
 [ref-jest]: https://jestjs.io/docs/getting-started
 [ref-git]: https://git-scm.com
-
+[ref-redis]: https://redis.io

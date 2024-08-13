@@ -68,6 +68,7 @@ import { AppUrlVersionMiddleware } from 'src/app/middlewares/app.url-version.mid
             }),
         }),
         SentryModule.forRootAsync({
+            inject: [ConfigService],
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
                 dsn: configService.get('debug.sentry.dsn'),
@@ -82,7 +83,6 @@ import { AppUrlVersionMiddleware } from 'src/app/middlewares/app.url-version.mid
                     timeout: configService.get<number>('debug.sentry.timeout'),
                 },
             }),
-            inject: [ConfigService],
         }),
     ],
 })
