@@ -71,12 +71,11 @@
 
 ## TODO
 
-- [ ] Update Email Template
+- [ ] Export Module
 - [ ] Move to Stateful Authorization
       1. Session Module
       2. Device Module
       3. Password Period Module
-      4. Export Module
       5. Reset Password Module
       6. Verification Module
 
