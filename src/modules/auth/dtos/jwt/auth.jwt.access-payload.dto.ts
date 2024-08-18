@@ -71,6 +71,12 @@ export class AuthJwtAccessPayloadDto {
         required: true,
         nullable: false,
     })
+    session: string;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+    })
     email: string;
 
     @ApiProperty({

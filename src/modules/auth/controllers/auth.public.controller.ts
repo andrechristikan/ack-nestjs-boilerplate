@@ -9,6 +9,7 @@ import {
     InternalServerErrorException,
     NotFoundException,
     Post,
+    Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
@@ -51,6 +52,10 @@ import { Connection } from 'mongoose';
 import { Queue } from 'bullmq';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { RoleService } from 'src/modules/role/services/role.service';
+import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
+import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
+import { SessionService } from 'src/modules/session/services/session.service';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -65,7 +70,9 @@ export class AuthPublicController {
         private readonly userService: UserService,
         private readonly authService: AuthService,
         private readonly countryService: CountryService,
-        private readonly roleService: RoleService
+        private readonly roleService: RoleService,
+        private readonly passwordHistoryService: PasswordHistoryService,
+        private readonly sessionService: SessionService
     ) {}
 
     @AuthPublicLoginCredentialDoc()
@@ -74,7 +81,8 @@ export class AuthPublicController {
     @HttpCode(HttpStatus.OK)
     @Post('/login/credential')
     async loginWithCredential(
-        @Body() { email, password }: AuthLoginRequestDto
+        @Body() { email, password }: AuthLoginRequestDto,
+        @Req() request: IRequestApp
     ): Promise<IResponse<AuthLoginResponseDto>> {
         let user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
@@ -135,6 +143,18 @@ export class AuthPublicController {
             });
         }
 
+        const expiresInRefreshToken: number =
+            await this.authService.getRefreshTokenExpirationTime();
+
+        const session = await this.sessionService.create(request, {
+            user: user._id,
+        });
+        await this.sessionService.createLoginSession(
+            user._id,
+            session._id,
+            expiresInRefreshToken
+        );
+
         const roleType = userWithRole.role.type;
         const tokenType: string = await this.authService.getTokenType();
 
@@ -143,6 +163,7 @@ export class AuthPublicController {
         const payloadAccessToken: AuthJwtAccessPayloadDto =
             await this.authService.createPayloadAccessToken(
                 userWithRole,
+                session._id,
                 ENUM_AUTH_LOGIN_FROM.CREDENTIAL
             );
         const accessToken: string = await this.authService.createAccessToken(
@@ -176,7 +197,8 @@ export class AuthPublicController {
     @Post('/login/social/google')
     async loginWithGoogle(
         @AuthJwtPayload<AuthSocialGooglePayloadDto>()
-        { email }: AuthSocialGooglePayloadDto
+        { email }: AuthSocialGooglePayloadDto,
+        @Req() request: IRequestApp
     ): Promise<IResponse<AuthLoginResponseDto>> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
@@ -210,6 +232,18 @@ export class AuthPublicController {
             });
         }
 
+        const expiresInRefreshToken: number =
+            await this.authService.getRefreshTokenExpirationTime();
+
+        const session = await this.sessionService.create(request, {
+            user: user._id,
+        });
+        await this.sessionService.createLoginSession(
+            user._id,
+            session._id,
+            expiresInRefreshToken
+        );
+
         const roleType = userWithRole.role.type;
         const tokenType: string = await this.authService.getTokenType();
 
@@ -218,6 +252,7 @@ export class AuthPublicController {
         const payloadAccessToken: AuthJwtAccessPayloadDto =
             await this.authService.createPayloadAccessToken(
                 userWithRole,
+                session._id,
                 ENUM_AUTH_LOGIN_FROM.SOCIAL_GOOGLE
             );
         const accessToken: string = await this.authService.createAccessToken(
@@ -251,7 +286,8 @@ export class AuthPublicController {
     @Post('/login/social/apple')
     async loginWithApple(
         @AuthJwtPayload<AuthSocialApplePayloadDto>()
-        { email }: AuthSocialApplePayloadDto
+        { email }: AuthSocialApplePayloadDto,
+        @Req() request: IRequestApp
     ): Promise<IResponse<AuthLoginResponseDto>> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
@@ -285,6 +321,18 @@ export class AuthPublicController {
             });
         }
 
+        const expiresInRefreshToken: number =
+            await this.authService.getRefreshTokenExpirationTime();
+
+        const session = await this.sessionService.create(request, {
+            user: user._id,
+        });
+        await this.sessionService.createLoginSession(
+            user._id,
+            session._id,
+            expiresInRefreshToken
+        );
+
         const roleType = userWithRole.role.type;
         const tokenType: string = await this.authService.getTokenType();
 
@@ -293,6 +341,7 @@ export class AuthPublicController {
         const payloadAccessToken: AuthJwtAccessPayloadDto =
             await this.authService.createPayloadAccessToken(
                 userWithRole,
+                session._id,
                 ENUM_AUTH_LOGIN_FROM.SOCIAL_GOOGLE
             );
         const accessToken: string = await this.authService.createAccessToken(
@@ -369,6 +418,14 @@ export class AuthPublicController {
                     country,
                 },
                 password,
+                { session }
+            );
+
+            await this.passwordHistoryService.createByUser(
+                user,
+                {
+                    type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
+                },
                 { session }
             );
 

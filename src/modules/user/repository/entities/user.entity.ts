@@ -1,4 +1,4 @@
-import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
+import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -46,7 +46,7 @@ export const UserMobileNumberSchema = DatabaseSchema(UserMobileNumberEntity);
 export type UserMobileNumberDoc = IDatabaseDocument<UserMobileNumberEntity>;
 
 @DatabaseEntity({ collection: UserTableName })
-export class UserEntity extends DatabaseEntityAbstract {
+export class UserEntity extends DatabaseEntityBase {
     @DatabaseProp({
         required: true,
         index: true,

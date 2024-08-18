@@ -1,4 +1,4 @@
-import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
+import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -11,7 +11,7 @@ import { AwsS3Schema } from 'src/modules/aws/repository/entities/aws.s3.entity';
 export const CountryTableName = 'Countries';
 
 @DatabaseEntity({ collection: CountryTableName })
-export class CountryEntity extends DatabaseEntityAbstract {
+export class CountryEntity extends DatabaseEntityBase {
     @DatabaseProp({
         required: true,
         index: true,

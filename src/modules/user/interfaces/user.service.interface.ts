@@ -48,6 +48,7 @@ export interface IUserService {
     ): Promise<UserDoc>;
     findOneByEmail(email: string, options?: IDatabaseOptions): Promise<UserDoc>;
     findOneByMobileNumber(
+        country: string,
         mobileNumber: string,
         options?: IDatabaseOptions
     ): Promise<UserDoc>;
@@ -80,6 +81,7 @@ export interface IUserService {
         options?: IDatabaseOptions
     ): Promise<IUserDoc>;
     findOneActiveByMobileNumber(
+        country: string,
         mobileNumber: string,
         options?: IDatabaseOptions
     ): Promise<IUserDoc>;
@@ -104,6 +106,7 @@ export interface IUserService {
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
     existByMobileNumber(
+        country: string,
         mobileNumber: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;

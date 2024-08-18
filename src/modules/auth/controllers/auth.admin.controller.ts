@@ -12,10 +12,15 @@ import { DatabaseConnection } from 'src/common/database/decorators/database.deco
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAccessProtected,
+    AuthJwtPayload,
+} from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { AuthAdminUpdatePasswordDoc } from 'src/modules/auth/docs/auth.admin.doc';
 import { AuthService } from 'src/modules/auth/services/auth.service';
 import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
+import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
@@ -43,7 +48,8 @@ export class AuthAdminController {
         @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly authService: AuthService,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly passwordHistoryService: PasswordHistoryService
     ) {}
 
     @AuthAdminUpdatePasswordDoc()
@@ -57,6 +63,7 @@ export class AuthAdminController {
     @ApiKeyProtected()
     @Put('/update/:user/password')
     async updatePassword(
+        @AuthJwtPayload('_id') _id: string,
         @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
         user: UserDoc
     ): Promise<void> {
@@ -80,8 +87,17 @@ export class AuthAdminController {
                 session,
             });
 
+            await this.passwordHistoryService.createByAdmin(
+                user,
+                {
+                    by: _id,
+                    type: ENUM_PASSWORD_HISTORY_TYPE.TEMPORARY,
+                },
+                { session }
+            );
+
             this.emailQueue.add(
-                ENUM_EMAIL.TEMP_PASSWORD,
+                ENUM_EMAIL.TEMPORARY_PASSWORD,
                 {
                     email: user.email,
                     name: user.name,
@@ -90,7 +106,7 @@ export class AuthAdminController {
                 },
                 {
                     debounce: {
-                        id: `${ENUM_EMAIL.TEMP_PASSWORD}-${user._id}`,
+                        id: `${ENUM_EMAIL.TEMPORARY_PASSWORD}-${user._id}`,
                         ttl: 1000,
                     },
                 }

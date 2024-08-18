@@ -36,7 +36,10 @@ import {
     ENUM_POLICY_SUBJECT,
 } from 'src/modules/policy/enums/policy.enum';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAccessProtected,
+    AuthJwtPayload,
+} from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
@@ -80,6 +83,8 @@ import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
 import { Queue } from 'bullmq';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
+import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
+import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -95,7 +100,8 @@ export class UserAdminController {
         private readonly roleService: RoleService,
         private readonly authService: AuthService,
         private readonly userService: UserService,
-        private readonly countryService: CountryService
+        private readonly countryService: CountryService,
+        private readonly passwordHistoryService: PasswordHistoryService
     ) {}
 
     @UserAdminListDoc()
@@ -183,6 +189,7 @@ export class UserAdminController {
     @AuthJwtAccessProtected()
     @Post('/create')
     async create(
+        @AuthJwtPayload('_id') _id: string,
         @Body()
         { email, role, name, country }: UserCreateRequestDto
     ): Promise<IResponse<DatabaseIdResponseDto>> {
@@ -213,8 +220,12 @@ export class UserAdminController {
         }
 
         const passwordString = await this.authService.createPasswordRandom();
-        const password: IAuthPassword =
-            await this.authService.createPassword(passwordString);
+        const password: IAuthPassword = await this.authService.createPassword(
+            passwordString,
+            {
+                temporary: true,
+            }
+        );
 
         const session: ClientSession =
             await this.databaseConnection.startSession();
@@ -230,6 +241,15 @@ export class UserAdminController {
                 },
                 password,
                 ENUM_USER_SIGN_UP_FROM.ADMIN,
+                { session }
+            );
+
+            await this.passwordHistoryService.createByAdmin(
+                created,
+                {
+                    by: _id,
+                    type: ENUM_PASSWORD_HISTORY_TYPE.TEMPORARY,
+                },
                 { session }
             );
 

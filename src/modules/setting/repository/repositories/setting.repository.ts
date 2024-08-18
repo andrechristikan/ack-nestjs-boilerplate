@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { DatabaseRepositoryAbstract } from 'src/common/database/abstracts/database.repository.abstract';
+import { DatabaseRepositoryBase } from 'src/common/database/bases/database.repository';
 import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
 import {
     SettingDoc,
@@ -8,7 +8,7 @@ import {
 } from 'src/modules/setting/repository/entities/setting.entity';
 
 @Injectable()
-export class SettingRepository extends DatabaseRepositoryAbstract<
+export class SettingRepository extends DatabaseRepositoryBase<
     SettingEntity,
     SettingDoc
 > {

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { DatabaseRepositoryAbstract } from 'src/common/database/abstracts/database.repository.abstract';
+import { DatabaseRepositoryBase } from 'src/common/database/bases/database.repository';
 import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
 import {
     CountryDoc,
@@ -8,7 +8,7 @@ import {
 } from 'src/modules/country/repository/entities/country.entity';
 
 @Injectable()
-export class CountryRepository extends DatabaseRepositoryAbstract<
+export class CountryRepository extends DatabaseRepositoryBase<
     CountryEntity,
     CountryDoc
 > {

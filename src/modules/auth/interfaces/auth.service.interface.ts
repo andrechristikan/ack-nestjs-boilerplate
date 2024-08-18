@@ -28,6 +28,7 @@ export interface IAuthService {
     ): Promise<boolean>;
     createPayloadAccessToken<T extends Document>(
         data: T,
+        session: string,
         loginFrom: ENUM_AUTH_LOGIN_FROM
     ): Promise<AuthJwtAccessPayloadDto>;
     createPayloadRefreshToken({

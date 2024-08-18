@@ -1,7 +1,7 @@
 import { DatabaseProp } from 'src/common/database/decorators/database.decorator';
 import { v4 as uuidV4 } from 'uuid';
 
-export abstract class DatabaseEntityAbstract {
+export class DatabaseEntityBase {
     @DatabaseProp({
         type: String,
         default: uuidV4,

@@ -5,12 +5,12 @@ import {
 } from 'src/common/database/decorators/database.decorator';
 import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
-import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
+import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 
 export const ApiKeyTableName = 'ApiKeys';
 
 @DatabaseEntity({ collection: ApiKeyTableName })
-export class ApiKeyEntity extends DatabaseEntityAbstract {
+export class ApiKeyEntity extends DatabaseEntityBase {
     @DatabaseProp({
         required: true,
         enum: ENUM_API_KEY_TYPE,

@@ -256,7 +256,7 @@ export class EmailService implements IEmailService {
     async createTempPassword(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.TEMP_PASSWORD,
+                name: ENUM_EMAIL.TEMPORARY_PASSWORD,
                 subject: `Temporary Password`,
                 htmlBody: readFileSync(
                     './templates/email.temp-password.template.html',
@@ -277,7 +277,7 @@ export class EmailService implements IEmailService {
     async getTempPassword(): Promise<GetTemplateCommandOutput> {
         try {
             const template = await this.awsSESService.getTemplate({
-                name: ENUM_EMAIL.TEMP_PASSWORD,
+                name: ENUM_EMAIL.TEMPORARY_PASSWORD,
             });
 
             return template;
@@ -293,7 +293,7 @@ export class EmailService implements IEmailService {
     async deleteTempPassword(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.TEMP_PASSWORD,
+                name: ENUM_EMAIL.TEMPORARY_PASSWORD,
             });
 
             return true;
@@ -312,7 +312,7 @@ export class EmailService implements IEmailService {
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.TEMP_PASSWORD,
+                templateName: ENUM_EMAIL.TEMPORARY_PASSWORD,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {

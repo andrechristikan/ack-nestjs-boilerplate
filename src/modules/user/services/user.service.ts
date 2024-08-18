@@ -101,10 +101,17 @@ export class UserService implements IUserService {
     }
 
     async findOneByMobileNumber(
+        country: string,
         mobileNumber: string,
         options?: IDatabaseOptions
     ): Promise<UserDoc> {
-        return this.userRepository.findOne<UserDoc>({ mobileNumber }, options);
+        return this.userRepository.findOne<UserDoc>(
+            {
+                'mobileNumber.number': mobileNumber,
+                'mobileNumber.country': country,
+            },
+            options
+        );
     }
 
     async findAllWithRoleAndCountry(
@@ -190,12 +197,14 @@ export class UserService implements IUserService {
     }
 
     async findOneActiveByMobileNumber(
+        country: string,
         mobileNumber: string,
         options?: IDatabaseOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(
             {
-                mobileNumber,
+                'mobileNumber.number': mobileNumber,
+                'mobileNumber.country': country,
                 status: ENUM_USER_STATUS.ACTIVE,
             },
             {
@@ -278,12 +287,14 @@ export class UserService implements IUserService {
     }
 
     async existByMobileNumber(
+        country: string,
         mobileNumber: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean> {
         return this.userRepository.exists(
             {
-                mobileNumber,
+                'mobileNumber.number': mobileNumber,
+                'mobileNumber.country': country,
             },
             { ...options, withDeleted: true }
         );

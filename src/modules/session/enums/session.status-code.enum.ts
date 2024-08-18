@@ -1,0 +1,4 @@
+export enum ENUM_SESSION_STATUS_CODE_ERROR {
+    NOT_FOUND = 5070,
+    EXPIRED = 5071,
+}

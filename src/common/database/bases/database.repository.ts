@@ -5,7 +5,6 @@ import {
     UpdateQuery,
     UpdateWithAggregationPipeline,
 } from 'mongoose';
-import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
 import {
     IDatabaseAggregateOptions,
     IDatabaseCreateManyOptions,
@@ -25,9 +24,10 @@ import {
 import MongoDB from 'mongodb';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
+import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 
-export abstract class DatabaseRepositoryAbstract<
-    Entity extends DatabaseEntityAbstract,
+export class DatabaseRepositoryBase<
+    Entity extends DatabaseEntityBase,
     EntityDocument extends IDatabaseDocument<Entity>,
 > {
     protected readonly _repository: Model<Entity>;
@@ -274,7 +274,7 @@ export abstract class DatabaseRepositoryAbstract<
         return result ? true : false;
     }
 
-    async create<T extends DatabaseEntityAbstract>(
+    async create<T extends DatabaseEntityBase>(
         data: T,
         options?: IDatabaseCreateOptions
     ): Promise<EntityDocument> {

@@ -1,4 +1,4 @@
-import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
+import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -10,7 +10,7 @@ import { IDatabaseDocument } from 'src/common/database/interfaces/database.inter
 export const SettingTableName = 'Settings';
 
 @DatabaseEntity({ collection: SettingTableName })
-export class SettingEntity extends DatabaseEntityAbstract {
+export class SettingEntity extends DatabaseEntityBase {
     @DatabaseProp({
         required: true,
         index: true,

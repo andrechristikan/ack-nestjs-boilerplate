@@ -8,6 +8,7 @@ import {
     InternalServerErrorException,
     Patch,
     Post,
+    UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ClientSession, Connection } from 'mongoose';
@@ -38,6 +39,10 @@ import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 import { Queue } from 'bullmq';
 import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
+import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
+import { SessionService } from 'src/modules/session/services/session.service';
+import { ENUM_SESSION_STATUS_CODE_ERROR } from 'src/modules/session/enums/session.status-code.enum';
 
 @ApiTags('modules.shared.auth')
 @Controller({
@@ -50,7 +55,9 @@ export class AuthSharedController {
         @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly userService: UserService,
-        private readonly authService: AuthService
+        private readonly authService: AuthService,
+        private readonly passwordHistoryService: PasswordHistoryService,
+        private readonly sessionService: SessionService
     ) {}
 
     @AuthSharedRefreshDoc()
@@ -62,9 +69,20 @@ export class AuthSharedController {
     async refresh(
         @AuthJwtToken() refreshToken: string,
         @AuthJwtPayload<AuthJwtRefreshPayloadDto>()
-        { _id, loginFrom }: AuthJwtRefreshPayloadDto
+        { _id, loginFrom, session }: AuthJwtRefreshPayloadDto
     ): Promise<IResponse<AuthRefreshResponseDto>> {
         const user = await this.userService.findOneActiveById(_id);
+
+        const checkActive = await this.sessionService.findOneActiveByIdAndUser(
+            session,
+            user._id
+        );
+        if (!checkActive) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.EXPIRED,
+                message: 'session.error.expired',
+            });
+        }
 
         const roleType = user.role.type;
         const tokenType: string = await this.authService.getTokenType();
@@ -72,7 +90,11 @@ export class AuthSharedController {
         const expiresInAccessToken: number =
             await this.authService.getAccessTokenExpirationTime();
         const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.authService.createPayloadAccessToken(user, loginFrom);
+            await this.authService.createPayloadAccessToken(
+                user,
+                session,
+                loginFrom
+            );
         const accessToken: string = await this.authService.createAccessToken(
             user.email,
             payloadAccessToken
@@ -129,6 +151,28 @@ export class AuthSharedController {
             body.newPassword
         );
 
+        const checkPassword =
+            await this.passwordHistoryService.findOneActiveByUser(
+                user._id,
+                password.passwordHash
+            );
+        if (checkPassword) {
+            const passwordPeriod =
+                await this.passwordHistoryService.getPasswordPeriod();
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW,
+                message: 'user.error.passwordMustNew',
+                _metadata: {
+                    customProperty: {
+                        messageProperties: {
+                            period: passwordPeriod,
+                            expiredAt: checkPassword.expiredAt,
+                        },
+                    },
+                },
+            });
+        }
+
         const session: ClientSession =
             await this.databaseConnection.startSession();
         session.startTransaction();
@@ -140,6 +184,14 @@ export class AuthSharedController {
             user = await this.userService.updatePassword(user, password, {
                 session,
             });
+
+            await this.passwordHistoryService.createByUser(
+                user,
+                {
+                    type: ENUM_PASSWORD_HISTORY_TYPE.CHANGE,
+                },
+                { session }
+            );
 
             this.emailQueue.add(
                 ENUM_EMAIL.CHANGE_PASSWORD,

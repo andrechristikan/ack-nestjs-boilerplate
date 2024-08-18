@@ -1,9 +1,9 @@
 name: CI_CD
 on:
-  push:
-    branches: 
-    - main
-    - staging
+  # push:
+  #   branches: 
+  #   - main
+  #   - staging
   workflow_dispatch:
 
 jobs:

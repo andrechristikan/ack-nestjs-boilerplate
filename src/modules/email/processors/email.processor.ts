@@ -29,7 +29,7 @@ export class EmailProcessor extends WorkerHost implements IEmailProcessor {
         try {
             const jobName = job.name;
             switch (jobName) {
-                case ENUM_EMAIL.TEMP_PASSWORD:
+                case ENUM_EMAIL.TEMPORARY_PASSWORD:
                     await this.processTempPassword(
                         job.data.send,
                         job.data.data as EmailTempPasswordDto

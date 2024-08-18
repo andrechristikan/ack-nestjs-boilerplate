@@ -190,6 +190,7 @@ export class AuthService implements IAuthService {
 
     async createPayloadAccessToken<T extends Document>(
         data: T,
+        session: string,
         loginFrom: ENUM_AUTH_LOGIN_FROM
     ): Promise<AuthJwtAccessPayloadDto> {
         const loginDate = this.helperDateService.create();
@@ -197,6 +198,7 @@ export class AuthService implements IAuthService {
 
         return plainToInstance(AuthJwtAccessPayloadDto, {
             _id: plainObject._id,
+            session,
             type: plainObject.role.type,
             role: plainObject.role._id,
             email: plainObject.email,
@@ -208,11 +210,13 @@ export class AuthService implements IAuthService {
 
     async createPayloadRefreshToken({
         _id,
+        session,
         loginFrom,
         loginDate,
     }: AuthJwtAccessPayloadDto): Promise<AuthJwtRefreshPayloadDto> {
         return {
             _id,
+            session,
             loginFrom,
             loginDate,
         };

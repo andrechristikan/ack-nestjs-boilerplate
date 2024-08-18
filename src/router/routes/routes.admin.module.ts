@@ -7,8 +7,12 @@ import { AuthAdminController } from 'src/modules/auth/controllers/auth.admin.con
 import { CountryAdminController } from 'src/modules/country/controllers/country.admin.controller';
 import { CountryModule } from 'src/modules/country/country.module';
 import { EmailModule } from 'src/modules/email/email.module';
+import { PasswordHistoryAdminController } from 'src/modules/password-history/controllers/password-history.admin.controller';
+import { PasswordHistoryModule } from 'src/modules/password-history/password-history.module';
 import { RoleAdminController } from 'src/modules/role/controllers/role.admin.controller';
 import { RoleModule } from 'src/modules/role/role.module';
+import { SessionAdminController } from 'src/modules/session/controllers/session.admin.controller';
+import { SessionModule } from 'src/modules/session/session.module';
 import { SettingAdminController } from 'src/modules/setting/controllers/setting.admin.controller';
 import { SettingModule } from 'src/modules/setting/setting.module';
 import { UserAdminController } from 'src/modules/user/controllers/user.admin.controller';
@@ -24,6 +28,8 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         UserAdminController,
         CountryAdminController,
         AuthAdminController,
+        SessionAdminController,
+        PasswordHistoryAdminController,
     ],
     providers: [],
     exports: [],
@@ -35,6 +41,8 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         AuthModule,
         EmailModule,
         CountryModule,
+        SessionModule,
+        PasswordHistoryModule,
         BullModule.registerQueue({
             connection: {
                 name: WORKER_CONNECTION_NAME,
