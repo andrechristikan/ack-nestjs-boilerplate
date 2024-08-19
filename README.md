@@ -74,10 +74,9 @@
 - [ ] Export Module
 - [ ] Move to Stateful Authorization
       1. Session Module
-      2. Device Module
-      3. Password Period Module
-      5. Reset Password Module
-      6. Verification Module
+      2. Password Period Module
+      3. Reset Password Module
+      4. Verification Module
 
 ## Prerequisites
 

@@ -8,6 +8,7 @@ import {
 } from 'src/modules/user/enums/user.enum';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
+import { UserVerificationResponseDto } from 'src/modules/user/dtos/response/user.verification.response.dto';
 
 export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     'passwordExpired',
@@ -20,6 +21,7 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     'mobileNumber',
     'address',
     'familyName',
+    'verification',
 ] as const) {
     @ApiProperty({
         required: true,
@@ -68,4 +70,8 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     @ApiHideProperty()
     @Exclude()
     familyName?: string;
+
+    @ApiHideProperty()
+    @Exclude()
+    verification: UserVerificationResponseDto;
 }

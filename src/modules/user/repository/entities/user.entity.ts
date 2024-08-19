@@ -45,6 +45,22 @@ export class UserMobileNumberEntity {
 export const UserMobileNumberSchema = DatabaseSchema(UserMobileNumberEntity);
 export type UserMobileNumberDoc = IDatabaseDocument<UserMobileNumberEntity>;
 
+@DatabaseEntity({
+    _id: false,
+    timestamps: false,
+})
+export class UserVerificationEntity {
+    @DatabaseProp({
+        required: true,
+        index: true,
+        default: false,
+    })
+    email: boolean;
+}
+
+export const UserVerificationSchema = DatabaseSchema(UserVerificationEntity);
+export type UserVerificationDoc = IDatabaseDocument<UserVerificationEntity>;
+
 @DatabaseEntity({ collection: UserTableName })
 export class UserEntity extends DatabaseEntityBase {
     @DatabaseProp({
@@ -72,6 +88,12 @@ export class UserEntity extends DatabaseEntityBase {
         schema: UserMobileNumberSchema,
     })
     mobileNumber?: UserMobileNumberEntity;
+
+    @DatabaseProp({
+        required: true,
+        schema: UserVerificationSchema,
+    })
+    verification: UserVerificationEntity;
 
     @DatabaseProp({
         required: true,

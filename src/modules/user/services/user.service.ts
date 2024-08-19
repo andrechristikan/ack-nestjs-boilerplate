@@ -236,6 +236,9 @@ export class UserService implements IUserService {
         create.signUpFrom = signUpFrom;
         create.country = country;
         create.username = username;
+        create.verification = {
+            email: false,
+        };
 
         return this.userRepository.create<UserEntity>(create, options);
     }
@@ -262,6 +265,9 @@ export class UserService implements IUserService {
         create.signUpFrom = ENUM_USER_SIGN_UP_FROM.PUBLIC;
         create.country = country;
         create.username = username;
+        create.verification = {
+            email: false,
+        };
 
         return this.userRepository.create<UserEntity>(create, options);
     }
