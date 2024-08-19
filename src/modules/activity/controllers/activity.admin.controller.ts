@@ -6,6 +6,10 @@ import { PaginationService } from 'src/common/pagination/services/pagination.ser
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
+import { ActivityAdminListDoc } from 'src/modules/activity/docs/activity.admin.doc';
+import { ActivityListResponseDto } from 'src/modules/activity/dtos/response/activity.list.response.dto';
+import { IActivityDoc } from 'src/modules/activity/interfaces/activity.interface';
+import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import {
@@ -17,55 +21,48 @@ import {
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
 } from 'src/modules/policy/enums/policy.enum';
-import { SessionAdminListDoc } from 'src/modules/session/docs/session.admin.doc';
-import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
-import { SessionDoc } from 'src/modules/session/repository/entities/session.entity';
-import { SessionService } from 'src/modules/session/services/session.service';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
-@ApiTags('modules.admin.session')
+@ApiTags('modules.admin.activity')
 @Controller({
     version: '1',
-    path: '/session',
+    path: '/activity',
 })
-export class SessionAdminController {
+export class ActivityAdminController {
     constructor(
         private readonly paginationService: PaginationService,
-        private readonly sessionService: SessionService
+        private readonly activityService: ActivityService
     ) {}
 
-    @SessionAdminListDoc()
-    @ResponsePaging('session.list')
+    @ActivityAdminListDoc()
+    @ResponsePaging('activity.list')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.SESSION,
+        subject: ENUM_POLICY_SUBJECT.ACTIVITY,
         action: [ENUM_POLICY_ACTION.READ],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list/:user')
-    async list(
+    async stateHistoryList(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
         @PaginationQuery()
         { _search, _limit, _offset, _order }: PaginationListDto
-    ): Promise<IResponsePaging<SessionListResponseDto>> {
+    ): Promise<IResponsePaging<ActivityListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
         };
 
-        const sessions: SessionDoc[] = await this.sessionService.findAllByUser(
-            user._id,
-            find,
-            {
+        const userHistories: IActivityDoc[] =
+            await this.activityService.findAllByUser(user._id, find, {
                 paging: {
                     limit: _limit,
                     offset: _offset,
                 },
                 order: _order,
-            }
-        );
-        const total: number = await this.sessionService.getTotalByUser(
+            });
+        const total: number = await this.activityService.getTotalByUser(
             user._id,
             find
         );
@@ -74,7 +71,7 @@ export class SessionAdminController {
             _limit
         );
 
-        const mapped = await this.sessionService.mapList(sessions);
+        const mapped = await this.activityService.mapList(userHistories);
 
         return {
             _pagination: { total, totalPage },

@@ -1,5 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
+import { ActivityModule } from 'src/modules/activity/activity.module';
+import { ActivityAdminController } from 'src/modules/activity/controllers/activity.admin.controller';
 import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
 import { ApiKeyAdminController } from 'src/modules/api-key/controllers/api-key.admin.controller';
 import { AuthModule } from 'src/modules/auth/auth.module';
@@ -30,6 +32,7 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         AuthAdminController,
         SessionAdminController,
         PasswordHistoryAdminController,
+        ActivityAdminController,
     ],
     providers: [],
     exports: [],
@@ -43,6 +46,7 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         CountryModule,
         SessionModule,
         PasswordHistoryModule,
+        ActivityModule,
         BullModule.registerQueue({
             connection: {
                 name: WORKER_CONNECTION_NAME,

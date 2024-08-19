@@ -45,7 +45,7 @@ export class SessionSharedController {
     @ResponsePaging('session.list')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/session')
+    @Get('/list')
     async list(
         @AuthJwtPayload('_id') user: string,
         @PaginationQuery()
