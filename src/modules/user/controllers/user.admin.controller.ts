@@ -257,6 +257,17 @@ export class UserAdminController {
                 { session }
             );
 
+            await this.activityService.createByAdmin(
+                created,
+                {
+                    by: _id,
+                    description: this.messageService.setMessage(
+                        'activity.user.createByAdmin'
+                    ),
+                },
+                { session }
+            );
+
             this.emailQueue.add(
                 ENUM_EMAIL.WELCOME_ADMIN,
                 {

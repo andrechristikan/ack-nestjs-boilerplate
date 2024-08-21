@@ -1,5 +1,6 @@
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
@@ -61,6 +62,10 @@ export interface IPasswordHistoryService {
         { by, type }: PasswordHistoryCreateByAdminRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<PasswordHistoryDoc>;
+    deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseDeleteManyOptions
+    ): Promise<boolean>;
     getPasswordPeriod(): Promise<number>;
     mapList(
         userHistories: IPasswordHistoryDoc[] | IPasswordHistoryEntity[]

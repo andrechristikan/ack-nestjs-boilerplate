@@ -3,6 +3,7 @@ import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
@@ -99,6 +100,15 @@ export class ActivityService implements IActivityService {
         create.by = by;
 
         return this.activityRepository.create<ActivityEntity>(create, options);
+    }
+
+    async deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseDeleteManyOptions
+    ): Promise<boolean> {
+        await this.activityRepository.deleteMany(find, options);
+
+        return true;
     }
 
     async mapList(

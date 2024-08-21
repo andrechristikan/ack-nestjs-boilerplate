@@ -1,5 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
+import { ActivityModule } from 'src/modules/activity/activity.module';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { AuthPublicController } from 'src/modules/auth/controllers/auth.public.controller';
 import { CountryModule } from 'src/modules/country/country.module';
@@ -26,6 +27,7 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         CountryModule,
         PasswordHistoryModule,
         SessionModule,
+        ActivityModule,
         BullModule.registerQueue({
             connection: {
                 name: WORKER_CONNECTION_NAME,

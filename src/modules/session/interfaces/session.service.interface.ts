@@ -43,7 +43,8 @@ export interface ISessionService {
     mapList(
         userLogins: SessionDoc[] | SessionEntity[]
     ): Promise<SessionListResponseDto[]>;
-    createLoginSession(
+    findLoginSession(_id: string): Promise<string>;
+    setLoginSession(
         _id: string,
         user: string,
         expiredIn: number

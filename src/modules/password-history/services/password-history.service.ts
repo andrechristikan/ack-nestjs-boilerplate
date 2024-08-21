@@ -4,6 +4,7 @@ import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
@@ -172,6 +173,15 @@ export class PasswordHistoryService implements IPasswordHistoryService {
             create,
             options
         );
+    }
+
+    async deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseDeleteManyOptions
+    ): Promise<boolean> {
+        await this.passwordHistoryRepository.deleteMany(find, options);
+
+        return true;
     }
 
     async getPasswordPeriod(): Promise<number> {

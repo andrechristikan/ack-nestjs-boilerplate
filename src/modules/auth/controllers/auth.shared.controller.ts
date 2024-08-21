@@ -81,10 +81,14 @@ export class AuthSharedController {
             session,
             user._id
         );
-        if (!checkActive) {
+        const checkSession =
+            await this.sessionService.findLoginSession(session);
+        if (!checkActive || !checkSession) {
+            await this.sessionService.updateRevoke(checkActive);
+
             throw new UnauthorizedException({
-                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.EXPIRED,
-                message: 'session.error.expired',
+                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'session.error.notFound',
             });
         }
 

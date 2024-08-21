@@ -82,7 +82,7 @@ export class SessionService implements ISessionService {
                 _id,
                 user,
                 expiredAt: {
-                    $lte: today,
+                    $gte: today,
                 },
             },
             options
@@ -142,14 +142,18 @@ export class SessionService implements ISessionService {
         );
     }
 
-    async createLoginSession(
+    async findLoginSession(_id: string): Promise<string> {
+        return this.cacheManager.get<string>(`${SessionLoginPrefix}${_id}`);
+    }
+
+    async setLoginSession(
         _id: string,
         user: string,
         expiredIn: number
     ): Promise<void> {
         await this.cacheManager.set(
             `${SessionLoginPrefix}${_id}`,
-            user,
+            { user },
             expiredIn * 1000
         );
 

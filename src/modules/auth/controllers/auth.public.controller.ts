@@ -56,6 +56,8 @@ import { PasswordHistoryService } from 'src/modules/password-history/services/pa
 import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
 import { SessionService } from 'src/modules/session/services/session.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { ActivityService } from 'src/modules/activity/services/activity.service';
+import { MessageService } from 'src/common/message/services/message.service';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -72,7 +74,9 @@ export class AuthPublicController {
         private readonly countryService: CountryService,
         private readonly roleService: RoleService,
         private readonly passwordHistoryService: PasswordHistoryService,
-        private readonly sessionService: SessionService
+        private readonly sessionService: SessionService,
+        private readonly activityService: ActivityService,
+        private readonly messageService: MessageService
     ) {}
 
     @AuthPublicLoginCredentialDoc()
@@ -145,13 +149,13 @@ export class AuthPublicController {
 
         const expiresInRefreshToken: number =
             await this.authService.getRefreshTokenExpirationTime();
-
+        console.log('expiresInRefreshToken', expiresInRefreshToken);
         const session = await this.sessionService.create(request, {
             user: user._id,
         });
-        await this.sessionService.createLoginSession(
-            user._id,
+        await this.sessionService.setLoginSession(
             session._id,
+            user._id,
             expiresInRefreshToken
         );
 
@@ -238,9 +242,9 @@ export class AuthPublicController {
         const session = await this.sessionService.create(request, {
             user: user._id,
         });
-        await this.sessionService.createLoginSession(
-            user._id,
+        await this.sessionService.setLoginSession(
             session._id,
+            user._id,
             expiresInRefreshToken
         );
 
@@ -327,9 +331,9 @@ export class AuthPublicController {
         const session = await this.sessionService.create(request, {
             user: user._id,
         });
-        await this.sessionService.createLoginSession(
-            user._id,
+        await this.sessionService.setLoginSession(
             session._id,
+            user._id,
             expiresInRefreshToken
         );
 
@@ -425,6 +429,16 @@ export class AuthPublicController {
                 user,
                 {
                     type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
+                },
+                { session }
+            );
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.signUp'
+                    ),
                 },
                 { session }
             );

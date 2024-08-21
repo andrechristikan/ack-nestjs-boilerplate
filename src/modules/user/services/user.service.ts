@@ -456,13 +456,9 @@ export class UserService implements IUserService {
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
-        try {
-            await this.userRepository.deleteMany(find, options);
+        await this.userRepository.deleteMany(find, options);
 
-            return true;
-        } catch (error: unknown) {
-            throw error;
-        }
+        return true;
     }
 
     async updateProfile(

@@ -1,5 +1,6 @@
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
@@ -48,7 +49,10 @@ export interface IActivityService {
         { by, description }: ActivityCreateByAdminResponse,
         options?: IDatabaseCreateOptions
     ): Promise<ActivityDoc>;
-
+    deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseDeleteManyOptions
+    ): Promise<boolean>;
     mapList(
         userHistories: IActivityDoc[] | IActivityEntity[]
     ): Promise<ActivityListResponseDto[]>;
