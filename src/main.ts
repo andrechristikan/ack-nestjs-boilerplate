@@ -86,9 +86,6 @@ async function bootstrap() {
     if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
         logger.log(`On migrate the schema`);
 
-        await app.close();
-
-        logger.log(`Migrate done`);
         logger.log(
             `==========================================================`
         );
