@@ -48,7 +48,7 @@ export class ActivitySharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
-    async stateHistoryList(
+    async list(
         @AuthJwtPayload('_id', RequestRequiredPipe, UserParsePipe)
         user: UserDoc,
         @PaginationQuery()

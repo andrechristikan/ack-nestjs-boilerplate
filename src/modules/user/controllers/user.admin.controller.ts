@@ -85,6 +85,8 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
 import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
 import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
+import { ActivityService } from 'src/modules/activity/services/activity.service';
+import { MessageService } from 'src/common/message/services/message.service';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -101,7 +103,9 @@ export class UserAdminController {
         private readonly authService: AuthService,
         private readonly userService: UserService,
         private readonly countryService: CountryService,
-        private readonly passwordHistoryService: PasswordHistoryService
+        private readonly passwordHistoryService: PasswordHistoryService,
+        private readonly activityService: ActivityService,
+        private readonly messageService: MessageService
     ) {}
 
     @UserAdminListDoc()
@@ -325,7 +329,39 @@ export class UserAdminController {
             });
         }
 
-        await this.userService.update(user, { name, country, role });
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            await this.userService.update(
+                user,
+                { name, country, role },
+                { session }
+            );
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.updateByAdmin'
+                    ),
+                },
+                { session }
+            );
+
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 
     @UserAdminInactiveDoc()
@@ -354,6 +390,16 @@ export class UserAdminController {
 
         try {
             await this.userService.inactive(user, { session });
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.inactiveByAdmin'
+                    ),
+                },
+                { session }
+            );
 
             await session.commitTransaction();
             await session.endSession();
@@ -397,6 +443,16 @@ export class UserAdminController {
 
         try {
             await this.userService.active(user, { session });
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.activeByAdmin'
+                    ),
+                },
+                { session }
+            );
 
             await session.commitTransaction();
             await session.endSession();
@@ -443,6 +499,16 @@ export class UserAdminController {
 
         try {
             await this.userService.blocked(user, { session });
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.blockedByAdmin'
+                    ),
+                },
+                { session }
+            );
 
             await session.commitTransaction();
             await session.endSession();

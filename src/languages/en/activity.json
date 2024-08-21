@@ -1,0 +1,15 @@
+{
+    "list": "User activity logs are available here.",
+    "user": {
+        "updateByAdmin": "Account information has been updated by an administrator.",
+        "inactiveByAdmin": "Account has been deactivated by an administrator.",
+        "activeByAdmin": "Account has been reactivated by an administrator.",
+        "blockedByAdmin": "Account has been blocked by an administrator.",
+        "delete": "Account has been deleted.",
+        "changePassword": "Your password has been successfully changed.",
+        "updateMobileNumber": "Your mobile number has been successfully updated.",
+        "updateClaimUsername": "Your claim for a username update has been processed.",
+        "updateProfile": "Your profile information has been updated.",
+        "uploadProfile": "Your profile picture has been successfully uploaded."
+    }
+}

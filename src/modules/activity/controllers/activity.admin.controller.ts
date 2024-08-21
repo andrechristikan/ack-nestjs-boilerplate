@@ -45,7 +45,7 @@ export class ActivityAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list/:user')
-    async stateHistoryList(
+    async list(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
         @PaginationQuery()
         { _search, _limit, _offset, _order }: PaginationListDto

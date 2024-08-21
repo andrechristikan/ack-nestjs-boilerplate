@@ -5,7 +5,6 @@ import {
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
-import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 export const ActivityTableName = 'Activities';
@@ -24,20 +23,11 @@ export class ActivityEntity extends DatabaseEntityBase {
     @DatabaseProp({
         required: true,
         type: String,
-        enum: ENUM_USER_STATUS,
     })
-    before: ENUM_USER_STATUS;
+    description: string;
 
     @DatabaseProp({
         required: true,
-        type: String,
-        enum: ENUM_USER_STATUS,
-    })
-    after: ENUM_USER_STATUS;
-
-    @DatabaseProp({
-        required: true,
-        index: true,
         trim: true,
         type: String,
         ref: UserEntity.name,

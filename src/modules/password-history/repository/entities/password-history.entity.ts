@@ -42,7 +42,6 @@ export class PasswordHistoryEntity extends DatabaseEntityBase {
 
     @DatabaseProp({
         required: true,
-        index: true,
         trim: true,
         type: String,
         ref: UserEntity.name,

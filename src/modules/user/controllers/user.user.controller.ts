@@ -3,6 +3,7 @@ import {
     ConflictException,
     Controller,
     Delete,
+    InternalServerErrorException,
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -25,6 +26,11 @@ import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { ClientSession, Connection } from 'mongoose';
+import { ActivityService } from 'src/modules/activity/services/activity.service';
+import { MessageService } from 'src/common/message/services/message.service';
+import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 
 @ApiTags('modules.user.user')
 @Controller({
@@ -32,7 +38,12 @@ import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
     path: '/user',
 })
 export class UserUserController {
-    constructor(private readonly userService: UserService) {}
+    constructor(
+        @DatabaseConnection() private readonly databaseConnection: Connection,
+        private readonly userService: UserService,
+        private readonly activityService: ActivityService,
+        private readonly messageService: MessageService
+    ) {}
 
     @UserUserDeleteDoc()
     @Response('user.delete')
@@ -43,7 +54,38 @@ export class UserUserController {
     async delete(
         @AuthJwtPayload('_id', UserParsePipe) user: UserDoc
     ): Promise<void> {
-        await this.userService.delete(user, { deletedBy: user._id });
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            await this.userService.delete(
+                user,
+                { deletedBy: user._id },
+                { session }
+            );
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description:
+                        this.messageService.setMessage('activity.delete'),
+                },
+                { session }
+            );
+
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
 
         return;
     }
@@ -59,7 +101,35 @@ export class UserUserController {
         @Body()
         body: UserUpdateMobileNumberRequestDto
     ): Promise<void> {
-        await this.userService.updateMobileNumber(user, body);
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            await this.userService.updateMobileNumber(user, body, { session });
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.updateMobileNumber'
+                    ),
+                },
+                { session }
+            );
+
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
 
         return;
     }
@@ -75,15 +145,48 @@ export class UserUserController {
         @Body()
         { username }: UserUpdateClaimUsernameRequestDto
     ): Promise<void> {
-        const checkUsername = await this.userService.existByUsername(username);
-        if (checkUsername) {
-            throw new ConflictException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_EXIST,
-                message: 'user.error.usernameExist',
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            const checkUsername =
+                await this.userService.existByUsername(username);
+            if (checkUsername) {
+                throw new ConflictException({
+                    statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_EXIST,
+                    message: 'user.error.usernameExist',
+                });
+            }
+
+            await this.userService.updateClaimUsername(
+                user,
+                { username },
+                { session }
+            );
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.updateClaimUsername'
+                    ),
+                },
+                { session }
+            );
+
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
             });
         }
-
-        await this.userService.updateClaimUsername(user, { username });
 
         return;
     }

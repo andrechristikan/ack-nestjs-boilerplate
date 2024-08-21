@@ -4,6 +4,8 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { ActivityCreateByAdminResponse } from 'src/modules/activity/dtos/request/activity.create-by-admin.response.dto';
+import { ActivityCreateResponse } from 'src/modules/activity/dtos/request/activity.create.response.dto';
 import { ActivityListResponseDto } from 'src/modules/activity/dtos/response/activity.list.response.dto';
 import {
     IActivityDoc,
@@ -36,31 +38,17 @@ export interface IActivityService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-    createCreated(
+    createByUser(
         user: UserDoc,
-        by: string,
+        { description }: ActivityCreateResponse,
         options?: IDatabaseCreateOptions
     ): Promise<ActivityDoc>;
-    createActive(
+    createByAdmin(
         user: UserDoc,
-        by: string,
+        { by, description }: ActivityCreateByAdminResponse,
         options?: IDatabaseCreateOptions
     ): Promise<ActivityDoc>;
-    createInactive(
-        user: UserDoc,
-        by: string,
-        options?: IDatabaseCreateOptions
-    ): Promise<ActivityDoc>;
-    createBlocked(
-        user: UserDoc,
-        by: string,
-        options?: IDatabaseCreateOptions
-    ): Promise<ActivityDoc>;
-    createDeleted(
-        user: UserDoc,
-        by: string,
-        options?: IDatabaseCreateOptions
-    ): Promise<ActivityDoc>;
+
     mapList(
         userHistories: IActivityDoc[] | IActivityEntity[]
     ): Promise<ActivityListResponseDto[]>;

@@ -7,6 +7,8 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { ActivityCreateByAdminResponse } from 'src/modules/activity/dtos/request/activity.create-by-admin.response.dto';
+import { ActivityCreateResponse } from 'src/modules/activity/dtos/request/activity.create.response.dto';
 import { ActivityListResponseDto } from 'src/modules/activity/dtos/response/activity.list.response.dto';
 import {
     IActivityDoc,
@@ -18,7 +20,6 @@ import {
     ActivityEntity,
 } from 'src/modules/activity/repository/entities/activity.entity';
 import { ActivityRepository } from 'src/modules/activity/repository/repositories/activity.repository';
-import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
 @Injectable()
@@ -75,70 +76,25 @@ export class ActivityService implements IActivityService {
         return this.activityRepository.getTotal({ ...find, user }, options);
     }
 
-    async createCreated(
+    async createByUser(
         user: UserDoc,
-        by: string,
+        { description }: ActivityCreateResponse,
         options?: IDatabaseCreateOptions
     ): Promise<ActivityDoc> {
         const create: ActivityEntity = new ActivityEntity();
-        create.after = ENUM_USER_STATUS.ACTIVE;
-        create.before = ENUM_USER_STATUS.CREATED;
+        create.description = description;
         create.user = user._id;
-        create.by = by;
 
         return this.activityRepository.create<ActivityEntity>(create, options);
     }
 
-    async createActive(
+    async createByAdmin(
         user: UserDoc,
-        by: string,
+        { by, description }: ActivityCreateByAdminResponse,
         options?: IDatabaseCreateOptions
     ): Promise<ActivityDoc> {
         const create: ActivityEntity = new ActivityEntity();
-        create.after = ENUM_USER_STATUS.ACTIVE;
-        create.before = user.status;
-        create.user = user._id;
-        create.by = by;
-
-        return this.activityRepository.create<ActivityEntity>(create, options);
-    }
-
-    async createInactive(
-        user: UserDoc,
-        by: string,
-        options?: IDatabaseCreateOptions
-    ): Promise<ActivityDoc> {
-        const create: ActivityEntity = new ActivityEntity();
-        create.after = ENUM_USER_STATUS.INACTIVE;
-        create.before = user.status;
-        create.user = user._id;
-        create.by = by;
-
-        return this.activityRepository.create<ActivityEntity>(create, options);
-    }
-
-    async createBlocked(
-        user: UserDoc,
-        by: string,
-        options?: IDatabaseCreateOptions
-    ): Promise<ActivityDoc> {
-        const create: ActivityEntity = new ActivityEntity();
-        create.after = ENUM_USER_STATUS.BLOCKED;
-        create.before = user.status;
-        create.user = user._id;
-        create.by = by;
-
-        return this.activityRepository.create<ActivityEntity>(create, options);
-    }
-
-    async createDeleted(
-        user: UserDoc,
-        by: string,
-        options?: IDatabaseCreateOptions
-    ): Promise<ActivityDoc> {
-        const create: ActivityEntity = new ActivityEntity();
-        create.after = ENUM_USER_STATUS.DELETED;
-        create.before = user.status;
+        create.description = description;
         create.user = user._id;
         create.by = by;
 

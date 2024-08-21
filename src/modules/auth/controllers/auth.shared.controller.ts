@@ -43,6 +43,8 @@ import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/p
 import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
 import { SessionService } from 'src/modules/session/services/session.service';
 import { ENUM_SESSION_STATUS_CODE_ERROR } from 'src/modules/session/enums/session.status-code.enum';
+import { ActivityService } from 'src/modules/activity/services/activity.service';
+import { MessageService } from 'src/common/message/services/message.service';
 
 @ApiTags('modules.shared.auth')
 @Controller({
@@ -57,7 +59,9 @@ export class AuthSharedController {
         private readonly userService: UserService,
         private readonly authService: AuthService,
         private readonly passwordHistoryService: PasswordHistoryService,
-        private readonly sessionService: SessionService
+        private readonly sessionService: SessionService,
+        private readonly activityService: ActivityService,
+        private readonly messageService: MessageService
     ) {}
 
     @AuthSharedRefreshDoc()
@@ -189,6 +193,16 @@ export class AuthSharedController {
                 user,
                 {
                     type: ENUM_PASSWORD_HISTORY_TYPE.CHANGE,
+                },
+                { session }
+            );
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.changePassword'
+                    ),
                 },
                 { session }
             );

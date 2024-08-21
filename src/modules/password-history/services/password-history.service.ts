@@ -9,10 +9,8 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import {
-    PasswordHistoryCreateByAdminRequestDto,
-    PasswordHistoryCreateRequestDto,
-} from 'src/modules/password-history/dtos/request/password-history.create.request.dto';
+import { PasswordHistoryCreateByAdminRequestDto } from 'src/modules/password-history/dtos/request/password-history.create-by-admin.request.dto';
+import { PasswordHistoryCreateRequestDto } from 'src/modules/password-history/dtos/request/password-history.create.request.dto';
 import { PasswordHistoryListResponseDto } from 'src/modules/password-history/dtos/response/password-history.list.response.dto';
 import {
     IPasswordHistoryDoc,

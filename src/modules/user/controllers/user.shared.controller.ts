@@ -2,19 +2,25 @@ import {
     Body,
     Controller,
     Get,
+    InternalServerErrorException,
     NotFoundException,
     Post,
     Put,
     UploadedFile,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ClientSession, Connection } from 'mongoose';
+import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
+import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 import { ENUM_FILE_MIME_IMAGE } from 'src/common/file/enums/file.enum';
 import { IFile } from 'src/common/file/interfaces/file.interface';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
+import { MessageService } from 'src/common/message/services/message.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -28,7 +34,7 @@ import { CountryService } from 'src/modules/country/services/country.service';
 import {
     UserSharedProfileDoc,
     UserSharedUpdateProfileDoc,
-    UserSharedUploadProfileDoc,
+    UserSharedUploadPhotoProfileDoc,
 } from 'src/modules/user/docs/user.shared.doc';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
@@ -47,9 +53,12 @@ import { UserService } from 'src/modules/user/services/user.service';
 })
 export class UserSharedController {
     constructor(
+        @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly awsS3Service: AwsS3Service,
         private readonly userService: UserService,
-        private readonly countryService: CountryService
+        private readonly countryService: CountryService,
+        private readonly activityService: ActivityService,
+        private readonly messageService: MessageService
     ) {}
 
     @UserSharedProfileDoc()
@@ -85,18 +94,50 @@ export class UserSharedController {
             });
         }
 
-        await this.userService.updateProfile(user, { country, ...body });
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            await this.userService.updateProfile(
+                user,
+                { country, ...body },
+                { session }
+            );
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.updateProfile'
+                    ),
+                },
+                { session }
+            );
+
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
 
         return;
     }
 
-    @UserSharedUploadProfileDoc()
-    @Response('user.updateProfileUpload')
+    @UserSharedUploadPhotoProfileDoc()
+    @Response('user.uploadPhotoProfile')
     @AuthJwtAccessProtected()
     @FileUploadSingle()
     @ApiKeyProtected()
-    @Post('/profile/upload')
-    async updateProfileUpload(
+    @Post('/profile/upload-photo')
+    async uploadPhotoProfile(
         @AuthJwtPayload<AuthJwtAccessPayloadDto>('_id', UserParsePipe)
         user: UserDoc,
         @UploadedFile(
@@ -109,17 +150,48 @@ export class UserSharedController {
         )
         file: IFile
     ): Promise<void> {
-        const path: string = await this.userService.getPhotoUploadPath(
-            user._id
-        );
-        const randomFilename: string =
-            await this.userService.createRandomFilenamePhoto();
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
 
-        const aws: AwsS3Dto = await this.awsS3Service.putItemInBucket(file, {
-            customFilename: randomFilename,
-            path,
-        });
-        await this.userService.updatePhoto(user, aws);
+        try {
+            const path: string = await this.userService.getPhotoUploadPath(
+                user._id
+            );
+            const randomFilename: string =
+                await this.userService.createRandomFilenamePhoto();
+
+            const aws: AwsS3Dto = await this.awsS3Service.putItemInBucket(
+                file,
+                {
+                    customFilename: randomFilename,
+                    path,
+                }
+            );
+            await this.userService.updatePhoto(user, aws, { session });
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.uploadPhotoProfile'
+                    ),
+                },
+                { session }
+            );
+
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
 
         return;
     }

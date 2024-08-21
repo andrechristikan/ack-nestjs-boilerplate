@@ -43,10 +43,10 @@ export function UserSharedUpdateProfileDoc(): MethodDecorator {
     );
 }
 
-export function UserSharedUploadProfileDoc(): MethodDecorator {
+export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'update profile photo',
+            summary: 'upload photo profile',
         }),
         DocAuth({
             xApiKey: true,
@@ -55,7 +55,7 @@ export function UserSharedUploadProfileDoc(): MethodDecorator {
         DocRequestFile({
             dto: FileSingleDto,
         }),
-        DocResponse('user.upload', {
+        DocResponse('user.uploadPhotoProfile', {
             httpStatus: HttpStatus.CREATED,
         })
     );

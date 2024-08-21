@@ -16,50 +16,16 @@ import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
 } from 'src/modules/user/enums/user.enum';
+import {
+    UserMobileNumberEntity,
+    UserMobileNumberSchema,
+} from 'src/modules/user/repository/entities/user.mobile-number.entity';
+import {
+    UserVerificationEntity,
+    UserVerificationSchema,
+} from 'src/modules/user/repository/entities/user.verification.entity';
 
 export const UserTableName = 'Users';
-
-@DatabaseEntity({
-    _id: false,
-    timestamps: false,
-})
-export class UserMobileNumberEntity {
-    @DatabaseProp({
-        required: true,
-        type: String,
-        ref: CountryEntity.name,
-        trim: true,
-    })
-    country: string;
-
-    @DatabaseProp({
-        required: false,
-        trim: true,
-        type: String,
-        maxlength: 20,
-        minlength: 8,
-    })
-    number: string;
-}
-
-export const UserMobileNumberSchema = DatabaseSchema(UserMobileNumberEntity);
-export type UserMobileNumberDoc = IDatabaseDocument<UserMobileNumberEntity>;
-
-@DatabaseEntity({
-    _id: false,
-    timestamps: false,
-})
-export class UserVerificationEntity {
-    @DatabaseProp({
-        required: true,
-        index: true,
-        default: false,
-    })
-    email: boolean;
-}
-
-export const UserVerificationSchema = DatabaseSchema(UserVerificationEntity);
-export type UserVerificationDoc = IDatabaseDocument<UserVerificationEntity>;
 
 @DatabaseEntity({ collection: UserTableName })
 export class UserEntity extends DatabaseEntityBase {

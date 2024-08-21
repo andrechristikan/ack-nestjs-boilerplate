@@ -14,17 +14,9 @@ export class ActivityListResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        enum: ENUM_USER_STATUS,
-        example: ENUM_USER_STATUS.ACTIVE,
+        example: faker.lorem.paragraph(),
     })
-    beforeState: ENUM_USER_STATUS;
-
-    @ApiProperty({
-        required: true,
-        enum: ENUM_USER_STATUS,
-        example: ENUM_USER_STATUS.ACTIVE,
-    })
-    afterState: ENUM_USER_STATUS;
+    description: ENUM_USER_STATUS;
 
     @ApiProperty({
         required: true,
