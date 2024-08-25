@@ -178,7 +178,6 @@ jobs:
               --hostname ${{ env.DOCKER_CONTAINER_NAME }} \
               --publish ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}:${{ env.DOCKER_CONTAINER_PORT }} \
               --network ${{ env.DOCKER_CONTAINER_NETWORK }} \
-              --volume /app/${{ env.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ \
               --volume /app/${{ env.DOCKER_CONTAINER_NAME }}/.env:/app/.env \
               --restart unless-stopped \
               --name ${{ env.DOCKER_CONTAINER_NAME }} ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:main_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
@@ -275,7 +274,6 @@ jobs:
               --hostname ${{ env.DOCKER_CONTAINER_NAME }} \
               --publish ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}:${{ env.DOCKER_CONTAINER_PORT }} \
               --network ${{ env.DOCKER_CONTAINER_NETWORK }} \
-              --volume /app/${{ env.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ \
               --volume /app/${{ env.DOCKER_CONTAINER_NAME }}/.env:/app/.env \
               --restart unless-stopped \
               --name ${{ env.DOCKER_CONTAINER_NAME }} ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:staging_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
