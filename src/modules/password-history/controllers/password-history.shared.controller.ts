@@ -30,7 +30,7 @@ export class PasswordHistorySharedController {
     @ResponsePaging('passwordHistory.list')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/password-history')
+    @Get('/list')
     async list(
         @AuthJwtPayload('_id') user: string,
         @PaginationQuery()
