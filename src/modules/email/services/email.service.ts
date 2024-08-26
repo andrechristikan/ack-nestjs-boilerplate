@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { title } from 'case';
 import { ConfigService } from '@nestjs/config';
 import { IEmailService } from 'src/modules/email/interfaces/email.service.interface';
@@ -43,7 +43,7 @@ export class EmailService implements IEmailService {
     async createChangePassword(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.CHANGE_PASSWORD,
+                name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
                 subject: `Change Password`,
                 htmlBody: readFileSync(
                     './templates/email.change-password.template.html',
@@ -63,14 +63,14 @@ export class EmailService implements IEmailService {
 
     async getChangePassword(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
-            name: ENUM_EMAIL.CHANGE_PASSWORD,
+            name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
         });
     }
 
     async deleteChangePassword(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.CHANGE_PASSWORD,
+                name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
             });
 
             return true;
@@ -86,7 +86,7 @@ export class EmailService implements IEmailService {
     async sendChangePassword({ name, email }: EmailSendDto): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.CHANGE_PASSWORD,
+                templateName: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
@@ -110,7 +110,7 @@ export class EmailService implements IEmailService {
     async createWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.WELCOME,
+                name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
                     './templates/email.welcome.template.html',
@@ -130,14 +130,14 @@ export class EmailService implements IEmailService {
 
     async getWelcome(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
-            name: ENUM_EMAIL.WELCOME,
+            name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
         });
     }
 
     async deleteWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.WELCOME,
+                name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
             });
 
             return true;
@@ -153,7 +153,7 @@ export class EmailService implements IEmailService {
     async sendWelcome({ name, email }: EmailSendDto): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.WELCOME,
+                templateName: ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
@@ -178,7 +178,7 @@ export class EmailService implements IEmailService {
     async createWelcomeAdmin(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.WELCOME_ADMIN,
+                name: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
                     './templates/email.welcome-admin.template.html',
@@ -198,14 +198,14 @@ export class EmailService implements IEmailService {
 
     async getWelcomeAdmin(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
-            name: ENUM_EMAIL.WELCOME_ADMIN,
+            name: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
         });
     }
 
     async deleteWelcomeAdmin(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.WELCOME_ADMIN,
+                name: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
             });
 
             return true;
@@ -224,7 +224,7 @@ export class EmailService implements IEmailService {
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.WELCOME,
+                templateName: ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
@@ -256,7 +256,7 @@ export class EmailService implements IEmailService {
     async createTempPassword(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.TEMPORARY_PASSWORD,
+                name: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 subject: `Temporary Password`,
                 htmlBody: readFileSync(
                     './templates/email.temp-password.template.html',
@@ -277,7 +277,7 @@ export class EmailService implements IEmailService {
     async getTempPassword(): Promise<GetTemplateCommandOutput> {
         try {
             const template = await this.awsSESService.getTemplate({
-                name: ENUM_EMAIL.TEMPORARY_PASSWORD,
+                name: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
             });
 
             return template;
@@ -293,7 +293,7 @@ export class EmailService implements IEmailService {
     async deleteTempPassword(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.TEMPORARY_PASSWORD,
+                name: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
             });
 
             return true;
@@ -312,7 +312,7 @@ export class EmailService implements IEmailService {
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.TEMPORARY_PASSWORD,
+                templateName: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {

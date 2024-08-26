@@ -18,7 +18,7 @@ import {
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { AuthAdminUpdatePasswordDoc } from 'src/modules/auth/docs/auth.admin.doc';
 import { AuthService } from 'src/modules/auth/services/auth.service';
-import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
 import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
 import {
@@ -97,7 +97,7 @@ export class AuthAdminController {
             );
 
             this.emailQueue.add(
-                ENUM_EMAIL.TEMPORARY_PASSWORD,
+                ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 {
                     email: user.email,
                     name: user.name,
@@ -106,7 +106,7 @@ export class AuthAdminController {
                 },
                 {
                     debounce: {
-                        id: `${ENUM_EMAIL.TEMPORARY_PASSWORD}-${user._id}`,
+                        id: `${ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD}-${user._id}`,
                         ttl: 1000,
                     },
                 }

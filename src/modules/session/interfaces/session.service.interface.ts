@@ -1,6 +1,7 @@
 import { Request } from 'express';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
@@ -50,8 +51,13 @@ export interface ISessionService {
         expiredIn: number
     ): Promise<void>;
     deleteLoginSession(_id: string): Promise<void>;
+    resetLoginSession(): Promise<void>;
     updateRevoke(
         repository: SessionDoc,
         options?: IDatabaseOptions
     ): Promise<SessionDoc>;
+    deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseDeleteManyOptions
+    ): Promise<boolean>;
 }

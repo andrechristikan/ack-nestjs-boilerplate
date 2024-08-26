@@ -38,13 +38,13 @@ import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 import { Queue } from 'bullmq';
-import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
 import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
 import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
 import { SessionService } from 'src/modules/session/services/session.service';
 import { ENUM_SESSION_STATUS_CODE_ERROR } from 'src/modules/session/enums/session.status-code.enum';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';
+import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 
 @ApiTags('modules.shared.auth')
 @Controller({
@@ -81,11 +81,7 @@ export class AuthSharedController {
             session,
             user._id
         );
-        const checkSession =
-            await this.sessionService.findLoginSession(session);
-        if (!checkActive || !checkSession) {
-            await this.sessionService.updateRevoke(checkActive);
-
+        if (!checkActive) {
             throw new UnauthorizedException({
                 statusCode: ENUM_SESSION_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'session.error.notFound',
@@ -212,14 +208,14 @@ export class AuthSharedController {
             );
 
             this.emailQueue.add(
-                ENUM_EMAIL.CHANGE_PASSWORD,
+                ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
                 {
                     email: user.email,
                     name: user.name,
                 },
                 {
                     debounce: {
-                        id: `${ENUM_EMAIL.CHANGE_PASSWORD}-${user._id}`,
+                        id: `${ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD}-${user._id}`,
                         ttl: 1000,
                     },
                 }

@@ -81,7 +81,7 @@ jobs:
           builder: ${{ steps.main.outputs.name }}
           file: ${{ env.DOCKERFILE }}
           build-args: |
-            NODE_ENV=production
+            NODE_ENV=${{ github.ref_name }}
           target: main
           tags: |
             ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:latest
@@ -96,7 +96,7 @@ jobs:
           builder: ${{ steps.main.outputs.name }}
           file: ${{ env.DOCKERFILE }}
           build-args: |
-            NODE_ENV=staging
+            NODE_ENV=${{ github.ref_name }}
           target: main
           tags: |
             ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:staging_v${{ steps.version.outputs.version }}
@@ -174,7 +174,7 @@ jobs:
             docker stop ${{ env.DOCKER_CONTAINER_NAME }} && docker rm ${{ env.DOCKER_CONTAINER_NAME }}
             docker network create ${{ env.DOCKER_CONTAINER_NETWORK }} --driver=bridge
             docker run -itd \
-              --env NODE_ENV=production \
+              --env NODE_ENV=${{ github.ref_name }} \
               --hostname ${{ env.DOCKER_CONTAINER_NAME }} \
               --publish ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}:${{ env.DOCKER_CONTAINER_PORT }} \
               --network ${{ env.DOCKER_CONTAINER_NETWORK }} \
@@ -270,7 +270,7 @@ jobs:
             docker stop ${{ env.DOCKER_CONTAINER_NAME }} && docker rm ${{ env.DOCKER_CONTAINER_NAME }}
             docker network create ${{ env.DOCKER_CONTAINER_NETWORK }} --driver=bridge
             docker run -itd \
-              --env NODE_ENV=development \
+              --env NODE_ENV=${{ github.ref_name }} \
               --hostname ${{ env.DOCKER_CONTAINER_NAME }} \
               --publish ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}:${{ env.DOCKER_CONTAINER_PORT }} \
               --network ${{ env.DOCKER_CONTAINER_NETWORK }} \

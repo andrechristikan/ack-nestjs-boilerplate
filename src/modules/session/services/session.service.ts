@@ -7,6 +7,7 @@ import { Request } from 'express';
 import { Document } from 'mongoose';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
@@ -151,19 +152,19 @@ export class SessionService implements ISessionService {
         user: string,
         expiredIn: number
     ): Promise<void> {
-        await this.cacheManager.set(
+        return this.cacheManager.set(
             `${SessionLoginPrefix}${_id}`,
             { user },
             expiredIn * 1000
         );
-
-        return;
     }
 
     async deleteLoginSession(_id: string): Promise<void> {
-        await this.cacheManager.del(`${SessionLoginPrefix}${_id}`);
+        return this.cacheManager.del(`${SessionLoginPrefix}${_id}`);
+    }
 
-        return;
+    async resetLoginSession(): Promise<void> {
+        return this.cacheManager.reset();
     }
 
     async updateRevoke(
@@ -174,5 +175,14 @@ export class SessionService implements ISessionService {
         repository.revokeAt = this.helperDateService.create();
 
         return this.sessionRepository.save(repository, options);
+    }
+
+    async deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseDeleteManyOptions
+    ): Promise<boolean> {
+        await this.sessionRepository.deleteMany(find, options);
+
+        return true;
     }
 }

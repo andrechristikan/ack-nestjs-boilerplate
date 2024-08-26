@@ -43,7 +43,7 @@ import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.soc
 import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { ClientSession } from 'mongoose';
-import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
@@ -58,6 +58,7 @@ import { SessionService } from 'src/modules/session/services/session.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';
+import { ENUM_SESSION_PROCESS } from 'src/modules/session/enums/session.enum';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -69,6 +70,8 @@ export class AuthPublicController {
         @DatabaseConnection() private readonly databaseConnection: Connection,
         @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
+        @WorkerQueue(ENUM_WORKER_QUEUES.SESSION_QUEUE)
+        private readonly sessionQueue: Queue,
         private readonly userService: UserService,
         private readonly authService: AuthService,
         private readonly countryService: CountryService,
@@ -149,14 +152,25 @@ export class AuthPublicController {
 
         const expiresInRefreshToken: number =
             await this.authService.getRefreshTokenExpirationTime();
-        console.log('expiresInRefreshToken', expiresInRefreshToken);
         const session = await this.sessionService.create(request, {
             user: user._id,
         });
+
         await this.sessionService.setLoginSession(
             session._id,
             user._id,
             expiresInRefreshToken
+        );
+
+        await this.sessionQueue.add(
+            ENUM_SESSION_PROCESS.REVOKE,
+            {
+                session: session._id,
+            },
+            {
+                timestamp: session.createdAt.valueOf(),
+                delay: expiresInRefreshToken * 1000,
+            }
         );
 
         const roleType = userWithRole.role.type;
@@ -242,10 +256,21 @@ export class AuthPublicController {
         const session = await this.sessionService.create(request, {
             user: user._id,
         });
+
         await this.sessionService.setLoginSession(
             session._id,
             user._id,
             expiresInRefreshToken
+        );
+
+        await this.sessionQueue.add(
+            ENUM_SESSION_PROCESS.REVOKE,
+            {
+                session: session._id,
+            },
+            {
+                delay: expiresInRefreshToken * 1000,
+            }
         );
 
         const roleType = userWithRole.role.type;
@@ -331,10 +356,21 @@ export class AuthPublicController {
         const session = await this.sessionService.create(request, {
             user: user._id,
         });
+
         await this.sessionService.setLoginSession(
             session._id,
             user._id,
             expiresInRefreshToken
+        );
+
+        await this.sessionQueue.add(
+            ENUM_SESSION_PROCESS.REVOKE,
+            {
+                session: session._id,
+            },
+            {
+                delay: expiresInRefreshToken * 1000,
+            }
         );
 
         const roleType = userWithRole.role.type;
@@ -444,14 +480,14 @@ export class AuthPublicController {
             );
 
             this.emailQueue.add(
-                ENUM_EMAIL.WELCOME,
+                ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 {
                     email,
                     name,
                 },
                 {
                     debounce: {
-                        id: `${ENUM_EMAIL.WELCOME}-${user._id}`,
+                        id: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${user._id}`,
                         ttl: 1000,
                     },
                 }

@@ -79,7 +79,7 @@ import { UserStatusPipe } from 'src/modules/user/pipes/user.status.pipe';
 import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { Queue } from 'bullmq';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
@@ -269,7 +269,7 @@ export class UserAdminController {
             );
 
             this.emailQueue.add(
-                ENUM_EMAIL.WELCOME_ADMIN,
+                ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
                 {
                     email: created.email,
                     name: created.name,
@@ -278,7 +278,7 @@ export class UserAdminController {
                 },
                 {
                     debounce: {
-                        id: `${ENUM_EMAIL.WELCOME_ADMIN}-${created._id}`,
+                        id: `${ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN}-${created._id}`,
                         ttl: 1000,
                     },
                 }

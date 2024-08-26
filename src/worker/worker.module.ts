@@ -3,6 +3,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmailModule } from 'src/modules/email/email.module';
 import { EmailProcessor } from 'src/modules/email/processors/email.processor';
+import { SessionProcessor } from 'src/modules/session/processors/session.processor';
+import { SessionModule } from 'src/modules/session/session.module';
 import { WORKER_CONNECTION_NAME } from 'src/worker/constants/worker.constant';
 
 @Module({
@@ -28,7 +30,8 @@ import { WORKER_CONNECTION_NAME } from 'src/worker/constants/worker.constant';
             }),
         }),
         EmailModule,
+        SessionModule,
     ],
-    providers: [EmailProcessor],
+    providers: [EmailProcessor, SessionProcessor],
 })
 export class WorkerModule {}

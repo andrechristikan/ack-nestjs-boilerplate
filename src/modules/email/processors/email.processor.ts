@@ -5,10 +5,10 @@ import { Job } from 'bullmq';
 import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password.dto';
 import { EmailWelcomeAdminDto } from 'src/modules/email/dtos/email.welcome-admin.dto';
-import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { EmailWorkerDto } from 'src/modules/email/dtos/email.worker.dto';
+import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { IEmailProcessor } from 'src/modules/email/interfaces/email.processor.interface';
 import { EmailService } from 'src/modules/email/services/email.service';
-import { WorkerEmailDto } from 'src/worker/dtos/worker.email.dto';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 
 @Processor(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
@@ -25,29 +25,29 @@ export class EmailProcessor extends WorkerHost implements IEmailProcessor {
         this.debug = this.configService.get<boolean>('app.debug');
     }
 
-    async process(job: Job<WorkerEmailDto, any, string>): Promise<void> {
+    async process(job: Job<EmailWorkerDto, any, string>): Promise<void> {
         try {
             const jobName = job.name;
             switch (jobName) {
-                case ENUM_EMAIL.TEMPORARY_PASSWORD:
+                case ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD:
                     await this.processTempPassword(
                         job.data.send,
                         job.data.data as EmailTempPasswordDto
                     );
 
                     break;
-                case ENUM_EMAIL.CHANGE_PASSWORD:
+                case ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD:
                     await this.processChangePassword(job.data.send);
 
                     break;
-                case ENUM_EMAIL.WELCOME_ADMIN:
+                case ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN:
                     await this.processWelcomeAdmin(
                         job.data.send,
                         job.data.data as EmailWelcomeAdminDto
                     );
 
                     break;
-                case ENUM_EMAIL.WELCOME:
+                case ENUM_SEND_EMAIL_PROCESS.WELCOME:
                 default:
                     await this.processWelcome(job.data.send);
 

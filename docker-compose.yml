@@ -48,7 +48,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_DB=0
+      - BULL_PREFIX=bull
       - USER_LOGIN=admin
       - USER_PASSWORD=admin123
     depends_on:

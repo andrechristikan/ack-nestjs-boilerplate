@@ -12,6 +12,7 @@ import { PasswordHistoryService } from 'src/modules/password-history/services/pa
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
+import { SessionService } from 'src/modules/session/services/session.service';
 
 @Injectable()
 export class MigrationUserSeed {
@@ -22,7 +23,8 @@ export class MigrationUserSeed {
         private readonly countryService: CountryService,
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly activityService: ActivityService,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly sessionService: SessionService
     ) {}
 
     @Command({
@@ -183,6 +185,8 @@ export class MigrationUserSeed {
             await this.userService.deleteMany({});
             await this.activityService.deleteMany({});
             await this.passwordHistoryService.deleteMany({});
+            await this.sessionService.resetLoginSession();
+            await this.sessionService.deleteMany({});
         } catch (err: any) {
             throw new Error(err);
         }

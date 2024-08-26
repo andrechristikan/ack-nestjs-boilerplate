@@ -13,6 +13,7 @@ import { CountryModule } from 'src/modules/country/country.module';
 import { EmailModule } from 'src/modules/email/email.module';
 import { PasswordHistoryModule } from 'src/modules/password-history/password-history.module';
 import { RoleModule } from 'src/modules/role/role.module';
+import { SessionModule } from 'src/modules/session/session.module';
 import { UserModule } from 'src/modules/user/user.module';
 @Module({
     imports: [
@@ -26,6 +27,7 @@ import { UserModule } from 'src/modules/user/user.module';
         UserModule,
         ActivityModule,
         PasswordHistoryModule,
+        SessionModule,
     ],
     providers: [
         MigrationApiKeySeed,

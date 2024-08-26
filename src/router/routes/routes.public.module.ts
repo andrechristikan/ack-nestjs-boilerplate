@@ -34,6 +34,12 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
             },
             name: ENUM_WORKER_QUEUES.EMAIL_QUEUE,
         }),
+        BullModule.registerQueue({
+            connection: {
+                name: WORKER_CONNECTION_NAME,
+            },
+            name: ENUM_WORKER_QUEUES.SESSION_QUEUE,
+        }),
     ],
 })
 export class RoutesPublicModule {}

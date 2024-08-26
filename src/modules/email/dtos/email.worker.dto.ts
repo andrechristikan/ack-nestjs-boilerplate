@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
 
-export class WorkerEmailDto {
+export class EmailWorkerDto {
     @ApiProperty({
         required: true,
         type: () => EmailSendDto,

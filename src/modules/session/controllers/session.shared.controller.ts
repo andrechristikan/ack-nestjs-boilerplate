@@ -1,14 +1,5 @@
-import {
-    Controller,
-    Delete,
-    Get,
-    InternalServerErrorException,
-    Param,
-} from '@nestjs/common';
+import { Controller, Delete, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ClientSession, Connection } from 'mongoose';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
@@ -36,7 +27,6 @@ import { SessionService } from 'src/modules/session/services/session.service';
 })
 export class SessionSharedController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly paginationService: PaginationService,
         private readonly sessionService: SessionService
     ) {}
@@ -92,31 +82,7 @@ export class SessionSharedController {
         @Param('session', RequestRequiredPipe, SessionActiveParsePipe)
         session: SessionDoc
     ): Promise<void> {
-        const dbSession: ClientSession =
-            await this.databaseConnection.startSession();
-        dbSession.startTransaction();
-
-        try {
-            await this.sessionService.updateRevoke(session, {
-                session: dbSession,
-            });
-            await this.sessionService.deleteLoginSession(session._id);
-
-            await dbSession.commitTransaction();
-            await dbSession.endSession();
-
-            return;
-        } catch (err: any) {
-            await dbSession.abortTransaction();
-            await dbSession.endSession();
-
-            throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
-
-        return;
+        await this.sessionService.updateRevoke(session);
+        await this.sessionService.deleteLoginSession(session._id);
     }
 }
