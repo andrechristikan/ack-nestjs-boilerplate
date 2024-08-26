@@ -474,6 +474,15 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
+    async updateVerificationEmail(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.verification.email = true;
+
+        return this.userRepository.save(repository, options);
+    }
+
     async join(repository: UserDoc): Promise<IUserDoc> {
         return this.userRepository.join(repository, this.userRepository._join);
     }

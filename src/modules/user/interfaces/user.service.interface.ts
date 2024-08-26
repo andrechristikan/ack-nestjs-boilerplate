@@ -183,6 +183,10 @@ export interface IUserService {
         { country, name, address, familyName }: UserUpdateProfileRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
+    updateVerificationEmail(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
     join(repository: UserDoc): Promise<IUserDoc>;
     getPhotoUploadPath(user: string): Promise<string>;
     mapProfile(user: IUserDoc | IUserEntity): Promise<UserProfileResponseDto>;
