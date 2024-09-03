@@ -224,7 +224,7 @@ export class EmailService implements IEmailService {
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_SEND_EMAIL_PROCESS.WELCOME,
+                templateName: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
