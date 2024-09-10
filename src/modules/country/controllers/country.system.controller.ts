@@ -35,7 +35,6 @@ export class CountrySystemController {
     ): Promise<IResponsePaging<CountryListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
-            isActive: true,
         };
 
         const countries: CountryDoc[] = await this.countryService.findAll(

@@ -8,6 +8,7 @@ import {
     IDatabaseOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
 import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';
@@ -35,6 +36,14 @@ export interface IRoleService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
+    findAllByType(
+        type: ENUM_POLICY_ROLE_TYPE,
+        options?: IDatabaseFindAllOptions
+    ): Promise<RoleDoc[]>;
+    findAllActiveByType(
+        type: ENUM_POLICY_ROLE_TYPE,
+        options?: IDatabaseFindAllOptions
+    ): Promise<RoleDoc[]>;
     findOneById(_id: string, options?: IDatabaseOptions): Promise<RoleDoc>;
     findOne(
         find: Record<string, any>,

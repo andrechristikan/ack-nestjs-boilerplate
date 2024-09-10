@@ -116,7 +116,7 @@ export class AppGeneralFilter implements ExceptionFilter {
         }
 
         try {
-            this.sentryService.instance().captureException(exception);
+            this.sentryService?.instance().captureException(exception);
         } catch (err: unknown) {
             if (this.debug) {
                 this.logger.error(err);

@@ -2,10 +2,7 @@ import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
-import {
-    PaginationQuery,
-    PaginationQueryFilterInBoolean,
-} from 'src/common/pagination/decorators/pagination.decorator';
+import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import {
@@ -26,10 +23,7 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
-import {
-    COUNTRY_DEFAULT_AVAILABLE_SEARCH,
-    COUNTRY_DEFAULT_IS_ACTIVE,
-} from 'src/modules/country/constants/country.list.constant';
+import { COUNTRY_DEFAULT_AVAILABLE_SEARCH } from 'src/modules/country/constants/country.list.constant';
 import {
     CountryAdminGetDoc,
     CountryAdminListDoc,
@@ -65,13 +59,10 @@ export class CountryAdminController {
         @PaginationQuery({
             availableSearch: COUNTRY_DEFAULT_AVAILABLE_SEARCH,
         })
-        { _search, _limit, _offset, _order }: PaginationListDto,
-        @PaginationQueryFilterInBoolean('isActive', COUNTRY_DEFAULT_IS_ACTIVE)
-        isActive: Record<string, any>
+        { _search, _limit, _offset, _order }: PaginationListDto
     ): Promise<IResponsePaging<CountryListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
-            ...isActive,
         };
 
         const countries: CountryDoc[] = await this.countryService.findAll(

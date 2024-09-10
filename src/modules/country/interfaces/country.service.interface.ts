@@ -31,15 +31,11 @@ export interface ICountryService {
         alpha2: string,
         options?: IDatabaseOptions
     ): Promise<CountryDoc>;
-    findOneActiveByPhoneCode(
+    findOneByPhoneCode(
         phoneCode: string,
         options?: IDatabaseOptions
     ): Promise<CountryDoc>;
     findOneById(_id: string, options?: IDatabaseOptions): Promise<CountryDoc>;
-    findOneActiveById(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<CountryDoc>;
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions

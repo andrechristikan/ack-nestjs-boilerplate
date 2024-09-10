@@ -200,7 +200,7 @@ export class UserAdminController {
         const promises: Promise<any>[] = [
             this.roleService.findOneById(role),
             this.userService.existByEmail(email),
-            this.countryService.findOneActiveById(country),
+            this.countryService.findOneById(country),
         ];
 
         const [checkRole, emailExist, checkCountry] =
@@ -252,7 +252,7 @@ export class UserAdminController {
                 created,
                 {
                     by: _id,
-                    type: ENUM_PASSWORD_HISTORY_TYPE.TEMPORARY,
+                    type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
                 },
                 { session }
             );
@@ -313,13 +313,7 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Put('/update/:user')
     async update(
-        @Param(
-            'user',
-            RequestRequiredPipe,
-            UserParsePipe,
-            UserNotSelfPipe,
-            new UserStatusPipe([ENUM_USER_STATUS.ACTIVE])
-        )
+        @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
         user: UserDoc,
         @Body() { name, country, role }: UserUpdateRequestDto
     ): Promise<void> {
@@ -331,8 +325,7 @@ export class UserAdminController {
             });
         }
 
-        const checkCountry =
-            await this.countryService.findOneActiveById(country);
+        const checkCountry = await this.countryService.findOneById(country);
         if (!checkCountry) {
             throw new NotFoundException({
                 statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,

@@ -420,7 +420,7 @@ export class AuthPublicController {
         const promises: Promise<any>[] = [
             this.roleService.findOneByName('user'),
             this.userService.existByEmail(email),
-            this.countryService.findOneActiveById(country),
+            this.countryService.findOneById(country),
         ];
 
         const [role, emailExist, checkCountry] = await Promise.all(promises);

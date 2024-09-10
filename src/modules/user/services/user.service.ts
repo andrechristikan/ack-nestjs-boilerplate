@@ -444,7 +444,7 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
-    async delete(
+    async softDelete(
         repository: UserDoc,
         dto: DatabaseSoftDeleteDto,
         options?: IDatabaseSaveOptions

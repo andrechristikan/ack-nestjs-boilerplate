@@ -58,14 +58,13 @@ export class CountryService implements ICountryService {
         );
     }
 
-    async findOneActiveByPhoneCode(
+    async findOneByPhoneCode(
         phoneCode: string,
         options?: IDatabaseOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne(
             {
                 phoneCode,
-                isActive: true,
             },
             options
         );
@@ -76,13 +75,6 @@ export class CountryService implements ICountryService {
         options?: IDatabaseOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOneById(_id, options);
-    }
-
-    async findOneActiveById(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<CountryDoc> {
-        return this.countryRepository.findOne({ _id, isActive: true }, options);
     }
 
     async getTotal(

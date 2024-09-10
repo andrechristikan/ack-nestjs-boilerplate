@@ -59,7 +59,7 @@ export class UserUserController {
         session.startTransaction();
 
         try {
-            await this.userService.delete(
+            await this.userService.softDelete(
                 user,
                 { deletedBy: user._id },
                 { session }

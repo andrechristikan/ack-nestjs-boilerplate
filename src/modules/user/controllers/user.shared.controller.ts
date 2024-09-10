@@ -86,7 +86,7 @@ export class UserSharedController {
         @Body()
         { country, ...body }: UserUpdateProfileRequestDto
     ): Promise<void> {
-        const checkCountry = this.countryService.findOneActiveById(country);
+        const checkCountry = this.countryService.findOneById(country);
         if (!checkCountry) {
             throw new NotFoundException({
                 statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,

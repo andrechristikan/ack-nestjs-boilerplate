@@ -31,7 +31,7 @@ export class AppUrlVersionMiddleware implements NestMiddleware {
 
     async use(
         req: IRequestApp,
-        res: Response,
+        _res: Response,
         next: NextFunction
     ): Promise<void> {
         const originalUrl: string = req.originalUrl;

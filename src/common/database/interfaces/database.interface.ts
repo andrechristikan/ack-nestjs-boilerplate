@@ -23,8 +23,8 @@ export interface IDatabaseFindAllPagingOptions {
 }
 
 export interface IDatabaseFindAllOptions extends IDatabaseOptions {
-    paging: IDatabaseFindAllPagingOptions;
-    order: IPaginationOrder;
+    paging?: IDatabaseFindAllPagingOptions;
+    order?: IPaginationOrder;
 }
 
 export interface IDatabaseExistOptions extends IDatabaseOptions {

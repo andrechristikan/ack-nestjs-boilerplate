@@ -169,7 +169,7 @@ export interface IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    delete(
+    softDelete(
         repository: UserDoc,
         dto: DatabaseSoftDeleteDto,
         options?: IDatabaseSaveOptions

@@ -2,7 +2,7 @@ name: CI_CD
 on:
   push:
     branches: 
-    # - main
+    - main
     - staging
     - development
   workflow_dispatch:
@@ -74,6 +74,8 @@ jobs:
         with:
           builder: ${{ steps.builder.outputs.name }}
           file: ${{ env.DOCKERFILE }}
+          build-args: |
+            NODE_ENV=test
           target: builder
 
       - name: Build main and push
@@ -252,6 +254,8 @@ jobs:
         with:
           builder: ${{ steps.builder.outputs.name }}
           file: ${{ env.DOCKERFILE }}
+          build-args: |
+            NODE_ENV=test
           target: builder
 
       - name: Build staging and push
