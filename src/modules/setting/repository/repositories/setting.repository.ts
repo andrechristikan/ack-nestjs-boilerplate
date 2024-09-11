@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseRepositoryBase } from 'src/common/database/bases/database.repository';
-import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseModel } from 'src/common/database/decorators/database.decorator';
 import {
     SettingDoc,
     SettingEntity,
@@ -13,7 +13,7 @@ export class SettingRepository extends DatabaseRepositoryBase<
     SettingDoc
 > {
     constructor(
-        @DatabaseModel(SettingEntity.name)
+        @InjectDatabaseModel(SettingEntity.name)
         private readonly settingModel: Model<SettingEntity>
     ) {
         super(settingModel);

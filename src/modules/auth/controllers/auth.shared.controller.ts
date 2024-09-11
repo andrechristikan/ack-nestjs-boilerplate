@@ -23,7 +23,7 @@ import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.acce
 import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { AuthService } from 'src/modules/auth/services/auth.service';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
@@ -35,7 +35,6 @@ import {
     AuthSharedRefreshDoc,
 } from 'src/modules/auth/docs/auth.shared.doc';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 import { Queue } from 'bullmq';
 import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
@@ -45,6 +44,7 @@ import { ENUM_SESSION_STATUS_CODE_ERROR } from 'src/modules/session/enums/sessio
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
+import { InjectQueue } from '@nestjs/bullmq';
 
 @ApiTags('modules.shared.auth')
 @Controller({
@@ -53,8 +53,9 @@ import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 })
 export class AuthSharedController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
-        @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
+        @InjectDatabaseConnection()
+        private readonly databaseConnection: Connection,
+        @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly userService: UserService,
         private readonly authService: AuthService,

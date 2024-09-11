@@ -46,7 +46,7 @@ import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { AuthService } from 'src/modules/auth/services/auth.service';
 import { ClientSession, Connection } from 'mongoose';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { CountryService } from 'src/modules/country/services/country.service';
 import {
@@ -82,11 +82,11 @@ import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/databas
 import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { Queue } from 'bullmq';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
-import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
 import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
 import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';
+import { InjectQueue } from '@nestjs/bullmq';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -95,8 +95,9 @@ import { MessageService } from 'src/common/message/services/message.service';
 })
 export class UserAdminController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
-        @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
+        @InjectDatabaseConnection()
+        private readonly databaseConnection: Connection,
+        @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly paginationService: PaginationService,
         private readonly roleService: RoleService,

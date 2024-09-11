@@ -1,3 +1,4 @@
+import { InjectQueue } from '@nestjs/bullmq';
 import {
     Controller,
     InternalServerErrorException,
@@ -8,7 +9,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { Queue } from 'bullmq';
 import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
@@ -34,7 +35,6 @@ import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserService } from 'src/modules/user/services/user.service';
-import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 
 @ApiTags('modules.admin.auth')
@@ -44,8 +44,9 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 })
 export class AuthAdminController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
-        @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
+        @InjectDatabaseConnection()
+        private readonly databaseConnection: Connection,
+        @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly authService: AuthService,
         private readonly userService: UserService,

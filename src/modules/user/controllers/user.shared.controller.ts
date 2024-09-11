@@ -11,7 +11,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 import { ENUM_FILE_MIME_IMAGE } from 'src/common/file/enums/file.enum';
 import { IFile } from 'src/common/file/interfaces/file.interface';
@@ -53,7 +53,8 @@ import { UserService } from 'src/modules/user/services/user.service';
 })
 export class UserSharedController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
+        @InjectDatabaseConnection()
+        private readonly databaseConnection: Connection,
         private readonly awsS3Service: AwsS3Service,
         private readonly userService: UserService,
         private readonly countryService: CountryService,

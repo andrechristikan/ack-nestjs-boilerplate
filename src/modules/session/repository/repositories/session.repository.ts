@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseRepositoryBase } from 'src/common/database/bases/database.repository';
-import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseModel } from 'src/common/database/decorators/database.decorator';
 import {
     SessionDoc,
     SessionEntity,
@@ -13,7 +13,7 @@ export class SessionRepository extends DatabaseRepositoryBase<
     SessionDoc
 > {
     constructor(
-        @DatabaseModel(SessionEntity.name)
+        @InjectDatabaseModel(SessionEntity.name)
         private readonly sessionModel: Model<SessionEntity>
     ) {
         super(sessionModel);

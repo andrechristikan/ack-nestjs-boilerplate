@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseRepositoryBase } from 'src/common/database/bases/database.repository';
-import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseModel } from 'src/common/database/decorators/database.decorator';
 import {
     PasswordHistoryDoc,
     PasswordHistoryEntity,
@@ -13,7 +13,7 @@ export class PasswordHistoryRepository extends DatabaseRepositoryBase<
     PasswordHistoryDoc
 > {
     constructor(
-        @DatabaseModel(PasswordHistoryEntity.name)
+        @InjectDatabaseModel(PasswordHistoryEntity.name)
         private readonly passwordHistoryModel: Model<PasswordHistoryEntity>
     ) {
         super(passwordHistoryModel);

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseRepositoryBase } from 'src/common/database/bases/database.repository';
-import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseModel } from 'src/common/database/decorators/database.decorator';
 import {
     ApiKeyDoc,
     ApiKeyEntity,
@@ -13,7 +13,7 @@ export class ApiKeyRepository extends DatabaseRepositoryBase<
     ApiKeyDoc
 > {
     constructor(
-        @DatabaseModel(ApiKeyEntity.name)
+        @InjectDatabaseModel(ApiKeyEntity.name)
         private readonly ApiKeyDoc: Model<ApiKeyEntity>
     ) {
         super(ApiKeyDoc);

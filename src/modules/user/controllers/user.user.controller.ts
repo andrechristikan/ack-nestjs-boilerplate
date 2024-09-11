@@ -26,7 +26,7 @@ import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ClientSession, Connection } from 'mongoose';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';
@@ -39,7 +39,8 @@ import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 })
 export class UserUserController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
+        @InjectDatabaseConnection()
+        private readonly databaseConnection: Connection,
         private readonly userService: UserService,
         private readonly activityService: ActivityService,
         private readonly messageService: MessageService

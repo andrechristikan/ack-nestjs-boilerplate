@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseRepositoryBase } from 'src/common/database/bases/database.repository';
-import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseModel } from 'src/common/database/decorators/database.decorator';
 import {
     ActivityDoc,
     ActivityEntity,
@@ -14,7 +14,7 @@ export class ActivityRepository extends DatabaseRepositoryBase<
     ActivityDoc
 > {
     constructor(
-        @DatabaseModel(ActivityEntity.name)
+        @InjectDatabaseModel(ActivityEntity.name)
         private readonly activityModel: Model<ActivityEntity>
     ) {
         super(activityModel, {

@@ -45,9 +45,8 @@ import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/countr
 import { ClientSession } from 'mongoose';
 import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
-import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
 import { Connection } from 'mongoose';
 import { Queue } from 'bullmq';
 import { CountryService } from 'src/modules/country/services/country.service';
@@ -59,6 +58,7 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_SESSION_PROCESS } from 'src/modules/session/enums/session.enum';
+import { InjectQueue } from '@nestjs/bullmq';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -67,10 +67,11 @@ import { ENUM_SESSION_PROCESS } from 'src/modules/session/enums/session.enum';
 })
 export class AuthPublicController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
-        @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
+        @InjectDatabaseConnection()
+        private readonly databaseConnection: Connection,
+        @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
-        @WorkerQueue(ENUM_WORKER_QUEUES.SESSION_QUEUE)
+        @InjectQueue(ENUM_WORKER_QUEUES.SESSION_QUEUE)
         private readonly sessionQueue: Queue,
         private readonly userService: UserService,
         private readonly authService: AuthService,
