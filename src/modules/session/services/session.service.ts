@@ -1,6 +1,8 @@
+import { InjectQueue } from '@nestjs/bullmq';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Queue } from 'bullmq';
 import { Cache } from 'cache-manager';
 import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
@@ -16,19 +18,27 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 import { SessionLoginPrefix } from 'src/modules/session/constants/session.constant';
 import { SessionCreateRequestDto } from 'src/modules/session/dtos/request/session.create.request.dto';
 import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
-import { ENUM_SESSION_STATUS } from 'src/modules/session/enums/session.enum';
+import {
+    ENUM_SESSION_PROCESS,
+    ENUM_SESSION_STATUS,
+} from 'src/modules/session/enums/session.enum';
 import { ISessionService } from 'src/modules/session/interfaces/session.service.interface';
 import {
     SessionDoc,
     SessionEntity,
 } from 'src/modules/session/repository/entities/session.entity';
 import { SessionRepository } from 'src/modules/session/repository/repositories/session.repository';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 
 @Injectable()
 export class SessionService implements ISessionService {
     private readonly refreshTokenExpiration: number;
+    private readonly appName: string;
 
     constructor(
+        @InjectQueue(ENUM_WORKER_QUEUES.SESSION_QUEUE)
+        private readonly sessionQueue: Queue,
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
@@ -37,6 +47,7 @@ export class SessionService implements ISessionService {
         this.refreshTokenExpiration = this.configService.get<number>(
             'auth.jwt.refreshToken.expirationTime'
         );
+        this.appName = this.configService.get<string>('app.name');
     }
 
     async findAll(
@@ -144,23 +155,42 @@ export class SessionService implements ISessionService {
     }
 
     async findLoginSession(_id: string): Promise<string> {
-        return this.cacheManager.get<string>(`${SessionLoginPrefix}${_id}`);
-    }
-
-    async setLoginSession(
-        _id: string,
-        user: string,
-        expiredIn: number
-    ): Promise<void> {
-        return this.cacheManager.set(
-            `${SessionLoginPrefix}${_id}`,
-            { user },
-            expiredIn * 1000
+        return this.cacheManager.get<string>(
+            `${this.appName}:${SessionLoginPrefix}:${_id}`
         );
     }
 
+    async setLoginSession(user: IUserDoc, session: SessionDoc): Promise<void> {
+        const key = `${this.appName}:${SessionLoginPrefix}:${session._id}`;
+
+        await this.cacheManager.set(
+            key,
+            { user: user._id },
+            { ttl: this.refreshTokenExpiration }
+        );
+
+        await this.sessionQueue.add(
+            ENUM_SESSION_PROCESS.REVOKE,
+            {
+                session: session._id,
+            },
+            {
+                jobId: key,
+                timestamp: session.createdAt.valueOf(),
+                delay: this.refreshTokenExpiration * 1000,
+            }
+        );
+
+        return;
+    }
+
     async deleteLoginSession(_id: string): Promise<void> {
-        return this.cacheManager.del(`${SessionLoginPrefix}${_id}`);
+        const key = `${this.appName}:${SessionLoginPrefix}:${_id}`;
+        await this.cacheManager.del(key);
+
+        await this.sessionQueue.remove(key);
+
+        return;
     }
 
     async resetLoginSession(): Promise<void> {

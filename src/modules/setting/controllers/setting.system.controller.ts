@@ -19,45 +19,17 @@ import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
     path: '/setting',
 })
 export class SettingSystemController {
-    constructor(
-        private readonly messageService: MessageService,
-        private readonly settingService: SettingService
-    ) {}
+    constructor(private readonly settingService: SettingService) {}
 
     @SettingSystemCoreDoc()
     @Response('setting.core')
     @ApiKeySystemProtected()
     @Get('/core')
     async getUserMaxCertificate(): Promise<IResponse<SettingCoreResponseDto>> {
-        const availableLanguage: ENUM_MESSAGE_LANGUAGE[] =
-            this.messageService.getAvailableLanguages();
-        const currentLanguage: ENUM_MESSAGE_LANGUAGE =
-            this.messageService.getLanguage();
-
-        const language: SettingLanguageResponseDto = {
-            language: currentLanguage,
-            availableLanguage,
-        };
-
-        const tz: string = await this.settingService.getTimezone();
-        const timezoneOffset: string =
-            await this.settingService.getTimezoneOffset();
-
-        const timezone: SettingTimezoneResponseDto = {
-            timezone: tz,
-            timezoneOffset: timezoneOffset,
-        };
-
-        const file: SettingFileResponseDto = {
-            sizeInBytes: FILE_SIZE_IN_BYTES,
-        };
+        const coreSetting = await this.settingService.getCore();
 
         return {
-            data: {
-                timezone,
-                language,
-                file,
-            },
+            data: coreSetting,
         };
     }
 }

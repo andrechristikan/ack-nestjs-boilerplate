@@ -12,6 +12,7 @@ import {
     SessionDoc,
     SessionEntity,
 } from 'src/modules/session/repository/entities/session.entity';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 
 export interface ISessionService {
     findAll(
@@ -45,11 +46,7 @@ export interface ISessionService {
         userLogins: SessionDoc[] | SessionEntity[]
     ): Promise<SessionListResponseDto[]>;
     findLoginSession(_id: string): Promise<string>;
-    setLoginSession(
-        _id: string,
-        user: string,
-        expiredIn: number
-    ): Promise<void>;
+    setLoginSession(user: IUserDoc, session: SessionDoc): Promise<void>;
     deleteLoginSession(_id: string): Promise<void>;
     resetLoginSession(): Promise<void>;
     updateRevoke(

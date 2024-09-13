@@ -14,32 +14,32 @@ import { HelperNumberService } from 'src/common/helper/services/helper.number.se
 import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/enums/setting.enum';
 import { SettingCreateRequestDto } from 'src/modules/setting/dtos/request/setting.create.request.dto';
 import { SettingUpdateRequestDto } from 'src/modules/setting/dtos/request/setting.update.request.dto';
-import { SettingGetResponseDto } from 'src/modules/setting/dtos/response/setting.get.response.dto';
-import { SettingListResponseDto } from 'src/modules/setting/dtos/response/setting.list.response.dto';
 import { ISettingService } from 'src/modules/setting/interfaces/setting.service.interface';
 import {
     SettingDoc,
     SettingEntity,
 } from 'src/modules/setting/repository/entities/setting.entity';
 import { SettingRepository } from 'src/modules/setting/repository/repositories/setting.repository';
+import { SettingCoreResponseDto } from 'src/modules/setting/dtos/response/setting.core.response.dto';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
+import { SettingLanguageResponseDto } from 'src/modules/setting/dtos/response/setting.language.response.dto';
+import { SettingTimezoneResponseDto } from 'src/modules/setting/dtos/response/setting.timezone.response.dto';
+import { FILE_SIZE_IN_BYTES } from 'src/common/file/constants/file.constant';
+import { SettingFileResponseDto } from 'src/modules/setting/dtos/response/setting.file.response.dto';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
+import { SettingAuthResponseDto } from 'src/modules/setting/dtos/response/setting.auth.response.dto';
+import { SettingMiddlewareResponseDto } from 'src/modules/setting/dtos/response/setting.middleware.response.dto';
+import { SettingGetResponseDto } from 'src/modules/setting/dtos/response/setting.get.response.dto';
+import { SettingListResponseDto } from 'src/modules/setting/dtos/response/setting.list.response.dto';
 
 @Injectable()
 export class SettingService implements ISettingService {
-    private readonly timezone: string;
-    private readonly timezoneOffset: string;
-
     constructor(
         private readonly settingRepository: SettingRepository,
         private readonly helperNumberService: HelperNumberService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
-    ) {
-        this.timezone = this.configService.get<string>('app.timezone');
-        this.timezoneOffset = this.helperDateService.format(
-            this.helperDateService.create(),
-            { format: ENUM_HELPER_DATE_FORMAT.TIMEZONE }
-        );
-    }
+    ) {}
 
     async findAll(
         find?: Record<string, any>,
@@ -150,14 +150,6 @@ export class SettingService implements ISettingService {
         return false;
     }
 
-    async getTimezone(): Promise<string> {
-        return this.timezone;
-    }
-
-    async getTimezoneOffset(): Promise<string> {
-        return this.timezoneOffset;
-    }
-
     async mapList<T = any>(
         settings: SettingDoc[]
     ): Promise<SettingListResponseDto<T>[]> {
@@ -174,5 +166,82 @@ export class SettingService implements ISettingService {
         const parseValue = this.getValue<T>(setting.type, setting.value);
 
         return { ...setting.toObject(), value: parseValue };
+    }
+
+    async getCore(): Promise<SettingCoreResponseDto> {
+        // app
+        const name = this.configService.get<string>('app.name');
+        const env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        const timeout = this.configService.get<number>('middleware.timeout');
+
+        // language
+        const availableLanguage: ENUM_MESSAGE_LANGUAGE[] =
+            this.configService.get('message.availableLanguage');
+        const currentLanguage: ENUM_MESSAGE_LANGUAGE =
+            this.configService.get('message.language');
+        const settingLanguage: SettingLanguageResponseDto = {
+            language: currentLanguage,
+            availableLanguage,
+        };
+
+        // timezone
+        const timezone = this.configService.get<string>('app.timezone');
+        const timezoneOffset = this.helperDateService.format(
+            this.helperDateService.create(),
+            { format: ENUM_HELPER_DATE_FORMAT.TIMEZONE }
+        );
+        const settingTimezone: SettingTimezoneResponseDto = {
+            timezone: timezone,
+            timezoneOffset: timezoneOffset,
+        };
+
+        // file
+        const settingFile: SettingFileResponseDto = {
+            size: FILE_SIZE_IN_BYTES,
+        };
+
+        // auth
+        const passwordMaxAttempt = this.configService.get<number>(
+            'auth.password.maxAttempt'
+        );
+        const passwordExpiredIn = this.configService.get<number>(
+            'auth.password.expiredIn'
+        );
+        const passwordExpiredInTemporary = this.configService.get<number>(
+            'auth.password.expiredInTemporary'
+        );
+        const passwordPeriod = this.configService.get<number>(
+            'auth.password.period'
+        );
+        const settingAuth: SettingAuthResponseDto = {
+            passwordMaxAttempt,
+            passwordExpiredIn,
+            passwordExpiredInTemporary,
+            passwordPeriod,
+        };
+
+        const bodyJson = this.configService.get<number>('middleware.body.json');
+        const bodyRaw = this.configService.get<number>('middleware.body.raw');
+        const bodyText = this.configService.get<number>('middleware.body.text');
+        const bodyUrlencoded = this.configService.get<number>(
+            'middleware.body.urlencoded'
+        );
+        const settingMiddleware: SettingMiddlewareResponseDto = {
+            bodyJson,
+            bodyRaw,
+            bodyText,
+            bodyUrlencoded,
+        };
+
+        return {
+            name,
+            env,
+            timeout,
+            file: settingFile,
+            language: settingLanguage,
+            timezone: settingTimezone,
+            middleware: settingMiddleware,
+            auth: settingAuth,
+        };
     }
 }

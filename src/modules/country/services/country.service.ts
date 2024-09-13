@@ -10,7 +10,6 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
-import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
 import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
 import { ICountryService } from 'src/modules/country/interfaces/country.service.interface';
@@ -145,15 +144,6 @@ export class CountryService implements ICountryService {
             countries.map((e: CountryDoc | CountryEntity) =>
                 e instanceof Document ? e.toObject() : e
             )
-        );
-    }
-
-    async mapGet(
-        country: CountryDoc | CountryEntity
-    ): Promise<CountryGetResponseDto> {
-        return plainToInstance(
-            CountryGetResponseDto,
-            country instanceof Document ? country.toObject() : country
         );
     }
 

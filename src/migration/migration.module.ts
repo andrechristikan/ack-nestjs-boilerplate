@@ -15,6 +15,7 @@ import { PasswordHistoryModule } from 'src/modules/password-history/password-his
 import { RoleModule } from 'src/modules/role/role.module';
 import { SessionModule } from 'src/modules/session/session.module';
 import { UserModule } from 'src/modules/user/user.module';
+
 @Module({
     imports: [
         CommonModule,

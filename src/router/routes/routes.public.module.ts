@@ -30,9 +30,6 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         BullModule.registerQueueAsync({
             name: ENUM_WORKER_QUEUES.EMAIL_QUEUE,
         }),
-        BullModule.registerQueueAsync({
-            name: ENUM_WORKER_QUEUES.SESSION_QUEUE,
-        }),
     ],
 })
 export class RoutesPublicModule {}

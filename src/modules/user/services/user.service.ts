@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import {
+    IDatabaseAggregateOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseExistOptions,
+    IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
@@ -13,7 +15,7 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 import { ConfigService } from '@nestjs/config';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { plainToInstance } from 'class-transformer';
-import { Document } from 'mongoose';
+import { Document, PipelineStage } from 'mongoose';
 import { DatabaseQueryContain } from 'src/common/database/decorators/database.decorator';
 import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
@@ -43,6 +45,8 @@ import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
 import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
+import { CountryTableName } from 'src/modules/country/repository/entities/country.entity';
+import { RoleTableName } from 'src/modules/role/repository/entities/role.entity';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -79,6 +83,110 @@ export class UserService implements IUserService {
         return this.userRepository.getTotal(find, options);
     }
 
+    async findAllWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllAggregateOptions
+    ): Promise<IUserEntity[]> {
+        const pipeline: PipelineStage[] = [
+            {
+                $lookup: {
+                    from: RoleTableName,
+                    as: 'role',
+                    foreignField: '_id',
+                    localField: 'role',
+                },
+            },
+            {
+                $unwind: '$role',
+            },
+            {
+                $lookup: {
+                    from: CountryTableName,
+                    as: 'mobileNumber.country',
+                    foreignField: '_id',
+                    localField: 'mobileNumber.country',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$mobileNumber.country',
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $lookup: {
+                    from: CountryTableName,
+                    as: 'country',
+                    foreignField: '_id',
+                    localField: 'country',
+                },
+            },
+            {
+                $unwind: '$country',
+            },
+            {
+                $match: find,
+            },
+        ];
+
+        return this.userRepository.findAllAggregate<PipelineStage, IUserEntity>(
+            pipeline,
+            options
+        );
+    }
+
+    async getTotalWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseAggregateOptions
+    ): Promise<number> {
+        const pipeline: PipelineStage[] = [
+            {
+                $lookup: {
+                    from: RoleTableName,
+                    as: 'role',
+                    foreignField: '_id',
+                    localField: 'role',
+                },
+            },
+            {
+                $unwind: '$role',
+            },
+            {
+                $lookup: {
+                    from: CountryTableName,
+                    as: 'mobileNumber.country',
+                    foreignField: '_id',
+                    localField: 'mobileNumber.country',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$mobileNumber.country',
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $lookup: {
+                    from: CountryTableName,
+                    as: 'country',
+                    foreignField: '_id',
+                    localField: 'country',
+                },
+            },
+            {
+                $unwind: '$country',
+            },
+            {
+                $match: find,
+            },
+        ];
+
+        return this.userRepository.getTotalAggregate<PipelineStage>(
+            pipeline,
+            options
+        );
+    }
+
     async findOneById(
         _id: string,
         options?: IDatabaseOptions
@@ -112,16 +220,6 @@ export class UserService implements IUserService {
             },
             options
         );
-    }
-
-    async findAllWithRoleAndCountry(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<IUserDoc[]> {
-        return this.userRepository.findAll<IUserDoc>(find, {
-            ...options,
-            join: true,
-        });
     }
 
     async findOneWithRoleAndCountry(

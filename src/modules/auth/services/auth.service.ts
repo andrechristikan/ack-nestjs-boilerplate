@@ -18,6 +18,9 @@ import { AuthSocialGooglePayloadDto } from 'src/modules/auth/dtos/social/auth.so
 import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+import { SessionDoc } from 'src/modules/session/repository/entities/session.entity';
+import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -188,21 +191,21 @@ export class AuthService implements IAuthService {
         );
     }
 
-    async createPayloadAccessToken<T extends Document>(
-        data: T,
+    async createPayloadAccessToken(
+        data: IUserDoc,
         session: string,
+        loginDate: Date,
         loginFrom: ENUM_AUTH_LOGIN_FROM
     ): Promise<AuthJwtAccessPayloadDto> {
-        const loginDate = this.helperDateService.create();
         const plainObject: any = data.toObject();
 
         return plainToInstance(AuthJwtAccessPayloadDto, {
             _id: plainObject._id,
-            session,
             type: plainObject.role.type,
             role: plainObject.role._id,
             email: plainObject.email,
             permissions: plainObject.role.permissions,
+            session,
             loginDate,
             loginFrom,
         });
@@ -259,24 +262,70 @@ export class AuthService implements IAuthService {
         return today > passwordExpiredConvert;
     }
 
-    async getTokenType(): Promise<string> {
-        return this.jwtPrefixAuthorization;
+    async createToken(
+        user: IUserDoc,
+        session: string
+    ): Promise<AuthLoginResponseDto> {
+        const loginDate = this.helperDateService.create();
+        const roleType = user.role.type;
+
+        const payloadAccessToken: AuthJwtAccessPayloadDto =
+            await this.createPayloadAccessToken(
+                user,
+                session,
+                loginDate,
+                ENUM_AUTH_LOGIN_FROM.CREDENTIAL
+            );
+        const accessToken: string = await this.createAccessToken(
+            user.email,
+            payloadAccessToken
+        );
+
+        const payloadRefreshToken: AuthJwtRefreshPayloadDto =
+            await this.createPayloadRefreshToken(payloadAccessToken);
+        const refreshToken: string = await this.createRefreshToken(
+            user.email,
+            payloadRefreshToken
+        );
+
+        return {
+            tokenType: this.jwtPrefixAuthorization,
+            roleType,
+            expiresIn: this.jwtAccessTokenExpirationTime,
+            accessToken,
+            refreshToken,
+        };
     }
 
-    async getAccessTokenExpirationTime(): Promise<number> {
-        return this.jwtAccessTokenExpirationTime;
-    }
+    async refreshToken(
+        user: IUserDoc,
+        refreshTokenFromRequest: string
+    ): Promise<AuthLoginResponseDto> {
+        const roleType = user.role.type;
 
-    async getRefreshTokenExpirationTime(): Promise<number> {
-        return this.jwtRefreshTokenExpirationTime;
-    }
+        const payloadRefreshToken =
+            this.helperEncryptionService.jwtDecrypt<AuthJwtRefreshPayloadDto>(
+                refreshTokenFromRequest
+            );
+        const payloadAccessToken: AuthJwtAccessPayloadDto =
+            await this.createPayloadAccessToken(
+                user,
+                payloadRefreshToken.session,
+                payloadRefreshToken.loginDate,
+                payloadRefreshToken.loginFrom
+            );
+        const accessToken: string = await this.createAccessToken(
+            user.email,
+            payloadAccessToken
+        );
 
-    async getIssuer(): Promise<string> {
-        return this.jwtIssuer;
-    }
-
-    async getAudience(): Promise<string> {
-        return this.jwtAudience;
+        return {
+            tokenType: this.jwtPrefixAuthorization,
+            roleType,
+            expiresIn: this.jwtAccessTokenExpirationTime,
+            accessToken,
+            refreshToken: refreshTokenFromRequest,
+        };
     }
 
     async getPasswordAttempt(): Promise<boolean> {

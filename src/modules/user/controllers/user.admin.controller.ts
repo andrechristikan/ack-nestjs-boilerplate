@@ -68,9 +68,13 @@ import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.prof
 import { UserService } from 'src/modules/user/services/user.service';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
+    USER_DEFAULT_POLICY_ROLE_TYPE,
     USER_DEFAULT_STATUS,
 } from 'src/modules/user/constants/user.list.constant';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
@@ -130,19 +134,26 @@ export class UserAdminController {
             ENUM_USER_STATUS
         )
         status: Record<string, any>,
-        @PaginationQueryFilterEqual('role')
-        role: Record<string, any>,
+        @PaginationQueryFilterInEnum(
+            'role.type',
+            USER_DEFAULT_POLICY_ROLE_TYPE,
+            ENUM_POLICY_ROLE_TYPE,
+            {
+                queryField: 'roleType',
+            }
+        )
+        roleType: Record<string, any>,
         @PaginationQueryFilterEqual('country')
         country: Record<string, any>
     ): Promise<IResponsePaging<UserListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
             ...status,
-            ...role,
+            ...roleType,
             ...country,
         };
 
-        const users: IUserDoc[] =
+        const users: IUserEntity[] =
             await this.userService.findAllWithRoleAndCountry(find, {
                 paging: {
                     limit: _limit,
@@ -150,7 +161,8 @@ export class UserAdminController {
                 },
                 order: _order,
             });
-        const total: number = await this.userService.getTotal(find);
+        const total: number =
+            await this.userService.getTotalWithRoleAndCountry(find);
         const totalPage: number = this.paginationService.totalPage(
             total,
             _limit

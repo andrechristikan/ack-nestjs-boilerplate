@@ -71,8 +71,6 @@ export class AuthPublicController {
         private readonly databaseConnection: Connection,
         @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
-        @InjectQueue(ENUM_WORKER_QUEUES.SESSION_QUEUE)
-        private readonly sessionQueue: Queue,
         private readonly userService: UserService,
         private readonly authService: AuthService,
         private readonly countryService: CountryService,
@@ -151,63 +149,41 @@ export class AuthPublicController {
             });
         }
 
-        const expiresInRefreshToken: number =
-            await this.authService.getRefreshTokenExpirationTime();
-        const session = await this.sessionService.create(request, {
-            user: user._id,
-        });
+        const databaseSession: ClientSession =
+            await this.databaseConnection.startSession();
+        databaseSession.startTransaction();
 
-        await this.sessionService.setLoginSession(
-            session._id,
-            user._id,
-            expiresInRefreshToken
-        );
-
-        await this.sessionQueue.add(
-            ENUM_SESSION_PROCESS.REVOKE,
-            {
-                session: session._id,
-            },
-            {
-                timestamp: session.createdAt.valueOf(),
-                delay: expiresInRefreshToken * 1000,
-            }
-        );
-
-        const roleType = userWithRole.role.type;
-        const tokenType: string = await this.authService.getTokenType();
-
-        const expiresInAccessToken: number =
-            await this.authService.getAccessTokenExpirationTime();
-        const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.authService.createPayloadAccessToken(
+        try {
+            const session = await this.sessionService.create(
+                request,
+                {
+                    user: user._id,
+                },
+                { session: databaseSession }
+            );
+            const token = await this.authService.createToken(
                 userWithRole,
-                session._id,
-                ENUM_AUTH_LOGIN_FROM.CREDENTIAL
+                session._id
             );
-        const accessToken: string = await this.authService.createAccessToken(
-            user.email,
-            payloadAccessToken
-        );
 
-        const payloadRefreshToken: AuthJwtRefreshPayloadDto =
-            await this.authService.createPayloadRefreshToken(
-                payloadAccessToken
-            );
-        const refreshToken: string = await this.authService.createRefreshToken(
-            user.email,
-            payloadRefreshToken
-        );
+            await this.sessionService.setLoginSession(userWithRole, session);
 
-        return {
-            data: {
-                tokenType,
-                roleType,
-                expiresIn: expiresInAccessToken,
-                accessToken,
-                refreshToken,
-            },
-        };
+            await databaseSession.commitTransaction();
+            await databaseSession.endSession();
+
+            return {
+                data: token,
+            };
+        } catch (err: any) {
+            await databaseSession.abortTransaction();
+            await databaseSession.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 
     @AuthPublicLoginSocialGoogleDoc()
@@ -251,63 +227,41 @@ export class AuthPublicController {
             });
         }
 
-        const expiresInRefreshToken: number =
-            await this.authService.getRefreshTokenExpirationTime();
+        const databaseSession: ClientSession =
+            await this.databaseConnection.startSession();
+        databaseSession.startTransaction();
 
-        const session = await this.sessionService.create(request, {
-            user: user._id,
-        });
-
-        await this.sessionService.setLoginSession(
-            session._id,
-            user._id,
-            expiresInRefreshToken
-        );
-
-        await this.sessionQueue.add(
-            ENUM_SESSION_PROCESS.REVOKE,
-            {
-                session: session._id,
-            },
-            {
-                delay: expiresInRefreshToken * 1000,
-            }
-        );
-
-        const roleType = userWithRole.role.type;
-        const tokenType: string = await this.authService.getTokenType();
-
-        const expiresInAccessToken: number =
-            await this.authService.getAccessTokenExpirationTime();
-        const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.authService.createPayloadAccessToken(
+        try {
+            const session = await this.sessionService.create(
+                request,
+                {
+                    user: user._id,
+                },
+                { session: databaseSession }
+            );
+            const token = await this.authService.createToken(
                 userWithRole,
-                session._id,
-                ENUM_AUTH_LOGIN_FROM.SOCIAL_GOOGLE
+                session._id
             );
-        const accessToken: string = await this.authService.createAccessToken(
-            user.email,
-            payloadAccessToken
-        );
 
-        const payloadRefreshToken: AuthJwtRefreshPayloadDto =
-            await this.authService.createPayloadRefreshToken(
-                payloadAccessToken
-            );
-        const refreshToken: string = await this.authService.createRefreshToken(
-            user.email,
-            payloadRefreshToken
-        );
+            await this.sessionService.setLoginSession(userWithRole, session);
 
-        return {
-            data: {
-                tokenType,
-                roleType,
-                expiresIn: expiresInAccessToken,
-                accessToken,
-                refreshToken,
-            },
-        };
+            await databaseSession.commitTransaction();
+            await databaseSession.endSession();
+
+            return {
+                data: token,
+            };
+        } catch (err: any) {
+            await databaseSession.abortTransaction();
+            await databaseSession.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 
     @AuthPublicLoginSocialAppleDoc()
@@ -351,63 +305,41 @@ export class AuthPublicController {
             });
         }
 
-        const expiresInRefreshToken: number =
-            await this.authService.getRefreshTokenExpirationTime();
+        const databaseSession: ClientSession =
+            await this.databaseConnection.startSession();
+        databaseSession.startTransaction();
 
-        const session = await this.sessionService.create(request, {
-            user: user._id,
-        });
-
-        await this.sessionService.setLoginSession(
-            session._id,
-            user._id,
-            expiresInRefreshToken
-        );
-
-        await this.sessionQueue.add(
-            ENUM_SESSION_PROCESS.REVOKE,
-            {
-                session: session._id,
-            },
-            {
-                delay: expiresInRefreshToken * 1000,
-            }
-        );
-
-        const roleType = userWithRole.role.type;
-        const tokenType: string = await this.authService.getTokenType();
-
-        const expiresInAccessToken: number =
-            await this.authService.getAccessTokenExpirationTime();
-        const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.authService.createPayloadAccessToken(
+        try {
+            const session = await this.sessionService.create(
+                request,
+                {
+                    user: user._id,
+                },
+                { session: databaseSession }
+            );
+            const token = await this.authService.createToken(
                 userWithRole,
-                session._id,
-                ENUM_AUTH_LOGIN_FROM.SOCIAL_GOOGLE
+                session._id
             );
-        const accessToken: string = await this.authService.createAccessToken(
-            user.email,
-            payloadAccessToken
-        );
 
-        const payloadRefreshToken: AuthJwtRefreshPayloadDto =
-            await this.authService.createPayloadRefreshToken(
-                payloadAccessToken
-            );
-        const refreshToken: string = await this.authService.createRefreshToken(
-            user.email,
-            payloadRefreshToken
-        );
+            await this.sessionService.setLoginSession(userWithRole, session);
 
-        return {
-            data: {
-                tokenType,
-                roleType,
-                expiresIn: expiresInAccessToken,
-                accessToken,
-                refreshToken,
-            },
-        };
+            await databaseSession.commitTransaction();
+            await databaseSession.endSession();
+
+            return {
+                data: token,
+            };
+        } catch (err: any) {
+            await databaseSession.abortTransaction();
+            await databaseSession.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 
     @AuthPublicSignUpDoc()

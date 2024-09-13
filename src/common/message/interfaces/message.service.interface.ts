@@ -9,8 +9,6 @@ import {
 } from 'src/common/message/interfaces/message.interface';
 
 export interface IMessageService {
-    getAvailableLanguages(): ENUM_MESSAGE_LANGUAGE[];
-    getLanguage(): ENUM_MESSAGE_LANGUAGE;
     filterLanguage(customLanguage: string): string[];
     setMessage(path: string, options?: IMessageSetOptions): string;
     setValidationMessage(

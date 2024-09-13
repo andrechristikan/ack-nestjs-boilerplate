@@ -35,7 +35,7 @@ export class EmailService implements IEmailService {
         this.supportEmail =
             this.configService.get<string>('email.supportEmail');
 
-        this.appName = this.configService.get<string>('app.name');
+        this.appName = this.configService.get<string>('email.name');
 
         this.clientUrl = this.configService.get<string>('email.clientUrl');
     }

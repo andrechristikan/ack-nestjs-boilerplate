@@ -90,7 +90,10 @@ async function bootstrap() {
             `==========================================================`
         );
 
-        return;
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        await app.close();
+        process.exit(0);
     }
 
     logger.log(`Job is ${jobEnable}`);
@@ -109,5 +112,7 @@ async function bootstrap() {
     logger.log(`Database uri ${databaseUri}`);
 
     logger.log(`==========================================================`);
+
+    return;
 }
 bootstrap();

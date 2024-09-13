@@ -6,7 +6,6 @@ import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
 import { ApiKeyAdminController } from 'src/modules/api-key/controllers/api-key.admin.controller';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { AuthAdminController } from 'src/modules/auth/controllers/auth.admin.controller';
-import { CountryAdminController } from 'src/modules/country/controllers/country.admin.controller';
 import { CountryModule } from 'src/modules/country/country.module';
 import { EmailModule } from 'src/modules/email/email.module';
 import { PasswordHistoryAdminController } from 'src/modules/password-history/controllers/password-history.admin.controller';
@@ -27,7 +26,6 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         SettingAdminController,
         RoleAdminController,
         UserAdminController,
-        CountryAdminController,
         AuthAdminController,
         SessionAdminController,
         PasswordHistoryAdminController,

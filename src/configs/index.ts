@@ -5,7 +5,6 @@ import HelperConfig from 'src/configs/helper.config';
 import AwsConfig from 'src/configs/aws.config';
 import UserConfig from 'src/configs/user.config';
 import MiddlewareConfig from 'src/configs/middleware.config';
-import RequestConfig from 'src/configs/request.config';
 import DocConfig from 'src/configs/doc.config';
 import MessageConfig from 'src/configs/message.config';
 import EmailConfig from 'src/configs/email.config';
@@ -20,7 +19,6 @@ export default [
     AwsConfig,
     UserConfig,
     MiddlewareConfig,
-    RequestConfig,
     DocConfig,
     MessageConfig,
     EmailConfig,

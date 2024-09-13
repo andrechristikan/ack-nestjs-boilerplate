@@ -133,7 +133,6 @@ export class ResponsePagingDto extends PickType(ResponseDto, [
     @ApiProperty({
         required: true,
         isArray: true,
-        default: [],
     })
     data: Record<string, any>[];
 }

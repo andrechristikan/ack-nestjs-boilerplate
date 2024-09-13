@@ -1,1 +1,1 @@
-export const SessionLoginPrefix = '__userLogin-';
+export const SessionLoginPrefix = 'UserLogin';

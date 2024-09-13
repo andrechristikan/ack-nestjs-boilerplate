@@ -2,6 +2,7 @@
     "list": "List of sessions retrieved successfully.",
     "revoke": "Successfully revoke session",
     "error": {
-        "notFound": "Session not found"
+        "notFound": "Session not found",
+        "forbiddenRevoke": "You cannot revoke your current session"
     }
 }

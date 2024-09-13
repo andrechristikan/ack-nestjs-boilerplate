@@ -45,6 +45,7 @@ import { ActivityService } from 'src/modules/activity/services/activity.service'
 import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { InjectQueue } from '@nestjs/bullmq';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 
 @ApiTags('modules.shared.auth')
 @Controller({
@@ -74,14 +75,9 @@ export class AuthSharedController {
     async refresh(
         @AuthJwtToken() refreshToken: string,
         @AuthJwtPayload<AuthJwtRefreshPayloadDto>()
-        { _id, loginFrom, session }: AuthJwtRefreshPayloadDto
+        { _id, session }: AuthJwtRefreshPayloadDto
     ): Promise<IResponse<AuthRefreshResponseDto>> {
-        const user = await this.userService.findOneActiveById(_id);
-
-        const checkActive = await this.sessionService.findOneActiveByIdAndUser(
-            session,
-            user._id
-        );
+        const checkActive = await this.sessionService.findLoginSession(session);
         if (!checkActive) {
             throw new UnauthorizedException({
                 statusCode: ENUM_SESSION_STATUS_CODE_ERROR.NOT_FOUND,
@@ -89,30 +85,11 @@ export class AuthSharedController {
             });
         }
 
-        const roleType = user.role.type;
-        const tokenType: string = await this.authService.getTokenType();
-
-        const expiresInAccessToken: number =
-            await this.authService.getAccessTokenExpirationTime();
-        const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.authService.createPayloadAccessToken(
-                user,
-                session,
-                loginFrom
-            );
-        const accessToken: string = await this.authService.createAccessToken(
-            user.email,
-            payloadAccessToken
-        );
+        const user: IUserDoc = await this.userService.findOneActiveById(_id);
+        const token = await this.authService.refreshToken(user, refreshToken);
 
         return {
-            data: {
-                tokenType,
-                roleType,
-                expiresIn: expiresInAccessToken,
-                accessToken,
-                refreshToken,
-            },
+            data: token,
         };
     }
 

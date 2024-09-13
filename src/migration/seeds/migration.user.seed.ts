@@ -134,7 +134,7 @@ export class MigrationUserSeed {
             await Promise.all(promises);
 
             // Add random user
-            const randomUser = Array(30)
+            const randomUser = Array(200)
                 .fill(0)
                 .map(() =>
                     this.userService.create(

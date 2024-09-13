@@ -66,7 +66,6 @@ export interface IPasswordHistoryService {
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
-    getPasswordPeriod(): Promise<number>;
     mapList(
         userHistories: IPasswordHistoryDoc[] | IPasswordHistoryEntity[]
     ): Promise<PasswordHistoryListResponseDto[]>;

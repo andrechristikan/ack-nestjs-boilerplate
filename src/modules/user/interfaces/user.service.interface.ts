@@ -1,8 +1,10 @@
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import {
+    IDatabaseAggregateOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseExistOptions,
+    IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
@@ -41,6 +43,14 @@ export interface IUserService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
+    findAllWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllAggregateOptions
+    ): Promise<IUserEntity[]>;
+    getTotalWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseAggregateOptions
+    ): Promise<number>;
     findOneById(_id: string, options?: IDatabaseOptions): Promise<UserDoc>;
     findOne(
         find: Record<string, any>,
@@ -52,10 +62,6 @@ export interface IUserService {
         mobileNumber: string,
         options?: IDatabaseOptions
     ): Promise<UserDoc>;
-    findAllWithRoleAndCountry(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<IUserDoc[]>;
     findOneWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions

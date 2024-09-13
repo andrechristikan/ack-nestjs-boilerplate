@@ -1,10 +1,20 @@
-import { Controller, Delete, Get, Param } from '@nestjs/common';
+import {
+    BadRequestException,
+    Controller,
+    Delete,
+    ForbiddenException,
+    Get,
+    Param,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
-import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
+import {
+    Response,
+    ResponsePaging,
+} from 'src/common/response/decorators/response.decorator';
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import {
@@ -16,6 +26,7 @@ import {
     SessionSharedRevokeDoc,
 } from 'src/modules/session/docs/session.shared.doc';
 import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
+import { ENUM_SESSION_STATUS_CODE_ERROR } from 'src/modules/session/enums/session.status-code.enum';
 import { SessionActiveParsePipe } from 'src/modules/session/pipes/session.parse.pipe';
 import { SessionDoc } from 'src/modules/session/repository/entities/session.entity';
 import { SessionService } from 'src/modules/session/services/session.service';
@@ -74,14 +85,22 @@ export class SessionSharedController {
     }
 
     @SessionSharedRevokeDoc()
-    @ResponsePaging('session.revoke')
+    @Response('session.revoke')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/revoke/:session')
     async revoke(
         @Param('session', RequestRequiredPipe, SessionActiveParsePipe)
-        session: SessionDoc
+        session: SessionDoc,
+        @AuthJwtPayload('session') sessionFromRequest: string
     ): Promise<void> {
+        if (session._id === sessionFromRequest) {
+            throw new ForbiddenException({
+                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.FORBIDDEN_REVOKE,
+                message: 'session.error.forbiddenRevoke',
+            });
+        }
+
         await this.sessionService.updateRevoke(session);
         await this.sessionService.deleteLoginSession(session._id);
     }

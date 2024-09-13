@@ -13,16 +13,14 @@ import configs from 'src/configs';
 import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
 import { FileModule } from 'src/common/file/file.module';
-import { redisStore } from 'cache-manager-redis-store';
-import { CacheModule, CacheOptions, CacheStore } from '@nestjs/cache-manager';
-import type { RedisClientOptions } from 'redis';
 import { BullModule } from '@nestjs/bullmq';
+import { CacheModule, CacheOptions, CacheStore } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-store';
 
 @Module({
     controllers: [],
     providers: [],
     imports: [
-        // Config
         ConfigModule.forRoot({
             load: configs,
             isGlobal: true,
@@ -37,7 +35,6 @@ import { BullModule } from '@nestjs/bullmq';
             useFactory: (databaseService: DatabaseService) =>
                 databaseService.createOptions(),
         }),
-
         BullModule.forRootAsync({
             imports: [ConfigModule],
             inject: [ConfigService],
