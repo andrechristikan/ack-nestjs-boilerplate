@@ -13,14 +13,11 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 import { AuthJwtPayload } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import {
     AuthSocialAppleProtected,
     AuthSocialGoogleProtected,
 } from 'src/modules/auth/decorators/auth.social.decorator';
-import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
-import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
 import { AuthSocialGooglePayloadDto } from 'src/modules/auth/dtos/social/auth.social.google-payload.dto';
 import { AuthService } from 'src/modules/auth/services/auth.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
@@ -57,7 +54,6 @@ import { SessionService } from 'src/modules/session/services/session.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';
-import { ENUM_SESSION_PROCESS } from 'src/modules/session/enums/session.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 
 @ApiTags('modules.public.auth')

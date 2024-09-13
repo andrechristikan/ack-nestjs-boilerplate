@@ -17,9 +17,7 @@ import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.soc
 import { AuthSocialGooglePayloadDto } from 'src/modules/auth/dtos/social/auth.social.google-payload.dto';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 import { plainToInstance } from 'class-transformer';
-import { Document } from 'mongoose';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
-import { SessionDoc } from 'src/modules/session/repository/entities/session.entity';
 import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
 
 @Injectable()

@@ -17,10 +17,7 @@ import {
 } from 'src/modules/user/constants/user.list.constant';
 import { UserSystemListDoc } from 'src/modules/user/docs/user.system.doc';
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
-import {
-    IUserDoc,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.system.user')

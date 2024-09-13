@@ -1,5 +1,4 @@
 import {
-    BadRequestException,
     Controller,
     Delete,
     ForbiddenException,

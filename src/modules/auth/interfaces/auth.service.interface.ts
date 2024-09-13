@@ -1,4 +1,3 @@
-import { Document } from 'mongoose';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
@@ -8,7 +7,6 @@ import {
     IAuthPassword,
     IAuthPasswordOptions,
 } from 'src/modules/auth/interfaces/auth.interface';
-import { SessionDoc } from 'src/modules/session/repository/entities/session.entity';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
 
