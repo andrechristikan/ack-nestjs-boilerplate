@@ -112,6 +112,7 @@ export class CountryService implements ICountryService {
                     phoneCode,
                     timeZone,
                     domain,
+                    currency,
                 }): CountryCreateRequestDto => {
                     const create: CountryEntity = new CountryEntity();
                     create.name = name;
@@ -123,6 +124,7 @@ export class CountryService implements ICountryService {
                     create.phoneCode = phoneCode;
                     create.timeZone = timeZone;
                     create.domain = domain;
+                    create.currency = currency;
 
                     return create;
                 }

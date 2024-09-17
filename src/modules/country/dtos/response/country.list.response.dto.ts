@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { DatabaseDto } from 'src/common/database/dtos/database.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
@@ -7,7 +7,6 @@ import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 export class CountryListResponseDto extends DatabaseDto {
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country name',
         example: faker.location.country(),
         maxLength: 100,
@@ -17,7 +16,6 @@ export class CountryListResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country code, Alpha 2 code version',
         example: faker.location.countryCode('alpha-2'),
         maxLength: 2,
@@ -27,7 +25,6 @@ export class CountryListResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country code, Alpha 3 code version',
         example: faker.location.countryCode('alpha-3'),
         maxLength: 3,
@@ -37,7 +34,6 @@ export class CountryListResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country code, Numeric code version',
         example: faker.location.countryCode('numeric'),
         maxLength: 3,
@@ -47,7 +43,6 @@ export class CountryListResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country code, FIPS version',
         example: faker.location.countryCode('alpha-2'),
         maxLength: 2,
@@ -57,7 +52,6 @@ export class CountryListResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country phone code',
         example: [faker.helpers.arrayElement(['62', '65'])],
         maxLength: 4,
@@ -80,6 +74,12 @@ export class CountryListResponseDto extends DatabaseDto {
     timeZone: string;
 
     @ApiProperty({
+        required: true,
+        example: faker.finance.currencyCode(),
+    })
+    currency: string;
+
+    @ApiProperty({
         required: false,
         description: 'Top level domain',
         example: faker.internet.domainSuffix(),
@@ -89,6 +89,7 @@ export class CountryListResponseDto extends DatabaseDto {
     @ApiProperty({
         required: false,
         type: AwsS3Dto,
+        oneOf: [{ $ref: getSchemaPath(AwsS3Dto) }],
     })
     @Type(() => AwsS3Dto)
     image?: AwsS3Dto;

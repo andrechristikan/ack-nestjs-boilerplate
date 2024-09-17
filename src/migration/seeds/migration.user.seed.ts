@@ -149,11 +149,11 @@ export class MigrationUserSeed {
                     )
                 );
 
-            await Promise.all(randomUser);
+            const rands = await Promise.all(randomUser);
 
             // Activity & Password
             const randomActivityAndPassword = [];
-            for (const rand of randomActivityAndPassword) {
+            for (const rand of rands) {
                 randomActivityAndPassword.push(
                     this.activityService.createByAdmin(rand, {
                         by: superAdmin._id,

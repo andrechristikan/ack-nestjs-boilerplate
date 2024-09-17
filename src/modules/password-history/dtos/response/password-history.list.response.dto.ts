@@ -2,6 +2,7 @@ import { faker } from '@faker-js/faker';
 import {
     ApiHideProperty,
     ApiProperty,
+    getSchemaPath,
     IntersectionType,
     PickType,
 } from '@nestjs/swagger';
@@ -24,6 +25,7 @@ export class PasswordHistoryListResponseDto extends IntersectionType(
     @ApiProperty({
         required: true,
         type: UserShortResponseDto,
+        oneOf: [{ $ref: getSchemaPath(UserShortResponseDto) }],
     })
     @Type(() => UserShortResponseDto)
     by: UserShortResponseDto;

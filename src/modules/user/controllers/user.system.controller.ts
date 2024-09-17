@@ -14,9 +14,11 @@ import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_POLICY_ROLE_TYPE,
+    USER_DEFAULT_STATUS,
 } from 'src/modules/user/constants/user.list.constant';
 import { UserSystemListDoc } from 'src/modules/user/docs/user.system.doc';
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
+import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserService } from 'src/modules/user/services/user.service';
 
@@ -39,6 +41,12 @@ export class UserSystemController {
         @PaginationQuery({ availableSearch: USER_DEFAULT_AVAILABLE_SEARCH })
         { _search, _limit, _offset, _order }: PaginationListDto,
         @PaginationQueryFilterInEnum(
+            'status',
+            USER_DEFAULT_STATUS,
+            ENUM_USER_STATUS
+        )
+        status: Record<string, any>,
+        @PaginationQueryFilterInEnum(
             'role.type',
             USER_DEFAULT_POLICY_ROLE_TYPE,
             ENUM_POLICY_ROLE_TYPE,
@@ -54,6 +62,7 @@ export class UserSystemController {
             ..._search,
             ...roleType,
             ...country,
+            ...status,
         };
 
         const users: IUserEntity[] =

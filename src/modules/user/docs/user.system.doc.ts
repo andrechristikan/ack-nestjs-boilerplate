@@ -5,7 +5,11 @@ import {
     DocRequest,
     DocResponsePaging,
 } from 'src/common/doc/decorators/doc.decorator';
-import { UserDocQueryRoleType } from 'src/modules/user/constants/user.doc.constant';
+import {
+    UserDocQueryCountry,
+    UserDocQueryRoleType,
+    UserDocQueryStatus,
+} from 'src/modules/user/constants/user.doc.constant';
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 
 export function UserSystemListDoc(): MethodDecorator {
@@ -14,7 +18,11 @@ export function UserSystemListDoc(): MethodDecorator {
             summary: 'get all of users',
         }),
         DocRequest({
-            queries: UserDocQueryRoleType,
+            queries: [
+                ...UserDocQueryStatus,
+                ...UserDocQueryRoleType,
+                ...UserDocQueryCountry,
+            ],
         }),
         DocAuth({
             xApiKey: true,

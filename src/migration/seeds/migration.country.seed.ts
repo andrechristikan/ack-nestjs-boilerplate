@@ -24,6 +24,7 @@ export class MigrationCountrySeed {
                     phoneCode: ['62'],
                     continent: 'Asia',
                     timeZone: 'Asia/Jakarta',
+                    currency: 'IDR',
                 },
             ];
 

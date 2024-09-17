@@ -90,7 +90,7 @@ async function bootstrap() {
             `==========================================================`
         );
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         await app.close();
         process.exit(0);

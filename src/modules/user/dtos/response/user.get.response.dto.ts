@@ -31,6 +31,7 @@ export class UserGetResponseDto extends DatabaseDto {
     @ApiProperty({
         required: false,
         type: UserUpdateMobileNumberRequestDto,
+        oneOf: [{ $ref: getSchemaPath(UserUpdateMobileNumberRequestDto) }],
     })
     @Type(() => UserUpdateMobileNumberRequestDto)
     mobileNumber?: UserUpdateMobileNumberRequestDto;
@@ -139,7 +140,8 @@ export class UserGetResponseDto extends DatabaseDto {
     @ApiProperty({
         example: faker.person.lastName(),
         required: true,
-        type: () => UserVerificationResponseDto,
+        type: UserVerificationResponseDto,
+        oneOf: [{ $ref: getSchemaPath(UserVerificationResponseDto) }],
     })
     @Type(() => UserVerificationResponseDto)
     verification: UserVerificationResponseDto;

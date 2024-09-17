@@ -80,6 +80,11 @@ export class CountryEntity extends DatabaseEntityBase {
     timeZone: string;
 
     @DatabaseProp({
+        required: true,
+    })
+    currency: string;
+
+    @DatabaseProp({
         required: false,
     })
     domain?: string;

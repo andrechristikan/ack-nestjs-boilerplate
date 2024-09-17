@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
 
@@ -20,6 +20,7 @@ export class UserMobileNumberResponseDto {
         required: true,
         nullable: false,
         type: CountryShortResponseDto,
+        oneOf: [{ $ref: getSchemaPath(CountryShortResponseDto) }],
     })
     @Type(() => CountryShortResponseDto)
     country: CountryShortResponseDto;

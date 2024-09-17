@@ -1,4 +1,9 @@
-import { ApiHideProperty, ApiProperty, OmitType } from '@nestjs/swagger';
+import {
+    ApiHideProperty,
+    ApiProperty,
+    getSchemaPath,
+    OmitType,
+} from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
 import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
@@ -27,6 +32,7 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
         required: true,
         nullable: false,
         type: RoleListResponseDto,
+        oneOf: [{ $ref: getSchemaPath(RoleListResponseDto) }],
     })
     @Type(() => RoleListResponseDto)
     role: RoleListResponseDto;
@@ -35,6 +41,7 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
         required: true,
         nullable: false,
         type: CountryShortResponseDto,
+        oneOf: [{ $ref: getSchemaPath(CountryShortResponseDto) }],
     })
     @Type(() => CountryShortResponseDto)
     country: CountryShortResponseDto;

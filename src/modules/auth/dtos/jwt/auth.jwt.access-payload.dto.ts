@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 import {
@@ -96,6 +96,7 @@ export class AuthJwtAccessPayloadDto {
         required: true,
         nullable: false,
         type: AuthJwtAccessPayloadPermissionDto,
+        oneOf: [{ $ref: getSchemaPath(AuthJwtAccessPayloadPermissionDto) }],
         isArray: true,
         default: [],
     })

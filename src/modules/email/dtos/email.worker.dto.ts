@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
     IsNotEmpty,
@@ -12,7 +12,8 @@ import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
 export class EmailWorkerDto {
     @ApiProperty({
         required: true,
-        type: () => EmailSendDto,
+        type: EmailSendDto,
+        oneOf: [{ $ref: getSchemaPath(EmailSendDto) }],
     })
     @IsObject()
     @IsNotEmpty()
