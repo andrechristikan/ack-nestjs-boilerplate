@@ -9,17 +9,15 @@ import {
     InternalServerErrorException,
     NotFoundException,
     Post,
+    Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 import { AuthJwtPayload } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import {
     AuthSocialAppleProtected,
     AuthSocialGoogleProtected,
 } from 'src/modules/auth/decorators/auth.social.decorator';
-import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
-import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
 import { AuthSocialGooglePayloadDto } from 'src/modules/auth/dtos/social/auth.social.google-payload.dto';
 import { AuthService } from 'src/modules/auth/services/auth.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
@@ -42,15 +40,21 @@ import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.soc
 import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { ClientSession } from 'mongoose';
-import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
-import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
 import { Connection } from 'mongoose';
 import { Queue } from 'bullmq';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { RoleService } from 'src/modules/role/services/role.service';
+import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
+import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
+import { SessionService } from 'src/modules/session/services/session.service';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { ActivityService } from 'src/modules/activity/services/activity.service';
+import { MessageService } from 'src/common/message/services/message.service';
+import { InjectQueue } from '@nestjs/bullmq';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -59,13 +63,18 @@ import { RoleService } from 'src/modules/role/services/role.service';
 })
 export class AuthPublicController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
-        @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
+        @InjectDatabaseConnection()
+        private readonly databaseConnection: Connection,
+        @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly userService: UserService,
         private readonly authService: AuthService,
         private readonly countryService: CountryService,
-        private readonly roleService: RoleService
+        private readonly roleService: RoleService,
+        private readonly passwordHistoryService: PasswordHistoryService,
+        private readonly sessionService: SessionService,
+        private readonly activityService: ActivityService,
+        private readonly messageService: MessageService
     ) {}
 
     @AuthPublicLoginCredentialDoc()
@@ -74,7 +83,8 @@ export class AuthPublicController {
     @HttpCode(HttpStatus.OK)
     @Post('/login/credential')
     async loginWithCredential(
-        @Body() { email, password }: AuthLoginRequestDto
+        @Body() { email, password }: AuthLoginRequestDto,
+        @Req() request: IRequestApp
     ): Promise<IResponse<AuthLoginResponseDto>> {
         let user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
@@ -135,39 +145,41 @@ export class AuthPublicController {
             });
         }
 
-        const roleType = userWithRole.role.type;
-        const tokenType: string = await this.authService.getTokenType();
+        const databaseSession: ClientSession =
+            await this.databaseConnection.startSession();
+        databaseSession.startTransaction();
 
-        const expiresInAccessToken: number =
-            await this.authService.getAccessTokenExpirationTime();
-        const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.authService.createPayloadAccessToken(
+        try {
+            const session = await this.sessionService.create(
+                request,
+                {
+                    user: user._id,
+                },
+                { session: databaseSession }
+            );
+            const token = await this.authService.createToken(
                 userWithRole,
-                ENUM_AUTH_LOGIN_FROM.CREDENTIAL
+                session._id
             );
-        const accessToken: string = await this.authService.createAccessToken(
-            user.email,
-            payloadAccessToken
-        );
 
-        const payloadRefreshToken: AuthJwtRefreshPayloadDto =
-            await this.authService.createPayloadRefreshToken(
-                payloadAccessToken
-            );
-        const refreshToken: string = await this.authService.createRefreshToken(
-            user.email,
-            payloadRefreshToken
-        );
+            await this.sessionService.setLoginSession(userWithRole, session);
 
-        return {
-            data: {
-                tokenType,
-                roleType,
-                expiresIn: expiresInAccessToken,
-                accessToken,
-                refreshToken,
-            },
-        };
+            await databaseSession.commitTransaction();
+            await databaseSession.endSession();
+
+            return {
+                data: token,
+            };
+        } catch (err: any) {
+            await databaseSession.abortTransaction();
+            await databaseSession.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 
     @AuthPublicLoginSocialGoogleDoc()
@@ -176,7 +188,8 @@ export class AuthPublicController {
     @Post('/login/social/google')
     async loginWithGoogle(
         @AuthJwtPayload<AuthSocialGooglePayloadDto>()
-        { email }: AuthSocialGooglePayloadDto
+        { email }: AuthSocialGooglePayloadDto,
+        @Req() request: IRequestApp
     ): Promise<IResponse<AuthLoginResponseDto>> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
@@ -210,39 +223,41 @@ export class AuthPublicController {
             });
         }
 
-        const roleType = userWithRole.role.type;
-        const tokenType: string = await this.authService.getTokenType();
+        const databaseSession: ClientSession =
+            await this.databaseConnection.startSession();
+        databaseSession.startTransaction();
 
-        const expiresInAccessToken: number =
-            await this.authService.getAccessTokenExpirationTime();
-        const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.authService.createPayloadAccessToken(
+        try {
+            const session = await this.sessionService.create(
+                request,
+                {
+                    user: user._id,
+                },
+                { session: databaseSession }
+            );
+            const token = await this.authService.createToken(
                 userWithRole,
-                ENUM_AUTH_LOGIN_FROM.SOCIAL_GOOGLE
+                session._id
             );
-        const accessToken: string = await this.authService.createAccessToken(
-            user.email,
-            payloadAccessToken
-        );
 
-        const payloadRefreshToken: AuthJwtRefreshPayloadDto =
-            await this.authService.createPayloadRefreshToken(
-                payloadAccessToken
-            );
-        const refreshToken: string = await this.authService.createRefreshToken(
-            user.email,
-            payloadRefreshToken
-        );
+            await this.sessionService.setLoginSession(userWithRole, session);
 
-        return {
-            data: {
-                tokenType,
-                roleType,
-                expiresIn: expiresInAccessToken,
-                accessToken,
-                refreshToken,
-            },
-        };
+            await databaseSession.commitTransaction();
+            await databaseSession.endSession();
+
+            return {
+                data: token,
+            };
+        } catch (err: any) {
+            await databaseSession.abortTransaction();
+            await databaseSession.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 
     @AuthPublicLoginSocialAppleDoc()
@@ -251,7 +266,8 @@ export class AuthPublicController {
     @Post('/login/social/apple')
     async loginWithApple(
         @AuthJwtPayload<AuthSocialApplePayloadDto>()
-        { email }: AuthSocialApplePayloadDto
+        { email }: AuthSocialApplePayloadDto,
+        @Req() request: IRequestApp
     ): Promise<IResponse<AuthLoginResponseDto>> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
@@ -285,39 +301,41 @@ export class AuthPublicController {
             });
         }
 
-        const roleType = userWithRole.role.type;
-        const tokenType: string = await this.authService.getTokenType();
+        const databaseSession: ClientSession =
+            await this.databaseConnection.startSession();
+        databaseSession.startTransaction();
 
-        const expiresInAccessToken: number =
-            await this.authService.getAccessTokenExpirationTime();
-        const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.authService.createPayloadAccessToken(
+        try {
+            const session = await this.sessionService.create(
+                request,
+                {
+                    user: user._id,
+                },
+                { session: databaseSession }
+            );
+            const token = await this.authService.createToken(
                 userWithRole,
-                ENUM_AUTH_LOGIN_FROM.SOCIAL_GOOGLE
+                session._id
             );
-        const accessToken: string = await this.authService.createAccessToken(
-            user.email,
-            payloadAccessToken
-        );
 
-        const payloadRefreshToken: AuthJwtRefreshPayloadDto =
-            await this.authService.createPayloadRefreshToken(
-                payloadAccessToken
-            );
-        const refreshToken: string = await this.authService.createRefreshToken(
-            user.email,
-            payloadRefreshToken
-        );
+            await this.sessionService.setLoginSession(userWithRole, session);
 
-        return {
-            data: {
-                tokenType,
-                roleType,
-                expiresIn: expiresInAccessToken,
-                accessToken,
-                refreshToken,
-            },
-        };
+            await databaseSession.commitTransaction();
+            await databaseSession.endSession();
+
+            return {
+                data: token,
+            };
+        } catch (err: any) {
+            await databaseSession.abortTransaction();
+            await databaseSession.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 
     @AuthPublicSignUpDoc()
@@ -331,7 +349,7 @@ export class AuthPublicController {
         const promises: Promise<any>[] = [
             this.roleService.findOneByName('user'),
             this.userService.existByEmail(email),
-            this.countryService.findOneActiveById(country),
+            this.countryService.findOneById(country),
         ];
 
         const [role, emailExist, checkCountry] = await Promise.all(promises);
@@ -372,15 +390,32 @@ export class AuthPublicController {
                 { session }
             );
 
-            this.emailQueue.add(
-                ENUM_EMAIL.WELCOME,
+            await this.passwordHistoryService.createByUser(
+                user,
                 {
-                    email,
-                    name,
+                    type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
+                },
+                { session }
+            );
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.signUp'
+                    ),
+                },
+                { session }
+            );
+
+            this.emailQueue.add(
+                ENUM_SEND_EMAIL_PROCESS.WELCOME,
+                {
+                    send: { email, name },
                 },
                 {
                     debounce: {
-                        id: `${ENUM_EMAIL.WELCOME}-${user._id}`,
+                        id: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${user._id}`,
                         ttl: 1000,
                     },
                 }

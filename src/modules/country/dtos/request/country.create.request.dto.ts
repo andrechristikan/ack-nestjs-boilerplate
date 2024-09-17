@@ -14,7 +14,6 @@ import {
 export class CountryCreateRequestDto {
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country name',
         example: faker.location.country(),
         maxLength: 100,
@@ -28,7 +27,6 @@ export class CountryCreateRequestDto {
 
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country code, Alpha 2 code version',
         example: faker.location.countryCode('alpha-2'),
         maxLength: 2,
@@ -43,7 +41,6 @@ export class CountryCreateRequestDto {
 
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country code, Alpha 3 code version',
         example: faker.location.countryCode('alpha-3'),
         maxLength: 3,
@@ -58,7 +55,6 @@ export class CountryCreateRequestDto {
 
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country code, Numeric code version',
         example: faker.location.countryCode('numeric'),
         maxLength: 3,
@@ -72,7 +68,6 @@ export class CountryCreateRequestDto {
 
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country code, FIPS version',
         example: faker.location.countryCode('alpha-2'),
         maxLength: 2,
@@ -86,7 +81,6 @@ export class CountryCreateRequestDto {
 
     @ApiProperty({
         required: true,
-        type: String,
         description: 'Country phone code',
         example: [faker.helpers.arrayElement(['62', '65'])],
         maxLength: 4,
@@ -115,6 +109,14 @@ export class CountryCreateRequestDto {
     @IsNotEmpty()
     @IsString()
     timeZone: string;
+
+    @ApiProperty({
+        required: true,
+        example: faker.finance.currency(),
+    })
+    @IsNotEmpty()
+    @IsString()
+    currency: string;
 
     @ApiProperty({
         required: false,

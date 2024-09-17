@@ -26,7 +26,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile
+        run: yarn --frozen-lockfile --non-interactive
 
       - name: Unit Test
         run: NODE_ENV=test yarn test

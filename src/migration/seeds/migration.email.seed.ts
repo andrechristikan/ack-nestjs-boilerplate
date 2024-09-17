@@ -18,6 +18,12 @@ export class MigrationEmailSeed {
         }
 
         try {
+            await this.emailService.createWelcomeAdmin();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
             await this.emailService.createChangePassword();
         } catch (err: any) {
             throw new Error(err);
@@ -39,6 +45,12 @@ export class MigrationEmailSeed {
     async rollback(): Promise<void> {
         try {
             await this.emailService.deleteWelcome();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.deleteWelcomeAdmin();
         } catch (err: any) {
             throw new Error(err);
         }

@@ -24,7 +24,7 @@ export default registerAs(
             port: Number.parseInt(process.env.HTTP_PORT),
         },
         urlVersion: {
-            enable: process.env.URL_VERSION_ENABLE === 'true',
+            enable: process.env.URL_VERSIONING_ENABLE === 'true',
             prefix: 'v',
             version: process.env.URL_VERSION,
         },

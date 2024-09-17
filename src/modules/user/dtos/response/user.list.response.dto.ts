@@ -1,4 +1,9 @@
-import { ApiHideProperty, ApiProperty, OmitType } from '@nestjs/swagger';
+import {
+    ApiHideProperty,
+    ApiProperty,
+    getSchemaPath,
+    OmitType,
+} from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
 import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
@@ -8,6 +13,7 @@ import {
 } from 'src/modules/user/enums/user.enum';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
+import { UserVerificationResponseDto } from 'src/modules/user/dtos/response/user.verification.response.dto';
 
 export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     'passwordExpired',
@@ -20,11 +26,13 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     'mobileNumber',
     'address',
     'familyName',
+    'verification',
 ] as const) {
     @ApiProperty({
         required: true,
         nullable: false,
         type: RoleListResponseDto,
+        oneOf: [{ $ref: getSchemaPath(RoleListResponseDto) }],
     })
     @Type(() => RoleListResponseDto)
     role: RoleListResponseDto;
@@ -33,6 +41,7 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
         required: true,
         nullable: false,
         type: CountryShortResponseDto,
+        oneOf: [{ $ref: getSchemaPath(CountryShortResponseDto) }],
     })
     @Type(() => CountryShortResponseDto)
     country: CountryShortResponseDto;
@@ -68,4 +77,8 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     @ApiHideProperty()
     @Exclude()
     familyName?: string;
+
+    @ApiHideProperty()
+    @Exclude()
+    verification: UserVerificationResponseDto;
 }

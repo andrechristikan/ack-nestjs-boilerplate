@@ -7,7 +7,7 @@
     "blocked": "User blocked successfully.",
     "profile": "User profile retrieved successfully.",
     "updateProfile": "User profile updated successfully.",
-    "updateProfileUpload": "User profile picture uploaded successfully.",
+    "uploadPhotoProfile": "User profile picture uploaded successfully.",
     "deleteSelf": "User deleted successfully.",
     "updateMobileNumber": "User update mobile number successfully.",
     "updateClaimUsername": "User claim username successfully.",

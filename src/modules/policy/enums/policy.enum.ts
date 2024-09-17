@@ -26,6 +26,8 @@ export enum ENUM_POLICY_SUBJECT {
     COUNTRY = 'COUNTRY',
     ROLE = 'ROLE',
     USER = 'USER',
+    SESSION = 'SESSION',
+    ACTIVITY = 'ACTIVITY',
 }
 
 export enum ENUM_POLICY_ROLE_TYPE {

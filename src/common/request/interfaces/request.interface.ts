@@ -7,6 +7,7 @@ export interface IRequestApp<T = AuthJwtAccessPayloadDto, B = ApiKeyPayloadDto>
     extends Request {
     apiKey?: B;
     user?: T;
+    workspace?: string;
 
     __language: string;
     __version: string;

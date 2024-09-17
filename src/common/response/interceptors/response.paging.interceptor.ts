@@ -24,6 +24,7 @@ import {
 } from 'src/common/response/dtos/response.paging.dto';
 import { ConfigService } from '@nestjs/config';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 
 @Injectable()
 export class ResponsePagingInterceptor
@@ -65,7 +66,10 @@ export class ResponsePagingInterceptor
                     const xPath = request.path;
                     const xPagination = request.__pagination;
                     const xLanguage: string =
-                        request.__language ?? this.messageService.getLanguage();
+                        request.__language ??
+                        this.configService.get<ENUM_MESSAGE_LANGUAGE>(
+                            'message.language'
+                        );
                     const xTimestamp = this.helperDateService.createTimestamp();
                     const xTimezone =
                         Intl.DateTimeFormat().resolvedOptions().timeZone;

@@ -1,10 +1,30 @@
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
+import { SettingAuthResponseDto } from 'src/modules/setting/dtos/response/setting.auth.response.dto';
 import { SettingFileResponseDto } from 'src/modules/setting/dtos/response/setting.file.response.dto';
 import { SettingLanguageResponseDto } from 'src/modules/setting/dtos/response/setting.language.response.dto';
+import { SettingMiddlewareResponseDto } from 'src/modules/setting/dtos/response/setting.middleware.response.dto';
 import { SettingTimezoneResponseDto } from 'src/modules/setting/dtos/response/setting.timezone.response.dto';
 
 export class SettingCoreResponseDto {
+    @ApiProperty({
+        required: true,
+    })
+    name: string;
+
+    @ApiProperty({
+        required: true,
+        enum: ENUM_APP_ENVIRONMENT,
+        example: ENUM_APP_ENVIRONMENT.DEVELOPMENT,
+    })
+    env: ENUM_APP_ENVIRONMENT;
+
+    @ApiProperty({
+        required: true,
+    })
+    timeout: number;
+
     @ApiProperty({
         required: true,
         type: SettingFileResponseDto,
@@ -28,4 +48,20 @@ export class SettingCoreResponseDto {
     })
     @Type(() => SettingTimezoneResponseDto)
     timezone: SettingTimezoneResponseDto;
+
+    @ApiProperty({
+        required: true,
+        type: SettingMiddlewareResponseDto,
+        oneOf: [{ $ref: getSchemaPath(SettingMiddlewareResponseDto) }],
+    })
+    @Type(() => SettingMiddlewareResponseDto)
+    middleware: SettingMiddlewareResponseDto;
+
+    @ApiProperty({
+        required: true,
+        type: SettingAuthResponseDto,
+        oneOf: [{ $ref: getSchemaPath(SettingAuthResponseDto) }],
+    })
+    @Type(() => SettingAuthResponseDto)
+    auth: SettingAuthResponseDto;
 }

@@ -219,6 +219,7 @@ export class AwsSESService implements IAwsSESService {
     }: AwsSESSendBulkDto): Promise<SendBulkTemplatedEmailCommandOutput> {
         const command: SendBulkTemplatedEmailCommand =
             new SendBulkTemplatedEmailCommand({
+                DefaultTemplateData: '',
                 Template: templateName,
                 Destinations: recipients.map(e => ({
                     Destination: {

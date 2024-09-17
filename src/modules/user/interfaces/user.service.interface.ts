@@ -1,8 +1,10 @@
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import {
+    IDatabaseAggregateOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseExistOptions,
+    IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
@@ -41,6 +43,14 @@ export interface IUserService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
+    findAllWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllAggregateOptions
+    ): Promise<IUserEntity[]>;
+    getTotalWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseAggregateOptions
+    ): Promise<number>;
     findOneById(_id: string, options?: IDatabaseOptions): Promise<UserDoc>;
     findOne(
         find: Record<string, any>,
@@ -48,13 +58,10 @@ export interface IUserService {
     ): Promise<UserDoc>;
     findOneByEmail(email: string, options?: IDatabaseOptions): Promise<UserDoc>;
     findOneByMobileNumber(
+        country: string,
         mobileNumber: string,
         options?: IDatabaseOptions
     ): Promise<UserDoc>;
-    findAllWithRoleAndCountry(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<IUserDoc[]>;
     findOneWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
@@ -80,6 +87,7 @@ export interface IUserService {
         options?: IDatabaseOptions
     ): Promise<IUserDoc>;
     findOneActiveByMobileNumber(
+        country: string,
         mobileNumber: string,
         options?: IDatabaseOptions
     ): Promise<IUserDoc>;
@@ -104,6 +112,7 @@ export interface IUserService {
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
     existByMobileNumber(
+        country: string,
         mobileNumber: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
@@ -166,7 +175,7 @@ export interface IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    delete(
+    softDelete(
         repository: UserDoc,
         dto: DatabaseSoftDeleteDto,
         options?: IDatabaseSaveOptions
@@ -178,6 +187,10 @@ export interface IUserService {
     updateProfile(
         repository: UserDoc,
         { country, name, address, familyName }: UserUpdateProfileRequestDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    updateVerificationEmail(
+        repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     join(repository: UserDoc): Promise<IUserDoc>;

@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { IAppException } from 'src/app/interfaces/app.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 import { IMessageValidationError } from 'src/common/message/interfaces/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { RequestValidationException } from 'src/common/request/exceptions/request.validation.exception';
@@ -37,7 +38,8 @@ export class AppValidationFilter implements ExceptionFilter {
 
         // metadata
         const xLanguage: string =
-            request.__language ?? this.messageService.getLanguage();
+            request.__language ??
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
         const xTimestamp = this.helperDateService.createTimestamp();
         const xTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const xVersion =

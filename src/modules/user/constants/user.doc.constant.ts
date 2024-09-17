@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 
 export const UserDocParamsId = [
@@ -11,13 +12,14 @@ export const UserDocParamsId = [
     },
 ];
 
-export const UserDocQueryRole = [
+export const UserDocQueryRoleType = [
     {
-        name: 'role',
+        name: 'roleType',
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: faker.string.uuid(),
+        example: Object.values(ENUM_POLICY_ROLE_TYPE).join(','),
+        description: "value with ',' delimiter",
     },
 ];
 

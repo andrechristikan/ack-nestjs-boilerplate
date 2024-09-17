@@ -10,7 +10,6 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
-import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
 import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
 import { ICountryService } from 'src/modules/country/interfaces/country.service.interface';
@@ -58,14 +57,13 @@ export class CountryService implements ICountryService {
         );
     }
 
-    async findOneActiveByPhoneCode(
+    async findOneByPhoneCode(
         phoneCode: string,
         options?: IDatabaseOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne(
             {
                 phoneCode,
-                isActive: true,
             },
             options
         );
@@ -76,13 +74,6 @@ export class CountryService implements ICountryService {
         options?: IDatabaseOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOneById(_id, options);
-    }
-
-    async findOneActiveById(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<CountryDoc> {
-        return this.countryRepository.findOne({ _id, isActive: true }, options);
     }
 
     async getTotal(
@@ -121,6 +112,7 @@ export class CountryService implements ICountryService {
                     phoneCode,
                     timeZone,
                     domain,
+                    currency,
                 }): CountryCreateRequestDto => {
                     const create: CountryEntity = new CountryEntity();
                     create.name = name;
@@ -132,6 +124,7 @@ export class CountryService implements ICountryService {
                     create.phoneCode = phoneCode;
                     create.timeZone = timeZone;
                     create.domain = domain;
+                    create.currency = currency;
 
                     return create;
                 }
@@ -153,15 +146,6 @@ export class CountryService implements ICountryService {
             countries.map((e: CountryDoc | CountryEntity) =>
                 e instanceof Document ? e.toObject() : e
             )
-        );
-    }
-
-    async mapGet(
-        country: CountryDoc | CountryEntity
-    ): Promise<CountryGetResponseDto> {
-        return plainToInstance(
-            CountryGetResponseDto,
-            country instanceof Document ? country.toObject() : country
         );
     }
 

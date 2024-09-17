@@ -5,6 +5,7 @@ import { Response } from 'express';
 import { IAppImportException } from 'src/app/interfaces/app.interface';
 import { FileImportException } from 'src/common/file/exceptions/file.import.exception';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 import {
     IMessageValidationImportError,
     IMessageValidationImportErrorParam,
@@ -40,7 +41,8 @@ export class AppValidationImportFilter implements ExceptionFilter {
 
         // metadata
         const xLanguage: string =
-            request.__language ?? this.messageService.getLanguage();
+            request.__language ??
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
         const xTimestamp = this.helperDateService.createTimestamp();
         const xTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const xVersion =

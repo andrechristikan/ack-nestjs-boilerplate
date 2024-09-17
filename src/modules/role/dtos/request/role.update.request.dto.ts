@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { faker } from '@faker-js/faker';
 import {
     IsArray,
@@ -50,6 +50,7 @@ export class RoleUpdateRequestDto {
             },
         ],
         type: RolePermissionDto,
+        oneOf: [{ $ref: getSchemaPath(RolePermissionDto) }],
     })
     @Type(() => RolePermissionDto)
     @IsNotEmpty()

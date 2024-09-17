@@ -8,6 +8,7 @@ import { plainToInstance } from 'class-transformer';
 import { AppEnvDto } from 'src/app/dtos/app.env.dto';
 import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
+import compression from 'compression';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule, {
@@ -38,6 +39,9 @@ async function bootstrap() {
     const logger = new Logger('NestJs-Main');
     process.env.NODE_ENV = env;
     process.env.TZ = timezone;
+
+    // Compression
+    app.use(compression());
 
     // Global
     app.setGlobalPrefix(globalPrefix);
@@ -82,14 +86,14 @@ async function bootstrap() {
     if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
         logger.log(`On migrate the schema`);
 
-        await app.close();
-
-        logger.log(`Migrate done`);
         logger.log(
             `==========================================================`
         );
 
-        return;
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        await app.close();
+        process.exit(0);
     }
 
     logger.log(`Job is ${jobEnable}`);
@@ -108,5 +112,7 @@ async function bootstrap() {
     logger.log(`Database uri ${databaseUri}`);
 
     logger.log(`==========================================================`);
+
+    return;
 }
 bootstrap();
