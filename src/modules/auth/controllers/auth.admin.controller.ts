@@ -100,8 +100,7 @@ export class AuthAdminController {
             this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 {
-                    email: user.email,
-                    name: user.name,
+                    send: { email: user.email, name: user.name },
                     passwordExpiredAt: password.passwordExpired,
                     password: passwordString,
                 },

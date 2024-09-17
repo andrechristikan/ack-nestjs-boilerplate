@@ -188,8 +188,7 @@ export class AuthSharedController {
             this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
                 {
-                    email: user.email,
-                    name: user.name,
+                    send: { email: user.email, name: user.name },
                 },
                 {
                     debounce: {

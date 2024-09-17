@@ -411,8 +411,7 @@ export class AuthPublicController {
             this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 {
-                    email,
-                    name,
+                    send: { email, name },
                 },
                 {
                     debounce: {

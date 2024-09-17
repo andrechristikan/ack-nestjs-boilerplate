@@ -284,8 +284,7 @@ export class UserAdminController {
             this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
                 {
-                    email: created.email,
-                    name: created.name,
+                    send: { email: created.email, name: created.name },
                     passwordExpiredAt: password.passwordExpired,
                     password: passwordString,
                 },
