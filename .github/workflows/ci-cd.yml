@@ -1,10 +1,10 @@
 name: CI_CD
 on:
-  push:
-    branches: 
-    - main
-    - staging
-    - development
+  # push:
+  #   branches: 
+  #   - main
+  #   - staging
+  #   - development
   workflow_dispatch:
 
 jobs:

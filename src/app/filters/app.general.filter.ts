@@ -4,14 +4,12 @@ import {
     ArgumentsHost,
     HttpException,
     HttpStatus,
-    Optional,
     InternalServerErrorException,
     Logger,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost } from '@nestjs/core';
-import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Response } from 'express';
 import { IAppException } from 'src/app/interfaces/app.interface';
 import { FileImportException } from 'src/common/file/exceptions/file.import.exception';
@@ -21,6 +19,7 @@ import { MessageService } from 'src/common/message/services/message.service';
 import { RequestValidationException } from 'src/common/request/exceptions/request.validation.exception';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
+import * as Sentry from '@sentry/nestjs';
 
 @Catch()
 export class AppGeneralFilter implements ExceptionFilter {
@@ -28,9 +27,6 @@ export class AppGeneralFilter implements ExceptionFilter {
     private readonly logger = new Logger(AppGeneralFilter.name);
 
     constructor(
-        @Optional()
-        @InjectSentry()
-        private readonly sentryService: SentryService,
         private readonly httpAdapterHost: HttpAdapterHost,
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
@@ -118,7 +114,7 @@ export class AppGeneralFilter implements ExceptionFilter {
         }
 
         try {
-            this.sentryService?.instance().captureException(exception);
+            Sentry.captureException(exception);
         } catch (err: unknown) {
             if (this.debug) {
                 this.logger.error(err);

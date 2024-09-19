@@ -176,9 +176,11 @@ export class SettingService implements ISettingService {
 
         // language
         const availableLanguage: ENUM_MESSAGE_LANGUAGE[] =
-            this.configService.get('message.availableLanguage');
+            this.configService.get<ENUM_MESSAGE_LANGUAGE[]>(
+                'message.availableLanguage'
+            );
         const currentLanguage: ENUM_MESSAGE_LANGUAGE =
-            this.configService.get('message.language');
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
         const settingLanguage: SettingLanguageResponseDto = {
             language: currentLanguage,
             availableLanguage,

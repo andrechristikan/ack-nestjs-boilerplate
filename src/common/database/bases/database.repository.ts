@@ -26,6 +26,7 @@ import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enum
 import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 
+// TODO: CHECK withDeleted
 export class DatabaseRepositoryBase<
     Entity extends DatabaseEntityBase,
     EntityDocument extends IDatabaseDocument<Entity>,
