@@ -42,7 +42,6 @@ export class RoleUpdateRequestDto {
         required: true,
         description: 'Permission list of role',
         isArray: true,
-        default: [],
         example: [
             {
                 subject: ENUM_POLICY_SUBJECT.API_KEY,

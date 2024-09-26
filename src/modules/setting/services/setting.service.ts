@@ -104,13 +104,9 @@ export class SettingService implements ISettingService {
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
-        try {
-            await this.settingRepository.deleteMany(find, options);
+        await this.settingRepository.deleteMany(find, options);
 
-            return true;
-        } catch (error: unknown) {
-            throw error;
-        }
+        return true;
     }
 
     getValue<T>(type: ENUM_SETTING_DATA_TYPE, value: string): T {

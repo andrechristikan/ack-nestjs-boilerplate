@@ -43,11 +43,7 @@ export class AppUrlVersionMiddleware implements NestMiddleware {
             )
         ) {
             const url: string[] = originalUrl.split('/');
-            if (this.env === ENUM_APP_ENVIRONMENT.PRODUCTION) {
-                version = url[1].replace(this.urlVersionPrefix, '');
-            } else {
-                version = url[2].replace(this.urlVersionPrefix, '');
-            }
+            version = url[2].replace(this.urlVersionPrefix, '');
         }
 
         req.__version = version;

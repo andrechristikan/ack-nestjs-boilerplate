@@ -40,13 +40,13 @@ export class EmailService implements IEmailService {
         this.clientUrl = this.configService.get<string>('email.clientUrl');
     }
 
-    async createChangePassword(): Promise<boolean> {
+    async importChangePassword(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
                 subject: `Change Password`,
                 htmlBody: readFileSync(
-                    './templates/email.change-password.template.html',
+                    '/assets/email/change-password.template.html',
                     'utf8'
                 ),
             });
@@ -107,13 +107,13 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async createWelcome(): Promise<boolean> {
+    async importWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
-                    './templates/email.welcome.template.html',
+                    '/assets/email/welcome.template.html',
                     'utf8'
                 ),
             });
@@ -175,13 +175,13 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async createWelcomeAdmin(): Promise<boolean> {
+    async importWelcomeAdmin(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
-                    './templates/email.welcome-admin.template.html',
+                    '/assets/email/welcome-admin.template.html',
                     'utf8'
                 ),
             });
@@ -253,13 +253,13 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async createTempPassword(): Promise<boolean> {
+    async importTempPassword(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 subject: `Temporary Password`,
                 htmlBody: readFileSync(
-                    './templates/email.temp-password.template.html',
+                    '/assets/email/temp-password.template.html',
                     'utf8'
                 ),
             });

@@ -237,36 +237,28 @@ export class ApiKeyService implements IApiKeyService {
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
-        try {
-            await this.apiKeyRepository.deleteMany(find, options);
+        await this.apiKeyRepository.deleteMany(find, options);
 
-            return true;
-        } catch (error: unknown) {
-            throw error;
-        }
+        return true;
     }
 
     async inactiveManyByEndDate(
         options?: IDatabaseUpdateManyOptions
     ): Promise<boolean> {
-        try {
-            await this.apiKeyRepository.updateMany(
-                {
-                    endDate: {
-                        $lte: this.helperDateService.create(),
-                    },
-                    isActive: true,
+        await this.apiKeyRepository.updateMany(
+            {
+                endDate: {
+                    $lte: this.helperDateService.create(),
                 },
-                {
-                    isActive: false,
-                },
-                options
-            );
+                isActive: true,
+            },
+            {
+                isActive: false,
+            },
+            options
+        );
 
-            return true;
-        } catch (error: unknown) {
-            throw error;
-        }
+        return true;
     }
 
     async mapList(

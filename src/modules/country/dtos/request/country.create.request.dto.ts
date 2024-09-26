@@ -85,7 +85,6 @@ export class CountryCreateRequestDto {
         example: [faker.helpers.arrayElement(['62', '65'])],
         maxLength: 4,
         isArray: true,
-        default: [],
     })
     @IsArray()
     @ArrayNotEmpty()

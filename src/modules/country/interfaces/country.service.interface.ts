@@ -53,4 +53,6 @@ export interface ICountryService {
     mapShort(
         countries: CountryDoc[] | CountryEntity[]
     ): Promise<CountryShortResponseDto[]>;
+    importAssets(): Promise<boolean>;
+    deleteAssets(): Promise<boolean>;
 }

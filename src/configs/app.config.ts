@@ -1,6 +1,5 @@
 import { registerAs } from '@nestjs/config';
 import { version } from 'package.json';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 
 export default registerAs(
     'app',
@@ -9,14 +8,9 @@ export default registerAs(
         env: process.env.APP_ENV,
         timezone: process.env.APP_TIMEZONE,
         repoVersion: version,
-        globalPrefix:
-            process.env.APP_ENV === ENUM_APP_ENVIRONMENT.PRODUCTION
-                ? ''
-                : '/api',
+        globalPrefix: '/api',
 
         debug: process.env.APP_DEBUG === 'true',
-
-        jobEnable: process.env.JOB_ENABLE === 'true',
 
         http: {
             enable: process.env.HTTP_ENABLE === 'true',

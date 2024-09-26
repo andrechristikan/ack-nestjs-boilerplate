@@ -57,7 +57,6 @@ export class CountryListResponseDto extends DatabaseDto {
         maxLength: 4,
         minLength: 4,
         isArray: true,
-        default: [],
     })
     phoneCode: string[];
 

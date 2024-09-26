@@ -98,7 +98,6 @@ export class AuthJwtAccessPayloadDto {
         type: AuthJwtAccessPayloadPermissionDto,
         oneOf: [{ $ref: getSchemaPath(AuthJwtAccessPayloadPermissionDto) }],
         isArray: true,
-        default: [],
     })
     @Type(() => AuthJwtAccessPayloadPermissionDto)
     permissions: AuthJwtAccessPayloadPermissionDto[];

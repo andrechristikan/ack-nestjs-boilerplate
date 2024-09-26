@@ -164,38 +164,28 @@ export class RoleService implements IRoleService {
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
-        try {
-            await this.roleRepository.deleteMany(find, options);
+        await this.roleRepository.deleteMany(find, options);
 
-            return true;
-        } catch (error: unknown) {
-            throw error;
-        }
+        return true;
     }
 
     async createMany(
         data: RoleCreateRequestDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
-        try {
-            const create: RoleEntity[] = data.map(
-                ({ type, name, permissions }) => {
-                    const entity: RoleEntity = new RoleEntity();
-                    entity.type = type;
-                    entity.isActive = true;
-                    entity.name = name;
-                    entity.permissions = permissions;
+        const create: RoleEntity[] = data.map(({ type, name, permissions }) => {
+            const entity: RoleEntity = new RoleEntity();
+            entity.type = type;
+            entity.isActive = true;
+            entity.name = name;
+            entity.permissions = permissions;
 
-                    return entity;
-                }
-            ) as RoleEntity[];
+            return entity;
+        }) as RoleEntity[];
 
-            await this.roleRepository.createMany<RoleEntity>(create, options);
+        await this.roleRepository.createMany<RoleEntity>(create, options);
 
-            return true;
-        } catch (error: unknown) {
-            throw error;
-        }
+        return true;
     }
 
     async mapList(

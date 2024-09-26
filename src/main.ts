@@ -36,7 +36,6 @@ async function bootstrap() {
     const versionEnable: string = configService.get<string>(
         'app.urlVersion.enable'
     );
-    const jobEnable: boolean = configService.get<boolean>('app.jobEnable');
 
     const logger = new Logger('NestJs-Main');
     process.env.NODE_ENV = env;
@@ -98,7 +97,6 @@ async function bootstrap() {
         process.exit(0);
     }
 
-    logger.log(`Job is ${jobEnable}`);
     logger.log(
         `Http is ${httpEnable}, ${
             httpEnable ? 'routes registered' : 'no routes registered'
