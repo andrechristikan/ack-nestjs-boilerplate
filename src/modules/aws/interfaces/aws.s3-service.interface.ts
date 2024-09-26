@@ -57,5 +57,6 @@ export interface IAwsS3Service {
         { filename, size, duration }: IAwsS3PutPresignUrlFile,
         options?: IAwsS3PutPresignUrlOptions
     ): Promise<AwsS3PresignUrlDto>;
-    getAssetPath(): Promise<string>;
+    getAssetPath(): string;
+    getRegion(): string;
 }

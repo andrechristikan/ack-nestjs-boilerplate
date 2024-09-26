@@ -173,19 +173,21 @@ export class CountryService implements ICountryService {
         try {
             const promises = [];
             const dirs: string[] = readdirSync(
-                '/assets/images/country-flags',
+                './assets/images/country-flags',
                 'utf8'
             );
 
-            const assetPath = await this.awsS3Service.getAssetPath();
-            const fullPath = `${assetPath}/${this.assetPath}`;
+            const assetPath = this.awsS3Service.getAssetPath();
+            const fullPath = `${assetPath}${this.assetPath}`;
 
             for (const path of dirs) {
                 const filename = path.substring(
                     path.lastIndexOf('/'),
                     path.length
                 );
-                const file: Buffer = readFileSync(path);
+                const file: Buffer = readFileSync(
+                    `./assets/images/country-flags/${path}`
+                );
                 promises.push(
                     this.awsS3Service.putItemInBucket(
                         {
@@ -214,8 +216,8 @@ export class CountryService implements ICountryService {
 
     async deleteAssets(): Promise<boolean> {
         try {
-            const assetPath = await this.awsS3Service.getAssetPath();
-            const fullPath = `${assetPath}/${this.assetPath}`;
+            const assetPath = this.awsS3Service.getAssetPath();
+            const fullPath = `${assetPath}${this.assetPath}`;
 
             await this.awsS3Service.deleteFolder(fullPath);
 
@@ -227,5 +229,9 @@ export class CountryService implements ICountryService {
 
             return false;
         }
+    }
+
+    getAssetPath(): string {
+        return this.assetPath;
     }
 }

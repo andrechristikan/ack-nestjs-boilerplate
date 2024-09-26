@@ -5,6 +5,6 @@ export default registerAs(
     (): Record<string, any> => ({
         usernamePrefix: 'user',
         usernamePattern: /^[a-zA-Z0-9-_]+$/,
-        uploadPath: '/user/{user}',
+        uploadPath: '/users/{user}',
     })
 );

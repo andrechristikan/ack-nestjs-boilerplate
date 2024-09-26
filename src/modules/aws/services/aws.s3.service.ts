@@ -67,11 +67,14 @@ export class AwsS3Service implements IAwsS3Service {
     private readonly s3Client: S3Client;
     private readonly bucket: string;
     private readonly baseUrl: string;
+    private readonly region: string;
     private readonly presignUrlExpired: number;
 
     private readonly assetPath: string;
 
     constructor(private readonly configService: ConfigService) {
+        this.region = this.configService.get<string>('aws.s3.region');
+
         this.s3Client = new S3Client({
             credentials: {
                 accessKeyId: this.configService.get<string>(
@@ -81,7 +84,7 @@ export class AwsS3Service implements IAwsS3Service {
                     'aws.s3.credential.secret'
                 ),
             },
-            region: this.configService.get<string>('aws.s3.region'),
+            region: this.region,
         });
 
         this.bucket = this.configService.get<string>('aws.s3.bucket');
@@ -176,7 +179,7 @@ export class AwsS3Service implements IAwsS3Service {
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3Dto> {
-        const path: string = `/${options?.path?.replace(/^\/*|\/*$/g, '') ?? ''}`;
+        const path: string = options?.path?.replace(/^\/*|\/*$/g, '') ?? '';
         const mime: string = file.originalname.substring(
             file.originalname.lastIndexOf('.') + 1,
             file.originalname.length
@@ -202,7 +205,7 @@ export class AwsS3Service implements IAwsS3Service {
             path,
             pathWithFilename: key,
             filename: filename,
-            completedUrl: `${this.baseUrl}${key}`,
+            completedUrl: `${this.baseUrl}/${key}`,
             baseUrl: this.baseUrl,
             mime,
             size: file.size,
@@ -213,7 +216,7 @@ export class AwsS3Service implements IAwsS3Service {
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3Dto> {
-        const path: string = `/${options?.path?.replace(/^\/*|\/*$/g, '') ?? ''}`;
+        const path: string = options?.path?.replace(/^\/*|\/*$/g, '') ?? '';
         const acl: ObjectCannedACL = options?.acl
             ? (options.acl as ObjectCannedACL)
             : ObjectCannedACL.public_read;
@@ -245,7 +248,7 @@ export class AwsS3Service implements IAwsS3Service {
             path,
             pathWithFilename: key,
             filename: filename,
-            completedUrl: `${this.baseUrl}${key}`,
+            completedUrl: `${this.baseUrl}/${key}`,
             baseUrl: this.baseUrl,
             mime,
             size: file.size,
@@ -334,7 +337,7 @@ export class AwsS3Service implements IAwsS3Service {
             );
         }
 
-        const path: string = `/${options?.path?.replace(/^\/*|\/*$/g, '') ?? ''}`;
+        const path: string = options?.path?.replace(/^\/*|\/*$/g, '') ?? '';
         const mime: string = file.originalname.substring(
             file.originalname.lastIndexOf('.') + 1,
             file.originalname.length
@@ -362,7 +365,7 @@ export class AwsS3Service implements IAwsS3Service {
             path,
             pathWithFilename: key,
             filename: filename,
-            completedUrl: `${this.baseUrl}${key}`,
+            completedUrl: `${this.baseUrl}/${key}`,
             baseUrl: this.baseUrl,
             mime,
             size: 0,
@@ -377,7 +380,7 @@ export class AwsS3Service implements IAwsS3Service {
         maxPartNumber: number,
         options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3MultipartDto> {
-        const path: string = `/${options?.path?.replace(/^\/*|\/*$/g, '') ?? ''}`;
+        const path: string = options?.path?.replace(/^\/*|\/*$/g, '') ?? '';
         const acl: ObjectCannedACL = options?.acl
             ? (options.acl as ObjectCannedACL)
             : ObjectCannedACL.public_read;
@@ -410,7 +413,7 @@ export class AwsS3Service implements IAwsS3Service {
             path,
             pathWithFilename: key,
             filename: filename,
-            completedUrl: `${this.baseUrl}${key}`,
+            completedUrl: `${this.baseUrl}/${key}`,
             baseUrl: this.baseUrl,
             mime,
             size: 0,
@@ -497,7 +500,7 @@ export class AwsS3Service implements IAwsS3Service {
         { filename, size, duration }: IAwsS3PutPresignUrlFile,
         options?: IAwsS3PutPresignUrlOptions
     ): Promise<AwsS3PresignUrlDto> {
-        const path: string = `/${options?.path?.replace(/^\/*|\/*$/g, '') ?? ''}`;
+        const path: string = options?.path?.replace(/^\/*|\/*$/g, '') ?? '';
         const key: string =
             path === '/' ? `${path}${filename}` : `${path}/${filename}`;
         const mime: string = filename.substring(
@@ -528,7 +531,15 @@ export class AwsS3Service implements IAwsS3Service {
         };
     }
 
-    async getAssetPath(): Promise<string> {
+    getAssetPath(): string {
         return this.assetPath;
+    }
+
+    getBucket(): string {
+        return this.bucket;
+    }
+
+    getRegion(): string {
+        return this.region;
     }
 }

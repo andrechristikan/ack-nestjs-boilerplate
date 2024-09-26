@@ -55,4 +55,5 @@ export interface ICountryService {
     ): Promise<CountryShortResponseDto[]>;
     importAssets(): Promise<boolean>;
     deleteAssets(): Promise<boolean>;
+    getAssetPath(): string;
 }
