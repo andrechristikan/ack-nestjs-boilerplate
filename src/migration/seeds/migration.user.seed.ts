@@ -4,7 +4,10 @@ import { AuthService } from 'src/modules/auth/services/auth.service';
 import { UserService } from 'src/modules/user/services/user.service';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/enums/user.enum';
+import {
+    ENUM_USER_GENDER,
+    ENUM_USER_SIGN_UP_FROM,
+} from 'src/modules/user/enums/user.enum';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { faker } from '@faker-js/faker';
@@ -38,12 +41,13 @@ export class MigrationUserSeed {
             await this.roleService.findOneByName('superadmin');
         const adminRole: RoleDoc =
             await this.roleService.findOneByName('admin');
-        const country: CountryDoc =
-            await this.countryService.findOneByAlpha2('ID');
+
+        const countries: CountryDoc[] = await this.countryService.findAll();
 
         const memberRole: RoleDoc =
             await this.roleService.findOneByName('member');
         const userRole: RoleDoc = await this.roleService.findOneByName('user');
+
         try {
             const [superAdmin, admin, member, user] = await Promise.all([
                 this.userService.create(
@@ -51,7 +55,8 @@ export class MigrationUserSeed {
                         role: superAdminRole._id,
                         name: 'superadmin',
                         email: 'superadmin@mail.com',
-                        country: country._id,
+                        country: countries[0]._id,
+                        gender: ENUM_USER_GENDER.MALE,
                     },
                     passwordHash,
                     ENUM_USER_SIGN_UP_FROM.SEED
@@ -61,7 +66,8 @@ export class MigrationUserSeed {
                         role: adminRole._id,
                         name: 'admin',
                         email: 'admin@mail.com',
-                        country: country._id,
+                        country: countries[0]._id,
+                        gender: ENUM_USER_GENDER.MALE,
                     },
                     passwordHash,
                     ENUM_USER_SIGN_UP_FROM.SEED
@@ -71,7 +77,8 @@ export class MigrationUserSeed {
                         role: memberRole._id,
                         name: 'member',
                         email: 'member@mail.com',
-                        country: country._id,
+                        country: countries[0]._id,
+                        gender: ENUM_USER_GENDER.MALE,
                     },
                     passwordHash,
                     ENUM_USER_SIGN_UP_FROM.SEED
@@ -81,7 +88,8 @@ export class MigrationUserSeed {
                         role: userRole._id,
                         name: 'user',
                         email: 'user@mail.com',
-                        country: country._id,
+                        country: countries[0]._id,
+                        gender: ENUM_USER_GENDER.MALE,
                     },
                     passwordHash,
                     ENUM_USER_SIGN_UP_FROM.SEED
@@ -133,42 +141,69 @@ export class MigrationUserSeed {
 
             await Promise.all(promises);
 
-            // Add random user
-            const randomUser = Array(200)
-                .fill(0)
-                .map(() =>
-                    this.userService.create(
-                        {
-                            role: userRole._id,
-                            name: faker.person.fullName(),
-                            email: faker.internet.email(),
-                            country: country._id,
-                        },
-                        passwordHash,
-                        ENUM_USER_SIGN_UP_FROM.SEED
-                    )
-                );
+            for (const country of countries) {
+                // Add random user
+                const randomUser = Array(200)
+                    .fill(0)
+                    .map(() =>
+                        this.userService.create(
+                            {
+                                role: userRole._id,
+                                name: faker.person.fullName(),
+                                email: faker.internet.email(),
+                                country: country._id,
+                                gender: faker.helpers.arrayElement(
+                                    Object.values(ENUM_USER_GENDER)
+                                ),
+                            },
+                            passwordHash,
+                            ENUM_USER_SIGN_UP_FROM.SEED
+                        )
+                    );
 
-            const rands = await Promise.all(randomUser);
+                // Add random member
+                const randomMember = Array(100)
+                    .fill(0)
+                    .map(() =>
+                        this.userService.create(
+                            {
+                                role: memberRole._id,
+                                name: faker.person.fullName(),
+                                email: faker.internet.email(),
+                                country: country._id,
+                                gender: faker.helpers.arrayElement(
+                                    Object.values(ENUM_USER_GENDER)
+                                ),
+                            },
+                            passwordHash,
+                            ENUM_USER_SIGN_UP_FROM.SEED
+                        )
+                    );
 
-            // Activity & Password
-            const randomActivityAndPassword = [];
-            for (const rand of rands) {
-                randomActivityAndPassword.push(
-                    this.activityService.createByAdmin(rand, {
-                        by: superAdmin._id,
-                        description: this.messageService.setMessage(
-                            'activity.user.createByAdmin'
-                        ),
-                    }),
-                    this.passwordHistoryService.createByAdmin(rand, {
-                        by: superAdmin._id,
-                        type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
-                    })
-                );
+                const rands = await Promise.all([
+                    ...randomUser,
+                    ...randomMember,
+                ]);
+
+                // Activity & Password
+                const randomActivityAndPassword = [];
+                for (const rand of rands) {
+                    randomActivityAndPassword.push(
+                        this.activityService.createByAdmin(rand, {
+                            by: superAdmin._id,
+                            description: this.messageService.setMessage(
+                                'activity.user.createByAdmin'
+                            ),
+                        }),
+                        this.passwordHistoryService.createByAdmin(rand, {
+                            by: superAdmin._id,
+                            type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
+                        })
+                    );
+                }
+
+                await Promise.all(randomActivityAndPassword);
             }
-
-            await Promise.all(randomActivityAndPassword);
         } catch (err: any) {
             throw new Error(err);
         }

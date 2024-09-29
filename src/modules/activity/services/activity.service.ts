@@ -85,6 +85,7 @@ export class ActivityService implements IActivityService {
         const create: ActivityEntity = new ActivityEntity();
         create.description = description;
         create.user = user._id;
+        create.by = user._id;
 
         return this.activityRepository.create<ActivityEntity>(create, options);
     }

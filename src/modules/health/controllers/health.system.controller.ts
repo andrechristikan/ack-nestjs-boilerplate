@@ -16,6 +16,13 @@ import { HealthResponseDto } from 'src/modules/health/dtos/response/health.respo
 import { HealthAwsS3Indicator } from 'src/modules/health/indicators/health.aws-s3.indicator';
 import { HealthSystemCheckDoc } from 'src/modules/health/docs/health.system.doc';
 
+// TODO: MORE HEALTH CHECK
+// - aws ses
+// - aws s3
+// - google
+// - apple
+// - sentry
+// - redis
 @ApiTags('modules.system.health')
 @Controller({
     version: VERSION_NEUTRAL,

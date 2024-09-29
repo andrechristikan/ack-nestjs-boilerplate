@@ -1,10 +1,19 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import {
+    Controller,
+    Delete,
+    Get,
+    NotFoundException,
+    Param,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
-import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
+import {
+    Response,
+    ResponsePaging,
+} from 'src/common/response/decorators/response.decorator';
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
@@ -17,17 +26,23 @@ import {
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
 } from 'src/modules/policy/enums/policy.enum';
-import { SessionAdminListDoc } from 'src/modules/session/docs/session.admin.doc';
+import {
+    SessionAdminListDoc,
+    SessionAdminRevokeDoc,
+} from 'src/modules/session/docs/session.admin.doc';
 import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
+import { ENUM_SESSION_STATUS_CODE_ERROR } from 'src/modules/session/enums/session.status-code.enum';
+import { SessionActiveParsePipe } from 'src/modules/session/pipes/session.parse.pipe';
 import { SessionDoc } from 'src/modules/session/repository/entities/session.entity';
 import { SessionService } from 'src/modules/session/services/session.service';
+import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
 @ApiTags('modules.admin.session')
 @Controller({
     version: '1',
-    path: '/session',
+    path: '/session/:user',
 })
 export class SessionAdminController {
     constructor(
@@ -44,7 +59,7 @@ export class SessionAdminController {
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/list/:user')
+    @Get('/list')
     async list(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
         @PaginationQuery()
@@ -80,5 +95,26 @@ export class SessionAdminController {
             _pagination: { total, totalPage },
             data: mapped,
         };
+    }
+
+    @SessionAdminRevokeDoc()
+    @Response('session.revoke')
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Delete('/revoke/:session')
+    async revoke(
+        @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
+        user: UserDoc,
+        @Param('session', RequestRequiredPipe, SessionActiveParsePipe)
+        session: SessionDoc
+    ): Promise<void> {
+        if (user._id !== session.user) {
+            throw new NotFoundException({
+                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'session.error.notFound',
+            });
+        }
+
+        await this.sessionService.updateRevoke(session);
     }
 }

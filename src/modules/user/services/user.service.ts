@@ -47,6 +47,7 @@ import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-de
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 import { CountryTableName } from 'src/modules/country/repository/entities/country.entity';
 import { RoleTableName } from 'src/modules/role/repository/entities/role.entity';
+import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -313,7 +314,7 @@ export class UserService implements IUserService {
     }
 
     async create(
-        { email, name, role, country }: UserCreateRequestDto,
+        { email, name, role, country, gender }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
@@ -324,6 +325,7 @@ export class UserService implements IUserService {
         create.name = name;
         create.email = email;
         create.role = role;
+        create.gender = gender;
         create.status = ENUM_USER_STATUS.ACTIVE;
         create.password = passwordHash;
         create.salt = salt;
@@ -427,29 +429,12 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
-    async active(
+    async updateStatus(
         repository: UserDoc,
+        { status }: UserUpdateStatusRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserEntity> {
-        repository.status = ENUM_USER_STATUS.ACTIVE;
-
-        return this.userRepository.save(repository, options);
-    }
-
-    async inactive(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc> {
-        repository.status = ENUM_USER_STATUS.INACTIVE;
-
-        return this.userRepository.save(repository, options);
-    }
-
-    async blocked(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc> {
-        repository.status = ENUM_USER_STATUS.BLOCKED;
+        repository.status = status;
 
         return this.userRepository.save(repository, options);
     }
@@ -500,12 +485,13 @@ export class UserService implements IUserService {
 
     async update(
         repository: UserDoc,
-        { country, name, role }: UserUpdateRequestDto,
+        { country, name, role, gender }: UserUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.country = country;
         repository.name = name;
         repository.role = role;
+        repository.gender = gender;
 
         return this.userRepository.save(repository, options);
     }
@@ -561,13 +547,12 @@ export class UserService implements IUserService {
 
     async updateProfile(
         repository: UserDoc,
-        { country, name, address, familyName }: UserUpdateProfileRequestDto,
+        { country, name, gender }: UserUpdateProfileRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.country = country;
         repository.name = name;
-        repository.address = address;
-        repository.familyName = familyName;
+        repository.gender = gender;
 
         return this.userRepository.save(repository, options);
     }

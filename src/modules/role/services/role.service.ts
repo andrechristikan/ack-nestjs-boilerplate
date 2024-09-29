@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
+import { DatabaseQueryIn } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
@@ -62,18 +63,21 @@ export class RoleService implements IRoleService {
         );
     }
 
-    async findAllByType(
-        type: ENUM_POLICY_ROLE_TYPE,
-        options?: IDatabaseFindAllOptions
-    ): Promise<RoleDoc[]> {
-        return this.roleRepository.findAll({ type }, options);
-    }
-
     async findAllActiveByType(
         type: ENUM_POLICY_ROLE_TYPE,
         options?: IDatabaseFindAllOptions
     ): Promise<RoleDoc[]> {
         return this.roleRepository.findAll({ type, isActive: true }, options);
+    }
+
+    async findAllByTypes(
+        types: ENUM_POLICY_ROLE_TYPE[],
+        options?: IDatabaseFindAllOptions
+    ): Promise<RoleDoc[]> {
+        return this.roleRepository.findAll(
+            DatabaseQueryIn('type', types),
+            options
+        );
     }
 
     async findOneById(

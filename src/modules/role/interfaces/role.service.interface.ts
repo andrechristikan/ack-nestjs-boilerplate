@@ -36,12 +36,12 @@ export interface IRoleService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-    findAllByType(
+    findAllActiveByType(
         type: ENUM_POLICY_ROLE_TYPE,
         options?: IDatabaseFindAllOptions
     ): Promise<RoleDoc[]>;
-    findAllActiveByType(
-        type: ENUM_POLICY_ROLE_TYPE,
+    findAllByTypes(
+        types: ENUM_POLICY_ROLE_TYPE[],
         options?: IDatabaseFindAllOptions
     ): Promise<RoleDoc[]>;
     findOneById(_id: string, options?: IDatabaseOptions): Promise<RoleDoc>;

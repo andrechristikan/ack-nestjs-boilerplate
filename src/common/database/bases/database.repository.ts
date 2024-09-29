@@ -15,6 +15,7 @@ import {
     IDatabaseExistOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
     IDatabaseSaveOptions,
@@ -83,7 +84,7 @@ export class DatabaseRepositoryBase<
 
     async findOne<T = EntityDocument>(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<T> {
         const repository = this._repository.findOne<T>({
             ...find,
@@ -104,6 +105,10 @@ export class DatabaseRepositoryBase<
             );
         }
 
+        if (options?.order) {
+            repository.sort(options.order);
+        }
+
         if (options?.session) {
             repository.session(options.session);
         }
@@ -113,7 +118,7 @@ export class DatabaseRepositoryBase<
 
     async findOneById<T = EntityDocument>(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<T> {
         const repository = this._repository.findOne<T>({
             _id,
@@ -134,6 +139,10 @@ export class DatabaseRepositoryBase<
             );
         }
 
+        if (options?.order) {
+            repository.sort(options.order);
+        }
+
         if (options?.session) {
             repository.session(options.session);
         }
@@ -143,7 +152,7 @@ export class DatabaseRepositoryBase<
 
     async findOneAndLock<T = EntityDocument>(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<T> {
         const repository = this._repository.findOneAndUpdate<T>(
             {
@@ -170,6 +179,10 @@ export class DatabaseRepositoryBase<
             );
         }
 
+        if (options?.order) {
+            repository.sort(options.order);
+        }
+
         if (options?.session) {
             repository.session(options.session);
         }
@@ -179,7 +192,7 @@ export class DatabaseRepositoryBase<
 
     async findOneByIdAndLock<T = EntityDocument>(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<T> {
         const repository = this._repository.findOneAndUpdate<T>(
             {
@@ -204,6 +217,10 @@ export class DatabaseRepositoryBase<
                     | PopulateOptions
                     | (string | PopulateOptions)[]
             );
+        }
+
+        if (options?.order) {
+            repository.sort(options.order);
         }
 
         if (options?.session) {

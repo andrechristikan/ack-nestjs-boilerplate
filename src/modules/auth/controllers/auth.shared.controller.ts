@@ -134,9 +134,9 @@ export class AuthSharedController {
         );
 
         const checkPassword =
-            await this.passwordHistoryService.findOneActiveByUser(
+            await this.passwordHistoryService.findOneUsedByUser(
                 user._id,
-                password.passwordHash
+                user.password
             );
         if (checkPassword) {
             const passwordPeriod =
@@ -184,6 +184,11 @@ export class AuthSharedController {
                 },
                 { session }
             );
+
+            // remove all session
+            await this.sessionService.updateManyRevokeByUser(user._id, {
+                session,
+            });
 
             this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,

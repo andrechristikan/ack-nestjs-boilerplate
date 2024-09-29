@@ -26,7 +26,7 @@ import {
 } from 'src/modules/session/docs/session.shared.doc';
 import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
 import { ENUM_SESSION_STATUS_CODE_ERROR } from 'src/modules/session/enums/session.status-code.enum';
-import { SessionActiveParsePipe } from 'src/modules/session/pipes/session.parse.pipe';
+import { SessionActiveByUserParsePipe } from 'src/modules/session/pipes/session.parse.pipe';
 import { SessionDoc } from 'src/modules/session/repository/entities/session.entity';
 import { SessionService } from 'src/modules/session/services/session.service';
 
@@ -89,7 +89,7 @@ export class SessionSharedController {
     @ApiKeyProtected()
     @Delete('/revoke/:session')
     async revoke(
-        @Param('session', RequestRequiredPipe, SessionActiveParsePipe)
+        @Param('session', RequestRequiredPipe, SessionActiveByUserParsePipe)
         session: SessionDoc,
         @AuthJwtPayload('session') sessionFromRequest: string
     ): Promise<void> {
@@ -101,6 +101,5 @@ export class SessionSharedController {
         }
 
         await this.sessionService.updateRevoke(session);
-        await this.sessionService.deleteLoginSession(session._id);
     }
 }

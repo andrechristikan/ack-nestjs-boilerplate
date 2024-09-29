@@ -52,12 +52,7 @@ export class SessionProcessor extends WorkerHost implements ISessionProcessor {
             );
         }
 
-        const promises = [
-            this.sessionService.updateRevoke(checkSession),
-            this.sessionService.deleteLoginSession(session),
-        ];
-
-        await Promise.all(promises);
+        await this.sessionService.updateRevoke(checkSession);
 
         return;
     }

@@ -13,6 +13,7 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
+    IDatabaseUpdateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { SessionLoginPrefix } from 'src/modules/session/constants/session.constant';
@@ -80,6 +81,23 @@ export class SessionService implements ISessionService {
         options?: IDatabaseOptions
     ): Promise<SessionDoc> {
         return this.sessionRepository.findOne<SessionDoc>(find, options);
+    }
+
+    async findOneActiveById(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<SessionDoc> {
+        const today = this.helperDateService.create();
+
+        return this.sessionRepository.findOne<SessionDoc>(
+            {
+                _id,
+                expiredAt: {
+                    $gte: today,
+                },
+            },
+            options
+        );
     }
 
     async findOneActiveByIdAndUser(
@@ -201,10 +219,36 @@ export class SessionService implements ISessionService {
         repository: SessionDoc,
         options?: IDatabaseOptions
     ): Promise<SessionDoc> {
+        await this.deleteLoginSession(repository._id);
+
         repository.status = ENUM_SESSION_STATUS.REVOKED;
         repository.revokeAt = this.helperDateService.create();
 
         return this.sessionRepository.save(repository, options);
+    }
+
+    async updateManyRevokeByUser(
+        user: string,
+        options?: IDatabaseUpdateManyOptions
+    ): Promise<boolean> {
+        const today = this.helperDateService.create();
+        const sessions = await this.findAllByUser(user, undefined, options);
+        const promises = sessions.map(e => this.deleteLoginSession(e._id));
+
+        await Promise.all(promises);
+
+        await this.sessionRepository.updateMany(
+            {
+                user,
+            },
+            {
+                status: ENUM_SESSION_STATUS.REVOKED,
+                revokeAt: today,
+            },
+            options
+        );
+
+        return true;
     }
 
     async deleteMany(

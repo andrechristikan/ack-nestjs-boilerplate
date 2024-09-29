@@ -122,22 +122,6 @@ export class UserGetResponseDto extends DatabaseDto {
     country: string;
 
     @ApiProperty({
-        example: faker.location.streetAddress(),
-        required: false,
-        nullable: true,
-        maxLength: 200,
-    })
-    address?: string;
-
-    @ApiProperty({
-        example: faker.person.lastName(),
-        required: false,
-        nullable: true,
-        maxLength: 50,
-    })
-    familyName?: string;
-
-    @ApiProperty({
         example: faker.person.lastName(),
         required: true,
         type: UserVerificationResponseDto,

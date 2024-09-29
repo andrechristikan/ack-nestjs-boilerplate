@@ -27,7 +27,7 @@ import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 @ApiTags('modules.admin.passwordHistory')
 @Controller({
     version: '1',
-    path: '/password-history',
+    path: '/password-history/:user',
 })
 export class PasswordHistoryAdminController {
     constructor(
@@ -44,7 +44,7 @@ export class PasswordHistoryAdminController {
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/list/:user')
+    @Get('/list')
     async list(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
         @PaginationQuery()

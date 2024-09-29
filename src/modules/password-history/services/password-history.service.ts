@@ -94,7 +94,7 @@ export class PasswordHistoryService implements IPasswordHistoryService {
         );
     }
 
-    async findOneActiveByUser(
+    async findOneUsedByUser(
         user: string,
         password: string,
         options?: IDatabaseOptions
@@ -106,7 +106,7 @@ export class PasswordHistoryService implements IPasswordHistoryService {
                 user,
                 password,
                 expiredAt: {
-                    $lte: today,
+                    $gte: today,
                 },
             },
             options

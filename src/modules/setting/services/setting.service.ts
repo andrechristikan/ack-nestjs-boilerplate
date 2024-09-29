@@ -11,7 +11,10 @@ import {
 import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/enums/helper.enum';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/enums/setting.enum';
+import {
+    ENUM_SETTING_DATA_TYPE,
+    ENUM_SETTING_UNIT,
+} from 'src/modules/setting/enums/setting.enum';
 import { SettingCreateRequestDto } from 'src/modules/setting/dtos/request/setting.create.request.dto';
 import { SettingUpdateRequestDto } from 'src/modules/setting/dtos/request/setting.update.request.dto';
 import { ISettingService } from 'src/modules/setting/interfaces/setting.service.interface';
@@ -31,7 +34,7 @@ import { SettingAuthResponseDto } from 'src/modules/setting/dtos/response/settin
 import { SettingMiddlewareResponseDto } from 'src/modules/setting/dtos/response/setting.middleware.response.dto';
 import { SettingGetResponseDto } from 'src/modules/setting/dtos/response/setting.get.response.dto';
 import { SettingListResponseDto } from 'src/modules/setting/dtos/response/setting.list.response.dto';
-
+import { SettingUserResponseDto } from 'src/modules/setting/dtos/response/setting.user.response.dto';
 @Injectable()
 export class SettingService implements ISettingService {
     constructor(
@@ -196,6 +199,7 @@ export class SettingService implements ISettingService {
         // file
         const settingFile: SettingFileResponseDto = {
             size: FILE_SIZE_IN_BYTES,
+            sizeUnit: ENUM_SETTING_UNIT.BYTE,
         };
 
         // auth
@@ -214,32 +218,55 @@ export class SettingService implements ISettingService {
         const settingAuth: SettingAuthResponseDto = {
             passwordMaxAttempt,
             passwordExpiredIn,
+            passwordExpiredInUnit: ENUM_SETTING_UNIT.MILLISECOND,
             passwordExpiredInTemporary,
+            passwordExpiredInTemporaryUnit: ENUM_SETTING_UNIT.MILLISECOND,
             passwordPeriod,
+            passwordPeriodUnit: ENUM_SETTING_UNIT.MILLISECOND,
         };
 
-        const bodyJson = this.configService.get<number>('middleware.body.json');
-        const bodyRaw = this.configService.get<number>('middleware.body.raw');
-        const bodyText = this.configService.get<number>('middleware.body.text');
+        const bodyJson = this.configService.get<number>(
+            'middleware.body.json.maxFileSize'
+        );
+        const bodyRaw = this.configService.get<number>(
+            'middleware.body.raw.maxFileSize'
+        );
+        const bodyText = this.configService.get<number>(
+            'middleware.body.text.maxFileSize'
+        );
         const bodyUrlencoded = this.configService.get<number>(
-            'middleware.body.urlencoded'
+            'middleware.body.urlencoded.maxFileSize'
         );
         const settingMiddleware: SettingMiddlewareResponseDto = {
             bodyJson,
+            bodyJsonUnit: ENUM_SETTING_UNIT.BYTE,
             bodyRaw,
+            bodyRawUnit: ENUM_SETTING_UNIT.BYTE,
             bodyText,
+            bodyTextUnit: ENUM_SETTING_UNIT.BYTE,
             bodyUrlencoded,
+            bodyUrlencodedUnit: ENUM_SETTING_UNIT.BYTE,
+        };
+
+        // user
+        const usernamePrefix = this.configService.get<string>(
+            'user.usernamePrefix'
+        );
+        const settingUser: SettingUserResponseDto = {
+            usernamePrefix,
         };
 
         return {
             name,
             env,
             timeout,
+            timeoutUnit: ENUM_SETTING_UNIT.MILLISECOND,
             file: settingFile,
             language: settingLanguage,
             timezone: settingTimezone,
             middleware: settingMiddleware,
             auth: settingAuth,
+            user: settingUser,
         };
     }
 }

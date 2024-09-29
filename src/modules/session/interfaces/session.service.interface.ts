@@ -5,6 +5,7 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
+    IDatabaseUpdateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { SessionCreateRequestDto } from 'src/modules/session/dtos/request/session.create.request.dto';
 import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
@@ -27,6 +28,15 @@ export interface ISessionService {
     findOneById(_id: string, options?: IDatabaseOptions): Promise<SessionDoc>;
     findOne(
         find: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<SessionDoc>;
+    findOneActiveById(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<SessionDoc>;
+    findOneActiveByIdAndUser(
+        _id: string,
+        user: string,
         options?: IDatabaseOptions
     ): Promise<SessionDoc>;
     getTotal(
@@ -53,6 +63,10 @@ export interface ISessionService {
         repository: SessionDoc,
         options?: IDatabaseOptions
     ): Promise<SessionDoc>;
+    updateManyRevokeByUser(
+        user: string,
+        options?: IDatabaseUpdateManyOptions
+    ): Promise<boolean>;
     deleteMany(
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions

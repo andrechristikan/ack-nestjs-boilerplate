@@ -27,7 +27,7 @@ import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 @ApiTags('modules.admin.activity')
 @Controller({
     version: '1',
-    path: '/activity',
+    path: '/activity/:user',
 })
 export class ActivityAdminController {
     constructor(
@@ -44,7 +44,7 @@ export class ActivityAdminController {
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/list/:user')
+    @Get('/list')
     async list(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
         @PaginationQuery()

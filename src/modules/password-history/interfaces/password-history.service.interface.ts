@@ -38,7 +38,7 @@ export interface IPasswordHistoryService {
         password: string,
         options?: IDatabaseOptions
     ): Promise<PasswordHistoryDoc>;
-    findOneActiveByUser(
+    findOneUsedByUser(
         user: string,
         password: string,
         options?: IDatabaseOptions

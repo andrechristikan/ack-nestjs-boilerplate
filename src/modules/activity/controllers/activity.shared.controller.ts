@@ -7,6 +7,7 @@ import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.p
 import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
 import { ActivityAdminListDoc } from 'src/modules/activity/docs/activity.admin.doc';
+import { ActivitySharedListDoc } from 'src/modules/activity/docs/activity.shared.doc';
 import { ActivityListResponseDto } from 'src/modules/activity/dtos/response/activity.list.response.dto';
 import { IActivityDoc } from 'src/modules/activity/interfaces/activity.interface';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
@@ -15,15 +16,6 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
-import {
-    PolicyAbilityProtected,
-    PolicyRoleProtected,
-} from 'src/modules/policy/decorators/policy.decorator';
-import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_ROLE_TYPE,
-    ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/enums/policy.enum';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
@@ -38,13 +30,8 @@ export class ActivitySharedController {
         private readonly activityService: ActivityService
     ) {}
 
-    @ActivityAdminListDoc()
+    @ActivitySharedListDoc()
     @ResponsePaging('activity.list')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.ACTIVITY,
-        action: [ENUM_POLICY_ACTION.READ],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')

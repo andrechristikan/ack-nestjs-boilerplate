@@ -33,6 +33,7 @@ import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
 import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
+import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 
 export interface IUserService {
     findAll(
@@ -126,18 +127,11 @@ export interface IUserService {
         { passwordHash, passwordExpired, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    active(
+    updateStatus(
         repository: UserDoc,
+        { status }: UserUpdateStatusRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserEntity>;
-    inactive(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc>;
-    blocked(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc>;
     updatePasswordAttempt(
         repository: UserDoc,
         { passwordAttempt }: UserUpdatePasswordAttemptRequestDto,
@@ -186,7 +180,7 @@ export interface IUserService {
     ): Promise<boolean>;
     updateProfile(
         repository: UserDoc,
-        { country, name, address, familyName }: UserUpdateProfileRequestDto,
+        { country, name, gender }: UserUpdateProfileRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     updateVerificationEmail(

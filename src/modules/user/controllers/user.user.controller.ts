@@ -12,7 +12,6 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { PolicyRoleProtected } from 'src/modules/policy/decorators/policy.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { UserService } from 'src/modules/user/services/user.service';
@@ -31,6 +30,8 @@ import { ClientSession, Connection } from 'mongoose';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
+import { SessionService } from 'src/modules/session/services/session.service';
+import { POLICY_ROLE_TYPE_USER_GROUP } from 'src/modules/policy/constants/policy.constant';
 
 @ApiTags('modules.user.user')
 @Controller({
@@ -43,12 +44,13 @@ export class UserUserController {
         private readonly databaseConnection: Connection,
         private readonly userService: UserService,
         private readonly activityService: ActivityService,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly sessionService: SessionService
     ) {}
 
     @UserUserDeleteDoc()
     @Response('user.delete')
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @PolicyRoleProtected(...POLICY_ROLE_TYPE_USER_GROUP)
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/delete')
@@ -75,6 +77,10 @@ export class UserUserController {
                 { session }
             );
 
+            await this.sessionService.updateManyRevokeByUser(user._id, {
+                session,
+            });
+
             await session.commitTransaction();
             await session.endSession();
         } catch (err: any) {
@@ -93,7 +99,7 @@ export class UserUserController {
 
     @UserUserUpdateMobileNumberDoc()
     @Response('user.updateMobileNumber')
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @PolicyRoleProtected(...POLICY_ROLE_TYPE_USER_GROUP)
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/mobile-number')
@@ -137,7 +143,7 @@ export class UserUserController {
 
     @UserUserUpdateUsernameDoc()
     @Response('user.updateClaimUsername')
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @PolicyRoleProtected(...POLICY_ROLE_TYPE_USER_GROUP)
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/claim-username')

@@ -34,4 +34,5 @@ export enum ENUM_POLICY_ROLE_TYPE {
     SUPER_ADMIN = 'SUPER_ADMIN',
     ADMIN = 'ADMIN',
     USER = 'USER',
+    MEMBER = 'MEMBER',
 }

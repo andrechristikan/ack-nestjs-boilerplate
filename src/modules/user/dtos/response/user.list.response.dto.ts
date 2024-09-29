@@ -24,8 +24,6 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     'role',
     'country',
     'mobileNumber',
-    'address',
-    'familyName',
     'verification',
 ] as const) {
     @ApiProperty({
@@ -69,14 +67,6 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     @ApiHideProperty()
     @Exclude()
     gender?: ENUM_USER_GENDER;
-
-    @ApiHideProperty()
-    @Exclude()
-    address?: string;
-
-    @ApiHideProperty()
-    @Exclude()
-    familyName?: string;
 
     @ApiHideProperty()
     @Exclude()
