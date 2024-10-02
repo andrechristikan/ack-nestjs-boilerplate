@@ -35,11 +35,11 @@
     "rollback": "nestjs-command remove:country && nestjs-command remove:apikey && nestjs-command remove:user && nestjs-command remove:role"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.658.1",
-    "@aws-sdk/client-ses": "^3.658.1",
-    "@aws-sdk/s3-request-presigner": "^3.658.1",
+    "@aws-sdk/client-s3": "^3.662.0",
+    "@aws-sdk/client-ses": "^3.662.0",
+    "@aws-sdk/s3-request-presigner": "^3.662.0",
     "@casl/ability": "^6.7.1",
-    "@faker-js/faker": "^9.0.2",
+    "@faker-js/faker": "^9.0.3",
     "@nestjs/axios": "^3.0.3",
     "@nestjs/bullmq": "^10.2.1",
     "@nestjs/cache-manager": "^2.2.2",
@@ -57,7 +57,7 @@
     "@sentry/profiling-node": "^8.32.0",
     "axios": "^1.7.7",
     "bcryptjs": "^2.4.3",
-    "bullmq": "^5.13.2",
+    "bullmq": "^5.15.0",
     "cache-manager": "^4.1.0",
     "cache-manager-redis-store": "^3.0.1",
     "case": "^1.6.3",
@@ -66,10 +66,10 @@
     "compression": "^1.7.4",
     "crypto-js": "^4.2.0",
     "google-auth-library": "^9.14.1",
-    "helmet": "^7.1.0",
+    "helmet": "^8.0.0",
     "moment": "^2.30.1",
     "moment-timezone": "^0.5.45",
-    "mongoose": "^8.6.3",
+    "mongoose": "^8.7.0",
     "nestjs-command": "^3.1.4",
     "nestjs-i18n": "^10.4.9",
     "passport": "^0.7.0",
@@ -102,7 +102,7 @@
     "@types/lodash": "^4.17.9",
     "@types/ms": "^0.7.34",
     "@types/multer": "^1.4.12",
-    "@types/node": "^22.7.2",
+    "@types/node": "^22.7.4",
     "@types/passport-jwt": "^4.0.1",
     "@types/response-time": "^2.3.8",
     "@types/supertest": "^6.0.2",
@@ -123,7 +123,7 @@
     "ts-prune": "^0.10.3",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.6.2",
-    "typescript-eslint": "^8.7.0"
+    "typescript-eslint": "^8.8.0"
   },
   "lint-staged": {
     "**/*.ts": [

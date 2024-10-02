@@ -119,3 +119,9 @@ export function DatabaseQueryAnd(queries: Record<string, any>[]) {
         $and: queries,
     };
 }
+
+// TODO: QUERY CONVERT
+// GTE
+// LTE
+// LT
+// GT

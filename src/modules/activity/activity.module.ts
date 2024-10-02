@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ActivityRepositoryModule } from 'src/modules/activity/repository/activity.module';
+import { ActivityRepositoryModule } from 'src/modules/activity/repository/activity.repository.module';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 
 @Module({
