@@ -45,48 +45,7 @@ export function DatabaseSchema<T = any, N = MongooseSchema<T>>(
     return SchemaFactory.createForClass<T>(entity) as N;
 }
 
-export function DatabaseQueryIn<T = string>(
-    field: string,
-    values: T[]
-): Record<string, any> {
-    return {
-        [field]: {
-            $in: values,
-        },
-    };
-}
-export function DatabaseQueryNin<T = string>(
-    field: string,
-    values: T[]
-): Record<string, any> {
-    return {
-        [field]: {
-            $nin: values,
-        },
-    };
-}
-
-export function DatabaseQueryEqual<T = string>(
-    field: string,
-    value: T
-): Record<string, any> {
-    return {
-        [field]: value,
-    };
-}
-
-export function DatabaseQueryNotEqual<T = string>(
-    field: string,
-    value: T
-): Record<string, any> {
-    return {
-        [field]: {
-            $ne: value,
-        },
-    };
-}
-
-export function DatabaseQueryContain(
+export function DatabaseHelperQueryContain(
     field: string,
     value: string,
     options?: IDatabaseQueryContainOptions
@@ -107,21 +66,3 @@ export function DatabaseQueryContain(
         },
     };
 }
-
-export function DatabaseQueryOr(queries: Record<string, any>[]) {
-    return {
-        $or: queries,
-    };
-}
-
-export function DatabaseQueryAnd(queries: Record<string, any>[]) {
-    return {
-        $and: queries,
-    };
-}
-
-// TODO: QUERY CONVERT
-// GTE
-// LTE
-// LT
-// GT

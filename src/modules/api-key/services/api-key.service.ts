@@ -245,10 +245,11 @@ export class ApiKeyService implements IApiKeyService {
     async inactiveManyByEndDate(
         options?: IDatabaseUpdateManyOptions
     ): Promise<boolean> {
+        const today = this.helperDateService.create();
         await this.apiKeyRepository.updateMany(
             {
                 endDate: {
-                    $lte: this.helperDateService.create(),
+                    $lte: today,
                 },
                 isActive: true,
             },

@@ -1,11 +1,11 @@
 import { Query } from '@nestjs/common';
 import {
-    IPaginationFilterDateOptions,
+    IPaginationFilterDateBetweenOptions,
     IPaginationFilterEqualOptions,
     IPaginationFilterOptions,
     IPaginationQueryOptions,
 } from 'src/common/pagination/interfaces/pagination.interface';
-import { PaginationFilterDatePipe } from 'src/common/pagination/pipes/pagination.filter-date.pipe';
+import { PaginationFilterDateBetweenPipe } from 'src/common/pagination/pipes/pagination.filter-date-between.pipe';
 import { PaginationFilterEqualPipe } from 'src/common/pagination/pipes/pagination.filter-equal.pipe';
 import { PaginationFilterInBooleanPipe } from 'src/common/pagination/pipes/pagination.filter-in-boolean.pipe';
 import { PaginationFilterInEnumPipe } from 'src/common/pagination/pipes/pagination.filter-in-enum.pipe';
@@ -16,7 +16,6 @@ import { PaginationOrderPipe } from 'src/common/pagination/pipes/pagination.orde
 import { PaginationPagingPipe } from 'src/common/pagination/pipes/pagination.paging.pipe';
 import { PaginationSearchPipe } from 'src/common/pagination/pipes/pagination.search.pipe';
 
-//! Pagination query helper
 export function PaginationQuery(
     options?: IPaginationQueryOptions
 ): ParameterDecorator {
@@ -31,7 +30,6 @@ export function PaginationQuery(
     );
 }
 
-//! Pagination query filter boolean will convert into repository query
 export function PaginationQueryFilterInBoolean(
     field: string,
     defaultValue: boolean[],
@@ -43,7 +41,6 @@ export function PaginationQueryFilterInBoolean(
     );
 }
 
-//! Pagination query filter enum will convert into repository
 export function PaginationQueryFilterInEnum<T>(
     field: string,
     defaultValue: T,
@@ -56,7 +53,6 @@ export function PaginationQueryFilterInEnum<T>(
     );
 }
 
-//! Pagination query filter enum will convert into repository
 export function PaginationQueryFilterNinEnum<T>(
     field: string,
     defaultValue: T,
@@ -74,7 +70,6 @@ export function PaginationQueryFilterNinEnum<T>(
     );
 }
 
-//! Pagination query filter equal will convert into repository
 export function PaginationQueryFilterNotEqual(
     field: string,
     options?: IPaginationFilterEqualOptions
@@ -85,7 +80,6 @@ export function PaginationQueryFilterNotEqual(
     );
 }
 
-//! Pagination query filter equal will convert into repository
 export function PaginationQueryFilterEqual(
     field: string,
     options?: IPaginationFilterEqualOptions
@@ -96,7 +90,6 @@ export function PaginationQueryFilterEqual(
     );
 }
 
-//! Pagination query filter string contain will convert into repository
 export function PaginationQueryFilterStringContain(
     field: string,
     options?: IPaginationFilterOptions
@@ -107,13 +100,15 @@ export function PaginationQueryFilterStringContain(
     );
 }
 
-//! Pagination query filter date will convert into repository
-export function PaginationQueryFilterDate(
-    field: string,
-    options?: IPaginationFilterDateOptions
+export function PaginationQueryFilterDateBetween(
+    fieldStart: string,
+    fieldEnd: string,
+    options?: IPaginationFilterDateBetweenOptions
 ): ParameterDecorator {
     return Query(
-        options?.queryField ?? field,
-        PaginationFilterDatePipe(field, options)
+        PaginationFilterDateBetweenPipe(
+            options?.queryFieldStart ?? fieldStart,
+            options?.queryFieldEnd ?? fieldEnd
+        )
     );
 }

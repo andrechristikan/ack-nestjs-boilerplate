@@ -16,9 +16,7 @@ export function PaginationFilterNotEqualPipe(
             private readonly paginationService: PaginationService
         ) {}
 
-        async transform(
-            value: string
-        ): Promise<Record<string, string | number>> {
+        async transform(value: string): Promise<any> {
             if (!value) {
                 return;
             }

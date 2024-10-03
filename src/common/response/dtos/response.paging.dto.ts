@@ -22,7 +22,7 @@ export class ResponsePagingMetadataRequestDto {
     })
     filters: Record<
         string,
-        string | number | boolean | Array<string | number | boolean>
+        string | number | boolean | Array<string | number | boolean> | Date
     >;
 
     @ApiProperty({

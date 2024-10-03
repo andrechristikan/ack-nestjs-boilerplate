@@ -34,6 +34,7 @@ import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request
 import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
+import { PipelineStage } from 'mongoose';
 
 export interface IUserService {
     findAll(
@@ -44,6 +45,9 @@ export interface IUserService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
+    createRawQueryFindAllWithRoleAndCountry(
+        find?: Record<string, any>
+    ): PipelineStage[];
     findAllWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllAggregateOptions

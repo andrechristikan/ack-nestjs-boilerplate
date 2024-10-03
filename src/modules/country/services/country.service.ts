@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { readdirSync, readFileSync } from 'fs';
 import { Document } from 'mongoose';
-import { DatabaseQueryContain } from 'src/common/database/decorators/database.decorator';
+import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateManyOptions,
     IDatabaseDeleteManyOptions,
@@ -59,7 +59,7 @@ export class CountryService implements ICountryService {
         options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne(
-            DatabaseQueryContain('name', name),
+            DatabaseHelperQueryContain('name', name),
             options
         );
     }
@@ -69,7 +69,7 @@ export class CountryService implements ICountryService {
         options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne(
-            DatabaseQueryContain('alpha2Code', alpha2),
+            DatabaseHelperQueryContain('alpha2Code', alpha2),
             options
         );
     }

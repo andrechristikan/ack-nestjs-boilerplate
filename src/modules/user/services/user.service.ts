@@ -16,7 +16,6 @@ import { ConfigService } from '@nestjs/config';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { plainToInstance } from 'class-transformer';
 import { Document, PipelineStage } from 'mongoose';
-import { DatabaseQueryContain } from 'src/common/database/decorators/database.decorator';
 import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import {
@@ -48,6 +47,7 @@ import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.
 import { CountryTableName } from 'src/modules/country/repository/entities/country.entity';
 import { RoleTableName } from 'src/modules/role/repository/entities/role.entity';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
+import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -84,11 +84,10 @@ export class UserService implements IUserService {
         return this.userRepository.getTotal(find, options);
     }
 
-    async findAllWithRoleAndCountry(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllAggregateOptions
-    ): Promise<IUserEntity[]> {
-        const pipeline: PipelineStage[] = [
+    createRawQueryFindAllWithRoleAndCountry(
+        find?: Record<string, any>
+    ): PipelineStage[] {
+        return [
             {
                 $lookup: {
                     from: RoleTableName,
@@ -129,6 +128,14 @@ export class UserService implements IUserService {
                 $match: find,
             },
         ];
+    }
+
+    async findAllWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllAggregateOptions
+    ): Promise<IUserEntity[]> {
+        const pipeline: PipelineStage[] =
+            this.createRawQueryFindAllWithRoleAndCountry(find);
 
         return this.userRepository.findAllAggregate<PipelineStage, IUserEntity>(
             pipeline,
@@ -140,47 +147,8 @@ export class UserService implements IUserService {
         find?: Record<string, any>,
         options?: IDatabaseAggregateOptions
     ): Promise<number> {
-        const pipeline: PipelineStage[] = [
-            {
-                $lookup: {
-                    from: RoleTableName,
-                    as: 'role',
-                    foreignField: '_id',
-                    localField: 'role',
-                },
-            },
-            {
-                $unwind: '$role',
-            },
-            {
-                $lookup: {
-                    from: CountryTableName,
-                    as: 'mobileNumber.country',
-                    foreignField: '_id',
-                    localField: 'mobileNumber.country',
-                },
-            },
-            {
-                $unwind: {
-                    path: '$mobileNumber.country',
-                    preserveNullAndEmptyArrays: true,
-                },
-            },
-            {
-                $lookup: {
-                    from: CountryTableName,
-                    as: 'country',
-                    foreignField: '_id',
-                    localField: 'country',
-                },
-            },
-            {
-                $unwind: '$country',
-            },
-            {
-                $match: find,
-            },
-        ];
+        const pipeline: PipelineStage[] =
+            this.createRawQueryFindAllWithRoleAndCountry(find);
 
         return this.userRepository.getTotalAggregate<PipelineStage>(
             pipeline,
@@ -377,7 +345,7 @@ export class UserService implements IUserService {
         options?: IDatabaseExistOptions
     ): Promise<boolean> {
         return this.userRepository.exists(
-            DatabaseQueryContain('email', email, { fullWord: true }),
+            DatabaseHelperQueryContain('email', email, { fullWord: true }),
             { ...options, withDeleted: true }
         );
     }
@@ -387,7 +355,9 @@ export class UserService implements IUserService {
         options?: IDatabaseExistOptions
     ): Promise<boolean> {
         return this.userRepository.exists(
-            DatabaseQueryContain('username', username, { fullWord: true }),
+            DatabaseHelperQueryContain('username', username, {
+                fullWord: true,
+            }),
             { ...options, withDeleted: true }
         );
     }

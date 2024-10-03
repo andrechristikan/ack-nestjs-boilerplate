@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
-import { DatabaseQueryIn } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
@@ -75,7 +74,11 @@ export class RoleService implements IRoleService {
         options?: IDatabaseFindAllOptions
     ): Promise<RoleDoc[]> {
         return this.roleRepository.findAll(
-            DatabaseQueryIn('type', types),
+            {
+                type: {
+                    $in: types,
+                },
+            },
             options
         );
     }
