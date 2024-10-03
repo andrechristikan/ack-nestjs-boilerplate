@@ -6,7 +6,6 @@ import { PaginationService } from 'src/common/pagination/services/pagination.ser
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
-import { ActivityAdminListDoc } from 'src/modules/activity/docs/activity.admin.doc';
 import { ActivitySharedListDoc } from 'src/modules/activity/docs/activity.shared.doc';
 import { ActivityListResponseDto } from 'src/modules/activity/dtos/response/activity.list.response.dto';
 import { IActivityDoc } from 'src/modules/activity/interfaces/activity.interface';
