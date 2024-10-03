@@ -106,9 +106,6 @@ export function PaginationQueryFilterDateBetween(
     options?: IPaginationFilterDateBetweenOptions
 ): ParameterDecorator {
     return Query(
-        PaginationFilterDateBetweenPipe(
-            options?.queryFieldStart ?? fieldStart,
-            options?.queryFieldEnd ?? fieldEnd
-        )
+        PaginationFilterDateBetweenPipe(fieldStart, fieldEnd, options)
     );
 }
