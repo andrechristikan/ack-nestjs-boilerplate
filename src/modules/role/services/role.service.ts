@@ -9,8 +9,8 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseCreateManyOptions,
     IDatabaseSaveOptions,
-    IDatabaseOptions,
     IDatabaseDeleteManyOptions,
+    IDatabaseFindOneOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
@@ -82,28 +82,28 @@ export class RoleService implements IRoleService {
 
     async findOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<RoleDoc> {
         return this.roleRepository.findOneById(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<RoleDoc> {
         return this.roleRepository.findOne(find, options);
     }
 
     async findOneByName(
         name: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<RoleDoc> {
         return this.roleRepository.findOne({ name }, options);
     }
 
     async findOneActiveById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<RoleDoc> {
         return this.roleRepository.findOne({ _id, isActive: true }, options);
     }

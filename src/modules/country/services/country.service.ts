@@ -8,8 +8,8 @@ import {
     IDatabaseCreateManyOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
@@ -49,14 +49,14 @@ export class CountryService implements ICountryService {
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne(find, options);
     }
 
     async findOneByName(
         name: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne(
             DatabaseQueryContain('name', name),
@@ -66,7 +66,7 @@ export class CountryService implements ICountryService {
 
     async findOneByAlpha2(
         alpha2: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne(
             DatabaseQueryContain('alpha2Code', alpha2),
@@ -76,7 +76,7 @@ export class CountryService implements ICountryService {
 
     async findOneByPhoneCode(
         phoneCode: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne(
             {
@@ -88,7 +88,7 @@ export class CountryService implements ICountryService {
 
     async findOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOneById(_id, options);
     }

@@ -6,8 +6,8 @@ import {
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { PasswordHistoryCreateByAdminRequestDto } from 'src/modules/password-history/dtos/request/password-history.create-by-admin.request.dto';
@@ -62,7 +62,7 @@ export class PasswordHistoryService implements IPasswordHistoryService {
 
     async findOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<PasswordHistoryDoc> {
         return this.passwordHistoryRepository.findOneById<PasswordHistoryDoc>(
             _id,
@@ -72,7 +72,7 @@ export class PasswordHistoryService implements IPasswordHistoryService {
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<PasswordHistoryDoc> {
         return this.passwordHistoryRepository.findOne<PasswordHistoryDoc>(
             find,
@@ -83,7 +83,7 @@ export class PasswordHistoryService implements IPasswordHistoryService {
     async findOneByUser(
         user: string,
         password: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<PasswordHistoryDoc> {
         return this.passwordHistoryRepository.findOne<PasswordHistoryDoc>(
             {
@@ -97,7 +97,7 @@ export class PasswordHistoryService implements IPasswordHistoryService {
     async findOneUsedByUser(
         user: string,
         password: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<PasswordHistoryDoc> {
         const today = this.helperDateService.create();
 

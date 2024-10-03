@@ -11,6 +11,7 @@ import {
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
     IDatabaseUpdateManyOptions,
@@ -71,21 +72,21 @@ export class SessionService implements ISessionService {
 
     async findOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<SessionDoc> {
         return this.sessionRepository.findOneById<SessionDoc>(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<SessionDoc> {
         return this.sessionRepository.findOne<SessionDoc>(find, options);
     }
 
     async findOneActiveById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<SessionDoc> {
         const today = this.helperDateService.create();
 
@@ -103,7 +104,7 @@ export class SessionService implements ISessionService {
     async findOneActiveByIdAndUser(
         _id: string,
         user: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<SessionDoc> {
         const today = this.helperDateService.create();
 

@@ -6,8 +6,8 @@ import {
     IDatabaseExistOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseOptions,
     IDatabaseSaveOptions,
     IDatabaseUpdateOptions,
 } from 'src/common/database/interfaces/database.interface';
@@ -190,21 +190,21 @@ export class UserService implements IUserService {
 
     async findOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<UserDoc> {
         return this.userRepository.findOneById<UserDoc>(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<UserDoc> {
         return this.userRepository.findOne<UserDoc>(find, options);
     }
 
     async findOneByEmail(
         email: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<UserDoc> {
         return this.userRepository.findOne<UserDoc>({ email }, options);
     }
@@ -212,7 +212,7 @@ export class UserService implements IUserService {
     async findOneByMobileNumber(
         country: string,
         mobileNumber: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<UserDoc> {
         return this.userRepository.findOne<UserDoc>(
             {
@@ -225,7 +225,7 @@ export class UserService implements IUserService {
 
     async findOneWithRoleAndCountry(
         find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(find, {
             ...options,
@@ -235,7 +235,7 @@ export class UserService implements IUserService {
 
     async findOneWithRoleAndCountryById(
         _id: string,
-        options?: IDatabaseFindAllOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOneById<IUserDoc>(_id, {
             ...options,
@@ -271,7 +271,7 @@ export class UserService implements IUserService {
 
     async findOneActiveById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(
             { _id, status: ENUM_USER_STATUS.ACTIVE },
@@ -284,7 +284,7 @@ export class UserService implements IUserService {
 
     async findOneActiveByEmail(
         email: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(
             { email, status: ENUM_USER_STATUS.ACTIVE },
@@ -298,7 +298,7 @@ export class UserService implements IUserService {
     async findOneActiveByMobileNumber(
         country: string,
         mobileNumber: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(
             {

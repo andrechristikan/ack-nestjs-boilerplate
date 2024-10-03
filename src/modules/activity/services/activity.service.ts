@@ -5,8 +5,8 @@ import {
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ActivityCreateByAdminResponse } from 'src/modules/activity/dtos/request/activity.create-by-admin.response.dto';
 import { ActivityCreateResponse } from 'src/modules/activity/dtos/request/activity.create.response.dto';
@@ -50,14 +50,14 @@ export class ActivityService implements IActivityService {
 
     async findOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<ActivityDoc> {
         return this.activityRepository.findOneById<ActivityDoc>(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<ActivityDoc> {
         return this.activityRepository.findOne<ActivityDoc>(find, options);
     }

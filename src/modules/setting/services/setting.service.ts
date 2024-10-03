@@ -4,8 +4,8 @@ import {
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/enums/helper.enum';
@@ -53,21 +53,21 @@ export class SettingService implements ISettingService {
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<SettingDoc> {
         return this.settingRepository.findOne(find, options);
     }
 
     async findOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<SettingDoc> {
         return this.settingRepository.findOneById(_id, options);
     }
 
     async findOneByName(
         name: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<SettingDoc> {
         return this.settingRepository.findOne({ name }, options);
     }
