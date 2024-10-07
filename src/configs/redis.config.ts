@@ -8,7 +8,7 @@ export default registerAs(
         password: process.env.REDIS_PASSWORD,
         tls: process.env.REDIS_TLS === 'true' ? {} : null,
         cached: {
-            ttl: 5 & 1000, // 5 mins
+            ttl: 5 * 1000, // 5 mins
             max: 10,
         },
     })
