@@ -59,16 +59,12 @@ export class AwsSESService implements IAwsSESService {
             NextToken: nextToken,
         });
 
-        try {
-            const listTemplate: ListTemplatesCommandOutput =
-                await this.sesClient.send<
-                    ListTemplatesCommandInput,
-                    ListTemplatesCommandOutput
-                >(command);
-            return listTemplate;
-        } catch (err: any) {
-            throw err;
-        }
+        const listTemplate: ListTemplatesCommandOutput =
+            await this.sesClient.send<
+                ListTemplatesCommandInput,
+                ListTemplatesCommandOutput
+            >(command);
+        return listTemplate;
     }
 
     async getTemplate({
@@ -78,17 +74,12 @@ export class AwsSESService implements IAwsSESService {
             TemplateName: name,
         });
 
-        try {
-            const getTemplate: GetTemplateCommandOutput =
-                await this.sesClient.send<
-                    GetTemplateCommandInput,
-                    GetTemplateCommandOutput
-                >(command);
+        const getTemplate: GetTemplateCommandOutput = await this.sesClient.send<
+            GetTemplateCommandInput,
+            GetTemplateCommandOutput
+        >(command);
 
-            return getTemplate;
-        } catch (err: any) {
-            throw err;
-        }
+        return getTemplate;
     }
 
     async createTemplate({
@@ -110,17 +101,12 @@ export class AwsSESService implements IAwsSESService {
             },
         });
 
-        try {
-            const create: CreateTemplateCommandOutput =
-                await this.sesClient.send<
-                    CreateTemplateCommandInput,
-                    CreateTemplateCommandOutput
-                >(command);
+        const create: CreateTemplateCommandOutput = await this.sesClient.send<
+            CreateTemplateCommandInput,
+            CreateTemplateCommandOutput
+        >(command);
 
-            return create;
-        } catch (err: any) {
-            throw err;
-        }
+        return create;
     }
 
     async updateTemplate({
@@ -142,17 +128,12 @@ export class AwsSESService implements IAwsSESService {
             },
         });
 
-        try {
-            const update: UpdateTemplateCommandOutput =
-                await this.sesClient.send<
-                    UpdateTemplateCommandInput,
-                    UpdateTemplateCommandOutput
-                >(command);
+        const update: UpdateTemplateCommandOutput = await this.sesClient.send<
+            UpdateTemplateCommandInput,
+            UpdateTemplateCommandOutput
+        >(command);
 
-            return update;
-        } catch (err: any) {
-            throw err;
-        }
+        return update;
     }
 
     async deleteTemplate({
@@ -162,16 +143,12 @@ export class AwsSESService implements IAwsSESService {
             TemplateName: name,
         });
 
-        try {
-            const del: DeleteTemplateCommandOutput = await this.sesClient.send<
-                DeleteTemplateCommandInput,
-                DeleteTemplateCommandOutput
-            >(command);
+        const del: DeleteTemplateCommandOutput = await this.sesClient.send<
+            DeleteTemplateCommandInput,
+            DeleteTemplateCommandOutput
+        >(command);
 
-            return del;
-        } catch (err: any) {
-            throw err;
-        }
+        return del;
     }
 
     async send<T>({
@@ -196,17 +173,13 @@ export class AwsSESService implements IAwsSESService {
                 ReplyToAddresses: [replyTo ?? sender],
             });
 
-        try {
-            const sendWithTemplate: SendTemplatedEmailCommandOutput =
-                await this.sesClient.send<
-                    SendTemplatedEmailCommandInput,
-                    SendTemplatedEmailCommandOutput
-                >(command);
+        const sendWithTemplate: SendTemplatedEmailCommandOutput =
+            await this.sesClient.send<
+                SendTemplatedEmailCommandInput,
+                SendTemplatedEmailCommandOutput
+            >(command);
 
-            return sendWithTemplate;
-        } catch (err: any) {
-            throw err;
-        }
+        return sendWithTemplate;
     }
 
     async sendBulk({
@@ -219,6 +192,7 @@ export class AwsSESService implements IAwsSESService {
     }: AwsSESSendBulkDto): Promise<SendBulkTemplatedEmailCommandOutput> {
         const command: SendBulkTemplatedEmailCommand =
             new SendBulkTemplatedEmailCommand({
+                DefaultTemplateData: '',
                 Template: templateName,
                 Destinations: recipients.map(e => ({
                     Destination: {
@@ -234,16 +208,12 @@ export class AwsSESService implements IAwsSESService {
                 ReplyToAddresses: [replyTo ?? sender],
             });
 
-        try {
-            const sendWithTemplate: SendBulkTemplatedEmailCommandOutput =
-                await this.sesClient.send<
-                    SendBulkTemplatedEmailCommandInput,
-                    SendBulkTemplatedEmailCommandOutput
-                >(command);
+        const sendWithTemplate: SendBulkTemplatedEmailCommandOutput =
+            await this.sesClient.send<
+                SendBulkTemplatedEmailCommandInput,
+                SendBulkTemplatedEmailCommandOutput
+            >(command);
 
-            return sendWithTemplate;
-        } catch (err: any) {
-            throw err;
-        }
+        return sendWithTemplate;
     }
 }

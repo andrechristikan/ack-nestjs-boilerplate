@@ -151,6 +151,10 @@ export class AppEnvDto {
 
     @IsOptional()
     @IsString()
+    REDIS_USERNAME?: string;
+
+    @IsOptional()
+    @IsString()
     REDIS_PASSWORD?: string;
 
     @IsNotEmpty()

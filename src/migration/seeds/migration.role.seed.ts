@@ -33,7 +33,7 @@ export class MigrationRoleSeed {
             },
             {
                 name: 'member',
-                type: ENUM_POLICY_ROLE_TYPE.USER,
+                type: ENUM_POLICY_ROLE_TYPE.MEMBER,
                 permissions: [],
             },
             {

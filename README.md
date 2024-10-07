@@ -46,9 +46,6 @@
     - [User](#user)
   - [BullMQ Board](#bullmq-board)
     - [User](#user-1)
-  - [Redis Client Web Base](#redis-client-web-base)
-  - [MongoDB Client Web Base](#mongodb-client-web-base)
-    - [User](#user-2)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
@@ -74,10 +71,9 @@
 - [ ] Export Module
 - [ ] Move to Stateful Authorization
       1. Session Module
-      2. Device Module
-      3. Password Period Module
-      5. Reset Password Module
-      6. Verification Module
+      2. Password Period Module
+      3. Reset Password Module
+      4. Verification Module
 
 ## Prerequisites
 
@@ -279,22 +275,6 @@ api key secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
 > This available with docker installation
 
 You can check and monitor your queue. Url `localhost:3010`
-
-### User
- - email: `admin`
- - password: `admin123`
-  
-## Redis Client Web Base
-
-> This available with docker installation
-
-You can check redis data using `redis-commander`. Url `localhost:3011`
-
-## MongoDB Client Web Base
-
-> This available with docker installation
-
-You can check mongodb data using `mongo-express`. Url `localhost:3012`
 
 ### User
  - email: `admin`

@@ -1,8 +1,10 @@
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import {
+    IDatabaseAggregateOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseExistOptions,
+    IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
@@ -31,6 +33,8 @@ import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
 import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
+import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
+import { PipelineStage } from 'mongoose';
 
 export interface IUserService {
     findAll(
@@ -41,6 +45,17 @@ export interface IUserService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
+    createRawQueryFindAllWithRoleAndCountry(
+        find?: Record<string, any>
+    ): PipelineStage[];
+    findAllWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllAggregateOptions
+    ): Promise<IUserEntity[]>;
+    getTotalWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseAggregateOptions
+    ): Promise<number>;
     findOneById(_id: string, options?: IDatabaseOptions): Promise<UserDoc>;
     findOne(
         find: Record<string, any>,
@@ -48,13 +63,10 @@ export interface IUserService {
     ): Promise<UserDoc>;
     findOneByEmail(email: string, options?: IDatabaseOptions): Promise<UserDoc>;
     findOneByMobileNumber(
+        country: string,
         mobileNumber: string,
         options?: IDatabaseOptions
     ): Promise<UserDoc>;
-    findAllWithRoleAndCountry(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<IUserDoc[]>;
     findOneWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
@@ -80,6 +92,7 @@ export interface IUserService {
         options?: IDatabaseOptions
     ): Promise<IUserDoc>;
     findOneActiveByMobileNumber(
+        country: string,
         mobileNumber: string,
         options?: IDatabaseOptions
     ): Promise<IUserDoc>;
@@ -103,10 +116,6 @@ export interface IUserService {
         username: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
-    existByMobileNumber(
-        mobileNumber: string,
-        options?: IDatabaseExistOptions
-    ): Promise<boolean>;
     updatePhoto(
         repository: UserDoc,
         photo: AwsS3Dto,
@@ -117,18 +126,11 @@ export interface IUserService {
         { passwordHash, passwordExpired, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    active(
+    updateStatus(
         repository: UserDoc,
+        { status }: UserUpdateStatusRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserEntity>;
-    inactive(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc>;
-    blocked(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc>;
     updatePasswordAttempt(
         repository: UserDoc,
         { passwordAttempt }: UserUpdatePasswordAttemptRequestDto,
@@ -166,7 +168,7 @@ export interface IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    delete(
+    softDelete(
         repository: UserDoc,
         dto: DatabaseSoftDeleteDto,
         options?: IDatabaseSaveOptions
@@ -177,7 +179,11 @@ export interface IUserService {
     ): Promise<boolean>;
     updateProfile(
         repository: UserDoc,
-        { country, name, address, familyName }: UserUpdateProfileRequestDto,
+        { country, name, gender }: UserUpdateProfileRequestDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    updateVerificationEmail(
+        repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     join(repository: UserDoc): Promise<IUserDoc>;

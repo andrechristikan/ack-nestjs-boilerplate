@@ -5,10 +5,8 @@ export enum ENUM_USER_SIGN_UP_FROM {
 }
 
 export enum ENUM_USER_STATUS {
-    CREATED = 'CREATED',
     ACTIVE = 'ACTIVE',
     INACTIVE = 'INACTIVE',
-    DELETED = 'DELETED',
     BLOCKED = 'BLOCKED',
 }
 

@@ -9,9 +9,11 @@ import {
 import {
     UserDoc,
     UserEntity,
+} from 'src/modules/user/repository/entities/user.entity';
+import {
     UserMobileNumberDoc,
     UserMobileNumberEntity,
-} from 'src/modules/user/repository/entities/user.entity';
+} from 'src/modules/user/repository/entities/user.mobile-number.entity';
 
 export interface IUserMobileNumberEntity
     extends Omit<UserMobileNumberEntity, 'country'> {

@@ -1,12 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-    DatabaseQueryContain,
-    DatabaseQueryEqual,
-    DatabaseQueryIn,
-    DatabaseQueryNin,
-    DatabaseQueryNotEqual,
-    DatabaseQueryOr,
-} from 'src/common/database/decorators/database.decorator';
+import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
 import {
     PAGINATION_DEFAULT_AVAILABLE_ORDER_BY,
     PAGINATION_DEFAULT_MAX_PAGE,
@@ -83,45 +76,97 @@ export class PaginationService implements IPaginationService {
             return;
         }
 
-        return DatabaseQueryOr(
-            availableSearch.map(val => DatabaseQueryContain(val, searchValue))
-        );
+        return {
+            $or: availableSearch.map(val =>
+                DatabaseHelperQueryContain(val, searchValue)
+            ),
+        };
     }
 
-    filterEqual<T = string>(field: string, filterValue: T): Record<string, T> {
-        return DatabaseQueryEqual<T>(field, filterValue);
+    filterEqual<T = string>(
+        field: string,
+        filterValue: T
+    ): Record<string, { $eq: T }> {
+        return {
+            [field]: {
+                $eq: filterValue,
+            },
+        };
     }
 
     filterNotEqual<T = string>(
         field: string,
         filterValue: T
-    ): Record<string, T> {
-        return DatabaseQueryNotEqual<T>(field, filterValue);
+    ): Record<string, { $ne: T }> {
+        return {
+            [field]: {
+                $ne: filterValue,
+            },
+        };
     }
 
     filterContain(field: string, filterValue: string): Record<string, any> {
-        return DatabaseQueryContain(field, filterValue);
+        return DatabaseHelperQueryContain(field, filterValue);
     }
 
     filterContainFullMatch(
         field: string,
         filterValue: string
     ): Record<string, any> {
-        return DatabaseQueryContain(field, filterValue, { fullWord: true });
+        return DatabaseHelperQueryContain(field, filterValue, {
+            fullWord: true,
+        });
     }
 
-    filterIn<T = string>(field: string, filterValue: T[]): Record<string, any> {
-        return DatabaseQueryIn<T>(field, filterValue);
+    filterIn<T = string>(
+        field: string,
+        filterValue: T[]
+    ): Record<string, { $in: T[] }> {
+        return {
+            [field]: {
+                $in: filterValue,
+            },
+        };
     }
 
     filterNin<T = string>(
         field: string,
         filterValue: T[]
-    ): Record<string, any> {
-        return DatabaseQueryNin<T>(field, filterValue);
+    ): Record<
+        string,
+        {
+            $nin: T[];
+        }
+    > {
+        return {
+            [field]: {
+                $nin: filterValue,
+            },
+        };
     }
 
-    filterDate(field: string, filterValue: Date): Record<string, Date> {
-        return DatabaseQueryEqual<Date>(field, filterValue);
+    filterDateBetween(
+        fieldStart: string,
+        fieldEnd: string,
+        filterStartValue: Date,
+        filterEndValue: Date
+    ): Record<string, any> {
+        if (fieldStart === fieldEnd) {
+            return {
+                [fieldStart]: {
+                    $gte: filterStartValue,
+                    $lte: filterEndValue,
+                },
+            };
+        }
+
+        return {
+            [fieldStart]: {
+                $gte: filterStartValue,
+            },
+            [fieldEnd]: {
+                $lte: filterEndValue,
+            },
+        };
     }
 }

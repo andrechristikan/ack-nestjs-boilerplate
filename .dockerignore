@@ -5,6 +5,7 @@ dist/
 swagger.json
 .husky/
 .github/
+assets/
 
 # Logs
 logs/

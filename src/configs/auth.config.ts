@@ -8,13 +8,13 @@ export default registerAs(
             accessToken: {
                 secretKey: process.env.AUTH_JWT_ACCESS_TOKEN_SECRET_KEY,
                 expirationTime:
-                    ms(process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED) / 1000, // 1 hours
+                    ms(process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED) / 1000,
             },
 
             refreshToken: {
                 secretKey: process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY,
                 expirationTime:
-                    ms(process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED) / 1000, // 1 hours
+                    ms(process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED) / 1000,
             },
 
             subject: process.env.AUTH_JWT_SUBJECT,

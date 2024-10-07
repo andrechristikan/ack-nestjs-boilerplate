@@ -481,7 +481,7 @@ export function DocResponsePaging<T>(
                 'Order direction base on _metadata.pagination.availableOrderDirection',
         }),
         ApiExtraModels(ResponsePagingDto),
-        ApiExtraModels(options.dto as any),
+        ApiExtraModels(docs.dto as any),
         ApiResponse({
             description: docs.httpStatus.toString(),
             status: docs.httpStatus,

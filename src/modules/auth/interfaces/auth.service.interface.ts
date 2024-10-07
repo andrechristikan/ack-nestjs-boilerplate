@@ -1,4 +1,3 @@
-import { Document } from 'mongoose';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
@@ -8,6 +7,8 @@ import {
     IAuthPassword,
     IAuthPasswordOptions,
 } from 'src/modules/auth/interfaces/auth.interface';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
 
 export interface IAuthService {
     createAccessToken(
@@ -26,8 +27,10 @@ export interface IAuthService {
         passwordString: string,
         passwordHash: string
     ): Promise<boolean>;
-    createPayloadAccessToken<T extends Document>(
-        data: T,
+    createPayloadAccessToken(
+        data: IUserDoc,
+        session: string,
+        loginDate: Date,
         loginFrom: ENUM_AUTH_LOGIN_FROM
     ): Promise<AuthJwtAccessPayloadDto>;
     createPayloadRefreshToken({
@@ -42,11 +45,7 @@ export interface IAuthService {
     ): Promise<IAuthPassword>;
     createPasswordRandom(): Promise<string>;
     checkPasswordExpired(passwordExpired: Date): Promise<boolean>;
-    getTokenType(): Promise<string>;
-    getAccessTokenExpirationTime(): Promise<number>;
-    getRefreshTokenExpirationTime(): Promise<number>;
-    getIssuer(): Promise<string>;
-    getAudience(): Promise<string>;
+    createToken(user: IUserDoc, session: string): Promise<AuthLoginResponseDto>;
     getPasswordAttempt(): Promise<boolean>;
     getPasswordMaxAttempt(): Promise<number>;
     appleGetTokenInfo(code: string): Promise<AuthSocialApplePayloadDto>;

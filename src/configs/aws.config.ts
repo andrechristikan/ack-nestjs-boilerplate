@@ -4,6 +4,7 @@ export default registerAs(
     'aws',
     (): Record<string, any> => ({
         s3: {
+            assetPath: '/assets',
             credential: {
                 key: process.env.AWS_S3_CREDENTIAL_KEY,
                 secret: process.env.AWS_S3_CREDENTIAL_SECRET,

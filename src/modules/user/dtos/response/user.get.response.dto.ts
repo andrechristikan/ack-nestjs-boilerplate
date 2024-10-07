@@ -9,6 +9,7 @@ import {
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { DatabaseDto } from 'src/common/database/dtos/database.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { UserVerificationResponseDto } from 'src/modules/user/dtos/response/user.verification.response.dto';
 
 export class UserGetResponseDto extends DatabaseDto {
     @ApiProperty({
@@ -30,6 +31,7 @@ export class UserGetResponseDto extends DatabaseDto {
     @ApiProperty({
         required: false,
         type: UserUpdateMobileNumberRequestDto,
+        oneOf: [{ $ref: getSchemaPath(UserUpdateMobileNumberRequestDto) }],
     })
     @Type(() => UserUpdateMobileNumberRequestDto)
     mobileNumber?: UserUpdateMobileNumberRequestDto;
@@ -120,18 +122,11 @@ export class UserGetResponseDto extends DatabaseDto {
     country: string;
 
     @ApiProperty({
-        example: faker.location.streetAddress(),
-        required: false,
-        nullable: true,
-        maxLength: 200,
-    })
-    address?: string;
-
-    @ApiProperty({
         example: faker.person.lastName(),
-        required: false,
-        nullable: true,
-        maxLength: 50,
+        required: true,
+        type: UserVerificationResponseDto,
+        oneOf: [{ $ref: getSchemaPath(UserVerificationResponseDto) }],
     })
-    familyName?: string;
+    @Type(() => UserVerificationResponseDto)
+    verification: UserVerificationResponseDto;
 }

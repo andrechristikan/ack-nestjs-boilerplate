@@ -16,7 +16,7 @@ export function PaginationFilterStringContainPipe(
             private readonly paginationService: PaginationService
         ) {}
 
-        async transform(value: string): Promise<Record<string, any>> {
+        async transform(value: string): Promise<any> {
             if (!value) {
                 return;
             }

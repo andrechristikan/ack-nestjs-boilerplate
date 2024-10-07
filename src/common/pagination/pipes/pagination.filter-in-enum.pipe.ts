@@ -20,7 +20,7 @@ export function PaginationFilterInEnumPipe<T>(
             private readonly helperArrayService: HelperArrayService
         ) {}
 
-        async transform(value: string): Promise<Record<string, any>> {
+        async transform(value: string): Promise<any> {
             if (options?.raw) {
                 this.addToRequestInstance(value);
                 return {

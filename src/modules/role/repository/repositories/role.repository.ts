@@ -1,19 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { DatabaseRepositoryAbstract } from 'src/common/database/abstracts/database.repository.abstract';
-import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
+import { DatabaseRepositoryBase } from 'src/common/database/bases/database.repository';
+import { InjectDatabaseModel } from 'src/common/database/decorators/database.decorator';
 import {
     RoleDoc,
     RoleEntity,
 } from 'src/modules/role/repository/entities/role.entity';
 
 @Injectable()
-export class RoleRepository extends DatabaseRepositoryAbstract<
+export class RoleRepository extends DatabaseRepositoryBase<
     RoleEntity,
     RoleDoc
 > {
     constructor(
-        @DatabaseModel(RoleEntity.name)
+        @InjectDatabaseModel(RoleEntity.name)
         private readonly roleModel: Model<RoleEntity>
     ) {
         super(roleModel);

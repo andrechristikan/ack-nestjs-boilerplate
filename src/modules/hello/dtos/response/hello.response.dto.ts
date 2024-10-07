@@ -1,6 +1,5 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 
 export class HelloResponseDto {
     @ApiProperty({
@@ -8,7 +7,6 @@ export class HelloResponseDto {
         nullable: false,
         example: faker.date.recent(),
     })
-    @Type(() => String)
     date: Date;
 
     @ApiProperty({

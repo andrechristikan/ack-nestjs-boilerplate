@@ -1,19 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { DatabaseRepositoryAbstract } from 'src/common/database/abstracts/database.repository.abstract';
-import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
+import { DatabaseRepositoryBase } from 'src/common/database/bases/database.repository';
+import { InjectDatabaseModel } from 'src/common/database/decorators/database.decorator';
 import {
     SettingDoc,
     SettingEntity,
 } from 'src/modules/setting/repository/entities/setting.entity';
 
 @Injectable()
-export class SettingRepository extends DatabaseRepositoryAbstract<
+export class SettingRepository extends DatabaseRepositoryBase<
     SettingEntity,
     SettingDoc
 > {
     constructor(
-        @DatabaseModel(SettingEntity.name)
+        @InjectDatabaseModel(SettingEntity.name)
         private readonly settingModel: Model<SettingEntity>
     ) {
         super(settingModel);

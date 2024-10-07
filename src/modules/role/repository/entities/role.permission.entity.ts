@@ -22,6 +22,7 @@ export class RolePermissionEntity {
         type: [String],
         enum: ENUM_POLICY_ACTION,
         default: [],
+        isArray: true,
     })
     action: ENUM_POLICY_ACTION[];
 }

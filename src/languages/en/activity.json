@@ -1,0 +1,12 @@
+{
+    "list": "User activity logs are available here.",
+    "user": {
+        "createByAdmin": "Account has been created by an administrator",
+        "updateByAdmin": "Account information has been updated by an administrator.",
+        "inactiveByAdmin": "Account has been deactivated by an administrator.",
+        "activeByAdmin": "Account has been reactivated by an administrator.",
+        "blockedByAdmin": "Account has been blocked by an administrator.",
+        "changePassword": "Your password has been successfully changed.",
+        "uploadProfile": "Your profile picture has been successfully uploaded."
+    }
+}

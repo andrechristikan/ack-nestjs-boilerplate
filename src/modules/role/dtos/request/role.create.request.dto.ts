@@ -5,7 +5,6 @@ import {
     OmitType,
     PickType,
 } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import { IsString, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
 import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
 
@@ -22,6 +21,5 @@ export class RoleCreateRequestDto extends IntersectionType(
     @IsNotEmpty()
     @MinLength(3)
     @MaxLength(30)
-    @Type(() => String)
     name: string;
 }

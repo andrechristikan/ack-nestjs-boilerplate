@@ -3,5 +3,3 @@ export const COUNTRY_DEFAULT_AVAILABLE_SEARCH = [
     'alpha2Code',
     'phoneCode',
 ];
-
-export const COUNTRY_DEFAULT_IS_ACTIVE = [true, false];

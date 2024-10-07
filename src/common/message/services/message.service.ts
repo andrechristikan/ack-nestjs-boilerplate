@@ -32,14 +32,6 @@ export class MessageService implements IMessageService {
         this.debug = this.configService.get<boolean>('app.debug');
     }
 
-    getAvailableLanguages(): ENUM_MESSAGE_LANGUAGE[] {
-        return this.availableLanguage;
-    }
-
-    getLanguage(): ENUM_MESSAGE_LANGUAGE {
-        return this.defaultLanguage;
-    }
-
     //! Filter message base on available language
     filterLanguage(customLanguage: string): string[] {
         return this.helperArrayService.getIntersection(

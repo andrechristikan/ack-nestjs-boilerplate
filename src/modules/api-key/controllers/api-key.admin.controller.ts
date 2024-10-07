@@ -177,13 +177,7 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Patch('/update/:apiKey/reset')
     async reset(
-        @Param(
-            'apiKey',
-            RequestRequiredPipe,
-            ApiKeyParsePipe,
-            new ApiKeyIsActivePipe([true]),
-            ApiKeyNotExpiredPipe
-        )
+        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
         apiKey: ApiKeyDoc
     ): Promise<IResponse<ApiKeyResetResponseDto>> {
         const updated: ApiKeyResetResponseDto =
@@ -206,13 +200,7 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey')
     async update(
         @Body() body: ApiKeyUpdateRequestDto,
-        @Param(
-            'apiKey',
-            RequestRequiredPipe,
-            ApiKeyParsePipe,
-            new ApiKeyIsActivePipe([true]),
-            ApiKeyNotExpiredPipe
-        )
+        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
         apiKey: ApiKeyDoc
     ): Promise<IResponse<void>> {
         await this.apiKeyService.update(apiKey, body);
@@ -282,12 +270,7 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey/date')
     async updateDate(
         @Body() body: ApiKeyUpdateDateRequestDto,
-        @Param(
-            'apiKey',
-            RequestRequiredPipe,
-            ApiKeyParsePipe,
-            new ApiKeyIsActivePipe([true])
-        )
+        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
         apiKey: ApiKeyDoc
     ): Promise<IResponse<void>> {
         await this.apiKeyService.updateDate(apiKey, body);

@@ -22,7 +22,7 @@ export class ResponsePagingMetadataRequestDto {
     })
     filters: Record<
         string,
-        string | number | boolean | Array<string | number | boolean>
+        string | number | boolean | Array<string | number | boolean> | Date
     >;
 
     @ApiProperty({
@@ -133,7 +133,6 @@ export class ResponsePagingDto extends PickType(ResponseDto, [
     @ApiProperty({
         required: true,
         isArray: true,
-        default: [],
     })
     data: Record<string, any>[];
 }

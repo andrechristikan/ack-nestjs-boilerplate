@@ -44,7 +44,7 @@ describe('ApiKeyXApiKeyStrategy', () => {
         const mockRequest: IRequestApp = { apiKey: null } as IRequestApp;
 
         const callback = (
-            error: Error,
+            _error: Error,
             verified: (
                 error: Error,
                 user?: Record<string, any>,

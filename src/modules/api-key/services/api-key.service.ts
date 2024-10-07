@@ -5,8 +5,8 @@ import {
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseOptions,
     IDatabaseSaveOptions,
     IDatabaseUpdateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
@@ -54,28 +54,28 @@ export class ApiKeyService implements IApiKeyService {
 
     async findOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc> {
         return this.apiKeyRepository.findOneById(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc> {
         return this.apiKeyRepository.findOne(find, options);
     }
 
     async findOneByKey(
         key: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc> {
         return this.apiKeyRepository.findOne<ApiKeyDoc>({ key }, options);
     }
 
     async findOneByActiveKey(
         key: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc> {
         return this.apiKeyRepository.findOne<ApiKeyDoc>(
             {
@@ -237,36 +237,29 @@ export class ApiKeyService implements IApiKeyService {
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
-        try {
-            await this.apiKeyRepository.deleteMany(find, options);
+        await this.apiKeyRepository.deleteMany(find, options);
 
-            return true;
-        } catch (error: unknown) {
-            throw error;
-        }
+        return true;
     }
 
     async inactiveManyByEndDate(
         options?: IDatabaseUpdateManyOptions
     ): Promise<boolean> {
-        try {
-            await this.apiKeyRepository.updateMany(
-                {
-                    endDate: {
-                        $lte: this.helperDateService.create(),
-                    },
-                    isActive: true,
+        const today = this.helperDateService.create();
+        await this.apiKeyRepository.updateMany(
+            {
+                endDate: {
+                    $lte: today,
                 },
-                {
-                    isActive: false,
-                },
-                options
-            );
+                isActive: true,
+            },
+            {
+                isActive: false,
+            },
+            options
+        );
 
-            return true;
-        } catch (error: unknown) {
-            throw error;
-        }
+        return true;
     }
 
     async mapList(

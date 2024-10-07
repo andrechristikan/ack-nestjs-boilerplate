@@ -12,7 +12,6 @@ export class EmailTempPasswordDto {
     @ApiProperty({
         required: true,
         example: faker.date.future(),
-        type: 'date',
         description: 'Expired at by date',
     })
     passwordExpiredAt: Date;
