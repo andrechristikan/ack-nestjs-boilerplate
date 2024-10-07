@@ -116,11 +116,6 @@ export interface IUserService {
         username: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
-    existByMobileNumber(
-        country: string,
-        mobileNumber: string,
-        options?: IDatabaseExistOptions
-    ): Promise<boolean>;
     updatePhoto(
         repository: UserDoc,
         photo: AwsS3Dto,

@@ -26,7 +26,6 @@ export class RoleUpdateRequestDto {
     })
     @IsString()
     @IsOptional()
-    @Type(() => String)
     description?: string;
 
     @ApiProperty({

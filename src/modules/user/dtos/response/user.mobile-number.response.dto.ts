@@ -13,7 +13,6 @@ export class UserMobileNumberResponseDto {
         maxLength: 20,
         minLength: 8,
     })
-    @Type(() => String)
     number: string;
 
     @ApiProperty({

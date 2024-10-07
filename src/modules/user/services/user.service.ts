@@ -362,20 +362,6 @@ export class UserService implements IUserService {
         );
     }
 
-    async existByMobileNumber(
-        country: string,
-        mobileNumber: string,
-        options?: IDatabaseExistOptions
-    ): Promise<boolean> {
-        return this.userRepository.exists(
-            {
-                'mobileNumber.number': mobileNumber,
-                'mobileNumber.country': country,
-            },
-            { ...options, withDeleted: true }
-        );
-    }
-
     async updatePhoto(
         repository: UserDoc,
         photo: AwsS3Dto,

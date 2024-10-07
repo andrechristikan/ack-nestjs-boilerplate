@@ -30,10 +30,6 @@ export interface IDatabaseFindAllOptions extends IDatabaseFindOneOptions {
     paging?: IDatabaseFindAllPagingOptions;
 }
 
-export interface IDatabaseExistOptions extends IDatabaseOptions {
-    excludeId?: string[];
-}
-
 // Action
 export type IDatabaseCreateOptions = Pick<IDatabaseOptions, 'session'>;
 export type IDatabaseUpdateOptions = Omit<IDatabaseOptions, 'select' | 'join'>;

@@ -1,6 +1,5 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import {
     IsString,
     IsNotEmpty,
@@ -21,7 +20,6 @@ export class UserCreateRequestDto {
     @IsEmail()
     @IsNotEmpty()
     @MaxLength(100)
-    @Type(() => String)
     email: string;
 
     @ApiProperty({
@@ -42,7 +40,6 @@ export class UserCreateRequestDto {
     @IsNotEmpty()
     @MinLength(1)
     @MaxLength(100)
-    @Type(() => String)
     name: string;
 
     @ApiProperty({

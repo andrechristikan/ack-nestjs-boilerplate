@@ -12,7 +12,6 @@ import {
     IDatabaseDeleteManyOptions,
     IDatabaseDeleteOptions,
     IDatabaseDocument,
-    IDatabaseExistOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
@@ -27,7 +26,6 @@ import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enum
 import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 
-// TODO: CHECK withDeleted
 export class DatabaseRepositoryBase<
     Entity extends DatabaseEntityBase,
     EntityDocument extends IDatabaseDocument<Entity>,
@@ -258,17 +256,8 @@ export class DatabaseRepositoryBase<
 
     async exists(
         find: Record<string, any>,
-        options?: IDatabaseExistOptions
+        options?: IDatabaseOptions
     ): Promise<boolean> {
-        if (options?.excludeId) {
-            find = {
-                ...find,
-                _id: {
-                    $nin: options?.excludeId ?? [],
-                },
-            };
-        }
-
         const repository = this._repository.exists({
             ...find,
             deleted: options?.withDeleted ?? false,
