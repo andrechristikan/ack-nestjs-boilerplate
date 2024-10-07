@@ -3,11 +3,11 @@ import {
     IDatabaseAggregateOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
-    IDatabaseExistOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
+    IDatabaseOptions,
     IDatabaseSaveOptions,
     IDatabaseUpdateOptions,
 } from 'src/common/database/interfaces/database.interface';
@@ -342,7 +342,7 @@ export class UserService implements IUserService {
 
     async existByEmail(
         email: string,
-        options?: IDatabaseExistOptions
+        options?: IDatabaseOptions
     ): Promise<boolean> {
         return this.userRepository.exists(
             DatabaseHelperQueryContain('email', email, { fullWord: true }),
@@ -352,7 +352,7 @@ export class UserService implements IUserService {
 
     async existByUsername(
         username: string,
-        options?: IDatabaseExistOptions
+        options?: IDatabaseOptions
     ): Promise<boolean> {
         return this.userRepository.exists(
             DatabaseHelperQueryContain('username', username, {

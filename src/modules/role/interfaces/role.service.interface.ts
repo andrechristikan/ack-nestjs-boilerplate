@@ -2,7 +2,6 @@ import {
     IDatabaseCreateManyOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
-    IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
@@ -54,10 +53,7 @@ export interface IRoleService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<RoleDoc>;
-    existByName(
-        name: string,
-        options?: IDatabaseExistOptions
-    ): Promise<boolean>;
+    existByName(name: string, options?: IDatabaseOptions): Promise<boolean>;
     create(
         { name, description, type, permissions }: RoleCreateRequestDto,
         options?: IDatabaseCreateOptions

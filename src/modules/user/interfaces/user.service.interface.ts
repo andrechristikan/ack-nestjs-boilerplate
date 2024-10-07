@@ -3,7 +3,6 @@ import {
     IDatabaseAggregateOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
-    IDatabaseExistOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
@@ -108,13 +107,10 @@ export interface IUserService {
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
-    existByEmail(
-        email: string,
-        options?: IDatabaseExistOptions
-    ): Promise<boolean>;
+    existByEmail(email: string, options?: IDatabaseOptions): Promise<boolean>;
     existByUsername(
         username: string,
-        options?: IDatabaseExistOptions
+        options?: IDatabaseOptions
     ): Promise<boolean>;
     updatePhoto(
         repository: UserDoc,

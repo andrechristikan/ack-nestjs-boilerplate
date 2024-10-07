@@ -3,13 +3,13 @@ import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
 import {
     IDatabaseCreateOptions,
-    IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseCreateManyOptions,
     IDatabaseSaveOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseFindOneOptions,
+    IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
@@ -113,7 +113,7 @@ export class RoleService implements IRoleService {
 
     async existByName(
         name: string,
-        options?: IDatabaseExistOptions
+        options?: IDatabaseOptions
     ): Promise<boolean> {
         return this.roleRepository.exists(
             {
