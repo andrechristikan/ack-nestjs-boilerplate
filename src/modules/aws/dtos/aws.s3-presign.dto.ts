@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 
-export class AwsS3PresignUrlDto extends AwsS3Dto {
+export class AwsS3PresignDto extends AwsS3Dto {
     @ApiProperty({
         required: true,
         nullable: false,

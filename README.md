@@ -37,7 +37,7 @@
     - [Install Dependencies](#install-dependencies)
     - [Create environment](#create-environment)
     - [Database Migration and Seed](#database-migration-and-seed)
-    - [Email Migration](#email-migration)
+    - [Asset Migration](#asset-migration)
     - [Run Project](#run-project)
   - [Installation with Docker](#installation-with-docker)
   - [Test](#test)
@@ -55,7 +55,7 @@
 > Very limited documentation
 
 * There have been some breaking changes between v5 and v6.
-* The features will be relate with AWS / Amazon web service
+* The features will be relate with AWS / Amazon web service.
 * Stateless Authorization
 * Must run MongoDB as a `replication set` for `database transactions`.
 * If you want to implement `Google SSO`. You must have google cloud console account, then create your own Credential to get the  `clientId` and `clientSecret`.
@@ -67,7 +67,13 @@
 * For monitoring, this project will use `sentry.io`, and only send `500` or `internal server error`.
 
 ## TODO
-
+git 
+- [ ] adjust aws s3 upload
+- [ ] change cache manager to v6
+- [ ] upload sentry source map
+- [ ] change moment
+- [ ] make redis optional
+- [ ] cors origin inside env
 - [ ] Export Module
 - [ ] Move to Stateful Authorization
       1. Session Module
@@ -188,7 +194,7 @@ By default the options of `AutoCreate` and `AutoIndex` will be `false`. Thats me
 So to update the schema we need to run
 
 ```bash
-yarn migrate
+yarn migrate:schema
 ```
 
 After migrate the schema, also we need to run data seed
@@ -197,15 +203,15 @@ After migrate the schema, also we need to run data seed
 yarn seed
 ```
 
-### Email Migration
+### Asset Migration
 
 > Optional
 
-The email will automatically create email template through AWS SES if we set the value at `.env` file
+The asset migration will automatically upload `/assets` through AWS S3 and Email template through AWS SES.
 
 For migrate
 ```bash
-yarn migrate:email
+yarn migrate:asset
 ```
 
 ### Run Project
@@ -247,7 +253,7 @@ yarn test
 
 ## Swagger
 
-You can check The Swagger after running this project. Url `localhost:3000/docs` and don't for get to put `x-api-key` on header.
+You can check The Swagger after running this project. Url `localhost:3000/docs` and don't forget to put `x-api-key` on header.
 
 
 ### API Key
@@ -274,7 +280,8 @@ api key secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
 
 > This available with docker installation
 
-You can check and monitor your queue. Url `localhost:3010`
+You can check and monitor your queue. 
+Url `localhost:3010`
 
 ### User
  - email: `admin`
@@ -294,7 +301,7 @@ How to contribute in this repo
 4. Push your changes to your remote branch
 5. Open a pull request
 
-If your code behind commit with the `original/main branch`, please update your code and resolve the conflict.
+If your code behind commit with the `origin/main` branch, please update your code and resolve the conflict.
 
 ## Contact
 

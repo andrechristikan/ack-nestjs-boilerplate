@@ -55,7 +55,9 @@ export class UserSystemController {
             }
         )
         roleType: Record<string, any>,
-        @PaginationQueryFilterEqual('country')
+        @PaginationQueryFilterEqual('country', {
+            queryField: 'country',
+        })
         country: Record<string, any>
     ): Promise<IResponsePaging<UserShortResponseDto>> {
         const find: Record<string, any> = {

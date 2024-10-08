@@ -98,19 +98,35 @@ export class AppEnvDto {
 
     @IsOptional()
     @IsString()
-    AWS_S3_CREDENTIAL_KEY?: string;
+    AWS_S3_PUBLIC_CREDENTIAL_KEY?: string;
 
     @IsOptional()
     @IsString()
-    AWS_S3_CREDENTIAL_SECRET?: string;
+    AWS_S3_PUBLIC_CREDENTIAL_SECRET?: string;
 
     @IsOptional()
     @IsString()
-    AWS_S3_REGION?: string;
+    AWS_S3_PUBLIC_REGION?: string;
 
     @IsOptional()
     @IsString()
-    AWS_S3_BUCKET?: string;
+    AWS_S3_PUBLIC_BUCKET?: string;
+
+    @IsOptional()
+    @IsString()
+    AWS_S3_PRIVATE_CREDENTIAL_KEY?: string;
+
+    @IsOptional()
+    @IsString()
+    AWS_S3_PRIVATE_CREDENTIAL_SECRET?: string;
+
+    @IsOptional()
+    @IsString()
+    AWS_S3_PRIVATE_REGION?: string;
+
+    @IsOptional()
+    @IsString()
+    AWS_S3_PRIVATE_BUCKET?: string;
 
     @IsOptional()
     @IsString()

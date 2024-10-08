@@ -142,7 +142,9 @@ export class UserAdminController {
             }
         )
         roleType: Record<string, any>,
-        @PaginationQueryFilterEqual('country')
+        @PaginationQueryFilterEqual('country._id', {
+            queryField: 'country',
+        })
         country: Record<string, any>
     ): Promise<IResponsePaging<UserListResponseDto>> {
         const find: Record<string, any> = {
