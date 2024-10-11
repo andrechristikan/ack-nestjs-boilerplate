@@ -68,12 +68,8 @@
 
 ## TODO
 git 
-- [ ] adjust aws s3 upload
-- [ ] change cache manager to v6
 - [ ] upload sentry source map
 - [ ] change moment
-- [ ] make redis optional
-- [ ] cors origin inside env
 - [ ] Export Module
 - [ ] Move to Stateful Authorization
       1. Session Module

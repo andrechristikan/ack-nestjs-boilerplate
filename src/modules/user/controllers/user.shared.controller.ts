@@ -2,21 +2,17 @@ import {
     Body,
     Controller,
     Get,
+    HttpCode,
+    HttpStatus,
     InternalServerErrorException,
     NotFoundException,
     Post,
     Put,
-    UploadedFile,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
-import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
-import { ENUM_FILE_MIME_IMAGE } from 'src/common/file/enums/file.enum';
-import { IFile } from 'src/common/file/interfaces/file.interface';
-import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
-import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
@@ -28,11 +24,14 @@ import {
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
 import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { CountryService } from 'src/modules/country/services/country.service';
 import {
     UserSharedProfileDoc,
+    UserSharedUpdatePhotoProfileDoc,
     UserSharedUpdateProfileDoc,
     UserSharedUploadPhotoProfileDoc,
 } from 'src/modules/user/docs/user.shared.doc';
@@ -135,42 +134,49 @@ export class UserSharedController {
     @UserSharedUploadPhotoProfileDoc()
     @Response('user.uploadPhotoProfile')
     @AuthJwtAccessProtected()
-    @FileUploadSingle()
     @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
     @Post('/profile/upload-photo')
     async uploadPhotoProfile(
         @AuthJwtPayload<AuthJwtAccessPayloadDto>('_id', UserParsePipe)
+        user: UserDoc
+    ): Promise<IResponse<AwsS3PresignResponseDto>> {
+        const path: string = await this.userService.getPhotoUploadPath(
+            user._id
+        );
+        const randomFilename: string =
+            await this.userService.createRandomFilenamePhoto();
+
+        const aws: AwsS3PresignResponseDto = await this.awsS3Service.presign(
+            randomFilename,
+            {
+                path,
+            }
+        );
+
+        return {
+            data: aws,
+        };
+    }
+
+    @UserSharedUpdatePhotoProfileDoc()
+    @Response('user.updatePhotoProfile')
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Put('/profile/update-photo')
+    async updatePhotoProfile(
+        @AuthJwtPayload<AuthJwtAccessPayloadDto>('_id', UserParsePipe)
         user: UserDoc,
-        @UploadedFile(
-            new FileRequiredPipe(),
-            new FileTypePipe([
-                ENUM_FILE_MIME_IMAGE.JPG,
-                ENUM_FILE_MIME_IMAGE.JPEG,
-                ENUM_FILE_MIME_IMAGE.PNG,
-            ])
-        )
-        file: IFile
+        @Body() body: AwsS3PresignRequestDto
     ): Promise<void> {
         const session: ClientSession =
             await this.databaseConnection.startSession();
         session.startTransaction();
 
         try {
-            const path: string = await this.userService.getPhotoUploadPath(
-                user._id
-            );
-            const randomFilename: string =
-                await this.userService.createRandomFilenamePhoto();
+            const aws: AwsS3Dto = this.awsS3Service.mapPresign(body);
 
-            const aws: AwsS3Dto = await this.awsS3Service.putItemInBucket(
-                file,
-                {
-                    customFilename: randomFilename,
-                    path,
-                }
-            );
             await this.userService.updatePhoto(user, aws, { session });
-
             await this.activityService.createByUser(
                 user,
                 {

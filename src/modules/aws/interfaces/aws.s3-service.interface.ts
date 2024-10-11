@@ -2,12 +2,12 @@ import {
     AwsS3MultipartDto,
     AwsS3MultipartPartDto,
 } from 'src/modules/aws/dtos/aws.s3-multipart.dto';
-import { AwsS3PresignDto } from 'src/modules/aws/dtos/aws.s3-presign.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
 import {
-    IAwsS3ItemsOptions,
+    IAwsS3GetItemsOptions,
     IAwsS3Options,
-    IAwsS3Presign,
     IAwsS3PresignOptions,
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
@@ -15,8 +15,12 @@ import {
 } from 'src/modules/aws/interfaces/aws.interface';
 
 export interface IAwsS3Service {
+    checkBucket(options?: IAwsS3Options): Promise<boolean>;
     checkItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto>;
-    getItems(options?: IAwsS3ItemsOptions): Promise<AwsS3Dto[]>;
+    getItems(
+        path: string,
+        options?: IAwsS3GetItemsOptions
+    ): Promise<AwsS3Dto[]>;
     getItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto>;
     putItem(
         file: IAwsS3PutItem,
@@ -57,8 +61,14 @@ export interface IAwsS3Service {
         options?: IAwsS3Options
     ): Promise<void>;
     presign(
-        { filename, size, duration }: IAwsS3Presign,
+        filename: string,
         options?: IAwsS3PresignOptions
-    ): Promise<AwsS3PresignDto>;
+    ): Promise<AwsS3PresignResponseDto>;
+    mapPresign(
+        { key, size, duration }: AwsS3PresignRequestDto,
+        options?: IAwsS3Options
+    ): AwsS3Dto;
     getAssetPath(): string;
+    getBucket(options?: IAwsS3Options): string;
+    getRegion(options?: IAwsS3Options): string;
 }

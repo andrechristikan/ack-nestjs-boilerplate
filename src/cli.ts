@@ -4,7 +4,9 @@ import { CommandModule, CommandService } from 'nestjs-command';
 import { MigrationModule } from 'src/migration/migration.module';
 
 async function bootstrap() {
-    const app = await NestFactory.createApplicationContext(MigrationModule);
+    const app = await NestFactory.createApplicationContext(MigrationModule, {
+        logger: ['debug', 'error', 'fatal', 'verbose', 'warn'],
+    });
 
     const logger = new Logger('NestJs-Seed');
 

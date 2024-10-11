@@ -1,32 +1,25 @@
 {
-  "compilerOptions": {
-    "module": "commonjs",
-    "declaration": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "useDefineForClassFields": false,
-    "target": "ESNext",
-    "sourceMap": true,
-    "outDir": "./dist",
-    "baseUrl": "./",
-    "incremental": true,
-    "skipLibCheck": true,
-    "allowJs": false,
-    "esModuleInterop": true,
-    "moduleResolution": "node",     
-    "resolveJsonModule": true
-  },
-  "include": [
-    "src",
-    "test",
-  ],
-  "exclude": [
-    "node_modules",
-    "dist", 
-    "coverage",
-    "logs",
-    "data"
-  ]
+    "compilerOptions": {
+        "module": "commonjs",
+        "declaration": true,
+        "removeComments": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        "useDefineForClassFields": false,
+        "target": "ESNext",
+        "sourceMap": true,
+        "inlineSources": true,
+        "sourceRoot": "/",
+        "outDir": "./dist",
+        "baseUrl": "./",
+        "incremental": true,
+        "skipLibCheck": true,
+        "allowJs": false,
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+        "resolveJsonModule": true
+    },
+    "include": ["src", "test"],
+    "exclude": ["node_modules", "dist", "coverage", "logs", "data"]
 }

@@ -35,9 +35,9 @@
     "remove": "nestjs-command remove:country && nestjs-command remove:apikey && nestjs-command remove:user && nestjs-command remove:role"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.666.0",
-    "@aws-sdk/client-ses": "^3.666.0",
-    "@aws-sdk/s3-request-presigner": "^3.666.0",
+    "@aws-sdk/client-s3": "^3.667.0",
+    "@aws-sdk/client-ses": "^3.667.0",
+    "@aws-sdk/s3-request-presigner": "^3.667.0",
     "@casl/ability": "^6.7.1",
     "@faker-js/faker": "^9.0.3",
     "@nestjs/axios": "^3.0.3",
@@ -57,7 +57,7 @@
     "@sentry/profiling-node": "^8.33.1",
     "axios": "^1.7.7",
     "bcryptjs": "^2.4.3",
-    "bullmq": "^5.17.1",
+    "bullmq": "^5.18.0",
     "cache-manager": "^4.1.0",
     "cache-manager-redis-store": "^3.0.1",
     "case": "^1.6.3",
@@ -122,7 +122,7 @@
     "ts-node": "^10.9.2",
     "ts-prune": "^0.10.3",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.6.2",
+    "typescript": "^5.6.3",
     "typescript-eslint": "^8.8.1"
   },
   "lint-staged": {

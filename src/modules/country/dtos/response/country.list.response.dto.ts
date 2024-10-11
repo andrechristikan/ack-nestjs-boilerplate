@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { DatabaseDto } from 'src/common/database/dtos/database.dto';
-import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 
 export class CountryListResponseDto extends DatabaseDto {
     @ApiProperty({
@@ -87,11 +87,11 @@ export class CountryListResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: false,
-        type: AwsS3Dto,
-        oneOf: [{ $ref: getSchemaPath(AwsS3Dto) }],
+        type: AwsS3ResponseDto,
+        oneOf: [{ $ref: getSchemaPath(AwsS3ResponseDto) }],
     })
-    @Type(() => AwsS3Dto)
-    image?: AwsS3Dto;
+    @Type(() => AwsS3ResponseDto)
+    image?: AwsS3ResponseDto;
 
     @ApiProperty({
         description: 'Date created at',

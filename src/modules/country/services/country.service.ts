@@ -189,9 +189,9 @@ export class CountryService implements ICountryService {
                     `./assets/images/country-flags/${path}`
                 );
                 promises.push(
-                    this.awsS3Service.putItemInBucket(
+                    this.awsS3Service.putItem(
                         {
-                            buffer: file,
+                            file: file,
                             size: file.byteLength,
                             originalname: filename,
                         },
@@ -219,7 +219,7 @@ export class CountryService implements ICountryService {
             const assetPath = this.awsS3Service.getAssetPath();
             const fullPath = `${assetPath}${this.assetPath}`;
 
-            await this.awsS3Service.deleteFolder(fullPath);
+            await this.awsS3Service.deleteItem(fullPath);
 
             return true;
         } catch (err: unknown) {

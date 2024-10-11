@@ -53,6 +53,10 @@ export class AppEnvDto {
     @Type(() => Number)
     HTTP_PORT: number;
 
+    @IsString()
+    @IsNotEmpty()
+    MIDDLEWARE_CORS_ORIGIN: string;
+
     @IsBoolean()
     @IsNotEmpty()
     @Type(() => Boolean)
@@ -172,11 +176,6 @@ export class AppEnvDto {
     @IsOptional()
     @IsString()
     REDIS_PASSWORD?: string;
-
-    @IsNotEmpty()
-    @IsBoolean()
-    @Type(() => Boolean)
-    REDIS_TLS: boolean;
 
     @IsOptional()
     @IsString()

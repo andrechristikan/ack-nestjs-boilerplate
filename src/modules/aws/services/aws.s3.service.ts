@@ -38,14 +38,17 @@ import {
     HeadObjectCommandInput,
     HeadObjectCommandOutput,
     NoSuchKey,
+    HeadBucketCommandOutput,
+    HeadBucketCommand,
+    HeadBucketCommandInput,
 } from '@aws-sdk/client-s3';
 import { IAwsS3Service } from 'src/modules/aws/interfaces/aws.s3-service.interface';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import {
     IAwsS3Config,
-    IAwsS3ItemsOptions,
+    IAwsS3DeleteDirOptions,
+    IAwsS3GetItemsOptions,
     IAwsS3Options,
-    IAwsS3Presign,
     IAwsS3PresignOptions,
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
@@ -58,7 +61,10 @@ import {
 import { AWS_S3_MAX_PART_NUMBER } from 'src/modules/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ENUM_AWS_S3_ACCESSIBILITY } from 'src/modules/aws/enums/aws.enum';
-import { AwsS3PresignDto } from 'src/modules/aws/dtos/aws.s3-presign.dto';
+import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
+import { FILE_SIZE_IN_BYTES } from 'src/common/file/constants/file.constant';
+import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
 
 @Injectable()
 export class AwsS3Service implements OnModuleInit, IAwsS3Service {
@@ -66,7 +72,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     private readonly presignExpired: number;
     private config: IAwsS3Config;
 
-    constructor(private readonly configService: ConfigService) {
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly helperArrayService: HelperArrayService
+    ) {
         this.assetPath = this.configService.get<string>('aws.s3.assetPath');
         this.presignExpired = this.configService.get<number>(
             'aws.s3.presignExpired'
@@ -90,6 +99,24 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             },
             region: this.config.private.region,
         });
+    }
+
+    async checkBucket(options?: IAwsS3Options): Promise<boolean> {
+        const config =
+            options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
+                ? this.config.private
+                : this.config.public;
+
+        const command: HeadBucketCommand = new HeadBucketCommand({
+            Bucket: config.bucket,
+        });
+
+        await config.client.send<
+            HeadBucketCommandInput,
+            HeadBucketCommandOutput
+        >(command);
+
+        return true;
     }
 
     async checkItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto> {
@@ -128,7 +155,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         };
     }
 
-    async getItems(options?: IAwsS3ItemsOptions): Promise<AwsS3Dto[]> {
+    async getItems(
+        path: string,
+        options?: IAwsS3GetItemsOptions
+    ): Promise<AwsS3Dto[]> {
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
@@ -136,7 +166,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
 
         const command: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: config.bucket,
-            Prefix: options?.path,
+            Prefix: path,
+            MaxKeys: 1000,
+            ContinuationToken: options?.continuationToken,
         });
 
         const listItems: ListObjectsV2Output = await config.client.send<
@@ -167,6 +199,23 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 size: item.Size,
             };
         });
+
+        if (listItems.IsTruncated) {
+            const nextItems = await this.getItems(path, {
+                ...options,
+                continuationToken: listItems.ContinuationToken,
+            });
+
+            mapList.push(...nextItems);
+        }
+
+        for (const dir of listItems.CommonPrefixes) {
+            const dirItems = await this.getItems(dir.Prefix, {
+                access: options?.access,
+            });
+
+            mapList.push(...dirItems);
+        }
 
         return mapList;
     }
@@ -338,6 +387,52 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             DeleteObjectsCommandInput,
             DeleteObjectsCommandOutput
         >(command);
+
+        return;
+    }
+
+    async deleteDir(
+        path: string,
+        options?: IAwsS3DeleteDirOptions
+    ): Promise<void | _Object[]> {
+        const config =
+            options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
+                ? this.config.private
+                : this.config.public;
+
+        const items: AwsS3Dto[] = await this.getItems(path, options);
+
+        if (items.length > 0) {
+            const chunkItems = this.helperArrayService
+                .chunk(items, 1000)
+                .map((itms: AwsS3Dto[]) => {
+                    const commandDeleteItems: DeleteObjectsCommand =
+                        new DeleteObjectsCommand({
+                            Bucket: config.bucket,
+                            Delete: {
+                                Objects: itms.map(e => ({
+                                    Key: e.pathWithFilename,
+                                })),
+                            },
+                        });
+
+                    return config.client.send<
+                        DeleteObjectsCommandInput,
+                        DeleteObjectsCommandOutput
+                    >(commandDeleteItems);
+                });
+
+            await Promise.all(chunkItems);
+        }
+
+        const commandDelete: DeleteObjectCommand = new DeleteObjectCommand({
+            Bucket: config.bucket,
+            Key: path,
+        });
+        await config.client.send<
+            DeleteObjectCommandInput,
+            DeleteObjectCommandOutput
+        >(commandDelete);
 
         return;
     }
@@ -557,9 +652,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     }
 
     async presign(
-        { filename, size, duration }: IAwsS3Presign,
+        filename: string,
         options?: IAwsS3PresignOptions
-    ): Promise<AwsS3PresignDto> {
+    ): Promise<AwsS3PresignResponseDto> {
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
@@ -591,30 +686,68 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             }
         }
 
+        const size = options?.allowedSize ?? FILE_SIZE_IN_BYTES;
         const command = new PutObjectCommand({
             Bucket: config.bucket,
             Key: key,
             ContentType: mime,
+            ContentLength: size,
         });
         const presignUrl = await getSignedUrl(config.client, command, {
             expiresIn: this.presignExpired,
         });
 
+        return { expiredIn: this.presignExpired, presignUrl: presignUrl, key };
+    }
+
+    mapPresign(
+        { key, size, duration }: AwsS3PresignRequestDto,
+        options?: IAwsS3Options
+    ): AwsS3Dto {
+        const config =
+            options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
+                ? this.config.private
+                : this.config.public;
+
+        const path: string = key.substring(0, key.lastIndexOf('/'));
+        const mime: string = key.substring(
+            key.lastIndexOf('.') + 1,
+            key.length
+        );
+        const filename = key.substring(key.lastIndexOf('/') + 1, key.length);
+
         return {
             bucket: config.bucket,
-            pathWithFilename: key,
             path,
-            completedUrl: presignUrl,
-            expiredIn: this.presignExpired,
-            size,
-            mime,
-            filename,
+            pathWithFilename: key,
+            filename: filename,
+            completedUrl: `${config.baseUrl}/${key}`,
             baseUrl: config.baseUrl,
+            mime,
+            size,
             duration,
         };
     }
 
     getAssetPath(): string {
         return this.assetPath;
+    }
+
+    getBucket(options?: IAwsS3Options): string {
+        const config =
+            options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
+                ? this.config.private
+                : this.config.public;
+
+        return config.bucket;
+    }
+
+    getRegion(options?: IAwsS3Options): string {
+        const config =
+            options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
+                ? this.config.private
+                : this.config.public;
+
+        return config.region;
     }
 }

@@ -12,7 +12,7 @@ import {
     MaxLength,
     MinLength,
 } from 'class-validator';
-import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 
 export class CountryCreateRequestDto {
     @ApiProperty({
@@ -131,11 +131,11 @@ export class CountryCreateRequestDto {
 
     @ApiProperty({
         required: false,
-        type: AwsS3Dto,
+        type: AwsS3ResponseDto,
     })
     @IsOptional()
     @IsObject()
     @IsNotEmptyObject()
-    @Type(() => AwsS3Dto)
-    image?: AwsS3Dto;
+    @Type(() => AwsS3ResponseDto)
+    image?: AwsS3ResponseDto;
 }
