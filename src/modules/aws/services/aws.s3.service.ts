@@ -65,6 +65,8 @@ import { HelperArrayService } from 'src/common/helper/services/helper.array.serv
 import { FILE_SIZE_IN_BYTES } from 'src/common/file/constants/file.constant';
 import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
 import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class AwsS3Service implements OnModuleInit, IAwsS3Service {
@@ -291,7 +293,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             path,
             pathWithFilename: key,
             filename: filename,
-            completedUrl: `${config.baseUrl}/${key}`,
+            completedUrl: `${config.baseUrl}${key}`,
             baseUrl: config.baseUrl,
             mime,
             size: file.size,
@@ -340,7 +342,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             path,
             pathWithFilename: key,
             filename: filename,
-            completedUrl: `${config.baseUrl}/${key}`,
+            completedUrl: `${config.baseUrl}${key}`,
             baseUrl: config.baseUrl,
             mime,
             size: file.size,
@@ -481,7 +483,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             path,
             pathWithFilename: key,
             filename: filename,
-            completedUrl: `${config.baseUrl}/${key}`,
+            completedUrl: `${config.baseUrl}${key}`,
             baseUrl: config.baseUrl,
             mime,
             size: 0,
@@ -540,7 +542,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             path,
             pathWithFilename: key,
             filename: filename,
-            completedUrl: `${config.baseUrl}/${key}`,
+            completedUrl: `${config.baseUrl}${key}`,
             baseUrl: config.baseUrl,
             mime,
             size: 0,
@@ -721,7 +723,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             path,
             pathWithFilename: key,
             filename: filename,
-            completedUrl: `${config.baseUrl}/${key}`,
+            completedUrl: `${config.baseUrl}${key}`,
             baseUrl: config.baseUrl,
             mime,
             size,
@@ -749,5 +751,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 : this.config.public;
 
         return config.region;
+    }
+
+    mapResponse(dto: AwsS3Dto): AwsS3ResponseDto {
+        return plainToInstance(AwsS3ResponseDto, dto);
     }
 }

@@ -5,6 +5,7 @@ import {
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
 import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 import {
     IAwsS3GetItemsOptions,
     IAwsS3Options,
@@ -71,4 +72,5 @@ export interface IAwsS3Service {
     getAssetPath(): string;
     getBucket(options?: IAwsS3Options): string;
     getRegion(options?: IAwsS3Options): string;
+    mapResponse(dto: AwsS3Dto): AwsS3ResponseDto;
 }

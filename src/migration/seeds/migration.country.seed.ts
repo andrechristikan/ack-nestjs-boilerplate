@@ -38,7 +38,7 @@ export class MigrationCountrySeed {
                         path: `${assetPath}${countyFlagPath}`,
                         pathWithFilename: `${assetPath}${countyFlagPath}/id.png`,
                         filename: 'id.png',
-                        completedUrl: `https://${bucket}.s3.${region}.amazonaws.com/${assetPath}${countyFlagPath}/id.png`,
+                        completedUrl: `https://${bucket}.s3.${region}.amazonaws.com${assetPath}${countyFlagPath}/id.png`,
                         baseUrl: `https://${bucket}.s3.${region}.amazonaws.com`,
                         mime: 'png',
                         size: 13268,
