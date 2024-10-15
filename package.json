@@ -29,8 +29,8 @@
     "package:upgrade": "ncu -u",
     "package:check": "ncu -i",
     "migrate:schema": "APP_ENV=migration nest start",
-    "migrate:asset": "nestjs-command migrate:asset",
-    "remove:asset": "nestjs-command remove:asset",
+    "migrate:template": "nestjs-command migrate:template",
+    "rollback:template": "nestjs-command rollback:template",
     "seed": "nestjs-command seed:country && nestjs-command seed:apikey && nestjs-command seed:role && nestjs-command seed:user",
     "remove": "nestjs-command remove:country && nestjs-command remove:apikey && nestjs-command remove:user && nestjs-command remove:role"
   },

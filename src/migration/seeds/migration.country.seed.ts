@@ -2,14 +2,10 @@ import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
-import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
 
 @Injectable()
 export class MigrationCountrySeed {
-    constructor(
-        private readonly countryService: CountryService,
-        private readonly awsS3Service: AwsS3Service
-    ) {}
+    constructor(private readonly countryService: CountryService) {}
 
     @Command({
         command: 'seed:country',
