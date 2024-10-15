@@ -69,7 +69,6 @@ export interface IAwsS3Service {
         { key, size, duration }: AwsS3PresignRequestDto,
         options?: IAwsS3Options
     ): AwsS3Dto;
-    getAssetPath(): string;
     getBucket(options?: IAwsS3Options): string;
     getRegion(options?: IAwsS3Options): string;
     mapResponse(dto: AwsS3Dto): AwsS3ResponseDto;

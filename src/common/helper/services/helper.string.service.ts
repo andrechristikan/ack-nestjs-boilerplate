@@ -1,9 +1,5 @@
-import { faker } from '@faker-js/faker';
 import { Injectable } from '@nestjs/common';
-import {
-    IHelperStringCurrencyOptions,
-    IHelperStringPasswordOptions,
-} from 'src/common/helper/interfaces/helper.interface';
+import { IHelperStringPasswordOptions } from 'src/common/helper/interfaces/helper.interface';
 import { IHelperStringService } from 'src/common/helper/interfaces/helper.string-service.interface';
 
 @Injectable()
@@ -16,9 +12,20 @@ export class HelperStringService implements IHelperStringService {
     }
 
     random(length: number): string {
-        return faker.string.alphanumeric({
-            length: { min: length, max: length },
-        });
+        let result = '';
+        const characters =
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+        let counter = 0;
+        while (counter < length) {
+            result += characters.charAt(
+                Math.floor(Math.random() * characters.length)
+            );
+
+            counter += 1;
+        }
+
+        return result;
     }
 
     censor(text: string): string {
@@ -34,11 +41,6 @@ export class HelperStringService implements IHelperStringService {
         return `${text.slice(0, 3)}${stringCensor}${text.slice(-4)}`;
     }
 
-    checkEmail(email: string): boolean {
-        const regex = new RegExp(/\S+@\S+\.\S+/);
-        return regex.test(email);
-    }
-
     checkPasswordStrength(
         password: string,
         options?: IHelperStringPasswordOptions
@@ -51,15 +53,7 @@ export class HelperStringService implements IHelperStringService {
         return regex.test(password);
     }
 
-    checkSafeString(text: string): boolean {
-        const regex = new RegExp('^[A-Za-z0-9]+$');
-        return regex.test(text);
-    }
-
-    formatCurrency(
-        num: number,
-        options?: IHelperStringCurrencyOptions
-    ): string {
-        return num.toLocaleString(options?.locale);
+    formatCurrency(num: number, locale: string): string {
+        return num.toLocaleString(locale);
     }
 }

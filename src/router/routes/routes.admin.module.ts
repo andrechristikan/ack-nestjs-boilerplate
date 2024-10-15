@@ -14,7 +14,6 @@ import { RoleAdminController } from 'src/modules/role/controllers/role.admin.con
 import { RoleModule } from 'src/modules/role/role.module';
 import { SessionAdminController } from 'src/modules/session/controllers/session.admin.controller';
 import { SessionModule } from 'src/modules/session/session.module';
-import { SettingAdminController } from 'src/modules/setting/controllers/setting.admin.controller';
 import { SettingModule } from 'src/modules/setting/setting.module';
 import { UserAdminController } from 'src/modules/user/controllers/user.admin.controller';
 import { UserModule } from 'src/modules/user/user.module';
@@ -23,7 +22,6 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 @Module({
     controllers: [
         ApiKeyAdminController,
-        SettingAdminController,
         RoleAdminController,
         UserAdminController,
         AuthAdminController,

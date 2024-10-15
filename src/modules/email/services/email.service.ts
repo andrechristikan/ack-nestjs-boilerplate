@@ -9,7 +9,6 @@ import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password.dto';
 import { EmailWelcomeAdminDto } from 'src/modules/email/dtos/email.welcome-admin.dto';
-import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/enums/helper.enum';
 import { AwsSESService } from 'src/modules/aws/services/aws.ses.service';
 
 @Injectable()
@@ -46,7 +45,7 @@ export class EmailService implements IEmailService {
                 name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
                 subject: `Change Password`,
                 htmlBody: readFileSync(
-                    '/assets/email/change-password.template.html',
+                    '/templates/email/change-password.template.html',
                     'utf8'
                 ),
             });
@@ -113,7 +112,7 @@ export class EmailService implements IEmailService {
                 name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
-                    '/assets/email/welcome.template.html',
+                    '/templates/email/welcome.template.html',
                     'utf8'
                 ),
             });
@@ -181,7 +180,7 @@ export class EmailService implements IEmailService {
                 name: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
-                    '/assets/email/welcome-admin.template.html',
+                    '/templates/email/welcome-admin.template.html',
                     'utf8'
                 ),
             });
@@ -234,12 +233,10 @@ export class EmailService implements IEmailService {
                     password: passwordString,
                     supportEmail: this.supportEmail,
                     clientUrl: this.clientUrl,
-                    passwordExpiredAt: this.helperDateService.format(
-                        passwordExpiredAt,
-                        {
-                            format: ENUM_HELPER_DATE_FORMAT.FRIENDLY_DATE_TIME,
-                        }
-                    ),
+                    passwordExpiredAt:
+                        this.helperDateService.formatToRFC2822(
+                            passwordExpiredAt
+                        ),
                 },
             });
 
@@ -259,7 +256,7 @@ export class EmailService implements IEmailService {
                 name: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 subject: `Temporary Password`,
                 htmlBody: readFileSync(
-                    '/assets/email/temp-password.template.html',
+                    '/templates/email/temp-password.template.html',
                     'utf8'
                 ),
             });
@@ -321,12 +318,10 @@ export class EmailService implements IEmailService {
                     password: passwordString,
                     supportEmail: this.supportEmail,
                     clientUrl: this.clientUrl,
-                    passwordExpiredAt: this.helperDateService.format(
-                        passwordExpiredAt,
-                        {
-                            format: ENUM_HELPER_DATE_FORMAT.FRIENDLY_DATE_TIME,
-                        }
-                    ),
+                    passwordExpiredAt:
+                        this.helperDateService.formatToRFC2822(
+                            passwordExpiredAt
+                        ),
                 },
             });
 

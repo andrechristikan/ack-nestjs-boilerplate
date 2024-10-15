@@ -30,6 +30,7 @@ import {
 } from 'src/modules/api-key/repository/entities/api-key.entity';
 import { ApiKeyRepository } from 'src/modules/api-key/repository/repositories/api-key.repository';
 import { Document } from 'mongoose';
+import { ENUM_HELPER_DATE_DAY_OF } from 'src/common/helper/enums/helper.enum';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -101,20 +102,24 @@ export class ApiKeyService implements IApiKeyService {
         const secret = await this.createSecret();
         const hash: string = await this.createHashApiKey(key, secret);
 
-        const dto: ApiKeyEntity = new ApiKeyEntity();
-        dto.name = name;
-        dto.key = key;
-        dto.hash = hash;
-        dto.isActive = true;
-        dto.type = type;
+        const data: ApiKeyEntity = new ApiKeyEntity();
+        data.name = name;
+        data.key = key;
+        data.hash = hash;
+        data.isActive = true;
+        data.type = type;
 
         if (startDate && endDate) {
-            dto.startDate = this.helperDateService.startOfDay(startDate);
-            dto.endDate = this.helperDateService.endOfDay(endDate);
+            data.startDate = this.helperDateService.create(startDate, {
+                dayOf: ENUM_HELPER_DATE_DAY_OF.START,
+            });
+            data.endDate = this.helperDateService.create(endDate, {
+                dayOf: ENUM_HELPER_DATE_DAY_OF.END,
+            });
         }
 
         const created: ApiKeyDoc =
-            await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
+            await this.apiKeyRepository.create<ApiKeyEntity>(data, options);
 
         return { _id: created._id, key: created.key, secret };
     }
@@ -132,20 +137,24 @@ export class ApiKeyService implements IApiKeyService {
     ): Promise<ApiKeyCreateResponseDto> {
         const hash: string = await this.createHashApiKey(key, secret);
 
-        const dto: ApiKeyEntity = new ApiKeyEntity();
-        dto.name = name;
-        dto.key = key;
-        dto.hash = hash;
-        dto.isActive = true;
-        dto.type = type;
+        const data: ApiKeyEntity = new ApiKeyEntity();
+        data.name = name;
+        data.key = key;
+        data.hash = hash;
+        data.isActive = true;
+        data.type = type;
 
         if (startDate && endDate) {
-            dto.startDate = this.helperDateService.startOfDay(startDate);
-            dto.endDate = this.helperDateService.endOfDay(endDate);
+            data.startDate = this.helperDateService.create(startDate, {
+                dayOf: ENUM_HELPER_DATE_DAY_OF.START,
+            });
+            data.endDate = this.helperDateService.create(endDate, {
+                dayOf: ENUM_HELPER_DATE_DAY_OF.END,
+            });
         }
 
         const created: ApiKeyDoc =
-            await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
+            await this.apiKeyRepository.create<ApiKeyEntity>(data, options);
 
         return { _id: created._id, key: created.key, secret };
     }
@@ -183,8 +192,12 @@ export class ApiKeyService implements IApiKeyService {
         { startDate, endDate }: ApiKeyUpdateDateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc> {
-        repository.startDate = this.helperDateService.startOfDay(startDate);
-        repository.endDate = this.helperDateService.endOfDay(endDate);
+        repository.startDate = this.helperDateService.create(startDate, {
+            dayOf: ENUM_HELPER_DATE_DAY_OF.START,
+        });
+        repository.endDate = this.helperDateService.create(endDate, {
+            dayOf: ENUM_HELPER_DATE_DAY_OF.END,
+        });
 
         return this.apiKeyRepository.save(repository, options);
     }

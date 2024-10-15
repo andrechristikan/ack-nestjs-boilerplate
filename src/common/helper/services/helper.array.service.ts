@@ -4,12 +4,12 @@ import { IHelperArrayService } from 'src/common/helper/interfaces/helper.array-s
 
 @Injectable()
 export class HelperArrayService implements IHelperArrayService {
-    getFromLeft<T>(array: T[], length: number): T[] {
-        return _.take(array, length);
+    getByIndexFromLeft<T>(array: T[], index: number): T[] {
+        return _.take(array, index + 1);
     }
 
-    getFromRight<T>(array: T[], length: number): T[] {
-        return _.takeRight(array, length);
+    getByIndexFromRight<T>(array: T[], index: number): T[] {
+        return _.takeRight(array, index + 1);
     }
 
     getDifference<T>(a: T[], b: T[]): T[] {

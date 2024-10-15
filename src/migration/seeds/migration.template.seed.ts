@@ -4,15 +4,15 @@ import { EmailService } from 'src/modules/email/services/email.service';
 import { CountryService } from 'src/modules/country/services/country.service';
 
 @Injectable()
-export class MigrationAssetSeed {
+export class MigrationTemplateSeed {
     constructor(
         private readonly emailService: EmailService,
         private readonly countryService: CountryService
     ) {}
 
     @Command({
-        command: 'migrate:asset',
-        describe: 'migrate assets',
+        command: 'migrate:template',
+        describe: 'migrate templates',
     })
     async migrate(): Promise<void> {
         try {
@@ -39,18 +39,12 @@ export class MigrationAssetSeed {
             throw new Error(err);
         }
 
-        try {
-            await this.countryService.importAssets();
-        } catch (err: any) {
-            throw new Error(err);
-        }
-
         return;
     }
 
     @Command({
-        command: 'rollback:asset',
-        describe: 'rollback assets',
+        command: 'rollback:template',
+        describe: 'rollback templates',
     })
     async rollback(): Promise<void> {
         try {
@@ -73,12 +67,6 @@ export class MigrationAssetSeed {
 
         try {
             await this.emailService.deleteTempPassword();
-        } catch (err: any) {
-            throw new Error(err);
-        }
-
-        try {
-            await this.countryService.deleteAssets();
         } catch (err: any) {
             throw new Error(err);
         }

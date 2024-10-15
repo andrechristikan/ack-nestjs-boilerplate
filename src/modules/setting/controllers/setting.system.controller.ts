@@ -20,7 +20,7 @@ export class SettingSystemController {
     @ApiKeySystemProtected()
     @Get('/core')
     async getUserMaxCertificate(): Promise<IResponse<SettingCoreResponseDto>> {
-        const coreSetting = await this.settingService.getCore();
+        const coreSetting = await this.settingService.core();
 
         return {
             data: coreSetting,

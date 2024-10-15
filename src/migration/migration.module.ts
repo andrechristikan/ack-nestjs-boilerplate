@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { CommandModule } from 'nestjs-command';
 import { CommonModule } from 'src/common/common.module';
 import { MigrationApiKeySeed } from 'src/migration/seeds/migration.api-key.seed';
-import { MigrationAssetSeed } from 'src/migration/seeds/migration.asset.seed';
 import { MigrationCountrySeed } from 'src/migration/seeds/migration.country.seed';
 import { MigrationRoleSeed } from 'src/migration/seeds/migration.role.seed';
+import { MigrationTemplateSeed } from 'src/migration/seeds/migration.template.seed';
 import { MigrationUserSeed } from 'src/migration/seeds/migration.user.seed';
 import { ActivityModule } from 'src/modules/activity/activity.module';
 import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
@@ -36,7 +36,7 @@ import { UserModule } from 'src/modules/user/user.module';
         MigrationCountrySeed,
         MigrationUserSeed,
         MigrationRoleSeed,
-        MigrationAssetSeed,
+        MigrationTemplateSeed,
     ],
     exports: [],
 })

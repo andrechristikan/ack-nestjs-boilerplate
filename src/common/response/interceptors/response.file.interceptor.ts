@@ -57,6 +57,10 @@ export class ResponseFileExcelInterceptor
                         throw new Error('Field data must in array');
                     }
 
+                    const today = this.helperDateService.create();
+                    const timestamp =
+                        this.helperDateService.getTimestamp(today);
+
                     if (type === ENUM_HELPER_FILE_EXCEL_TYPE.XLSX) {
                         // create file
                         const file: Buffer = this.fileService.writeExcel(
@@ -64,8 +68,6 @@ export class ResponseFileExcelInterceptor
                         );
 
                         // set headers
-                        const timestamp =
-                            this.helperDateService.createTimestamp();
                         response
                             .setHeader('Content-Type', ENUM_FILE_MIME.XLSX)
                             .setHeader(
@@ -83,7 +85,6 @@ export class ResponseFileExcelInterceptor
                     );
 
                     // set headers
-                    const timestamp = this.helperDateService.createTimestamp();
                     response
                         .setHeader('Content-Type', ENUM_FILE_MIME.CSV)
                         .setHeader(

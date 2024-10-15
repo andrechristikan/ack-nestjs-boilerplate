@@ -4,7 +4,6 @@ export default registerAs(
     'aws',
     (): Record<string, any> => ({
         s3: {
-            assetPath: '/assets',
             presignExpired: 30 * 60 * 1000, // 30 mins
             config: {
                 public: {

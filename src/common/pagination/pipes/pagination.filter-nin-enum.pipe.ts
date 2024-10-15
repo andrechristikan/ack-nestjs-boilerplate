@@ -1,9 +1,9 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
+import { DatabaseService } from 'src/common/database/services/database.service';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import { IPaginationFilterOptions } from 'src/common/pagination/interfaces/pagination.interface';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterNinEnumPipe<T>(
@@ -16,7 +16,7 @@ export function PaginationFilterNinEnumPipe<T>(
     class MixinPaginationFilterInEnumPipe implements PipeTransform {
         constructor(
             @Inject(REQUEST) protected readonly request: IRequestApp,
-            private readonly paginationService: PaginationService,
+            private readonly databaseService: DatabaseService,
             private readonly helperArrayService: HelperArrayService
         ) {}
 
@@ -35,7 +35,7 @@ export function PaginationFilterNinEnumPipe<T>(
                   )
                 : (defaultValue as T[]);
 
-            return this.paginationService.filterNin<T>(field, finalValue);
+            return this.databaseService.filterNin<T>(field, finalValue);
         }
 
         addToRequestInstance(value: any): void {

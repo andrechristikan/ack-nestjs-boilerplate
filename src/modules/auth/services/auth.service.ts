@@ -19,6 +19,7 @@ import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 import { plainToInstance } from 'class-transformer';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
+import { Duration } from 'luxon';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -233,10 +234,14 @@ export class AuthService implements IAuthService {
     ): Promise<IAuthPassword> {
         const salt: string = await this.createSalt(this.passwordSaltLength);
 
-        const passwordExpired: Date = this.helperDateService.forwardInSeconds(
-            options?.temporary
-                ? this.passwordExpiredTemporary
-                : this.passwordExpiredIn
+        const today = this.helperDateService.create();
+        const passwordExpired: Date = this.helperDateService.forward(
+            today,
+            Duration.fromObject({
+                seconds: options?.temporary
+                    ? this.passwordExpiredTemporary
+                    : this.passwordExpiredIn,
+            })
         );
         const passwordCreated: Date = this.helperDateService.create();
         const passwordHash = this.helperHashService.bcrypt(password, salt);

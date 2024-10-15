@@ -6,6 +6,7 @@ import { Queue } from 'bullmq';
 import { Cache } from 'cache-manager';
 import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
+import { Duration } from 'luxon';
 import { Document } from 'mongoose';
 import {
     IDatabaseCreateOptions,
@@ -139,8 +140,12 @@ export class SessionService implements ISessionService {
         { user }: SessionCreateRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<SessionDoc> {
-        const expiredAt: Date = this.helperDateService.forwardInSeconds(
-            this.refreshTokenExpiration
+        const today = this.helperDateService.create();
+        const expiredAt: Date = this.helperDateService.forward(
+            today,
+            Duration.fromObject({
+                seconds: this.refreshTokenExpiration,
+            })
         );
 
         const create = new SessionEntity();

@@ -1,8 +1,7 @@
 import { faker } from '@faker-js/faker';
-import { ApiHideProperty, ApiProperty, getSchemaPath } from '@nestjs/swagger';
-import { Exclude, Type } from 'class-transformer';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { Exclude } from 'class-transformer';
 import { DatabaseDto } from 'src/common/database/dtos/database.dto';
-import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 
 export class CountryListResponseDto extends DatabaseDto {
     @ApiProperty({
@@ -84,14 +83,6 @@ export class CountryListResponseDto extends DatabaseDto {
         example: faker.internet.domainSuffix(),
     })
     domain?: string;
-
-    @ApiProperty({
-        required: false,
-        type: AwsS3ResponseDto,
-        oneOf: [{ $ref: getSchemaPath(AwsS3ResponseDto) }],
-    })
-    @Type(() => AwsS3ResponseDto)
-    image?: AwsS3ResponseDto;
 
     @ApiProperty({
         description: 'Date created at',

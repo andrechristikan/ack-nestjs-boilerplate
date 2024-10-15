@@ -70,7 +70,6 @@ import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class AwsS3Service implements OnModuleInit, IAwsS3Service {
-    private readonly assetPath: string;
     private readonly presignExpired: number;
     private config: IAwsS3Config;
 
@@ -78,7 +77,6 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         private readonly configService: ConfigService,
         private readonly helperArrayService: HelperArrayService
     ) {
-        this.assetPath = this.configService.get<string>('aws.s3.assetPath');
         this.presignExpired = this.configService.get<number>(
             'aws.s3.presignExpired'
         );
@@ -729,10 +727,6 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             size,
             duration,
         };
-    }
-
-    getAssetPath(): string {
-        return this.assetPath;
     }
 
     getBucket(options?: IAwsS3Options): string {

@@ -17,10 +17,6 @@ export class MigrationCountrySeed {
     })
     async seeds(): Promise<void> {
         try {
-            const bucket = this.awsS3Service.getBucket();
-            const region = this.awsS3Service.getRegion();
-            const assetPath = this.awsS3Service.getAssetPath();
-            const countyFlagPath = this.countryService.getAssetPath();
             const data: CountryCreateRequestDto[] = [
                 {
                     name: 'Indonesia',
@@ -33,16 +29,6 @@ export class MigrationCountrySeed {
                     continent: 'Asia',
                     timeZone: 'Asia/Jakarta',
                     currency: 'IDR',
-                    image: {
-                        bucket,
-                        path: `${assetPath}${countyFlagPath}`,
-                        pathWithFilename: `${assetPath}${countyFlagPath}/id.png`,
-                        filename: 'id.png',
-                        completedUrl: `https://${bucket}.s3.${region}.amazonaws.com${assetPath}${countyFlagPath}/id.png`,
-                        baseUrl: `https://${bucket}.s3.${region}.amazonaws.com`,
-                        mime: 'png',
-                        size: 13268,
-                    },
                 },
             ];
 

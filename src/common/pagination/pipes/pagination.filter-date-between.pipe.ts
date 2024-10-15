@@ -1,9 +1,10 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
+import { DatabaseService } from 'src/common/database/services/database.service';
+import { ENUM_HELPER_DATE_DAY_OF } from 'src/common/helper/enums/helper.enum';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { IPaginationFilterDateBetweenOptions } from 'src/common/pagination/interfaces/pagination.interface';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterDateBetweenPipe(
@@ -15,7 +16,7 @@ export function PaginationFilterDateBetweenPipe(
     class MixinPaginationFilterDatePipe implements PipeTransform {
         constructor(
             @Inject(REQUEST) protected readonly request: IRequestApp,
-            private readonly paginationService: PaginationService,
+            private readonly databaseService: DatabaseService,
             private readonly helperDateService: HelperDateService
         ) {}
 
@@ -28,15 +29,19 @@ export function PaginationFilterDateBetweenPipe(
                 return;
             }
 
-            const finalStartValue: Date = this.helperDateService.startOfDay(
-                this.helperDateService.create(body[finalFieldStart])
+            const finalStartValue: Date = this.helperDateService.createFromIso(
+                body[finalFieldStart],
+                {
+                    dayOf: ENUM_HELPER_DATE_DAY_OF.START,
+                }
             );
-            const finalEndValue: Date = this.helperDateService.endOfDay(
-                this.helperDateService.create(body[finalFieldEnd])
+            const finalEndValue: Date = this.helperDateService.createFromIso(
+                body[finalFieldEnd],
+                { dayOf: ENUM_HELPER_DATE_DAY_OF.END }
             );
 
             this.addToRequestInstance(finalStartValue, finalEndValue);
-            return this.paginationService.filterDateBetween(
+            return this.databaseService.filterDateBetween(
                 fieldStart,
                 fieldEnd,
                 finalStartValue,

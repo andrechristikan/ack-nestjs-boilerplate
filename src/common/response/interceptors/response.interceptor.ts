@@ -64,15 +64,16 @@ export class ResponseInterceptor
                     let data: Record<string, any> = undefined;
 
                     // metadata
+                    const today = this.helperDateService.create();
                     const xPath = request.path;
                     const xLanguage: string =
                         request.__language ??
                         this.configService.get<ENUM_MESSAGE_LANGUAGE>(
                             'message.language'
                         );
-                    const xTimestamp = this.helperDateService.createTimestamp();
-                    const xTimezone =
-                        Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    const xTimestamp =
+                        this.helperDateService.getTimestamp(today);
+                    const xTimezone = this.helperDateService.getZone(today);
                     const xVersion =
                         request.__version ??
                         this.configService.get<string>(

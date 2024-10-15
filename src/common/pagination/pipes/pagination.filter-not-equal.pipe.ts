@@ -1,8 +1,8 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
+import { DatabaseService } from 'src/common/database/services/database.service';
 import { IPaginationFilterEqualOptions } from 'src/common/pagination/interfaces/pagination.interface';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterNotEqualPipe(
@@ -13,7 +13,7 @@ export function PaginationFilterNotEqualPipe(
     class MixinPaginationFilterEqualPipe implements PipeTransform {
         constructor(
             @Inject(REQUEST) protected readonly request: IRequestApp,
-            private readonly paginationService: PaginationService
+            private readonly databaseService: DatabaseService
         ) {}
 
         async transform(value: string): Promise<any> {
@@ -33,7 +33,7 @@ export function PaginationFilterNotEqualPipe(
                 : value.trim();
 
             this.addToRequestInstance(finalValue);
-            return this.paginationService.filterNotEqual(field, finalValue);
+            return this.databaseService.filterNotEqual(field, finalValue);
         }
 
         addToRequestInstance(value: any): void {

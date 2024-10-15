@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
-import { DatabaseModule } from 'src/common/database/database.module';
-import { DatabaseService } from 'src/common/database/services/database.service';
+import {
+    DatabaseModule,
+    DatabaseOptionModule,
+} from 'src/common/database/database.module';
 import { MessageModule } from 'src/common/message/message.module';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { RequestModule } from 'src/common/request/request.module';
@@ -16,6 +18,7 @@ import { FileModule } from 'src/common/file/file.module';
 import { BullModule } from '@nestjs/bullmq';
 import { CacheModule, CacheOptions, CacheStore } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-store';
+import { DatabaseOptionService } from 'src/common/database/services/database.options.service';
 
 @Module({
     controllers: [],
@@ -30,9 +33,9 @@ import { redisStore } from 'cache-manager-redis-store';
         }),
         MongooseModule.forRootAsync({
             connectionName: DATABASE_CONNECTION_NAME,
-            imports: [DatabaseModule],
-            inject: [DatabaseService],
-            useFactory: (databaseService: DatabaseService) =>
+            imports: [DatabaseOptionModule],
+            inject: [DatabaseOptionService],
+            useFactory: (databaseService: DatabaseOptionService) =>
                 databaseService.createOptions(),
         }),
         BullModule.forRootAsync({
@@ -89,8 +92,9 @@ import { redisStore } from 'cache-manager-redis-store';
         PolicyModule.forRoot(),
         AuthModule.forRoot(),
         ApiKeyModule.forRoot(),
-        PaginationModule.forRoot(),
         FileModule.forRoot(),
+        DatabaseModule.forRoot(),
+        PaginationModule.forRoot(),
     ],
 })
 export class CommonModule {}

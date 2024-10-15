@@ -1,6 +1,6 @@
 export interface IHelperArrayService {
-    getFromLeft<T>(array: T[], length: number): T[];
-    getFromRight<T>(array: T[], length: number): T[];
+    getByIndexFromLeft<T>(array: T[], index: number): T[];
+    getByIndexFromRight<T>(array: T[], index: number): T[];
     getDifference<T>(a: T[], b: T[]): T[];
     getIntersection<T>(a: T[], b: T[]): T[];
     concat<T>(a: T[], b: T[]): T[];

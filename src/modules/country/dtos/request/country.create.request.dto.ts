@@ -1,18 +1,15 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import {
     ArrayNotEmpty,
     IsArray,
     IsNotEmpty,
-    IsNotEmptyObject,
-    IsObject,
     IsOptional,
     IsString,
     MaxLength,
     MinLength,
 } from 'class-validator';
-import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 
 export class CountryCreateRequestDto {
     @ApiProperty({
@@ -128,14 +125,4 @@ export class CountryCreateRequestDto {
     @IsOptional()
     @IsString()
     domain?: string;
-
-    @ApiProperty({
-        required: false,
-        type: AwsS3ResponseDto,
-    })
-    @IsOptional()
-    @IsObject()
-    @IsNotEmptyObject()
-    @Type(() => AwsS3ResponseDto)
-    image?: AwsS3ResponseDto;
 }

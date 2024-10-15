@@ -25,6 +25,7 @@ export class HelperNumberService implements IHelperNumberService {
         if (Number.isNaN(tValue) || !Number.isFinite(tValue)) {
             tValue = 0;
         }
+
         return Number.parseFloat((tValue * 100).toFixed(2));
     }
 }

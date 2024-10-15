@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
+import { Duration } from 'luxon';
 import { Document } from 'mongoose';
 import {
     IDatabaseCreateOptions,
@@ -136,8 +137,12 @@ export class PasswordHistoryService implements IPasswordHistoryService {
         { type }: PasswordHistoryCreateRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<PasswordHistoryDoc> {
-        const expiredAt: Date = this.helperDateService.forwardInSeconds(
-            this.passwordPeriod
+        const today = this.helperDateService.create();
+        const expiredAt: Date = this.helperDateService.forward(
+            today,
+            Duration.fromObject({
+                seconds: this.passwordPeriod,
+            })
         );
 
         const create: PasswordHistoryEntity = new PasswordHistoryEntity();
@@ -158,8 +163,12 @@ export class PasswordHistoryService implements IPasswordHistoryService {
         { by, type }: PasswordHistoryCreateByAdminRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<PasswordHistoryDoc> {
-        const expiredAt: Date = this.helperDateService.forwardInSeconds(
-            this.passwordPeriod
+        const today = this.helperDateService.create();
+        const expiredAt: Date = this.helperDateService.forward(
+            today,
+            Duration.fromObject({
+                seconds: this.passwordPeriod,
+            })
         );
 
         const create: PasswordHistoryEntity = new PasswordHistoryEntity();
