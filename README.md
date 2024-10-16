@@ -37,13 +37,13 @@
     - [Install Dependencies](#install-dependencies)
     - [Create environment](#create-environment)
     - [Database Migration and Seed](#database-migration-and-seed)
-    - [Asset Migration](#asset-migration)
+    - [Template Migration](#template-migration)
     - [Run Project](#run-project)
   - [Installation with Docker](#installation-with-docker)
   - [Test](#test)
   - [Swagger](#swagger)
-    - [API Key](#api-key)
-    - [User](#user)
+  - [API Key](#api-key)
+  - [User](#user)
   - [BullMQ Board](#bullmq-board)
     - [User](#user-1)
   - [License](#license)
@@ -54,28 +54,18 @@
 
 > Very limited documentation
 
-* There have been some breaking changes between v5 and v6.
-* The features will be relate with AWS / Amazon web service.
-* Stateless Authorization
+* Stateful Authorization, using `redis-session` and `JWT`.
 * Must run MongoDB as a `replication set` for `database transactions`.
 * If you want to implement `Google SSO`. You must have google cloud console account, then create your own Credential to get the  `clientId` and `clientSecret`.
 * If you want to implement `Apple SSO`. You must have `clientId` and `signInClientId`.
-* If you change the environment value of `APP_ENV` to `production`, that will trigger.
-    1. CorsMiddleware will implement config from `src/configs/middleware.config.ts`.
-    2. Documentation will `disable`.
-    3. Global prefix will remove. Before is `/api`.
-* For monitoring, this project will use `sentry.io`, and only send `500` or `internal server error`.
+* If you change the environment value of `APP_ENV` to `production`, that will disable Documentation.
+* For monitoring, this project will use `sentry.io`, and sent uncatched error and/or `internal server error`.
 
 ## TODO
-git 
-- [ ] upload sentry source map
-- [ ] change moment
 - [ ] Export Module
 - [ ] Move to Stateful Authorization
-      1. Session Module
-      2. Password Period Module
-      3. Reset Password Module
-      4. Verification Module
+      1. Reset Password Module
+      2. Verification Module
 
 ## Prerequisites
 
@@ -98,15 +88,14 @@ Describes which version.
 | Name       | Version  |
 | ---------- | -------- |
 | NestJs     | v10.x     |
-| NestJs Swagger | v7.x |
-| NodeJs     | v20.x    |
-| Typescript | v5.x     |
-| Mongoose   | v10.x     |
+| NestJs Swagger | v7.4.x |
+| NodeJs     | v20.11.x    |
+| Typescript | v5.6.x     |
+| Mongoose   | v10.0.x     |
 | MongoDB    | v7.x     |
-| Yarn       | v1.x     |
-| NPM        | v10.x     |
-| Docker     | v24.x    |
-| Docker Compose | v2.x |
+| Yarn       | v1.22.x     |
+| Docker     | v24.2.x    |
+| Docker Compose | v2.22.x |
 
 
 ## Objective
@@ -118,8 +107,6 @@ Describes which version.
 * Repository Design Pattern or Data Access Layer Design Pattern
 * Follow Community Guide Line
 * Follow The Twelve-Factor App
-* Adopt SOLID and KISS principle
-* Support for Microservice Architecture, Serverless Architecture, Clean Architecture, and/or Hexagonal Architecture
 
 ## Features
 
@@ -129,22 +116,22 @@ Describes which version.
 * Typescript 🚀
 * Production ready 🔥
 * MongoDB integrate by using [mongoose][ref-mongoose] 🎉
-* Cached response with redis
-* Queue bullmq with redis
-* Authorization, Role Management.
-* Repository Design Pattern (Multi Repository, can mix with other orm)
+* Cached response with redis.
+* Queue bullmq with redis.
+* Authorization, Role, and session Management.
+* Repository Design Pattern.
 * Authentication (`Access Token`, `Refresh Token`, `API Key`, `Google SSO`, `Apple SSO`)
-* Import and export data with CSV or Excel by using `decorator`
+* Export data with CSV or Excel by using `decorator`.
 * Support multi-language `i18n` 🗣, can controllable with request header `x-custom-lang`
 * Request validation for all request params, query, dan body with `class-validation`
-* Swagger / OpenAPI 3 included
-* Url Versioning, default version is `1`
-* Server Side Pagination
-* Sentry.io for Monitoring Tools
-* Support Docker installation
-* Support CI/CD (Eg: Github Action) 
-* Husky GitHook for run linter before commit 🐶
-* Linter with EsLint for Typescript
+* Swagger / OpenAPI 3 included.
+* Url Versioning, default version is `1`.
+* Server Side Pagination.
+* Sentry.io for Monitoring Tools.
+* Support Docker installation.
+* Support CI/CD (Eg: Github Action) .
+* Husky GitHook for run linter before commit 🐶.
+* Linter with EsLint for Typescript.
 
 ## Installation
 
@@ -186,8 +173,9 @@ cp .env.example .env
 
 ### Database Migration and Seed
 
-By default the options of `AutoCreate` and `AutoIndex` will be `false`. Thats means the schema in MongoDb will not change with the latest.
-So to update the schema we need to run
+By default the options of `AutoCreate` and `AutoIndex` will be `false`. 
+Thats means the schema in MongoDb will not change with the latest.
+So in the first place, u need to update the schema
 
 ```bash
 yarn migrate:schema
@@ -199,15 +187,15 @@ After migrate the schema, also we need to run data seed
 yarn seed
 ```
 
-### Asset Migration
+### Template Migration
 
 > Optional
 
-The asset migration will automatically upload `/assets` through AWS S3 and Email template through AWS SES.
+The template migration will automatically upload `/templates` through AWS SES.
 
 For migrate
 ```bash
-yarn migrate:asset
+yarn migrate:template
 ```
 
 ### Run Project
@@ -249,15 +237,15 @@ yarn test
 
 ## Swagger
 
-You can check The Swagger after running this project. Url `localhost:3000/docs` and don't forget to put `x-api-key` on header.
+You can check The Swagger after running this project. Url `localhost:3000/docs`
 
 
-### API Key
+## API Key
 
 api key: `v8VB0yY887lMpTA2VJMV`
 api key secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
 
-### User
+## User
 
 1. Super Admin
    - email: `superadmin@mail.com`

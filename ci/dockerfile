@@ -1,6 +1,6 @@
 # Test Image
 FROM node:lts-alpine as builder
-LABEL maintainer "andrechristikan@mail.com"
+LABEL maintainer "andrechristikan@gmail.com"
 
 ENV NODE_ENV=testing
 
@@ -15,7 +15,7 @@ RUN yarn build
 
 # Production Image
 FROM node:lts-alpine as main
-LABEL maintainer "andrechristikan@mail.com"
+LABEL maintainer "andrechristikan@gmail.com"
 
 ARG NODE_ENV
 ENV NODE_ENV=${NODE_ENV}
