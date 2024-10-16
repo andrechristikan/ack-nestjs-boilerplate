@@ -35,6 +35,7 @@ export class RoleGetResponseDto extends DatabaseDto {
         example: ENUM_POLICY_ROLE_TYPE.ADMIN,
         required: true,
         nullable: false,
+        enum: ENUM_POLICY_ROLE_TYPE,
     })
     type: ENUM_POLICY_ROLE_TYPE;
 

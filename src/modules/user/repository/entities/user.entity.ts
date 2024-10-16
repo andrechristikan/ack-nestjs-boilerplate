@@ -114,6 +114,7 @@ export class UserEntity extends DatabaseEntityBase {
 
     @DatabaseProp({
         required: true,
+        type: String,
         enum: ENUM_USER_SIGN_UP_FROM,
     })
     signUpFrom: ENUM_USER_SIGN_UP_FROM;
@@ -141,6 +142,7 @@ export class UserEntity extends DatabaseEntityBase {
 
     @DatabaseProp({
         required: false,
+        type: String,
         enum: ENUM_USER_GENDER,
     })
     gender?: ENUM_USER_GENDER;

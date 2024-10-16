@@ -84,6 +84,7 @@ export class UserGetResponseDto extends DatabaseDto {
         required: true,
         nullable: false,
         example: ENUM_USER_SIGN_UP_FROM.ADMIN,
+        enum: ENUM_USER_SIGN_UP_FROM,
     })
     signUpFrom: ENUM_USER_SIGN_UP_FROM;
 
@@ -95,6 +96,7 @@ export class UserGetResponseDto extends DatabaseDto {
         required: true,
         nullable: false,
         example: ENUM_USER_STATUS.ACTIVE,
+        enum: ENUM_USER_STATUS,
     })
     status: ENUM_USER_STATUS;
 

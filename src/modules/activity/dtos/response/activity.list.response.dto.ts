@@ -3,7 +3,6 @@ import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { DatabaseDto } from 'src/common/database/dtos/database.dto';
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
-import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 
 export class ActivityListResponseDto extends DatabaseDto {
     @ApiProperty({
@@ -16,7 +15,7 @@ export class ActivityListResponseDto extends DatabaseDto {
         required: true,
         example: faker.lorem.paragraph(),
     })
-    description: ENUM_USER_STATUS;
+    description: string;
 
     @ApiProperty({
         required: true,

@@ -14,6 +14,7 @@ export class ApiKeyEntity extends DatabaseEntityBase {
     @DatabaseProp({
         required: true,
         enum: ENUM_API_KEY_TYPE,
+        type: String,
         index: true,
         trim: true,
     })

@@ -2,14 +2,20 @@
     "collection": "@nestjs/schematics",
     "sourceRoot": "src",
     "compilerOptions": {
+        "builder": {
+            "type": "swc",
+            "typecCheck": true,
+            "options": {
+                "swcrcPath": ".swcrc"
+            }
+        },
         "plugins": ["@nestjs/swagger"],
         "assets": [
             {
                 "include": "languages/**/*",
-                "outDir": "dist/src"
+                "outDir": "dist"
             }
         ],
-        "webpack": false,
         "deleteOutDir": true,
         "watchAssets": true
     }

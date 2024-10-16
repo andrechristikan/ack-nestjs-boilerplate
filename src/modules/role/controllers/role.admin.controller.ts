@@ -58,7 +58,6 @@ import { RoleIsActivePipe } from 'src/modules/role/pipes/role.is-active.pipe';
 import { RoleParsePipe } from 'src/modules/role/pipes/role.parse.pipe';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { UserService } from 'src/modules/user/services/user.service';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 
 @ApiTags('modules.admin.role')
@@ -69,8 +68,7 @@ import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/databas
 export class RoleAdminController {
     constructor(
         private readonly paginationService: PaginationService,
-        private readonly roleService: RoleService,
-        private readonly userService: UserService
+        private readonly roleService: RoleService
     ) {}
 
     @RoleAdminListDoc()
