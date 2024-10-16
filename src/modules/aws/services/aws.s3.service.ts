@@ -149,6 +149,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             pathWithFilename: key,
             filename: filename,
             completedUrl: `${config.baseUrl}${key}`,
+            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
             baseUrl: config.baseUrl,
             mime,
             size: item.ContentLength,
@@ -176,7 +177,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             ListObjectsV2CommandOutput
         >(command);
 
-        const mapList = listItems.Contents.map((item: _Object) => {
+        const mapList: AwsS3Dto[] = listItems.Contents.map((item: _Object) => {
             const lastIndex: number = item.Key.lastIndexOf('/');
             const path: string = item.Key.substring(0, lastIndex);
             const filename: string = item.Key.substring(
@@ -194,6 +195,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 pathWithFilename: item.Key,
                 filename: filename,
                 completedUrl: `${config.baseUrl}${item.Key}`,
+                cdnUrl: config.cdnUrl
+                    ? `${config.cdnUrl}${item.Key}`
+                    : undefined,
                 baseUrl: config.baseUrl,
                 mime,
                 size: item.Size,
@@ -201,7 +205,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         });
 
         if (listItems.IsTruncated) {
-            const nextItems = await this.getItems(path, {
+            const nextItems: AwsS3Dto[] = await this.getItems(path, {
                 ...options,
                 continuationToken: listItems.ContinuationToken,
             });
@@ -250,6 +254,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             pathWithFilename: key,
             filename: filename,
             completedUrl: `${config.baseUrl}${key}`,
+            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
             baseUrl: config.baseUrl,
             mime,
             size: item.ContentLength,
@@ -292,6 +297,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             pathWithFilename: key,
             filename: filename,
             completedUrl: `${config.baseUrl}${key}`,
+            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
             baseUrl: config.baseUrl,
             mime,
             size: file.size,
@@ -341,6 +347,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             pathWithFilename: key,
             filename: filename,
             completedUrl: `${config.baseUrl}${key}`,
+            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
             baseUrl: config.baseUrl,
             mime,
             size: file.size,
@@ -482,6 +489,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             pathWithFilename: key,
             filename: filename,
             completedUrl: `${config.baseUrl}${key}`,
+            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
             baseUrl: config.baseUrl,
             mime,
             size: 0,
@@ -541,6 +549,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             pathWithFilename: key,
             filename: filename,
             completedUrl: `${config.baseUrl}${key}`,
+            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
             baseUrl: config.baseUrl,
             mime,
             size: 0,
@@ -722,6 +731,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             pathWithFilename: key,
             filename: filename,
             completedUrl: `${config.baseUrl}${key}`,
+            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
             baseUrl: config.baseUrl,
             mime,
             size,

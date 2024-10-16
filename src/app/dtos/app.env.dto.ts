@@ -118,6 +118,10 @@ export class AppEnvDto {
 
     @IsOptional()
     @IsString()
+    AWS_S3_PUBLIC_CDN?: string;
+
+    @IsOptional()
+    @IsString()
     AWS_S3_PRIVATE_CREDENTIAL_KEY?: string;
 
     @IsOptional()

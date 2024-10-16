@@ -37,6 +37,12 @@ export class AwsS3Dto {
     completedUrl: string;
 
     @ApiProperty({
+        required: false,
+        example: `${faker.internet.url()}/${faker.system.filePath()}`,
+    })
+    cdnUrl?: string;
+
+    @ApiProperty({
         required: true,
         nullable: false,
         example: faker.internet.url(),

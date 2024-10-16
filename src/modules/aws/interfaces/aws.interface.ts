@@ -42,6 +42,7 @@ export interface IAwsS3ConfigBucket {
     bucket: string;
     region: string;
     baseUrl: string;
+    cdnUrl?: string;
     client?: S3Client;
 }
 
