@@ -99,6 +99,10 @@ export class HelperDateService implements IHelperDateService {
         return mDate.toJSDate();
     }
 
+    createInstance(date?: Date): DateTime {
+        return date ? DateTime.fromJSDate(date) : DateTime.now();
+    }
+
     createFromIso(iso: string, options?: IHelperDateCreateOptions): Date {
         const date = DateTime.fromISO(iso).setZone(this.defTz);
 

@@ -1,4 +1,4 @@
-import { DateObjectUnits, Duration } from 'luxon';
+import { DateObjectUnits, DateTime, Duration } from 'luxon';
 import { IHelperDateCreateOptions } from 'src/common/helper/interfaces/helper.interface';
 
 export interface IHelperDateService {
@@ -8,6 +8,7 @@ export interface IHelperDateService {
     getZone(date: Date): string;
     getTimestamp(date: Date): number;
     create(date?: Date, options?: IHelperDateCreateOptions): Date;
+    createInstance(date?: Date): DateTime;
     createFromIso(iso: string, options?: IHelperDateCreateOptions): Date;
     createFromTimestamp(
         timestamp?: number,

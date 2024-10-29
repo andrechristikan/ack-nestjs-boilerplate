@@ -68,6 +68,7 @@ import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-pres
 import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 import { plainToInstance } from 'class-transformer';
 
+// TODO: CHECK PATH OF KEY
 @Injectable()
 export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     private readonly presignExpired: number;

@@ -19,6 +19,9 @@ import { BullModule } from '@nestjs/bullmq';
 import { CacheModule, CacheOptions, CacheStore } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-store';
 import { DatabaseOptionService } from 'src/common/database/services/database.options.service';
+import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
+import { LoggerOptionModule } from 'src/common/logger/logger.option.module';
+import { LoggerOptionService } from 'src/common/logger/services/logger.option.service';
 
 @Module({
     controllers: [],
@@ -85,6 +88,13 @@ import { DatabaseOptionService } from 'src/common/database/services/database.opt
                 };
             },
             inject: [ConfigService],
+        }),
+        PinoLoggerModule.forRootAsync({
+            imports: [LoggerOptionModule],
+            inject: [LoggerOptionService],
+            useFactory: async (loggerOptionService: LoggerOptionService) => {
+                return loggerOptionService.createOptions();
+            },
         }),
         MessageModule.forRoot(),
         HelperModule.forRoot(),

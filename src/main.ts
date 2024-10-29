@@ -11,11 +11,14 @@ import { AppEnvDto } from 'src/app/dtos/app.env.dto';
 import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 import compression from 'compression';
+import { Logger as PinoLogger } from 'nestjs-pino';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule, {
         abortOnError: false,
+        bufferLogs: true,
     });
+
     const configService = app.get(ConfigService);
     const databaseUri: string = configService.get<string>('database.uri');
     const env: string = configService.get<string>('app.env');
@@ -40,6 +43,11 @@ async function bootstrap() {
     const logger = new Logger('NestJs-Main');
     process.env.NODE_ENV = env;
     process.env.TZ = timezone;
+
+    // logger
+    if (env !== ENUM_APP_ENVIRONMENT.LOCAL) {
+        app.useLogger(app.get(PinoLogger));
+    }
 
     // Compression
     app.use(compression());
@@ -75,12 +83,6 @@ async function bootstrap() {
 
     // Listen
     await app.listen(port, host);
-
-    logger.log(`==========================================================`);
-
-    logger.log(`Environment Variable`);
-
-    logger.log(JSON.parse(JSON.stringify(process.env)));
 
     logger.log(`==========================================================`);
 
