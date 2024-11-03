@@ -11,17 +11,13 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 
 @Processor(ENUM_WORKER_QUEUES.SESSION_QUEUE)
 export class SessionProcessor extends WorkerHost implements ISessionProcessor {
-    private readonly debug: boolean;
     private readonly logger = new Logger(SessionProcessor.name);
 
     constructor(
         private readonly sessionService: SessionService,
-        private readonly messageService: MessageService,
-        private readonly configService: ConfigService
+        private readonly messageService: MessageService
     ) {
         super();
-
-        this.debug = this.configService.get<boolean>('app.debug');
     }
 
     async process(job: Job<SessionWorkerDto, any, string>): Promise<void> {
@@ -35,9 +31,7 @@ export class SessionProcessor extends WorkerHost implements ISessionProcessor {
                     break;
             }
         } catch (error: any) {
-            if (this.debug) {
-                this.logger.error(error);
-            }
+            this.logger.error(error);
         }
 
         return;

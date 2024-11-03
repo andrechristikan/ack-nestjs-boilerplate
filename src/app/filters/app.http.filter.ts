@@ -22,7 +22,6 @@ import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
 export class AppHttpFilter implements ExceptionFilter {
     private readonly logger = new Logger(AppHttpFilter.name);
 
-    private readonly debug: boolean;
     private readonly globalPrefix: string;
     private readonly docPrefix: string;
     private readonly env: ENUM_APP_ENVIRONMENT;
@@ -32,7 +31,6 @@ export class AppHttpFilter implements ExceptionFilter {
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
-        this.debug = this.configService.get<boolean>('app.debug');
         this.globalPrefix = this.configService.get<string>('app.globalPrefix');
         this.docPrefix = this.configService.get<string>('doc.prefix');
         this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
@@ -43,9 +41,7 @@ export class AppHttpFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-        if (this.debug) {
-            this.logger.error(exception);
-        }
+        this.logger.error(exception);
 
         if (
             !request.path.startsWith(this.globalPrefix) &&

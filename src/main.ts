@@ -24,10 +24,7 @@ async function bootstrap() {
     const env: string = configService.get<string>('app.env');
     const timezone: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
-    const port: number =
-        env !== ENUM_APP_ENVIRONMENT.MIGRATION
-            ? configService.get<number>('app.http.port')
-            : 9999;
+    const port: number = configService.get<number>('app.http.port');
     const globalPrefix: string = configService.get<string>('app.globalPrefix');
     const versioningPrefix: string = configService.get<string>(
         'app.urlVersion.prefix'
@@ -45,9 +42,7 @@ async function bootstrap() {
     process.env.TZ = timezone;
 
     // logger
-    if (env !== ENUM_APP_ENVIRONMENT.LOCAL) {
-        app.useLogger(app.get(PinoLogger));
-    }
+    app.useLogger(app.get(PinoLogger));
 
     // Compression
     app.use(compression());
@@ -73,9 +68,10 @@ async function bootstrap() {
     if (errors.length > 0) {
         const messageService = app.get(MessageService);
         const errorsMessage = messageService.setValidationMessage(errors);
-        logger.log(errorsMessage);
 
-        throw new Error('Env Variable Invalid');
+        throw new Error('Env Variable Invalid', {
+            cause: errorsMessage,
+        });
     }
 
     // Swagger
@@ -84,16 +80,8 @@ async function bootstrap() {
     // Listen
     await app.listen(port, host);
 
-    logger.log(`==========================================================`);
-
     if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
         logger.log(`On migrate the schema`);
-
-        logger.log(
-            `==========================================================`
-        );
-
-        await new Promise(resolve => setTimeout(resolve, 5000));
 
         await app.close();
         process.exit(0);
@@ -112,8 +100,6 @@ async function bootstrap() {
         'NestApplication'
     );
     logger.log(`Database uri ${databaseUri}`);
-
-    logger.log(`==========================================================`);
 
     return;
 }

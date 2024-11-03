@@ -17,7 +17,7 @@ class MockMessageService {
 class MockConfigService {
     get = jest.fn().mockImplementation((key: string) => {
         const config = {
-            'app.debug': true,
+            'debug.enable': true,
             'app.urlVersion.version': '1.0',
             'app.repoVersion': 'v1.0.0',
         };

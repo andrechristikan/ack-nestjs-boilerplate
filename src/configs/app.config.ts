@@ -10,8 +10,6 @@ export default registerAs(
         repoVersion: version,
         globalPrefix: '/api',
 
-        debug: process.env.APP_DEBUG === 'true',
-
         http: {
             enable: process.env.HTTP_ENABLE === 'true',
             host: process.env.HTTP_HOST,

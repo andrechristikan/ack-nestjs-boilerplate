@@ -13,16 +13,13 @@ import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
 
 @Catch(RequestValidationException)
 export class AppValidationFilter implements ExceptionFilter {
-    private readonly debug: boolean;
     private readonly logger = new Logger(AppValidationFilter.name);
 
     constructor(
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
-    ) {
-        this.debug = this.configService.get<boolean>('app.debug');
-    }
+    ) {}
 
     async catch(
         exception: RequestValidationException,
@@ -32,9 +29,7 @@ export class AppValidationFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-        if (this.debug) {
-            this.logger.error(exception);
-        }
+        this.logger.error(exception);
 
         // metadata
         const today = this.helperDateService.create();

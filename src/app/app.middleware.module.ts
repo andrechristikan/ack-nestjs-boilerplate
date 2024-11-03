@@ -22,6 +22,7 @@ import { AppHelmetMiddleware } from 'src/app/middlewares/app.helmet.middleware';
 import { AppResponseTimeMiddleware } from 'src/app/middlewares/app.response-time.middleware';
 import { AppUrlVersionMiddleware } from 'src/app/middlewares/app.url-version.middleware';
 import { SentryModule } from '@sentry/nestjs/setup';
+import { AppRequestIdMiddleware } from 'src/app/middlewares/app.request-id.middleware';
 
 @Module({
     controllers: [],
@@ -68,6 +69,7 @@ export class AppMiddlewareModule implements NestModule {
     configure(consumer: MiddlewareConsumer): void {
         consumer
             .apply(
+                AppRequestIdMiddleware,
                 AppHelmetMiddleware,
                 AppJsonBodyParserMiddleware,
                 AppTextBodyParserMiddleware,

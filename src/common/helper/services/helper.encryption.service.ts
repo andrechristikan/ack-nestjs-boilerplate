@@ -10,15 +10,9 @@ import {
 
 @Injectable()
 export class HelperEncryptionService implements IHelperEncryptionService {
-    private readonly debug: boolean;
     private readonly logger = new Logger(HelperEncryptionService.name);
 
-    constructor(
-        private readonly jwtService: JwtService,
-        private readonly configService: ConfigService
-    ) {
-        this.debug = this.configService.get<boolean>('app.debug');
-    }
+    constructor(private readonly jwtService: JwtService) {}
 
     base64Encrypt(data: string): string {
         const buff: Buffer = Buffer.from(data, 'utf8');
@@ -98,9 +92,7 @@ export class HelperEncryptionService implements IHelperEncryptionService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }

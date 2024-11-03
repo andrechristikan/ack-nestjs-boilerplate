@@ -34,16 +34,6 @@ export class AppEnvDto {
     @IsEnum(ENUM_APP_TIMEZONE)
     APP_TIMEZONE: ENUM_APP_TIMEZONE;
 
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    APP_DEBUG: boolean;
-
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    HTTP_ENABLE: boolean;
-
     @IsNotEmpty()
     @IsString()
     HTTP_HOST: string;
@@ -52,6 +42,11 @@ export class AppEnvDto {
     @IsNotEmpty()
     @Type(() => Number)
     HTTP_PORT: number;
+
+    @IsBoolean()
+    @IsNotEmpty()
+    @Type(() => Boolean)
+    DEBUG_ENABLE: boolean;
 
     @IsString()
     @IsNotEmpty()

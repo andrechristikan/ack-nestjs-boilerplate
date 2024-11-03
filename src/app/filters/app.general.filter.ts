@@ -23,7 +23,6 @@ import * as Sentry from '@sentry/nestjs';
 
 @Catch()
 export class AppGeneralFilter implements ExceptionFilter {
-    private readonly debug: boolean;
     private readonly logger = new Logger(AppGeneralFilter.name);
 
     constructor(
@@ -31,9 +30,7 @@ export class AppGeneralFilter implements ExceptionFilter {
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
-    ) {
-        this.debug = this.configService.get<boolean>('app.debug');
-    }
+    ) {}
 
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
         const { httpAdapter } = this.httpAdapterHost;
@@ -42,9 +39,7 @@ export class AppGeneralFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-        if (this.debug) {
-            this.logger.error(exception);
-        }
+        this.logger.error(exception);
 
         // sentry
         this.sendToSentry(exception);
@@ -117,9 +112,7 @@ export class AppGeneralFilter implements ExceptionFilter {
         try {
             Sentry.captureException(exception);
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
         }
 
         return;

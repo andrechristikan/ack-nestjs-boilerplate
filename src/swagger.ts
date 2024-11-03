@@ -65,14 +65,6 @@ export default async function (app: NestApplication) {
             },
         });
 
-        logger.log(
-            `==========================================================`
-        );
-
         logger.log(`Docs will serve on ${docPrefix}`, 'NestApplication');
-
-        logger.log(
-            `==========================================================`
-        );
     }
 }

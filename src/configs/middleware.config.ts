@@ -22,9 +22,7 @@ export default registerAs(
         timeout: ms('30s'), // 30s based on ms module
         cors: {
             allowMethod: ['GET', 'DELETE', 'PUT', 'PATCH', 'POST', 'HEAD'],
-            allowOrigin: process.env.MIDDLEWARE_CORS_ORIGIN?.split(','), // allow all origin
-            // allowOrigin: [/example\.com(\:\d{1,4})?$/], // allow all subdomain, and all port
-            // allowOrigin: [/example\.com$/], // allow all subdomain without port
+            allowOrigin: process.env.MIDDLEWARE_CORS_ORIGIN?.split(',') ?? [],
             allowHeader: [
                 'Accept',
                 'Accept-Language',

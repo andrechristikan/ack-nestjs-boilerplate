@@ -22,7 +22,7 @@ export class EmailProcessor extends WorkerHost implements IEmailProcessor {
     ) {
         super();
 
-        this.debug = this.configService.get<boolean>('app.debug');
+        this.debug = this.configService.get<boolean>('debug.enable');
     }
 
     async process(job: Job<EmailWorkerDto, any, string>): Promise<void> {

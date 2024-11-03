@@ -24,7 +24,7 @@ describe('AppHttpFilter', () => {
         mockConfigService = {
             get: jest.fn().mockImplementation((key: string) => {
                 const config = {
-                    'app.debug': true,
+                    'debug.enable': true,
                     'app.globalPrefix': 'api',
                     'doc.prefix': 'docs',
                 };
@@ -111,7 +111,7 @@ describe('AppHttpFilter', () => {
             __language: null,
             __version: null,
         } as IRequestApp;
-        appHttpFilter['app.debug'] = true;
+        appHttpFilter['debug.enable'] = true;
         appHttpFilter['app.globalPrefix'] = '/path';
 
         const mockArgumentsHost = {

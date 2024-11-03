@@ -13,7 +13,6 @@ import { AwsSESService } from 'src/modules/aws/services/aws.ses.service';
 
 @Injectable()
 export class EmailService implements IEmailService {
-    private readonly debug: boolean;
     private readonly logger = new Logger(EmailService.name);
 
     private readonly fromEmail: string;
@@ -28,8 +27,6 @@ export class EmailService implements IEmailService {
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.debug = this.configService.get<boolean>('app.debug');
-
         this.fromEmail = this.configService.get<string>('email.fromEmail');
         this.supportEmail =
             this.configService.get<string>('email.supportEmail');
@@ -52,9 +49,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -74,9 +69,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -98,9 +91,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -119,9 +110,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -141,9 +130,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -166,9 +153,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -187,9 +172,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -209,9 +192,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -242,9 +223,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -263,9 +242,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -279,9 +256,7 @@ export class EmailService implements IEmailService {
 
             return template;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return;
         }
@@ -295,9 +270,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -327,9 +300,7 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }

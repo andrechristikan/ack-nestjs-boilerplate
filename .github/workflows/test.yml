@@ -1,35 +1,33 @@
 name: Test
 on:
+    workflow_dispatch:
+    pull_request:
+        branches:
+            - main
+        # - staging
+        # - development
 
-  workflow_dispatch:
-  pull_request:
-    branches: 
-    - main
-    # - staging
-    # - development
-    
 jobs:
-  test:
-    runs-on: ubuntu-latest
+    test:
+        runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: ['lts/*']
+        strategy:
+            matrix:
+                node-version: ['lts/*']
 
-    steps:
-      - name: Git checkout
-        uses: actions/checkout@v3
-        
-      - name: Setup node version ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
+        steps:
+            - name: Git checkout
+              uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: yarn --frozen-lockfile --non-interactive
+            - name: Setup node version ${{ matrix.node-version }}
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ matrix.node-version }}
 
-      - name: Unit Test
-        run: NODE_ENV=test yarn test
-        env:
-          CI: true
+            - name: Install dependencies
+              run: yarn --frozen-lockfile --non-interactive
 
+            - name: Unit Test
+              run: NODE_ENV=test yarn test
+              env:
+                  CI: true
