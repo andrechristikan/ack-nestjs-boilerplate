@@ -26,3 +26,4 @@ docker-compose.yml
 cspell.json
 README.md
 nodemon.json
+templates

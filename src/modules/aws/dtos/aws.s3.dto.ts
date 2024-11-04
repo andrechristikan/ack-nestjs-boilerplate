@@ -11,6 +11,12 @@ export class AwsS3Dto {
     @ApiProperty({
         required: true,
         nullable: false,
+    })
+    key: string;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
         example: faker.system.directoryPath(),
     })
     path: string;

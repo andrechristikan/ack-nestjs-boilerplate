@@ -23,32 +23,32 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
 
 ## Table of contents
 
--   [ACK NestJs Boilerplate 🔥 🚀](#ack-nestjs-boilerplate---)
-    -   [Table of contents](#table-of-contents)
-    -   [Important](#important)
-    -   [TODO](#todo)
-    -   [Prerequisites](#prerequisites)
-    -   [Build with](#build-with)
-    -   [Objective](#objective)
-    -   [Features](#features)
-        -   [Main Features](#main-features)
-    -   [Installation](#installation)
-        -   [Clone Repo](#clone-repo)
-        -   [Install Dependencies](#install-dependencies)
-        -   [Create environment](#create-environment)
-        -   [Database Migration and Seed](#database-migration-and-seed)
-        -   [Template Migration](#template-migration)
-        -   [Run Project](#run-project)
-    -   [Installation with Docker](#installation-with-docker)
-    -   [Test](#test)
-    -   [Swagger](#swagger)
-    -   [API Key](#api-key)
-    -   [User](#user)
-    -   [BullMQ Board](#bullmq-board)
-        -   [User](#user-1)
-    -   [License](#license)
-    -   [Contribute](#contribute)
-    -   [Contact](#contact)
+- [ACK NestJs Boilerplate 🔥 🚀](#ack-nestjs-boilerplate--)
+  - [Table of contents](#table-of-contents)
+  - [Important](#important)
+  - [TODO](#todo)
+  - [Prerequisites](#prerequisites)
+  - [Build with](#build-with)
+  - [Objective](#objective)
+  - [Features](#features)
+    - [Main Features](#main-features)
+  - [Installation](#installation)
+    - [Clone Repo](#clone-repo)
+    - [Install Dependencies](#install-dependencies)
+    - [Create environment](#create-environment)
+    - [Database Migration and Seed](#database-migration-and-seed)
+    - [Template Migration](#template-migration)
+    - [Run Project](#run-project)
+  - [Installation with Docker](#installation-with-docker)
+  - [Test](#test)
+  - [Swagger](#swagger)
+  - [API Key](#api-key)
+  - [User](#user)
+  - [BullMQ Board](#bullmq-board)
+    - [User](#user-1)
+  - [License](#license)
+  - [Contribute](#contribute)
+  - [Contact](#contact)
 
 ## Important
 
@@ -116,7 +116,8 @@ Describes which version.
 -   MongoDB integrate by using [mongoose][ref-mongoose] 🎉
 -   Cached response with redis.
 -   Queue bullmq with redis.
--   Authorization, Role, and session Management.
+-   Logger with pino 🌲
+-   Authorization, Role, and session Management (can revoke).
 -   Repository Design Pattern.
 -   Authentication (`Access Token`, `Refresh Token`, `API Key`, `Google SSO`, `Apple SSO`)
 -   Export data with CSV or Excel by using `decorator`.

@@ -1,6 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
 import { MessageService } from 'src/common/message/services/message.service';
 import { SessionWorkerDto } from 'src/modules/session/dtos/session.worker.dto';

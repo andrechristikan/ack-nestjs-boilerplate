@@ -51,7 +51,6 @@ import {
     IAwsS3Options,
     IAwsS3PresignOptions,
     IAwsS3PutItem,
-    IAwsS3PutItemOptions,
     IAwsS3PutItemWithAclOptions,
 } from 'src/modules/aws/interfaces/aws.interface';
 import {
@@ -68,7 +67,6 @@ import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-pres
 import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 import { plainToInstance } from 'class-transformer';
 
-// TODO: CHECK PATH OF KEY
 @Injectable()
 export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     private readonly presignExpired: number;
@@ -121,6 +119,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     }
 
     async checkItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto> {
+        if (key.startsWith('/')) {
+            throw new Error('Key should not start with "/"');
+        }
+
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
@@ -136,9 +138,12 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             HeadObjectCommandOutput
         >(headCommand);
 
-        const lastIndex: number = key.lastIndexOf('/');
-        const path: string = key.substring(0, lastIndex);
-        const filename: string = key.substring(lastIndex + 1, key.length);
+        const path: string = `/${key.substring(0, key.lastIndexOf('/'))}`;
+        const pathWithFilename: string = `/${key}`;
+        const filename: string = key.substring(
+            key.lastIndexOf('/') + 1,
+            key.length
+        );
         const mime: string = filename.substring(
             filename.lastIndexOf('.') + 1,
             filename.length
@@ -146,11 +151,14 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
 
         return {
             bucket: config.bucket,
+            key,
             path,
-            pathWithFilename: key,
+            pathWithFilename,
             filename: filename,
-            completedUrl: `${config.baseUrl}${key}`,
-            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
+            completedUrl: `${config.baseUrl}${pathWithFilename}`,
+            cdnUrl: config.cdnUrl
+                ? `${config.cdnUrl}${pathWithFilename}`
+                : undefined,
             baseUrl: config.baseUrl,
             mime,
             size: item.ContentLength,
@@ -161,6 +169,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         path: string,
         options?: IAwsS3GetItemsOptions
     ): Promise<AwsS3Dto[]> {
+        if (path.startsWith('/')) {
+            throw new Error('Path should not start with "/"');
+        }
+
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
@@ -179,10 +191,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         >(command);
 
         const mapList: AwsS3Dto[] = listItems.Contents.map((item: _Object) => {
-            const lastIndex: number = item.Key.lastIndexOf('/');
-            const path: string = item.Key.substring(0, lastIndex);
+            const path: string = `/${item.Key.substring(0, item.Key.lastIndexOf('/'))}`;
+            const pathWithFilename: string = `/${item.Key}`;
             const filename: string = item.Key.substring(
-                lastIndex + 1,
+                item.Key.lastIndexOf('/') + 1,
                 item.Key.length
             );
             const mime: string = filename.substring(
@@ -192,12 +204,13 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
 
             return {
                 bucket: config.bucket,
+                key: item.Key,
                 path,
-                pathWithFilename: item.Key,
+                pathWithFilename: pathWithFilename,
                 filename: filename,
-                completedUrl: `${config.baseUrl}${item.Key}`,
+                completedUrl: `${config.baseUrl}${pathWithFilename}`,
                 cdnUrl: config.cdnUrl
-                    ? `${config.cdnUrl}${item.Key}`
+                    ? `${config.cdnUrl}${pathWithFilename}`
                     : undefined,
                 baseUrl: config.baseUrl,
                 mime,
@@ -226,6 +239,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     }
 
     async getItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto> {
+        if (key.startsWith('/')) {
+            throw new Error('Key should not start with "/"');
+        }
+
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
@@ -241,9 +258,12 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             GetObjectCommandOutput
         >(command);
 
-        const lastIndex: number = key.lastIndexOf('/');
-        const path: string = key.substring(0, lastIndex);
-        const filename: string = key.substring(lastIndex + 1, key.length);
+        const path: string = `/${key.substring(0, key.lastIndexOf('/'))}`;
+        const pathWithFilename: string = `/${key}`;
+        const filename: string = key.substring(
+            key.lastIndexOf('/') + 1,
+            key.length
+        );
         const mime: string = filename.substring(
             filename.lastIndexOf('.') + 1,
             filename.length
@@ -251,11 +271,14 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
 
         return {
             bucket: config.bucket,
+            key,
             path,
-            pathWithFilename: key,
+            pathWithFilename,
             filename: filename,
-            completedUrl: `${config.baseUrl}${key}`,
-            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
+            completedUrl: `${config.baseUrl}${pathWithFilename}`,
+            cdnUrl: config.cdnUrl
+                ? `${config.cdnUrl}${pathWithFilename}`
+                : undefined,
             baseUrl: config.baseUrl,
             mime,
             size: item.ContentLength,
@@ -264,21 +287,28 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
 
     async putItem(
         file: IAwsS3PutItem,
-        options?: IAwsS3PutItemOptions
+        options?: IAwsS3Options
     ): Promise<AwsS3Dto> {
+        if (file.key.startsWith('/')) {
+            throw new Error('Key should not start with "/"');
+        }
+
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
                 : this.config.public;
 
-        const path: string = options?.path?.replace(/^\/*|\/*$/g, '') ?? '';
-        const mime: string = file.originalname.substring(
-            file.originalname.lastIndexOf('.') + 1,
-            file.originalname.length
+        const path: string = `/${file.key.substring(0, file.key.lastIndexOf('/'))}`;
+        const pathWithFilename: string = `/${file.key}`;
+        const filename: string = file.key.substring(
+            file.key.lastIndexOf('/') + 1,
+            file.key.length
         );
-        const filename = options?.customFilename
-            ? `${options?.customFilename.replace(/^\/*|\/*$/g, '')}.${mime}`
-            : file.originalname.replace(/^\/*|\/*$/g, '');
+        const mime: string = filename.substring(
+            filename.lastIndexOf('.') + 1,
+            filename.length
+        );
+
         const content: Buffer = file.file;
         const key: string =
             path === '/' ? `${path}${filename}` : `${path}/${filename}`;
@@ -294,11 +324,14 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
 
         return {
             bucket: config.bucket,
+            key,
             path,
-            pathWithFilename: key,
+            pathWithFilename,
             filename: filename,
-            completedUrl: `${config.baseUrl}${key}`,
-            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
+            completedUrl: `${config.baseUrl}${pathWithFilename}`,
+            cdnUrl: config.cdnUrl
+                ? `${config.cdnUrl}${pathWithFilename}`
+                : undefined,
             baseUrl: config.baseUrl,
             mime,
             size: file.size,
@@ -310,32 +343,32 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3Dto> {
+        if (file.key.startsWith('/')) {
+            throw new Error('Key should not start with "/"');
+        }
+
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
                 : this.config.public;
 
-        const path: string = options?.path?.replace(/^\/*|\/*$/g, '') ?? '';
-        const acl: ObjectCannedACL = options?.acl
-            ? (options.acl as ObjectCannedACL)
-            : ObjectCannedACL.public_read;
-
-        const mime: string = file.originalname.substring(
-            file.originalname.lastIndexOf('.') + 1,
-            file.originalname.length
+        const path: string = `/${file.key.substring(0, file.key.lastIndexOf('/'))}`;
+        const pathWithFilename: string = `/${file.key}`;
+        const filename: string = file.key.substring(
+            file.key.lastIndexOf('/') + 1,
+            file.key.length
         );
-        const filename = options?.customFilename
-            ? `${options?.customFilename.replace(/^\/*|\/*$/g, '')}.${mime}`
-            : file.originalname.replace(/^\/*|\/*$/g, '');
-        const content: Buffer = file.file;
+        const mime: string = filename.substring(
+            filename.lastIndexOf('.') + 1,
+            filename.length
+        );
 
-        const key: string =
-            path === '/' ? `${path}${filename}` : `${path}/${filename}`;
+        const content: Buffer = file.file;
         const command: PutObjectCommand = new PutObjectCommand({
             Bucket: config.bucket,
-            Key: key,
+            Key: file.key,
             Body: content,
-            ACL: acl,
+            ACL: options?.acl ?? ObjectCannedACL.public_read,
         });
 
         await config.client.send<PutObjectCommandInput, PutObjectCommandOutput>(
@@ -344,11 +377,14 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
 
         return {
             bucket: config.bucket,
+            key: file.key,
             path,
-            pathWithFilename: key,
+            pathWithFilename,
             filename: filename,
-            completedUrl: `${config.baseUrl}${key}`,
-            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
+            completedUrl: `${config.baseUrl}${pathWithFilename}`,
+            cdnUrl: config.cdnUrl
+                ? `${config.cdnUrl}${pathWithFilename}`
+                : undefined,
             baseUrl: config.baseUrl,
             mime,
             size: file.size,
@@ -357,6 +393,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     }
 
     async deleteItem(key: string, options?: IAwsS3Options): Promise<void> {
+        if (key.startsWith('/')) {
+            throw new Error('Key should not start with "/"');
+        }
+
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
@@ -376,6 +416,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     }
 
     async deleteItems(keys: string[], options?: IAwsS3Options): Promise<void> {
+        if (keys.some(e => e.startsWith('/'))) {
+            throw new Error('Keys should not start with "/"');
+        }
+
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
@@ -403,6 +447,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         path: string,
         options?: IAwsS3DeleteDirOptions
     ): Promise<void | _Object[]> {
+        if (path.startsWith('/')) {
+            throw new Error('Path should not start with "/"');
+        }
+
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
@@ -448,9 +496,11 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     async createMultiPart(
         file: IAwsS3PutItem,
         maxPartNumber: number,
-        options?: IAwsS3PutItemOptions
+        options?: IAwsS3Options
     ): Promise<AwsS3MultipartDto> {
-        if (maxPartNumber > AWS_S3_MAX_PART_NUMBER) {
+        if (file.key.startsWith('/')) {
+            throw new Error('Key should not start with "/"');
+        } else if (maxPartNumber > AWS_S3_MAX_PART_NUMBER) {
             throw new Error(
                 `Max part number is greater than ${AWS_S3_MAX_PART_NUMBER}`
             );
@@ -461,21 +511,21 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 ? this.config.private
                 : this.config.public;
 
-        const path: string = options?.path?.replace(/^\/*|\/*$/g, '') ?? '';
-        const mime: string = file.originalname.substring(
-            file.originalname.lastIndexOf('.') + 1,
-            file.originalname.length
+        const path: string = `/${file.key.substring(0, file.key.lastIndexOf('/'))}`;
+        const pathWithFilename: string = `/${file.key}`;
+        const filename: string = file.key.substring(
+            file.key.lastIndexOf('/') + 1,
+            file.key.length
         );
-        const filename = options?.customFilename
-            ? `${options?.customFilename.replace(/^\/*|\/*$/g, '')}.${mime}`
-            : file.originalname.replace(/^\/*|\/*$/g, '');
+        const mime: string = filename.substring(
+            filename.lastIndexOf('.') + 1,
+            filename.length
+        );
 
-        const key: string =
-            path === '/' ? `${path}${filename}` : `${path}/${filename}`;
         const multiPartCommand: CreateMultipartUploadCommand =
             new CreateMultipartUploadCommand({
                 Bucket: config.bucket,
-                Key: key,
+                Key: file.key,
             });
 
         const response = await config.client.send<
@@ -486,15 +536,20 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         return {
             bucket: config.bucket,
             uploadId: response.UploadId,
+            key: file.key,
             path,
-            pathWithFilename: key,
+            pathWithFilename,
             filename: filename,
-            completedUrl: `${config.baseUrl}${key}`,
-            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
+            completedUrl: `${config.baseUrl}${pathWithFilename}`,
+            cdnUrl: config.cdnUrl
+                ? `${config.cdnUrl}${pathWithFilename}`
+                : undefined,
             baseUrl: config.baseUrl,
             mime,
-            size: 0,
+            duration: file.duration,
+            size: file.size,
             lastPartNumber: 0,
+            exactSize: 0,
             maxPartNumber: maxPartNumber,
             parts: [],
         };
@@ -505,7 +560,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         maxPartNumber: number,
         options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3MultipartDto> {
-        if (maxPartNumber > AWS_S3_MAX_PART_NUMBER) {
+        if (file.key.startsWith('/')) {
+            throw new Error('Key should not start with "/"');
+        } else if (maxPartNumber > AWS_S3_MAX_PART_NUMBER) {
             throw new Error(
                 `Max part number is greater than ${AWS_S3_MAX_PART_NUMBER}`
             );
@@ -516,26 +573,22 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 ? this.config.private
                 : this.config.public;
 
-        const path: string = options?.path?.replace(/^\/*|\/*$/g, '') ?? '';
-        const acl: ObjectCannedACL = options?.acl
-            ? (options.acl as ObjectCannedACL)
-            : ObjectCannedACL.public_read;
-
-        const mime: string = file.originalname.substring(
-            file.originalname.lastIndexOf('.') + 1,
-            file.originalname.length
+        const path: string = `/${file.key.substring(0, file.key.lastIndexOf('/'))}`;
+        const pathWithFilename: string = `/${file.key}`;
+        const filename: string = file.key.substring(
+            file.key.lastIndexOf('/') + 1,
+            file.key.length
         );
-        const filename = options?.customFilename
-            ? `${options?.customFilename.replace(/^\/*|\/*$/g, '')}.${mime}`
-            : file.originalname.replace(/^\/*|\/*$/g, '');
+        const mime: string = filename.substring(
+            filename.lastIndexOf('.') + 1,
+            filename.length
+        );
 
-        const key: string =
-            path === '/' ? `${path}${filename}` : `${path}/${filename}`;
         const multiPartCommand: CreateMultipartUploadCommand =
             new CreateMultipartUploadCommand({
                 Bucket: config.bucket,
-                Key: key,
-                ACL: acl,
+                Key: file.key,
+                ACL: options?.acl ?? ObjectCannedACL.public_read,
             });
 
         const response = await config.client.send<
@@ -547,15 +600,20 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             bucket: config.bucket,
             uploadId: response.UploadId,
             path,
-            pathWithFilename: key,
+            key: file.key,
+            pathWithFilename,
             filename: filename,
-            completedUrl: `${config.baseUrl}${key}`,
-            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
+            completedUrl: `${config.baseUrl}${pathWithFilename}`,
+            cdnUrl: config.cdnUrl
+                ? `${config.cdnUrl}${pathWithFilename}`
+                : undefined,
             baseUrl: config.baseUrl,
             mime,
-            size: 0,
+            size: file.size,
             lastPartNumber: 0,
+            exactSize: 0,
             maxPartNumber: maxPartNumber,
+            duration: file.duration,
             parts: [],
         };
     }
@@ -594,14 +652,14 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     }
 
     updateMultiPart(
-        { size, parts, ...others }: AwsS3MultipartDto,
+        { exactSize, parts, ...others }: AwsS3MultipartDto,
         part: AwsS3MultipartPartDto
     ): AwsS3MultipartDto {
         parts.push(part);
 
         return {
             ...others,
-            size: size + part.size,
+            exactSize: exactSize + part.size,
             lastPartNumber: part.partNumber,
             parts,
         };
@@ -662,21 +720,17 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     }
 
     async presign(
-        filename: string,
+        key: string,
         options?: IAwsS3PresignOptions
     ): Promise<AwsS3PresignResponseDto> {
+        if (key.startsWith('/')) {
+            throw new Error('Key should not start with "/"');
+        }
+
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
                 : this.config.public;
-
-        const path: string = options?.path?.replace(/^\/*|\/*$/g, '') ?? '';
-        const key: string =
-            path === '/' ? `${path}${filename}` : `${path}/${filename}`;
-        const mime: string = filename.substring(
-            filename.lastIndexOf('.') + 1,
-            filename.length
-        );
 
         const headCommand = new HeadObjectCommand({
             Bucket: config.bucket,
@@ -696,6 +750,15 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             }
         }
 
+        const filename: string = key.substring(
+            key.lastIndexOf('/') + 1,
+            key.length
+        );
+        const mime: string = filename.substring(
+            filename.lastIndexOf('.') + 1,
+            filename.length
+        );
+
         const size = options?.allowedSize ?? FILE_SIZE_IN_BYTES;
         const command = new PutObjectCommand({
             Bucket: config.bucket,
@@ -714,25 +777,36 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         { key, size, duration }: AwsS3PresignRequestDto,
         options?: IAwsS3Options
     ): AwsS3Dto {
+        if (key.startsWith('/')) {
+            throw new Error('Key should not start with "/"');
+        }
+
         const config =
             options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
                 ? this.config.private
                 : this.config.public;
 
-        const path: string = key.substring(0, key.lastIndexOf('/'));
-        const mime: string = key.substring(
-            key.lastIndexOf('.') + 1,
+        const path: string = `/${key.substring(0, key.lastIndexOf('/'))}`;
+        const pathWithFilename: string = `/${key}`;
+        const filename: string = key.substring(
+            key.lastIndexOf('/') + 1,
             key.length
         );
-        const filename = key.substring(key.lastIndexOf('/') + 1, key.length);
+        const mime: string = filename.substring(
+            filename.lastIndexOf('.') + 1,
+            filename.length
+        );
 
         return {
             bucket: config.bucket,
             path,
-            pathWithFilename: key,
+            key,
+            pathWithFilename,
             filename: filename,
-            completedUrl: `${config.baseUrl}${key}`,
-            cdnUrl: config.cdnUrl ? `${config.cdnUrl}${key}` : undefined,
+            completedUrl: `${config.baseUrl}${pathWithFilename}`,
+            cdnUrl: config.cdnUrl
+                ? `${config.cdnUrl}${pathWithFilename}`
+                : undefined,
             baseUrl: config.baseUrl,
             mime,
             size,

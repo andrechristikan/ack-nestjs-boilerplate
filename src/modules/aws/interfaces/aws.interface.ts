@@ -11,23 +11,17 @@ export interface IAwsS3GetItemsOptions extends IAwsS3Options {
 
 export type IAwsS3DeleteDirOptions = IAwsS3GetItemsOptions;
 
-export interface IAwsS3PutItemOptions extends IAwsS3Options {
-    path?: string;
-    customFilename?: string;
-}
-
-export interface IAwsS3PutItemWithAclOptions extends IAwsS3PutItemOptions {
+export interface IAwsS3PutItemWithAclOptions extends IAwsS3Options {
     acl?: ObjectCannedACL;
 }
 
-export interface IAwsS3PresignOptions
-    extends Omit<IAwsS3PutItemOptions, 'customFilename'> {
+export interface IAwsS3PresignOptions extends IAwsS3Options {
     allowedSize?: number;
 }
 
 export interface IAwsS3PutItem {
     file: Buffer;
-    originalname: string;
+    key: string;
     size: number;
     duration?: number;
 }
