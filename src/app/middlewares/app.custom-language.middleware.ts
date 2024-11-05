@@ -19,7 +19,7 @@ export class AppCustomLanguageMiddleware implements NestMiddleware {
 
     async use(
         req: IRequestApp,
-        res: Response,
+        _res: Response,
         next: NextFunction
     ): Promise<void> {
         let customLang: string =

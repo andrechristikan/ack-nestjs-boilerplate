@@ -7,7 +7,7 @@ import {
     ResponseMetadataDto,
 } from 'src/common/response/dtos/response.dto';
 
-export class ResponsePagingMetadataRequestDto {
+export class ResponsePagingMetadataPaginationRequestDto {
     @ApiProperty({
         required: true,
         nullable: false,
@@ -18,11 +18,10 @@ export class ResponsePagingMetadataRequestDto {
     @ApiProperty({
         required: true,
         nullable: false,
-        example: {},
     })
     filters: Record<
         string,
-        string | number | boolean | Array<string | number | boolean>
+        string | number | boolean | Array<string | number | boolean> | Date
     >;
 
     @ApiProperty({
@@ -49,6 +48,7 @@ export class ResponsePagingMetadataRequestDto {
     @ApiProperty({
         required: true,
         nullable: false,
+        enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
         example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
     })
     orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
@@ -63,6 +63,7 @@ export class ResponsePagingMetadataRequestDto {
     @ApiProperty({
         required: true,
         nullable: false,
+        isArray: true,
         example: ['name', 'createdAt'],
     })
     availableOrderBy: string[];
@@ -70,12 +71,12 @@ export class ResponsePagingMetadataRequestDto {
     @ApiProperty({
         required: true,
         nullable: false,
+        enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+        isArray: true,
         example: Object.values(ENUM_PAGINATION_ORDER_DIRECTION_TYPE),
     })
     availableOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE[];
-}
 
-export class ResponsePagingMetadataPaginationDto extends ResponsePagingMetadataRequestDto {
     @ApiProperty({
         required: false,
     })
@@ -90,9 +91,9 @@ export class ResponsePagingMetadataPaginationDto extends ResponsePagingMetadataR
 export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
         required: false,
-        type: ResponsePagingMetadataPaginationDto,
+        type: ResponsePagingMetadataPaginationRequestDto,
     })
-    pagination?: ResponsePagingMetadataPaginationDto;
+    pagination?: ResponsePagingMetadataPaginationRequestDto;
 }
 
 export class ResponsePagingDto extends PickType(ResponseDto, [
@@ -133,7 +134,6 @@ export class ResponsePagingDto extends PickType(ResponseDto, [
     @ApiProperty({
         required: true,
         isArray: true,
-        default: [],
     })
     data: Record<string, any>[];
 }

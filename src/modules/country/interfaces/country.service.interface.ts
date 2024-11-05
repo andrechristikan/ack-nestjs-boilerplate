@@ -6,7 +6,6 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
-import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
 import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
 import {
@@ -31,15 +30,11 @@ export interface ICountryService {
         alpha2: string,
         options?: IDatabaseOptions
     ): Promise<CountryDoc>;
-    findOneActiveByPhoneCode(
+    findOneByPhoneCode(
         phoneCode: string,
         options?: IDatabaseOptions
     ): Promise<CountryDoc>;
     findOneById(_id: string, options?: IDatabaseOptions): Promise<CountryDoc>;
-    findOneActiveById(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<CountryDoc>;
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
@@ -55,7 +50,6 @@ export interface ICountryService {
     mapList(
         countries: CountryDoc[] | CountryEntity[]
     ): Promise<CountryListResponseDto[]>;
-    mapGet(country: CountryDoc | CountryEntity): Promise<CountryGetResponseDto>;
     mapShort(
         countries: CountryDoc[] | CountryEntity[]
     ): Promise<CountryShortResponseDto[]>;

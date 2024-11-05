@@ -15,6 +15,10 @@ export interface IDatabaseOptions {
     withDeleted?: boolean;
 }
 
+export interface IDatabaseFindOneOptions extends IDatabaseOptions {
+    order?: IPaginationOrder;
+}
+
 export type IDatabaseGetTotalOptions = Omit<IDatabaseOptions, 'select'>;
 
 export interface IDatabaseFindAllPagingOptions {
@@ -22,13 +26,8 @@ export interface IDatabaseFindAllPagingOptions {
     offset: number;
 }
 
-export interface IDatabaseFindAllOptions extends IDatabaseOptions {
-    paging: IDatabaseFindAllPagingOptions;
-    order: IPaginationOrder;
-}
-
-export interface IDatabaseExistOptions extends IDatabaseOptions {
-    excludeId?: string[];
+export interface IDatabaseFindAllOptions extends IDatabaseFindOneOptions {
+    paging?: IDatabaseFindAllPagingOptions;
 }
 
 // Action

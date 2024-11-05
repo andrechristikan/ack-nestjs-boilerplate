@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { IAppException } from 'src/app/interfaces/app.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 import { IMessageValidationError } from 'src/common/message/interfaces/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { RequestValidationException } from 'src/common/request/exceptions/request.validation.exception';
@@ -12,16 +13,13 @@ import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
 
 @Catch(RequestValidationException)
 export class AppValidationFilter implements ExceptionFilter {
-    private readonly debug: boolean;
     private readonly logger = new Logger(AppValidationFilter.name);
 
     constructor(
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
-    ) {
-        this.debug = this.configService.get<boolean>('app.debug');
-    }
+    ) {}
 
     async catch(
         exception: RequestValidationException,
@@ -31,15 +29,15 @@ export class AppValidationFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-        if (this.debug) {
-            this.logger.error(exception);
-        }
+        this.logger.error(exception);
 
         // metadata
+        const today = this.helperDateService.create();
         const xLanguage: string =
-            request.__language ?? this.messageService.getLanguage();
-        const xTimestamp = this.helperDateService.createTimestamp();
-        const xTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            request.__language ??
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
+        const xTimestamp = this.helperDateService.getTimestamp(today);
+        const xTimezone = this.helperDateService.getZone(today);
         const xVersion =
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');

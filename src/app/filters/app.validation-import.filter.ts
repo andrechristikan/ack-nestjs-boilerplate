@@ -5,6 +5,7 @@ import { Response } from 'express';
 import { IAppImportException } from 'src/app/interfaces/app.interface';
 import { FileImportException } from 'src/common/file/exceptions/file.import.exception';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 import {
     IMessageValidationImportError,
     IMessageValidationImportErrorParam,
@@ -15,16 +16,13 @@ import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
 
 @Catch(FileImportException)
 export class AppValidationImportFilter implements ExceptionFilter {
-    private readonly debug: boolean;
     private readonly logger = new Logger(AppValidationImportFilter.name);
 
     constructor(
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
-    ) {
-        this.debug = this.configService.get<boolean>('app.debug');
-    }
+    ) {}
 
     async catch(
         exception: FileImportException,
@@ -34,15 +32,15 @@ export class AppValidationImportFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-        if (this.debug) {
-            this.logger.error(exception);
-        }
+        this.logger.error(exception);
 
         // metadata
+        const today = this.helperDateService.create();
         const xLanguage: string =
-            request.__language ?? this.messageService.getLanguage();
-        const xTimestamp = this.helperDateService.createTimestamp();
-        const xTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            request.__language ??
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
+        const xTimestamp = this.helperDateService.getTimestamp(today);
+        const xTimezone = this.helperDateService.getZone(today);
         const xVersion =
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');

@@ -12,10 +12,11 @@ import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
 import {
     UserDocParamsId,
     UserDocQueryCountry,
-    UserDocQueryRole,
+    UserDocQueryRoleType,
     UserDocQueryStatus,
 } from 'src/modules/user/constants/user.doc.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
+import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
@@ -28,7 +29,7 @@ export function UserAdminListDoc(): MethodDecorator {
         DocRequest({
             queries: [
                 ...UserDocQueryStatus,
-                ...UserDocQueryRole,
+                ...UserDocQueryRoleType,
                 ...UserDocQueryCountry,
             ],
         }),
@@ -83,20 +84,22 @@ export function UserAdminCreateDoc(): MethodDecorator {
     );
 }
 
-export function UserAdminActiveDoc(): MethodDecorator {
+export function UserAdminUpdateStatusDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'make user be active',
+            summary: 'update status of user',
         }),
         DocRequest({
             params: UserDocParamsId,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: UserUpdateStatusRequestDto,
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponse('user.active')
+        DocResponse('user.updateStatus')
     );
 }
 
@@ -116,39 +119,5 @@ export function UserAdminUpdateDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true }),
         DocResponse('user.update')
-    );
-}
-
-export function UserAdminInactiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'make user be inactive',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('user.inactive')
-    );
-}
-
-export function UserAdminBlockedDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'block a user',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('user.blocked')
     );
 }

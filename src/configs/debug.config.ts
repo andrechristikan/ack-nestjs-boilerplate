@@ -4,13 +4,10 @@ import ms from 'ms';
 export default registerAs(
     'debug',
     (): Record<string, any> => ({
+        enable: process.env.DEBUG_ENABLE === 'true',
         sentry: {
             dsn: process.env.SENTRY_DSN,
             timeout: ms('10s'),
-            logLevels: {
-                exception: ['fatal'],
-                request: ['log'],
-            },
         },
     })
 );

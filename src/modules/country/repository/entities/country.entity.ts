@@ -1,17 +1,15 @@
-import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
+import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
-import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
-import { AwsS3Schema } from 'src/modules/aws/repository/entities/aws.s3.entity';
 
 export const CountryTableName = 'Countries';
 
 @DatabaseEntity({ collection: CountryTableName })
-export class CountryEntity extends DatabaseEntityAbstract {
+export class CountryEntity extends DatabaseEntityBase {
     @DatabaseProp({
         required: true,
         index: true,
@@ -80,15 +78,14 @@ export class CountryEntity extends DatabaseEntityAbstract {
     timeZone: string;
 
     @DatabaseProp({
-        required: false,
+        required: true,
     })
-    domain?: string;
+    currency: string;
 
     @DatabaseProp({
         required: false,
-        schema: AwsS3Schema,
     })
-    image?: AwsS3Dto;
+    domain?: string;
 }
 
 export const CountrySchema = DatabaseSchema(CountryEntity);

@@ -1,4 +1,9 @@
-import { ApiProperty, OmitType, PickType } from '@nestjs/swagger';
+import {
+    ApiProperty,
+    getSchemaPath,
+    OmitType,
+    PickType,
+} from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
     ArrayNotEmpty,
@@ -133,6 +138,7 @@ export class AwsSESSendBulkDto extends OmitType(AwsSESSendDto, [
         required: true,
         isArray: true,
         type: AwsSESSendBulkRecipientsDto,
+        oneOf: [{ $ref: getSchemaPath(AwsSESSendBulkRecipientsDto) }],
     })
     @IsNotEmpty()
     @IsArray()

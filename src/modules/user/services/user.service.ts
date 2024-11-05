@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import {
+    IDatabaseAggregateOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
-    IDatabaseExistOptions,
+    IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
     IDatabaseSaveOptions,
@@ -13,8 +15,7 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 import { ConfigService } from '@nestjs/config';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { plainToInstance } from 'class-transformer';
-import { Document } from 'mongoose';
-import { DatabaseQueryContain } from 'src/common/database/decorators/database.decorator';
+import { Document, PipelineStage } from 'mongoose';
 import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import {
@@ -43,6 +44,10 @@ import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
 import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
+import { CountryTableName } from 'src/modules/country/repository/entities/country.entity';
+import { RoleTableName } from 'src/modules/role/repository/entities/role.entity';
+import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
+import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -79,47 +84,116 @@ export class UserService implements IUserService {
         return this.userRepository.getTotal(find, options);
     }
 
+    createRawQueryFindAllWithRoleAndCountry(
+        find?: Record<string, any>
+    ): PipelineStage[] {
+        return [
+            {
+                $lookup: {
+                    from: RoleTableName,
+                    as: 'role',
+                    foreignField: '_id',
+                    localField: 'role',
+                },
+            },
+            {
+                $unwind: '$role',
+            },
+            {
+                $lookup: {
+                    from: CountryTableName,
+                    as: 'mobileNumber.country',
+                    foreignField: '_id',
+                    localField: 'mobileNumber.country',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$mobileNumber.country',
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $lookup: {
+                    from: CountryTableName,
+                    as: 'country',
+                    foreignField: '_id',
+                    localField: 'country',
+                },
+            },
+            {
+                $unwind: '$country',
+            },
+            {
+                $match: find,
+            },
+        ];
+    }
+
+    async findAllWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllAggregateOptions
+    ): Promise<IUserEntity[]> {
+        const pipeline: PipelineStage[] =
+            this.createRawQueryFindAllWithRoleAndCountry(find);
+
+        return this.userRepository.findAllAggregate<PipelineStage, IUserEntity>(
+            pipeline,
+            options
+        );
+    }
+
+    async getTotalWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseAggregateOptions
+    ): Promise<number> {
+        const pipeline: PipelineStage[] =
+            this.createRawQueryFindAllWithRoleAndCountry(find);
+
+        return this.userRepository.getTotalAggregate<PipelineStage>(
+            pipeline,
+            options
+        );
+    }
+
     async findOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<UserDoc> {
         return this.userRepository.findOneById<UserDoc>(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<UserDoc> {
         return this.userRepository.findOne<UserDoc>(find, options);
     }
 
     async findOneByEmail(
         email: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<UserDoc> {
         return this.userRepository.findOne<UserDoc>({ email }, options);
     }
 
     async findOneByMobileNumber(
+        country: string,
         mobileNumber: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<UserDoc> {
-        return this.userRepository.findOne<UserDoc>({ mobileNumber }, options);
-    }
-
-    async findAllWithRoleAndCountry(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<IUserDoc[]> {
-        return this.userRepository.findAll<IUserDoc>(find, {
-            ...options,
-            join: true,
-        });
+        return this.userRepository.findOne<UserDoc>(
+            {
+                'mobileNumber.number': mobileNumber,
+                'mobileNumber.country': country,
+            },
+            options
+        );
     }
 
     async findOneWithRoleAndCountry(
         find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(find, {
             ...options,
@@ -129,7 +203,7 @@ export class UserService implements IUserService {
 
     async findOneWithRoleAndCountryById(
         _id: string,
-        options?: IDatabaseFindAllOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOneById<IUserDoc>(_id, {
             ...options,
@@ -165,7 +239,7 @@ export class UserService implements IUserService {
 
     async findOneActiveById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(
             { _id, status: ENUM_USER_STATUS.ACTIVE },
@@ -178,7 +252,7 @@ export class UserService implements IUserService {
 
     async findOneActiveByEmail(
         email: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(
             { email, status: ENUM_USER_STATUS.ACTIVE },
@@ -190,12 +264,14 @@ export class UserService implements IUserService {
     }
 
     async findOneActiveByMobileNumber(
+        country: string,
         mobileNumber: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(
             {
-                mobileNumber,
+                'mobileNumber.number': mobileNumber,
+                'mobileNumber.country': country,
                 status: ENUM_USER_STATUS.ACTIVE,
             },
             {
@@ -206,7 +282,7 @@ export class UserService implements IUserService {
     }
 
     async create(
-        { email, name, role, country }: UserCreateRequestDto,
+        { email, name, role, country, gender }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
@@ -217,6 +293,7 @@ export class UserService implements IUserService {
         create.name = name;
         create.email = email;
         create.role = role;
+        create.gender = gender;
         create.status = ENUM_USER_STATUS.ACTIVE;
         create.password = passwordHash;
         create.salt = salt;
@@ -227,6 +304,9 @@ export class UserService implements IUserService {
         create.signUpFrom = signUpFrom;
         create.country = country;
         create.username = username;
+        create.verification = {
+            email: false,
+        };
 
         return this.userRepository.create<UserEntity>(create, options);
     }
@@ -253,38 +333,31 @@ export class UserService implements IUserService {
         create.signUpFrom = ENUM_USER_SIGN_UP_FROM.PUBLIC;
         create.country = country;
         create.username = username;
+        create.verification = {
+            email: false,
+        };
 
         return this.userRepository.create<UserEntity>(create, options);
     }
 
     async existByEmail(
         email: string,
-        options?: IDatabaseExistOptions
+        options?: IDatabaseOptions
     ): Promise<boolean> {
         return this.userRepository.exists(
-            DatabaseQueryContain('email', email, { fullWord: true }),
+            DatabaseHelperQueryContain('email', email, { fullWord: true }),
             { ...options, withDeleted: true }
         );
     }
 
     async existByUsername(
         username: string,
-        options?: IDatabaseExistOptions
+        options?: IDatabaseOptions
     ): Promise<boolean> {
         return this.userRepository.exists(
-            DatabaseQueryContain('username', username, { fullWord: true }),
-            { ...options, withDeleted: true }
-        );
-    }
-
-    async existByMobileNumber(
-        mobileNumber: string,
-        options?: IDatabaseExistOptions
-    ): Promise<boolean> {
-        return this.userRepository.exists(
-            {
-                mobileNumber,
-            },
+            DatabaseHelperQueryContain('username', username, {
+                fullWord: true,
+            }),
             { ...options, withDeleted: true }
         );
     }
@@ -312,29 +385,12 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
-    async active(
+    async updateStatus(
         repository: UserDoc,
+        { status }: UserUpdateStatusRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserEntity> {
-        repository.status = ENUM_USER_STATUS.ACTIVE;
-
-        return this.userRepository.save(repository, options);
-    }
-
-    async inactive(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc> {
-        repository.status = ENUM_USER_STATUS.INACTIVE;
-
-        return this.userRepository.save(repository, options);
-    }
-
-    async blocked(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc> {
-        repository.status = ENUM_USER_STATUS.BLOCKED;
+        repository.status = status;
 
         return this.userRepository.save(repository, options);
     }
@@ -385,12 +441,13 @@ export class UserService implements IUserService {
 
     async update(
         repository: UserDoc,
-        { country, name, role }: UserUpdateRequestDto,
+        { country, name, role, gender }: UserUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.country = country;
         repository.name = name;
         repository.role = role;
+        repository.gender = gender;
 
         return this.userRepository.save(repository, options);
     }
@@ -427,7 +484,7 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
-    async delete(
+    async softDelete(
         repository: UserDoc,
         dto: DatabaseSoftDeleteDto,
         options?: IDatabaseSaveOptions
@@ -439,24 +496,28 @@ export class UserService implements IUserService {
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
-        try {
-            await this.userRepository.deleteMany(find, options);
+        await this.userRepository.deleteMany(find, options);
 
-            return true;
-        } catch (error: unknown) {
-            throw error;
-        }
+        return true;
     }
 
     async updateProfile(
         repository: UserDoc,
-        { country, name, address, familyName }: UserUpdateProfileRequestDto,
+        { country, name, gender }: UserUpdateProfileRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.country = country;
         repository.name = name;
-        repository.address = address;
-        repository.familyName = familyName;
+        repository.gender = gender;
+
+        return this.userRepository.save(repository, options);
+    }
+
+    async updateVerificationEmail(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.verification.email = true;
 
         return this.userRepository.save(repository, options);
     }

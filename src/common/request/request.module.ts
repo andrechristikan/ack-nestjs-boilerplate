@@ -25,7 +25,6 @@ import {
     LessThanEqualOtherPropertyConstraint,
     LessThanOtherPropertyConstraint,
 } from 'src/common/request/validations/request.less-than-other-property.validation';
-import { SafeStringConstraint } from 'src/common/request/validations/request.safe-string.validation';
 
 @Module({})
 export class RequestModule {
@@ -61,7 +60,6 @@ export class RequestModule {
                 IsPasswordConstraint,
                 LessThanEqualOtherPropertyConstraint,
                 LessThanOtherPropertyConstraint,
-                SafeStringConstraint,
             ],
             imports: [],
         };

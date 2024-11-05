@@ -9,13 +9,20 @@ import {
 } from '@nestjs/terminus';
 import { Connection } from 'mongoose';
 import { ApiKeySystemProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { HealthResponseDto } from 'src/modules/health/dtos/response/health.response.dto';
 import { HealthAwsS3Indicator } from 'src/modules/health/indicators/health.aws-s3.indicator';
 import { HealthSystemCheckDoc } from 'src/modules/health/docs/health.system.doc';
 
+// TODO: MORE HEALTH CHECK
+// - aws ses
+// - aws s3
+// - google
+// - apple
+// - sentry
+// - redis
 @ApiTags('modules.system.health')
 @Controller({
     version: VERSION_NEUTRAL,
@@ -23,7 +30,8 @@ import { HealthSystemCheckDoc } from 'src/modules/health/docs/health.system.doc'
 })
 export class HealthSystemController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
+        @InjectDatabaseConnection()
+        private readonly databaseConnection: Connection,
         private readonly health: HealthCheckService,
         private readonly memoryHealthIndicator: MemoryHealthIndicator,
         private readonly diskHealthIndicator: DiskHealthIndicator,

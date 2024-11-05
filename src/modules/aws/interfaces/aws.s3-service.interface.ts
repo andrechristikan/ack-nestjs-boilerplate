@@ -1,60 +1,78 @@
-import { HeadBucketCommandOutput, UploadPartRequest } from '@aws-sdk/client-s3';
+import { _Object } from '@aws-sdk/client-s3';
 import {
     AwsS3MultipartDto,
     AwsS3MultipartPartDto,
 } from 'src/modules/aws/dtos/aws.s3-multipart.dto';
-import { AwsS3PresignUrlDto } from 'src/modules/aws/dtos/aws.s3-presign-url.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 import {
+    IAwsS3DeleteDirOptions,
+    IAwsS3GetItemsOptions,
+    IAwsS3Options,
+    IAwsS3PresignOptions,
     IAwsS3PutItem,
-    IAwsS3PutItemOptions,
     IAwsS3PutItemWithAclOptions,
-    IAwsS3PutPresignUrlFile,
-    IAwsS3PutPresignUrlOptions,
 } from 'src/modules/aws/interfaces/aws.interface';
-import { Readable } from 'stream';
 
 export interface IAwsS3Service {
-    checkBucketExistence(): Promise<HeadBucketCommandOutput>;
-    listBucket(): Promise<string[]>;
-    listItemInBucket(prefix?: string): Promise<AwsS3Dto[]>;
-    getItemInBucket(
-        pathWithFilename: string
-    ): Promise<Readable | ReadableStream<any> | Blob>;
-    putItemInBucket(
-        file: IAwsS3PutItem,
-        options?: IAwsS3PutItemOptions
-    ): Promise<AwsS3Dto>;
-    putItemInBucketWithAcl(
+    onModuleInit(): void;
+    checkBucket(options?: IAwsS3Options): Promise<boolean>;
+    checkItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto>;
+    getItems(
+        path: string,
+        options?: IAwsS3GetItemsOptions
+    ): Promise<AwsS3Dto[]>;
+    getItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto>;
+    putItem(file: IAwsS3PutItem, options?: IAwsS3Options): Promise<AwsS3Dto>;
+    putItemWithAcl(
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3Dto>;
-    deleteItemInBucket(pathWithFilename: string): Promise<void>;
-    deleteItemsInBucket(pathWithFilename: string[]): Promise<void>;
-    deleteFolder(dir: string): Promise<void>;
+    deleteItem(key: string, options?: IAwsS3Options): Promise<void>;
+    deleteItems(keys: string[], options?: IAwsS3Options): Promise<void>;
+    deleteDir(
+        path: string,
+        options?: IAwsS3DeleteDirOptions
+    ): Promise<void | _Object[]>;
     createMultiPart(
         file: IAwsS3PutItem,
         maxPartNumber: number,
-        options?: IAwsS3PutItemOptions
+        options?: IAwsS3Options
     ): Promise<AwsS3MultipartDto>;
     createMultiPartWithAcl(
         file: IAwsS3PutItem,
         maxPartNumber: number,
         options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3MultipartDto>;
-    uploadPart(
+    putItemMultiPart(
         multipart: AwsS3MultipartDto,
         partNumber: number,
-        content: UploadPartRequest['Body'] | string | Uint8Array | Buffer
-    ): Promise<AwsS3MultipartPartDto>;
-    updateMultiPart(
-        { size, parts, ...others }: AwsS3MultipartDto,
-        part: AwsS3MultipartPartDto
+        file: Buffer,
+        options?: IAwsS3Options
     ): Promise<AwsS3MultipartDto>;
-    completeMultipart(multipart: AwsS3MultipartDto): Promise<void>;
-    abortMultipart(multipart: AwsS3MultipartDto): Promise<void>;
-    setPresignUrl(
-        { filename, size, duration }: IAwsS3PutPresignUrlFile,
-        options?: IAwsS3PutPresignUrlOptions
-    ): Promise<AwsS3PresignUrlDto>;
+    updateMultiPart(
+        { exactSize, parts, ...others }: AwsS3MultipartDto,
+        part: AwsS3MultipartPartDto
+    ): AwsS3MultipartDto;
+    completeMultipart(
+        multipart: AwsS3MultipartDto,
+        options?: IAwsS3Options
+    ): Promise<void>;
+    abortMultipart(
+        multipart: AwsS3MultipartDto,
+        options?: IAwsS3Options
+    ): Promise<void>;
+    presign(
+        key: string,
+        options?: IAwsS3PresignOptions
+    ): Promise<AwsS3PresignResponseDto>;
+    mapPresign(
+        { key, size, duration }: AwsS3PresignRequestDto,
+        options?: IAwsS3Options
+    ): AwsS3Dto;
+    getBucket(options?: IAwsS3Options): string;
+    getRegion(options?: IAwsS3Options): string;
+    mapResponse(dto: AwsS3Dto): AwsS3ResponseDto;
 }

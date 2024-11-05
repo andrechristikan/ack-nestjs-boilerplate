@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     Body,
     ConflictException,
     Controller,
@@ -36,24 +37,25 @@ import {
     ENUM_POLICY_SUBJECT,
 } from 'src/modules/policy/enums/policy.enum';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAccessProtected,
+    AuthJwtPayload,
+} from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { AuthService } from 'src/modules/auth/services/auth.service';
 import { ClientSession, Connection } from 'mongoose';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { CountryService } from 'src/modules/country/services/country.service';
 import {
-    UserAdminActiveDoc,
-    UserAdminBlockedDoc,
     UserAdminCreateDoc,
     UserAdminGetDoc,
-    UserAdminInactiveDoc,
     UserAdminListDoc,
     UserAdminUpdateDoc,
+    UserAdminUpdateStatusDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 import {
     ENUM_USER_SIGN_UP_FROM,
@@ -65,21 +67,29 @@ import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.prof
 import { UserService } from 'src/modules/user/services/user.service';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
+    USER_DEFAULT_POLICY_ROLE_TYPE,
     USER_DEFAULT_STATUS,
 } from 'src/modules/user/constants/user.list.constant';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
-import { UserStatusPipe } from 'src/modules/user/pipes/user.status.pipe';
 import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { Queue } from 'bullmq';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
-import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
+import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
+import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
+import { ActivityService } from 'src/modules/activity/services/activity.service';
+import { MessageService } from 'src/common/message/services/message.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -88,14 +98,18 @@ import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
 })
 export class UserAdminController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
-        @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
+        @InjectDatabaseConnection()
+        private readonly databaseConnection: Connection,
+        @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly paginationService: PaginationService,
         private readonly roleService: RoleService,
         private readonly authService: AuthService,
         private readonly userService: UserService,
-        private readonly countryService: CountryService
+        private readonly countryService: CountryService,
+        private readonly passwordHistoryService: PasswordHistoryService,
+        private readonly activityService: ActivityService,
+        private readonly messageService: MessageService
     ) {}
 
     @UserAdminListDoc()
@@ -119,19 +133,28 @@ export class UserAdminController {
             ENUM_USER_STATUS
         )
         status: Record<string, any>,
-        @PaginationQueryFilterEqual('role')
-        role: Record<string, any>,
-        @PaginationQueryFilterEqual('country')
+        @PaginationQueryFilterInEnum(
+            'role.type',
+            USER_DEFAULT_POLICY_ROLE_TYPE,
+            ENUM_POLICY_ROLE_TYPE,
+            {
+                queryField: 'roleType',
+            }
+        )
+        roleType: Record<string, any>,
+        @PaginationQueryFilterEqual('country._id', {
+            queryField: 'country',
+        })
         country: Record<string, any>
     ): Promise<IResponsePaging<UserListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
             ...status,
-            ...role,
+            ...roleType,
             ...country,
         };
 
-        const users: IUserDoc[] =
+        const users: IUserEntity[] =
             await this.userService.findAllWithRoleAndCountry(find, {
                 paging: {
                     limit: _limit,
@@ -139,7 +162,8 @@ export class UserAdminController {
                 },
                 order: _order,
             });
-        const total: number = await this.userService.getTotal(find);
+        const total: number =
+            await this.userService.getTotalWithRoleAndCountry(find);
         const totalPage: number = this.paginationService.totalPage(
             total,
             _limit
@@ -183,13 +207,14 @@ export class UserAdminController {
     @AuthJwtAccessProtected()
     @Post('/create')
     async create(
+        @AuthJwtPayload('_id') _id: string,
         @Body()
-        { email, role, name, country }: UserCreateRequestDto
+        { email, role, name, country, gender }: UserCreateRequestDto
     ): Promise<IResponse<DatabaseIdResponseDto>> {
         const promises: Promise<any>[] = [
             this.roleService.findOneById(role),
             this.userService.existByEmail(email),
-            this.countryService.findOneActiveById(country),
+            this.countryService.findOneById(country),
         ];
 
         const [checkRole, emailExist, checkCountry] =
@@ -213,8 +238,12 @@ export class UserAdminController {
         }
 
         const passwordString = await this.authService.createPasswordRandom();
-        const password: IAuthPassword =
-            await this.authService.createPassword(passwordString);
+        const password: IAuthPassword = await this.authService.createPassword(
+            passwordString,
+            {
+                temporary: true,
+            }
+        );
 
         const session: ClientSession =
             await this.databaseConnection.startSession();
@@ -227,23 +256,43 @@ export class UserAdminController {
                     country,
                     role,
                     name,
+                    gender,
                 },
                 password,
                 ENUM_USER_SIGN_UP_FROM.ADMIN,
                 { session }
             );
 
-            this.emailQueue.add(
-                ENUM_EMAIL.WELCOME_ADMIN,
+            await this.passwordHistoryService.createByAdmin(
+                created,
                 {
-                    email: created.email,
-                    name: created.name,
+                    by: _id,
+                    type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
+                },
+                { session }
+            );
+
+            await this.activityService.createByAdmin(
+                created,
+                {
+                    by: _id,
+                    description: this.messageService.setMessage(
+                        'activity.user.createByAdmin'
+                    ),
+                },
+                { session }
+            );
+
+            this.emailQueue.add(
+                ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
+                {
+                    send: { email: created.email, name: created.name },
                     passwordExpiredAt: password.passwordExpired,
                     password: passwordString,
                 },
                 {
                     debounce: {
-                        id: `${ENUM_EMAIL.WELCOME_ADMIN}-${created._id}`,
+                        id: `${ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN}-${created._id}`,
                         ttl: 1000,
                     },
                 }
@@ -278,15 +327,9 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Put('/update/:user')
     async update(
-        @Param(
-            'user',
-            RequestRequiredPipe,
-            UserParsePipe,
-            UserNotSelfPipe,
-            new UserStatusPipe([ENUM_USER_STATUS.ACTIVE])
-        )
+        @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
         user: UserDoc,
-        @Body() { name, country, role }: UserUpdateRequestDto
+        @Body() { name, country, role, gender }: UserUpdateRequestDto
     ): Promise<void> {
         const checkRole = await this.roleService.findOneActiveById(role);
         if (!checkRole) {
@@ -296,8 +339,7 @@ export class UserAdminController {
             });
         }
 
-        const checkCountry =
-            await this.countryService.findOneActiveById(country);
+        const checkCountry = await this.countryService.findOneById(country);
         if (!checkCountry) {
             throw new NotFoundException({
                 statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
@@ -305,40 +347,29 @@ export class UserAdminController {
             });
         }
 
-        await this.userService.update(user, { name, country, role });
-    }
-
-    @UserAdminInactiveDoc()
-    @Response('user.inactive')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.USER,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Patch('/update/:user/inactive')
-    async inactive(
-        @Param(
-            'user',
-            RequestRequiredPipe,
-            UserParsePipe,
-            UserNotSelfPipe,
-            new UserStatusPipe([ENUM_USER_STATUS.ACTIVE])
-        )
-        user: UserDoc
-    ): Promise<void> {
         const session: ClientSession =
             await this.databaseConnection.startSession();
         session.startTransaction();
 
         try {
-            await this.userService.inactive(user, { session });
+            await this.userService.update(
+                user,
+                { name, country, role, gender },
+                { session }
+            );
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.updateByAdmin'
+                    ),
+                },
+                { session }
+            );
 
             await session.commitTransaction();
             await session.endSession();
-
-            return;
         } catch (err: any) {
             await session.abortTransaction();
             await session.endSession();
@@ -351,8 +382,8 @@ export class UserAdminController {
         }
     }
 
-    @UserAdminActiveDoc()
-    @Response('user.active')
+    @UserAdminUpdateStatusDoc()
+    @Response('user.updateStatus')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -360,69 +391,42 @@ export class UserAdminController {
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/:user/active')
-    async active(
-        @Param(
-            'user',
-            RequestRequiredPipe,
-            UserParsePipe,
-            UserNotSelfPipe,
-            new UserStatusPipe([ENUM_USER_STATUS.INACTIVE])
-        )
-        user: UserDoc
+    @Patch('/update/:user/status')
+    async updateStatus(
+        @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
+        user: UserDoc,
+        @Body() { status }: UserUpdateStatusRequestDto
     ): Promise<void> {
-        const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
-
-        try {
-            await this.userService.active(user, { session });
-
-            await session.commitTransaction();
-            await session.endSession();
-
-            return;
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
-
-            throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
+        if (user.status === ENUM_USER_STATUS.BLOCKED) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
+                message: 'user.error.statusInvalid',
+                _metadata: {
+                    customProperty: {
+                        messageProperties: {
+                            status: status.toLowerCase(),
+                        },
+                    },
+                },
             });
         }
-    }
 
-    @UserAdminBlockedDoc()
-    @Response('user.blocked')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.USER,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Patch('/update/:user/blocked')
-    async blocked(
-        @Param(
-            'user',
-            RequestRequiredPipe,
-            UserParsePipe,
-            UserNotSelfPipe,
-            new UserStatusPipe([
-                ENUM_USER_STATUS.INACTIVE,
-                ENUM_USER_STATUS.ACTIVE,
-            ])
-        )
-        user: UserDoc
-    ): Promise<void> {
         const session: ClientSession =
             await this.databaseConnection.startSession();
         session.startTransaction();
 
         try {
-            await this.userService.blocked(user, { session });
+            await this.userService.updateStatus(user, { status }, { session });
+
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        `activity.user.${status.toLowerCase()}ByAdmin`
+                    ),
+                },
+                { session }
+            );
 
             await session.commitTransaction();
             await session.endSession();

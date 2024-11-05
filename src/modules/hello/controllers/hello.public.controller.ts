@@ -22,13 +22,13 @@ export class HelloPublicController {
     @ApiKeyProtected()
     @Get('/')
     async hello(): Promise<IResponse<HelloResponseDto>> {
-        const newDate = this.helperDateService.create();
+        const today = this.helperDateService.create();
 
         return {
             data: {
-                date: newDate,
-                format: this.helperDateService.format(newDate),
-                timestamp: this.helperDateService.createTimestamp(newDate),
+                date: today,
+                format: this.helperDateService.formatToIso(today),
+                timestamp: this.helperDateService.getTimestamp(today),
             },
         };
     }

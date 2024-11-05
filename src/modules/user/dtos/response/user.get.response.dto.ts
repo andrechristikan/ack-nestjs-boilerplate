@@ -8,7 +8,8 @@ import {
 } from 'src/modules/user/enums/user.enum';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { DatabaseDto } from 'src/common/database/dtos/database.dto';
-import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { UserVerificationResponseDto } from 'src/modules/user/dtos/response/user.verification.response.dto';
+import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 
 export class UserGetResponseDto extends DatabaseDto {
     @ApiProperty({
@@ -30,6 +31,7 @@ export class UserGetResponseDto extends DatabaseDto {
     @ApiProperty({
         required: false,
         type: UserUpdateMobileNumberRequestDto,
+        oneOf: [{ $ref: getSchemaPath(UserUpdateMobileNumberRequestDto) }],
     })
     @Type(() => UserUpdateMobileNumberRequestDto)
     mobileNumber?: UserUpdateMobileNumberRequestDto;
@@ -82,6 +84,7 @@ export class UserGetResponseDto extends DatabaseDto {
         required: true,
         nullable: false,
         example: ENUM_USER_SIGN_UP_FROM.ADMIN,
+        enum: ENUM_USER_SIGN_UP_FROM,
     })
     signUpFrom: ENUM_USER_SIGN_UP_FROM;
 
@@ -93,17 +96,18 @@ export class UserGetResponseDto extends DatabaseDto {
         required: true,
         nullable: false,
         example: ENUM_USER_STATUS.ACTIVE,
+        enum: ENUM_USER_STATUS,
     })
     status: ENUM_USER_STATUS;
 
     @ApiProperty({
         nullable: true,
         required: false,
-        type: AwsS3Dto,
-        oneOf: [{ $ref: getSchemaPath(AwsS3Dto) }],
+        type: AwsS3ResponseDto,
+        oneOf: [{ $ref: getSchemaPath(AwsS3ResponseDto) }],
     })
-    @Type(() => AwsS3Dto)
-    photo?: AwsS3Dto;
+    @Type(() => AwsS3ResponseDto)
+    photo?: AwsS3ResponseDto;
 
     @ApiProperty({
         example: ENUM_USER_GENDER.MALE,
@@ -120,18 +124,11 @@ export class UserGetResponseDto extends DatabaseDto {
     country: string;
 
     @ApiProperty({
-        example: faker.location.streetAddress(),
-        required: false,
-        nullable: true,
-        maxLength: 200,
-    })
-    address?: string;
-
-    @ApiProperty({
         example: faker.person.lastName(),
-        required: false,
-        nullable: true,
-        maxLength: 50,
+        required: true,
+        type: UserVerificationResponseDto,
+        oneOf: [{ $ref: getSchemaPath(UserVerificationResponseDto) }],
     })
-    familyName?: string;
+    @Type(() => UserVerificationResponseDto)
+    verification: UserVerificationResponseDto;
 }

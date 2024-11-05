@@ -1,35 +1,93 @@
 import { Injectable } from '@nestjs/common';
-import { MongooseModuleOptions } from '@nestjs/mongoose';
-import mongoose from 'mongoose';
-import { ConfigService } from '@nestjs/config';
 import { IDatabaseService } from 'src/common/database/interfaces/database.service.interface';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
+import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class DatabaseService implements IDatabaseService {
-    constructor(private readonly configService: ConfigService) {}
+    filterEqual<T = string>(
+        field: string,
+        filterValue: T
+    ): Record<string, { $eq: T }> {
+        return {
+            [field]: {
+                $eq: filterValue,
+            },
+        };
+    }
 
-    createOptions(): MongooseModuleOptions {
-        const env = this.configService.get<string>('app.env');
+    filterNotEqual<T = string>(
+        field: string,
+        filterValue: T
+    ): Record<string, { $ne: T }> {
+        return {
+            [field]: {
+                $ne: filterValue,
+            },
+        };
+    }
 
-        const uri = this.configService.get<string>('database.uri');
-        const debug = this.configService.get<boolean>('database.debug');
+    filterContain(field: string, filterValue: string): Record<string, any> {
+        return DatabaseHelperQueryContain(field, filterValue);
+    }
 
-        const timeoutOptions = this.configService.get<Record<string, number>>(
-            'database.timeoutOptions'
-        );
+    filterContainFullMatch(
+        field: string,
+        filterValue: string
+    ): Record<string, any> {
+        return DatabaseHelperQueryContain(field, filterValue, {
+            fullWord: true,
+        });
+    }
 
-        if (env !== ENUM_APP_ENVIRONMENT.PRODUCTION) {
-            mongoose.set('debug', debug);
+    filterIn<T = string>(
+        field: string,
+        filterValue: T[]
+    ): Record<string, { $in: T[] }> {
+        return {
+            [field]: {
+                $in: filterValue,
+            },
+        };
+    }
+
+    filterNin<T = string>(
+        field: string,
+        filterValue: T[]
+    ): Record<
+        string,
+        {
+            $nin: T[];
+        }
+    > {
+        return {
+            [field]: {
+                $nin: filterValue,
+            },
+        };
+    }
+
+    filterDateBetween(
+        fieldStart: string,
+        fieldEnd: string,
+        filterStartValue: Date,
+        filterEndValue: Date
+    ): Record<string, any> {
+        if (fieldStart === fieldEnd) {
+            return {
+                [fieldStart]: {
+                    $gte: filterStartValue,
+                    $lte: filterEndValue,
+                },
+            };
         }
 
-        const mongooseOptions: MongooseModuleOptions = {
-            uri,
-            autoCreate: env === ENUM_APP_ENVIRONMENT.MIGRATION,
-            autoIndex: env === ENUM_APP_ENVIRONMENT.MIGRATION,
-            ...timeoutOptions,
+        return {
+            [fieldStart]: {
+                $gte: filterStartValue,
+            },
+            [fieldEnd]: {
+                $lte: filterEndValue,
+            },
         };
-
-        return mongooseOptions;
     }
 }

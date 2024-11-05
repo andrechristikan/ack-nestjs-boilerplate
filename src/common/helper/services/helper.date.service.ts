@@ -1,20 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import moment, { ISO_8601 } from 'moment-timezone';
-import {
-    ENUM_HELPER_DATE_DIFF,
-    ENUM_HELPER_DATE_FORMAT,
-} from 'src/common/helper/enums/helper.enum';
+import { DateObjectUnits, DateTime, Duration } from 'luxon';
+import { ENUM_HELPER_DATE_DAY_OF } from 'src/common/helper/enums/helper.enum';
 import { IHelperDateService } from 'src/common/helper/interfaces/helper.date-service.interface';
-import {
-    IHelperDateSetTimeOptions,
-    IHelperDateFormatOptions,
-    IHelperDateDiffOptions,
-    IHelperDateCreateOptions,
-    IHelperDateForwardOptions,
-    IHelperDateBackwardOptions,
-    IHelperDateRoundDownOptions,
-} from 'src/common/helper/interfaces/helper.interface';
+import { IHelperDateCreateOptions } from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
 export class HelperDateService implements IHelperDateService {
@@ -24,281 +13,155 @@ export class HelperDateService implements IHelperDateService {
         this.defTz = this.configService.get<string>('app.timezone');
     }
 
-    calculateAge(dateOfBirth: Date, year?: number): number {
-        const m = moment().tz(this.defTz);
+    calculateAge(dateOfBirth: Date, fromYear?: number): Duration {
+        const dateTime = DateTime.now()
+            .setZone(this.defTz)
+            .plus({
+                day: 1,
+            })
+            .set({
+                hour: 0,
+                minute: 0,
+                second: 0,
+                millisecond: 0,
+            });
+        const dateTimeDob = DateTime.fromJSDate(dateOfBirth)
+            .setZone(this.defTz)
+            .set({
+                hour: 0,
+                minute: 0,
+                second: 0,
+                millisecond: 0,
+            });
 
-        if (year) {
-            m.set('year', year);
+        if (fromYear) {
+            dateTime.set({
+                year: fromYear,
+            });
         }
 
-        return m.diff(dateOfBirth, 'years');
+        return dateTime.diff(dateTimeDob);
     }
 
-    diff(
-        dateOne: Date,
-        dateTwoMoreThanDateOne: Date,
-        options?: IHelperDateDiffOptions
-    ): number {
-        const mDateOne = moment(dateOne).tz(this.defTz);
-        const mDateTwo = moment(dateTwoMoreThanDateOne).tz(this.defTz);
-        const diff = moment.duration(mDateTwo.diff(mDateOne));
-
-        if (options?.format === ENUM_HELPER_DATE_DIFF.MILIS) {
-            return diff.asMilliseconds();
-        } else if (options?.format === ENUM_HELPER_DATE_DIFF.SECONDS) {
-            return diff.asSeconds();
-        } else if (options?.format === ENUM_HELPER_DATE_DIFF.HOURS) {
-            return diff.asHours();
-        } else if (options?.format === ENUM_HELPER_DATE_DIFF.MINUTES) {
-            return diff.asMinutes();
-        } else {
-            return diff.asDays();
-        }
-    }
-
-    check(date: string | Date | number): boolean {
-        return moment(date, 'YYYY-MM-DD', true).tz(this.defTz).isValid();
-    }
-
-    checkIso(date: string | Date | number): boolean {
-        return moment(date, ISO_8601, true).tz(this.defTz).isValid();
+    checkIso(date: string): boolean {
+        return DateTime.fromISO(date).setZone(this.defTz).isValid;
     }
 
     checkTimestamp(timestamp: number): boolean {
-        return moment(timestamp, true).tz(this.defTz).isValid();
+        return DateTime.fromMillis(timestamp).setZone(this.defTz).isValid;
     }
 
-    create(
-        date?: string | number | Date,
+    getZone(date: Date): string {
+        return DateTime.fromJSDate(date).setZone(this.defTz).zone.name;
+    }
+
+    getZoneOffset(date: Date): string {
+        return DateTime.fromJSDate(date).setZone(this.defTz).offsetNameShort;
+    }
+
+    getTimestamp(date: Date): number {
+        return DateTime.fromJSDate(date).setZone(this.defTz).toMillis();
+    }
+
+    formatToRFC2822(date: Date): string {
+        return DateTime.fromJSDate(date).setZone(this.defTz).toRFC2822();
+    }
+
+    formatToIso(date: Date): string {
+        return DateTime.fromJSDate(date).setZone(this.defTz).toISO();
+    }
+
+    formatToIsoDate(date: Date): string {
+        return DateTime.fromJSDate(date).setZone(this.defTz).toISODate();
+    }
+
+    formatToIsoTime(date: Date): string {
+        return DateTime.fromJSDate(date).setZone(this.defTz).toISOTime();
+    }
+
+    create(date?: Date, options?: IHelperDateCreateOptions): Date {
+        const mDate = date
+            ? DateTime.fromJSDate(date).setZone(this.defTz)
+            : DateTime.now().setZone(this.defTz);
+
+        if (
+            options?.dayOf &&
+            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.START
+        ) {
+            mDate.startOf('day');
+        } else if (
+            options?.dayOf &&
+            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.END
+        ) {
+            mDate.endOf('day');
+        }
+
+        return mDate.toJSDate();
+    }
+
+    createInstance(date?: Date): DateTime {
+        return date ? DateTime.fromJSDate(date) : DateTime.now();
+    }
+
+    createFromIso(iso: string, options?: IHelperDateCreateOptions): Date {
+        const date = DateTime.fromISO(iso).setZone(this.defTz);
+
+        if (
+            options?.dayOf &&
+            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.START
+        ) {
+            date.startOf('day');
+        } else if (
+            options?.dayOf &&
+            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.END
+        ) {
+            date.endOf('day');
+        }
+
+        return date.toJSDate();
+    }
+
+    createFromTimestamp(
+        timestamp?: number,
         options?: IHelperDateCreateOptions
     ): Date {
-        const mDate = moment(date ?? undefined).tz(this.defTz);
+        const date = timestamp
+            ? DateTime.fromMillis(timestamp).setZone(this.defTz)
+            : DateTime.now().setZone(this.defTz);
 
-        if (options?.startOfDay) {
-            mDate.startOf('day');
+        if (
+            options?.dayOf &&
+            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.START
+        ) {
+            date.startOf('day');
+        } else if (
+            options?.dayOf &&
+            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.END
+        ) {
+            date.endOf('day');
         }
 
-        return mDate.toDate();
+        return date.toJSDate();
     }
 
-    createTimestamp(
-        date?: string | number | Date,
-        options?: IHelperDateCreateOptions
-    ): number {
-        const mDate = moment(date ?? undefined).tz(this.defTz);
-
-        if (options?.startOfDay) {
-            mDate.startOf('day');
-        }
-
-        return mDate.valueOf();
+    set(date: Date, units: DateObjectUnits): Date {
+        return DateTime.fromJSDate(date)
+            .setZone(this.defTz)
+            .set(units)
+            .toJSDate();
     }
 
-    format(date: Date, options?: IHelperDateFormatOptions): string {
-        if (options?.locale) {
-            moment.locale(options.locale);
-        }
-
-        return moment(date)
-            .tz(this.defTz)
-            .format(options?.format ?? ENUM_HELPER_DATE_FORMAT.DATE);
+    forward(date: Date, duration: Duration): Date {
+        return DateTime.fromJSDate(date)
+            .setZone(this.defTz)
+            .plus(duration)
+            .toJSDate();
     }
 
-    formatIsoDurationFromMinutes(minutes: number): string {
-        return moment.duration(minutes, 'minutes').toISOString();
-    }
-
-    formatIsoDurationFromHours(hours: number): string {
-        return moment.duration(hours, 'hours').toISOString();
-    }
-
-    formatIsoDurationFromDays(days: number): string {
-        return moment.duration(days, 'days').toISOString();
-    }
-
-    forwardInSeconds(
-        seconds: number,
-        options?: IHelperDateForwardOptions
-    ): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .add(seconds, 'seconds')
-            .toDate();
-    }
-
-    backwardInSeconds(
-        seconds: number,
-        options?: IHelperDateBackwardOptions
-    ): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .subtract(seconds, 'seconds')
-            .toDate();
-    }
-
-    forwardInMinutes(
-        minutes: number,
-        options?: IHelperDateForwardOptions
-    ): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .add(minutes, 'minutes')
-            .toDate();
-    }
-
-    backwardInMinutes(
-        minutes: number,
-        options?: IHelperDateBackwardOptions
-    ): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .subtract(minutes, 'minutes')
-            .toDate();
-    }
-
-    forwardInHours(hours: number, options?: IHelperDateForwardOptions): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .add(hours, 'hours')
-            .toDate();
-    }
-
-    backwardInHours(hours: number, options?: IHelperDateBackwardOptions): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .subtract(hours, 'hours')
-            .toDate();
-    }
-
-    forwardInDays(days: number, options?: IHelperDateForwardOptions): Date {
-        return moment(options?.fromDate).tz(this.defTz).add(days, 'd').toDate();
-    }
-
-    backwardInDays(days: number, options?: IHelperDateBackwardOptions): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .subtract(days, 'days')
-            .toDate();
-    }
-
-    forwardInMonths(months: number, options?: IHelperDateForwardOptions): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .add(months, 'months')
-            .toDate();
-    }
-
-    backwardInMonths(
-        months: number,
-        options?: IHelperDateBackwardOptions
-    ): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .subtract(months, 'months')
-            .toDate();
-    }
-
-    forwardInYears(years: number, options?: IHelperDateForwardOptions): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .add(years, 'years')
-            .toDate();
-    }
-
-    backwardInYears(years: number, options?: IHelperDateBackwardOptions): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .subtract(years, 'years')
-            .toDate();
-    }
-
-    endOfMonth(date?: Date): Date {
-        return moment(date).tz(this.defTz).endOf('month').toDate();
-    }
-
-    startOfMonth(date?: Date): Date {
-        return moment(date).tz(this.defTz).startOf('month').toDate();
-    }
-
-    endOfYear(date?: Date): Date {
-        return moment(date).tz(this.defTz).endOf('year').toDate();
-    }
-
-    startOfYear(date?: Date): Date {
-        return moment(date).tz(this.defTz).startOf('year').toDate();
-    }
-
-    endOfDay(date?: Date): Date {
-        return moment(date).tz(this.defTz).endOf('day').toDate();
-    }
-
-    startOfDay(date?: Date): Date {
-        return moment(date).tz(this.defTz).startOf('day').toDate();
-    }
-
-    setTime(
-        date: Date,
-        { hour, minute, second, millisecond }: IHelperDateSetTimeOptions
-    ): Date {
-        return moment(date)
-            .tz(this.defTz)
-            .set({
-                hour: hour,
-                minute: minute,
-                second: second,
-                millisecond: millisecond,
-            })
-            .toDate();
-    }
-
-    addTime(
-        date: Date,
-        { hour, minute, second, millisecond }: IHelperDateSetTimeOptions
-    ): Date {
-        return moment(date)
-            .tz(this.defTz)
-            .add({
-                hour: hour,
-                minute: minute,
-                second: second,
-                millisecond: millisecond,
-            })
-            .toDate();
-    }
-
-    subtractTime(
-        date: Date,
-        { hour, minute, second }: IHelperDateSetTimeOptions
-    ): Date {
-        return moment(date)
-            .tz(this.defTz)
-            .subtract({
-                hour: hour,
-                minute: minute,
-                second: second,
-            })
-            .toDate();
-    }
-
-    roundDown(date: Date, options?: IHelperDateRoundDownOptions): Date {
-        const mDate = moment(date).tz(this.defTz);
-
-        if (options?.hour) {
-            mDate.set({ hour: 0 });
-        }
-
-        if (options?.minute) {
-            mDate.set({ minute: 0 });
-        }
-
-        if (options?.second) {
-            mDate.set({ second: 0 });
-        }
-
-        if (options?.millisecond) {
-            mDate.set({ millisecond: 0 });
-        }
-
-        return mDate.toDate();
+    backward(date: Date, duration: Duration): Date {
+        return DateTime.fromJSDate(date)
+            .setZone(this.defTz)
+            .minus(duration)
+            .toJSDate();
     }
 }

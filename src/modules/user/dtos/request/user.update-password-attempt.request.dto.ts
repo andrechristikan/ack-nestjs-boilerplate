@@ -1,16 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import { IsNotEmpty, IsNumber, Max, Min } from 'class-validator';
 
 export class UserUpdatePasswordAttemptRequestDto {
     @ApiProperty({
         required: true,
-        type: 'integer',
+        minimum: 0,
+        maximum: 3,
     })
     @IsNumber({ allowNaN: false, allowInfinity: false })
     @IsNotEmpty()
     @Min(0)
     @Max(3)
-    @Type(() => Number)
     passwordAttempt: number;
 }

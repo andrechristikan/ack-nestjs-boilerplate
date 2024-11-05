@@ -9,8 +9,10 @@ import {
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 import { IAppException } from 'src/app/interfaces/app.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
@@ -18,19 +20,20 @@ import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
 
 @Catch(HttpException)
 export class AppHttpFilter implements ExceptionFilter {
-    private readonly debug: boolean;
+    private readonly logger = new Logger(AppHttpFilter.name);
+
     private readonly globalPrefix: string;
     private readonly docPrefix: string;
-    private readonly logger = new Logger(AppHttpFilter.name);
+    private readonly env: ENUM_APP_ENVIRONMENT;
 
     constructor(
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
-        this.debug = this.configService.get<boolean>('app.debug');
         this.globalPrefix = this.configService.get<string>('app.globalPrefix');
         this.docPrefix = this.configService.get<string>('doc.prefix');
+        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
     }
 
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
@@ -38,15 +41,23 @@ export class AppHttpFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-        if (this.debug) {
-            this.logger.error(exception);
-        }
+        this.logger.error(exception);
 
         if (
             !request.path.startsWith(this.globalPrefix) &&
             !request.path.startsWith(this.docPrefix)
         ) {
-            response.redirect(HttpStatus.PERMANENT_REDIRECT, this.docPrefix);
+            if (this.env === ENUM_APP_ENVIRONMENT.PRODUCTION) {
+                response.redirect(
+                    HttpStatus.PERMANENT_REDIRECT,
+                    '/api/public/hello'
+                );
+            } else {
+                response.redirect(
+                    HttpStatus.PERMANENT_REDIRECT,
+                    this.docPrefix
+                );
+            }
 
             return;
         }
@@ -59,10 +70,12 @@ export class AppHttpFilter implements ExceptionFilter {
         let data: Record<string, any>;
 
         // metadata
+        const today = this.helperDateService.create();
         const xLanguage: string =
-            request.__language ?? this.messageService.getLanguage();
-        const xTimestamp = this.helperDateService.createTimestamp();
-        const xTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            request.__language ??
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
+        const xTimestamp = this.helperDateService.getTimestamp(today);
+        const xTimezone = this.helperDateService.getZone(today);
         const xVersion =
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');

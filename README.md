@@ -13,17 +13,17 @@
 [![Yarn][yarn-shield]][ref-yarn]
 [![Docker][docker-shield]][ref-docker]
 
-# ACK NestJs Boilerplate  🔥 🚀
+# ACK NestJs Boilerplate 🔥 🚀
 
 > This repo will representative of authentication service and authorization service
 
 [ACK NestJs][ack] is a [Http NestJs v10.x][ref-nestjs] boilerplate. Best uses for backend service.
 
-*You can [request feature][ack-issues] or [report bug][ack-issues] with following this link*
+_You can [request feature][ack-issues] or [report bug][ack-issues] with following this link_
 
 ## Table of contents
 
-- [ACK NestJs Boilerplate  🔥 🚀](#ack-nestjs-boilerplate---)
+- [ACK NestJs Boilerplate 🔥 🚀](#ack-nestjs-boilerplate--)
   - [Table of contents](#table-of-contents)
   - [Important](#important)
   - [TODO](#todo)
@@ -37,18 +37,15 @@
     - [Install Dependencies](#install-dependencies)
     - [Create environment](#create-environment)
     - [Database Migration and Seed](#database-migration-and-seed)
-    - [Email Migration](#email-migration)
+    - [Template Migration](#template-migration)
     - [Run Project](#run-project)
   - [Installation with Docker](#installation-with-docker)
   - [Test](#test)
   - [Swagger](#swagger)
-    - [API Key](#api-key)
-    - [User](#user)
+  - [API Key](#api-key)
+  - [User](#user)
   - [BullMQ Board](#bullmq-board)
     - [User](#user-1)
-  - [Redis Client Web Base](#redis-client-web-base)
-  - [MongoDB Client Web Base](#mongodb-client-web-base)
-    - [User](#user-2)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
@@ -57,27 +54,17 @@
 
 > Very limited documentation
 
-* There have been some breaking changes between v5 and v6.
-* The features will be relate with AWS / Amazon web service
-* Stateless Authorization
-* Must run MongoDB as a `replication set` for `database transactions`.
-* If you want to implement `Google SSO`. You must have google cloud console account, then create your own Credential to get the  `clientId` and `clientSecret`.
-* If you want to implement `Apple SSO`. You must have `clientId` and `signInClientId`.
-* If you change the environment value of `APP_ENV` to `production`, that will trigger.
-    1. CorsMiddleware will implement config from `src/configs/middleware.config.ts`.
-    2. Documentation will `disable`.
-    3. Global prefix will remove. Before is `/api`.
-* For monitoring, this project will use `sentry.io`, and only send `500` or `internal server error`.
+-   Stateful Authorization, using `redis-session` and `JWT`.
+-   Must run MongoDB as a `replication set` for `database transactions`.
+-   If you want to implement `Google SSO`. You must have google cloud console account, then create your own Credential to get the `clientId` and `clientSecret`.
+-   If you want to implement `Apple SSO`. You must have `clientId` and `signInClientId`.
+-   If you change the environment value of `APP_ENV` to `production`, that will disable Documentation.
+-   For monitoring, this project will use `sentry.io`, and sent uncatched error and/or `internal server error`.
 
 ## TODO
 
-- [ ] Export Module
-- [ ] Move to Stateful Authorization
-      1. Session Module
-      2. Device Module
-      3. Password Period Module
-      5. Reset Password Module
-      6. Verification Module
+-   [ ] Export Module
+-   [ ] Move to Stateful Authorization 1. Reset Password Module 2. Verification Module
 
 ## Prerequisites
 
@@ -97,56 +84,54 @@ We assume that everyone who comes here is **`programmer with intermediate knowle
 
 Describes which version.
 
-| Name       | Version  |
-| ---------- | -------- |
-| NestJs     | v10.x     |
-| NestJs Swagger | v7.x |
-| NodeJs     | v20.x    |
-| Typescript | v5.x     |
-| Mongoose   | v10.x     |
-| MongoDB    | v7.x     |
-| Yarn       | v1.x     |
-| NPM        | v10.x     |
-| Docker     | v24.x    |
-| Docker Compose | v2.x |
-
+| Name           | Version  |
+| -------------- | -------- |
+| NestJs         | v10.x    |
+| NestJs Swagger | v8.0.x   |
+| NodeJs         | v22.11.x |
+| Typescript     | v5.6.x   |
+| Mongoose       | v10.0.x  |
+| MongoDB        | v8.x     |
+| Yarn           | v1.22.x  |
+| Docker         | v27.2.x  |
+| Docker Compose | v2.29.x  |
 
 ## Objective
 
-* Easy to maintenance
-* NestJs Habit
-* Component based / modular folder structure
-* Stateless authentication and authorization
-* Repository Design Pattern or Data Access Layer Design Pattern
-* Follow Community Guide Line
-* Follow The Twelve-Factor App
-* Adopt SOLID and KISS principle
-* Support for Microservice Architecture, Serverless Architecture, Clean Architecture, and/or Hexagonal Architecture
+-   Easy to maintenance
+-   NestJs Habit
+-   Component based / modular folder structure
+-   Stateless authentication and authorization
+-   Repository Design Pattern or Data Access Layer Design Pattern
+-   Follow Community Guide Line
+-   Follow The Twelve-Factor App
 
 ## Features
 
 ### Main Features
 
-* NestJs 10.x 🥳
-* Typescript 🚀
-* Production ready 🔥
-* MongoDB integrate by using [mongoose][ref-mongoose] 🎉
-* Cached response with redis
-* Queue bullmq with redis
-* Authorization, Role Management.
-* Repository Design Pattern (Multi Repository, can mix with other orm)
-* Authentication (`Access Token`, `Refresh Token`, `API Key`, `Google SSO`, `Apple SSO`)
-* Import and export data with CSV or Excel by using `decorator`
-* Support multi-language `i18n` 🗣, can controllable with request header `x-custom-lang`
-* Request validation for all request params, query, dan body with `class-validation`
-* Swagger / OpenAPI 3 included
-* Url Versioning, default version is `1`
-* Server Side Pagination
-* Sentry.io for Monitoring Tools
-* Support Docker installation
-* Support CI/CD (Eg: Github Action) 
-* Husky GitHook for run linter before commit 🐶
-* Linter with EsLint for Typescript
+-   NestJs 10.x 🥳
+-   Typescript 🚀
+-   Production ready 🔥
+-   MongoDB integrate by using [mongoose][ref-mongoose] 🎉
+-   Cached response with redis.
+-   Queue bullmq with redis.
+-   Logger with pino 🌲
+-   SWC (Speedy Web Compiler) Compiler, fast compiler.
+-   Authorization, Role, and session Management (can revoke).
+-   Repository Design Pattern.
+-   Authentication (`Access Token`, `Refresh Token`, `API Key`, `Google SSO`, `Apple SSO`)
+-   Export data with CSV or Excel by using `decorator`.
+-   Support multi-language `i18n` 🗣, can controllable with request header `x-custom-lang`
+-   Request validation for all request params, query, dan body with `class-validation`
+-   Swagger / OpenAPI 3 included.
+-   Url Versioning, default version is `1`.
+-   Server Side Pagination.
+-   Sentry.io for Monitoring Tools.
+-   Support Docker installation.
+-   Support CI/CD (Eg: Github Action).
+-   Husky GitHook for run linter before commit 🐶.
+-   Linter with EsLint for Typescript.
 
 ## Installation
 
@@ -157,10 +142,9 @@ The recommended version is the LTS version for every tool and package.
 
 1. [NodeJs][ref-nodejs]
 2. [MongoDB][ref-mongodb]
-2. [Redis][ref-redis]
-3. [Yarn][ref-yarn]
-4. [Git][ref-git]
-
+3. [Redis][ref-redis]
+4. [Yarn][ref-yarn]
+5. [Git][ref-git]
 
 ### Clone Repo
 
@@ -188,11 +172,12 @@ cp .env.example .env
 
 ### Database Migration and Seed
 
-By default the options of `AutoCreate` and `AutoIndex` will be `false`. Thats means the schema in MongoDb will not change with the latest.
-So to update the schema we need to run
+By default the options of `AutoCreate` and `AutoIndex` will be `false`.
+Thats means the schema in MongoDb will not change with the latest.
+So in the first place, u need to update the schema
 
 ```bash
-yarn migrate
+yarn migrate:schema
 ```
 
 After migrate the schema, also we need to run data seed
@@ -201,15 +186,16 @@ After migrate the schema, also we need to run data seed
 yarn seed
 ```
 
-### Email Migration
+### Template Migration
 
 > Optional
 
-The email will automatically create email template through AWS SES if we set the value at `.env` file
+The template migration will automatically upload `/templates` through AWS SES.
 
 For migrate
+
 ```bash
-yarn migrate:email
+yarn migrate:template
 ```
 
 ### Run Project
@@ -251,54 +237,39 @@ yarn test
 
 ## Swagger
 
-You can check The Swagger after running this project. Url `localhost:3000/docs` and don't for get to put `x-api-key` on header.
+You can check The Swagger after running this project. Url `localhost:3000/docs`
 
-
-### API Key
+## API Key
 
 api key: `v8VB0yY887lMpTA2VJMV`
 api key secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
 
-### User
+## User
 
 1. Super Admin
-   - email: `superadmin@mail.com`
-   - password: `aaAA@123`
+    - email: `superadmin@mail.com`
+    - password: `aaAA@123`
 2. Admin
-   - email: `admin@mail.com`
-   - password: `aaAA@123`
+    - email: `admin@mail.com`
+    - password: `aaAA@123`
 3. Member
-   - email: `member@mail.com`
-   - password: `aaAA@123`
+    - email: `member@mail.com`
+    - password: `aaAA@123`
 4. User
-   - email: `user@mail.com`
-   - password: `aaAA@123`
-  
+    - email: `user@mail.com`
+    - password: `aaAA@123`
+
 ## BullMQ Board
 
 > This available with docker installation
 
-You can check and monitor your queue. Url `localhost:3010`
+You can check and monitor your queue.
+Url `localhost:3010`
 
 ### User
- - email: `admin`
- - password: `admin123`
-  
-## Redis Client Web Base
 
-> This available with docker installation
-
-You can check redis data using `redis-commander`. Url `localhost:3011`
-
-## MongoDB Client Web Base
-
-> This available with docker installation
-
-You can check mongodb data using `mongo-express`. Url `localhost:3012`
-
-### User
- - email: `admin`
- - password: `admin123`
+-   email: `admin`
+-   password: `admin123`
 
 ## License
 
@@ -314,7 +285,7 @@ How to contribute in this repo
 4. Push your changes to your remote branch
 5. Open a pull request
 
-If your code behind commit with the `original/main branch`, please update your code and resolve the conflict.
+If your code behind commit with the `origin/main` branch, please update your code and resolve the conflict.
 
 ## Contact
 
@@ -324,12 +295,12 @@ If your code behind commit with the `original/main branch`, please update your c
 [![LinkedIn][linkedin-shield]][author-linkedin]
 
 <!-- BADGE LINKS -->
+
 [ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
 [ack-forks-shield]: https://img.shields.io/github/forks/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
 [ack-stars-shield]: https://img.shields.io/github/stars/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
 [ack-issues-shield]: https://img.shields.io/github/issues/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
 [ack-license-shield]: https://img.shields.io/github/license/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-
 [nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
 [nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
 [typescript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
@@ -338,25 +309,28 @@ If your code behind commit with the `original/main branch`, please update your c
 [jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
 [yarn-shield]: https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white
 [docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
-
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
 [linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
 
 <!-- CONTACTS -->
+
 [author-linkedin]: https://linkedin.com/in/andrechristikan
 [author-email]: mailto:andrechristikan@gmail.com
 [author-github]: https://github.com/andrechristikan
 
 <!-- Repo LINKS -->
+
 [ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate/issues
 [ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
 [ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
 
 <!-- license -->
+
 [license]: LICENSE.md
 
 <!-- Reference -->
+
 [ref-nestjs]: http://nestjs.com
 [ref-mongoose]: https://mongoosejs.com
 [ref-mongodb]: https://docs.mongodb.com/

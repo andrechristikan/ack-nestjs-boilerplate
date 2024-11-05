@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { DatabaseDto } from 'src/common/database/dtos/database.dto';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
@@ -35,15 +35,18 @@ export class RoleGetResponseDto extends DatabaseDto {
         example: ENUM_POLICY_ROLE_TYPE.ADMIN,
         required: true,
         nullable: false,
+        enum: ENUM_POLICY_ROLE_TYPE,
     })
     type: ENUM_POLICY_ROLE_TYPE;
 
     @ApiProperty({
         type: RolePermissionDto,
+        oneOf: [{ $ref: getSchemaPath(RolePermissionDto) }],
         required: true,
         nullable: false,
+        isArray: true,
         default: [],
     })
     @Type(() => RolePermissionDto)
-    permissions: RolePermissionDto;
+    permissions: RolePermissionDto[];
 }

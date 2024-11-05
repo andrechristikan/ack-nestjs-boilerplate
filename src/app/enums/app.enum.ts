@@ -3,6 +3,7 @@ export enum ENUM_APP_ENVIRONMENT {
     MIGRATION = 'migration',
     STAGING = 'staging',
     DEVELOPMENT = 'development',
+    LOCAL = 'local',
 }
 
 export enum ENUM_APP_TIMEZONE {

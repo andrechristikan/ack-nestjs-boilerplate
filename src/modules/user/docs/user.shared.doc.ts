@@ -1,13 +1,13 @@
-import { applyDecorators, HttpStatus } from '@nestjs/common';
+import { applyDecorators } from '@nestjs/common';
 import {
     Doc,
     DocAuth,
     DocRequest,
-    DocRequestFile,
     DocResponse,
 } from 'src/common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
-import { FileSingleDto } from 'src/common/file/dtos/file.single.dto';
+import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 
@@ -43,20 +43,34 @@ export function UserSharedUpdateProfileDoc(): MethodDecorator {
     );
 }
 
-export function UserSharedUploadProfileDoc(): MethodDecorator {
+export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'update profile photo',
+            summary: 'get presign url for photo profile',
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocRequestFile({
-            dto: FileSingleDto,
-        }),
-        DocResponse('user.upload', {
-            httpStatus: HttpStatus.CREATED,
+        DocResponse<AwsS3PresignResponseDto>('user.uploadPhotoProfile', {
+            dto: AwsS3PresignResponseDto,
         })
+    );
+}
+
+export function UserSharedUpdatePhotoProfileDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'update photo profile',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: AwsS3PresignRequestDto,
+        }),
+        DocResponse('user.updatePhotoProfile')
     );
 }

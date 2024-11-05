@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { title } from 'case';
 import { ConfigService } from '@nestjs/config';
 import { IEmailService } from 'src/modules/email/interfaces/email.service.interface';
@@ -9,12 +9,10 @@ import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password.dto';
 import { EmailWelcomeAdminDto } from 'src/modules/email/dtos/email.welcome-admin.dto';
-import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/enums/helper.enum';
 import { AwsSESService } from 'src/modules/aws/services/aws.ses.service';
 
 @Injectable()
 export class EmailService implements IEmailService {
-    private readonly debug: boolean;
     private readonly logger = new Logger(EmailService.name);
 
     private readonly fromEmail: string;
@@ -29,33 +27,29 @@ export class EmailService implements IEmailService {
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.debug = this.configService.get<boolean>('app.debug');
-
         this.fromEmail = this.configService.get<string>('email.fromEmail');
         this.supportEmail =
             this.configService.get<string>('email.supportEmail');
 
-        this.appName = this.configService.get<string>('app.name');
+        this.appName = this.configService.get<string>('email.name');
 
         this.clientUrl = this.configService.get<string>('email.clientUrl');
     }
 
-    async createChangePassword(): Promise<boolean> {
+    async importChangePassword(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.CHANGE_PASSWORD,
+                name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
                 subject: `Change Password`,
                 htmlBody: readFileSync(
-                    './templates/email.change-password.template.html',
+                    '/templates/email/change-password.template.html',
                     'utf8'
                 ),
             });
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -63,21 +57,19 @@ export class EmailService implements IEmailService {
 
     async getChangePassword(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
-            name: ENUM_EMAIL.CHANGE_PASSWORD,
+            name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
         });
     }
 
     async deleteChangePassword(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.CHANGE_PASSWORD,
+                name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
             });
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -86,7 +78,7 @@ export class EmailService implements IEmailService {
     async sendChangePassword({ name, email }: EmailSendDto): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.CHANGE_PASSWORD,
+                templateName: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
@@ -99,30 +91,26 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
     }
 
-    async createWelcome(): Promise<boolean> {
+    async importWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.WELCOME,
+                name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
-                    './templates/email.welcome.template.html',
+                    '/templates/email/welcome.template.html',
                     'utf8'
                 ),
             });
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -130,21 +118,19 @@ export class EmailService implements IEmailService {
 
     async getWelcome(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
-            name: ENUM_EMAIL.WELCOME,
+            name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
         });
     }
 
     async deleteWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.WELCOME,
+                name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
             });
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -153,7 +139,7 @@ export class EmailService implements IEmailService {
     async sendWelcome({ name, email }: EmailSendDto): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.WELCOME,
+                templateName: ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
@@ -167,30 +153,26 @@ export class EmailService implements IEmailService {
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
     }
 
-    async createWelcomeAdmin(): Promise<boolean> {
+    async importWelcomeAdmin(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.WELCOME_ADMIN,
+                name: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
-                    './templates/email.welcome-admin.template.html',
+                    '/templates/email/welcome-admin.template.html',
                     'utf8'
                 ),
             });
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -198,21 +180,19 @@ export class EmailService implements IEmailService {
 
     async getWelcomeAdmin(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
-            name: ENUM_EMAIL.WELCOME_ADMIN,
+            name: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
         });
     }
 
     async deleteWelcomeAdmin(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.WELCOME_ADMIN,
+                name: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
             });
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -224,7 +204,7 @@ export class EmailService implements IEmailService {
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.WELCOME,
+                templateName: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
@@ -234,41 +214,35 @@ export class EmailService implements IEmailService {
                     password: passwordString,
                     supportEmail: this.supportEmail,
                     clientUrl: this.clientUrl,
-                    passwordExpiredAt: this.helperDateService.format(
-                        passwordExpiredAt,
-                        {
-                            format: ENUM_HELPER_DATE_FORMAT.FRIENDLY_DATE_TIME,
-                        }
-                    ),
+                    passwordExpiredAt:
+                        this.helperDateService.formatToRFC2822(
+                            passwordExpiredAt
+                        ),
                 },
             });
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
     }
 
-    async createTempPassword(): Promise<boolean> {
+    async importTempPassword(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.TEMP_PASSWORD,
+                name: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 subject: `Temporary Password`,
                 htmlBody: readFileSync(
-                    './templates/email.temp-password.template.html',
+                    '/templates/email/temp-password.template.html',
                     'utf8'
                 ),
             });
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -277,14 +251,12 @@ export class EmailService implements IEmailService {
     async getTempPassword(): Promise<GetTemplateCommandOutput> {
         try {
             const template = await this.awsSESService.getTemplate({
-                name: ENUM_EMAIL.TEMP_PASSWORD,
+                name: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
             });
 
             return template;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return;
         }
@@ -293,14 +265,12 @@ export class EmailService implements IEmailService {
     async deleteTempPassword(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.TEMP_PASSWORD,
+                name: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
             });
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }
@@ -312,7 +282,7 @@ export class EmailService implements IEmailService {
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.TEMP_PASSWORD,
+                templateName: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
@@ -321,20 +291,16 @@ export class EmailService implements IEmailService {
                     password: passwordString,
                     supportEmail: this.supportEmail,
                     clientUrl: this.clientUrl,
-                    passwordExpiredAt: this.helperDateService.format(
-                        passwordExpiredAt,
-                        {
-                            format: ENUM_HELPER_DATE_FORMAT.FRIENDLY_DATE_TIME,
-                        }
-                    ),
+                    passwordExpiredAt:
+                        this.helperDateService.formatToRFC2822(
+                            passwordExpiredAt
+                        ),
                 },
             });
 
             return true;
         } catch (err: unknown) {
-            if (this.debug) {
-                this.logger.error(err);
-            }
+            this.logger.error(err);
 
             return false;
         }

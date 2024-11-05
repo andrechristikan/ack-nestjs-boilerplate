@@ -1,26 +1,46 @@
-import { ObjectCannedACL } from '@aws-sdk/client-s3';
+import { ObjectCannedACL, S3Client } from '@aws-sdk/client-s3';
+import { ENUM_AWS_S3_ACCESSIBILITY } from 'src/modules/aws/enums/aws.enum';
 
-export interface IAwsS3PutItemOptions {
-    path?: string;
-    customFilename?: string;
+export interface IAwsS3Options {
+    access?: ENUM_AWS_S3_ACCESSIBILITY;
 }
 
-export interface IAwsS3PutItemWithAclOptions extends IAwsS3PutItemOptions {
+export interface IAwsS3GetItemsOptions extends IAwsS3Options {
+    continuationToken?: string;
+}
+
+export type IAwsS3DeleteDirOptions = IAwsS3GetItemsOptions;
+
+export interface IAwsS3PutItemWithAclOptions extends IAwsS3Options {
     acl?: ObjectCannedACL;
 }
 
-export interface IAwsS3PutPresignUrlOptions {
-    path?: string;
+export interface IAwsS3PresignOptions extends IAwsS3Options {
+    allowedSize?: number;
 }
 
 export interface IAwsS3PutItem {
-    buffer: string | Uint8Array | Buffer;
-    originalname: string;
-    size: number;
-}
-
-export interface IAwsS3PutPresignUrlFile {
-    filename: string;
+    file: Buffer;
+    key: string;
     size: number;
     duration?: number;
+}
+
+export interface IAwsS3ConfigCredential {
+    key: string;
+    secret: string;
+}
+
+export interface IAwsS3ConfigBucket {
+    credential: IAwsS3ConfigCredential;
+    bucket: string;
+    region: string;
+    baseUrl: string;
+    cdnUrl?: string;
+    client?: S3Client;
+}
+
+export interface IAwsS3Config {
+    public: IAwsS3ConfigBucket;
+    private: IAwsS3ConfigBucket;
 }

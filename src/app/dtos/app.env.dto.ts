@@ -34,16 +34,6 @@ export class AppEnvDto {
     @IsEnum(ENUM_APP_TIMEZONE)
     APP_TIMEZONE: ENUM_APP_TIMEZONE;
 
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    APP_DEBUG: boolean;
-
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    HTTP_ENABLE: boolean;
-
     @IsNotEmpty()
     @IsString()
     HTTP_HOST: string;
@@ -52,6 +42,15 @@ export class AppEnvDto {
     @IsNotEmpty()
     @Type(() => Number)
     HTTP_PORT: number;
+
+    @IsBoolean()
+    @IsNotEmpty()
+    @Type(() => Boolean)
+    DEBUG_ENABLE: boolean;
+
+    @IsString()
+    @IsNotEmpty()
+    MIDDLEWARE_CORS_ORIGIN: string;
 
     @IsBoolean()
     @IsNotEmpty()
@@ -98,19 +97,39 @@ export class AppEnvDto {
 
     @IsOptional()
     @IsString()
-    AWS_S3_CREDENTIAL_KEY?: string;
+    AWS_S3_PUBLIC_CREDENTIAL_KEY?: string;
 
     @IsOptional()
     @IsString()
-    AWS_S3_CREDENTIAL_SECRET?: string;
+    AWS_S3_PUBLIC_CREDENTIAL_SECRET?: string;
 
     @IsOptional()
     @IsString()
-    AWS_S3_REGION?: string;
+    AWS_S3_PUBLIC_REGION?: string;
 
     @IsOptional()
     @IsString()
-    AWS_S3_BUCKET?: string;
+    AWS_S3_PUBLIC_BUCKET?: string;
+
+    @IsOptional()
+    @IsString()
+    AWS_S3_PUBLIC_CDN?: string;
+
+    @IsOptional()
+    @IsString()
+    AWS_S3_PRIVATE_CREDENTIAL_KEY?: string;
+
+    @IsOptional()
+    @IsString()
+    AWS_S3_PRIVATE_CREDENTIAL_SECRET?: string;
+
+    @IsOptional()
+    @IsString()
+    AWS_S3_PRIVATE_REGION?: string;
+
+    @IsOptional()
+    @IsString()
+    AWS_S3_PRIVATE_BUCKET?: string;
 
     @IsOptional()
     @IsString()
@@ -151,12 +170,11 @@ export class AppEnvDto {
 
     @IsOptional()
     @IsString()
-    REDIS_PASSWORD?: string;
+    REDIS_USERNAME?: string;
 
-    @IsNotEmpty()
-    @IsBoolean()
-    @Type(() => Boolean)
-    REDIS_TLS: boolean;
+    @IsOptional()
+    @IsString()
+    REDIS_PASSWORD?: string;
 
     @IsOptional()
     @IsString()

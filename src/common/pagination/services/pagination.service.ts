@@ -1,12 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-    DatabaseQueryContain,
-    DatabaseQueryEqual,
-    DatabaseQueryIn,
-    DatabaseQueryNin,
-    DatabaseQueryNotEqual,
-    DatabaseQueryOr,
-} from 'src/common/database/decorators/database.decorator';
+import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
 import {
     PAGINATION_DEFAULT_AVAILABLE_ORDER_BY,
     PAGINATION_DEFAULT_MAX_PAGE,
@@ -83,45 +76,10 @@ export class PaginationService implements IPaginationService {
             return;
         }
 
-        return DatabaseQueryOr(
-            availableSearch.map(val => DatabaseQueryContain(val, searchValue))
-        );
-    }
-
-    filterEqual<T = string>(field: string, filterValue: T): Record<string, T> {
-        return DatabaseQueryEqual<T>(field, filterValue);
-    }
-
-    filterNotEqual<T = string>(
-        field: string,
-        filterValue: T
-    ): Record<string, T> {
-        return DatabaseQueryNotEqual<T>(field, filterValue);
-    }
-
-    filterContain(field: string, filterValue: string): Record<string, any> {
-        return DatabaseQueryContain(field, filterValue);
-    }
-
-    filterContainFullMatch(
-        field: string,
-        filterValue: string
-    ): Record<string, any> {
-        return DatabaseQueryContain(field, filterValue, { fullWord: true });
-    }
-
-    filterIn<T = string>(field: string, filterValue: T[]): Record<string, any> {
-        return DatabaseQueryIn<T>(field, filterValue);
-    }
-
-    filterNin<T = string>(
-        field: string,
-        filterValue: T[]
-    ): Record<string, any> {
-        return DatabaseQueryNin<T>(field, filterValue);
-    }
-
-    filterDate(field: string, filterValue: Date): Record<string, Date> {
-        return DatabaseQueryEqual<Date>(field, filterValue);
+        return {
+            $or: availableSearch.map(val =>
+                DatabaseHelperQueryContain(val, searchValue)
+            ),
+        };
     }
 }
