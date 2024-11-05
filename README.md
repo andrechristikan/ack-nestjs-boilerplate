@@ -87,14 +87,14 @@ Describes which version.
 | Name           | Version  |
 | -------------- | -------- |
 | NestJs         | v10.x    |
-| NestJs Swagger | v7.4.x   |
-| NodeJs         | v20.11.x |
+| NestJs Swagger | v8.0.x   |
+| NodeJs         | v22.11.x |
 | Typescript     | v5.6.x   |
 | Mongoose       | v10.0.x  |
-| MongoDB        | v7.x     |
+| MongoDB        | v8.x     |
 | Yarn           | v1.22.x  |
-| Docker         | v24.2.x  |
-| Docker Compose | v2.22.x  |
+| Docker         | v27.2.x  |
+| Docker Compose | v2.29.x  |
 
 ## Objective
 
@@ -117,6 +117,7 @@ Describes which version.
 -   Cached response with redis.
 -   Queue bullmq with redis.
 -   Logger with pino 🌲
+-   SWC (Speedy Web Compiler) Compiler, fast compiler.
 -   Authorization, Role, and session Management (can revoke).
 -   Repository Design Pattern.
 -   Authentication (`Access Token`, `Refresh Token`, `API Key`, `Google SSO`, `Apple SSO`)
@@ -128,7 +129,7 @@ Describes which version.
 -   Server Side Pagination.
 -   Sentry.io for Monitoring Tools.
 -   Support Docker installation.
--   Support CI/CD (Eg: Github Action) .
+-   Support CI/CD (Eg: Github Action).
 -   Husky GitHook for run linter before commit 🐶.
 -   Linter with EsLint for Typescript.
 

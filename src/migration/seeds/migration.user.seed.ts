@@ -42,7 +42,8 @@ export class MigrationUserSeed {
         const adminRole: RoleDoc =
             await this.roleService.findOneByName('admin');
 
-        const countries: CountryDoc[] = await this.countryService.findAll();
+        const country: CountryDoc =
+            await this.countryService.findOneByAlpha2('ID');
 
         const memberRole: RoleDoc =
             await this.roleService.findOneByName('member');
@@ -55,7 +56,7 @@ export class MigrationUserSeed {
                         role: superAdminRole._id,
                         name: 'superadmin',
                         email: 'superadmin@mail.com',
-                        country: countries[0]._id,
+                        country: country._id,
                         gender: ENUM_USER_GENDER.MALE,
                     },
                     passwordHash,
@@ -66,7 +67,7 @@ export class MigrationUserSeed {
                         role: adminRole._id,
                         name: 'admin',
                         email: 'admin@mail.com',
-                        country: countries[0]._id,
+                        country: country._id,
                         gender: ENUM_USER_GENDER.MALE,
                     },
                     passwordHash,
@@ -77,7 +78,7 @@ export class MigrationUserSeed {
                         role: memberRole._id,
                         name: 'member',
                         email: 'member@mail.com',
-                        country: countries[0]._id,
+                        country: country._id,
                         gender: ENUM_USER_GENDER.MALE,
                     },
                     passwordHash,
@@ -88,7 +89,7 @@ export class MigrationUserSeed {
                         role: userRole._id,
                         name: 'user',
                         email: 'user@mail.com',
-                        country: countries[0]._id,
+                        country: country._id,
                         gender: ENUM_USER_GENDER.MALE,
                     },
                     passwordHash,
@@ -140,70 +141,6 @@ export class MigrationUserSeed {
             ];
 
             await Promise.all(promises);
-
-            for (const country of countries) {
-                // Add random user
-                const randomUser = Array(200)
-                    .fill(0)
-                    .map(() =>
-                        this.userService.create(
-                            {
-                                role: userRole._id,
-                                name: faker.person.fullName(),
-                                email: faker.internet.email(),
-                                country: country._id,
-                                gender: faker.helpers.arrayElement(
-                                    Object.values(ENUM_USER_GENDER)
-                                ),
-                            },
-                            passwordHash,
-                            ENUM_USER_SIGN_UP_FROM.SEED
-                        )
-                    );
-
-                // Add random member
-                const randomMember = Array(100)
-                    .fill(0)
-                    .map(() =>
-                        this.userService.create(
-                            {
-                                role: memberRole._id,
-                                name: faker.person.fullName(),
-                                email: faker.internet.email(),
-                                country: country._id,
-                                gender: faker.helpers.arrayElement(
-                                    Object.values(ENUM_USER_GENDER)
-                                ),
-                            },
-                            passwordHash,
-                            ENUM_USER_SIGN_UP_FROM.SEED
-                        )
-                    );
-
-                const rands = await Promise.all([
-                    ...randomUser,
-                    ...randomMember,
-                ]);
-
-                // Activity & Password
-                const randomActivityAndPassword = [];
-                for (const rand of rands) {
-                    randomActivityAndPassword.push(
-                        this.activityService.createByAdmin(rand, {
-                            by: superAdmin._id,
-                            description: this.messageService.setMessage(
-                                'activity.user.createByAdmin'
-                            ),
-                        }),
-                        this.passwordHistoryService.createByAdmin(rand, {
-                            by: superAdmin._id,
-                            type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
-                        })
-                    );
-                }
-
-                await Promise.all(randomActivityAndPassword);
-            }
         } catch (err: any) {
             throw new Error(err);
         }

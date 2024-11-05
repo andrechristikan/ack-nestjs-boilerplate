@@ -1,14 +1,10 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { EmailService } from 'src/modules/email/services/email.service';
-import { CountryService } from 'src/modules/country/services/country.service';
 
 @Injectable()
 export class MigrationTemplateSeed {
-    constructor(
-        private readonly emailService: EmailService,
-        private readonly countryService: CountryService
-    ) {}
+    constructor(private readonly emailService: EmailService) {}
 
     @Command({
         command: 'migrate:template',
