@@ -1,6 +1,7 @@
 name: ack
 
 services:
+
     redis:
         image: redis:latest
         container_name: redis
