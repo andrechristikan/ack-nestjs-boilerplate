@@ -20,7 +20,7 @@ async function bootstrap() {
     });
 
     const configService = app.get(ConfigService);
-    const databaseUri: string = configService.get<string>('database.uri');
+    const databaseUri: string = configService.get<string>('database.url');
     const env: string = configService.get<string>('app.env');
     const timezone: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
