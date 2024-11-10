@@ -29,7 +29,6 @@ export class DatabaseOptionService implements IDatabaseOptionService {
             autoIndex: env === ENUM_APP_ENVIRONMENT.MIGRATION,
             ...timeoutOptions,
         };
-        console.log('mongooseOptions', mongooseOptions);
 
         return mongooseOptions;
     }

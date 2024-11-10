@@ -39,7 +39,7 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
     - [Database Migration and Seed](#database-migration-and-seed)
     - [Template Migration](#template-migration)
     - [Run Project](#run-project)
-  - [Installation with Docker](#installation-with-docker)
+  - [Installation dependencies with Docker](#installation-dependencies-with-docker)
   - [Test](#test)
   - [Swagger](#swagger)
   - [API Key](#api-key)
@@ -129,7 +129,6 @@ Describes which version.
 -   Server Side Pagination.
 -   Sentry.io for Monitoring Tools.
 -   Support Docker installation.
--   Support CI/CD (Eg: Github Action).
 -   Husky GitHook for run linter before commit 🐶.
 -   Linter with EsLint for Typescript.
 
@@ -208,20 +207,16 @@ Now you can run the project.
 yarn start:dev
 ```
 
-## Installation with Docker
+## Installation dependencies with Docker
 
-For docker installation, we need more tools to be installed.
+> Docker will install mongodb (as replication set), and redis
+
+We need more tools to be installed.
 
 1. [Docker][ref-docker]
 2. [Docker-Compose][ref-dockercompose]
 
-Make your own environment file with a copy of `env.example` and adjust values to suit your own environment.
-
-```bash
-cp .env.example .env
-```
-
-then run
+After clone this project, then run
 
 ```bash
 docker-compose up -d

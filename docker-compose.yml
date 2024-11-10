@@ -1,21 +1,6 @@
-version: '3.8'
 name: ack
 
 services:
-    service:
-        build: 
-            context: .
-        container_name: service
-        hostname: service
-        ports:
-        - 3000:3000
-        volumes:
-        - ./src/:/app/src/
-        - .env/:/app/.env
-        restart: always
-        networks:
-        - app-network
-
     redis:
         image: redis:latest
         container_name: redis
@@ -75,11 +60,10 @@ services:
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         healthcheck:
-            test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017',priority:1},{_id:1,host:'host.docker.internal:27018',priority:0.5},{_id:2,host:'host.docker.internal:27019',priority:0.5}]}) }" | mongosh --bind_ip_all --port 27017 --quiet
-            interval: 5s
-            timeout: 30s
-            start_period: 0s
-            start_interval: 1s
+            test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017',priority:1},{_id:1,host:'host.docker.internal:27018',priority:0.5},{_id:2,host:'host.docker.internal:27019',priority:0.5}]}) }" | mongosh --port 27017 --quiet
+            interval: 10s
+            timeout: 10s
+            start_period: 30s
             retries: 5
 
     mongodb2:
