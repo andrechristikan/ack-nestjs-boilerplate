@@ -16,7 +16,7 @@ import { Logger as PinoLogger } from 'nestjs-pino';
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule, {
         abortOnError: false,
-        bufferLogs: true,
+        bufferLogs: false,
     });
 
     const configService = app.get(ConfigService);
@@ -32,7 +32,6 @@ async function bootstrap() {
     const version: string = configService.get<string>('app.urlVersion.version');
 
     // enable
-    const httpEnable: boolean = configService.get<boolean>('app.http.enable');
     const versionEnable: string = configService.get<string>(
         'app.urlVersion.enable'
     );
@@ -87,12 +86,6 @@ async function bootstrap() {
         process.exit(0);
     }
 
-    logger.log(
-        `Http is ${httpEnable}, ${
-            httpEnable ? 'routes registered' : 'no routes registered'
-        }`,
-        'NestApplication'
-    );
     logger.log(`Http versioning is ${versionEnable}`);
 
     logger.log(

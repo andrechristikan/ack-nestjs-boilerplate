@@ -7,6 +7,7 @@ import {
     IsOptional,
     IsString,
     IsUrl,
+    MinLength,
 } from 'class-validator';
 import {
     ENUM_APP_ENVIRONMENT,
@@ -17,10 +18,12 @@ import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 export class AppEnvDto {
     @IsString()
     @IsNotEmpty()
+    @MinLength(1)
     APP_NAME: string;
 
     @IsString()
     @IsNotEmpty()
+    @MinLength(1)
     @IsEnum(ENUM_APP_ENVIRONMENT)
     APP_ENV: ENUM_APP_ENVIRONMENT;
 
@@ -36,6 +39,7 @@ export class AppEnvDto {
 
     @IsNotEmpty()
     @IsString()
+    @MinLength(1)
     HTTP_HOST: string;
 
     @IsNumber()
@@ -50,6 +54,12 @@ export class AppEnvDto {
 
     @IsString()
     @IsNotEmpty()
+    @MinLength(1)
+    DEBUG_LEVEL: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(1)
     MIDDLEWARE_CORS_ORIGIN: string;
 
     @IsBoolean()
@@ -64,7 +74,8 @@ export class AppEnvDto {
 
     @IsNotEmpty()
     @IsString()
-    DATABASE_URI: string;
+    @MinLength(1)
+    DATABASE_URL: string;
 
     @IsBoolean()
     @IsNotEmpty()
@@ -73,26 +84,32 @@ export class AppEnvDto {
 
     @IsNotEmpty()
     @IsString()
+    @MinLength(1)
     AUTH_JWT_AUDIENCE: string;
 
     @IsNotEmpty()
     @IsString()
+    @MinLength(1)
     AUTH_JWT_ISSUER: string;
 
     @IsNotEmpty()
     @IsString()
+    @MinLength(1)
     AUTH_JWT_ACCESS_TOKEN_EXPIRED: string;
 
     @IsNotEmpty()
     @IsString()
+    @MinLength(1)
     AUTH_JWT_ACCESS_TOKEN_SECRET_KEY: string;
 
     @IsNotEmpty()
     @IsString()
+    @MinLength(1)
     AUTH_JWT_REFRESH_TOKEN_EXPIRED: string;
 
     @IsNotEmpty()
     @IsString()
+    @MinLength(1)
     AUTH_JWT_REFRESH_TOKEN_SECRET_KEY: string;
 
     @IsOptional()

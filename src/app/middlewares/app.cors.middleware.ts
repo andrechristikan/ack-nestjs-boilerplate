@@ -2,17 +2,14 @@ import { HttpStatus, Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import cors, { CorsOptions } from 'cors';
 import { ConfigService } from '@nestjs/config';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 
 @Injectable()
 export class AppCorsMiddleware implements NestMiddleware {
-    private readonly appEnv: ENUM_APP_ENVIRONMENT;
     private readonly allowOrigin: string | boolean | string[];
     private readonly allowMethod: string[];
     private readonly allowHeader: string[];
 
     constructor(private readonly configService: ConfigService) {
-        this.appEnv = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
         this.allowOrigin = this.configService.get<string | boolean | string[]>(
             'middleware.cors.allowOrigin'
         );

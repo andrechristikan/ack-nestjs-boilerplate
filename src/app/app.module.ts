@@ -13,7 +13,7 @@ import { WorkerModule } from 'src/worker/worker.module';
         AppMiddlewareModule,
 
         // Routes
-        RouterModule.forRoot(),
+        RouterModule,
 
         // Workers
         WorkerModule,

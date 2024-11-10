@@ -10,7 +10,6 @@ import {
 } from 'src/modules/user/enums/user.enum';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 import { CountryService } from 'src/modules/country/services/country.service';
-import { faker } from '@faker-js/faker';
 import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { IncomingMessage } from 'http';
 import { Params } from 'nestjs-pino';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
@@ -10,39 +9,22 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 export class LoggerOptionService {
     private readonly env: ENUM_APP_ENVIRONMENT;
     private readonly name: string;
-    private readonly debugEnable: boolean;
 
-    private readonly level: string;
+    private readonly debugEnable: boolean;
+    private readonly debugLevel: string;
 
     constructor(private configService: ConfigService) {
         this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
         this.name = this.configService.get<string>('app.name');
 
         this.debugEnable = this.configService.get<boolean>('debug.enable');
-
-        switch (this.env) {
-            case ENUM_APP_ENVIRONMENT.PRODUCTION:
-                this.level = 'fatal';
-                break;
-            case ENUM_APP_ENVIRONMENT.STAGING:
-                this.level = 'error';
-                break;
-            case ENUM_APP_ENVIRONMENT.MIGRATION:
-                this.level = 'error';
-                break;
-            case ENUM_APP_ENVIRONMENT.DEVELOPMENT:
-                this.level = 'info';
-                break;
-            default:
-                this.level = 'debug';
-                break;
-        }
+        this.debugLevel = this.configService.get<string>('debug.level');
     }
 
     createOptions(): Params {
         return {
             pinoHttp: {
-                level: this.debugEnable ? this.level : 'silent',
+                level: this.debugEnable ? this.debugLevel : 'silent',
                 formatters: {
                     level: (label: string) => ({ level: label.toUpperCase() }),
                 },
@@ -104,13 +86,6 @@ export class LoggerOptionService {
                                   levelFirst: true,
                                   translateTime: 'SYS:standard',
                               },
-                          }
-                        : undefined,
-                autoLogging:
-                    this.env === ENUM_APP_ENVIRONMENT.LOCAL
-                        ? {
-                              ignore: (req: IncomingMessage) =>
-                                  req.url === '/api/hello',
                           }
                         : undefined,
             },

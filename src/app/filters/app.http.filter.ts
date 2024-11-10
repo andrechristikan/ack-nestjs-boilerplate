@@ -9,7 +9,6 @@ import {
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 import { IAppException } from 'src/app/interfaces/app.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
@@ -24,7 +23,6 @@ export class AppHttpFilter implements ExceptionFilter {
 
     private readonly globalPrefix: string;
     private readonly docPrefix: string;
-    private readonly env: ENUM_APP_ENVIRONMENT;
 
     constructor(
         private readonly messageService: MessageService,
@@ -33,7 +31,6 @@ export class AppHttpFilter implements ExceptionFilter {
     ) {
         this.globalPrefix = this.configService.get<string>('app.globalPrefix');
         this.docPrefix = this.configService.get<string>('doc.prefix');
-        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
     }
 
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
@@ -47,17 +44,10 @@ export class AppHttpFilter implements ExceptionFilter {
             !request.path.startsWith(this.globalPrefix) &&
             !request.path.startsWith(this.docPrefix)
         ) {
-            if (this.env === ENUM_APP_ENVIRONMENT.PRODUCTION) {
-                response.redirect(
-                    HttpStatus.PERMANENT_REDIRECT,
-                    '/api/public/hello'
-                );
-            } else {
-                response.redirect(
-                    HttpStatus.PERMANENT_REDIRECT,
-                    this.docPrefix
-                );
-            }
+            response.redirect(
+                HttpStatus.PERMANENT_REDIRECT,
+                '/api/public/hello'
+            );
 
             return;
         }
