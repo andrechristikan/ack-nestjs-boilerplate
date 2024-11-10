@@ -12,7 +12,7 @@ export class DatabaseOptionService implements IDatabaseOptionService {
     createOptions(): MongooseModuleOptions {
         const env = this.configService.get<string>('app.env');
 
-        const uri = this.configService.get<string>('database.uri');
+        const url = this.configService.get<string>('database.url');
         const debug = this.configService.get<boolean>('database.debug');
 
         const timeoutOptions = this.configService.get<Record<string, number>>(
@@ -24,11 +24,12 @@ export class DatabaseOptionService implements IDatabaseOptionService {
         }
 
         const mongooseOptions: MongooseModuleOptions = {
-            uri,
+            uri: url,
             autoCreate: env === ENUM_APP_ENVIRONMENT.MIGRATION,
             autoIndex: env === ENUM_APP_ENVIRONMENT.MIGRATION,
             ...timeoutOptions,
         };
+        console.log('mongooseOptions', mongooseOptions);
 
         return mongooseOptions;
     }

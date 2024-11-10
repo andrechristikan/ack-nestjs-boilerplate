@@ -19,9 +19,7 @@ describe('AppEnvDto', () => {
             APP_ENV: ENUM_APP_ENVIRONMENT.DEVELOPMENT,
             APP_LANGUAGE: ENUM_MESSAGE_LANGUAGE.EN,
             APP_TIMEZONE: ENUM_APP_TIMEZONE.ASIA_JAKARTA,
-            APP_DEBUG: false,
 
-            HTTP_ENABLE: true,
             HTTP_HOST: 'localhost',
             HTTP_PORT: 3000,
 

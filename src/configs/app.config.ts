@@ -11,7 +11,6 @@ export default registerAs(
         globalPrefix: '/api',
 
         http: {
-            enable: process.env.HTTP_ENABLE === 'true',
             host: process.env.HTTP_HOST,
             port: Number.parseInt(process.env.HTTP_PORT),
         },
