@@ -11,7 +11,7 @@ export default registerAs(
         timeoutOptions: {
             serverSelectionTimeoutMS: 30 * 1000, // 30 secs
             socketTimeoutMS: 30 * 1000, // 30 secs
-            heartbeatFrequencyMS: 30 * 1000, // 30 secs
+            heartbeatFrequencyMS: 5 * 1000, // 30 secs
         },
     })
 );
