@@ -26,7 +26,7 @@ describe('AppEnvDto', () => {
             URL_VERSIONING_ENABLE: true,
             URL_VERSION: 1,
 
-            DATABASE_URI: faker.internet.url(),
+            DATABASE_URL: faker.internet.url(),
             DATABASE_DEBUG: false,
 
             AUTH_JWT_ISSUER: faker.internet.url(),

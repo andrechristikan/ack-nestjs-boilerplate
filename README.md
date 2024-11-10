@@ -39,7 +39,7 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
     - [Database Migration and Seed](#database-migration-and-seed)
     - [Template Migration](#template-migration)
     - [Run Project](#run-project)
-  - [Installation dependencies with Docker](#installation-dependencies-with-docker)
+  - [Installation with Docker](#installation-with-docker)
   - [Test](#test)
   - [Swagger](#swagger)
   - [API Key](#api-key)
@@ -207,16 +207,19 @@ Now you can run the project.
 yarn start:dev
 ```
 
-## Installation dependencies with Docker
-
-> Docker will install mongodb (as replication set), and redis
+## Installation with Docker
 
 We need more tools to be installed.
 
 1. [Docker][ref-docker]
 2. [Docker-Compose][ref-dockercompose]
 
-After clone this project, then run
+Copy `.env.example` and change value
+
+1. `DATABASE_URL`: `DATABASE_URL=mongodb://host.docker.internal:27017,host.docker.internal:27018,host.docker.internal:27019/ack?retryWrites=true&w=majority&replicaSet=rs0`
+2. `REDIS_HOST`: `redis`
+
+leave the rest as it, then run
 
 ```bash
 docker-compose up -d
