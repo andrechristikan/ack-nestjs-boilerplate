@@ -12,7 +12,7 @@ services:
         volumes:
             - ./src/:/app/src/
             - .env/:/app/.env
-        restart: always
+        restart: on-failure
         networks:
             - app-network
         depends_on:
@@ -23,7 +23,7 @@ services:
         image: redis:latest
         container_name: redis
         hostname: redis
-        restart: always
+        restart: on-failure
         ports:
             - '6379:6379'
         volumes:
@@ -40,7 +40,7 @@ services:
         image: deadly0/bull-board:latest
         container_name: redis-bullboard
         hostname: redis-bullboard
-        restart: always
+        restart: on-failure
         ports:
             - 3010:3000
         networks:
@@ -58,7 +58,7 @@ services:
         container_name: mongodb1
         hostname: mongodb1
         image: mongo:latest
-        restart: always
+        restart: on-failure
         ports:
             - '27017:27017'
         links:
@@ -90,7 +90,7 @@ services:
         image: mongo:latest
         networks:
             - app-network
-        restart: always
+        restart: on-failure
         ports:
             - '27018:27018'
         volumes:
@@ -104,7 +104,7 @@ services:
         image: mongo:latest
         networks:
             - app-network
-        restart: always
+        restart: on-failure
         ports:
             - '27019:27019'
         volumes:
