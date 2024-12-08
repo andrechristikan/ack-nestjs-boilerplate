@@ -1,4 +1,4 @@
-name: ack
+name: ack-nestjs-boilerplate
 
 services:
 
@@ -12,7 +12,7 @@ services:
         volumes:
             - ./src/:/app/src/
             - .env/:/app/.env
-        restart: always
+        restart: on-failure
         networks:
             - app-network
         depends_on:
@@ -23,7 +23,7 @@ services:
         image: redis:latest
         container_name: redis
         hostname: redis
-        restart: always
+        restart: on-failure
         ports:
             - '6379:6379'
         volumes:
@@ -37,10 +37,10 @@ services:
             retries: 5
 
     redis-bullboard:
-        image: deadly0/bull-board:latest
+        image: deadly0/bull-board:3.2.6
         container_name: redis-bullboard
         hostname: redis-bullboard
-        restart: always
+        restart: on-failure
         ports:
             - 3010:3000
         networks:
@@ -55,10 +55,10 @@ services:
             - redis
 
     mongodb1:
+        image: mongo:latest
         container_name: mongodb1
         hostname: mongodb1
-        image: mongo:latest
-        restart: always
+        restart: on-failure
         ports:
             - '27017:27017'
         links:
@@ -79,38 +79,43 @@ services:
             - 'host.docker.internal:host-gateway'
         healthcheck:
             test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017',priority:1},{_id:1,host:'host.docker.internal:27018',priority:0.5},{_id:2,host:'host.docker.internal:27019',priority:0.5}]}) }" | mongosh --port 27017 --quiet
-            interval: 10s
-            timeout: 10s
-            start_period: 30s
-            retries: 5
+            interval: 5s
+            timeout: 30s
+            start_period: 0s
+            start_interval: 1s
+            retries: 10
 
     mongodb2:
+        image: mongo:latest
         container_name: mongodb2
         hostname: mongodb2
-        image: mongo:latest
         networks:
             - app-network
-        restart: always
+        restart: on-failure
         ports:
             - '27018:27018'
         volumes:
             - mongodb2_data:/data/db
             - mongodb2_config:/data/configdb
         command: mongod --bind_ip_all --replSet rs0 --port 27018
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
 
     mongodb3:
+        image: mongo:latest
         container_name: mongodb3
         hostname: mongodb3
-        image: mongo:latest
         networks:
             - app-network
-        restart: always
+        restart: on-failure
         ports:
             - '27019:27019'
         volumes:
             - mongodb3_data:/data/db
             - mongodb3_config:/data/configdb
         command: mongod --bind_ip_all --replSet rs0 --port 27019
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
 
 volumes:
     mongodb1_data:

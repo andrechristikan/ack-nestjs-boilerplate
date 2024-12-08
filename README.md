@@ -216,8 +216,8 @@ We need more tools to be installed.
 
 Copy `.env.example` and change value
 
-1. `DATABASE_URL`: `DATABASE_URL=mongodb://host.docker.internal:27017,host.docker.internal:27018,host.docker.internal:27019/ack?retryWrites=true&w=majority&replicaSet=rs0`
-2. `REDIS_HOST`: `redis`
+if `host.docker.internal` cannot be resolved, you must add a line in your `/etc/hosts` file to map `host.docker.internal` to the IP address `127.17.0.1`
+
 
 leave the rest as it, then run
 
