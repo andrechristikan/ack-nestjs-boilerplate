@@ -9,7 +9,6 @@ export class CountryShortResponseDto extends OmitType(CountryListResponseDto, [
     'numericCode',
     'fipsCode',
     'continent',
-    'domain',
 ]) {
     @ApiHideProperty()
     @Exclude()

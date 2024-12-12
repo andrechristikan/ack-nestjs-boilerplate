@@ -16,6 +16,13 @@ export class UserVerificationEntity {
         default: false,
     })
     email: boolean;
+
+    @DatabaseProp({
+        required: true,
+        index: true,
+        default: false,
+    })
+    mobileNumber: boolean;
 }
 
 export const UserVerificationSchema = DatabaseSchema(UserVerificationEntity);

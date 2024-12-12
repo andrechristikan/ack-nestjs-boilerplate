@@ -8,8 +8,8 @@ import { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password.dto';
-import { EmailWelcomeAdminDto } from 'src/modules/email/dtos/email.welcome-admin.dto';
 import { AwsSESService } from 'src/modules/aws/services/aws.ses.service';
+import { EmailResetPasswordDto } from 'src/modules/email/dtos/email.reset-password.dto';
 
 @Injectable()
 export class EmailService implements IEmailService {
@@ -159,13 +159,13 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async importWelcomeAdmin(): Promise<boolean> {
+    async importCreate(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
-                subject: `Welcome`,
+                name: ENUM_SEND_EMAIL_PROCESS.CREATE,
+                subject: `Create`,
                 htmlBody: readFileSync(
-                    '/templates/email/welcome-admin.template.html',
+                    '/templates/email/create.template.html',
                     'utf8'
                 ),
             });
@@ -178,16 +178,16 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async getWelcomeAdmin(): Promise<GetTemplateCommandOutput> {
+    async getCreate(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
-            name: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
+            name: ENUM_SEND_EMAIL_PROCESS.CREATE,
         });
     }
 
-    async deleteWelcomeAdmin(): Promise<boolean> {
+    async deleteCreate(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
+                name: ENUM_SEND_EMAIL_PROCESS.CREATE,
             });
 
             return true;
@@ -198,22 +198,22 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async sendWelcomeAdmin(
+    async sendCreate(
         { name, email }: EmailSendDto,
-        { password: passwordString, passwordExpiredAt }: EmailWelcomeAdminDto
+        { password: passwordString, passwordExpiredAt }: EmailTempPasswordDto
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
+                templateName: ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
                     appName: this.appName,
                     name: title(name),
                     email: title(email),
-                    password: passwordString,
                     supportEmail: this.supportEmail,
                     clientUrl: this.clientUrl,
+                    password: passwordString,
                     passwordExpiredAt:
                         this.helperDateService.formatToRFC2822(
                             passwordExpiredAt
@@ -295,6 +295,73 @@ export class EmailService implements IEmailService {
                         this.helperDateService.formatToRFC2822(
                             passwordExpiredAt
                         ),
+                },
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async importResetPassword(): Promise<boolean> {
+        try {
+            await this.awsSESService.createTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
+                subject: `Reset Password`,
+                htmlBody: readFileSync(
+                    '/templates/email/reset-password.template.html',
+                    'utf8'
+                ),
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async getResetPassword(): Promise<GetTemplateCommandOutput> {
+        return this.awsSESService.getTemplate({
+            name: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
+        });
+    }
+
+    async deleteResetPassword(): Promise<boolean> {
+        try {
+            await this.awsSESService.deleteTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async sendResetPassword(
+        { name, email }: EmailSendDto,
+        { expiredDate, url }: EmailResetPasswordDto
+    ): Promise<boolean> {
+        try {
+            await this.awsSESService.send({
+                templateName: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
+                recipients: [email],
+                sender: this.fromEmail,
+                templateData: {
+                    appName: this.appName,
+                    name: title(name),
+                    supportEmail: this.supportEmail,
+                    clientUrl: this.clientUrl,
+                    url: url,
+                    expiredDate:
+                        this.helperDateService.formatToIsoDate(expiredDate),
                 },
             });
 

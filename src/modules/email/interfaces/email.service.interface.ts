@@ -1,7 +1,7 @@
 import { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
+import { EmailResetPasswordDto } from 'src/modules/email/dtos/email.reset-password.dto';
 import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password.dto';
-import { EmailWelcomeAdminDto } from 'src/modules/email/dtos/email.welcome-admin.dto';
 
 export interface IEmailService {
     importChangePassword(): Promise<boolean>;
@@ -12,12 +12,12 @@ export interface IEmailService {
     getWelcome(): Promise<GetTemplateCommandOutput>;
     deleteWelcome(): Promise<boolean>;
     sendWelcome({ name, email }: EmailSendDto): Promise<boolean>;
-    importWelcomeAdmin(): Promise<boolean>;
-    getWelcomeAdmin(): Promise<GetTemplateCommandOutput>;
-    deleteWelcomeAdmin(): Promise<boolean>;
-    sendWelcomeAdmin(
+    importCreate(): Promise<boolean>;
+    getCreate(): Promise<GetTemplateCommandOutput>;
+    deleteCreate(): Promise<boolean>;
+    sendCreate(
         { name, email }: EmailSendDto,
-        { password, passwordExpiredAt }: EmailWelcomeAdminDto
+        { password, passwordExpiredAt }: EmailTempPasswordDto
     ): Promise<boolean>;
     importTempPassword(): Promise<boolean>;
     getTempPassword(): Promise<GetTemplateCommandOutput>;
@@ -25,5 +25,12 @@ export interface IEmailService {
     sendTempPassword(
         { name, email }: EmailSendDto,
         { password, passwordExpiredAt }: EmailTempPasswordDto
+    ): Promise<boolean>;
+    importResetPassword(): Promise<boolean>;
+    getResetPassword(): Promise<GetTemplateCommandOutput>;
+    deleteResetPassword(): Promise<boolean>;
+    sendResetPassword(
+        { name, email }: EmailSendDto,
+        { expiredDate, url }: EmailResetPasswordDto
     ): Promise<boolean>;
 }

@@ -18,7 +18,7 @@ export class MigrationTemplateSeed {
         }
 
         try {
-            await this.emailService.importWelcomeAdmin();
+            await this.emailService.importCreate();
         } catch (err: any) {
             throw new Error(err);
         }
@@ -35,6 +35,12 @@ export class MigrationTemplateSeed {
             throw new Error(err);
         }
 
+        try {
+            await this.emailService.importResetPassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
         return;
     }
 
@@ -45,12 +51,6 @@ export class MigrationTemplateSeed {
     async rollback(): Promise<void> {
         try {
             await this.emailService.deleteWelcome();
-        } catch (err: any) {
-            throw new Error(err);
-        }
-
-        try {
-            await this.emailService.deleteWelcomeAdmin();
         } catch (err: any) {
             throw new Error(err);
         }

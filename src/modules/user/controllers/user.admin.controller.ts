@@ -284,15 +284,17 @@ export class UserAdminController {
             );
 
             this.emailQueue.add(
-                ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN,
+                ENUM_SEND_EMAIL_PROCESS.CREATE,
                 {
                     send: { email: created.email, name: created.name },
-                    passwordExpiredAt: password.passwordExpired,
-                    password: passwordString,
+                    data: {
+                        passwordExpiredAt: password.passwordExpired,
+                        password: passwordString,
+                    },
                 },
                 {
                     debounce: {
-                        id: `${ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN}-${created._id}`,
+                        id: `${ENUM_SEND_EMAIL_PROCESS.CREATE}-${created._id}`,
                         ttl: 1000,
                     },
                 }

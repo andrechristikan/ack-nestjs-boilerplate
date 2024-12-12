@@ -160,9 +160,6 @@ export class AuthSharedController {
         session.startTransaction();
 
         try {
-            user = await this.userService.resetPasswordAttempt(user, {
-                session,
-            });
             user = await this.userService.updatePassword(user, password, {
                 session,
             });

@@ -306,6 +306,7 @@ export class UserService implements IUserService {
         create.username = username;
         create.verification = {
             email: false,
+            mobileNumber: false,
         };
 
         return this.userRepository.create<UserEntity>(create, options);
@@ -335,6 +336,7 @@ export class UserService implements IUserService {
         create.username = username;
         create.verification = {
             email: false,
+            mobileNumber: false,
         };
 
         return this.userRepository.create<UserEntity>(create, options);
@@ -381,6 +383,7 @@ export class UserService implements IUserService {
         repository.passwordExpired = passwordExpired;
         repository.passwordCreated = passwordCreated;
         repository.salt = salt;
+        repository.passwordAttempt = 0;
 
         return this.userRepository.save(repository, options);
     }
@@ -461,6 +464,7 @@ export class UserService implements IUserService {
             country,
             number,
         };
+        repository.verification.mobileNumber = false;
 
         return this.userRepository.save(repository, options);
     }

@@ -13,6 +13,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { ENUM_FILE_MIME_IMAGE } from 'src/common/file/enums/file.enum';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
@@ -36,6 +37,7 @@ import {
     UserSharedUploadPhotoProfileDoc,
 } from 'src/modules/user/docs/user.shared.doc';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
+import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import {
@@ -139,7 +141,8 @@ export class UserSharedController {
     @Post('/profile/upload-photo')
     async uploadPhotoProfile(
         @AuthJwtPayload<AuthJwtAccessPayloadDto>('_id', UserParsePipe)
-        user: UserDoc
+        user: UserDoc,
+        @Body() { type }: UserUploadPhotoRequestDto
     ): Promise<IResponse<AwsS3PresignResponseDto>> {
         const path: string = await this.userService.getPhotoUploadPath(
             user._id
@@ -147,11 +150,11 @@ export class UserSharedController {
         const randomFilename: string =
             await this.userService.createRandomFilenamePhoto();
 
+        const extension = Object.keys(ENUM_FILE_MIME_IMAGE)
+            .find(e => e === type)
+            .toLowerCase();
         const aws: AwsS3PresignResponseDto = await this.awsS3Service.presign(
-            randomFilename,
-            {
-                path,
-            }
+            `${path}/${randomFilename}.${extension}`
         );
 
         return {

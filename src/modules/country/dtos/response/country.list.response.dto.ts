@@ -78,13 +78,6 @@ export class CountryListResponseDto extends DatabaseDto {
     currency: string;
 
     @ApiProperty({
-        required: false,
-        description: 'Top level domain',
-        example: faker.internet.domainSuffix(),
-    })
-    domain?: string;
-
-    @ApiProperty({
         description: 'Date created at',
         example: faker.date.recent(),
         required: true,

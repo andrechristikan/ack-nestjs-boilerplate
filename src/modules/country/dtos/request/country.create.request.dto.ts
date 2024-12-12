@@ -5,7 +5,6 @@ import {
     ArrayNotEmpty,
     IsArray,
     IsNotEmpty,
-    IsOptional,
     IsString,
     MaxLength,
     MinLength,
@@ -116,13 +115,4 @@ export class CountryCreateRequestDto {
     @IsNotEmpty()
     @IsString()
     currency: string;
-
-    @ApiProperty({
-        required: false,
-        description: 'Top level domain',
-        example: faker.internet.domainSuffix(),
-    })
-    @IsOptional()
-    @IsString()
-    domain?: string;
 }

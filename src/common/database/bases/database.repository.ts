@@ -21,7 +21,7 @@ import {
     IDatabaseUpdateManyOptions,
     IDatabaseUpdateOptions,
 } from 'src/common/database/interfaces/database.interface';
-import MongoDB from 'mongodb';
+import { UpdateResult, DeleteResult, InsertManyResult } from 'mongodb';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
@@ -367,7 +367,7 @@ export class DatabaseRepositoryBase<
     async createMany<T extends Entity>(
         data: T[],
         options?: IDatabaseCreateManyOptions
-    ): Promise<MongoDB.InsertManyResult> {
+    ): Promise<InsertManyResult<Entity>> {
         return this._repository.insertMany(data, {
             ...options,
             rawResult: true,
@@ -378,7 +378,7 @@ export class DatabaseRepositoryBase<
         find: Record<string, any>,
         data: T,
         options?: IDatabaseUpdateManyOptions
-    ): Promise<MongoDB.UpdateResult> {
+    ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
             {
                 ...find,
@@ -395,7 +395,7 @@ export class DatabaseRepositoryBase<
         find: Record<string, any>,
         data: UpdateQuery<EntityDocument> | UpdateWithAggregationPipeline,
         options?: IDatabaseUpdateManyOptions
-    ): Promise<MongoDB.UpdateResult> {
+    ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
             {
                 ...find,
@@ -409,7 +409,7 @@ export class DatabaseRepositoryBase<
     async deleteMany(
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
-    ): Promise<MongoDB.DeleteResult> {
+    ): Promise<DeleteResult> {
         return this._repository.deleteMany(
             {
                 ...find,
@@ -423,7 +423,7 @@ export class DatabaseRepositoryBase<
         find: Record<string, any>,
         dto?: DatabaseSoftDeleteDto,
         options?: IDatabaseOptions
-    ): Promise<MongoDB.UpdateResult> {
+    ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
             {
                 ...find,
@@ -443,7 +443,7 @@ export class DatabaseRepositoryBase<
     async restoreMany(
         find: Record<string, any>,
         options?: IDatabaseOptions
-    ): Promise<MongoDB.UpdateResult> {
+    ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
             {
                 ...find,

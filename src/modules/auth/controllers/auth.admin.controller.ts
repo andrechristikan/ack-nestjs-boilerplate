@@ -101,8 +101,10 @@ export class AuthAdminController {
                 ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 {
                     send: { email: user.email, name: user.name },
-                    passwordExpiredAt: password.passwordExpired,
-                    password: passwordString,
+                    data: {
+                        passwordExpiredAt: password.passwordExpired,
+                        password: passwordString,
+                    },
                 },
                 {
                     debounce: {
