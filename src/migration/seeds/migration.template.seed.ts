@@ -56,6 +56,12 @@ export class MigrationTemplateSeed {
         }
 
         try {
+            await this.emailService.deleteCreate();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
             await this.emailService.deleteChangePassword();
         } catch (err: any) {
             throw new Error(err);
@@ -63,6 +69,12 @@ export class MigrationTemplateSeed {
 
         try {
             await this.emailService.deleteTempPassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.deleteResetPassword();
         } catch (err: any) {
             throw new Error(err);
         }

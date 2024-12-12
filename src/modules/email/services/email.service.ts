@@ -10,6 +10,7 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password.dto';
 import { AwsSESService } from 'src/modules/aws/services/aws.ses.service';
 import { EmailResetPasswordDto } from 'src/modules/email/dtos/email.reset-password.dto';
+import { EmailCreateDto } from 'src/modules/email/dtos/email.create.dto';
 
 @Injectable()
 export class EmailService implements IEmailService {
@@ -200,7 +201,7 @@ export class EmailService implements IEmailService {
 
     async sendCreate(
         { name, email }: EmailSendDto,
-        { password: passwordString, passwordExpiredAt }: EmailTempPasswordDto
+        { password: passwordString, passwordExpiredAt }: EmailCreateDto
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
