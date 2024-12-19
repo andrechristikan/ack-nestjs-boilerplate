@@ -79,6 +79,7 @@ import { LoggerOptionService } from 'src/common/logger/services/logger.option.se
                     password: configService.get<string>(
                         'redis.cached.password'
                     ),
+                    ttl: configService.get<number>('redis.cached.ttl'),
                 });
 
                 return {
