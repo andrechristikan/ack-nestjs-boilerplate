@@ -13,6 +13,7 @@ import { RoleModule } from 'src/modules/role/role.module';
 import { SessionModule } from 'src/modules/session/session.module';
 import { SettingModule } from 'src/modules/setting/setting.module';
 import { UserModule } from 'src/modules/user/user.module';
+import { VerificationModule } from 'src/modules/verification/verification.module';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 
 @Module({
@@ -34,6 +35,7 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         SessionModule,
         ActivityModule,
         ResetPasswordModule,
+        VerificationModule,
         BullModule.registerQueueAsync({
             name: ENUM_WORKER_QUEUES.EMAIL_QUEUE,
         }),

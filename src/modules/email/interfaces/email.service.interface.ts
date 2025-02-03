@@ -1,7 +1,10 @@
 import { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
+import { EmailMobileNumberVerifiedDto } from 'src/modules/email/dtos/email.mobile-number-verified.dto';
 import { EmailResetPasswordDto } from 'src/modules/email/dtos/email.reset-password.dto';
 import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password.dto';
+import { EmailVerificationDto } from 'src/modules/email/dtos/email.verification.dto';
+import { EmailVerifiedDto } from 'src/modules/email/dtos/email.verified.dto';
 
 export interface IEmailService {
     importChangePassword(): Promise<boolean>;
@@ -32,5 +35,26 @@ export interface IEmailService {
     sendResetPassword(
         { name, email }: EmailSendDto,
         { expiredDate, url }: EmailResetPasswordDto
+    ): Promise<boolean>;
+    importVerification(): Promise<boolean>;
+    getVerification(): Promise<GetTemplateCommandOutput>;
+    deleteVerification(): Promise<boolean>;
+    sendVerification(
+        { name, email }: EmailSendDto,
+        { expiredAt, reference, otp }: EmailVerificationDto
+    ): Promise<boolean>;
+    importEmailVerified(): Promise<boolean>;
+    getEmailVerified(): Promise<GetTemplateCommandOutput>;
+    deleteEmailVerified(): Promise<boolean>;
+    sendEmailVerified(
+        { name, email }: EmailSendDto,
+        { reference }: EmailVerifiedDto
+    ): Promise<boolean>;
+    importMobileNumberVerified(): Promise<boolean>;
+    getMobileNumberVerified(): Promise<GetTemplateCommandOutput>;
+    deleteMobileNumberVerified(): Promise<boolean>;
+    sendMobileNumberVerified(
+        { name, email }: EmailSendDto,
+        { reference, mobileNumber }: EmailMobileNumberVerifiedDto
     ): Promise<boolean>;
 }

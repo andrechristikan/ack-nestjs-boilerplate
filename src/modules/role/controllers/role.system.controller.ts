@@ -63,7 +63,7 @@ export class RoleSystemController {
             _limit
         );
         const mapRoles: RoleShortResponseDto[] =
-            await this.roleService.mapShort(roles);
+            this.roleService.mapShort(roles);
 
         return {
             _pagination: { total, totalPage },

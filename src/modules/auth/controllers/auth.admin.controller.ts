@@ -64,7 +64,7 @@ export class AuthAdminController {
     @ApiKeyProtected()
     @Put('/update/:user/password')
     async updatePassword(
-        @AuthJwtPayload('_id') _id: string,
+        @AuthJwtPayload('user') updatedBy: string,
         @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
         user: UserDoc
     ): Promise<void> {
@@ -81,6 +81,7 @@ export class AuthAdminController {
                     temporary: true,
                 }
             );
+
             user = await this.userService.updatePassword(user, password, {
                 session,
             });
@@ -91,13 +92,16 @@ export class AuthAdminController {
             await this.passwordHistoryService.createByAdmin(
                 user,
                 {
-                    by: _id,
+                    by: updatedBy,
                     type: ENUM_PASSWORD_HISTORY_TYPE.TEMPORARY,
                 },
                 { session }
             );
 
-            this.emailQueue.add(
+            await session.commitTransaction();
+            await session.endSession();
+
+            await this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 {
                     send: { email: user.email, name: user.name },
@@ -113,9 +117,6 @@ export class AuthAdminController {
                     },
                 }
             );
-
-            await session.commitTransaction();
-            await session.endSession();
 
             return;
         } catch (err: any) {

@@ -80,6 +80,6 @@ export class AppMiddlewareModule implements NestModule {
                 AppResponseTimeMiddleware,
                 AppCustomLanguageMiddleware
             )
-            .forRoutes('*');
+            .forRoutes('*wildcard');
     }
 }

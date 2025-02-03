@@ -128,9 +128,9 @@ export class CountryService implements ICountryService {
         return true;
     }
 
-    async mapList(
+    mapList(
         countries: CountryDoc[] | CountryEntity[]
-    ): Promise<CountryListResponseDto[]> {
+    ): CountryListResponseDto[] {
         return plainToInstance(
             CountryListResponseDto,
             countries.map((e: CountryDoc | CountryEntity) =>
@@ -139,9 +139,9 @@ export class CountryService implements ICountryService {
         );
     }
 
-    async mapShort(
+    mapShort(
         countries: CountryDoc[] | CountryEntity[]
-    ): Promise<CountryShortResponseDto[]> {
+    ): CountryShortResponseDto[] {
         return plainToInstance(
             CountryShortResponseDto,
             countries.map((e: CountryDoc | CountryEntity) =>

@@ -81,7 +81,6 @@ export class CountryListResponseDto extends DatabaseDto {
         description: 'Date created at',
         example: faker.date.recent(),
         required: true,
-        nullable: false,
     })
     createdAt: Date;
 
@@ -89,7 +88,6 @@ export class CountryListResponseDto extends DatabaseDto {
         description: 'Date updated at',
         example: faker.date.recent(),
         required: true,
-        nullable: false,
     })
     updatedAt: Date;
 

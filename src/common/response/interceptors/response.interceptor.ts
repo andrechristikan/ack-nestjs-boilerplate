@@ -80,7 +80,7 @@ export class ResponseInterceptor
                             'app.urlVersion.version'
                         );
                     const xRepoVersion =
-                        this.configService.get<string>('app.repoVersion');
+                        this.configService.get<string>('app.version');
                     let metadata: ResponseMetadataDto = {
                         language: xLanguage,
                         timestamp: xTimestamp,

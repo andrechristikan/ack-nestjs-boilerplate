@@ -4,7 +4,6 @@ import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 export class SettingLanguageResponseDto {
     @ApiProperty({
         required: true,
-        nullable: false,
         enum: ENUM_MESSAGE_LANGUAGE,
         type: 'array',
         isArray: true,
@@ -13,7 +12,6 @@ export class SettingLanguageResponseDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         enum: ENUM_MESSAGE_LANGUAGE,
     })
     language: ENUM_MESSAGE_LANGUAGE;

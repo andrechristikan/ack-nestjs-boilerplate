@@ -19,6 +19,12 @@ export class ResetPasswordEntity extends DatabaseEntityBase {
 
     @Prop({
         required: true,
+        type: String,
+    })
+    to: string;
+
+    @Prop({
+        required: true,
         trim: true,
         minlength: 6,
         maxlength: 6,
@@ -64,12 +70,14 @@ export class ResetPasswordEntity extends DatabaseEntityBase {
     @Prop({
         required: true,
         index: true,
+        default: false,
     })
     isReset: boolean;
 
     @Prop({
         required: true,
         index: true,
+        default: false,
     })
     isActive: boolean;
 

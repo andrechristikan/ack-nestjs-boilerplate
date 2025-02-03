@@ -11,6 +11,9 @@ import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password
 import { AwsSESService } from 'src/modules/aws/services/aws.ses.service';
 import { EmailResetPasswordDto } from 'src/modules/email/dtos/email.reset-password.dto';
 import { EmailCreateDto } from 'src/modules/email/dtos/email.create.dto';
+import { EmailVerificationDto } from 'src/modules/email/dtos/email.verification.dto';
+import { EmailVerifiedDto } from 'src/modules/email/dtos/email.verified.dto';
+import { EmailMobileNumberVerifiedDto } from 'src/modules/email/dtos/email.mobile-number-verified.dto';
 
 @Injectable()
 export class EmailService implements IEmailService {
@@ -19,9 +22,8 @@ export class EmailService implements IEmailService {
     private readonly fromEmail: string;
     private readonly supportEmail: string;
 
-    private readonly appName: string;
-
-    private readonly clientUrl: string;
+    private readonly homeName: string;
+    private readonly homeUrl: string;
 
     constructor(
         private readonly awsSESService: AwsSESService,
@@ -32,9 +34,8 @@ export class EmailService implements IEmailService {
         this.supportEmail =
             this.configService.get<string>('email.supportEmail');
 
-        this.appName = this.configService.get<string>('email.name');
-
-        this.clientUrl = this.configService.get<string>('email.clientUrl');
+        this.homeName = this.configService.get<string>('home.name');
+        this.homeUrl = this.configService.get<string>('home.url');
     }
 
     async importChangePassword(): Promise<boolean> {
@@ -43,7 +44,7 @@ export class EmailService implements IEmailService {
                 name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
                 subject: `Change Password`,
                 htmlBody: readFileSync(
-                    '/templates/email/change-password.template.html',
+                    `${__dirname}/../templates/change-password.template.html`,
                     'utf8'
                 ),
             });
@@ -83,10 +84,10 @@ export class EmailService implements IEmailService {
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
-                    appName: this.appName,
+                    homeName: this.homeName,
                     name: title(name),
                     supportEmail: this.supportEmail,
-                    clientUrl: this.clientUrl,
+                    homeUrl: this.homeUrl,
                 },
             });
 
@@ -104,7 +105,7 @@ export class EmailService implements IEmailService {
                 name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
-                    '/templates/email/welcome.template.html',
+                    `${__dirname}/../templates/welcome.template.html`,
                     'utf8'
                 ),
             });
@@ -144,11 +145,11 @@ export class EmailService implements IEmailService {
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
-                    appName: this.appName,
+                    homeName: this.homeName,
                     name: title(name),
                     email: title(email),
                     supportEmail: this.supportEmail,
-                    clientUrl: this.clientUrl,
+                    homeUrl: this.homeUrl,
                 },
             });
 
@@ -166,7 +167,7 @@ export class EmailService implements IEmailService {
                 name: ENUM_SEND_EMAIL_PROCESS.CREATE,
                 subject: `Create`,
                 htmlBody: readFileSync(
-                    '/templates/email/create.template.html',
+                    `${__dirname}/../templates/create.template.html`,
                     'utf8'
                 ),
             });
@@ -209,11 +210,11 @@ export class EmailService implements IEmailService {
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
-                    appName: this.appName,
+                    homeName: this.homeName,
                     name: title(name),
                     email: title(email),
                     supportEmail: this.supportEmail,
-                    clientUrl: this.clientUrl,
+                    homeUrl: this.homeUrl,
                     password: passwordString,
                     passwordExpiredAt:
                         this.helperDateService.formatToRFC2822(
@@ -236,7 +237,7 @@ export class EmailService implements IEmailService {
                 name: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 subject: `Temporary Password`,
                 htmlBody: readFileSync(
-                    '/templates/email/temp-password.template.html',
+                    `${__dirname}/../templates/temp-password.template.html`,
                     'utf8'
                 ),
             });
@@ -287,11 +288,11 @@ export class EmailService implements IEmailService {
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
-                    appName: this.appName,
+                    homeName: this.homeName,
                     name: title(name),
                     password: passwordString,
                     supportEmail: this.supportEmail,
-                    clientUrl: this.clientUrl,
+                    homeUrl: this.homeUrl,
                     passwordExpiredAt:
                         this.helperDateService.formatToRFC2822(
                             passwordExpiredAt
@@ -313,7 +314,7 @@ export class EmailService implements IEmailService {
                 name: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
                 subject: `Reset Password`,
                 htmlBody: readFileSync(
-                    '/templates/email/reset-password.template.html',
+                    `${__dirname}/../templates/reset-password.template.html`,
                     'utf8'
                 ),
             });
@@ -356,13 +357,212 @@ export class EmailService implements IEmailService {
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
-                    appName: this.appName,
+                    homeName: this.homeName,
                     name: title(name),
                     supportEmail: this.supportEmail,
-                    clientUrl: this.clientUrl,
-                    url: url,
+                    homeUrl: this.homeUrl,
+                    url: `${this.homeUrl}/${url}`,
                     expiredDate:
                         this.helperDateService.formatToIsoDate(expiredDate),
+                },
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async importVerification(): Promise<boolean> {
+        try {
+            await this.awsSESService.createTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+                subject: `Email Verification`,
+                htmlBody: readFileSync(
+                    `${__dirname}/../templates/email-verification.template.html`,
+                    'utf8'
+                ),
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async getVerification(): Promise<GetTemplateCommandOutput> {
+        return this.awsSESService.getTemplate({
+            name: ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+        });
+    }
+
+    async deleteVerification(): Promise<boolean> {
+        try {
+            await this.awsSESService.deleteTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async sendVerification(
+        { name, email }: EmailSendDto,
+        { expiredAt, reference, otp }: EmailVerificationDto
+    ): Promise<boolean> {
+        try {
+            await this.awsSESService.send({
+                templateName: ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+                recipients: [email],
+                sender: this.fromEmail,
+                templateData: {
+                    homeName: this.homeName,
+                    name: title(name),
+                    supportEmail: this.supportEmail,
+                    homeUrl: this.homeUrl,
+                    expiredAt:
+                        this.helperDateService.formatToIsoDate(expiredAt),
+                    otp,
+                    reference,
+                },
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async importEmailVerified(): Promise<boolean> {
+        try {
+            await this.awsSESService.createTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED,
+                subject: `Email Verified`,
+                htmlBody: readFileSync(
+                    `${__dirname}/../templates/email-verified.template.html`,
+                    'utf8'
+                ),
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async getEmailVerified(): Promise<GetTemplateCommandOutput> {
+        return this.awsSESService.getTemplate({
+            name: ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED,
+        });
+    }
+
+    async deleteEmailVerified(): Promise<boolean> {
+        try {
+            await this.awsSESService.deleteTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED,
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async sendEmailVerified(
+        { name, email }: EmailSendDto,
+        { reference }: EmailVerifiedDto
+    ): Promise<boolean> {
+        try {
+            await this.awsSESService.send({
+                templateName: ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED,
+                recipients: [email],
+                sender: this.fromEmail,
+                templateData: {
+                    homeName: this.homeName,
+                    name: title(name),
+                    supportEmail: this.supportEmail,
+                    homeUrl: this.homeUrl,
+                    reference,
+                },
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async importMobileNumberVerified(): Promise<boolean> {
+        try {
+            await this.awsSESService.createTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED,
+                subject: `MobileNumber Verified`,
+                htmlBody: readFileSync(
+                    `${__dirname}/../templates/mobile-number-verified.template.html`,
+                    'utf8'
+                ),
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async getMobileNumberVerified(): Promise<GetTemplateCommandOutput> {
+        return this.awsSESService.getTemplate({
+            name: ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED,
+        });
+    }
+
+    async deleteMobileNumberVerified(): Promise<boolean> {
+        try {
+            await this.awsSESService.deleteTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED,
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async sendMobileNumberVerified(
+        { name, email }: EmailSendDto,
+        { reference, mobileNumber }: EmailMobileNumberVerifiedDto
+    ): Promise<boolean> {
+        try {
+            await this.awsSESService.send({
+                templateName: ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED,
+                recipients: [email],
+                sender: this.fromEmail,
+                templateData: {
+                    homeName: this.homeName,
+                    name: title(name),
+                    supportEmail: this.supportEmail,
+                    homeUrl: this.homeUrl,
+                    reference,
+                    mobileNumber,
                 },
             });
 

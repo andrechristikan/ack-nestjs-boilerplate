@@ -44,7 +44,7 @@ export class RequestTimeoutInterceptor
                 );
 
                 return next.handle().pipe(
-                    timeout(ms(seconds)),
+                    timeout(ms(seconds as ms.StringValue)),
                     catchError(err => {
                         if (err instanceof TimeoutError) {
                             throw new RequestTimeoutException({

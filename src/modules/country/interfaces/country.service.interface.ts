@@ -49,8 +49,8 @@ export interface ICountryService {
     ): Promise<boolean>;
     mapList(
         countries: CountryDoc[] | CountryEntity[]
-    ): Promise<CountryListResponseDto[]>;
+    ): CountryListResponseDto[];
     mapShort(
         countries: CountryDoc[] | CountryEntity[]
-    ): Promise<CountryShortResponseDto[]>;
+    ): CountryShortResponseDto[];
 }

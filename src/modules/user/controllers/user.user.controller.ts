@@ -1,9 +1,11 @@
 import {
+    BadRequestException,
     Body,
     ConflictException,
     Controller,
     Delete,
     InternalServerErrorException,
+    NotFoundException,
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -32,6 +34,8 @@ import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { SessionService } from 'src/modules/session/services/session.service';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
+import { CountryService } from 'src/modules/country/services/country.service';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 
 @ApiTags('modules.user.user')
 @Controller({
@@ -45,7 +49,8 @@ export class UserUserController {
         private readonly userService: UserService,
         private readonly activityService: ActivityService,
         private readonly messageService: MessageService,
-        private readonly sessionService: SessionService
+        private readonly sessionService: SessionService,
+        private readonly countryService: CountryService
     ) {}
 
     @UserUserDeleteDoc()
@@ -55,7 +60,7 @@ export class UserUserController {
     @ApiKeyProtected()
     @Delete('/delete')
     async delete(
-        @AuthJwtPayload('_id', UserParsePipe) user: UserDoc
+        @AuthJwtPayload('user', UserParsePipe) user: UserDoc
     ): Promise<void> {
         const session: ClientSession =
             await this.databaseConnection.startSession();
@@ -104,26 +109,50 @@ export class UserUserController {
     @ApiKeyProtected()
     @Put('/update/mobile-number')
     async updateMobileNumber(
-        @AuthJwtPayload('_id', UserParsePipe) user: UserDoc,
+        @AuthJwtPayload('user', UserParsePipe) user: UserDoc,
         @Body()
-        body: UserUpdateMobileNumberRequestDto
+        { number, country }: UserUpdateMobileNumberRequestDto
     ): Promise<void> {
+        const checkCountry = await this.countryService.findOneById(country);
+        if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'country.error.notFound',
+            });
+        }
+
+        const checkValidMobileNumber = this.userService.checkMobileNumber(
+            number,
+            checkCountry
+        );
+        if (!checkValidMobileNumber) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_INVALID,
+                message: 'user.error.mobileNumberInvalid',
+            });
+        }
+
         const session: ClientSession =
             await this.databaseConnection.startSession();
         session.startTransaction();
 
         try {
-            await this.userService.updateMobileNumber(user, body, { session });
-
-            await this.activityService.createByUser(
-                user,
-                {
-                    description: this.messageService.setMessage(
-                        'activity.user.updateMobileNumber'
-                    ),
-                },
-                { session }
-            );
+            await Promise.all([
+                this.userService.updateMobileNumber(
+                    user,
+                    { number, country },
+                    { session }
+                ),
+                this.activityService.createByUser(
+                    user,
+                    {
+                        description: this.messageService.setMessage(
+                            'activity.user.updateMobileNumber'
+                        ),
+                    },
+                    { session }
+                ),
+            ]);
 
             await session.commitTransaction();
             await session.endSession();
@@ -148,24 +177,40 @@ export class UserUserController {
     @ApiKeyProtected()
     @Put('/update/claim-username')
     async updateUsername(
-        @AuthJwtPayload('_id', UserParsePipe) user: UserDoc,
+        @AuthJwtPayload('user', UserParsePipe) user: UserDoc,
         @Body()
         { username }: UserUpdateClaimUsernameRequestDto
     ): Promise<void> {
+        const checkUsername = this.userService.checkUsernamePattern(username);
+        if (checkUsername) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_NOT_ALLOWED,
+                message: 'user.error.usernameNotAllowed',
+            });
+        }
+
+        const checkBadWord = this.userService.checkUsernameBadWord(username);
+        if (checkBadWord) {
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USERNAME_CONTAIN_BAD_WORD,
+                message: 'user.error.usernameContainBadWord',
+            });
+        }
+
+        const exist = await this.userService.existByUsername(username);
+        if (exist) {
+            throw new ConflictException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_EXIST,
+                message: 'user.error.usernameExist',
+            });
+        }
+
         const session: ClientSession =
             await this.databaseConnection.startSession();
         session.startTransaction();
 
         try {
-            const checkUsername =
-                await this.userService.existByUsername(username);
-            if (checkUsername) {
-                throw new ConflictException({
-                    statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_EXIST,
-                    message: 'user.error.usernameExist',
-                });
-            }
-
             await this.userService.updateClaimUsername(
                 user,
                 { username },

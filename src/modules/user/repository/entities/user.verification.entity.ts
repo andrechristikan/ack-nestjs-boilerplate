@@ -18,11 +18,21 @@ export class UserVerificationEntity {
     email: boolean;
 
     @DatabaseProp({
+        required: false,
+    })
+    emailVerifiedDate?: Date;
+
+    @DatabaseProp({
         required: true,
         index: true,
         default: false,
     })
     mobileNumber: boolean;
+
+    @DatabaseProp({
+        required: false,
+    })
+    mobileNumberVerifiedDate?: Date;
 }
 
 export const UserVerificationSchema = DatabaseSchema(UserVerificationEntity);

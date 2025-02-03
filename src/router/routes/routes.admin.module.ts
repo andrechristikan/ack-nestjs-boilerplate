@@ -17,6 +17,7 @@ import { SessionModule } from 'src/modules/session/session.module';
 import { SettingModule } from 'src/modules/setting/setting.module';
 import { UserAdminController } from 'src/modules/user/controllers/user.admin.controller';
 import { UserModule } from 'src/modules/user/user.module';
+import { VerificationModule } from 'src/modules/verification/verification.module';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 
 @Module({
@@ -42,8 +43,12 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         SessionModule,
         PasswordHistoryModule,
         ActivityModule,
+        VerificationModule,
         BullModule.registerQueueAsync({
             name: ENUM_WORKER_QUEUES.EMAIL_QUEUE,
+        }),
+        BullModule.registerQueueAsync({
+            name: ENUM_WORKER_QUEUES.SMS_QUEUE,
         }),
     ],
 })

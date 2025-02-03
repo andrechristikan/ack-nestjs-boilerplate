@@ -71,8 +71,7 @@ export class PasswordHistoryAdminController {
             _limit
         );
 
-        const mapped =
-            await this.passwordHistoryService.mapList(passwordHistories);
+        const mapped = this.passwordHistoryService.mapList(passwordHistories);
 
         return {
             _pagination: { total, totalPage },

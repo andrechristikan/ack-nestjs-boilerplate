@@ -1,5 +1,7 @@
 export enum ENUM_DOC_REQUEST_BODY_TYPE {
     JSON = 'JSON',
     FORM_DATA = 'FORM_DATA',
+    FORM_URLENCODED = 'FORM_URLENCODED',
     TEXT = 'TEXT',
+    NONE = 'NONE',
 }

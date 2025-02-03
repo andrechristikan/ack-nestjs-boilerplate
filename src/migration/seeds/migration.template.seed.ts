@@ -41,6 +41,24 @@ export class MigrationTemplateSeed {
             throw new Error(err);
         }
 
+        try {
+            await this.emailService.importVerification();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.importEmailVerified();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.importMobileNumberVerified();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
         return;
     }
 
@@ -75,6 +93,24 @@ export class MigrationTemplateSeed {
 
         try {
             await this.emailService.deleteResetPassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.deleteVerification();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.deleteEmailVerified();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.deleteMobileNumberVerified();
         } catch (err: any) {
             throw new Error(err);
         }

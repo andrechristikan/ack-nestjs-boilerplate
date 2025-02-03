@@ -14,7 +14,6 @@ export class SessionListResponseDto extends DatabaseDto {
         description: 'Date expired at',
         example: faker.date.recent(),
         required: true,
-        nullable: false,
     })
     expiredAt: Date;
 
@@ -22,7 +21,6 @@ export class SessionListResponseDto extends DatabaseDto {
         description: 'Date expired at',
         example: faker.date.recent(),
         required: false,
-        nullable: true,
     })
     revokeAt?: Date;
 

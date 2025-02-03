@@ -82,8 +82,7 @@ export class ResetPasswordPublicController {
 
         const checkLatest: IResetPasswordRequest =
             await this.resetPasswordService.checkActiveLatestEmailByUser(
-                user._id,
-                { email }
+                user._id
             );
         if (checkLatest) {
             return {

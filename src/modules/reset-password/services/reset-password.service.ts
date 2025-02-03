@@ -113,7 +113,6 @@ export class ResetPasswordService implements IResetPasswordService {
 
     async checkActiveLatestEmailByUser(
         user: string,
-        { email }: ResetPasswordCreateRequestDto,
         options?: IDatabaseFindOneOptions
     ): Promise<IResetPasswordRequest> {
         const check =
@@ -142,7 +141,6 @@ export class ResetPasswordService implements IResetPasswordService {
                     url: `${this.prefixUrl}/${check.token}`,
                     expiredDate: check.expiredDate,
                     token: check.token,
-                    email,
                     to: this.helperStringService.censor(check.user),
                 },
             };
@@ -160,6 +158,7 @@ export class ResetPasswordService implements IResetPasswordService {
 
     async createEmailByUser(
         user: string,
+        email: string,
         options?: IDatabaseCreateOptions
     ): Promise<ResetPasswordDoc> {
         const expired = this.createExpired();
@@ -169,6 +168,7 @@ export class ResetPasswordService implements IResetPasswordService {
 
         const create: ResetPasswordEntity = new ResetPasswordEntity();
         create.user = user;
+        create.to = email;
         create.type = ENUM_RESET_PASSWORD_TYPE.EMAIL;
         create.expiredDate = expired;
         create.isActive = true;
@@ -189,7 +189,7 @@ export class ResetPasswordService implements IResetPasswordService {
         { email }: ResetPasswordCreateRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<IResetPasswordRequest> {
-        const created = await this.createEmailByUser(user, options);
+        const created = await this.createEmailByUser(user, email, options);
 
         return {
             resetPassword: created,
@@ -197,7 +197,6 @@ export class ResetPasswordService implements IResetPasswordService {
                 url: `${this.prefixUrl}/${created.token}`,
                 expiredDate: created.expiredDate,
                 token: created.token,
-                email,
                 to: this.helperStringService.censor(email),
             },
         };
@@ -273,7 +272,6 @@ export class ResetPasswordService implements IResetPasswordService {
             url: `${this.prefixUrl}/${resetPassword.token}`,
             expiredDate: resetPassword.expiredDate,
             token: resetPassword.token,
-            email,
             to: this.helperStringService.censor(email),
         };
     }

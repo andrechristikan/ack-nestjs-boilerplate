@@ -18,6 +18,7 @@ import {
 
 export interface IAwsS3Service {
     onModuleInit(): void;
+    checkConnection(options?: IAwsS3Options): Promise<boolean>;
     checkBucket(options?: IAwsS3Options): Promise<boolean>;
     checkItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto>;
     getItems(

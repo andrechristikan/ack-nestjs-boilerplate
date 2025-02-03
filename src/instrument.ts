@@ -12,7 +12,7 @@ if (debugConfigs.sentry.dsn) {
         dsn: debugConfigs.sentry.dsn,
         debug: false,
         environment: appConfigs.env,
-        release: appConfigs.repoVersion,
+        release: appConfigs.version,
         shutdownTimeout: debugConfigs.sentry.timeout,
         integrations: [nodeProfilingIntegration()],
         tracesSampleRate: 1.0,

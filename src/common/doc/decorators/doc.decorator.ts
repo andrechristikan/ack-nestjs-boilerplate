@@ -255,6 +255,10 @@ export function DocRequest(options?: IDocRequestOptions) {
         docs.push(ApiConsumes('text/plain'));
     } else if (options?.bodyType === ENUM_DOC_REQUEST_BODY_TYPE.JSON) {
         docs.push(ApiConsumes('application/json'));
+    } else if (
+        options?.bodyType === ENUM_DOC_REQUEST_BODY_TYPE.FORM_URLENCODED
+    ) {
+        docs.push(ApiConsumes('x-www-form-urlencoded'));
     }
 
     if (options?.bodyType) {
@@ -354,18 +358,30 @@ export function DocAuth(options?: IDocAuthOptions) {
 
     if (options?.google) {
         docs.push(ApiBearerAuth('google'));
-        oneOfUnauthorized.push({
-            messagePath: 'auth.error.socialGoogle',
-            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE,
-        });
+        oneOfUnauthorized.push(
+            {
+                messagePath: 'auth.error.socialGoogleInvalid',
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_INVALID,
+            },
+            {
+                messagePath: 'auth.error.socialGoogleRequired',
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_REQUIRED,
+            }
+        );
     }
 
     if (options?.apple) {
         docs.push(ApiBearerAuth('apple'));
-        oneOfUnauthorized.push({
-            messagePath: 'auth.error.socialApple',
-            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE,
-        });
+        oneOfUnauthorized.push(
+            {
+                messagePath: 'auth.error.socialAppleInvalid',
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE_INVALID,
+            },
+            {
+                messagePath: 'auth.error.socialAppleRequired',
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE_REQUIRED,
+            }
+        );
     }
 
     if (options?.xApiKey) {

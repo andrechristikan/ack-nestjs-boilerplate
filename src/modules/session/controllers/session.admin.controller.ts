@@ -89,7 +89,7 @@ export class SessionAdminController {
             _limit
         );
 
-        const mapped = await this.sessionService.mapList(sessions);
+        const mapped = this.sessionService.mapList(sessions);
 
         return {
             _pagination: { total, totalPage },

@@ -34,6 +34,7 @@ import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-de
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { PipelineStage } from 'mongoose';
+import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 
 export interface IUserService {
     findAll(
@@ -182,15 +183,19 @@ export interface IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
+    updateVerificationMobileNumber(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
     join(repository: UserDoc): Promise<IUserDoc>;
-    getPhotoUploadPath(user: string): Promise<string>;
-    mapProfile(user: IUserDoc | IUserEntity): Promise<UserProfileResponseDto>;
-    createRandomFilenamePhoto(): Promise<string>;
-    createRandomUsername(): Promise<string>;
-    checkUsername(username: string): Promise<boolean>;
-    mapList(users: IUserDoc[] | IUserEntity[]): Promise<UserListResponseDto[]>;
-    mapShort(
-        users: IUserDoc[] | IUserEntity[]
-    ): Promise<UserShortResponseDto[]>;
-    mapGet(user: IUserDoc | IUserEntity): Promise<UserGetResponseDto>;
+    getPhotoUploadPath(user: string): string;
+    createRandomFilenamePhoto(): string;
+    createRandomUsername(): string;
+    checkUsernamePattern(username: string): boolean;
+    checkUsernameBadWord(username: string): boolean;
+    mapProfile(user: IUserDoc | IUserEntity): UserProfileResponseDto;
+    mapList(users: IUserDoc[] | IUserEntity[]): UserListResponseDto[];
+    mapShort(users: IUserDoc[] | IUserEntity[]): UserShortResponseDto[];
+    mapGet(user: IUserDoc | IUserEntity): UserGetResponseDto;
+    checkMobileNumber(mobileNumber: string, country: CountryDoc): boolean;
 }

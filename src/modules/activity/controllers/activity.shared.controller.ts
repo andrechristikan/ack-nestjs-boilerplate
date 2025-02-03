@@ -35,7 +35,7 @@ export class ActivitySharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @AuthJwtPayload('_id', RequestRequiredPipe, UserParsePipe)
+        @AuthJwtPayload('user', RequestRequiredPipe, UserParsePipe)
         user: UserDoc,
         @PaginationQuery()
         { _search, _limit, _offset, _order }: PaginationListDto
@@ -61,7 +61,7 @@ export class ActivitySharedController {
             _limit
         );
 
-        const mapped = await this.activityService.mapList(userHistories);
+        const mapped = this.activityService.mapList(userHistories);
 
         return {
             _pagination: { total, totalPage },

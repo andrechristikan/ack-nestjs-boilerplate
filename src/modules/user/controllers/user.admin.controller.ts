@@ -90,6 +90,7 @@ import { ActivityService } from 'src/modules/activity/services/activity.service'
 import { MessageService } from 'src/common/message/services/message.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
+import { VerificationService } from 'src/modules/verification/services/verification.service';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -109,7 +110,8 @@ export class UserAdminController {
         private readonly countryService: CountryService,
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly activityService: ActivityService,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly verificationService: VerificationService
     ) {}
 
     @UserAdminListDoc()
@@ -169,7 +171,7 @@ export class UserAdminController {
             _limit
         );
 
-        const mapped = await this.userService.mapList(users);
+        const mapped = this.userService.mapList(users);
 
         return {
             _pagination: { total, totalPage },
@@ -192,7 +194,7 @@ export class UserAdminController {
     ): Promise<IResponse<UserProfileResponseDto>> {
         const userWithRole: IUserDoc = await this.userService.join(user);
         const mapped: UserProfileResponseDto =
-            await this.userService.mapProfile(userWithRole);
+            this.userService.mapProfile(userWithRole);
 
         return { data: mapped };
     }
@@ -207,7 +209,7 @@ export class UserAdminController {
     @AuthJwtAccessProtected()
     @Post('/create')
     async create(
-        @AuthJwtPayload('_id') _id: string,
+        @AuthJwtPayload('user') createBy: string,
         @Body()
         { email, role, name, country, gender }: UserCreateRequestDto
     ): Promise<IResponse<DatabaseIdResponseDto>> {
@@ -263,42 +265,65 @@ export class UserAdminController {
                 { session }
             );
 
-            await this.passwordHistoryService.createByAdmin(
-                created,
-                {
-                    by: _id,
-                    type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
-                },
-                { session }
-            );
-
-            await this.activityService.createByAdmin(
-                created,
-                {
-                    by: _id,
-                    description: this.messageService.setMessage(
-                        'activity.user.createByAdmin'
-                    ),
-                },
-                { session }
-            );
-
-            this.emailQueue.add(
-                ENUM_SEND_EMAIL_PROCESS.CREATE,
-                {
-                    send: { email: created.email, name: created.name },
-                    data: {
-                        passwordExpiredAt: password.passwordExpired,
-                        password: passwordString,
+            const [verification] = await Promise.all([
+                this.verificationService.createEmailByUser(created, {
+                    session,
+                }),
+                this.passwordHistoryService.createByAdmin(
+                    created,
+                    {
+                        by: createBy,
+                        type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
                     },
-                },
-                {
-                    debounce: {
-                        id: `${ENUM_SEND_EMAIL_PROCESS.CREATE}-${created._id}`,
-                        ttl: 1000,
+                    { session }
+                ),
+                this.activityService.createByAdmin(
+                    created,
+                    {
+                        by: createBy,
+                        description: this.messageService.setMessage(
+                            'activity.user.createByAdmin'
+                        ),
                     },
-                }
-            );
+                    { session }
+                ),
+            ]);
+
+            await Promise.all([
+                this.emailQueue.add(
+                    ENUM_SEND_EMAIL_PROCESS.CREATE,
+                    {
+                        send: { email: created.email, name: created.name },
+                        data: {
+                            passwordExpiredAt: password.passwordExpired,
+                            password: passwordString,
+                        },
+                    },
+                    {
+                        debounce: {
+                            id: `${ENUM_SEND_EMAIL_PROCESS.CREATE}-${created._id}`,
+                            ttl: 1000,
+                        },
+                    }
+                ),
+                this.emailQueue.add(
+                    ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+                    {
+                        send: { email, name },
+                        data: {
+                            otp: verification.otp,
+                            expiredAt: verification.expiredDate,
+                            reference: verification.reference,
+                        },
+                    },
+                    {
+                        debounce: {
+                            id: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created._id}`,
+                            ttl: 1000,
+                        },
+                    }
+                ),
+            ]);
 
             await session.commitTransaction();
             await session.endSession();

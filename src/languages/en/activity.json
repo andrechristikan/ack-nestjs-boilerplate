@@ -1,12 +1,12 @@
 {
-    "list": "User activity logs are available here.",
+    "list": "Welcome! Here's your activity history.",
     "user": {
-        "createByAdmin": "Account has been created by an administrator",
-        "updateByAdmin": "Account information has been updated by an administrator.",
-        "inactiveByAdmin": "Account has been deactivated by an administrator.",
-        "activeByAdmin": "Account has been reactivated by an administrator.",
-        "blockedByAdmin": "Account has been blocked by an administrator.",
-        "changePassword": "Your password has been successfully changed.",
-        "uploadProfile": "Your profile picture has been successfully uploaded."
+        "createByAdmin": "Welcome! Your account has been successfully set up by our admin team.",
+        "updateByAdmin": "Your account details have been updated by our admin team.",
+        "inactiveByAdmin": "Your account has been temporarily deactivated by our admin team.",
+        "activeByAdmin": "Great news! Your account has been reactivated by our admin team.",
+        "blockedByAdmin": "Your account access has been temporarily restricted by our admin team.",
+        "changePassword": "Great! Your password has been successfully updated.",
+        "uploadProfile": "Perfect! Your new profile picture has been uploaded."
     }
 }

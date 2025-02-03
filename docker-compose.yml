@@ -2,23 +2,6 @@ name: ack-nestjs-boilerplate
 
 services:
 
-    apis:
-        build: 
-            context: .
-        container_name: apis
-        hostname: apis
-        ports:
-            - 3000:3000
-        volumes:
-            - ./src/:/app/src/
-            - .env/:/app/.env
-        restart: on-failure
-        networks:
-            - app-network
-        depends_on:
-            - redis
-            - mongodb1
-
     redis:
         image: redis:latest
         container_name: redis

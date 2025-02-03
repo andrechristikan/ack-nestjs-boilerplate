@@ -10,14 +10,12 @@ import {
 export class ResponsePagingMetadataPaginationRequestDto {
     @ApiProperty({
         required: true,
-        nullable: false,
         example: faker.person.fullName(),
     })
     search: string;
 
     @ApiProperty({
         required: true,
-        nullable: false,
     })
     filters: Record<
         string,
@@ -26,28 +24,24 @@ export class ResponsePagingMetadataPaginationRequestDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: 1,
     })
     page: number;
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: 20,
     })
     perPage: number;
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: 'createdAt',
     })
     orderBy: string;
 
     @ApiProperty({
         required: true,
-        nullable: false,
         enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
         example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
     })
@@ -55,14 +49,12 @@ export class ResponsePagingMetadataPaginationRequestDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: ['name'],
     })
     availableSearch: string[];
 
     @ApiProperty({
         required: true,
-        nullable: false,
         isArray: true,
         example: ['name', 'createdAt'],
     })
@@ -70,7 +62,6 @@ export class ResponsePagingMetadataPaginationRequestDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
         isArray: true,
         example: Object.values(ENUM_PAGINATION_ORDER_DIRECTION_TYPE),
@@ -103,7 +94,6 @@ export class ResponsePagingDto extends PickType(ResponseDto, [
     @ApiProperty({
         name: '_metadata',
         required: true,
-        nullable: false,
         description: 'Contain metadata about API',
         type: ResponsePagingMetadataDto,
         example: {

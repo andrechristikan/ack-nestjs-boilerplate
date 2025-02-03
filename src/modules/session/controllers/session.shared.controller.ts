@@ -47,7 +47,7 @@ export class SessionSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @AuthJwtPayload('_id') user: string,
+        @AuthJwtPayload('user') user: string,
         @PaginationQuery()
         { _search, _limit, _offset, _order }: PaginationListDto
     ): Promise<IResponsePaging<SessionListResponseDto>> {
@@ -75,7 +75,7 @@ export class SessionSharedController {
             _limit
         );
 
-        const mapped = await this.sessionService.mapList(sessions);
+        const mapped = this.sessionService.mapList(sessions);
 
         return {
             _pagination: { total, totalPage },

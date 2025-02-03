@@ -3,5 +3,5 @@ import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.acce
 
 export class AuthJwtRefreshPayloadDto extends OmitType(
     AuthJwtAccessPayloadDto,
-    ['role', 'permissions', 'type', 'email'] as const
+    ['role', 'type', 'email'] as const
 ) {}

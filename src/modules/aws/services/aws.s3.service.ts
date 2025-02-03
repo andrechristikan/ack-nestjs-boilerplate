@@ -41,6 +41,7 @@ import {
     HeadBucketCommandOutput,
     HeadBucketCommand,
     HeadBucketCommandInput,
+    ListBucketsCommand,
 } from '@aws-sdk/client-s3';
 import { IAwsS3Service } from 'src/modules/aws/interfaces/aws.s3-service.interface';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
@@ -98,6 +99,21 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             },
             region: this.config.private.region,
         });
+    }
+
+    async checkConnection(options?: IAwsS3Options): Promise<boolean> {
+        const config =
+            options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
+                ? this.config.private
+                : this.config.public;
+
+        try {
+            await config.client.send(new ListBucketsCommand({}));
+
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     async checkBucket(options?: IAwsS3Options): Promise<boolean> {

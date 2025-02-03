@@ -28,6 +28,7 @@ import { UserModule } from 'src/modules/user/user.module';
         CountryModule,
         UserModule,
         RoleModule,
+        HealthModule,
     ],
 })
 export class RoutesSystemModule {}

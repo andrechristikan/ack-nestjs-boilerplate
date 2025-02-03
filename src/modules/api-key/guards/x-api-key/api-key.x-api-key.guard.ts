@@ -1,57 +1,101 @@
-import { AuthGuard } from '@nestjs/passport';
 import {
+    CanActivate,
+    ExecutionContext,
     ForbiddenException,
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
-import { BadRequestError } from 'passport-headerapikey';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.social.apple-payload.dto';
+import { ApiKeyService } from 'src/modules/api-key/services/api-key.service';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ConfigService } from '@nestjs/config';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
+import { ApiKeyEntity } from 'src/modules/api-key/repository/entities/api-key.entity';
 
 @Injectable()
-export class ApiKeyXApiKeyGuard extends AuthGuard('x-api-key') {
-    handleRequest<IApiKeyPayload = any>(
-        err: Error,
-        apiKey: IApiKeyPayload,
-        info: BadRequestError
-    ): IApiKeyPayload {
-        if (!apiKey || info?.message === 'Missing Api Key') {
+export class ApiKeyXApiKeyGuard implements CanActivate {
+    private readonly header: string;
+
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly apiKeyService: ApiKeyService,
+        private readonly helperDateService: HelperDateService
+    ) {
+        this.header = this.configService.get<string>('auth.xApiKey.header');
+    }
+
+    async canActivate(context: ExecutionContext): Promise<boolean> {
+        const request = context
+            .switchToHttp()
+            .getRequest<IRequestApp<AuthSocialApplePayloadDto>>();
+        const xApiKey: string = request.headers[
+            `${this.header.toLowerCase()}`
+        ] as string;
+        if (!xApiKey) {
             throw new UnauthorizedException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED,
                 message: 'apiKey.error.xApiKey.required',
             });
-        } else if (err) {
-            const statusCode: number = Number.parseInt(err.message as string);
+        }
 
-            if (
-                statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND
-            ) {
-                throw new ForbiddenException({
-                    statusCode,
-                    message: 'apiKey.error.xApiKey.notFound',
-                });
-            } else if (
-                statusCode === ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE
-            ) {
-                throw new ForbiddenException({
-                    statusCode,
-                    message: 'apiKey.error.xApiKey.inactive',
-                });
-            } else if (
-                statusCode === ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED
-            ) {
-                throw new ForbiddenException({
-                    statusCode,
-                    message: 'apiKey.error.xApiKey.expired',
-                });
-            }
-
+        const xApiKeyArr: string[] = xApiKey.split(':');
+        if (xApiKeyArr.length !== 2) {
             throw new UnauthorizedException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID,
                 message: 'apiKey.error.xApiKey.invalid',
             });
         }
 
-        return apiKey;
+        const key = xApiKeyArr[0];
+        const secret = xApiKeyArr[1];
+        const today = this.helperDateService.create();
+        const apiKey: ApiKeyEntity =
+            await this.apiKeyService.findOneByActiveKey(key);
+
+        if (!apiKey) {
+            throw new ForbiddenException({
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND,
+                message: 'apiKey.error.xApiKey.notFound',
+            });
+        } else if (!apiKey.isActive) {
+            throw new ForbiddenException({
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE,
+                message: 'apiKey.error.xApiKey.inactive',
+            });
+        } else if (apiKey.startDate && apiKey.endDate) {
+            if (today > apiKey.endDate) {
+                throw new ForbiddenException({
+                    statusCode:
+                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED,
+                    message: 'apiKey.error.xApiKey.expired',
+                });
+            } else if (apiKey.startDate < today) {
+                throw new ForbiddenException({
+                    statusCode:
+                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE,
+                    message: 'apiKey.error.xApiKey.inactive',
+                });
+            }
+        }
+
+        const hashed = await this.apiKeyService.createHashApiKey(key, secret);
+        const validateApiKey: boolean =
+            await this.apiKeyService.validateHashApiKey(hashed, apiKey.hash);
+        if (!validateApiKey) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID,
+                message: 'apiKey.error.xApiKey.invalid',
+            });
+        }
+
+        request.apiKey = {
+            _id: apiKey._id,
+            name: apiKey._id,
+            key: apiKey.key,
+            type: apiKey.type,
+        };
+
+        return true;
     }
 }

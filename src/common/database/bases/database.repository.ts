@@ -281,7 +281,7 @@ export class DatabaseRepositoryBase<
         return result ? true : false;
     }
 
-    async create<T extends DatabaseEntityBase>(
+    async create<T extends Entity>(
         data: T,
         options?: IDatabaseCreateOptions
     ): Promise<EntityDocument> {
@@ -293,7 +293,7 @@ export class DatabaseRepositoryBase<
     // Action
     async update(
         find: Record<string, any>,
-        data: UpdateQuery<EntityDocument> | UpdateWithAggregationPipeline,
+        data: UpdateQuery<Entity> | UpdateWithAggregationPipeline,
         options?: IDatabaseUpdateOptions
     ): Promise<EntityDocument> {
         return this._repository.findOneAndUpdate(
@@ -364,17 +364,17 @@ export class DatabaseRepositoryBase<
     }
 
     // Bulk
-    async createMany<T extends Entity>(
+    async createMany<T = Entity>(
         data: T[],
         options?: IDatabaseCreateManyOptions
     ): Promise<InsertManyResult<Entity>> {
-        return this._repository.insertMany(data, {
+        return this._repository.insertMany(data as any, {
             ...options,
             rawResult: true,
         });
     }
 
-    async updateMany<T = any>(
+    async updateMany<T = Entity>(
         find: Record<string, any>,
         data: T,
         options?: IDatabaseUpdateManyOptions
@@ -393,7 +393,7 @@ export class DatabaseRepositoryBase<
 
     async updateManyRaw(
         find: Record<string, any>,
-        data: UpdateQuery<EntityDocument> | UpdateWithAggregationPipeline,
+        data: UpdateQuery<Entity> | UpdateWithAggregationPipeline,
         options?: IDatabaseUpdateManyOptions
     ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(

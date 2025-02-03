@@ -197,9 +197,9 @@ export class PasswordHistoryService implements IPasswordHistoryService {
         return this.passwordPeriod;
     }
 
-    async mapList(
+    mapList(
         userHistories: IPasswordHistoryDoc[] | IPasswordHistoryEntity[]
-    ): Promise<PasswordHistoryListResponseDto[]> {
+    ): PasswordHistoryListResponseDto[] {
         return plainToInstance(
             PasswordHistoryListResponseDto,
             userHistories.map(

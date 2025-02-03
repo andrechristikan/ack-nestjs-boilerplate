@@ -161,13 +161,6 @@ export class UserEntity extends DatabaseEntityBase {
         trim: true,
     })
     address?: string;
-
-    @DatabaseProp({
-        required: false,
-        maxlength: 50,
-        trim: true,
-    })
-    familyName?: string;
 }
 
 export const UserSchema = DatabaseSchema(UserEntity);

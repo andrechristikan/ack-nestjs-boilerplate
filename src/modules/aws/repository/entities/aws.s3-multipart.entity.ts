@@ -30,7 +30,6 @@ export class AwsS3MultipartEntity {
 
     @DatabaseProp({
         required: true,
-        nullable: false,
         schema: AwsS3MultipartPartSchema,
     })
     parts: AwsS3MultipartPartEntity[];

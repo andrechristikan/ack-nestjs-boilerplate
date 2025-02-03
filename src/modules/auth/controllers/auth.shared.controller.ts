@@ -21,7 +21,6 @@ import {
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
-import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { AuthService } from 'src/modules/auth/services/auth.service';
 import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
@@ -75,7 +74,7 @@ export class AuthSharedController {
     async refresh(
         @AuthJwtToken() refreshToken: string,
         @AuthJwtPayload<AuthJwtRefreshPayloadDto>()
-        { _id, session }: AuthJwtRefreshPayloadDto
+        { user: userFromPayload, session }: AuthJwtRefreshPayloadDto
     ): Promise<IResponse<AuthRefreshResponseDto>> {
         const checkActive = await this.sessionService.findLoginSession(session);
         if (!checkActive) {
@@ -85,7 +84,8 @@ export class AuthSharedController {
             });
         }
 
-        const user: IUserDoc = await this.userService.findOneActiveById(_id);
+        const user: IUserDoc =
+            await this.userService.findOneActiveById(userFromPayload);
         const token = await this.authService.refreshToken(user, refreshToken);
 
         return {
@@ -100,10 +100,10 @@ export class AuthSharedController {
     @Patch('/change-password')
     async changePassword(
         @Body() body: AuthChangePasswordRequestDto,
-        @AuthJwtPayload<AuthJwtAccessPayloadDto>()
-        { _id }: AuthJwtAccessPayloadDto
+        @AuthJwtPayload<AuthJwtAccessPayloadDto>('user')
+        userFromPayload: string
     ): Promise<void> {
-        let user = await this.userService.findOneById(_id);
+        let user = await this.userService.findOneById(userFromPayload);
 
         const passwordAttempt: boolean =
             await this.authService.getPasswordAttempt();
@@ -116,10 +116,10 @@ export class AuthSharedController {
             });
         }
 
-        const matchPassword: boolean = await this.authService.validateUser(
-            body.oldPassword,
-            user.password
-        );
+        const [matchPassword] = await Promise.all([
+            this.authService.validateUser(body.oldPassword, user.password),
+            this.userService.resetPasswordAttempt(user),
+        ]);
         if (!matchPassword) {
             await this.userService.increasePasswordAttempt(user);
 
@@ -129,15 +129,13 @@ export class AuthSharedController {
             });
         }
 
-        const password: IAuthPassword = await this.authService.createPassword(
-            body.newPassword
-        );
-
-        const checkPassword =
-            await this.passwordHistoryService.findOneUsedByUser(
+        const [password, checkPassword] = await Promise.all([
+            this.authService.createPassword(body.newPassword),
+            this.passwordHistoryService.findOneUsedByUser(
                 user._id,
                 user.password
-            );
+            ),
+        ]);
         if (checkPassword) {
             const passwordPeriod =
                 await this.passwordHistoryService.getPasswordPeriod();
@@ -164,30 +162,32 @@ export class AuthSharedController {
                 session,
             });
 
-            await this.passwordHistoryService.createByUser(
-                user,
-                {
-                    type: ENUM_PASSWORD_HISTORY_TYPE.CHANGE,
-                },
-                { session }
-            );
+            await Promise.all([
+                this.passwordHistoryService.createByUser(
+                    user,
+                    {
+                        type: ENUM_PASSWORD_HISTORY_TYPE.CHANGE,
+                    },
+                    { session }
+                ),
+                this.activityService.createByUser(
+                    user,
+                    {
+                        description: this.messageService.setMessage(
+                            'activity.user.changePassword'
+                        ),
+                    },
+                    { session }
+                ),
+                this.sessionService.updateManyRevokeByUser(user._id, {
+                    session,
+                }),
+            ]);
 
-            await this.activityService.createByUser(
-                user,
-                {
-                    description: this.messageService.setMessage(
-                        'activity.user.changePassword'
-                    ),
-                },
-                { session }
-            );
+            await session.commitTransaction();
+            await session.endSession();
 
-            // remove all session
-            await this.sessionService.updateManyRevokeByUser(user._id, {
-                session,
-            });
-
-            this.emailQueue.add(
+            await this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
                 {
                     send: { email: user.email, name: user.name },
@@ -199,9 +199,6 @@ export class AuthSharedController {
                     },
                 }
             );
-
-            await session.commitTransaction();
-            await session.endSession();
         } catch (err: any) {
             await session.abortTransaction();
             await session.endSession();

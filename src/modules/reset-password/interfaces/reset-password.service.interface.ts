@@ -35,7 +35,6 @@ export interface IResetPasswordService {
     ): Promise<ResetPasswordDoc>;
     checkActiveLatestEmailByUser(
         user: string,
-        { email }: ResetPasswordCreateRequestDto,
         options?: IDatabaseFindOneOptions
     ): Promise<IResetPasswordRequest>;
     getTotal(
@@ -44,6 +43,7 @@ export interface IResetPasswordService {
     ): Promise<number>;
     createEmailByUser(
         user: string,
+        email: string,
         options?: IDatabaseCreateOptions
     ): Promise<ResetPasswordDoc>;
     requestEmailByUser(

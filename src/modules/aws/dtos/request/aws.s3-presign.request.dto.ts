@@ -11,7 +11,6 @@ import {
 export class AwsS3PresignRequestDto {
     @ApiProperty({
         required: true,
-        nullable: false,
         example: faker.system.filePath(),
         description: 'key of aws s3',
     })
@@ -21,7 +20,6 @@ export class AwsS3PresignRequestDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: 1000,
         description: 'Unit in milliseconds',
     })
@@ -36,7 +34,6 @@ export class AwsS3PresignRequestDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: 10000,
         description: 'Unit in bytes',
     })

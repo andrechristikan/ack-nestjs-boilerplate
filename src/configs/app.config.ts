@@ -7,7 +7,7 @@ export default registerAs(
         name: process.env.APP_NAME,
         env: process.env.APP_ENV,
         timezone: process.env.APP_TIMEZONE,
-        repoVersion: version,
+        version,
         globalPrefix: '/api',
 
         http: {

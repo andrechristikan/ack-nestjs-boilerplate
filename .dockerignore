@@ -6,6 +6,7 @@ swagger.json
 .husky/
 .github/
 assets/
+src/metadata.ts
 
 # Logs
 logs/

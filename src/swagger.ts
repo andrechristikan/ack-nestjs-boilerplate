@@ -12,7 +12,7 @@ export default async function (app: NestApplication) {
 
     const docName: string = configService.get<string>('doc.name');
     const docDesc: string = configService.get<string>('doc.description');
-    const docVersion: string = configService.get<string>('doc.version');
+    const docVersion: string = configService.get<string>('app.version');
     const docPrefix: string = configService.get<string>('doc.prefix');
 
     if (env !== ENUM_APP_ENVIRONMENT.PRODUCTION) {

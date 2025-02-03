@@ -17,7 +17,7 @@ export class UserNotSelfPipe implements PipeTransform {
     async transform(value: string): Promise<string> {
         const { user } = this.request;
         if (
-            user._id === value &&
+            user.user === value &&
             user.type !== ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN
         ) {
             throw new BadRequestException({

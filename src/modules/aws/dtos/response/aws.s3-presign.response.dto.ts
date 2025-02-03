@@ -16,7 +16,6 @@ export class AwsS3PresignResponseDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: 10000,
         description: 'Expired in millisecond for each presign url',
     })

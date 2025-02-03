@@ -275,9 +275,7 @@ export class ApiKeyService implements IApiKeyService {
         return true;
     }
 
-    async mapList(
-        apiKeys: ApiKeyDoc[] | ApiKeyEntity[]
-    ): Promise<ApiKeyListResponseDto[]> {
+    mapList(apiKeys: ApiKeyDoc[] | ApiKeyEntity[]): ApiKeyListResponseDto[] {
         return plainToInstance(
             ApiKeyListResponseDto,
             apiKeys.map((e: ApiKeyDoc | ApiKeyEntity) =>
@@ -286,9 +284,7 @@ export class ApiKeyService implements IApiKeyService {
         );
     }
 
-    async mapGet(
-        apiKey: ApiKeyDoc | ApiKeyEntity
-    ): Promise<ApiKeyGetResponseDto> {
+    mapGet(apiKey: ApiKeyDoc | ApiKeyEntity): ApiKeyGetResponseDto {
         return plainToInstance(
             ApiKeyGetResponseDto,
             apiKey instanceof Document ? apiKey.toObject() : apiKey

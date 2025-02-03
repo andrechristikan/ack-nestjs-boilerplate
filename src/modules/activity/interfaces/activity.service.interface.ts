@@ -55,5 +55,5 @@ export interface IActivityService {
     ): Promise<boolean>;
     mapList(
         userHistories: IActivityDoc[] | IActivityEntity[]
-    ): Promise<ActivityListResponseDto[]>;
+    ): ActivityListResponseDto[];
 }

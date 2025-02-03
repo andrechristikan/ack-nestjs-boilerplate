@@ -55,6 +55,7 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';
 import { InjectQueue } from '@nestjs/bullmq';
+import { VerificationService } from 'src/modules/verification/services/verification.service';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -72,6 +73,7 @@ export class AuthPublicController {
         private readonly countryService: CountryService,
         private readonly roleService: RoleService,
         private readonly passwordHistoryService: PasswordHistoryService,
+        private readonly verificationService: VerificationService,
         private readonly sessionService: SessionService,
         private readonly activityService: ActivityService,
         private readonly messageService: MessageService
@@ -157,15 +159,16 @@ export class AuthPublicController {
                 },
                 { session: databaseSession }
             );
-            const token = await this.authService.createToken(
-                userWithRole,
-                session._id
-            );
 
             await this.sessionService.setLoginSession(userWithRole, session);
 
             await databaseSession.commitTransaction();
             await databaseSession.endSession();
+
+            const token = await this.authService.createToken(
+                userWithRole,
+                session._id
+            );
 
             return {
                 data: token,
@@ -187,8 +190,8 @@ export class AuthPublicController {
     @AuthSocialGoogleProtected()
     @Post('/login/social/google')
     async loginWithGoogle(
-        @AuthJwtPayload<AuthSocialGooglePayloadDto>()
-        { email }: AuthSocialGooglePayloadDto,
+        @AuthJwtPayload<AuthSocialGooglePayloadDto>('email')
+        email: string,
         @Req() request: IRequestApp
     ): Promise<IResponse<AuthLoginResponseDto>> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
@@ -235,15 +238,16 @@ export class AuthPublicController {
                 },
                 { session: databaseSession }
             );
-            const token = await this.authService.createToken(
-                userWithRole,
-                session._id
-            );
 
             await this.sessionService.setLoginSession(userWithRole, session);
 
             await databaseSession.commitTransaction();
             await databaseSession.endSession();
+
+            const token = await this.authService.createToken(
+                userWithRole,
+                session._id
+            );
 
             return {
                 data: token,
@@ -265,8 +269,8 @@ export class AuthPublicController {
     @AuthSocialAppleProtected()
     @Post('/login/social/apple')
     async loginWithApple(
-        @AuthJwtPayload<AuthSocialApplePayloadDto>()
-        { email }: AuthSocialApplePayloadDto,
+        @AuthJwtPayload<AuthSocialApplePayloadDto>('email')
+        email: string,
         @Req() request: IRequestApp
     ): Promise<IResponse<AuthLoginResponseDto>> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
@@ -313,15 +317,15 @@ export class AuthPublicController {
                 },
                 { session: databaseSession }
             );
-            const token = await this.authService.createToken(
-                userWithRole,
-                session._id
-            );
-
             await this.sessionService.setLoginSession(userWithRole, session);
 
             await databaseSession.commitTransaction();
             await databaseSession.endSession();
+
+            const token = await this.authService.createToken(
+                userWithRole,
+                session._id
+            );
 
             return {
                 data: token,
@@ -390,36 +394,57 @@ export class AuthPublicController {
                 { session }
             );
 
-            await this.passwordHistoryService.createByUser(
-                user,
-                {
-                    type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
-                },
-                { session }
-            );
-
-            await this.activityService.createByUser(
-                user,
-                {
-                    description: this.messageService.setMessage(
-                        'activity.user.signUp'
-                    ),
-                },
-                { session }
-            );
-
-            this.emailQueue.add(
-                ENUM_SEND_EMAIL_PROCESS.WELCOME,
-                {
-                    send: { email, name },
-                },
-                {
-                    debounce: {
-                        id: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${user._id}`,
-                        ttl: 1000,
+            const [verification] = await Promise.all([
+                this.verificationService.createEmailByUser(user, { session }),
+                this.passwordHistoryService.createByUser(
+                    user,
+                    {
+                        type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
                     },
-                }
-            );
+                    { session }
+                ),
+                this.activityService.createByUser(
+                    user,
+                    {
+                        description: this.messageService.setMessage(
+                            'activity.user.signUp'
+                        ),
+                    },
+                    { session }
+                ),
+            ]);
+
+            await Promise.all([
+                this.emailQueue.add(
+                    ENUM_SEND_EMAIL_PROCESS.WELCOME,
+                    {
+                        send: { email, name },
+                    },
+                    {
+                        debounce: {
+                            id: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${user._id}`,
+                            ttl: 1000,
+                        },
+                    }
+                ),
+                this.emailQueue.add(
+                    ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+                    {
+                        send: { email, name },
+                        data: {
+                            otp: verification.otp,
+                            expiredAt: verification.expiredDate,
+                            reference: verification.reference,
+                        },
+                    },
+                    {
+                        debounce: {
+                            id: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${user._id}`,
+                            ttl: 1000,
+                        },
+                    }
+                ),
+            ]);
 
             await session.commitTransaction();
             await session.endSession();

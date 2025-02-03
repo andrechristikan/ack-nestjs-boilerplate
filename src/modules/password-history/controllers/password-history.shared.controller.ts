@@ -32,7 +32,7 @@ export class PasswordHistorySharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @AuthJwtPayload('_id') user: string,
+        @AuthJwtPayload('user') user: string,
         @PaginationQuery()
         { _search, _limit, _offset, _order }: PaginationListDto
     ): Promise<IResponsePaging<PasswordHistoryListResponseDto>> {
@@ -57,8 +57,7 @@ export class PasswordHistorySharedController {
             _limit
         );
 
-        const mapped =
-            await this.passwordHistoryService.mapList(passwordHistories);
+        const mapped = this.passwordHistoryService.mapList(passwordHistories);
 
         return {
             _pagination: { total, totalPage },

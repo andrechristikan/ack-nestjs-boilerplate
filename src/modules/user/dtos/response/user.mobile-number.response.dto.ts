@@ -17,7 +17,6 @@ export class UserMobileNumberResponseDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         type: CountryShortResponseDto,
         oneOf: [{ $ref: getSchemaPath(CountryShortResponseDto) }],
     })

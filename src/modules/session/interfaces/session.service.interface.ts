@@ -54,7 +54,7 @@ export interface ISessionService {
     ): Promise<SessionDoc>;
     mapList(
         userLogins: SessionDoc[] | SessionEntity[]
-    ): Promise<SessionListResponseDto[]>;
+    ): SessionListResponseDto[];
     findLoginSession(_id: string): Promise<string>;
     setLoginSession(user: IUserDoc, session: SessionDoc): Promise<void>;
     deleteLoginSession(_id: string): Promise<void>;

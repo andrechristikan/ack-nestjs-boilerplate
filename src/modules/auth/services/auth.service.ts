@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import verifyAppleToken from 'verify-apple-id-token';
-import { LoginTicket, OAuth2Client } from 'google-auth-library';
+import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
@@ -30,7 +30,7 @@ export class AuthService implements IAuthService {
     private readonly jwtRefreshTokenSecretKey: string;
     private readonly jwtRefreshTokenExpirationTime: number;
 
-    private readonly jwtPrefixAuthorization: string;
+    private readonly jwtPrefix: string;
     private readonly jwtAudience: string;
     private readonly jwtIssuer: string;
 
@@ -71,9 +71,7 @@ export class AuthService implements IAuthService {
             'auth.jwt.refreshToken.expirationTime'
         );
 
-        this.jwtPrefixAuthorization = this.configService.get<string>(
-            'auth.jwt.prefixAuthorization'
-        );
+        this.jwtPrefix = this.configService.get<string>('auth.jwt.prefix');
         this.jwtAudience = this.configService.get<string>('auth.jwt.audience');
         this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer');
 
@@ -196,28 +194,28 @@ export class AuthService implements IAuthService {
         loginDate: Date,
         loginFrom: ENUM_AUTH_LOGIN_FROM
     ): Promise<AuthJwtAccessPayloadDto> {
-        const plainObject: any = data.toObject();
-
         return plainToInstance(AuthJwtAccessPayloadDto, {
-            _id: plainObject._id,
-            type: plainObject.role.type,
-            role: plainObject.role._id,
-            email: plainObject.email,
-            permissions: plainObject.role.permissions,
+            user: data._id,
+            type: data.role.type,
+            role: data.role._id,
+            roleIsActive: data.role.isActive,
+            email: data.email,
+            permissions: data.role.permissions,
+            status: data.status,
             session,
             loginDate,
             loginFrom,
-        });
+        } as AuthJwtAccessPayloadDto);
     }
 
     async createPayloadRefreshToken({
-        _id,
+        user,
         session,
         loginFrom,
         loginDate,
     }: AuthJwtAccessPayloadDto): Promise<AuthJwtRefreshPayloadDto> {
         return {
-            _id,
+            user,
             session,
             loginFrom,
             loginDate,
@@ -280,19 +278,19 @@ export class AuthService implements IAuthService {
                 ENUM_AUTH_LOGIN_FROM.CREDENTIAL
             );
         const accessToken: string = await this.createAccessToken(
-            user.email,
+            user._id,
             payloadAccessToken
         );
 
         const payloadRefreshToken: AuthJwtRefreshPayloadDto =
             await this.createPayloadRefreshToken(payloadAccessToken);
         const refreshToken: string = await this.createRefreshToken(
-            user.email,
+            user._id,
             payloadRefreshToken
         );
 
         return {
-            tokenType: this.jwtPrefixAuthorization,
+            tokenType: this.jwtPrefix,
             roleType,
             expiresIn: this.jwtAccessTokenExpirationTime,
             accessToken,
@@ -318,12 +316,12 @@ export class AuthService implements IAuthService {
                 payloadRefreshToken.loginFrom
             );
         const accessToken: string = await this.createAccessToken(
-            user.email,
+            user._id,
             payloadAccessToken
         );
 
         return {
-            tokenType: this.jwtPrefixAuthorization,
+            tokenType: this.jwtPrefix,
             roleType,
             expiresIn: this.jwtAccessTokenExpirationTime,
             accessToken,
@@ -347,7 +345,7 @@ export class AuthService implements IAuthService {
             clientId: [this.appleClientId, this.appleSignInClientId],
         });
 
-        return { email: payload.email };
+        return { email: payload.email, emailVerified: payload.email_verified };
     }
 
     async googleGetTokenInfo(
@@ -356,8 +354,13 @@ export class AuthService implements IAuthService {
         const login: LoginTicket = await this.googleClient.verifyIdToken({
             idToken: idToken,
         });
-        const payload = login.getPayload();
+        const payload: TokenPayload = login.getPayload();
 
-        return { email: payload.email };
+        return {
+            email: payload.email,
+            emailVerified: true,
+            name: payload.name,
+            photo: payload.picture,
+        };
     }
 }

@@ -45,7 +45,6 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
   - [API Key](#api-key)
   - [User](#user)
   - [BullMQ Board](#bullmq-board)
-    - [User](#user-1)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
@@ -57,14 +56,15 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
 -   Stateful Authorization, using `redis-session` and `JWT`.
 -   Must run MongoDB as a `replication set` for `database transactions`.
 -   If you want to implement `Google SSO`. You must have google cloud console account, then create your own Credential to get the `clientId` and `clientSecret`.
--   If you want to implement `Apple SSO`. You must have `clientId` and `signInClientId`.
--   If you change the environment value of `APP_ENV` to `production`, that will disable Documentation.
--   For monitoring, this project will use `sentry.io`, and sent uncatched error and/or `internal server error`.
+-   If you want to implement `Apple SSO`. You must have `clientId` and `signInClientId` from apple connect.
+-   If you change the environment value of `APP_ENV` to `production`, it will disable Documentation.
+-   For monitoring, this project will use `sentry.io`, and sent unhandled error and/or `internal server error`.
 
 ## TODO
 
 -   [ ] Export Module
--   [ ] Move to Stateful Authorization 1. Reset Password Module 2. Verification Module
+-   [ ] Privacy Policy
+-   [ ] Term and Condition
 
 ## Prerequisites
 
@@ -76,7 +76,7 @@ We assume that everyone who comes here is **`programmer with intermediate knowle
 4. Understand what and how database works, especially NoSql and [MongoDB.][ref-mongodb]
 5. Understand Repository Design Pattern or Data Access Object Design Pattern. It will help to read, and write the source code
 6. Understand The SOLID Principle and KISS Principle for better write the code.
-7. Optional. Understand Microservice Architecture, Clean Architecture, and/or Hexagonal Architecture. It can help you to understand more deep about this project.
+7. Optional. Understand Microservice Architecture. It can help you to understand more deep about this project.
 8. Optional. Understanding [The Twelve Factor Apps][ref-12factor]. It can help to serve the project.
 9. Optional. Understanding [Docker][ref-docker].
 
@@ -86,23 +86,23 @@ Describes which version.
 
 | Name           | Version  |
 | -------------- | -------- |
-| NestJs         | v10.x    |
-| NestJs Swagger | v8.0.x   |
-| NodeJs         | v22.11.x |
-| Typescript     | v5.6.x   |
-| Mongoose       | v10.0.x  |
+| NestJs         | v11.x    |
+| NestJs Swagger | v11.0.x  |
+| Node           | v22.11.x |
+| Typescript     | v5.7.x   |
+| Mongoose       | v11.0.x  |
 | MongoDB        | v8.x     |
 | Yarn           | v1.22.x  |
-| Docker         | v27.2.x  |
-| Docker Compose | v2.29.x  |
+| Docker         | v27.4.x  |
+| Docker Compose | v2.31.x  |
 
 ## Objective
 
 -   Easy to maintenance
 -   NestJs Habit
 -   Component based / modular folder structure
--   Stateless authentication and authorization
--   Repository Design Pattern or Data Access Layer Design Pattern
+-   Stateful authentication and authorization
+-   Repository Design Pattern
 -   Follow Community Guide Line
 -   Follow The Twelve-Factor App
 
@@ -110,7 +110,7 @@ Describes which version.
 
 ### Main Features
 
--   NestJs 10.x 🥳
+-   NestJs 11.x 🥳
 -   Typescript 🚀
 -   Production ready 🔥
 -   MongoDB integrate by using [mongoose][ref-mongoose] 🎉
@@ -134,10 +134,10 @@ Describes which version.
 
 ## Installation
 
-Before start, we need to install some packages and tools.
+Before start, we need to install some packages and/or tools.
 The recommended version is the LTS version for every tool and package.
 
-> Make sure to check that the tools have been installed successfully.
+> Make sure to check that tools have been installed successfully.
 
 1. [NodeJs][ref-nodejs]
 2. [MongoDB][ref-mongodb]
@@ -171,9 +171,9 @@ cp .env.example .env
 
 ### Database Migration and Seed
 
-By default the options of `AutoCreate` and `AutoIndex` will be `false`.
-Thats means the schema in MongoDb will not change with the latest.
-So in the first place, u need to update the schema
+> By default the options of `AutoCreate` and `AutoIndex` will be `false`. Thats means the schema in MongoDb will not change with the latest update.
+
+in the first place, you need to update the schema
 
 ```bash
 yarn migrate:schema
@@ -182,16 +182,20 @@ yarn migrate:schema
 After migrate the schema, also we need to run data seed
 
 ```bash
-yarn seed
+yarn migrate:seed
+```
+
+For rollback
+
+```bash
+yarn migrate:remove
 ```
 
 ### Template Migration
 
 > Optional
 
-The template migration will automatically upload `/templates` through AWS SES.
-
-For migrate
+The template migration will automatically upload `/email/templates` through AWS SES.
 
 ```bash
 yarn migrate:template
@@ -216,10 +220,13 @@ We need more tools to be installed.
 
 Copy `.env.example` and change value
 
-if `host.docker.internal` cannot be resolved, you must add a line in your `/etc/hosts` file to map `host.docker.internal` to the IP address `127.17.0.1`
+```bash
+cp .env.example .env
+```
 
+Run docker compose
 
-leave the rest as it, then run
+> if `host.docker.internal` cannot be resolved, you must add a line in your `/etc/hosts` file to map `host.docker.internal` to the IP address `127.17.0.1`
 
 ```bash
 docker-compose up -d
@@ -239,23 +246,12 @@ You can check The Swagger after running this project. Url `localhost:3000/docs`
 
 ## API Key
 
-api key: `v8VB0yY887lMpTA2VJMV`
-api key secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
+See it in `/migration/seeds/api-key`
+The pattern is `{key}:{secret}`
 
 ## User
 
-1. Super Admin
-    - email: `superadmin@mail.com`
-    - password: `aaAA@123`
-2. Admin
-    - email: `admin@mail.com`
-    - password: `aaAA@123`
-3. Member
-    - email: `member@mail.com`
-    - password: `aaAA@123`
-4. User
-    - email: `user@mail.com`
-    - password: `aaAA@123`
+See it in `/migration/seeds/user`
 
 ## BullMQ Board
 
@@ -263,11 +259,6 @@ api key secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
 
 You can check and monitor your queue.
 Url `localhost:3010`
-
-### User
-
--   email: `admin`
--   password: `admin123`
 
 ## License
 

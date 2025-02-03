@@ -1,5 +1,5 @@
 {
-    "list": "List of roles retrieved successfully.",
+    "list": "Roles retrieved successfully.",
     "get": "Role details fetched successfully.",
     "create": "New role created successfully.",
     "update": "Role updated successfully.",
@@ -7,9 +7,9 @@
     "inactive": "Role marked as inactive.",
     "active": "Role marked as active.",
     "error": {
-        "exist": "Role with the provided name already exists.",
-        "used": "The role is currently in use and cannot be deleted.",
+        "exist": "A role with this name already exists.",
+        "used": "This role is currently in use and cannot be deleted.",
         "isActiveInvalid": "Invalid active status for the role.",
-        "notFound": "The requested role was not found."
+        "notFound": "Sorry, we couldn't find the requested role."
     }
 }
