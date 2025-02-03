@@ -167,9 +167,9 @@ export class SessionService implements ISessionService {
         return this.sessionRepository.create<SessionEntity>(create, options);
     }
 
-    async mapList(
+    mapList(
         userLogins: SessionDoc[] | SessionEntity[]
-    ): Promise<SessionListResponseDto[]> {
+    ): SessionListResponseDto[] {
         return plainToInstance(
             SessionListResponseDto,
             userLogins.map((e: SessionDoc | SessionEntity) =>
@@ -190,7 +190,7 @@ export class SessionService implements ISessionService {
         await this.cacheManager.set(
             key,
             { user: user._id },
-            { ttl: this.refreshTokenExpiration }
+            this.refreshTokenExpiration
         );
 
         await this.sessionQueue.add(
@@ -218,7 +218,9 @@ export class SessionService implements ISessionService {
     }
 
     async resetLoginSession(): Promise<void> {
-        return this.cacheManager.reset();
+        await this.cacheManager.clear();
+
+        return;
     }
 
     async updateRevoke(

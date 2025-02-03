@@ -1,10 +1,26 @@
 import { Module } from '@nestjs/common';
+import { TerminusModule } from '@nestjs/terminus';
 import { AwsModule } from 'src/modules/aws/aws.module';
-import { HealthAwsS3Indicator } from 'src/modules/health/indicators/health.aws-s3.indicator';
+import { HealthAwsPinpointIndicator } from 'src/modules/health/indicators/health.aws-pinpoint.indicator';
+import {
+    HealthAwsS3PublicBucketIndicator,
+    HealthAwsS3PrivateBucketIndicator,
+} from 'src/modules/health/indicators/health.aws-s3.indicator';
+import { HealthAwsSESIndicator } from 'src/modules/health/indicators/health.aws-ses.indicator';
 
 @Module({
-    providers: [HealthAwsS3Indicator],
-    exports: [HealthAwsS3Indicator],
-    imports: [AwsModule],
+    providers: [
+        HealthAwsS3PublicBucketIndicator,
+        HealthAwsS3PrivateBucketIndicator,
+        HealthAwsPinpointIndicator,
+        HealthAwsSESIndicator,
+    ],
+    exports: [
+        HealthAwsS3PublicBucketIndicator,
+        HealthAwsS3PrivateBucketIndicator,
+        HealthAwsPinpointIndicator,
+        HealthAwsSESIndicator,
+    ],
+    imports: [AwsModule, TerminusModule],
 })
 export class HealthModule {}

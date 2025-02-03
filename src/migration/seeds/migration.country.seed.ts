@@ -18,7 +18,6 @@ export class MigrationCountrySeed {
                     name: 'Indonesia',
                     alpha2Code: 'ID',
                     alpha3Code: 'IDN',
-                    domain: 'id',
                     fipsCode: 'ID',
                     numericCode: '360',
                     phoneCode: ['62'],

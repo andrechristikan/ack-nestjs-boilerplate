@@ -1,4 +1,13 @@
-import { Controller, Get } from '@nestjs/common';
+import {
+    BadRequestException,
+    Body,
+    ConflictException,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Post,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
     PaginationQuery,
@@ -7,8 +16,14 @@ import {
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
-import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
+import {
+    Response,
+    ResponsePaging,
+} from 'src/common/response/decorators/response.decorator';
+import {
+    IResponse,
+    IResponsePaging,
+} from 'src/common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import {
@@ -16,9 +31,19 @@ import {
     USER_DEFAULT_POLICY_ROLE_TYPE,
     USER_DEFAULT_STATUS,
 } from 'src/modules/user/constants/user.list.constant';
-import { UserSystemListDoc } from 'src/modules/user/docs/user.system.doc';
+import {
+    UserSystemCheckEmailDoc,
+    UserSystemCheckUsernameDoc,
+    UserSystemListDoc,
+} from 'src/modules/user/docs/user.system.doc';
+import {
+    UserCheckEmailRequestDto,
+    UserCheckUsernameRequestDto,
+} from 'src/modules/user/dtos/request/user.check.request.dto';
+import { UserCheckResponseDto } from 'src/modules/user/dtos/response/user.check.response.dto';
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserService } from 'src/modules/user/services/user.service';
 
@@ -83,11 +108,70 @@ export class UserSystemController {
             _limit
         );
         const mapUsers: UserShortResponseDto[] =
-            await this.userService.mapShort(users);
+            this.userService.mapShort(users);
 
         return {
             _pagination: { total, totalPage },
             data: mapUsers,
+        };
+    }
+
+    @UserSystemCheckUsernameDoc()
+    @Response('user.checkUsername')
+    @ApiKeySystemProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/check/username')
+    async checkUsername(
+        @Body() { username }: UserCheckUsernameRequestDto
+    ): Promise<IResponse<UserCheckResponseDto>> {
+        const checkUsername = this.userService.checkUsernamePattern(username);
+        if (checkUsername) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_NOT_ALLOWED,
+                message: 'user.error.usernameNotAllowed',
+            });
+        }
+
+        const checkBadWord = this.userService.checkUsernameBadWord(username);
+        if (checkBadWord) {
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USERNAME_CONTAIN_BAD_WORD,
+                message: 'user.error.usernameContainBadWord',
+            });
+        }
+
+        const exist = await this.userService.existByUsername(username);
+        if (exist) {
+            throw new ConflictException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_EXIST,
+                message: 'user.error.usernameExist',
+            });
+        }
+
+        return {
+            data: { passed: true },
+        };
+    }
+
+    @UserSystemCheckEmailDoc()
+    @Response('user.checkEmail')
+    @ApiKeySystemProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/check/email')
+    async checkEmail(
+        @Body() { email }: UserCheckEmailRequestDto
+    ): Promise<IResponse<UserCheckResponseDto>> {
+        const exist: boolean = await this.userService.existByEmail(email);
+        if (exist) {
+            throw new ConflictException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_EXIST,
+                message: 'user.error.emailExist',
+            });
+        }
+
+        return {
+            data: { passed: true },
         };
     }
 }

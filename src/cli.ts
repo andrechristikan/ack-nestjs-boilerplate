@@ -6,6 +6,8 @@ import { MigrationModule } from 'src/migration/migration.module';
 async function bootstrap() {
     const app = await NestFactory.createApplicationContext(MigrationModule, {
         logger: ['error', 'fatal'],
+        abortOnError: true,
+        bufferLogs: false,
     });
 
     const logger = new Logger('NestJs-Seed');

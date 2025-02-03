@@ -54,7 +54,7 @@ export class CountrySystemController {
         );
 
         const mapped: CountryListResponseDto[] =
-            await this.countryService.mapList(countries);
+            this.countryService.mapList(countries);
 
         return {
             _pagination: { total, totalPage },

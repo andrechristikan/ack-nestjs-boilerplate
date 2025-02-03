@@ -112,8 +112,7 @@ export class RoleAdminController {
             total,
             _limit
         );
-        const mapRoles: RoleListResponseDto[] =
-            await this.roleService.mapList(roles);
+        const mapRoles: RoleListResponseDto[] = this.roleService.mapList(roles);
 
         return {
             _pagination: { total, totalPage },
@@ -134,7 +133,7 @@ export class RoleAdminController {
     async get(
         @Param('role', RequestRequiredPipe, RoleParsePipe) role: RoleDoc
     ): Promise<IResponse<RoleGetResponseDto>> {
-        const mapRole: RoleGetResponseDto = await this.roleService.mapGet(role);
+        const mapRole: RoleGetResponseDto = this.roleService.mapGet(role);
 
         return { data: mapRole };
     }

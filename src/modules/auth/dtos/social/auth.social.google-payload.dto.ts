@@ -1,9 +1,26 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { faker } from '@faker-js/faker';
+import { ApiProperty, PickType } from '@nestjs/swagger';
+import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
 
-export class AuthSocialGooglePayloadDto {
+export class AuthSocialGooglePayloadDto extends PickType(
+    AuthJwtAccessPayloadDto,
+    ['email'] as const
+) {
     @ApiProperty({
         required: true,
-        nullable: false,
+        example: faker.person.fullName(),
     })
-    email: string;
+    name: string;
+
+    @ApiProperty({
+        required: true,
+        example: faker.image.url(),
+    })
+    photo: string;
+
+    @ApiProperty({
+        required: true,
+        example: true,
+    })
+    emailVerified: boolean;
 }

@@ -9,7 +9,6 @@ export class ApiKeyUpdateDateRequestDto {
         description: 'Api Key start date',
         example: faker.date.recent(),
         required: false,
-        nullable: true,
     })
     @IsNotEmpty()
     @IsISO8601()
@@ -20,7 +19,6 @@ export class ApiKeyUpdateDateRequestDto {
         description: 'Api Key end date',
         example: faker.date.recent(),
         required: false,
-        nullable: true,
     })
     @IsNotEmpty()
     @IsISO8601()

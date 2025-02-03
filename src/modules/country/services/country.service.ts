@@ -106,7 +106,6 @@ export class CountryService implements ICountryService {
                 fipsCode,
                 phoneCode,
                 timeZone,
-                domain,
                 currency,
             }): CountryCreateRequestDto => {
                 const create: CountryEntity = new CountryEntity();
@@ -118,7 +117,6 @@ export class CountryService implements ICountryService {
                 create.fipsCode = fipsCode;
                 create.phoneCode = phoneCode;
                 create.timeZone = timeZone;
-                create.domain = domain;
                 create.currency = currency;
 
                 return create;
@@ -130,9 +128,9 @@ export class CountryService implements ICountryService {
         return true;
     }
 
-    async mapList(
+    mapList(
         countries: CountryDoc[] | CountryEntity[]
-    ): Promise<CountryListResponseDto[]> {
+    ): CountryListResponseDto[] {
         return plainToInstance(
             CountryListResponseDto,
             countries.map((e: CountryDoc | CountryEntity) =>
@@ -141,9 +139,9 @@ export class CountryService implements ICountryService {
         );
     }
 
-    async mapShort(
+    mapShort(
         countries: CountryDoc[] | CountryEntity[]
-    ): Promise<CountryShortResponseDto[]> {
+    ): CountryShortResponseDto[] {
         return plainToInstance(
             CountryShortResponseDto,
             countries.map((e: CountryDoc | CountryEntity) =>

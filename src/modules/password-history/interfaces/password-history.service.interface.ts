@@ -68,5 +68,5 @@ export interface IPasswordHistoryService {
     ): Promise<boolean>;
     mapList(
         userHistories: IPasswordHistoryDoc[] | IPasswordHistoryEntity[]
-    ): Promise<PasswordHistoryListResponseDto[]>;
+    ): PasswordHistoryListResponseDto[];
 }

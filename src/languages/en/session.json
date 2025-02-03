@@ -1,8 +1,8 @@
 {
-    "list": "List of sessions retrieved successfully.",
-    "revoke": "Successfully revoke session",
+    "list": "Sessions retrieved successfully.",
+    "revoke": "Session revoked successfully.",
     "error": {
-        "notFound": "Session not found",
-        "forbiddenRevoke": "You cannot revoke your current session"
+        "notFound": "Sorry, we couldn't find the session.",
+        "forbiddenRevoke": "You cannot revoke your current session."
     }
 }

@@ -17,7 +17,6 @@ export class RoleUpdateRequestDto {
         description: 'Description of role',
         example: faker.lorem.sentence(),
         required: false,
-        nullable: true,
     })
     @IsString()
     @IsOptional()

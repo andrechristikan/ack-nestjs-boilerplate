@@ -112,9 +112,9 @@ export class ActivityService implements IActivityService {
         return true;
     }
 
-    async mapList(
+    mapList(
         userHistories: IActivityDoc[] | IActivityEntity[]
-    ): Promise<ActivityListResponseDto[]> {
+    ): ActivityListResponseDto[] {
         return plainToInstance(
             ActivityListResponseDto,
             userHistories.map((e: IActivityDoc | IActivityEntity) =>

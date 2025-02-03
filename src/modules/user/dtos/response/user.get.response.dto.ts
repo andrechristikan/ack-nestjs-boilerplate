@@ -14,7 +14,6 @@ import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.
 export class UserGetResponseDto extends DatabaseDto {
     @ApiProperty({
         required: true,
-        nullable: false,
         maxLength: 100,
         minLength: 1,
     })
@@ -22,7 +21,6 @@ export class UserGetResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         maxLength: 50,
         minLength: 3,
     })
@@ -38,7 +36,6 @@ export class UserGetResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: faker.internet.email(),
         maxLength: 100,
     })
@@ -46,7 +43,6 @@ export class UserGetResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: faker.string.uuid(),
     })
     role: string;
@@ -57,14 +53,12 @@ export class UserGetResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: faker.date.future(),
     })
     passwordExpired: Date;
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: faker.date.past(),
     })
     passwordCreated: Date;
@@ -75,14 +69,12 @@ export class UserGetResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: faker.date.recent(),
     })
     signUpDate: Date;
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: ENUM_USER_SIGN_UP_FROM.ADMIN,
         enum: ENUM_USER_SIGN_UP_FROM,
     })
@@ -94,14 +86,12 @@ export class UserGetResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        nullable: false,
         example: ENUM_USER_STATUS.ACTIVE,
         enum: ENUM_USER_STATUS,
     })
     status: ENUM_USER_STATUS;
 
     @ApiProperty({
-        nullable: true,
         required: false,
         type: AwsS3ResponseDto,
         oneOf: [{ $ref: getSchemaPath(AwsS3ResponseDto) }],
@@ -113,7 +103,6 @@ export class UserGetResponseDto extends DatabaseDto {
         example: ENUM_USER_GENDER.MALE,
         enum: ENUM_USER_GENDER,
         required: false,
-        nullable: true,
     })
     gender?: ENUM_USER_GENDER;
 

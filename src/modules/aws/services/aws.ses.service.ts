@@ -7,6 +7,7 @@ import {
     DeleteTemplateCommand,
     DeleteTemplateCommandInput,
     DeleteTemplateCommandOutput,
+    GetSendQuotaCommand,
     GetTemplateCommand,
     GetTemplateCommandInput,
     GetTemplateCommandOutput,
@@ -49,6 +50,19 @@ export class AwsSESService implements IAwsSESService {
             },
             region: this.configService.get<string>('aws.ses.region'),
         });
+    }
+
+    async checkConnection(): Promise<boolean> {
+        try {
+            await this.sesClient.send<
+                ListTemplatesCommandInput,
+                ListTemplatesCommandOutput
+            >(new GetSendQuotaCommand({}));
+
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     async listTemplates(

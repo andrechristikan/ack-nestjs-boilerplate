@@ -18,7 +18,7 @@ export class MigrationTemplateSeed {
         }
 
         try {
-            await this.emailService.importWelcomeAdmin();
+            await this.emailService.importCreate();
         } catch (err: any) {
             throw new Error(err);
         }
@@ -31,6 +31,30 @@ export class MigrationTemplateSeed {
 
         try {
             await this.emailService.importTempPassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.importResetPassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.importVerification();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.importEmailVerified();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.importMobileNumberVerified();
         } catch (err: any) {
             throw new Error(err);
         }
@@ -50,7 +74,7 @@ export class MigrationTemplateSeed {
         }
 
         try {
-            await this.emailService.deleteWelcomeAdmin();
+            await this.emailService.deleteCreate();
         } catch (err: any) {
             throw new Error(err);
         }
@@ -63,6 +87,30 @@ export class MigrationTemplateSeed {
 
         try {
             await this.emailService.deleteTempPassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.deleteResetPassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.deleteVerification();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.deleteEmailVerified();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.deleteMobileNumberVerified();
         } catch (err: any) {
             throw new Error(err);
         }

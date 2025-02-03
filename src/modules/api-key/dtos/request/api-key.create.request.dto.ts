@@ -25,7 +25,6 @@ export class ApiKeyCreateRawRequestDto extends ApiKeyCreateRequestDto {
         name: 'key',
         example: faker.string.alphanumeric(10),
         required: true,
-        nullable: false,
     })
     @IsNotEmpty()
     @IsString()
@@ -36,7 +35,6 @@ export class ApiKeyCreateRawRequestDto extends ApiKeyCreateRequestDto {
         name: 'secret',
         example: faker.string.alphanumeric(20),
         required: true,
-        nullable: false,
     })
     @IsNotEmpty()
     @IsString()

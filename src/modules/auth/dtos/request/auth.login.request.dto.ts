@@ -5,7 +5,6 @@ import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 export class AuthLoginRequestDto {
     @ApiProperty({
         required: true,
-        nullable: false,
         example: faker.internet.email(),
     })
     @IsString()
@@ -16,7 +15,6 @@ export class AuthLoginRequestDto {
     @ApiProperty({
         description: 'string password',
         required: true,
-        nullable: false,
         example: faker.string.alphanumeric(10),
     })
     @IsString()

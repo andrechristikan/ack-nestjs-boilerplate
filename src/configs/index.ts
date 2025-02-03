@@ -10,6 +10,9 @@ import MessageConfig from 'src/configs/message.config';
 import EmailConfig from 'src/configs/email.config';
 import RedisConfig from 'src/configs/redis.config';
 import DebugConfig from 'src/configs/debug.config';
+import ResetPasswordConfig from 'src/configs/reset-password.config';
+import VerificationConfig from 'src/configs/verification.config';
+import HomeConfig from 'src/configs/home.config';
 
 export default [
     AppConfig,
@@ -24,4 +27,7 @@ export default [
     EmailConfig,
     RedisConfig,
     DebugConfig,
+    ResetPasswordConfig,
+    VerificationConfig,
+    HomeConfig,
 ];

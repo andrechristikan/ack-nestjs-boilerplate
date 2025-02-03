@@ -16,6 +16,7 @@ import {
 } from 'src/modules/aws/dtos/aws.ses.dto';
 
 export interface IAwsSESService {
+    checkConnection(): Promise<boolean>;
     listTemplates(nextToken?: string): Promise<ListTemplatesCommandOutput>;
     getTemplate({
         name,

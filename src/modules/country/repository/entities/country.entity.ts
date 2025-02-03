@@ -81,11 +81,6 @@ export class CountryEntity extends DatabaseEntityBase {
         required: true,
     })
     currency: string;
-
-    @DatabaseProp({
-        required: false,
-    })
-    domain?: string;
 }
 
 export const CountrySchema = DatabaseSchema(CountryEntity);

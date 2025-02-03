@@ -42,7 +42,8 @@
         "presign",
         "presigner",
         "presigned",
-        "bullmq"
+        "bullmq",
+        "uuidv"
     ],
     "ignorePaths": [
         "node_modules/**",

@@ -1,0 +1,15 @@
+export const LOGGER_SENSITIVE_FIELDS = [
+    'password',
+    'newPassword',
+    'oldPassword',
+    'token',
+    'authorization',
+    'bearer',
+    'cookie',
+    'secret',
+    'credential',
+    'jwt',
+    'token',
+    'x-api-key',
+    'set-cookie',
+];

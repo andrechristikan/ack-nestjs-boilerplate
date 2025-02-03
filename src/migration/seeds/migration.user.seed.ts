@@ -44,57 +44,83 @@ export class MigrationUserSeed {
         const country: CountryDoc =
             await this.countryService.findOneByAlpha2('ID');
 
-        const memberRole: RoleDoc =
-            await this.roleService.findOneByName('member');
-        const userRole: RoleDoc = await this.roleService.findOneByName('user');
+        const individualRole: RoleDoc =
+            await this.roleService.findOneByName('individual');
+        const premiumRole: RoleDoc =
+            await this.roleService.findOneByName('premium');
+        const businessRole: RoleDoc =
+            await this.roleService.findOneByName('business');
 
         try {
-            const [superAdmin, admin, member, user] = await Promise.all([
-                this.userService.create(
-                    {
-                        role: superAdminRole._id,
-                        name: 'superadmin',
-                        email: 'superadmin@mail.com',
-                        country: country._id,
-                        gender: ENUM_USER_GENDER.MALE,
-                    },
-                    passwordHash,
-                    ENUM_USER_SIGN_UP_FROM.SEED
-                ),
-                this.userService.create(
-                    {
-                        role: adminRole._id,
-                        name: 'admin',
-                        email: 'admin@mail.com',
-                        country: country._id,
-                        gender: ENUM_USER_GENDER.MALE,
-                    },
-                    passwordHash,
-                    ENUM_USER_SIGN_UP_FROM.SEED
-                ),
-                this.userService.create(
-                    {
-                        role: memberRole._id,
-                        name: 'member',
-                        email: 'member@mail.com',
-                        country: country._id,
-                        gender: ENUM_USER_GENDER.MALE,
-                    },
-                    passwordHash,
-                    ENUM_USER_SIGN_UP_FROM.SEED
-                ),
-                this.userService.create(
-                    {
-                        role: userRole._id,
-                        name: 'user',
-                        email: 'user@mail.com',
-                        country: country._id,
-                        gender: ENUM_USER_GENDER.MALE,
-                    },
-                    passwordHash,
-                    ENUM_USER_SIGN_UP_FROM.SEED
-                ),
-            ]);
+            const [superAdmin, admin, individual, premium, business] =
+                await Promise.all([
+                    this.userService.create(
+                        {
+                            role: superAdminRole._id,
+                            name: 'superadmin',
+                            email: 'superadmin@mail.com',
+                            country: country._id,
+                            gender: ENUM_USER_GENDER.MALE,
+                        },
+                        passwordHash,
+                        ENUM_USER_SIGN_UP_FROM.SEED
+                    ),
+                    this.userService.create(
+                        {
+                            role: adminRole._id,
+                            name: 'admin',
+                            email: 'admin@mail.com',
+                            country: country._id,
+                            gender: ENUM_USER_GENDER.MALE,
+                        },
+                        passwordHash,
+                        ENUM_USER_SIGN_UP_FROM.SEED
+                    ),
+                    this.userService.create(
+                        {
+                            role: individualRole._id,
+                            name: 'individual',
+                            email: 'individual@mail.com',
+                            country: country._id,
+                            gender: ENUM_USER_GENDER.MALE,
+                        },
+                        passwordHash,
+                        ENUM_USER_SIGN_UP_FROM.SEED
+                    ),
+                    this.userService.create(
+                        {
+                            role: premiumRole._id,
+                            name: 'premium',
+                            email: 'premium@mail.com',
+                            country: country._id,
+                            gender: ENUM_USER_GENDER.MALE,
+                        },
+                        passwordHash,
+                        ENUM_USER_SIGN_UP_FROM.SEED
+                    ),
+                    this.userService.create(
+                        {
+                            role: premiumRole._id,
+                            name: 'premium',
+                            email: 'premium@mail.com',
+                            country: country._id,
+                            gender: ENUM_USER_GENDER.MALE,
+                        },
+                        passwordHash,
+                        ENUM_USER_SIGN_UP_FROM.SEED
+                    ),
+                    this.userService.create(
+                        {
+                            role: businessRole._id,
+                            name: 'business',
+                            email: 'business@mail.com',
+                            country: country._id,
+                            gender: ENUM_USER_GENDER.MALE,
+                        },
+                        passwordHash,
+                        ENUM_USER_SIGN_UP_FROM.SEED
+                    ),
+                ]);
 
             const promises = [
                 this.activityService.createByAdmin(superAdmin, {
@@ -117,23 +143,33 @@ export class MigrationUserSeed {
                     by: superAdmin._id,
                     type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
                 }),
-                this.activityService.createByAdmin(member, {
+                this.activityService.createByAdmin(individual, {
                     by: superAdmin._id,
                     description: this.messageService.setMessage(
                         'activity.user.createByAdmin'
                     ),
                 }),
-                this.passwordHistoryService.createByAdmin(member, {
+                this.passwordHistoryService.createByAdmin(individual, {
                     by: superAdmin._id,
                     type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
                 }),
-                this.activityService.createByAdmin(user, {
+                this.activityService.createByAdmin(premium, {
                     by: superAdmin._id,
                     description: this.messageService.setMessage(
                         'activity.user.createByAdmin'
                     ),
                 }),
-                this.passwordHistoryService.createByAdmin(user, {
+                this.passwordHistoryService.createByAdmin(premium, {
+                    by: superAdmin._id,
+                    type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
+                }),
+                this.activityService.createByAdmin(business, {
+                    by: superAdmin._id,
+                    description: this.messageService.setMessage(
+                        'activity.user.createByAdmin'
+                    ),
+                }),
+                this.passwordHistoryService.createByAdmin(business, {
                     by: superAdmin._id,
                     type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
                 }),
@@ -141,6 +177,7 @@ export class MigrationUserSeed {
 
             await Promise.all(promises);
         } catch (err: any) {
+            console.error('err', err);
             throw new Error(err);
         }
 
@@ -153,11 +190,11 @@ export class MigrationUserSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.userService.deleteMany({});
             await this.activityService.deleteMany({});
             await this.passwordHistoryService.deleteMany({});
             await this.sessionService.resetLoginSession();
             await this.sessionService.deleteMany({});
+            await this.userService.deleteMany({});
         } catch (err: any) {
             throw new Error(err);
         }

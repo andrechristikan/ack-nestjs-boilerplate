@@ -8,12 +8,10 @@ import { Reflector } from '@nestjs/core';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from 'src/modules/policy/factories/policy.factory';
-import {
-    IPolicyAbility,
-    IPolicyAbilityHandlerCallback,
-} from 'src/modules/policy/interfaces/policy.interface';
+import { IPolicyAbility } from 'src/modules/policy/interfaces/policy.interface';
 import { POLICY_ABILITY_META_KEY } from 'src/modules/policy/constants/policy.constant';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/enums/auth.status-code.enum';
 
 @Injectable()
 export class PolicyAbilityGuard implements CanActivate {
@@ -23,18 +21,28 @@ export class PolicyAbilityGuard implements CanActivate {
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const policy =
+        const policies =
             this.reflector.get<IPolicyAbility[]>(
                 POLICY_ABILITY_META_KEY,
                 context.getHandler()
             ) || [];
 
-        const { user } = context.switchToHttp().getRequest<IRequestApp>();
-        const { permissions, type } = user;
+        const { __user, user } = context
+            .switchToHttp()
+            .getRequest<IRequestApp>();
+
+        if (!__user || !user) {
+            throw new ForbiddenException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        }
+
+        const { type } = user;
 
         if (type === ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN) {
             return true;
-        } else if (policy.length === 0) {
+        } else if (policies.length === 0) {
             throw new ForbiddenException({
                 statusCode:
                     ENUM_POLICY_STATUS_CODE_ERROR.ABILITY_PREDEFINED_NOT_FOUND,
@@ -42,18 +50,14 @@ export class PolicyAbilityGuard implements CanActivate {
             });
         }
 
-        const ability =
-            this.policyAbilityFactory.defineFromRequest(permissions);
-
-        const policyHandler: IPolicyAbilityHandlerCallback[] =
-            this.policyAbilityFactory.handlerAbilities(policy);
-        const check: boolean = policyHandler.every(
-            (handler: IPolicyAbilityHandlerCallback) => {
-                return handler(ability);
-            }
+        const userAbilities = this.policyAbilityFactory.createForUser(
+            __user.role.permissions
         );
-
-        if (!check) {
+        const policyHandler = this.policyAbilityFactory.handlerAbilities(
+            userAbilities,
+            policies
+        );
+        if (!policyHandler) {
             throw new ForbiddenException({
                 statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ABILITY_FORBIDDEN,
                 message: 'policy.error.abilityForbidden',

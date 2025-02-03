@@ -79,7 +79,7 @@ export interface IRoleService {
         data: RoleCreateRequestDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
-    mapList(roles: RoleDoc[] | RoleEntity[]): Promise<RoleListResponseDto[]>;
-    mapGet(role: RoleDoc | RoleEntity): Promise<RoleGetResponseDto>;
-    mapShort(roles: RoleDoc[] | RoleEntity[]): Promise<RoleShortResponseDto[]>;
+    mapList(roles: RoleDoc[] | RoleEntity[]): RoleListResponseDto[];
+    mapGet(role: RoleDoc | RoleEntity): RoleGetResponseDto;
+    mapShort(roles: RoleDoc[] | RoleEntity[]): RoleShortResponseDto[];
 }

@@ -39,6 +39,15 @@ export class AppEnvDto {
 
     @IsNotEmpty()
     @IsString()
+    HOME_NAME: string;
+
+    @IsNotEmpty()
+    @IsUrl()
+    @IsString()
+    HOME_URL: string;
+
+    @IsNotEmpty()
+    @IsString()
     @MinLength(1)
     HTTP_HOST: string;
 
@@ -196,9 +205,4 @@ export class AppEnvDto {
     @IsOptional()
     @IsString()
     SENTRY_DSN?: string;
-
-    @IsNotEmpty()
-    @IsUrl()
-    @IsString()
-    CLIENT_URL: string;
 }

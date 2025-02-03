@@ -35,5 +35,13 @@ export default registerAs(
             },
             region: process.env.AWS_SES_REGION,
         },
+        pinpoint: {
+            credential: {
+                key: process.env.AWS_PINPOINT_CREDENTIAL_KEY,
+                secret: process.env.AWS_PINPOINT_CREDENTIAL_SECRET,
+            },
+            region: process.env.AWS_PINPOINT_REGION,
+            applicationId: process.env.AWS_PINPOINT_APPLICATION_ID,
+        },
     })
 );

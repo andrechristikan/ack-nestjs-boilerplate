@@ -16,12 +16,12 @@ import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
 import { FileModule } from 'src/common/file/file.module';
 import { BullModule } from '@nestjs/bullmq';
-import { CacheModule, CacheOptions, CacheStore } from '@nestjs/cache-manager';
-import { redisStore } from 'cache-manager-redis-store';
+import { CacheModule, CacheOptions } from '@nestjs/cache-manager';
 import { DatabaseOptionService } from 'src/common/database/services/database.options.service';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { LoggerOptionModule } from 'src/common/logger/logger.option.module';
 import { LoggerOptionService } from 'src/common/logger/services/logger.option.service';
+import KeyvRedis from '@keyv/redis';
 
 @Module({
     controllers: [],
@@ -66,28 +66,29 @@ import { LoggerOptionService } from 'src/common/logger/services/logger.option.se
             imports: [ConfigModule],
             useFactory: async (
                 configService: ConfigService
-            ): Promise<CacheOptions> => {
-                const store = await redisStore({
-                    socket: {
-                        host: configService.get<string>('redis.cached.host'),
-                        port: configService.get<number>('redis.cached.port'),
-                        tls: configService.get<boolean>('redis.cached.tls'),
-                    },
-                    username: configService.get<string>(
-                        'redis.cached.username'
-                    ),
-                    password: configService.get<string>(
-                        'redis.cached.password'
-                    ),
-                    ttl: configService.get<number>('redis.cached.ttl'),
-                });
-
-                return {
-                    store: store as any as CacheStore,
-                    max: configService.get<number>('redis.cached.max'),
-                    ttl: configService.get<number>('redis.cached.ttl'),
-                };
-            },
+            ): Promise<CacheOptions> => ({
+                max: configService.get<number>('redis.cached.max'),
+                ttl: configService.get<number>('redis.cached.ttl'),
+                stores: [
+                    new KeyvRedis({
+                        socket: {
+                            host: configService.get<string>(
+                                'redis.cached.host'
+                            ),
+                            port: configService.get<number>(
+                                'redis.cached.port'
+                            ),
+                            tls: configService.get<boolean>('redis.cached.tls'),
+                        },
+                        username: configService.get<string>(
+                            'redis.cached.username'
+                        ),
+                        password: configService.get<string>(
+                            'redis.cached.password'
+                        ),
+                    }),
+                ],
+            }),
             inject: [ConfigService],
         }),
         PinoLoggerModule.forRootAsync({

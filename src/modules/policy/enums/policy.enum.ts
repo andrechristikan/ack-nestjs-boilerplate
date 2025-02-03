@@ -8,16 +8,6 @@ export enum ENUM_POLICY_ACTION {
     IMPORT = 'import',
 }
 
-export enum ENUM_POLICY_REQUEST_ACTION {
-    MANAGE,
-    READ,
-    CREATE,
-    UPDATE,
-    DELETE,
-    EXPORT,
-    IMPORT,
-}
-
 export enum ENUM_POLICY_SUBJECT {
     ALL = 'ALL',
     AUTH = 'AUTH',
@@ -34,5 +24,4 @@ export enum ENUM_POLICY_ROLE_TYPE {
     SUPER_ADMIN = 'SUPER_ADMIN',
     ADMIN = 'ADMIN',
     USER = 'USER',
-    MEMBER = 'MEMBER',
 }

@@ -41,7 +41,7 @@ export class AppValidationFilter implements ExceptionFilter {
         const xVersion =
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');
-        const xRepoVersion = this.configService.get<string>('app.repoVersion');
+        const xRepoVersion = this.configService.get<string>('app.version');
         const metadata: ResponseMetadataDto = {
             language: xLanguage,
             timestamp: xTimestamp,

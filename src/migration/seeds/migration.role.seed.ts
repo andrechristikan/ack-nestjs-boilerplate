@@ -32,12 +32,17 @@ export class MigrationRoleSeed {
                 })),
             },
             {
-                name: 'member',
-                type: ENUM_POLICY_ROLE_TYPE.MEMBER,
+                name: 'individual',
+                type: ENUM_POLICY_ROLE_TYPE.USER,
                 permissions: [],
             },
             {
-                name: 'user',
+                name: 'premium',
+                type: ENUM_POLICY_ROLE_TYPE.USER,
+                permissions: [],
+            },
+            {
+                name: 'business',
                 type: ENUM_POLICY_ROLE_TYPE.USER,
                 permissions: [],
             },

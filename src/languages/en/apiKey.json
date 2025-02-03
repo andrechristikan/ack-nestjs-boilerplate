@@ -1,24 +1,24 @@
 {
-    "list": "List of apikeys retrieved successfully.",
-    "get": "Apikey details fetched successfully.",
-    "create": "New apikey created successfully.",
-    "reset": "Apikey reset successfully.",
-    "update": "Apikey updated successfully.",
-    "inactive": "Apikey marked as inactive.",
-    "active": "Apikey marked as active.",
-    "updateDate": "Apikey date updated successfully.",
-    "delete": "Apikey deleted successfully.",
+    "list": "Here's your complete list of API keys.",
+    "get": "Here are the API key details you requested.",
+    "create": "Great! Your new API key has been created successfully.",
+    "reset": "Perfect! Your API key has been reset and is ready to use.",
+    "update": "Your API key has been updated successfully.",
+    "inactive": "Your API key has been set to inactive mode.",
+    "active": "Your API key is now active and ready to use.",
+    "updateDate": "API key dates have been refreshed successfully.",
+    "delete": "Your API key has been safely removed.",
     "error": {
         "xApiKey": {
-            "required": "xApikey is required.",
-            "notFound": "xApikey not found.",
-            "inactive": "xApikey is inactive.",
-            "expired": "xApikey has expired.",
-            "invalid": "xApikey is invalid.",
-            "forbidden": "xApikey does not have permission."
+            "required": "Please provide your API key to continue.",
+            "notFound": "We couldn't find this API key in our system.",
+            "inactive": "This API key is currently inactive.",
+            "expired": "This API key has expired. Please generate a new one.",
+            "invalid": "Sorry, this API key appears to be invalid.",
+            "forbidden": "You don't have permission to use this API key."
         },
-        "expired": "Apikey has expired.",
-        "isActiveInvalid": "The active status of Apikey is invalid.",
-        "notFound": "Apikey not found."
+        "expired": "This API key has expired. Would you like to create a new one?",
+        "isActiveInvalid": "There seems to be an issue with the API key's status.",
+        "notFound": "We couldn't locate this API key. Please check and try again."
     }
 }

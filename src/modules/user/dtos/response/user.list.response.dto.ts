@@ -28,7 +28,6 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
 ] as const) {
     @ApiProperty({
         required: true,
-        nullable: false,
         type: RoleListResponseDto,
         oneOf: [{ $ref: getSchemaPath(RoleListResponseDto) }],
     })
@@ -37,7 +36,6 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
 
     @ApiProperty({
         required: true,
-        nullable: false,
         type: CountryShortResponseDto,
         oneOf: [{ $ref: getSchemaPath(CountryShortResponseDto) }],
     })

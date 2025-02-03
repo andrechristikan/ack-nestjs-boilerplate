@@ -21,7 +21,7 @@ import {
     IDatabaseUpdateManyOptions,
     IDatabaseUpdateOptions,
 } from 'src/common/database/interfaces/database.interface';
-import MongoDB from 'mongodb';
+import { UpdateResult, DeleteResult, InsertManyResult } from 'mongodb';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
@@ -281,7 +281,7 @@ export class DatabaseRepositoryBase<
         return result ? true : false;
     }
 
-    async create<T extends DatabaseEntityBase>(
+    async create<T extends Entity>(
         data: T,
         options?: IDatabaseCreateOptions
     ): Promise<EntityDocument> {
@@ -293,7 +293,7 @@ export class DatabaseRepositoryBase<
     // Action
     async update(
         find: Record<string, any>,
-        data: UpdateQuery<EntityDocument> | UpdateWithAggregationPipeline,
+        data: UpdateQuery<Entity> | UpdateWithAggregationPipeline,
         options?: IDatabaseUpdateOptions
     ): Promise<EntityDocument> {
         return this._repository.findOneAndUpdate(
@@ -364,21 +364,21 @@ export class DatabaseRepositoryBase<
     }
 
     // Bulk
-    async createMany<T extends Entity>(
+    async createMany<T = Entity>(
         data: T[],
         options?: IDatabaseCreateManyOptions
-    ): Promise<MongoDB.InsertManyResult> {
-        return this._repository.insertMany(data, {
+    ): Promise<InsertManyResult<Entity>> {
+        return this._repository.insertMany(data as any, {
             ...options,
             rawResult: true,
         });
     }
 
-    async updateMany<T = any>(
+    async updateMany<T = Entity>(
         find: Record<string, any>,
         data: T,
         options?: IDatabaseUpdateManyOptions
-    ): Promise<MongoDB.UpdateResult> {
+    ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
             {
                 ...find,
@@ -393,9 +393,9 @@ export class DatabaseRepositoryBase<
 
     async updateManyRaw(
         find: Record<string, any>,
-        data: UpdateQuery<EntityDocument> | UpdateWithAggregationPipeline,
+        data: UpdateQuery<Entity> | UpdateWithAggregationPipeline,
         options?: IDatabaseUpdateManyOptions
-    ): Promise<MongoDB.UpdateResult> {
+    ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
             {
                 ...find,
@@ -409,7 +409,7 @@ export class DatabaseRepositoryBase<
     async deleteMany(
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
-    ): Promise<MongoDB.DeleteResult> {
+    ): Promise<DeleteResult> {
         return this._repository.deleteMany(
             {
                 ...find,
@@ -423,7 +423,7 @@ export class DatabaseRepositoryBase<
         find: Record<string, any>,
         dto?: DatabaseSoftDeleteDto,
         options?: IDatabaseOptions
-    ): Promise<MongoDB.UpdateResult> {
+    ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
             {
                 ...find,
@@ -443,7 +443,7 @@ export class DatabaseRepositoryBase<
     async restoreMany(
         find: Record<string, any>,
         options?: IDatabaseOptions
-    ): Promise<MongoDB.UpdateResult> {
+    ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
             {
                 ...find,

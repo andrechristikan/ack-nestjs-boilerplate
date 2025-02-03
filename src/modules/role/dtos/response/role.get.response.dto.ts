@@ -10,7 +10,6 @@ export class RoleGetResponseDto extends DatabaseDto {
         description: 'Name of role',
         example: faker.person.jobTitle(),
         required: true,
-        nullable: false,
     })
     name: string;
 
@@ -18,7 +17,6 @@ export class RoleGetResponseDto extends DatabaseDto {
         description: 'Description of role',
         example: faker.lorem.sentence(),
         required: false,
-        nullable: true,
     })
     description?: string;
 
@@ -26,7 +24,6 @@ export class RoleGetResponseDto extends DatabaseDto {
         description: 'Active flag of role',
         example: true,
         required: true,
-        nullable: false,
     })
     isActive: boolean;
 
@@ -34,7 +31,7 @@ export class RoleGetResponseDto extends DatabaseDto {
         description: 'Representative for role type',
         example: ENUM_POLICY_ROLE_TYPE.ADMIN,
         required: true,
-        nullable: false,
+
         enum: ENUM_POLICY_ROLE_TYPE,
     })
     type: ENUM_POLICY_ROLE_TYPE;
@@ -43,7 +40,7 @@ export class RoleGetResponseDto extends DatabaseDto {
         type: RolePermissionDto,
         oneOf: [{ $ref: getSchemaPath(RolePermissionDto) }],
         required: true,
-        nullable: false,
+
         isArray: true,
         default: [],
     })

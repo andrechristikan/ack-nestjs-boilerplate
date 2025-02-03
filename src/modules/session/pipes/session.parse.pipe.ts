@@ -43,7 +43,7 @@ export class SessionActiveByUserParsePipe implements PipeTransform {
 
         const session = await this.sessionService.findOneActiveByIdAndUser(
             value,
-            user._id
+            user.user
         );
         if (!session) {
             throw new NotFoundException({

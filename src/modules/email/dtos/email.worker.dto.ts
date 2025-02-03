@@ -24,7 +24,6 @@ export class EmailWorkerDto {
 
     @ApiProperty({
         required: false,
-        type: 'object',
     })
     @IsObject()
     @IsOptional()

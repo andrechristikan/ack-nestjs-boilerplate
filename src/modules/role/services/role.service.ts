@@ -195,9 +195,7 @@ export class RoleService implements IRoleService {
         return true;
     }
 
-    async mapList(
-        roles: RoleDoc[] | RoleEntity[]
-    ): Promise<RoleListResponseDto[]> {
+    mapList(roles: RoleDoc[] | RoleEntity[]): RoleListResponseDto[] {
         return plainToInstance(
             RoleListResponseDto,
             roles.map((e: RoleDoc | RoleEntity) =>
@@ -206,16 +204,14 @@ export class RoleService implements IRoleService {
         );
     }
 
-    async mapGet(role: RoleDoc | RoleEntity): Promise<RoleGetResponseDto> {
+    mapGet(role: RoleDoc | RoleEntity): RoleGetResponseDto {
         return plainToInstance(
             RoleGetResponseDto,
             role instanceof Document ? role.toObject() : role
         );
     }
 
-    async mapShort(
-        roles: RoleDoc[] | RoleEntity[]
-    ): Promise<RoleShortResponseDto[]> {
+    mapShort(roles: RoleDoc[] | RoleEntity[]): RoleShortResponseDto[] {
         return plainToInstance(
             RoleShortResponseDto,
             roles.map((e: RoleDoc | RoleEntity) =>

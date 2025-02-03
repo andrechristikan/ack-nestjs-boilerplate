@@ -4,15 +4,19 @@
     "compilerOptions": {
         "builder": {
             "type": "swc",
-            "typecCheck": true,
             "options": {
                 "swcrcPath": ".swcrc"
             }
         },
+        "typeCheck": true,
         "plugins": ["@nestjs/swagger"],
         "assets": [
             {
                 "include": "languages/**/*",
+                "outDir": "dist"
+            },
+            {
+                "include": "**/**/templates/*",
                 "outDir": "dist"
             }
         ],

@@ -15,7 +15,7 @@ import { Logger as PinoLogger } from 'nestjs-pino';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule, {
-        abortOnError: false,
+        abortOnError: true,
         bufferLogs: false,
     });
 

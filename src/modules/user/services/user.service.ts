@@ -44,16 +44,22 @@ import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
 import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
-import { CountryTableName } from 'src/modules/country/repository/entities/country.entity';
+import {
+    CountryDoc,
+    CountryTableName,
+} from 'src/modules/country/repository/entities/country.entity';
 import { RoleTableName } from 'src/modules/role/repository/entities/role.entity';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
+import Filter from 'bad-words';
 
 @Injectable()
 export class UserService implements IUserService {
     private readonly usernamePrefix: string;
     private readonly usernamePattern: RegExp;
     private readonly uploadPath: string;
+
+    private readonly filterBadWord: Filter = new Filter({});
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -306,6 +312,7 @@ export class UserService implements IUserService {
         create.username = username;
         create.verification = {
             email: false,
+            mobileNumber: false,
         };
 
         return this.userRepository.create<UserEntity>(create, options);
@@ -335,6 +342,7 @@ export class UserService implements IUserService {
         create.username = username;
         create.verification = {
             email: false,
+            mobileNumber: false,
         };
 
         return this.userRepository.create<UserEntity>(create, options);
@@ -381,6 +389,7 @@ export class UserService implements IUserService {
         repository.passwordExpired = passwordExpired;
         repository.passwordCreated = passwordCreated;
         repository.salt = salt;
+        repository.passwordAttempt = 0;
 
         return this.userRepository.save(repository, options);
     }
@@ -461,6 +470,8 @@ export class UserService implements IUserService {
             country,
             number,
         };
+        repository.verification.mobileNumber = false;
+        repository.verification.mobileNumberVerifiedDate = undefined;
 
         return this.userRepository.save(repository, options);
     }
@@ -518,6 +529,19 @@ export class UserService implements IUserService {
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.verification.email = true;
+        repository.verification.emailVerifiedDate =
+            this.helperDateService.create();
+
+        return this.userRepository.save(repository, options);
+    }
+
+    async updateVerificationMobileNumber(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.verification.mobileNumber = true;
+        repository.verification.mobileNumberVerifiedDate =
+            this.helperDateService.create();
 
         return this.userRepository.save(repository, options);
     }
@@ -526,36 +550,36 @@ export class UserService implements IUserService {
         return this.userRepository.join(repository, this.userRepository._join);
     }
 
-    async getPhotoUploadPath(user: string): Promise<string> {
+    getPhotoUploadPath(user: string): string {
         return this.uploadPath.replace('{user}', user);
     }
 
-    async createRandomFilenamePhoto(): Promise<string> {
+    createRandomFilenamePhoto(): string {
         return this.helperStringService.random(10);
     }
 
-    async createRandomUsername(): Promise<string> {
+    createRandomUsername(): string {
         const suffix = this.helperStringService.random(6);
 
         return `${this.usernamePrefix}-${suffix}`;
     }
 
-    async checkUsername(username: string): Promise<boolean> {
-        return username.search(this.usernamePattern) === -1;
+    checkUsernamePattern(username: string): boolean {
+        return !!username.search(this.usernamePattern);
     }
 
-    async mapProfile(
-        user: IUserDoc | IUserEntity
-    ): Promise<UserProfileResponseDto> {
+    checkUsernameBadWord(username: string): boolean {
+        return this.filterBadWord.isProfane(username);
+    }
+
+    mapProfile(user: IUserDoc | IUserEntity): UserProfileResponseDto {
         return plainToInstance(
             UserProfileResponseDto,
             user instanceof Document ? user.toObject() : user
         );
     }
 
-    async mapList(
-        users: IUserDoc[] | IUserEntity[]
-    ): Promise<UserListResponseDto[]> {
+    mapList(users: IUserDoc[] | IUserEntity[]): UserListResponseDto[] {
         return plainToInstance(
             UserListResponseDto,
             users.map((u: IUserDoc | IUserEntity) =>
@@ -564,9 +588,7 @@ export class UserService implements IUserService {
         );
     }
 
-    async mapShort(
-        users: IUserDoc[] | IUserEntity[]
-    ): Promise<UserShortResponseDto[]> {
+    mapShort(users: IUserDoc[] | IUserEntity[]): UserShortResponseDto[] {
         return plainToInstance(
             UserShortResponseDto,
             users.map((u: IUserDoc | IUserEntity) =>
@@ -575,10 +597,14 @@ export class UserService implements IUserService {
         );
     }
 
-    async mapGet(user: IUserDoc | IUserEntity): Promise<UserGetResponseDto> {
+    mapGet(user: IUserDoc | IUserEntity): UserGetResponseDto {
         return plainToInstance(
             UserGetResponseDto,
             user instanceof Document ? user.toObject() : user
         );
+    }
+
+    checkMobileNumber(mobileNumber: string, country: CountryDoc): boolean {
+        return country.phoneCode.some(e => mobileNumber.startsWith(e));
     }
 }

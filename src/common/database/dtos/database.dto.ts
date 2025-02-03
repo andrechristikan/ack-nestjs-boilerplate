@@ -14,7 +14,6 @@ export class DatabaseDto {
         description: 'Date created at',
         example: faker.date.recent(),
         required: true,
-        nullable: false,
     })
     createdAt: Date;
 
@@ -22,7 +21,6 @@ export class DatabaseDto {
         description: 'Date updated at',
         example: faker.date.recent(),
         required: true,
-        nullable: false,
     })
     updatedAt: Date;
 
@@ -30,21 +28,18 @@ export class DatabaseDto {
         description: 'Flag for deleted',
         default: false,
         required: true,
-        nullable: false,
     })
     deleted: boolean;
 
     @ApiProperty({
         description: 'Date delete at',
         required: false,
-        nullable: true,
     })
     deletedAt?: Date;
 
     @ApiProperty({
         description: 'Delete by',
         required: false,
-        nullable: true,
     })
     deletedBy?: string;
 

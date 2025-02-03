@@ -2,9 +2,12 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
+import { EmailMobileNumberVerifiedDto } from 'src/modules/email/dtos/email.mobile-number-verified.dto';
+import { EmailResetPasswordDto } from 'src/modules/email/dtos/email.reset-password.dto';
 import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password.dto';
-import { EmailWelcomeAdminDto } from 'src/modules/email/dtos/email.welcome-admin.dto';
+import { EmailVerificationDto } from 'src/modules/email/dtos/email.verification.dto';
+import { EmailVerifiedDto } from 'src/modules/email/dtos/email.verified.dto';
 import { EmailWorkerDto } from 'src/modules/email/dtos/email.worker.dto';
 import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { IEmailProcessor } from 'src/modules/email/interfaces/email.processor.interface';
@@ -40,17 +43,46 @@ export class EmailProcessor extends WorkerHost implements IEmailProcessor {
                     await this.processChangePassword(job.data.send);
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.WELCOME_ADMIN:
-                    await this.processWelcomeAdmin(
+                case ENUM_SEND_EMAIL_PROCESS.WELCOME:
+                    await this.processWelcome(job.data.send);
+
+                    break;
+                case ENUM_SEND_EMAIL_PROCESS.CREATE:
+                    await this.processCreate(
                         job.data.send,
-                        job.data.data as EmailWelcomeAdminDto
+                        job.data.data as EmailTempPasswordDto
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.WELCOME:
-                default:
-                    await this.processWelcome(job.data.send);
+                case ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD:
+                    await this.processResetPassword(
+                        job.data.send,
+                        job.data.data as EmailResetPasswordDto
+                    );
 
+                    break;
+                case ENUM_SEND_EMAIL_PROCESS.VERIFICATION:
+                    await this.processVerification(
+                        job.data.send,
+                        job.data.data as EmailVerificationDto
+                    );
+
+                    break;
+                case ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED:
+                    await this.processEmailVerified(
+                        job.data.send,
+                        job.data.data as EmailVerifiedDto
+                    );
+
+                    break;
+                case ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED:
+                    await this.processMobileNumberVerified(
+                        job.data.send,
+                        job.data.data as EmailMobileNumberVerifiedDto
+                    );
+
+                    break;
+                default:
                     break;
             }
         } catch (error: any) {
@@ -66,30 +98,49 @@ export class EmailProcessor extends WorkerHost implements IEmailProcessor {
         return this.emailService.sendWelcome(data);
     }
 
-    async processWelcomeAdmin(
-        { name, email }: EmailSendDto,
-        { password, passwordExpiredAt }: EmailWelcomeAdminDto
-    ): Promise<boolean> {
-        return this.emailService.sendWelcomeAdmin(
-            {
-                email,
-                name,
-            },
-            { password, passwordExpiredAt }
-        );
-    }
-
     async processChangePassword(data: EmailSendDto): Promise<boolean> {
         return this.emailService.sendChangePassword(data);
     }
 
     async processTempPassword(
-        { name, email }: EmailSendDto,
-        { password, passwordExpiredAt }: EmailTempPasswordDto
+        data: EmailSendDto,
+        tempPassword: EmailTempPasswordDto
     ): Promise<boolean> {
-        return this.emailService.sendTempPassword(
-            { email, name },
-            { password, passwordExpiredAt }
-        );
+        return this.emailService.sendTempPassword(data, tempPassword);
+    }
+
+    async processCreate(
+        data: EmailSendDto,
+        tempPassword: EmailTempPasswordDto
+    ): Promise<boolean> {
+        return this.emailService.sendCreate(data, tempPassword);
+    }
+
+    async processResetPassword(
+        data: EmailSendDto,
+        resetPassword: EmailResetPasswordDto
+    ): Promise<boolean> {
+        return this.emailService.sendResetPassword(data, resetPassword);
+    }
+
+    async processVerification(
+        data: EmailSendDto,
+        resetPassword: EmailVerificationDto
+    ): Promise<boolean> {
+        return this.emailService.sendVerification(data, resetPassword);
+    }
+
+    async processEmailVerified(
+        data: EmailSendDto,
+        resetPassword: EmailVerifiedDto
+    ): Promise<boolean> {
+        return this.emailService.sendEmailVerified(data, resetPassword);
+    }
+
+    async processMobileNumberVerified(
+        data: EmailSendDto,
+        resetPassword: EmailMobileNumberVerifiedDto
+    ): Promise<boolean> {
+        return this.emailService.sendMobileNumberVerified(data, resetPassword);
     }
 }

@@ -119,7 +119,7 @@ export class ApiKeyAdminController {
             total,
             _limit
         );
-        const mapped = await this.apiKeyService.mapList(apiKeys);
+        const mapped = this.apiKeyService.mapList(apiKeys);
 
         return {
             _pagination: { totalPage, total },
@@ -141,7 +141,7 @@ export class ApiKeyAdminController {
         @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
         apiKey: ApiKeyDoc
     ): Promise<IResponse<ApiKeyGetResponseDto>> {
-        const mapped = await this.apiKeyService.mapGet(apiKey);
+        const mapped = this.apiKeyService.mapGet(apiKey);
         return { data: mapped };
     }
 

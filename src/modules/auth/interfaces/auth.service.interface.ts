@@ -34,7 +34,8 @@ export interface IAuthService {
         loginFrom: ENUM_AUTH_LOGIN_FROM
     ): Promise<AuthJwtAccessPayloadDto>;
     createPayloadRefreshToken({
-        _id,
+        user,
+        session,
         loginFrom,
         loginDate,
     }: AuthJwtAccessPayloadDto): Promise<AuthJwtRefreshPayloadDto>;

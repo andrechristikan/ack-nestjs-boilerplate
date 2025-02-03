@@ -25,10 +25,3 @@ export interface IHelperStringPasswordOptions {
 export interface IHelperDateCreateOptions {
     dayOf?: ENUM_HELPER_DATE_DAY_OF;
 }
-
-export interface IHelperDateRoundDownOptions {
-    hour: boolean;
-    minute: boolean;
-    second: boolean;
-    millisecond: boolean;
-}
