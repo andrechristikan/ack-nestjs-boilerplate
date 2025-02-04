@@ -1,6 +1,6 @@
 {
     "name": "ack-nestjs-boilerplate",
-    "version": "7.2.0",
+    "version": "7.2.1",
     "description": "Ack NestJs Boilerplate",
     "repository": {
         "type": "git",
@@ -35,15 +35,15 @@
         "rollback:template": "nestjs-command rollback:template"
     },
     "dependencies": {
-        "@aws-sdk/client-pinpoint": "^3.738.0",
-        "@aws-sdk/client-s3": "^3.740.0",
-        "@aws-sdk/client-ses": "^3.738.0",
-        "@aws-sdk/s3-request-presigner": "^3.740.0",
+        "@aws-sdk/client-pinpoint": "^3.741.0",
+        "@aws-sdk/client-s3": "^3.741.0",
+        "@aws-sdk/client-ses": "^3.741.0",
+        "@aws-sdk/s3-request-presigner": "^3.741.0",
         "@casl/ability": "^6.7.3",
         "@faker-js/faker": "^9.4.0",
         "@keyv/redis": "^4.2.0",
         "@nestjs/axios": "^4.0.0",
-        "@nestjs/bullmq": "^11.0.1",
+        "@nestjs/bullmq": "^11.0.2",
         "@nestjs/cache-manager": "^3.0.0",
         "@nestjs/common": "^11.0.7",
         "@nestjs/config": "^4.0.0",
@@ -55,8 +55,8 @@
         "@nestjs/swagger": "^11.0.3",
         "@nestjs/terminus": "^11.0.0",
         "@nestjs/throttler": "^6.4.0",
-        "@sentry/nestjs": "^8.53.0",
-        "@sentry/profiling-node": "^8.53.0",
+        "@sentry/nestjs": "^8.54.0",
+        "@sentry/profiling-node": "^8.54.0",
         "axios": "^1.7.9",
         "bad-words": "^3.0.4",
         "bcryptjs": "^2.4.3",
@@ -96,7 +96,7 @@
         "@nestjs/testing": "^11.0.7",
         "@swc-node/register": "^1.10.9",
         "@swc/cli": "^0.6.0",
-        "@swc/core": "^1.10.12",
+        "@swc/core": "^1.10.14",
         "@swc/jest": "^0.2.37",
         "@types/bad-words": "^3.0.3",
         "@types/bcryptjs": "^2.4.6",
@@ -111,7 +111,7 @@
         "@types/luxon": "^3.4.2",
         "@types/ms": "^2.1.0",
         "@types/multer": "^1.4.12",
-        "@types/node": "^22.13.0",
+        "@types/node": "^22.13.1",
         "@types/passport-jwt": "^4.0.1",
         "@types/response-time": "^2.3.8",
         "@types/supertest": "^6.0.2",
@@ -132,7 +132,7 @@
         "ts-prune": "^0.10.3",
         "tsconfig-paths": "^4.2.0",
         "typescript": "^5.7.3",
-        "typescript-eslint": "^8.22.0"
+        "typescript-eslint": "^8.23.0"
     },
     "lint-staged": {
         "**/*.ts": [

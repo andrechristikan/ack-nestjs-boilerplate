@@ -1,11 +1,9 @@
 name: ack-nestjs-boilerplate
 
 services:
-
     apis:
         build: 
             context: .
-        container_name: apis
         hostname: apis
         ports:
             - 3000:3000
@@ -21,7 +19,6 @@ services:
 
     redis:
         image: redis:latest
-        container_name: redis
         hostname: redis
         restart: on-failure
         ports:
@@ -38,7 +35,6 @@ services:
 
     redis-bullboard:
         image: deadly0/bull-board:3.2.6
-        container_name: redis-bullboard
         hostname: redis-bullboard
         restart: on-failure
         ports:
@@ -56,7 +52,6 @@ services:
 
     mongodb1:
         image: mongo:latest
-        container_name: mongodb1
         hostname: mongodb1
         restart: on-failure
         ports:
@@ -87,7 +82,6 @@ services:
 
     mongodb2:
         image: mongo:latest
-        container_name: mongodb2
         hostname: mongodb2
         networks:
             - app-network
@@ -103,7 +97,6 @@ services:
 
     mongodb3:
         image: mongo:latest
-        container_name: mongodb3
         hostname: mongodb3
         networks:
             - app-network

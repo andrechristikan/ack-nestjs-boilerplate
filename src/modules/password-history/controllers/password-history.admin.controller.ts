@@ -38,7 +38,7 @@ export class PasswordHistoryAdminController {
     @PasswordHistoryAdminListDoc()
     @ResponsePaging('passwordHistory.list')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.SESSION,
+        subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
