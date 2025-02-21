@@ -14,8 +14,13 @@ export class LoggerOptionService {
     private readonly name: string;
     private readonly version: string;
 
+    private readonly autoLogger: boolean;
+
     private readonly debugEnable: boolean;
     private readonly debugLevel: string;
+    private readonly debugIntoFile: boolean;
+    private readonly debugFilePath: string;
+    private readonly debugPrettier: boolean;
 
     constructor(
         private readonly configService: ConfigService,
@@ -25,11 +30,18 @@ export class LoggerOptionService {
         this.name = this.configService.get<string>('app.name');
         this.version = this.configService.get<string>('app.version');
 
+        this.autoLogger = this.configService.get<boolean>('debug.autoLogger');
+
         this.debugEnable = this.configService.get<boolean>('debug.enable');
         this.debugLevel = this.configService.get<string>('debug.level');
+        this.debugIntoFile = this.configService.get<boolean>('debug.intoFile');
+        this.debugFilePath = this.configService.get<string>('debug.filePath');
+        this.debugPrettier = this.configService.get<boolean>('debug.prettier');
     }
 
-    createOptions(): Params {
+    async createOptions(): Promise<Params> {
+        const rfs = await import('rotating-file-stream');
+
         return {
             pinoHttp: {
                 level: this.debugEnable ? this.debugLevel : 'silent',
@@ -66,6 +78,16 @@ export class LoggerOptionService {
                 messageKey: 'message',
                 timestamp: false,
                 base: null,
+                stream: this.debugIntoFile
+                    ? rfs.createStream(`api.log`, {
+                          size: '10M',
+                          interval: '1d',
+                          compress: 'gzip',
+                          path: `.${this.debugFilePath}`,
+                          maxFiles: 10,
+                          rotate: 7,
+                      })
+                    : undefined,
                 customProps: (req: Request, _res: Response) => ({
                     context: 'HTTP',
                     requestId: req.id || uuidv4(),
@@ -123,7 +145,7 @@ export class LoggerOptionService {
                     }),
                 },
                 transport:
-                    this.env === ENUM_APP_ENVIRONMENT.LOCAL
+                    !this.debugIntoFile && this.debugPrettier
                         ? {
                               target: 'pino-pretty',
                               options: {
@@ -133,7 +155,7 @@ export class LoggerOptionService {
                               },
                           }
                         : undefined,
-                autoLogging: false,
+                autoLogging: this.autoLogger,
             },
         };
     }

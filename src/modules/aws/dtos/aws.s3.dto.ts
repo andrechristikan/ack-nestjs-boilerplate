@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
+import { StreamingBlobTypes } from '@smithy/types';
 
 export class AwsS3Dto {
     @ApiProperty({
@@ -60,7 +61,16 @@ export class AwsS3Dto {
     duration?: number;
 
     @ApiProperty({
+        required: false,
+    })
+    data?: StreamingBlobTypes & {
+        transformToString?: (encode: string) => string;
+        transformToByteArray?: () => Buffer;
+        transformToWebStream?: () => ReadableStream<Buffer>;
+    };
+
+    @ApiProperty({
         required: true,
     })
-    size: number;
+    size: string;
 }

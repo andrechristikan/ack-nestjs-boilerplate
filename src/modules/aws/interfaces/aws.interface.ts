@@ -17,6 +17,7 @@ export interface IAwsS3PutItemWithAclOptions extends IAwsS3Options {
 
 export interface IAwsS3PresignOptions extends IAwsS3Options {
     allowedSize?: number;
+    expired?: number;
 }
 
 export interface IAwsS3PutItem {

@@ -3,6 +3,7 @@ import {
     IDatabaseAggregateOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
+    IDatabaseExistsOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
@@ -35,6 +36,7 @@ import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { PipelineStage } from 'mongoose';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
+import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
 
 export interface IUserService {
     findAll(
@@ -108,10 +110,17 @@ export interface IUserService {
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
-    existByEmail(email: string, options?: IDatabaseOptions): Promise<boolean>;
+    existByRole(
+        role: string,
+        options?: IDatabaseExistsOptions
+    ): Promise<boolean>;
+    existByEmail(
+        email: string,
+        options?: IDatabaseExistsOptions
+    ): Promise<boolean>;
     existByUsername(
         username: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseExistsOptions
     ): Promise<boolean>;
     updatePhoto(
         repository: UserDoc,
@@ -188,11 +197,13 @@ export interface IUserService {
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     join(repository: UserDoc): Promise<IUserDoc>;
-    getPhotoUploadPath(user: string): string;
-    createRandomFilenamePhoto(): string;
+    createRandomFilenamePhoto(
+        user: string,
+        { type }: UserUploadPhotoRequestDto
+    ): string;
     createRandomUsername(): string;
     checkUsernamePattern(username: string): boolean;
-    checkUsernameBadWord(username: string): boolean;
+    checkUsernameBadWord(username: string): Promise<boolean>;
     mapProfile(user: IUserDoc | IUserEntity): UserProfileResponseDto;
     mapList(users: IUserDoc[] | IUserEntity[]): UserListResponseDto[];
     mapShort(users: IUserDoc[] | IUserEntity[]): UserShortResponseDto[];

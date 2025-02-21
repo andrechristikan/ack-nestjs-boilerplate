@@ -3,6 +3,7 @@ import {
     Doc,
     DocAuth,
     DocRequest,
+    DocResponse,
     DocResponsePaging,
 } from 'src/common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
@@ -51,7 +52,7 @@ export function UserSystemCheckUsernameDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
-        DocResponsePaging<UserCheckResponseDto>('user.checkUsername', {
+        DocResponse<UserCheckResponseDto>('user.checkUsername', {
             dto: UserCheckResponseDto,
         })
     );
@@ -69,7 +70,7 @@ export function UserSystemCheckEmailDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
-        DocResponsePaging<UserCheckResponseDto>('user.checkEmail', {
+        DocResponse<UserCheckResponseDto>('user.checkEmail', {
             dto: UserCheckResponseDto,
         })
     );

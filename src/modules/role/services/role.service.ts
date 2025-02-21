@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
+import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -10,6 +11,8 @@ import {
     IDatabaseDeleteManyOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
+    IDatabaseExistsOptions,
+    IDatabaseDeleteOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
@@ -101,7 +104,10 @@ export class RoleService implements IRoleService {
         name: string,
         options?: IDatabaseFindOneOptions
     ): Promise<RoleDoc> {
-        return this.roleRepository.findOne({ name }, options);
+        return this.roleRepository.findOne(
+            DatabaseHelperQueryContain('name', name, { fullWord: true }),
+            options
+        );
     }
 
     async findOneActiveById(
@@ -113,12 +119,10 @@ export class RoleService implements IRoleService {
 
     async existByName(
         name: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseExistsOptions
     ): Promise<boolean> {
         return this.roleRepository.exists(
-            {
-                name,
-            },
+            DatabaseHelperQueryContain('name', name, { fullWord: true }),
             options
         );
     }
@@ -165,6 +169,15 @@ export class RoleService implements IRoleService {
         repository.isActive = false;
 
         return this.roleRepository.save(repository, options);
+    }
+
+    async delete(
+        repository: RoleDoc,
+        options?: IDatabaseDeleteOptions
+    ): Promise<boolean> {
+        await this.roleRepository.delete(repository, options);
+
+        return true;
     }
 
     async deleteMany(

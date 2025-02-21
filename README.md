@@ -226,7 +226,7 @@ cp .env.example .env
 
 Run docker compose
 
-> if `host.docker.internal` cannot be resolved, you must add a line in your `/etc/hosts` file to map `host.docker.internal` to the IP address `127.17.0.1`
+> if `host.docker.internal` cannot be resolved, you must add a line in your `/etc/hosts` file to map `host.docker.internal` to the IP address `127.0.0.1`
 
 ```bash
 docker-compose up -d

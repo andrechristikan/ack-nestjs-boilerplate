@@ -18,5 +18,11 @@
         }
     },
     "minify": false,
-    "exclude": ["node_modules", "dist", "coverage", "templates"]
+    "exclude": [
+        "node_modules",
+        "dist",
+        "coverage",
+        "templates",
+        "src/metadata.ts"
+    ]
 }

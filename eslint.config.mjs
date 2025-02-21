@@ -18,6 +18,7 @@ export default [
             'dist/*',
             'docs/*',
             'node_modules/*',
+            'src/metadata.ts',
         ],
     },
     {

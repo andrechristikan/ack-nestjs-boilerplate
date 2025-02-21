@@ -54,10 +54,6 @@ import {
     IAwsS3PutItem,
     IAwsS3PutItemWithAclOptions,
 } from 'src/modules/aws/interfaces/aws.interface';
-import {
-    AwsS3MultipartDto,
-    AwsS3MultipartPartDto,
-} from 'src/modules/aws/dtos/aws.s3-multipart.dto';
 import { AWS_S3_MAX_PART_NUMBER } from 'src/modules/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ENUM_AWS_S3_ACCESSIBILITY } from 'src/modules/aws/enums/aws.enum';
@@ -67,6 +63,11 @@ import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-pr
 import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
 import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 import { plainToInstance } from 'class-transformer';
+import {
+    AwsS3MultipartDto,
+    AwsS3MultipartPartDto,
+} from 'src/modules/aws/dtos/aws.s3-multipart.dto';
+import { AwsS3PresignMultiPartResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign-multipart.response.dto';
 
 @Injectable()
 export class AwsS3Service implements OnModuleInit, IAwsS3Service {
@@ -177,7 +178,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 : undefined,
             baseUrl: config.baseUrl,
             mime,
-            size: item.ContentLength,
+            size: item.ContentLength?.toString(),
         };
     }
 
@@ -230,7 +231,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                     : undefined,
                 baseUrl: config.baseUrl,
                 mime,
-                size: item.Size,
+                size: item.Size?.toString(),
             };
         });
 
@@ -297,7 +298,8 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 : undefined,
             baseUrl: config.baseUrl,
             mime,
-            size: item.ContentLength,
+            data: item.Body as any,
+            size: item.ContentLength?.toString(),
         };
     }
 
@@ -307,6 +309,8 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     ): Promise<AwsS3Dto> {
         if (file.key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
+        } else if (!file.file) {
+            throw new Error('File is required');
         }
 
         const config =
@@ -350,8 +354,8 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 : undefined,
             baseUrl: config.baseUrl,
             mime,
-            size: file.size,
-            duration: file.duration,
+            size: file?.size?.toString(),
+            duration: file?.duration,
         };
     }
 
@@ -361,6 +365,8 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     ): Promise<AwsS3Dto> {
         if (file.key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
+        } else if (!file.file) {
+            throw new Error('File is required');
         }
 
         const config =
@@ -403,8 +409,8 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 : undefined,
             baseUrl: config.baseUrl,
             mime,
-            size: file.size,
-            duration: file.duration,
+            size: file?.size?.toString(),
+            duration: file?.duration,
         };
     }
 
@@ -562,10 +568,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 : undefined,
             baseUrl: config.baseUrl,
             mime,
-            duration: file.duration,
-            size: file.size,
+            duration: file?.duration,
+            size: file?.size?.toString(),
             lastPartNumber: 0,
-            exactSize: 0,
+            exactSize: '0',
             maxPartNumber: maxPartNumber,
             parts: [],
         };
@@ -625,11 +631,11 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 : undefined,
             baseUrl: config.baseUrl,
             mime,
-            size: file.size,
+            size: file?.size?.toString(),
             lastPartNumber: 0,
-            exactSize: 0,
+            exactSize: '0',
             maxPartNumber: maxPartNumber,
-            duration: file.duration,
+            duration: file?.duration,
             parts: [],
         };
     }
@@ -661,7 +667,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         const part: AwsS3MultipartPartDto = {
             eTag: ETag,
             partNumber: partNumber,
-            size: file.length,
+            size: file.length?.toString(),
         };
 
         return this.updateMultiPart(multipart, part);
@@ -682,7 +688,8 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     }
 
     async completeMultipart(
-        multipart: AwsS3MultipartDto,
+        key: string,
+        uploadId: string,
         options?: IAwsS3Options
     ): Promise<void> {
         const config =
@@ -693,14 +700,8 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         const completeMultipartCommand: CompleteMultipartUploadCommand =
             new CompleteMultipartUploadCommand({
                 Bucket: config.bucket,
-                Key: multipart.path,
-                UploadId: multipart.uploadId,
-                MultipartUpload: {
-                    Parts: multipart.parts.map(el => ({
-                        ETag: el.eTag,
-                        PartNumber: el.partNumber,
-                    })),
-                },
+                Key: key,
+                UploadId: uploadId,
             });
 
         await config.client.send<
@@ -712,7 +713,8 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     }
 
     async abortMultipart(
-        multipart: AwsS3MultipartDto,
+        key: string,
+        uploadId: string,
         options?: IAwsS3Options
     ): Promise<void> {
         const config =
@@ -723,8 +725,8 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         const abortMultipartCommand: AbortMultipartUploadCommand =
             new AbortMultipartUploadCommand({
                 Bucket: config.bucket,
-                Key: multipart.path,
-                UploadId: multipart.uploadId,
+                Key: key,
+                UploadId: uploadId,
             });
 
         await config.client.send<
@@ -735,7 +737,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         return;
     }
 
-    async presign(
+    async presignPutItem(
         key: string,
         options?: IAwsS3PresignOptions
     ): Promise<AwsS3PresignResponseDto> {
@@ -782,11 +784,52 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             ContentType: mime,
             ContentLength: size,
         });
+        const expiresIn = options?.expired ?? this.presignExpired;
         const presignUrl = await getSignedUrl(config.client, command, {
-            expiresIn: this.presignExpired,
+            expiresIn,
         });
 
         return { expiredIn: this.presignExpired, presignUrl: presignUrl, key };
+    }
+
+    async presignPutItemMultipart(
+        key: string,
+        uploadId: string,
+        partNumber: number,
+        options?: IAwsS3PresignOptions
+    ): Promise<AwsS3PresignMultiPartResponseDto> {
+        if (key.startsWith('/')) {
+            throw new Error('Key should not start with "/"');
+        }
+
+        const config =
+            options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
+                ? this.config.private
+                : this.config.public;
+
+        const uploadPartCommand: UploadPartCommand = new UploadPartCommand({
+            Bucket: config.bucket,
+            Key: key,
+            PartNumber: partNumber,
+            UploadId: uploadId,
+        });
+
+        const expiresIn = options?.expired ?? this.presignExpired;
+        const presignUrl = await getSignedUrl(
+            config.client,
+            uploadPartCommand,
+            {
+                expiresIn,
+            }
+        );
+
+        return {
+            expiredIn: this.presignExpired,
+            presignUrl: presignUrl,
+            key,
+            partNumber,
+            uploadId,
+        };
     }
 
     mapPresign(

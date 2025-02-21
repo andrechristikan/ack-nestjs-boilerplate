@@ -30,6 +30,7 @@ import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-pr
 import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { CountryService } from 'src/modules/country/services/country.service';
+import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 import {
     UserSharedProfileDoc,
     UserSharedUpdatePhotoProfileDoc,
@@ -65,6 +66,7 @@ export class UserSharedController {
 
     @UserSharedProfileDoc()
     @Response('user.profile')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/profile')
@@ -79,6 +81,7 @@ export class UserSharedController {
 
     @UserSharedUpdateProfileDoc()
     @Response('user.updateProfile')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/profile/update')
@@ -135,6 +138,7 @@ export class UserSharedController {
 
     @UserSharedUploadPhotoProfileDoc()
     @Response('user.uploadPhotoProfile')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -144,16 +148,11 @@ export class UserSharedController {
         user: UserDoc,
         @Body() { type }: UserUploadPhotoRequestDto
     ): Promise<IResponse<AwsS3PresignResponseDto>> {
-        const path: string = this.userService.getPhotoUploadPath(user._id);
         const randomFilename: string =
-            this.userService.createRandomFilenamePhoto();
+            this.userService.createRandomFilenamePhoto(user._id, { type });
 
-        const extension = Object.keys(ENUM_FILE_MIME_IMAGE)
-            .find(e => e === type)
-            .toLowerCase();
-        const aws: AwsS3PresignResponseDto = await this.awsS3Service.presign(
-            `${path}/${randomFilename}.${extension}`
-        );
+        const aws: AwsS3PresignResponseDto =
+            await this.awsS3Service.presignPutItem(randomFilename);
 
         return {
             data: aws,
@@ -162,6 +161,7 @@ export class UserSharedController {
 
     @UserSharedUpdatePhotoProfileDoc()
     @Response('user.updatePhotoProfile')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/profile/update-photo')

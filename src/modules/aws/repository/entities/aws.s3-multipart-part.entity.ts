@@ -20,9 +20,8 @@ export class AwsS3MultipartPartEntity {
 
     @DatabaseProp({
         required: true,
-        type: Number,
     })
-    size: number;
+    size: string;
 }
 
 export const AwsS3MultipartPartSchema = DatabaseSchema(

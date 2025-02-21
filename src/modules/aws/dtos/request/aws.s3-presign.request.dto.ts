@@ -34,15 +34,11 @@ export class AwsS3PresignRequestDto {
 
     @ApiProperty({
         required: true,
-        example: 10000,
+        example: '10000',
         description: 'Unit in bytes',
     })
     @IsInt()
-    @IsNumber({
-        allowInfinity: false,
-        allowNaN: false,
-        maxDecimalPlaces: 0,
-    })
+    @IsString()
     @IsNotEmpty()
-    size: number;
+    size: string;
 }

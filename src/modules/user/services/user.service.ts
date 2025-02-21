@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import {
     IDatabaseAggregateOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
+    IDatabaseExistsOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
@@ -51,15 +52,14 @@ import {
 import { RoleTableName } from 'src/modules/role/repository/entities/role.entity';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
-import Filter from 'bad-words';
+import FilterBadWords from 'bad-words';
+import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
 
 @Injectable()
 export class UserService implements IUserService {
     private readonly usernamePrefix: string;
     private readonly usernamePattern: RegExp;
     private readonly uploadPath: string;
-
-    private readonly filterBadWord: Filter = new Filter({});
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -180,7 +180,10 @@ export class UserService implements IUserService {
         email: string,
         options?: IDatabaseFindOneOptions
     ): Promise<UserDoc> {
-        return this.userRepository.findOne<UserDoc>({ email }, options);
+        return this.userRepository.findOne<UserDoc>(
+            DatabaseHelperQueryContain('email', email, { fullWord: true }),
+            options
+        );
     }
 
     async findOneByMobileNumber(
@@ -293,7 +296,7 @@ export class UserService implements IUserService {
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
-        const username = await this.createRandomUsername();
+        const username = this.createRandomUsername();
 
         const create: UserEntity = new UserEntity();
         create.name = name;
@@ -324,7 +327,7 @@ export class UserService implements IUserService {
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
-        const username = await this.createRandomUsername();
+        const username = this.createRandomUsername();
 
         const create: UserEntity = new UserEntity();
         create.name = name;
@@ -348,25 +351,37 @@ export class UserService implements IUserService {
         return this.userRepository.create<UserEntity>(create, options);
     }
 
+    async existByRole(
+        role: string,
+        options?: IDatabaseExistsOptions
+    ): Promise<boolean> {
+        return this.userRepository.exists(
+            {
+                role,
+            },
+            options
+        );
+    }
+
     async existByEmail(
         email: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseExistsOptions
     ): Promise<boolean> {
         return this.userRepository.exists(
             DatabaseHelperQueryContain('email', email, { fullWord: true }),
-            { ...options, withDeleted: true }
+            options
         );
     }
 
     async existByUsername(
         username: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseExistsOptions
     ): Promise<boolean> {
         return this.userRepository.exists(
             DatabaseHelperQueryContain('username', username, {
                 fullWord: true,
             }),
-            { ...options, withDeleted: true }
+            options
         );
     }
 
@@ -550,12 +565,14 @@ export class UserService implements IUserService {
         return this.userRepository.join(repository, this.userRepository._join);
     }
 
-    getPhotoUploadPath(user: string): string {
-        return this.uploadPath.replace('{user}', user);
-    }
+    createRandomFilenamePhoto(
+        user: string,
+        { type }: UserUploadPhotoRequestDto
+    ): string {
+        const path: string = this.uploadPath.replace('{user}', user);
+        const randomPath = this.helperStringService.random(10);
 
-    createRandomFilenamePhoto(): string {
-        return this.helperStringService.random(10);
+        return `${path}/${randomPath}.${type.toLowerCase()}`;
     }
 
     createRandomUsername(): string {
@@ -568,8 +585,10 @@ export class UserService implements IUserService {
         return !!username.search(this.usernamePattern);
     }
 
-    checkUsernameBadWord(username: string): boolean {
-        return this.filterBadWord.isProfane(username);
+    async checkUsernameBadWord(username: string): Promise<boolean> {
+        const filterBadWordModule = await import('bad-words');
+        const filterBadWord = new filterBadWordModule.Filter();
+        return filterBadWord.isProfane(username);
     }
 
     mapProfile(user: IUserDoc | IUserEntity): UserProfileResponseDto {

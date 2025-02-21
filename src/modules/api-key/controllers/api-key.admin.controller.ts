@@ -65,6 +65,7 @@ import {
 } from 'src/modules/policy/decorators/policy.decorator';
 import { ApiKeyNotExpiredPipe } from 'src/modules/api-key/pipes/api-key.expired.pipe';
 import { ApiKeyIsActivePipe } from 'src/modules/api-key/pipes/api-key.is-active.pipe';
+import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 
 @ApiTags('common.admin.apiKey')
 @Controller({
@@ -84,6 +85,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -134,6 +136,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/get/:apiKey')
@@ -152,6 +155,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Post('/create')
@@ -173,6 +177,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/update/:apiKey/reset')
@@ -195,6 +200,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/:apiKey')
@@ -202,7 +208,7 @@ export class ApiKeyAdminController {
         @Body() body: ApiKeyUpdateRequestDto,
         @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
         apiKey: ApiKeyDoc
-    ): Promise<IResponse<void>> {
+    ): Promise<void> {
         await this.apiKeyService.update(apiKey, body);
 
         return;
@@ -215,6 +221,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/update/:apiKey/inactive')
@@ -240,6 +247,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/update/:apiKey/active')
@@ -265,6 +273,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/:apiKey/date')
@@ -272,7 +281,7 @@ export class ApiKeyAdminController {
         @Body() body: ApiKeyUpdateDateRequestDto,
         @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
         apiKey: ApiKeyDoc
-    ): Promise<IResponse<void>> {
+    ): Promise<void> {
         await this.apiKeyService.updateDate(apiKey, body);
 
         return;
@@ -285,6 +294,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/delete/:apiKey')

@@ -19,7 +19,6 @@ export class HelloPublicController {
     @Response('hello.hello', {
         cached: true,
     })
-    @ApiKeyProtected()
     @Get('/')
     async hello(): Promise<IResponse<HelloResponseDto>> {
         const today = this.helperDateService.create();

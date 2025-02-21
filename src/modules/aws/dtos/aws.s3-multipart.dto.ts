@@ -19,9 +19,9 @@ export class AwsS3MultipartPartDto {
 
     @ApiProperty({
         required: true,
-        example: 1,
+        example: '1',
     })
-    size: number;
+    size: string;
 }
 
 export class AwsS3MultipartDto extends AwsS3Dto {
@@ -48,10 +48,10 @@ export class AwsS3MultipartDto extends AwsS3Dto {
 
     @ApiProperty({
         required: true,
-        example: 1,
+        example: '1',
         description: 'Size uploaded',
     })
-    exactSize: number;
+    exactSize: string;
 
     @ApiProperty({
         required: true,

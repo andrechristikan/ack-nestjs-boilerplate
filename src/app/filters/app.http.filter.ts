@@ -38,8 +38,6 @@ export class AppHttpFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-        this.logger.error(exception);
-
         if (
             !request.path.startsWith(this.globalPrefix) &&
             !request.path.startsWith(this.docPrefix)

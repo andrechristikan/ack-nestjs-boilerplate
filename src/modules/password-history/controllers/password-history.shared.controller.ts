@@ -14,6 +14,7 @@ import { PasswordHistorySharedListDoc } from 'src/modules/password-history/docs/
 import { PasswordHistoryListResponseDto } from 'src/modules/password-history/dtos/response/password-history.list.response.dto';
 import { IPasswordHistoryDoc } from 'src/modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
+import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 
 @ApiTags('modules.shared.passwordHistory')
 @Controller({
@@ -28,6 +29,7 @@ export class PasswordHistorySharedController {
 
     @PasswordHistorySharedListDoc()
     @ResponsePaging('passwordHistory.list')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')

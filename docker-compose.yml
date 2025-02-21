@@ -20,7 +20,6 @@ services:
     redis:
         image: redis:latest
         hostname: redis
-        restart: on-failure
         ports:
             - '6379:6379'
         volumes:
@@ -36,7 +35,6 @@ services:
     redis-bullboard:
         image: deadly0/bull-board:3.2.6
         hostname: redis-bullboard
-        restart: on-failure
         ports:
             - 3010:3000
         networks:
@@ -53,7 +51,6 @@ services:
     mongodb1:
         image: mongo:latest
         hostname: mongodb1
-        restart: on-failure
         ports:
             - '27017:27017'
         links:
@@ -85,7 +82,6 @@ services:
         hostname: mongodb2
         networks:
             - app-network
-        restart: on-failure
         ports:
             - '27018:27018'
         volumes:
@@ -100,7 +96,6 @@ services:
         hostname: mongodb3
         networks:
             - app-network
-        restart: on-failure
         ports:
             - '27019:27019'
         volumes:

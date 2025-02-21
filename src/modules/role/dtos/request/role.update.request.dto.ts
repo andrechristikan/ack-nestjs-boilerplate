@@ -6,6 +6,7 @@ import {
     IsNotEmpty,
     IsOptional,
     IsString,
+    MaxLength,
     ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -17,9 +18,11 @@ export class RoleUpdateRequestDto {
         description: 'Description of role',
         example: faker.lorem.sentence(),
         required: false,
+        maxLength: 500,
     })
     @IsString()
     @IsOptional()
+    @MaxLength(500)
     description?: string;
 
     @ApiProperty({

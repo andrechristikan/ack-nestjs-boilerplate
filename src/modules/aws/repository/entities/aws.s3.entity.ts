@@ -56,9 +56,8 @@ export class AwsS3Entity {
 
     @DatabaseProp({
         required: true,
-        type: Number,
     })
-    size: number;
+    size: string;
 }
 
 export const AwsS3Schema = DatabaseSchema(AwsS3Entity);

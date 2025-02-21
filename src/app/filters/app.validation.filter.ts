@@ -29,8 +29,6 @@ export class AppValidationFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-        this.logger.error(exception);
-
         // metadata
         const today = this.helperDateService.create();
         const xLanguage: string =

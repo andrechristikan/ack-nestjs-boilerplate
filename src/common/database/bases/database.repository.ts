@@ -12,6 +12,7 @@ import {
     IDatabaseDeleteManyOptions,
     IDatabaseDeleteOptions,
     IDatabaseDocument,
+    IDatabaseExistsOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
@@ -256,7 +257,7 @@ export class DatabaseRepositoryBase<
 
     async exists(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseExistsOptions
     ): Promise<boolean> {
         const repository = this._repository.exists({
             ...find,
@@ -275,6 +276,10 @@ export class DatabaseRepositoryBase<
 
         if (options?.session) {
             repository.session(options.session);
+        }
+
+        if (options?.excludeId) {
+            repository.where('_id').ne(options.excludeId);
         }
 
         const result = await repository;

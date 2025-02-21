@@ -5,6 +5,7 @@ import {
 } from 'src/modules/aws/dtos/aws.s3-multipart.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignMultiPartResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign-multipart.response.dto';
 import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
 import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 import {
@@ -58,17 +59,25 @@ export interface IAwsS3Service {
         part: AwsS3MultipartPartDto
     ): AwsS3MultipartDto;
     completeMultipart(
-        multipart: AwsS3MultipartDto,
+        key: string,
+        uploadId: string,
         options?: IAwsS3Options
     ): Promise<void>;
     abortMultipart(
-        multipart: AwsS3MultipartDto,
+        key: string,
+        uploadId: string,
         options?: IAwsS3Options
     ): Promise<void>;
-    presign(
+    presignPutItem(
         key: string,
         options?: IAwsS3PresignOptions
     ): Promise<AwsS3PresignResponseDto>;
+    presignPutItemMultipart(
+        key: string,
+        uploadId: string,
+        partNumber: number,
+        options?: IAwsS3PresignOptions
+    ): Promise<AwsS3PresignMultiPartResponseDto>;
     mapPresign(
         { key, size, duration }: AwsS3PresignRequestDto,
         options?: IAwsS3Options
