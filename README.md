@@ -48,6 +48,7 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
+  - [Buy Me a Coffee](#buy-me-a-coffee)
 
 ## Important
 
@@ -62,9 +63,10 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
 
 ## TODO
 
--   [ ] Export Module
--   [ ] Privacy Policy
--   [ ] Term and Condition
+- [ ] 2FA Feats
+- [ ] Export Module in Background using bullmq
+- [ ] Privacy Policy Module
+- [ ] Term and Condition Module
 
 ## Prerequisites
 
@@ -266,15 +268,17 @@ Distributed under [MIT licensed][license].
 
 ## Contribute
 
-How to contribute in this repo
+We welcome contributions to this project! To contribute, follow these steps:
 
-1. Fork the repository
-2. Create your branch `git checkout -b my-branch`
-3. Commit any changes to your branch
-4. Push your changes to your remote branch
-5. Open a pull request
+1. Fork the repository.
+2. Create a new branch: `git checkout -b feature/your-feature-name`.
+3. Make your changes and commit them: `git commit -m 'Add some feature'`.
+4. Push to the branch: `git push origin feature/your-feature-name`.
+5. Open a pull request.
 
-If your code behind commit with the `origin/main` branch, please update your code and resolve the conflict.
+Please ensure your code follows the project's coding standards and includes appropriate tests.
+
+If your branch is behind the `origin/main` branch, please update your branch and resolve any conflicts before opening a pull request.
 
 ## Contact
 
@@ -282,6 +286,14 @@ If your code behind commit with the `origin/main` branch, please update your cod
 
 [![Github][github-shield]][author-github]
 [![LinkedIn][linkedin-shield]][author-linkedin]
+
+## Buy Me a Coffee
+
+If you find this project helpful and would like to support its development, you can buy me a coffee!
+
+<a href='https://ko-fi.com/andrechristikan' target='_blank'>
+  <img src='https://cdn.ko-fi.com/cdn/kofi3.png?v=3' alt='Buy Me a Coffee at ko-fi.com' width='200'/>
+</a>
 
 <!-- BADGE LINKS -->
 
