@@ -10,7 +10,6 @@ import {
     IDatabaseSaveOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseFindOneOptions,
-    IDatabaseOptions,
     IDatabaseExistsOptions,
     IDatabaseDeleteOptions,
 } from 'src/common/database/interfaces/database.interface';

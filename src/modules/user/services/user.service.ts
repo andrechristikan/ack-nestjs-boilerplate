@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
     IDatabaseAggregateOptions,
     IDatabaseCreateOptions,
@@ -8,7 +8,6 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseOptions,
     IDatabaseSaveOptions,
     IDatabaseUpdateOptions,
 } from 'src/common/database/interfaces/database.interface';
@@ -16,7 +15,7 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 import { ConfigService } from '@nestjs/config';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { plainToInstance } from 'class-transformer';
-import { Document, PipelineStage } from 'mongoose';
+import { Document, PipelineStage, Types } from 'mongoose';
 import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import {
@@ -52,7 +51,6 @@ import {
 import { RoleTableName } from 'src/modules/role/repository/entities/role.entity';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
-import FilterBadWords from 'bad-words';
 import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
 
 @Injectable()
@@ -390,7 +388,10 @@ export class UserService implements IUserService {
         photo: AwsS3Dto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
-        repository.photo = photo;
+        repository.photo = {
+            ...photo,
+            size: new Types.Decimal128(photo.size.toString()),
+        };
 
         return this.userRepository.save(repository, options);
     }

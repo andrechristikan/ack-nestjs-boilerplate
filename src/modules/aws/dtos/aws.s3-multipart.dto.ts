@@ -19,9 +19,9 @@ export class AwsS3MultipartPartDto {
 
     @ApiProperty({
         required: true,
-        example: '1',
+        example: 1,
     })
-    size: string;
+    size: number;
 }
 
 export class AwsS3MultipartDto extends AwsS3Dto {
@@ -45,13 +45,6 @@ export class AwsS3MultipartDto extends AwsS3Dto {
         description: 'Max part number, or length of the chunk',
     })
     maxPartNumber: number;
-
-    @ApiProperty({
-        required: true,
-        example: '1',
-        description: 'Size uploaded',
-    })
-    exactSize: string;
 
     @ApiProperty({
         required: true,

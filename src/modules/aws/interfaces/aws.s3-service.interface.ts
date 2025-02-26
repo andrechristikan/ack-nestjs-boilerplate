@@ -1,8 +1,5 @@
 import { _Object } from '@aws-sdk/client-s3';
-import {
-    AwsS3MultipartDto,
-    AwsS3MultipartPartDto,
-} from 'src/modules/aws/dtos/aws.s3-multipart.dto';
+import { AwsS3MultipartDto } from 'src/modules/aws/dtos/aws.s3-multipart.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
 import { AwsS3PresignMultiPartResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign-multipart.response.dto';
@@ -54,10 +51,6 @@ export interface IAwsS3Service {
         file: Buffer,
         options?: IAwsS3Options
     ): Promise<AwsS3MultipartDto>;
-    updateMultiPart(
-        { exactSize, parts, ...others }: AwsS3MultipartDto,
-        part: AwsS3MultipartPartDto
-    ): AwsS3MultipartDto;
     completeMultipart(
         key: string,
         uploadId: string,
@@ -82,7 +75,5 @@ export interface IAwsS3Service {
         { key, size, duration }: AwsS3PresignRequestDto,
         options?: IAwsS3Options
     ): AwsS3Dto;
-    getBucket(options?: IAwsS3Options): string;
-    getRegion(options?: IAwsS3Options): string;
     mapResponse(dto: AwsS3Dto): AwsS3ResponseDto;
 }

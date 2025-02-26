@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -20,8 +21,9 @@ export class AwsS3MultipartPartEntity {
 
     @DatabaseProp({
         required: true,
+        type: Types.Decimal128,
     })
-    size: string;
+    size: Types.Decimal128;
 }
 
 export const AwsS3MultipartPartSchema = DatabaseSchema(

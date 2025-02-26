@@ -6,6 +6,7 @@ import {
     IsNumber,
     IsOptional,
     IsString,
+    Min,
 } from 'class-validator';
 
 export class AwsS3PresignRequestDto {
@@ -34,11 +35,11 @@ export class AwsS3PresignRequestDto {
 
     @ApiProperty({
         required: true,
-        example: '10000',
+        example: 1,
         description: 'Unit in bytes',
     })
+    @Min(1)
     @IsInt()
-    @IsString()
     @IsNotEmpty()
-    size: string;
+    size: number;
 }

@@ -21,9 +21,9 @@ export interface IAwsS3PresignOptions extends IAwsS3Options {
 }
 
 export interface IAwsS3PutItem {
-    file: Buffer;
+    file?: Buffer;
     key: string;
-    size: number;
+    size?: number;
     duration?: number;
 }
 

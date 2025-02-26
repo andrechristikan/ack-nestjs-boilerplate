@@ -13,7 +13,6 @@ import { ApiTags } from '@nestjs/swagger';
 import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
-import { ENUM_FILE_MIME_IMAGE } from 'src/common/file/enums/file.enum';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
