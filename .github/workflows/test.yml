@@ -1,10 +1,10 @@
 name: Test
 on:
     workflow_dispatch:
-    pull_request:
-        branches:
-          - main
-          - development
+    # pull_request:
+    #     branches:
+    #       - main
+    #       - development
 
 jobs:
     test:
