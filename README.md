@@ -17,7 +17,7 @@
 
 > This repo will representative of authentication service and authorization service
 
-[ACK NestJs][ack] is a [Http NestJs v10.x][ref-nestjs] boilerplate. Best uses for backend service.
+[ACK NestJs][ack] is a [Http NestJs v11.x][ref-nestjs] boilerplate. Best uses for backend service.
 
 _You can [request feature][ack-issues] or [report bug][ack-issues] with following this link_
 
@@ -27,6 +27,7 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
   - [Table of contents](#table-of-contents)
   - [Important](#important)
   - [TODO](#todo)
+  - [Support me](#support-me)
   - [Prerequisites](#prerequisites)
   - [Build with](#build-with)
   - [Objective](#objective)
@@ -48,7 +49,6 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
-  - [Buy Me a Coffee](#buy-me-a-coffee)
 
 ## Important
 
@@ -67,6 +67,24 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
 - [ ] Export Module in Background using bullmq
 - [ ] Privacy Policy Module
 - [ ] Term and Condition Module
+
+## Support me
+
+If you find this project helpful and would like to support its development, you can buy me a coffee!
+
+<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+  <a href='https://ko-fi.com/andrechristikan' target='_blank'>
+    <img src='https://cdn.ko-fi.com/cdn/kofi3.png?v=3' alt='Buy Me a Coffee at ko-fi.com' width='200'/>
+  </a>
+</div>
+
+or support via PayPal
+
+<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+  <a href='https://www.paypal.me/andrechristikan' target='_blank'>
+    <img src='https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg' alt='Donate with PayPal' />
+  </a>
+</div>
 
 ## Prerequisites
 
@@ -287,13 +305,6 @@ If your branch is behind the `origin/main` branch, please update your branch and
 [![Github][github-shield]][author-github]
 [![LinkedIn][linkedin-shield]][author-linkedin]
 
-## Buy Me a Coffee
-
-If you find this project helpful and would like to support its development, you can buy me a coffee!
-
-<a href='https://ko-fi.com/andrechristikan' target='_blank'>
-  <img src='https://cdn.ko-fi.com/cdn/kofi3.png?v=3' alt='Buy Me a Coffee at ko-fi.com' width='200'/>
-</a>
 
 <!-- BADGE LINKS -->
 
@@ -318,6 +329,8 @@ If you find this project helpful and would like to support its development, you 
 [author-linkedin]: https://linkedin.com/in/andrechristikan
 [author-email]: mailto:andrechristikan@gmail.com
 [author-github]: https://github.com/andrechristikan
+[author-paypal]: https://www.paypal.me/andrechristikan
+[author-kofi]: https://ko-fi.com/andrechristikan
 
 <!-- Repo LINKS -->
 

@@ -1,3 +1,10 @@
+export const EXCLUDED_ROUTES = [
+    '/api/health',
+    '/metrics',
+    '/favicon.ico',
+    '/docs',
+] as const;
+
 export const LOGGER_SENSITIVE_FIELDS = [
     'password',
     'newPassword',
@@ -9,22 +16,41 @@ export const LOGGER_SENSITIVE_FIELDS = [
     'secret',
     'credential',
     'jwt',
-    'token',
     'x-api-key',
+    'apiKey',
+    'refreshToken',
+    'accessToken',
+    'sessionId',
     'set-cookie',
-    'ssn', // Social Security Number
-    'creditCard', // Credit Card Information
-    'cvv', // Credit Card CVV
-    'pin', // Personal Identification Number
-    'bankAccount', // Bank Account Information
-    'accountNumber', // Bank Account Information
-    'routingNumber', // Bank Routing Number
-    'securityQuestion', // Security Questions
-    'securityAnswer', // Security Answers
-    'email', // Email Address
-    'phoneNumber', // Phone Number
-    'address', // Physical Address
-    'dob', // Date of Birth
-    'passportNumber', // Passport Number
-    'driverLicense', // Driver's License Number
+    'creditCard',
+    'cardNumber',
+    'cvv',
+    'cvc',
+    'ccv',
+    'pin',
+    'bankAccount',
+    'accountNumber',
+    'routingNumber',
+    'expiryDate',
+    'ssn',
+    'passportNumber',
+    'driverLicense',
+    'nationalId',
+    'taxId',
+    'idNumber',
+    'privateKey',
+    'secretKey',
+    'securityQuestion',
+    'securityAnswer',
+    'signature',
+    'otp',
+    'recoveryCode',
+    'fingerprint',
+    'faceId',
+    'biometric',
+    'location',
+    'gps',
+    'coordinates',
+    'latitude',
+    'longitude',
 ];

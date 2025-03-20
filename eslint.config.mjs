@@ -60,7 +60,7 @@ export default [
     },
     {
         name: 'ts/test',
-        files: ['test/**/*.ts'],
+        files: ['test/**/*.spec.ts'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',

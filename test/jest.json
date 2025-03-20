@@ -28,9 +28,16 @@
             "statements": 100
         }
     },
+    "coverageReporters": ["html", "lcov", "json-summary"],
     "moduleFileExtensions": ["js", "ts", "json"],
+    "coverageProvider": "v8",
     "transform": {
-        "^.+\\.(t|j)s?$": ["@swc/jest"]
+        "^.+\\.(t|j)sx?$": [
+            "@swc/jest",
+            {
+                "sourceMaps": true
+            }
+        ]
     },
     "modulePathIgnorePatterns": ["<rootDir>/dist"]
 }

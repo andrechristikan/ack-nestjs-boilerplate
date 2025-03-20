@@ -3,12 +3,12 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
     IsString,
     IsNotEmpty,
-    IsEmail,
     MaxLength,
     MinLength,
     IsUUID,
     IsEnum,
 } from 'class-validator';
+import { IsCustomEmail } from 'src/common/request/validations/request.custom-email.validation';
 import { ENUM_USER_GENDER } from 'src/modules/user/enums/user.enum';
 
 export class UserCreateRequestDto {
@@ -17,7 +17,7 @@ export class UserCreateRequestDto {
         required: true,
         maxLength: 100,
     })
-    @IsEmail()
+    @IsCustomEmail()
     @IsNotEmpty()
     @MaxLength(100)
     email: string;

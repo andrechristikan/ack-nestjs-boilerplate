@@ -6,7 +6,11 @@
         "typescriptreact"
     ],
     "search.exclude": {
-        "package-lock.json": true
+        "package-lock.json": true,
+        "yarn.lock": true,
+        "node_modules": true,
+        "dist": true,
+        "coverage": true
     },
 
     "editor.tabSize": 4,
@@ -23,12 +27,10 @@
     },
 
     "typescript.preferences.importModuleSpecifier": "non-relative",
-    "[typescript][json][jsonc][yaml]": {
+    "typescript.preferences.quoteStyle": "single",
+
+    "[typescript][json][jsonc][yaml][dockercompose][handlebars][javascript][dotenv][shellscript][dockerfile]": {
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[dockerfile]": {
-        "editor.formatOnSave": true,
-        "editor.defaultFormatter": "ms-azuretools.vscode-docker"
     }
 }

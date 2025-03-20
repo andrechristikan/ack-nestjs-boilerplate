@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Request, Response } from 'express';
 import { Params } from 'nestjs-pino';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { LOGGER_SENSITIVE_FIELDS } from 'src/common/logger/constants/logger.constant';
+import {
+    EXCLUDED_ROUTES,
+    LOGGER_SENSITIVE_FIELDS,
+} from 'src/common/logger/constants/logger.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class LoggerOptionService {
@@ -42,14 +43,33 @@ export class LoggerOptionService {
     async createOptions(): Promise<Params> {
         const rfs = await import('rotating-file-stream');
 
+        const transports = [];
+
+        if (this.debugPrettier) {
+            transports.push({
+                target: 'pino-pretty',
+                options: {
+                    colorize: true,
+                    levelFirst: true,
+                    translateTime: 'SYS:standard',
+                },
+            });
+        }
+
+        if (this.debugIntoFile) {
+            transports.push({
+                target: 'pino/file',
+                options: {
+                    destination: `.${this.debugFilePath}/api.log`,
+                    mkdir: true,
+                },
+            });
+        }
+
         return {
             pinoHttp: {
                 level: this.debugEnable ? this.debugLevel : 'silent',
                 formatters: {
-                    level: (label: string) => ({
-                        level: label.toUpperCase(),
-                        severity: this.mapLevelToSeverity(label),
-                    }),
                     log: object => {
                         const today = this.helperDateService.create();
 
@@ -64,18 +84,10 @@ export class LoggerOptionService {
                             },
                         };
 
-                        if (!formatted.message && formatted.msg) {
-                            formatted.message = formatted.msg;
-                        }
-
-                        if (formatted.msg) {
-                            delete formatted.msg;
-                        }
-
                         return formatted;
                     },
                 },
-                messageKey: 'message',
+                messageKey: 'msg',
                 timestamp: false,
                 base: null,
                 stream: this.debugIntoFile
@@ -88,74 +100,113 @@ export class LoggerOptionService {
                           rotate: 7,
                       })
                     : undefined,
-                customProps: (req: Request, _res: Response) => ({
-                    context: 'HTTP',
-                    requestId: req.id || uuidv4(),
-                }),
                 redact: {
                     paths: [
                         ...LOGGER_SENSITIVE_FIELDS.map(field =>
-                            field.includes('-') || field.includes('_')
+                            field.includes('-')
                                 ? `req.body["${field}"]`
                                 : `req.body.${field}`
                         ),
                         ...LOGGER_SENSITIVE_FIELDS.map(field =>
-                            field.includes('-') || field.includes('_')
+                            field.includes('-')
                                 ? `req.headers["${field}"]`
                                 : `req.headers.${field}`
                         ),
+                        ...LOGGER_SENSITIVE_FIELDS.map(field =>
+                            field.includes('-')
+                                ? `res.body["${field}"]`
+                                : `res.body.${field}`
+                        ),
+                        ...LOGGER_SENSITIVE_FIELDS.map(field =>
+                            field.includes('-')
+                                ? `res.headers["${field}"]`
+                                : `res.headers.${field}`
+                        ),
                     ],
-                    remove: true,
+                    censor: '***REDACTED***',
                 },
                 serializers: {
-                    req: (request: IRequestApp) => ({
-                        id: request.id,
-                        method: request.method,
-                        url: request.url,
-                        path: request.path,
-                        route: request.route?.path,
-                        parameters: request.params,
-                        query: request.query,
-                        headers: request.headers,
-                        body: request.body,
-                        ip: request.ip,
-                        user: (request as any).user?.user,
-                        session: (request as any).user?.session,
-                        userAgent: request.headers['user-agent'],
-                        referer: request.headers.referer,
-                    }),
-                    res: (response: Response) => {
-                        const headers = response.headersSent
-                            ? response.getHeaders()
-                            : {};
+                    req: (request: IRequestApp) => {
+                        const rawReq = Object.getOwnPropertySymbols(
+                            request
+                        ).find(
+                            sym => String(sym) === 'Symbol(pino-raw-req-ref)'
+                        );
+
+                        let body = {};
+                        if (rawReq) {
+                            body = request[rawReq].body;
+                        }
+
+                        return {
+                            id: request.id,
+                            method: request.method,
+                            url: request.url,
+                            path: request.path,
+                            route: request.route?.path,
+                            parameters: request.params,
+                            query: request.query,
+                            headers: request.headers,
+                            body: body,
+                            ip: request.ip,
+                            user: (request.user as any)?.user_id,
+                            userAgent: request.headers['user-agent'],
+                            referer: request.headers.referer,
+                            remoteAddress: (request as any).remoteAddress,
+                            remotePort: (request as any).remotePort,
+                        };
+                    },
+                    res: (response: any) => {
+                        let headers = {};
+
+                        if (typeof response.getHeaders === 'function') {
+                            // Express/Fastify Response object
+                            headers = { ...response.getHeaders() };
+                        } else if (response.headers) {
+                            headers = { ...response.headers };
+                        }
+
+                        const rawRes = Object.getOwnPropertySymbols(
+                            response
+                        ).find(
+                            sym => String(sym) === 'Symbol(pino-raw-res-ref)'
+                        );
+
+                        let body: any = {};
+                        if (rawRes) {
+                            try {
+                                body = JSON.parse(response[rawRes].body);
+
+                                // delete body.data for privacy reason
+                                delete body.data;
+                            } catch (_) {}
+                        }
 
                         return {
                             httpCode: response.statusCode,
-                            headers,
+                            headers: headers,
+                            body,
                         };
                     },
                     err: (error: Error) => ({
                         type: error.name,
                         message: error.message,
                         code: (error as any).statusCode,
-                        stack:
-                            this.env === ENUM_APP_ENVIRONMENT.PRODUCTION
-                                ? undefined
-                                : error.stack,
+                        stack: error.stack,
                     }),
                 },
                 transport:
-                    !this.debugIntoFile && this.debugPrettier
+                    transports.length > 0
                         ? {
-                              target: 'pino-pretty',
-                              options: {
-                                  colorize: true,
-                                  levelFirst: true,
-                                  translateTime: 'SYS:standard',
-                              },
+                              targets: transports,
                           }
                         : undefined,
-                autoLogging: this.autoLogger,
+                autoLogging: this.autoLogger
+                    ? {
+                          ignore: (req: any) =>
+                              EXCLUDED_ROUTES.includes(req.url),
+                      }
+                    : undefined,
             },
         };
     }
