@@ -1,6 +1,5 @@
 import { ENUM_HELPER_DATE_DAY_OF } from 'src/common/helper/enums/helper.enum';
 
-// Helper Encryption
 export interface IHelperJwtVerifyOptions {
     audience: string;
     issuer: string;
@@ -15,13 +14,15 @@ export interface IHelperJwtOptions
     notBefore?: number | string;
 }
 
-// Helper String
-
 export interface IHelperStringPasswordOptions {
     length: number;
 }
 
-// Helper Date
 export interface IHelperDateCreateOptions {
     dayOf?: ENUM_HELPER_DATE_DAY_OF;
+}
+
+export interface IHelperEmailValidation {
+    validated: boolean;
+    message?: string;
 }

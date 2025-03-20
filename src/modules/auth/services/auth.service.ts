@@ -198,7 +198,6 @@ export class AuthService implements IAuthService {
             user: data._id,
             type: data.role.type,
             role: data.role._id,
-            roleIsActive: data.role.isActive,
             email: data.email,
             permissions: data.role.permissions,
             status: data.status,

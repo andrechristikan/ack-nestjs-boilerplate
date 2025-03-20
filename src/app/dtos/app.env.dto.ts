@@ -2,11 +2,13 @@ import { Type } from 'class-transformer';
 import {
     IsBoolean,
     IsEnum,
+    IsInt,
     IsNotEmpty,
     IsNumber,
     IsOptional,
     IsString,
     IsUrl,
+    Min,
     MinLength,
 } from 'class-validator';
 import {
@@ -51,7 +53,13 @@ export class AppEnvDto {
     @MinLength(1)
     HTTP_HOST: string;
 
-    @IsNumber()
+    @IsNumber({
+        allowInfinity: false,
+        allowNaN: false,
+        maxDecimalPlaces: 0,
+    })
+    @IsInt()
+    @Min(1)
     @IsNotEmpty()
     @Type(() => Number)
     HTTP_PORT: number;
@@ -66,6 +74,16 @@ export class AppEnvDto {
     @MinLength(1)
     DEBUG_LEVEL: string;
 
+    @IsBoolean()
+    @IsNotEmpty()
+    @Type(() => Boolean)
+    DEBUG_INTO_FILE: boolean;
+
+    @IsBoolean()
+    @IsNotEmpty()
+    @Type(() => Boolean)
+    DEBUG_PRETTIER: boolean;
+
     @IsString()
     @IsNotEmpty()
     @MinLength(1)
@@ -76,7 +94,13 @@ export class AppEnvDto {
     @Type(() => Boolean)
     URL_VERSIONING_ENABLE: boolean;
 
-    @IsNumber()
+    @IsNumber({
+        allowInfinity: false,
+        allowNaN: false,
+        maxDecimalPlaces: 0,
+    })
+    @Min(1)
+    @IsInt()
     @IsNotEmpty()
     @Type(() => Number)
     URL_VERSION: number;
@@ -189,7 +213,13 @@ export class AppEnvDto {
     @IsString()
     REDIS_HOST: string;
 
-    @IsNumber()
+    @IsNumber({
+        allowInfinity: false,
+        allowNaN: false,
+        maxDecimalPlaces: 0,
+    })
+    @IsInt()
+    @Min(1)
     @IsNotEmpty()
     @Type(() => Number)
     REDIS_PORT: number;

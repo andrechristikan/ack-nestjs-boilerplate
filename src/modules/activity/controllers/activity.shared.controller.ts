@@ -15,6 +15,7 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
+import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
@@ -31,6 +32,7 @@ export class ActivitySharedController {
 
     @ActivitySharedListDoc()
     @ResponsePaging('activity.list')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')

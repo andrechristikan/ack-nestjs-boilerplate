@@ -36,6 +36,7 @@ import { SessionService } from 'src/modules/session/services/session.service';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
+import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 
 @ApiTags('modules.user.user')
 @Controller({
@@ -56,6 +57,7 @@ export class UserUserController {
     @UserUserDeleteDoc()
     @Response('user.delete')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/delete')
@@ -105,6 +107,7 @@ export class UserUserController {
     @UserUserUpdateMobileNumberDoc()
     @Response('user.updateMobileNumber')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/mobile-number')
@@ -173,6 +176,7 @@ export class UserUserController {
     @UserUserUpdateUsernameDoc()
     @Response('user.updateClaimUsername')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/claim-username')
@@ -189,7 +193,8 @@ export class UserUserController {
             });
         }
 
-        const checkBadWord = this.userService.checkUsernameBadWord(username);
+        const checkBadWord =
+            await this.userService.checkUsernameBadWord(username);
         if (checkBadWord) {
             throw new BadRequestException({
                 statusCode:

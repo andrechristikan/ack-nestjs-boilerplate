@@ -1,7 +1,12 @@
 {
     "$schema": "https://swc.rs/schema.json",
     "sourceMaps": true,
+    "module": {
+        "type": "commonjs"
+    },
     "jsc": {
+        "baseUrl": "./",
+        "target": "esnext",
         "parser": {
             "syntax": "typescript",
             "decorators": true,
@@ -10,9 +15,14 @@
         "transform": {
             "legacyDecorator": true,
             "decoratorMetadata": true
-        },
-        "baseUrl": "./"
+        }
     },
     "minify": false,
-    "exclude": ["node_modules", "dist", "coverage", "templates"]
+    "exclude": [
+        "node_modules",
+        "dist",
+        "coverage",
+        "templates",
+        "src/metadata.ts"
+    ]
 }

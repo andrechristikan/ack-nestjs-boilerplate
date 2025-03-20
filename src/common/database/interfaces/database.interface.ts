@@ -15,6 +15,10 @@ export interface IDatabaseOptions {
     withDeleted?: boolean;
 }
 
+export interface IDatabaseExistsOptions extends IDatabaseOptions {
+    excludeId?: string;
+}
+
 export interface IDatabaseFindOneOptions extends IDatabaseOptions {
     order?: IPaginationOrder;
 }

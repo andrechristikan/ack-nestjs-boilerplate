@@ -29,6 +29,7 @@ import {
 } from 'src/modules/email/enums/email.enum';
 import { PolicyRoleProtected } from 'src/modules/policy/decorators/policy.decorator';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
+import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserService } from 'src/modules/user/services/user.service';
@@ -71,6 +72,7 @@ export class VerificationUserController {
     @VerificationUserGetEmailDoc()
     @Response('verification.getEmail')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/get/email')
@@ -98,6 +100,7 @@ export class VerificationUserController {
     @VerificationUserGetMobileNumberDoc()
     @Response('verification.getMobileNumber')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/get/mobile-number')
@@ -127,6 +130,7 @@ export class VerificationUserController {
     @VerificationUserResendEmailDoc()
     @Response('verification.resendEmail')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Post('/resend/email')
@@ -201,6 +205,7 @@ export class VerificationUserController {
     @VerificationUserResendMobileNumberDoc()
     @Response('verification.resendMobileNumber')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Post('/resend/mobile-number')
@@ -279,6 +284,7 @@ export class VerificationUserController {
     @VerificationUserVerifyEmailDoc()
     @Response('verification.verifyEmail')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -361,6 +367,7 @@ export class VerificationUserController {
     @VerificationUserVerifyMobileNumberDoc()
     @Response('verification.verifyMobileNumber')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)

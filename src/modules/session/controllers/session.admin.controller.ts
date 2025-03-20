@@ -35,6 +35,7 @@ import { ENUM_SESSION_STATUS_CODE_ERROR } from 'src/modules/session/enums/sessio
 import { SessionActiveParsePipe } from 'src/modules/session/pipes/session.parse.pipe';
 import { SessionDoc } from 'src/modules/session/repository/entities/session.entity';
 import { SessionService } from 'src/modules/session/services/session.service';
+import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
@@ -57,6 +58,7 @@ export class SessionAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -99,6 +101,7 @@ export class SessionAdminController {
 
     @SessionAdminRevokeDoc()
     @Response('session.revoke')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/revoke/:session')

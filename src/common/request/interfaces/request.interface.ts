@@ -7,7 +7,6 @@ import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 export interface IRequestApp<T = AuthJwtAccessPayloadDto> extends Request {
     apiKey?: ApiKeyPayloadDto;
     user?: T;
-    workspace?: string;
 
     __user?: IUserDoc;
     __language: string;

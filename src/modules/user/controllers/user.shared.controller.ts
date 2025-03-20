@@ -13,7 +13,6 @@ import { ApiTags } from '@nestjs/swagger';
 import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
-import { ENUM_FILE_MIME_IMAGE } from 'src/common/file/enums/file.enum';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
@@ -30,6 +29,7 @@ import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-pr
 import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { CountryService } from 'src/modules/country/services/country.service';
+import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 import {
     UserSharedProfileDoc,
     UserSharedUpdatePhotoProfileDoc,
@@ -65,6 +65,7 @@ export class UserSharedController {
 
     @UserSharedProfileDoc()
     @Response('user.profile')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/profile')
@@ -79,6 +80,7 @@ export class UserSharedController {
 
     @UserSharedUpdateProfileDoc()
     @Response('user.updateProfile')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/profile/update')
@@ -135,6 +137,7 @@ export class UserSharedController {
 
     @UserSharedUploadPhotoProfileDoc()
     @Response('user.uploadPhotoProfile')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -144,16 +147,11 @@ export class UserSharedController {
         user: UserDoc,
         @Body() { type }: UserUploadPhotoRequestDto
     ): Promise<IResponse<AwsS3PresignResponseDto>> {
-        const path: string = this.userService.getPhotoUploadPath(user._id);
         const randomFilename: string =
-            this.userService.createRandomFilenamePhoto();
+            this.userService.createRandomFilenamePhoto(user._id, { type });
 
-        const extension = Object.keys(ENUM_FILE_MIME_IMAGE)
-            .find(e => e === type)
-            .toLowerCase();
-        const aws: AwsS3PresignResponseDto = await this.awsS3Service.presign(
-            `${path}/${randomFilename}.${extension}`
-        );
+        const aws: AwsS3PresignResponseDto =
+            await this.awsS3Service.presignPutItem(randomFilename);
 
         return {
             data: aws,
@@ -162,6 +160,7 @@ export class UserSharedController {
 
     @UserSharedUpdatePhotoProfileDoc()
     @Response('user.updatePhotoProfile')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/profile/update-photo')

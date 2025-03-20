@@ -36,5 +36,15 @@
     "LessThan": "{property} should be less than {value}.",
     "lessThanEqual": "{property} should be less than or equal to {value}.",
     "greaterThan": "{property} should be greater than {value}.",
-    "greaterThanEqual": "{property} should be greater than or equal to {value}."
+    "greaterThanEqual": "{property} should be greater than or equal to {value}.",
+    "email": {
+        "invalid": "{property} should be a valid email address.",
+        "multipleAtSymbols": "{property} should not contain multiple '@' symbols.",
+        "localPartNotEmpty": "{property} local part cannot be empty.",
+        "domainLength": "{property} domain length should be less than or equal to 255 characters.",
+        "localPartMaxLength": "{property} local part length should be less than or equal to 64 characters.",
+        "localPartDot": "{property} local part should not start or end with a dot.",
+        "consecutiveDots": "{property} local part should not contain consecutive dots.",
+        "invalidChars": "{property} local part should not contain invalid characters."
+    }
 }

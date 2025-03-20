@@ -12,6 +12,7 @@ import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 import compression from 'compression';
 import { Logger as PinoLogger } from 'nestjs-pino';
+import { NextFunction, Request } from 'express';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule, {
@@ -75,6 +76,16 @@ async function bootstrap() {
 
     // Swagger
     await swaggerInit(app);
+
+    // set response for log
+    app.use(function (_: Request, res: any, next: NextFunction) {
+        const send = res.send;
+        res.send = function (body: any) {
+            res.body = body;
+            send.call(this, body);
+        };
+        next();
+    });
 
     // Listen
     await app.listen(port, host);

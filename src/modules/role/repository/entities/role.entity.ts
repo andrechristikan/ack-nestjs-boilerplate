@@ -29,6 +29,7 @@ export class RoleEntity extends DatabaseEntityBase {
         required: false,
         trim: true,
         type: String,
+        maxlength: 500,
     })
     description?: string;
 

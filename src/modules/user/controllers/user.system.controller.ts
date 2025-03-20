@@ -132,7 +132,8 @@ export class UserSystemController {
             });
         }
 
-        const checkBadWord = this.userService.checkUsernameBadWord(username);
+        const checkBadWord =
+            await this.userService.checkUsernameBadWord(username);
         if (checkBadWord) {
             throw new BadRequestException({
                 statusCode:

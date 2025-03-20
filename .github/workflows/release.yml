@@ -1,27 +1,21 @@
 name: Release
 on:
-    # push:
-    #   branches:
-    #   - main
-    #   - staging
-    #   - development
     workflow_dispatch:
+    # push:
+    #     branches:
+    #         - main
+    #         - development
 
 jobs:
-    build_image_production:
+    build_image:
         runs-on: ubuntu-latest
-        if: ${{ github.ref_name == 'main' }}
 
         env:
             DOCKERFILE: ci/dockerfile
 
-            DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
-            DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-            DOCKERHUB_REPO_NAME: ${{ vars.DOCKERHUB_REPO_NAME }}
-
         steps:
             - name: Git checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
 
             - name: Get short sha commit
               id: git
@@ -30,372 +24,133 @@ jobs:
 
             - name: Get latest version
               id: version
-              uses: ActionsTools/read-json-action@main
-              with:
-                  file_path: 'package.json'
+              uses: martinbeentjes/npm-get-version-action@main
 
             - name: Git
               run: |
+                  echo Branch name is: ${{ github.ref_name }}
                   echo Short sha: ${{ steps.git.outputs.short_sha }}
-                  echo Version is: ${{ steps.version.outputs.version }}
-
-            - name: Environment
-              run: |
-                  echo DOCKERFILE is: ${{ env.DOCKERFILE }}
-                  echo DOCKERHUB_USERNAME is: ${{ env.DOCKERHUB_USERNAME }}
-                  echo DOCKERHUB_TOKEN is: ${{ env.DOCKERHUB_TOKEN }}
-                  echo DOCKERHUB_REPO_NAME is: ${{ env.DOCKERHUB_REPO_NAME }}
+                  echo Version is: ${{ steps.version.outputs.current-version }}
 
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v3
 
             - name: Set up Docker Buildx for Builder
               uses: docker/setup-buildx-action@v3
-              id: builder
-
-            - name: Set up Docker Buildx for Main
-              uses: docker/setup-buildx-action@v3
-              id: main
-
-            - name: Builder name
-              run: echo ${{ steps.builder.outputs.name }}
-
-            - name: Main name
-              run: echo ${{ steps.main.outputs.name }}
-
-            - name: Login to DockerHub
-              uses: docker/login-action@v3
+              
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
               with:
-                  username: ${{ env.DOCKERHUB_USERNAME }}
-                  password: ${{ env.DOCKERHUB_TOKEN }}
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
 
-            - name: Build builder
-              uses: docker/build-push-action@v4
-              with:
-                  builder: ${{ steps.builder.outputs.name }}
-                  file: ${{ env.DOCKERFILE }}
-                  build-args: |
-                      NODE_ENV=test
-                  target: builder
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
 
-            - name: Build main and push
-              uses: docker/build-push-action@v4
-              with:
-                  builder: ${{ steps.main.outputs.name }}
-                  file: ${{ env.DOCKERFILE }}
-                  build-args: |
-                      NODE_ENV=production
-                  target: main
-                  tags: |
-                      ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:latest
-                      ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:main_v${{ steps.version.outputs.version }}
-                      ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:main_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
-                  push: true
+            - name: Build & Push & Tag Production
+              if: ${{ github.ref_name == 'main' }}
+              run: |
+                  docker build --build-arg NODE_ENV=${{ env.NODE_ENV }} -t ${{ vars.AWS_ECR_REPO_URL }}:latest -f ./ci/dockerfile .
+                  docker tag ${{ vars.AWS_ECR_REPO_URL }}:latest ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker tag ${{ vars.AWS_ECR_REPO_URL }}:latest ${{ vars.AWS_ECR_REPO_URL }}:latest
+                  docker tag ${{ vars.AWS_ECR_REPO_URL }}:latest ${{ vars.AWS_ECR_REPO_URL }}:${{ env.NODE_ENV }}
+                  docker push ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.AWS_ECR_REPO_URL }}:latest
+                  docker push ${{ vars.AWS_ECR_REPO_URL }}:${{ env.NODE_ENV }}
+              env: 
+                  NODE_ENV: production
 
-    deploy_production:
-        needs: [build_image_production]
+            - name: Build & Push & Tag Development
+              if: ${{ github.ref_name == 'development' }}
+              run: |
+                  docker build --build-arg NODE_ENV=${{ env.NODE_ENV }} -t ${{ vars.AWS_ECR_REPO_URL }}:latest -f ./ci/dockerfile .
+                  docker tag ${{ vars.AWS_ECR_REPO_URL }}:latest ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker tag ${{ vars.AWS_ECR_REPO_URL }}:latest ${{ vars.AWS_ECR_REPO_URL }}:${{ env.NODE_ENV }}
+                  docker push ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.AWS_ECR_REPO_URL }}:${{ env.NODE_ENV }}
+              env: 
+                  NODE_ENV: development
+    deploy:
+        needs: [build_image]
         runs-on: ubuntu-latest
-        if: ${{ github.ref_name == 'main' }}
-        environment: 'production'
-
-        env:
-            DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
-            DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-            DOCKERHUB_REPO_NAME: ${{ vars.DOCKERHUB_REPO_NAME }}
-
-            DOCKER_CONTAINER_NAME: ${{ vars.DOCKER_CONTAINER_NAME }}
-            DOCKER_CONTAINER_PORT: 3000
-            DOCKER_CONTAINER_PORT_EXPOSE: ${{ vars.DOCKER_CONTAINER_PORT_EXPOSE }}
-            DOCKER_CONTAINER_NETWORK: app-network
-
-            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            AWS_REGION: ${{ vars.AWS_REGION }}
-            AWS_SECURITY_GROUP_ID: ${{ vars.AWS_SECURITY_GROUP_ID }}
-
-            SSH_HOST: ${{ vars.SSH_HOST }}
-            SSH_PORT: ${{ vars.SSH_PORT }}
-            SSH_USER: ${{ vars.SSH_USER }}
-            SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
         steps:
-            - name: Git checkout
-              uses: actions/checkout@v3
+            - name: Checkout
+              uses: actions/checkout@v4
 
-            - name: Get short sha commit
-              id: git
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Update AWS EC2 Instance for Production
+              if: ${{ github.ref_name == 'main' }}
               run: |
-                  echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
+                  aws ssm send-command \
+                      --instance-ids "${{ vars.AWS_INSTANCE_ID_PROD }}" \
+                      --document-name "AWS-RunShellScript" \
+                      --comment "Release new version" \
+                      --parameters commands='[
+                          "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ vars.AWS_ECR_REPO_URL }}",
+                          "docker pull ${{ vars.AWS_ECR_REPO_URL }}:production",
+                          "docker stop ${{ vars.DOCKER_CONTAINER_NAME }} && docker rm ${{ vars.DOCKER_CONTAINER_NAME }}",
+                          "docker network create app-network --driver=bridge",
+                          "docker run -itd --env NODE_ENV=production --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.AWS_ECR_REPO_URL }}:production"
+                      ]'
 
-            - name: Get latest version
-              id: version
-              uses: ActionsTools/read-json-action@main
-              with:
-                  file_path: 'package.json'
-
-            - name: Git
+            - name: Update AWS EC2 Instance for Development
+              if: ${{ github.ref_name == 'development' }}
               run: |
-                  echo Short sha: ${{ steps.git.outputs.short_sha }}
-                  echo Version is: ${{ steps.version.outputs.version }}
-
-            - name: Environment
-              run: |
-                  echo DOCKERHUB_USERNAME is: ${{ env.DOCKERHUB_USERNAME }}
-                  echo DOCKERHUB_TOKEN is: ${{ env.DOCKERHUB_TOKEN }}
-                  echo DOCKERHUB_REPO_NAME is: ${{ env.DOCKERHUB_REPO_NAME }}
-                  echo DOCKER_CONTAINER_NAME is: ${{ env.DOCKER_CONTAINER_NAME }}
-                  echo DOCKER_CONTAINER_PORT is: ${{ env.DOCKER_CONTAINER_PORT }}
-                  echo DOCKER_CONTAINER_PORT_EXPOSE is: ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}
-                  echo DOCKER_CONTAINER_NETWORK is: ${{ env.DOCKER_CONTAINER_NETWORK }}
-
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3
-
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
-
-            - name: Login to DockerHub
-              uses: docker/login-action@v3
-              with:
-                  username: ${{ env.DOCKERHUB_USERNAME }}
-                  password: ${{ env.DOCKERHUB_TOKEN }}
-
-            - name: Add public IP to AWS security group
-              uses: sohelamin/aws-security-group-add-ip-action@master
-              with:
-                  aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-                  aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-                  aws-region: ${{ env.AWS_REGION }}
-                  aws-security-group-id: ${{ env.AWS_SECURITY_GROUP_ID }}
-                  port: '22'
-                  protocol: 'tcp'
-                  description: 'GitHub Action'
-
-            - name: Deploy
-              uses: fifsky/ssh-action@master
-              with:
-                  command: |
-                      docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:main_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
-                      docker stop ${{ env.DOCKER_CONTAINER_NAME }} && docker rm ${{ env.DOCKER_CONTAINER_NAME }}
-                      docker network create ${{ env.DOCKER_CONTAINER_NETWORK }} --driver=bridge
-                      docker run -itd \
-                        --env NODE_ENV=production \
-                        --hostname ${{ env.DOCKER_CONTAINER_NAME }} \
-                        --publish ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}:${{ env.DOCKER_CONTAINER_PORT }} \
-                        --network ${{ env.DOCKER_CONTAINER_NETWORK }} \
-                        --volume /app/${{ env.DOCKER_CONTAINER_NAME }}/.env:/app/.env \
-                        --restart unless-stopped \
-                        --name ${{ env.DOCKER_CONTAINER_NAME }} ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:main_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
-                  host: ${{ env.SSH_HOST }}
-                  port: ${{ env.SSH_PORT }}
-                  user: ${{ env.SSH_USER }}
-                  key: ${{ env.SSH_PRIVATE_KEY }}
-
-            - name: Clean
-              uses: fifsky/ssh-action@master
-              continue-on-error: true
-              with:
-                  command: |
-                      docker container prune --force
-                      docker image prune --force
-                      docker rmi $(docker images ${{ env.DOCKERHUB_USERNAME }}/** -q) --force
-                  host: ${{ env.SSH_HOST }}
-                  port: ${{ env.SSH_PORT }}
-                  user: ${{ env.SSH_USER }}
-                  key: ${{ env.SSH_PRIVATE_KEY }}
-
-    build_image_staging:
+                  aws ssm send-command \
+                      --instance-ids "${{ vars.AWS_INSTANCE_ID_DEV }}" \
+                      --document-name "AWS-RunShellScript" \
+                      --comment "Release new version" \
+                      --parameters commands='[
+                          "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ vars.AWS_ECR_REPO_URL }}",
+                          "docker pull ${{ vars.AWS_ECR_REPO_URL }}:development",
+                          "docker stop ${{ vars.DOCKER_CONTAINER_NAME }} && docker rm ${{ vars.DOCKER_CONTAINER_NAME }}",
+                          "docker network create app-network --driver=bridge",
+                          "docker run -itd --env NODE_ENV=development --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.AWS_ECR_REPO_URL }}:development"
+                      ]'
+    clean:
+        needs: [deploy]
         runs-on: ubuntu-latest
-        if: ${{ github.ref_name == 'staging' }}
-
-        env:
-            DOCKERFILE: ci/dockerfile
-
-            DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
-            DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-            DOCKERHUB_REPO_NAME: ${{ vars.DOCKERHUB_REPO_NAME }}
 
         steps:
-            - name: Git checkout
-              uses: actions/checkout@v3
+            - name: Checkout
+              uses: actions/checkout@v4
 
-            - name: Get short sha commit
-              id: git
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Clean AWS EC2 Instance for Production
+              if: ${{ github.ref_name == 'main' }}
               run: |
-                  echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
+                  aws ssm send-command \
+                      --instance-ids "${{ vars.AWS_INSTANCE_ID_PROD }}" \
+                      --document-name "AWS-RunShellScript" \
+                      --comment "Clean up" \
+                      --parameters commands='[
+                          "docker image prune --force",
+                          "docker rmi $(docker images ${{ vars.AWS_ECR_REPO_URL }}/** -q) --force"
+                      ]'
 
-            - name: Get latest version
-              id: version
-              uses: ActionsTools/read-json-action@main
-              with:
-                  file_path: 'package.json'
-
-            - name: Git
+            - name: Clean AWS EC2 Instance for Development
+              if: ${{ github.ref_name == 'development' }}
               run: |
-                  echo Short sha: ${{ steps.git.outputs.short_sha }}
-                  echo Version is: ${{ steps.version.outputs.version }}
-
-            - name: Environment
-              run: |
-                  echo DOCKERFILE is: ${{ env.DOCKERFILE }}
-                  echo DOCKERHUB_USERNAME is: ${{ env.DOCKERHUB_USERNAME }}
-                  echo DOCKERHUB_TOKEN is: ${{ env.DOCKERHUB_TOKEN }}
-                  echo DOCKERHUB_REPO_NAME is: ${{ env.DOCKERHUB_REPO_NAME }}
-
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3
-
-            - name: Set up Docker Buildx for Builder
-              uses: docker/setup-buildx-action@v3
-              id: builder
-
-            - name: Set up Docker Buildx for Main
-              uses: docker/setup-buildx-action@v3
-              id: main
-
-            - name: Builder name
-              run: echo ${{ steps.builder.outputs.name }}
-
-            - name: Main name
-              run: echo ${{ steps.main.outputs.name }}
-
-            - name: Login to DockerHub
-              uses: docker/login-action@v3
-              with:
-                  username: ${{ env.DOCKERHUB_USERNAME }}
-                  password: ${{ env.DOCKERHUB_TOKEN }}
-
-            - name: Build builder
-              uses: docker/build-push-action@v4
-              with:
-                  builder: ${{ steps.builder.outputs.name }}
-                  file: ${{ env.DOCKERFILE }}
-                  build-args: |
-                      NODE_ENV=test
-                  target: builder
-
-            - name: Build staging and push
-              uses: docker/build-push-action@v4
-              if: ${{ github.ref_name == 'staging' }}
-              with:
-                  builder: ${{ steps.main.outputs.name }}
-                  file: ${{ env.DOCKERFILE }}
-                  build-args: |
-                      NODE_ENV=development
-                  target: main
-                  tags: |
-                      ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:staging_v${{ steps.version.outputs.version }}
-                      ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:staging_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
-                  push: true
-
-    deploy_staging:
-        needs: [build_image_staging]
-        runs-on: ubuntu-latest
-        if: ${{ github.ref_name == 'staging' }}
-        environment: 'staging'
-
-        env:
-            DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
-            DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-            DOCKERHUB_REPO_NAME: ${{ vars.DOCKERHUB_REPO_NAME }}
-
-            DOCKER_CONTAINER_NAME: ${{ vars.DOCKER_CONTAINER_NAME }}
-            DOCKER_CONTAINER_PORT: 3000
-            DOCKER_CONTAINER_PORT_EXPOSE: ${{ vars.DOCKER_CONTAINER_PORT_EXPOSE }}
-            DOCKER_CONTAINER_NETWORK: app-network
-
-            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            AWS_REGION: ${{ vars.AWS_REGION }}
-            AWS_SECURITY_GROUP_ID: ${{ vars.AWS_SECURITY_GROUP_ID }}
-
-            SSH_HOST: ${{ vars.SSH_HOST }}
-            SSH_PORT: ${{ vars.SSH_PORT }}
-            SSH_USER: ${{ vars.SSH_USER }}
-            SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-
-        steps:
-            - name: Git checkout
-              uses: actions/checkout@v3
-
-            - name: Get short sha commit
-              id: git
-              run: |
-                  echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
-
-            - name: Get latest version
-              id: version
-              uses: ActionsTools/read-json-action@main
-              with:
-                  file_path: 'package.json'
-
-            - name: Git
-              run: |
-                  echo Short sha: ${{ steps.git.outputs.short_sha }}
-                  echo Version is: ${{ steps.version.outputs.version }}
-
-            - name: Environment
-              run: |
-                  echo DOCKERHUB_USERNAME is: ${{ env.DOCKERHUB_USERNAME }}
-                  echo DOCKERHUB_TOKEN is: ${{ env.DOCKERHUB_TOKEN }}
-                  echo DOCKERHUB_REPO_NAME is: ${{ env.DOCKERHUB_REPO_NAME }}
-                  echo DOCKER_CONTAINER_NAME is: ${{ env.DOCKER_CONTAINER_NAME }}
-                  echo DOCKER_CONTAINER_PORT is: ${{ env.DOCKER_CONTAINER_PORT }}
-                  echo DOCKER_CONTAINER_PORT_EXPOSE is: ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}
-                  echo DOCKER_CONTAINER_NETWORK is: ${{ env.DOCKER_CONTAINER_NETWORK }}
-
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3
-
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
-
-            - name: Login to DockerHub
-              uses: docker/login-action@v3
-              with:
-                  username: ${{ env.DOCKERHUB_USERNAME }}
-                  password: ${{ env.DOCKERHUB_TOKEN }}
-
-            - name: Add public IP to AWS security group
-              uses: sohelamin/aws-security-group-add-ip-action@master
-              with:
-                  aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-                  aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-                  aws-region: ${{ env.AWS_REGION }}
-                  aws-security-group-id: ${{ env.AWS_SECURITY_GROUP_ID }}
-                  port: '22'
-                  protocol: 'tcp'
-                  description: 'GitHub Action'
-
-            - name: Deploy
-              uses: fifsky/ssh-action@master
-              with:
-                  command: |
-                      docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:staging_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
-                      docker stop ${{ env.DOCKER_CONTAINER_NAME }} && docker rm ${{ env.DOCKER_CONTAINER_NAME }}
-                      docker network create ${{ env.DOCKER_CONTAINER_NETWORK }} --driver=bridge
-                      docker run -itd \
-                        --env NODE_ENV=development \
-                        --hostname ${{ env.DOCKER_CONTAINER_NAME }} \
-                        --publish ${{ env.DOCKER_CONTAINER_PORT_EXPOSE }}:${{ env.DOCKER_CONTAINER_PORT }} \
-                        --network ${{ env.DOCKER_CONTAINER_NETWORK }} \
-                        --volume /app/${{ env.DOCKER_CONTAINER_NAME }}/.env:/app/.env \
-                        --restart unless-stopped \
-                        --name ${{ env.DOCKER_CONTAINER_NAME }} ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:staging_v${{ steps.version.outputs.version }}_sha-${{ steps.git.outputs.short_sha }}
-                  host: ${{ env.SSH_HOST }}
-                  port: ${{ env.SSH_PORT }}
-                  user: ${{ env.SSH_USER }}
-                  key: ${{ env.SSH_PRIVATE_KEY }}
-
-            - name: Clean
-              uses: fifsky/ssh-action@master
-              continue-on-error: true
-              with:
-                  command: |
-                      docker container prune --force
-                      docker image prune --force
-                      docker rmi $(docker images ${{ env.DOCKERHUB_USERNAME }}/** -q) --force
-                  host: ${{ env.SSH_HOST }}
-                  port: ${{ env.SSH_PORT }}
-                  user: ${{ env.SSH_USER }}
-                  key: ${{ env.SSH_PRIVATE_KEY }}
+                  aws ssm send-command \
+                      --instance-ids "${{ vars.AWS_INSTANCE_ID_DEV }}" \
+                      --document-name "AWS-RunShellScript" \
+                      --comment "Clean up" \
+                      --parameters commands='[
+                          "docker image prune --force",
+                          "docker rmi $(docker images ${{ vars.AWS_ECR_REPO_URL }}/** -q) --force"
+                      ]'

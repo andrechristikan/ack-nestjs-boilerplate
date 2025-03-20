@@ -1,4 +1,7 @@
-import { IHelperStringPasswordOptions } from 'src/common/helper/interfaces/helper.interface';
+import {
+    IHelperEmailValidation,
+    IHelperStringPasswordOptions,
+} from 'src/common/helper/interfaces/helper.interface';
 
 export interface IHelperStringService {
     randomReference(length: number): string;
@@ -9,4 +12,5 @@ export interface IHelperStringService {
         options?: IHelperStringPasswordOptions
     ): boolean;
     formatCurrency(num: number, locale: string): string;
+    checkCustomEmail(value: string): IHelperEmailValidation;
 }

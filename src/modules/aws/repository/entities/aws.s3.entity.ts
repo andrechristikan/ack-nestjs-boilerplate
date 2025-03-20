@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -16,19 +17,7 @@ export class AwsS3Entity {
         required: true,
         type: String,
     })
-    path: string;
-
-    @DatabaseProp({
-        required: true,
-        type: String,
-    })
-    pathWithFilename: string;
-
-    @DatabaseProp({
-        required: true,
-        type: String,
-    })
-    filename: string;
+    key: string;
 
     @DatabaseProp({
         required: true,
@@ -37,10 +26,10 @@ export class AwsS3Entity {
     completedUrl: string;
 
     @DatabaseProp({
-        required: true,
+        required: false,
         type: String,
     })
-    baseUrl: string;
+    cdnUrl?: string;
 
     @DatabaseProp({
         required: true,
@@ -56,9 +45,9 @@ export class AwsS3Entity {
 
     @DatabaseProp({
         required: true,
-        type: Number,
+        type: Types.Decimal128,
     })
-    size: number;
+    size: Types.Decimal128;
 }
 
 export const AwsS3Schema = DatabaseSchema(AwsS3Entity);

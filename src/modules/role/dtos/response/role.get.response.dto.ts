@@ -17,6 +17,7 @@ export class RoleGetResponseDto extends DatabaseDto {
         description: 'Description of role',
         example: faker.lorem.sentence(),
         required: false,
+        maxLength: 500,
     })
     description?: string;
 

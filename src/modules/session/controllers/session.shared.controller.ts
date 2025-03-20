@@ -29,6 +29,7 @@ import { ENUM_SESSION_STATUS_CODE_ERROR } from 'src/modules/session/enums/sessio
 import { SessionActiveByUserParsePipe } from 'src/modules/session/pipes/session.parse.pipe';
 import { SessionDoc } from 'src/modules/session/repository/entities/session.entity';
 import { SessionService } from 'src/modules/session/services/session.service';
+import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 
 @ApiTags('modules.shared.session')
 @Controller({
@@ -43,6 +44,7 @@ export class SessionSharedController {
 
     @SessionSharedListDoc()
     @ResponsePaging('session.list')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -85,6 +87,7 @@ export class SessionSharedController {
 
     @SessionSharedRevokeDoc()
     @Response('session.revoke')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/revoke/:session')

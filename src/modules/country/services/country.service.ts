@@ -42,7 +42,7 @@ export class CountryService implements ICountryService {
         options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne(
-            DatabaseHelperQueryContain('name', name),
+            DatabaseHelperQueryContain('name', name, { fullWord: true }),
             options
         );
     }
@@ -52,7 +52,9 @@ export class CountryService implements ICountryService {
         options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne(
-            DatabaseHelperQueryContain('alpha2Code', alpha2),
+            DatabaseHelperQueryContain('alpha2Code', alpha2, {
+                fullWord: true,
+            }),
             options
         );
     }
@@ -62,9 +64,9 @@ export class CountryService implements ICountryService {
         options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne(
-            {
-                phoneCode,
-            },
+            DatabaseHelperQueryContain('phoneCode', phoneCode, {
+                fullWord: true,
+            }),
             options
         );
     }

@@ -20,7 +20,7 @@ export class UserMobileNumberEntity {
     country: string;
 
     @DatabaseProp({
-        required: false,
+        required: true,
         trim: true,
         type: String,
         maxlength: 20,

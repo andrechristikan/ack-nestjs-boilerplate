@@ -51,3 +51,5 @@ lerna-debug.log*
 !.env.example
 config.yaml
 config.yml
+
+swagger.json

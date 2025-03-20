@@ -35,7 +35,7 @@ export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {
     });
 }
 
-export function DatabaseProp(options?: PropOptions<any>): PropertyDecorator {
+export function DatabaseProp(options?: PropOptions): PropertyDecorator {
     return Prop(options);
 }
 

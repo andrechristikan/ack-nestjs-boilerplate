@@ -132,3 +132,20 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
         })
     );
 }
+
+export function RoleAdminDeleteDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'delete data a role',
+        }),
+        DocRequest({
+            params: RoleDocParamsId,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('role.delete')
+    );
+}

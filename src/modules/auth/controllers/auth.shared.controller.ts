@@ -45,6 +45,7 @@ import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 
 @ApiTags('modules.shared.auth')
 @Controller({
@@ -67,6 +68,7 @@ export class AuthSharedController {
 
     @AuthSharedRefreshDoc()
     @Response('auth.refresh')
+    @UserProtected()
     @AuthJwtRefreshProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -95,6 +97,7 @@ export class AuthSharedController {
 
     @AuthSharedChangePasswordDoc()
     @Response('auth.changePassword')
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/change-password')

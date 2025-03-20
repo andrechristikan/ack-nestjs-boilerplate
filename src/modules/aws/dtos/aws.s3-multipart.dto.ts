@@ -48,13 +48,6 @@ export class AwsS3MultipartDto extends AwsS3Dto {
 
     @ApiProperty({
         required: true,
-        example: 1,
-        description: 'Size uploaded',
-    })
-    exactSize: number;
-
-    @ApiProperty({
-        required: true,
         oneOf: [
             {
                 $ref: getSchemaPath(AwsS3MultipartPartDto),

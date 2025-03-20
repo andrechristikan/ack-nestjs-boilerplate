@@ -18,11 +18,23 @@ export class DatabaseDto {
     createdAt: Date;
 
     @ApiProperty({
+        description: 'created by',
+        required: false,
+    })
+    createdBy?: string;
+
+    @ApiProperty({
         description: 'Date updated at',
         example: faker.date.recent(),
         required: true,
     })
     updatedAt: Date;
+
+    @ApiProperty({
+        description: 'updated by',
+        required: false,
+    })
+    updatedBy?: string;
 
     @ApiProperty({
         description: 'Flag for deleted',

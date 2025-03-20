@@ -91,6 +91,7 @@ import { MessageService } from 'src/common/message/services/message.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { VerificationService } from 'src/modules/verification/services/verification.service';
+import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -121,6 +122,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -186,6 +188,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/get/:user')
@@ -206,6 +209,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @Post('/create')
     async create(
@@ -350,6 +354,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/:user')
@@ -416,6 +421,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/update/:user/status')

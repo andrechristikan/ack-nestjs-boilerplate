@@ -6,7 +6,9 @@ import { utils, write, read } from 'xlsx';
 
 @Injectable()
 export class FileService implements IFileService {
-    writeCsv<T = any>(rows: IFileRows<T>): Buffer {
+    writeCsv<T = Record<string, string | number | Date>>(
+        rows: IFileRows<T>
+    ): Buffer {
         const worksheet = utils.json_to_sheet(rows.data);
         const csv = utils.sheet_to_csv(worksheet, { FS: ';' });
 
@@ -16,7 +18,9 @@ export class FileService implements IFileService {
         return buff;
     }
 
-    writeCsvFromArray<T = any>(rows: T[][]): Buffer {
+    writeCsvFromArray<T = Record<string, string | number | Date>>(
+        rows: T[][]
+    ): Buffer {
         const worksheet = utils.aoa_to_sheet(rows);
         const csv = utils.sheet_to_csv(worksheet, { FS: ';' });
 
@@ -26,7 +30,9 @@ export class FileService implements IFileService {
         return buff;
     }
 
-    writeExcel<T = any>(rows: IFileRows<T>[]): Buffer {
+    writeExcel<T = Record<string, string | number | Date>>(
+        rows: IFileRows<T>[]
+    ): Buffer {
         // workbook
         const workbook = utils.book_new();
 
@@ -49,7 +55,9 @@ export class FileService implements IFileService {
         return buff;
     }
 
-    writeExcelFromArray<T = any>(rows: T[][]): Buffer {
+    writeExcelFromArray<T = Record<string, string | number | Date>>(
+        rows: T[][]
+    ): Buffer {
         // workbook
         const workbook = utils.book_new();
 
@@ -66,7 +74,9 @@ export class FileService implements IFileService {
         return buff;
     }
 
-    readCsv(file: Buffer): IFileRows {
+    readCsv<T = Record<string, string | number | Date>>(
+        file: Buffer
+    ): IFileRows<T> {
         // workbook
         const workbook = read(file, {
             type: 'buffer',
@@ -75,8 +85,7 @@ export class FileService implements IFileService {
         // worksheet
         const worksheetsName: string = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[worksheetsName];
-        const rows: Record<string, string | number | Date>[] =
-            utils.sheet_to_json(worksheet);
+        const rows: T[] = utils.sheet_to_json(worksheet);
 
         return {
             data: rows,
@@ -84,7 +93,9 @@ export class FileService implements IFileService {
         };
     }
 
-    readExcel(file: Buffer): IFileRows[] {
+    readExcel<T = Record<string, string | number | Date>>(
+        file: Buffer
+    ): IFileRows<T>[] {
         // workbook
         const workbook = read(file, {
             type: 'buffer',
@@ -98,8 +109,7 @@ export class FileService implements IFileService {
             const worksheet = workbook.Sheets[worksheetsName[i]];
 
             // rows
-            const rows: Record<string, string | number | Date>[] =
-                utils.sheet_to_json(worksheet);
+            const rows: T[] = utils.sheet_to_json(worksheet);
 
             sheets.push({
                 data: rows,
