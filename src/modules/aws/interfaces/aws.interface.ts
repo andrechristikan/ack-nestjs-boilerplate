@@ -18,6 +18,7 @@ export interface IAwsS3PutItemWithAclOptions extends IAwsS3Options {
 export interface IAwsS3PresignOptions extends IAwsS3Options {
     allowedSize?: number;
     expired?: number;
+    forceUpdate?: boolean;
 }
 
 export interface IAwsS3PutItem {
@@ -44,4 +45,11 @@ export interface IAwsS3ConfigBucket {
 export interface IAwsS3Config {
     public: IAwsS3ConfigBucket;
     private: IAwsS3ConfigBucket;
+}
+
+export interface IAwsS3FileInfo {
+    pathWithFilename: string;
+    filename: string;
+    extension: string;
+    mime: string;
 }

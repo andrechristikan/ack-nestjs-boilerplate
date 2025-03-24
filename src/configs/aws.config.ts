@@ -14,7 +14,9 @@ export default registerAs(
                     bucket: process.env.AWS_S3_PUBLIC_BUCKET ?? 'bucketPublic',
                     region: process.env.AWS_S3_PUBLIC_REGION,
                     baseUrl: `https://${process.env.AWS_S3_PUBLIC_BUCKET}.s3.${process.env.AWS_S3_PUBLIC_REGION}.amazonaws.com`,
-                    cdnUrl: `https://${process.env.AWS_S3_PUBLIC_CDN}`,
+                    cdnUrl: process.env.AWS_S3_PUBLIC_CDN
+                        ? `https://${process.env.AWS_S3_PUBLIC_CDN}`
+                        : undefined,
                 },
                 private: {
                     credential: {
@@ -25,6 +27,9 @@ export default registerAs(
                         process.env.AWS_S3_PRIVATE_BUCKET ?? 'bucketPrivate',
                     region: process.env.AWS_S3_PRIVATE_REGION,
                     baseUrl: `https://${process.env.AWS_S3_PRIVATE_BUCKET}.s3.${process.env.AWS_S3_PRIVATE_REGION}.amazonaws.com`,
+                    cdnUrl: process.env.AWS_S3_PRIVATE_REGION
+                        ? `https://${process.env.AWS_S3_PRIVATE_REGION}`
+                        : undefined,
                 },
             },
         },

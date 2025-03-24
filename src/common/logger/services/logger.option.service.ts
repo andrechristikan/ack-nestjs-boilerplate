@@ -206,21 +206,8 @@ export class LoggerOptionService {
                           ignore: (req: any) =>
                               EXCLUDED_ROUTES.includes(req.url),
                       }
-                    : undefined,
+                    : this.autoLogger,
             },
         };
-    }
-
-    private mapLevelToSeverity(level: string): string {
-        const mapping: Record<string, string> = {
-            trace: 'TRACE',
-            debug: 'DEBUG',
-            info: 'INFO',
-            warn: 'WARNING',
-            error: 'ERROR',
-            fatal: 'CRITICAL',
-        };
-
-        return mapping[level.toLowerCase()] || 'DEFAULT';
     }
 }

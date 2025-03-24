@@ -44,7 +44,7 @@ export class AppHttpFilter implements ExceptionFilter {
         ) {
             response.redirect(
                 HttpStatus.PERMANENT_REDIRECT,
-                '/api/public/hello'
+                `${this.globalPrefix}/public/hello`
             );
 
             return;

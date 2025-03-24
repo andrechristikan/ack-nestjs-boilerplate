@@ -6,7 +6,9 @@ import { AwsS3PresignMultiPartResponseDto } from 'src/modules/aws/dtos/response/
 import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
 import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 import {
+    IAwsS3ConfigBucket,
     IAwsS3DeleteDirOptions,
+    IAwsS3FileInfo,
     IAwsS3GetItemsOptions,
     IAwsS3Options,
     IAwsS3PresignOptions,
@@ -15,7 +17,8 @@ import {
 } from 'src/modules/aws/interfaces/aws.interface';
 
 export interface IAwsS3Service {
-    onModuleInit(): void;
+    getConfig(options?: IAwsS3Options): IAwsS3ConfigBucket;
+    getFileInfo(key: string): IAwsS3FileInfo;
     checkConnection(options?: IAwsS3Options): Promise<boolean>;
     checkBucket(options?: IAwsS3Options): Promise<boolean>;
     checkItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto>;

@@ -38,6 +38,12 @@ export class AwsS3Entity {
     mime: string;
 
     @DatabaseProp({
+        required: true,
+        type: String,
+    })
+    extension: string;
+
+    @DatabaseProp({
         required: false,
         type: Number,
     })

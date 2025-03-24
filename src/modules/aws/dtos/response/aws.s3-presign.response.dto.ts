@@ -20,4 +20,14 @@ export class AwsS3PresignResponseDto {
         description: 'Expired in millisecond for each presign url',
     })
     expiredIn: number;
+
+    @ApiProperty({
+        required: true,
+    })
+    mime: string;
+
+    @ApiProperty({
+        required: true,
+    })
+    extension: string;
 }

@@ -26,7 +26,12 @@ export class UserGuard implements CanActivate {
         const userWithRole: IUserDoc =
             await this.userService.findOneWithRoleAndCountryById(user);
 
-        if (userWithRole.status !== ENUM_USER_STATUS.ACTIVE) {
+        if (!userWithRole) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'user.error.notFound',
+            });
+        } else if (userWithRole.status !== ENUM_USER_STATUS.ACTIVE) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'user.error.inactive',

@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import { Types } from 'mongoose';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 
 export class AwsS3MultipartPartDto {
@@ -21,6 +22,8 @@ export class AwsS3MultipartPartDto {
         required: true,
         example: 1,
     })
+    @Type(() => String)
+    @Transform(({ value }) => Number.parseInt(value))
     size: number;
 }
 

@@ -1,6 +1,8 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { StreamingBlobTypes } from '@smithy/types';
+import { Exclude, Transform, Type } from 'class-transformer';
+import { Types } from 'mongoose';
 
 export class AwsS3Dto {
     @ApiProperty({
@@ -28,18 +30,21 @@ export class AwsS3Dto {
 
     @ApiProperty({
         required: true,
-        example: faker.system.mimeType(),
     })
     mime: string;
+
+    @ApiProperty({
+        required: true,
+    })
+    extension: string;
 
     @ApiProperty({
         required: false,
     })
     duration?: number;
 
-    @ApiProperty({
-        required: false,
-    })
+    @Exclude()
+    @ApiHideProperty()
     data?: StreamingBlobTypes & {
         transformToString?: (encode: string) => string;
         transformToByteArray?: () => Buffer;
@@ -49,5 +54,7 @@ export class AwsS3Dto {
     @ApiProperty({
         required: true,
     })
+    @Type(() => String)
+    @Transform(({ value }) => Number.parseInt(value))
     size: number;
 }
