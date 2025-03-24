@@ -2,7 +2,6 @@ import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { StreamingBlobTypes } from '@smithy/types';
 import { Exclude, Transform, Type } from 'class-transformer';
-import { Types } from 'mongoose';
 
 export class AwsS3Dto {
     @ApiProperty({
