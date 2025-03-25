@@ -1,6 +1,7 @@
 import { _Object } from '@aws-sdk/client-s3';
 import { AwsS3MultipartDto } from 'src/modules/aws/dtos/aws.s3-multipart.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { AwsS3MultipartPresignCompletePartRequestDto } from 'src/modules/aws/dtos/request/aws.s3-multipart-presign-complete.request.dto';
 import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
 import { AwsS3PresignMultiPartResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign-multipart.response.dto';
 import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
@@ -57,6 +58,7 @@ export interface IAwsS3Service {
     completeMultipart(
         key: string,
         uploadId: string,
+        parts: AwsS3MultipartPresignCompletePartRequestDto[],
         options?: IAwsS3Options
     ): Promise<void>;
     abortMultipart(
@@ -68,7 +70,7 @@ export interface IAwsS3Service {
         key: string,
         options?: IAwsS3PresignOptions
     ): Promise<AwsS3PresignResponseDto>;
-    presignPutItemMultipart(
+    presignPutItemPart(
         key: string,
         uploadId: string,
         partNumber: number,

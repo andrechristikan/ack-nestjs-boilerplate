@@ -70,6 +70,7 @@ import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.
 import { plainToInstance } from 'class-transformer';
 import { AwsS3PresignMultiPartResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign-multipart.response.dto';
 import { ENUM_FILE_MIME } from 'src/common/file/enums/file.enum';
+import { AwsS3MultipartPresignCompletePartRequestDto } from 'src/modules/aws/dtos/request/aws.s3-multipart-presign-complete.request.dto';
 
 @Injectable()
 export class AwsS3Service implements OnModuleInit, IAwsS3Service {
@@ -555,6 +556,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     async completeMultipart(
         key: string,
         uploadId: string,
+        parts: AwsS3MultipartPresignCompletePartRequestDto[],
         options?: IAwsS3Options
     ): Promise<void> {
         const config = this.getConfig(options);
@@ -564,6 +566,12 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 Bucket: config.bucket,
                 Key: key,
                 UploadId: uploadId,
+                MultipartUpload: {
+                    Parts: parts.map(part => ({
+                        PartNumber: part.partNumber,
+                        ETag: `"${part.eTag}"`,
+                    })),
+                },
             });
 
         await config.client.send<
@@ -606,19 +614,19 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
 
         const config = this.getConfig(options);
 
-        const headCommand = new HeadObjectCommand({
-            Bucket: config.bucket,
-            Key: key,
-        });
-
         if (!options?.forceUpdate) {
+            const headCommand = new HeadObjectCommand({
+                Bucket: config.bucket,
+                Key: key,
+            });
+
             try {
                 await config.client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
                 >(headCommand);
 
-                throw new Error(`Key ${key} is already exist.`);
+                throw new Error(`Key ${key} is already exists.`);
             } catch (error: unknown) {
                 if (!(error instanceof NotFound)) {
                     throw error;
@@ -650,7 +658,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         };
     }
 
-    async presignPutItemMultipart(
+    async presignPutItemPart(
         key: string,
         uploadId: string,
         partNumber: number,
