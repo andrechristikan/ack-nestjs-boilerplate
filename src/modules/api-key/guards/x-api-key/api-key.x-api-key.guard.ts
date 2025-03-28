@@ -70,7 +70,7 @@ export class ApiKeyXApiKeyGuard implements CanActivate {
                         ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED,
                     message: 'apiKey.error.xApiKey.expired',
                 });
-            } else if (apiKey.startDate < today) {
+            } else if (today < apiKey.startDate) {
                 throw new ForbiddenException({
                     statusCode:
                         ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE,
