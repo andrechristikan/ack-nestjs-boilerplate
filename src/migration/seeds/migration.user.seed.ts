@@ -35,7 +35,7 @@ export class MigrationUserSeed {
     })
     async seeds(): Promise<void> {
         const password = 'aaAA@123';
-        const passwordHash = await this.authService.createPassword(password);
+        const passwordHash = this.authService.createPassword(password);
         const superAdminRole: RoleDoc =
             await this.roleService.findOneByName('superadmin');
         const adminRole: RoleDoc =
@@ -177,7 +177,6 @@ export class MigrationUserSeed {
 
             await Promise.all(promises);
         } catch (err: any) {
-            console.error('err', err);
             throw new Error(err);
         }
 

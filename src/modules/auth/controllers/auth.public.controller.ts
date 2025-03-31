@@ -18,7 +18,6 @@ import {
     AuthSocialAppleProtected,
     AuthSocialGoogleProtected,
 } from 'src/modules/auth/decorators/auth.social.decorator';
-import { AuthSocialGooglePayloadDto } from 'src/modules/auth/dtos/social/auth.social.google-payload.dto';
 import { AuthService } from 'src/modules/auth/services/auth.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
@@ -36,15 +35,12 @@ import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
-import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.social.apple-payload.dto';
 import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { ClientSession } from 'mongoose';
 import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
-import { Connection } from 'mongoose';
 import { Queue } from 'bullmq';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { RoleService } from 'src/modules/role/services/role.service';
@@ -56,6 +52,11 @@ import { ActivityService } from 'src/modules/activity/services/activity.service'
 import { MessageService } from 'src/common/message/services/message.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { VerificationService } from 'src/modules/verification/services/verification.service';
+import { DatabaseService } from 'src/common/database/services/database.service';
+import {
+    IAuthSocialApplePayload,
+    IAuthSocialGooglePayload,
+} from 'src/modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -64,8 +65,7 @@ import { VerificationService } from 'src/modules/verification/services/verificat
 })
 export class AuthPublicController {
     constructor(
-        @InjectDatabaseConnection()
-        private readonly databaseConnection: Connection,
+        private readonly databaseService: DatabaseService,
         @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly userService: UserService,
@@ -96,10 +96,9 @@ export class AuthPublicController {
             });
         }
 
-        const passwordAttempt: boolean =
-            await this.authService.getPasswordAttempt();
+        const passwordAttempt: boolean = this.authService.getPasswordAttempt();
         const passwordMaxAttempt: number =
-            await this.authService.getPasswordMaxAttempt();
+            this.authService.getPasswordMaxAttempt();
         if (passwordAttempt && user.passwordAttempt >= passwordMaxAttempt) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
@@ -107,7 +106,7 @@ export class AuthPublicController {
             });
         }
 
-        const validate: boolean = await this.authService.validateUser(
+        const validate: boolean = this.authService.validateUser(
             password,
             user.password
         );
@@ -139,7 +138,7 @@ export class AuthPublicController {
         await this.userService.resetPasswordAttempt(user);
 
         const checkPasswordExpired: boolean =
-            await this.authService.checkPasswordExpired(user.passwordExpired);
+            this.authService.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
@@ -148,8 +147,7 @@ export class AuthPublicController {
         }
 
         const databaseSession: ClientSession =
-            await this.databaseConnection.startSession();
-        databaseSession.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             const session = await this.sessionService.create(
@@ -162,20 +160,18 @@ export class AuthPublicController {
 
             await this.sessionService.setLoginSession(userWithRole, session);
 
-            await databaseSession.commitTransaction();
-            await databaseSession.endSession();
-
-            const token = await this.authService.createToken(
+            const token = this.authService.createToken(
                 userWithRole,
                 session._id
             );
+
+            await this.databaseService.commitTransaction(databaseSession);
 
             return {
                 data: token,
             };
         } catch (err: any) {
-            await databaseSession.abortTransaction();
-            await databaseSession.endSession();
+            await this.databaseService.abortTransaction(databaseSession);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
@@ -190,7 +186,7 @@ export class AuthPublicController {
     @AuthSocialGoogleProtected()
     @Post('/login/social/google')
     async loginWithGoogle(
-        @AuthJwtPayload<AuthSocialGooglePayloadDto>('email')
+        @AuthJwtPayload<IAuthSocialGooglePayload>('email')
         email: string,
         @Req() request: IRequestApp
     ): Promise<IResponse<AuthLoginResponseDto>> {
@@ -218,7 +214,7 @@ export class AuthPublicController {
         await this.userService.resetPasswordAttempt(user);
 
         const checkPasswordExpired: boolean =
-            await this.authService.checkPasswordExpired(user.passwordExpired);
+            this.authService.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
@@ -227,8 +223,7 @@ export class AuthPublicController {
         }
 
         const databaseSession: ClientSession =
-            await this.databaseConnection.startSession();
-        databaseSession.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             const session = await this.sessionService.create(
@@ -241,10 +236,9 @@ export class AuthPublicController {
 
             await this.sessionService.setLoginSession(userWithRole, session);
 
-            await databaseSession.commitTransaction();
-            await databaseSession.endSession();
+            await this.databaseService.commitTransaction(databaseSession);
 
-            const token = await this.authService.createToken(
+            const token = this.authService.createToken(
                 userWithRole,
                 session._id
             );
@@ -253,8 +247,7 @@ export class AuthPublicController {
                 data: token,
             };
         } catch (err: any) {
-            await databaseSession.abortTransaction();
-            await databaseSession.endSession();
+            await this.databaseService.abortTransaction(databaseSession);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
@@ -269,7 +262,7 @@ export class AuthPublicController {
     @AuthSocialAppleProtected()
     @Post('/login/social/apple')
     async loginWithApple(
-        @AuthJwtPayload<AuthSocialApplePayloadDto>('email')
+        @AuthJwtPayload<IAuthSocialApplePayload>('email')
         email: string,
         @Req() request: IRequestApp
     ): Promise<IResponse<AuthLoginResponseDto>> {
@@ -297,7 +290,7 @@ export class AuthPublicController {
         await this.userService.resetPasswordAttempt(user);
 
         const checkPasswordExpired: boolean =
-            await this.authService.checkPasswordExpired(user.passwordExpired);
+            this.authService.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
@@ -306,8 +299,7 @@ export class AuthPublicController {
         }
 
         const databaseSession: ClientSession =
-            await this.databaseConnection.startSession();
-        databaseSession.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             const session = await this.sessionService.create(
@@ -319,10 +311,9 @@ export class AuthPublicController {
             );
             await this.sessionService.setLoginSession(userWithRole, session);
 
-            await databaseSession.commitTransaction();
-            await databaseSession.endSession();
+            await this.databaseService.commitTransaction(databaseSession);
 
-            const token = await this.authService.createToken(
+            const token = this.authService.createToken(
                 userWithRole,
                 session._id
             );
@@ -331,8 +322,7 @@ export class AuthPublicController {
                 data: token,
             };
         } catch (err: any) {
-            await databaseSession.abortTransaction();
-            await databaseSession.endSession();
+            await this.databaseService.abortTransaction(databaseSession);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
@@ -375,11 +365,10 @@ export class AuthPublicController {
             });
         }
 
-        const password = await this.authService.createPassword(passwordString);
+        const password = this.authService.createPassword(passwordString);
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             const user = await this.userService.signUp(
@@ -446,11 +435,9 @@ export class AuthPublicController {
                 ),
             ]);
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
         } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,

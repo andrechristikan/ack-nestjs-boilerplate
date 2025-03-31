@@ -44,9 +44,7 @@ export class UserGuard implements CanActivate {
         }
 
         const checkPasswordExpired: boolean =
-            await this.authService.checkPasswordExpired(
-                userWithRole.passwordExpired
-            );
+            this.authService.checkPasswordExpired(userWithRole.passwordExpired);
         if (checkPasswordExpired) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,

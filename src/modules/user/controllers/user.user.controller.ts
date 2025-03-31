@@ -27,8 +27,7 @@ import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
-import { ClientSession, Connection } from 'mongoose';
+import { ClientSession } from 'mongoose';
 import { ActivityService } from 'src/modules/activity/services/activity.service';
 import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
@@ -37,6 +36,7 @@ import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { UserProtected } from 'src/modules/user/decorators/user.decorator';
+import { DatabaseService } from 'src/common/database/services/database.service';
 
 @ApiTags('modules.user.user')
 @Controller({
@@ -45,8 +45,7 @@ import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 })
 export class UserUserController {
     constructor(
-        @InjectDatabaseConnection()
-        private readonly databaseConnection: Connection,
+        private readonly databaseService: DatabaseService,
         private readonly userService: UserService,
         private readonly activityService: ActivityService,
         private readonly messageService: MessageService,
@@ -65,8 +64,7 @@ export class UserUserController {
         @AuthJwtPayload('user', UserParsePipe) user: UserDoc
     ): Promise<void> {
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             await this.userService.softDelete(
@@ -88,11 +86,9 @@ export class UserUserController {
                 session,
             });
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
         } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
@@ -136,32 +132,27 @@ export class UserUserController {
         }
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
-            await Promise.all([
-                this.userService.updateMobileNumber(
-                    user,
-                    { number, country },
-                    { session }
-                ),
-                this.activityService.createByUser(
-                    user,
-                    {
-                        description: this.messageService.setMessage(
-                            'activity.user.updateMobileNumber'
-                        ),
-                    },
-                    { session }
-                ),
-            ]);
+            await this.userService.updateMobileNumber(
+                user,
+                { number, country },
+                { session }
+            );
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.updateMobileNumber'
+                    ),
+                },
+                { session }
+            );
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
         } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
@@ -212,8 +203,7 @@ export class UserUserController {
         }
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             await this.userService.updateClaimUsername(
@@ -232,11 +222,9 @@ export class UserUserController {
                 { session }
             );
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
         } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,

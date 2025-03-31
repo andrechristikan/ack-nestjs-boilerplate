@@ -1,4 +1,9 @@
+import { ClientSession } from 'mongoose';
+
 export interface IDatabaseService {
+    createTransaction(): Promise<ClientSession>;
+    commitTransaction(session: ClientSession): Promise<void>;
+    abortTransaction(session: ClientSession): Promise<void>;
     filterEqual<T = string>(
         field: string,
         filterValue: T

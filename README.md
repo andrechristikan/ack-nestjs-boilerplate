@@ -36,11 +36,19 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
   - [Installation](#installation)
     - [Clone Repo](#clone-repo)
     - [Install Dependencies](#install-dependencies)
-    - [Create environment](#create-environment)
+    - [Generate Keys](#generate-keys)
+    - [Create Environment](#create-environment)
     - [Database Migration and Seed](#database-migration-and-seed)
     - [Template Migration](#template-migration)
     - [Run Project](#run-project)
   - [Installation with Docker](#installation-with-docker)
+    - [Prerequisites](#prerequisites-1)
+    - [Setup Steps](#setup-steps)
+    - [Start the Application](#start-the-application)
+    - [Accessing the Application](#accessing-the-application)
+    - [Database Migration and Seed](#database-migration-and-seed-1)
+    - [Viewing Logs](#viewing-logs)
+    - [Stopping the Application](#stopping-the-application)
   - [Test](#test)
   - [Swagger](#swagger)
   - [API Key](#api-key)
@@ -63,10 +71,11 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
 
 ## TODO
 
-- [ ] 2FA Feats
-- [ ] Export Module in Background using bullmq
-- [ ] Privacy Policy Module
-- [ ] Term and Condition Module
+- [ ] 2FA Feats (high priority)
+- [ ] Export Module in Background using bullmq (medium priority)
+- [ ] Add Github SSO (low priority)
+- [ ] Privacy Policy Module (versioning, lowest priority)
+- [ ] Term and Condition Module (versioning, lowest priority)
 
 ## Support me
 
@@ -88,29 +97,29 @@ or support via PayPal
 
 ## Prerequisites
 
-We assume that everyone who comes here is **`programmer with intermediate knowledge`** and we also need to understand more before we begin in order to reduce the knowledge gap.
+I assume that everyone who comes here is a **`programmer with intermediate knowledge`**. To get the most out of this project, here's what you should understand:
 
-1. Understand [NestJs Fundamental][ref-nestjs], Main Framework. NodeJs Framework with support fully TypeScript.
-2. Understand [Typescript Fundamental][ref-typescript], Programming Language. It will help us to write and read the code.
-3. Understand [ExpressJs Fundamental][ref-nodejs], NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
-4. Understand what and how database works, especially NoSql and [MongoDB.][ref-mongodb]
-5. Understand Repository Design Pattern or Data Access Object Design Pattern. It will help to read, and write the source code
-6. Understand The SOLID Principle and KISS Principle for better write the code.
-7. Optional. Understand Microservice Architecture. It can help you to understand more deep about this project.
-8. Optional. Understanding [The Twelve Factor Apps][ref-12factor]. It can help to serve the project.
-9. Optional. Understanding [Docker][ref-docker].
+1. [NestJs Fundamentals][ref-nestjs], as the main Framework. A NodeJs Framework with full TypeScript support.
+2. [Typescript Fundamentals][ref-typescript], as the main Programming Language. This will help you read and write the code.
+3. [ExpressJs Fundamentals][ref-nodejs], as the base NodeJs Framework. This will help you understand how the NestJs Framework works.
+4. Understanding of databases, especially NoSQL and [MongoDB][ref-mongodb].
+5. Repository Design Pattern or Data Access Object Design Pattern. This will help in reading and writing the source code.
+6. The SOLID Principle and KISS Principle for better code writing.
+7. Optional. Microservice Architecture. This can help you understand this project more deeply.
+8. Optional. [The Twelve Factor Apps][ref-12factor]. This can help with project deployment.
+9. Optional. [Docker][ref-docker].
 
 ## Build with
 
-Describes which version.
+The project is built using the following technologies and versions:
 
 | Name           | Version  |
 | -------------- | -------- |
 | NestJs         | v11.x    |
 | NestJs Swagger | v11.0.x  |
-| Node           | v22.11.x |
-| Typescript     | v5.7.x   |
-| Mongoose       | v11.0.x  |
+| Node           | v22.13.x |
+| Typescript     | v5.8.x   |
+| Mongoose       | v8.12.x  |
 | MongoDB        | v8.x     |
 | Yarn           | v1.22.x  |
 | Docker         | v27.4.x  |
@@ -154,20 +163,20 @@ Describes which version.
 
 ## Installation
 
-Before start, we need to install some packages and/or tools.
-The recommended version is the LTS version for every tool and package.
+Before starting, you need to install the following packages and tools.
+I recommend using the LTS versions for all tools and packages.
 
-> Make sure to check that tools have been installed successfully.
+> Always verify that the tools have been installed successfully.
 
-1. [NodeJs][ref-nodejs]
-2. [MongoDB][ref-mongodb]
+1. [NodeJs][ref-nodejs] (v22.11.0 or later)
+2. [MongoDB][ref-mongodb] (v8.x)
 3. [Redis][ref-redis]
-4. [Yarn][ref-yarn]
+4. [Yarn][ref-yarn] (v1.22.22)
 5. [Git][ref-git]
 
 ### Clone Repo
 
-Clone the project with git.
+Clone the project with git:
 
 ```bash
 git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
@@ -175,86 +184,193 @@ git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
 
 ### Install Dependencies
 
-This project needs some dependencies. Let's go install it.
+Install all required dependencies:
 
 ```bash
 yarn install
 ```
 
-### Create environment
+### Generate Keys
 
-Make your own environment file with a copy of `env.example` and adjust values to suit your own environment.
+Since version `7.4.0`, the project uses the `ES512` algorithm for JWT authentication. You need to generate both `private-key` and `public-key` pairs for access-token and refresh-token:
+
+```bash
+yarn generate:keys
+```
+
+This command will generate the necessary keys in the `/src/keys` directory, along with a `jwks.json` file that follows the JSON Web Key Set (JWKS) standard.
+
+Upload the `jwks.json` file to AWS S3 or any publicly accessible server, and make note of the URL as you'll need it for your environment configuration.
+
+### Create Environment
+
+Create your environment file by copying the example:
 
 ```bash
 cp .env.example .env
 ```
 
+When configuring your `.env` file, pay particular attention to:
+- The URL where you've hosted the `jwks.json` file
+- The `kid` (Key ID) values for both access token and refresh token
+- Database connection settings
+- Redis configuration for caching and queues
+
+These settings are essential for authentication and overall system functionality.
+
 ### Database Migration and Seed
 
-> By default the options of `AutoCreate` and `AutoIndex` will be `false`. Thats means the schema in MongoDb will not change with the latest update.
+By default, `AutoCreate` and `AutoIndex` options are set to `false`, meaning MongoDB schemas won't automatically update with code changes.
 
-in the first place, you need to update the schema
+First, update the database schema:
 
 ```bash
 yarn migrate:schema
 ```
 
-After migrate the schema, also we need to run data seed
+Then, populate the database with initial data:
 
 ```bash
 yarn migrate:seed
 ```
 
-For rollback
+If you need to roll back the migrations:
 
 ```bash
 yarn migrate:remove
+```
+
+For a complete reset and rebuild of the database:
+
+```bash
+yarn migrate:fresh
 ```
 
 ### Template Migration
 
 > Optional
 
-The template migration will automatically upload `/email/templates` through AWS SES.
+If you're using email templates with AWS SES:
 
 ```bash
 yarn migrate:template
 ```
 
+To roll back template changes:
+
+```bash
+yarn rollback:template
+```
+
 ### Run Project
 
-Finally, Cheers 🍻🍻 !!! you passed all steps.
-
-Now you can run the project.
+Now you're ready to start the project:
 
 ```bash
 yarn start:dev
 ```
 
-## Installation with Docker
-
-We need more tools to be installed.
-
-1. [Docker][ref-docker]
-2. [Docker-Compose][ref-dockercompose]
-
-Copy `.env.example` and change value
+For production environments:
 
 ```bash
-cp .env.example .env
+yarn start:prod
 ```
 
-Run docker compose
+## Installation with Docker
 
-> if `host.docker.internal` cannot be resolved, you must add a line in your `/etc/hosts` file to map `host.docker.internal` to the IP address `127.0.0.1`
+Docker provides an easy way to set up the entire application environment with minimal configuration.
+
+### Prerequisites
+
+1. [Docker][ref-docker] (v27.4.x or later)
+2. [Docker-Compose][ref-dockercompose] (v2.31.x or later)
+
+### Setup Steps
+
+Before running with Docker, you need to complete two important steps:
+
+1. Generate JWT keys as described in the [Generate Keys](#generate-keys) section:
+   ```bash
+   yarn generate:keys
+   ```
+
+   When using Docker, there's no need to upload the JWKS file to an external server. The Docker setup includes a dedicated NGINX container that serves the JWKS file. After generating the keys, you should:
+   
+   - Make sure the `jwks.json` file is in the `/src/keys` directory
+   - In your `.env` file, set `AUTH_JWT_JWKS_URI` to `http://jwks-server:3001/.well-known/jwks.json` for internal container communication
+   - From outside Docker, the JWKS file will be accessible at `http://localhost:3001/.well-known/jwks.json`
+
+2. Create and configure your environment file:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   When editing your `.env` file for Docker usage, ensure that:
+   - Database connections point to the Docker service names (e.g., `mongodb` instead of `localhost`)
+   - Redis connections point to the Docker service name (e.g., `redis` instead of `localhost`)
+   - The JWKS URI is configured properly as mentioned above
+   - The `kid` (Key ID) values for both access token and refresh token
+
+### Start the Application
+
+Run the application using Docker Compose:
 
 ```bash
 docker-compose up -d
 ```
 
+> **Note**: If `host.docker.internal` cannot be resolved, add a line in your `/etc/hosts` file to map `host.docker.internal` to `127.0.0.1`
+
+### Accessing the Application
+
+Once the containers are running, you can access:
+- The main application at `http://localhost:3000`
+- Swagger documentation at `http://localhost:3000/docs`
+- BullMQ dashboard at `http://localhost:3010`
+
+### Database Migration and Seed
+
+When using Docker, you can run database migrations and seeds directly from within the app container:
+
+```bash
+# Update database schema
+docker-compose exec apis yarn migrate:schema
+
+# Populate with initial data
+docker-compose exec apis yarn migrate:seed
+
+# For a complete reset and rebuild
+docker-compose exec apis yarn migrate:fresh
+
+# To roll back migrations
+docker-compose exec apis yarn migrate:remove
+```
+
+### Viewing Logs
+
+To view logs from the running containers:
+
+```bash
+docker-compose logs -f apis
+```
+
+### Stopping the Application
+
+To stop all services:
+
+```bash
+docker-compose down
+```
+
+To stop and remove all data volumes (this will delete your database data):
+
+```bash
+docker-compose down -v
+```
+
 ## Test
 
-The project only provide `unit testing`.
+The project provides unit testing capabilities:
 
 ```bash
 yarn test
@@ -286,7 +402,7 @@ Distributed under [MIT licensed][license].
 
 ## Contribute
 
-We welcome contributions to this project! To contribute, follow these steps:
+I welcome contributions to this project! To contribute, follow these steps:
 
 1. Fork the repository.
 2. Create a new branch: `git checkout -b feature/your-feature-name`.

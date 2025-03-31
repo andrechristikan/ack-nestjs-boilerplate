@@ -6,7 +6,11 @@ export default registerAs(
     (): Record<string, any> => ({
         jwt: {
             accessToken: {
-                secretKey: process.env.AUTH_JWT_ACCESS_TOKEN_SECRET_KEY,
+                kid: process.env.AUTH_JWT_ACCESS_TOKEN_KID,
+                privateKeyPath:
+                    process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY_PATH,
+                publicKeyPath:
+                    process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY_PATH,
                 expirationTime:
                     ms(
                         process.env
@@ -15,13 +19,20 @@ export default registerAs(
             },
 
             refreshToken: {
-                secretKey: process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY,
+                kid: process.env.AUTH_JWT_REFRESH_TOKEN_KID,
+                privateKeyPath:
+                    process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY_PATH,
+                publicKeyPath:
+                    process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY_PATH,
                 expirationTime:
                     ms(
                         process.env
                             .AUTH_JWT_REFRESH_TOKEN_EXPIRED as ms.StringValue
                     ) / 1000,
             },
+
+            algorithm: 'ES512',
+            jwksUri: process.env.AUTH_JWT_JWKS_URI,
 
             audience: process.env.AUTH_JWT_AUDIENCE,
             issuer: process.env.AUTH_JWT_ISSUER,

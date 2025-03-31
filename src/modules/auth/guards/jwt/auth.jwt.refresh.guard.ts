@@ -1,13 +1,15 @@
 import { AuthGuard } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/enums/auth.status-code.enum';
-import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
-import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { isUUID } from 'class-validator';
+import {
+    IAuthJwtAccessTokenPayload,
+    IAuthJwtRefreshTokenPayload,
+} from 'src/modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class AuthJwtRefreshGuard extends AuthGuard('jwtRefresh') {
-    handleRequest<T = AuthJwtRefreshPayloadDto>(
+    handleRequest<T = IAuthJwtRefreshTokenPayload>(
         err: Error,
         user: T,
         info: Error
@@ -20,7 +22,7 @@ export class AuthJwtRefreshGuard extends AuthGuard('jwtRefresh') {
             });
         }
 
-        const { sub } = user as AuthJwtAccessPayloadDto;
+        const { sub } = user as IAuthJwtAccessTokenPayload;
         if (!sub) {
             throw new UnauthorizedException({
                 statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,

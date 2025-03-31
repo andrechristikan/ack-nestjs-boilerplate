@@ -22,8 +22,10 @@ export class PolicyRoleGuard implements CanActivate {
                 context.getHandler()
             ) || [];
 
-        const { user } = context.switchToHttp().getRequest<IRequestApp>();
-        if (!user) {
+        const { __user, user } = context
+            .switchToHttp()
+            .getRequest<IRequestApp>();
+        if (!__user || !user) {
             throw new ForbiddenException({
                 statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
                 message: 'auth.error.accessTokenUnauthorized',

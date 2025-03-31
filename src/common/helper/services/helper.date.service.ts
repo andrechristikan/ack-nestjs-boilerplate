@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DateObjectUnits, DateTime, Duration } from 'luxon';
+import { DateObjectUnits, DateTime, Duration, DurationLikeObject } from 'luxon';
 import { ENUM_HELPER_DATE_DAY_OF } from 'src/common/helper/enums/helper.enum';
 import { IHelperDateService } from 'src/common/helper/interfaces/helper.date-service.interface';
 import { IHelperDateCreateOptions } from 'src/common/helper/interfaces/helper.interface';
@@ -163,5 +163,9 @@ export class HelperDateService implements IHelperDateService {
             .setZone(this.defTz)
             .minus(duration)
             .toJSDate();
+    }
+
+    createDuration(duration: DurationLikeObject): Duration {
+        return Duration.fromObject(duration);
     }
 }

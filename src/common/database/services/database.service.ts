@@ -1,9 +1,36 @@
 import { Injectable } from '@nestjs/common';
 import { IDatabaseService } from 'src/common/database/interfaces/database.service.interface';
-import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
+import {
+    DatabaseHelperQueryContain,
+    InjectDatabaseConnection,
+} from 'src/common/database/decorators/database.decorator';
+import { ClientSession, Connection } from 'mongoose';
 
 @Injectable()
 export class DatabaseService implements IDatabaseService {
+    constructor(
+        @InjectDatabaseConnection()
+        private readonly databaseConnection: Connection
+    ) {}
+
+    async createTransaction(): Promise<ClientSession> {
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        return session;
+    }
+
+    async commitTransaction(session: ClientSession): Promise<void> {
+        await session.commitTransaction();
+        await session.endSession();
+    }
+
+    async abortTransaction(session: ClientSession): Promise<void> {
+        await session.abortTransaction();
+        await session.endSession();
+    }
+
     filterEqual<T = string>(
         field: string,
         filterValue: T
