@@ -23,6 +23,7 @@
         "dist",
         "coverage",
         "templates",
-        "src/metadata.ts"
+        "src/metadata.ts",
+        "logs"
     ]
 }

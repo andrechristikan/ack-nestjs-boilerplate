@@ -10,7 +10,6 @@
         "name": "andrechristikan",
         "email": "andrechristikan@gmail.com"
     },
-    "type": "commonjs",
     "private": true,
     "license": "MIT",
     "scripts": {
@@ -150,12 +149,5 @@
         "npm": "please-use-yarn",
         "yarn": ">= 1.22.22",
         "node": ">= 20.11.0"
-    },
-    "jest": {
-        "transform": {
-            "^.+\\.(t|j)s?$": [
-                "@swc/jest"
-            ]
-        }
     }
 }

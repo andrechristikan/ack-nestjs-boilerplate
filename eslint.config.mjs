@@ -19,6 +19,7 @@ export default [
             'docs/*',
             'node_modules/*',
             'src/metadata.ts',
+            'logs/*',
         ],
     },
     {
