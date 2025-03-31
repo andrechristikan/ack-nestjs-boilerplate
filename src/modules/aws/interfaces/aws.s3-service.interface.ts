@@ -11,6 +11,7 @@ import {
     IAwsS3DeleteDirOptions,
     IAwsS3FileInfo,
     IAwsS3GetItemsOptions,
+    IAwsS3MultipartOptions,
     IAwsS3Options,
     IAwsS3PresignOptions,
     IAwsS3PutItem,
@@ -42,7 +43,7 @@ export interface IAwsS3Service {
     createMultiPart(
         file: IAwsS3PutItem,
         maxPartNumber: number,
-        options?: IAwsS3Options
+        options?: IAwsS3MultipartOptions
     ): Promise<AwsS3MultipartDto>;
     createMultiPartWithAcl(
         file: IAwsS3PutItem,
@@ -77,7 +78,7 @@ export interface IAwsS3Service {
         options?: IAwsS3PresignOptions
     ): Promise<AwsS3PresignMultiPartResponseDto>;
     mapPresign(
-        { key, size, duration }: AwsS3PresignRequestDto,
+        { key, size }: AwsS3PresignRequestDto,
         options?: IAwsS3Options
     ): AwsS3Dto;
     mapResponse(dto: AwsS3Dto): AwsS3ResponseDto;

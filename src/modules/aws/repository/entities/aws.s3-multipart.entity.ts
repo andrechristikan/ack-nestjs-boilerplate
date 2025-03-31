@@ -54,12 +54,6 @@ export class AwsS3MultipartEntity {
     extension: string;
 
     @DatabaseProp({
-        required: false,
-        type: Number,
-    })
-    duration?: number;
-
-    @DatabaseProp({
         required: true,
         type: Types.Decimal128,
     })

@@ -1,13 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import {
-    IsInt,
-    IsNotEmpty,
-    IsNumber,
-    IsOptional,
-    IsString,
-    Min,
-} from 'class-validator';
+import { IsInt, IsNotEmpty, IsString, Min } from 'class-validator';
 
 export class AwsS3PresignRequestDto {
     @ApiProperty({
@@ -18,20 +11,6 @@ export class AwsS3PresignRequestDto {
     @IsString()
     @IsNotEmpty()
     key: string;
-
-    @ApiProperty({
-        required: true,
-        example: 1000,
-        description: 'Unit in milliseconds',
-    })
-    @IsInt()
-    @IsNumber({
-        allowInfinity: false,
-        allowNaN: false,
-        maxDecimalPlaces: 0,
-    })
-    @IsOptional()
-    duration?: number;
 
     @ApiProperty({
         required: true,

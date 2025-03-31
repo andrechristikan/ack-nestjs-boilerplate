@@ -5,6 +5,10 @@ export interface IAwsS3Options {
     access?: ENUM_AWS_S3_ACCESSIBILITY;
 }
 
+export interface IAwsS3MultipartOptions extends IAwsS3Options {
+    forceUpdate?: boolean;
+}
+
 export interface IAwsS3GetItemsOptions extends IAwsS3Options {
     continuationToken?: string;
 }
@@ -25,7 +29,6 @@ export interface IAwsS3PutItem {
     file?: Buffer;
     key: string;
     size?: number;
-    duration?: number;
 }
 
 export interface IAwsS3ConfigCredential {

@@ -37,11 +37,6 @@ export class AwsS3Dto {
     })
     extension: string;
 
-    @ApiProperty({
-        required: false,
-    })
-    duration?: number;
-
     @Exclude()
     @ApiHideProperty()
     data?: StreamingBlobTypes & {

@@ -44,12 +44,6 @@ export class AwsS3Entity {
     extension: string;
 
     @DatabaseProp({
-        required: false,
-        type: Number,
-    })
-    duration?: number;
-
-    @DatabaseProp({
         required: true,
         type: Types.Decimal128,
     })
