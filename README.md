@@ -34,43 +34,30 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
   - [Features](#features)
     - [Main Features](#main-features)
   - [Installation](#installation)
-    - [Clone Repo](#clone-repo)
-    - [Install Dependencies](#install-dependencies)
-    - [Generate Keys](#generate-keys)
-    - [Create Environment](#create-environment)
-    - [Database Migration and Seed](#database-migration-and-seed)
-    - [Template Migration](#template-migration)
-    - [Run Project](#run-project)
-  - [Installation with Docker](#installation-with-docker)
-    - [Prerequisites](#prerequisites-1)
-    - [Setup Steps](#setup-steps)
-    - [Start the Application](#start-the-application)
-    - [Accessing the Application](#accessing-the-application)
-    - [Database Migration and Seed](#database-migration-and-seed-1)
-    - [Viewing Logs](#viewing-logs)
-    - [Stopping the Application](#stopping-the-application)
-  - [Test](#test)
-  - [Swagger](#swagger)
-  - [API Key](#api-key)
-  - [User](#user)
-  - [BullMQ Board](#bullmq-board)
+  - [Migration](#migration)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
 
 ## Important
 
-> Very limited documentation
+> Documentation ongoing...
 
 -   Stateful Authorization, using `redis-session` and `JWT`.
--   Must run MongoDB as a `replication set` for `database transactions`.
--   If you want to implement `Google SSO`. You must have google cloud console account, then create your own Credential to get the `clientId` and `clientSecret`.
--   If you want to implement `Apple SSO`. You must have `clientId` and `signInClientId` from apple connect.
+-   Must run MongoDB as a `replication set` for `database transactions`.
+-   Redis is required for caching, session management, and job queues (background processing).
+-   If you want to implement `Google SSO`. You must have google cloud console account, then create your own Credential to get the `clientId` and `clientSecret`.
+-   If you want to implement `Apple SSO`. You must have `clientId` and `signInClientId` from apple connect.
 -   If you change the environment value of `APP_ENV` to `production`, it will disable Documentation.
 -   For monitoring, this project will use `sentry.io`, and sent unhandled error and/or `internal server error`.
+-   By default, logs will not be written to the `/log` directory. You need to change the `DEBUG_INTO_FILE` environment variable to `true` to enable file logging.
+-   Since version `7.4.0`, the project uses the `ES512` algorithm for JWT authentication.
 
 ## TODO
 
+- [ ] Make email verification required
+- [ ] Make sign up from and login restrict for security purpose
+- [ ] Move some function in service layer into repository module, because a bit wrong implementation (high priority)
 - [ ] 2FA Feats (high priority)
 - [ ] Export Module in Background using bullmq (medium priority)
 - [ ] Add Github SSO (low priority)
@@ -163,238 +150,17 @@ The project is built using the following technologies and versions:
 
 ## Installation
 
-Before starting, you need to install the following packages and tools.
-I recommend using the LTS versions for all tools and packages.
+For detailed installation instructions (both standard and Docker-based), please refer to the [Installation](docs/installation.md).
 
-> Always verify that the tools have been installed successfully.
+## Migration
 
-1. [NodeJs][ref-nodejs] (v22.11.0 or later)
-2. [MongoDB][ref-mongodb] (v8.x)
-3. [Redis][ref-redis]
-4. [Yarn][ref-yarn] (v1.22.22)
-5. [Git][ref-git]
+The project includes a migration system for populating the database with initial data using `nestjs-command`. Migration functions include:
 
-### Clone Repo
+- Seeding default API keys, countries, roles, and users
+- Managing email templates for the notification system
+- Commands for adding or removing seed data
 
-Clone the project with git:
-
-```bash
-git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
-```
-
-### Install Dependencies
-
-Install all required dependencies:
-
-```bash
-yarn install
-```
-
-### Generate Keys
-
-Since version `7.4.0`, the project uses the `ES512` algorithm for JWT authentication. You need to generate both `private-key` and `public-key` pairs for access-token and refresh-token:
-
-```bash
-yarn generate:keys
-```
-
-This command will generate the necessary keys in the `/src/keys` directory, along with a `jwks.json` file that follows the JSON Web Key Set (JWKS) standard.
-
-Upload the `jwks.json` file to AWS S3 or any publicly accessible server, and make note of the URL as you'll need it for your environment configuration.
-
-### Create Environment
-
-Create your environment file by copying the example:
-
-```bash
-cp .env.example .env
-```
-
-When configuring your `.env` file, pay particular attention to:
-- The URL where you've hosted the `jwks.json` file
-- The `kid` (Key ID) values for both access token and refresh token
-- Database connection settings
-- Redis configuration for caching and queues
-
-These settings are essential for authentication and overall system functionality.
-
-### Database Migration and Seed
-
-By default, `AutoCreate` and `AutoIndex` options are set to `false`, meaning MongoDB schemas won't automatically update with code changes.
-
-First, update the database schema:
-
-```bash
-yarn migrate:schema
-```
-
-Then, populate the database with initial data:
-
-```bash
-yarn migrate:seed
-```
-
-If you need to roll back the migrations:
-
-```bash
-yarn migrate:remove
-```
-
-For a complete reset and rebuild of the database:
-
-```bash
-yarn migrate:fresh
-```
-
-### Template Migration
-
-> Optional
-
-If you're using email templates with AWS SES:
-
-```bash
-yarn migrate:template
-```
-
-To roll back template changes:
-
-```bash
-yarn rollback:template
-```
-
-### Run Project
-
-Now you're ready to start the project:
-
-```bash
-yarn start:dev
-```
-
-For production environments:
-
-```bash
-yarn start:prod
-```
-
-## Installation with Docker
-
-Docker provides an easy way to set up the entire application environment with minimal configuration.
-
-### Prerequisites
-
-1. [Docker][ref-docker] (v27.4.x or later)
-2. [Docker-Compose][ref-dockercompose] (v2.31.x or later)
-
-### Setup Steps
-
-Before running with Docker, you need to complete two important steps:
-
-1. Generate JWT keys as described in the [Generate Keys](#generate-keys) section:
-   ```bash
-   yarn generate:keys
-   ```
-
-   When using Docker, there's no need to upload the JWKS file to an external server. The Docker setup includes a dedicated NGINX container that serves the JWKS file. After generating the keys, you should:
-   
-   - Make sure the `jwks.json` file is in the `/src/keys` directory
-   - In your `.env` file, set `AUTH_JWT_JWKS_URI` to `http://jwks-server:3001/.well-known/jwks.json` for internal container communication
-   - From outside Docker, the JWKS file will be accessible at `http://localhost:3001/.well-known/jwks.json`
-
-2. Create and configure your environment file:
-   ```bash
-   cp .env.example .env
-   ```
-   
-   When editing your `.env` file for Docker usage, ensure that:
-   - Database connections point to the Docker service names (e.g., `mongodb` instead of `localhost`)
-   - Redis connections point to the Docker service name (e.g., `redis` instead of `localhost`)
-   - The JWKS URI is configured properly as mentioned above
-   - The `kid` (Key ID) values for both access token and refresh token
-
-### Start the Application
-
-Run the application using Docker Compose:
-
-```bash
-docker-compose up -d
-```
-
-> **Note**: If `host.docker.internal` cannot be resolved, add a line in your `/etc/hosts` file to map `host.docker.internal` to `127.0.0.1`
-
-### Accessing the Application
-
-Once the containers are running, you can access:
-- The main application at `http://localhost:3000`
-- Swagger documentation at `http://localhost:3000/docs`
-- BullMQ dashboard at `http://localhost:3010`
-
-### Database Migration and Seed
-
-When using Docker, you can run database migrations and seeds directly from within the app container:
-
-```bash
-# Update database schema
-docker-compose exec apis yarn migrate:schema
-
-# Populate with initial data
-docker-compose exec apis yarn migrate:seed
-
-# For a complete reset and rebuild
-docker-compose exec apis yarn migrate:fresh
-
-# To roll back migrations
-docker-compose exec apis yarn migrate:remove
-```
-
-### Viewing Logs
-
-To view logs from the running containers:
-
-```bash
-docker-compose logs -f apis
-```
-
-### Stopping the Application
-
-To stop all services:
-
-```bash
-docker-compose down
-```
-
-To stop and remove all data volumes (this will delete your database data):
-
-```bash
-docker-compose down -v
-```
-
-## Test
-
-The project provides unit testing capabilities:
-
-```bash
-yarn test
-```
-
-## Swagger
-
-You can check The Swagger after running this project. Url `localhost:3000/docs`
-
-## API Key
-
-See it in `/migration/seeds/api-key`
-The pattern is `{key}:{secret}`
-
-## User
-
-See it in `/migration/seeds/user`
-
-## BullMQ Board
-
-> This available with docker installation
-
-You can check and monitor your queue.
-Url `localhost:3010`
+For complete documentation and instructions on using migrations, see the [Migration](docs/migration.md).
 
 ## License
 

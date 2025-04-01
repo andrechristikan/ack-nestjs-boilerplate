@@ -73,7 +73,7 @@ export class ActivityAdminController {
             _limit
         );
 
-        const mapped = await this.activityService.mapList(userHistories);
+        const mapped = this.activityService.mapList(userHistories);
 
         return {
             _pagination: { total, totalPage },

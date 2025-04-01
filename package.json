@@ -33,8 +33,8 @@
         "migrate:schema": "APP_ENV=migration nest start",
         "migrate:seed": "APP_ENV=migration nestjs-command seed:country && nestjs-command seed:apikey && nestjs-command seed:role && nestjs-command seed:user",
         "migrate:remove": "APP_ENV=migration nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apikey  && nestjs-command remove:role",
-        "migrate:template": "nestjs-command migrate:template",
-        "rollback:template": "nestjs-command rollback:template"
+        "migrate:template": "APP_ENV=migration nestjs-command migrate:template",
+        "rollback:template": "APP_ENV=migration nestjs-command rollback:template"
     },
     "dependencies": {
         "@aws-sdk/client-pinpoint": "^3.777.0",
