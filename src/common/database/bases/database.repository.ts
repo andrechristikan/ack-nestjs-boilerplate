@@ -1,10 +1,4 @@
-import {
-    Model,
-    PipelineStage,
-    PopulateOptions,
-    UpdateQuery,
-    UpdateWithAggregationPipeline,
-} from 'mongoose';
+import { Model, PipelineStage, PopulateOptions, UpdateQuery } from 'mongoose';
 import {
     IDatabaseAggregateOptions,
     IDatabaseCreateManyOptions,
@@ -17,14 +11,13 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseOptions,
     IDatabaseSaveOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseUpdateManyOptions,
     IDatabaseUpdateOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { UpdateResult, DeleteResult, InsertManyResult } from 'mongodb';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
-import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 
 export class DatabaseRepositoryBase<
@@ -290,6 +283,11 @@ export class DatabaseRepositoryBase<
         data: T,
         options?: IDatabaseCreateOptions
     ): Promise<EntityDocument> {
+        const now = new Date();
+        data.createdAt = now;
+        data.updatedAt = now;
+        data.createdBy = options?.actionBy;
+
         const created = await this._repository.create([data], options);
 
         return created[0] as any;
@@ -298,9 +296,30 @@ export class DatabaseRepositoryBase<
     // Action
     async update(
         find: Record<string, any>,
-        data: UpdateQuery<Entity> | UpdateWithAggregationPipeline,
+        data: UpdateQuery<Entity>,
         options?: IDatabaseUpdateOptions
     ): Promise<EntityDocument> {
+        if (Array.isArray(data)) {
+            const setIndexOf = data.findLastIndex(e => e['$set']);
+            if (setIndexOf > -1) {
+                data[setIndexOf]['$set'].updatedAt = new Date();
+                data[setIndexOf]['$set'].updatedBy = options?.actionBy;
+            } else {
+                data.push({
+                    $set: {
+                        updatedAt: new Date(),
+                        updatedBy: options?.actionBy,
+                    },
+                });
+            }
+        } else {
+            data['$set'] = {
+                ...data['$set'],
+                updatedAt: new Date(),
+                updatedBy: options?.actionBy,
+            };
+        }
+
         return this._repository.findOneAndUpdate(
             {
                 ...find,
@@ -334,6 +353,16 @@ export class DatabaseRepositoryBase<
         repository: EntityDocument,
         options?: IDatabaseSaveOptions
     ): Promise<EntityDocument> {
+        if (repository.isNew) {
+            const now = new Date();
+            repository.createdAt = now;
+            repository.updatedAt = now;
+            repository.createdBy = options?.actionBy;
+        } else {
+            repository.updatedAt = new Date();
+            repository.updatedBy = options?.actionBy;
+        }
+
         return repository.save(options);
     }
 
@@ -347,12 +376,11 @@ export class DatabaseRepositoryBase<
     // Soft delete
     async softDelete(
         repository: EntityDocument,
-        dto?: DatabaseSoftDeleteDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<EntityDocument> {
         repository.deletedAt = new Date();
         repository.deleted = true;
-        repository.deletedBy = dto?.deletedBy;
+        repository.deletedBy = options?.actionBy;
 
         return repository.save(options);
     }
@@ -362,21 +390,34 @@ export class DatabaseRepositoryBase<
         options?: IDatabaseSaveOptions
     ): Promise<EntityDocument> {
         repository.deletedAt = undefined;
-        repository.deleted = false;
         repository.deletedBy = undefined;
+        repository.deleted = false;
+        repository.updatedAt = new Date();
+        repository.updatedBy = options?.actionBy;
 
         return repository.save(options);
     }
 
     // Bulk
-    async createMany<T = Entity>(
+    async createMany<T extends Partial<Entity>>(
         data: T[],
         options?: IDatabaseCreateManyOptions
     ): Promise<InsertManyResult<Entity>> {
-        return this._repository.insertMany(data as any, {
-            ...options,
-            rawResult: true,
-        });
+        const now = new Date();
+        return this._repository.insertMany(
+            data.map(e => {
+                return {
+                    ...e,
+                    createdAt: now,
+                    updatedAt: now,
+                    createdBy: options?.actionBy,
+                };
+            }) as any,
+            {
+                ...options,
+                rawResult: true,
+            }
+        );
     }
 
     async updateMany<T = Entity>(
@@ -390,7 +431,11 @@ export class DatabaseRepositoryBase<
                 deleted: options?.withDeleted ?? false,
             },
             {
-                $set: data,
+                $set: {
+                    ...data,
+                    updatedAt: new Date(),
+                    updatedBy: options?.actionBy,
+                },
             },
             { ...options, rawResult: true }
         );
@@ -398,16 +443,40 @@ export class DatabaseRepositoryBase<
 
     async updateManyRaw(
         find: Record<string, any>,
-        data: UpdateQuery<Entity> | UpdateWithAggregationPipeline,
+        data: UpdateQuery<Entity>,
         options?: IDatabaseUpdateManyOptions
     ): Promise<UpdateResult<Entity>> {
+        if (Array.isArray(data)) {
+            const setIndexOf = data.findLastIndex(e => e['$set']);
+            if (setIndexOf > -1) {
+                data[setIndexOf]['$set'].updatedAt = new Date();
+                data[setIndexOf]['$set'].updatedBy = options?.actionBy;
+            } else {
+                data.push({
+                    $set: {
+                        updatedAt: new Date(),
+                        updatedBy: options?.actionBy,
+                    },
+                });
+            }
+        } else {
+            data['$set'] = {
+                ...data['$set'],
+                updatedAt: new Date(),
+                updatedBy: options?.actionBy,
+            };
+        }
+
         return this._repository.updateMany(
             {
                 ...find,
                 deleted: options?.withDeleted ?? false,
             },
             data,
-            { ...options, rawResult: true }
+            {
+                ...options,
+                rawResult: true,
+            }
         );
     }
 
@@ -426,8 +495,7 @@ export class DatabaseRepositoryBase<
 
     async softDeleteMany(
         find: Record<string, any>,
-        dto?: DatabaseSoftDeleteDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
             {
@@ -438,7 +506,7 @@ export class DatabaseRepositoryBase<
                 $set: {
                     deletedAt: new Date(),
                     deleted: true,
-                    deletedBy: dto?.deletedBy,
+                    deletedBy: options?.actionBy,
                 },
             },
             { ...options, rawResult: true }
@@ -447,7 +515,7 @@ export class DatabaseRepositoryBase<
 
     async restoreMany(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseSaveOptions
     ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
             {
@@ -457,8 +525,10 @@ export class DatabaseRepositoryBase<
             {
                 $set: {
                     deletedAt: undefined,
-                    deleted: false,
                     deletedBy: undefined,
+                    deleted: false,
+                    updatedAt: new Date(),
+                    updatedBy: options?.actionBy,
                 },
             },
             { ...options, rawResult: true }

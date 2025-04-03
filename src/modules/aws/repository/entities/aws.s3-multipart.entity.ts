@@ -71,10 +71,7 @@ export class AwsS3MultipartEntity {
     })
     maxPartNumber: number;
 
-    @DatabaseProp({
-        required: true,
-        schema: AwsS3MultipartPartSchema,
-    })
+    @DatabaseProp([AwsS3MultipartPartSchema])
     parts: AwsS3MultipartPartEntity[];
 }
 

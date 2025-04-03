@@ -67,11 +67,10 @@ export class UserUserController {
             await this.databaseService.createTransaction();
 
         try {
-            await this.userService.softDelete(
-                user,
-                { deletedBy: user._id },
-                { session }
-            );
+            await this.userService.softDelete(user, {
+                session,
+                actionBy: user._id,
+            });
 
             await this.activityService.createByUser(
                 user,

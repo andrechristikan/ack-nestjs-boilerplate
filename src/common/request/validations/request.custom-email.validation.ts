@@ -7,11 +7,15 @@ import {
     ValidatorConstraintInterface,
 } from 'class-validator';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { MessageService } from 'src/common/message/services/message.service';
 
 @ValidatorConstraint({ async: true })
 @Injectable()
 export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
-    constructor(protected readonly helperStringService: HelperStringService) {}
+    constructor(
+        private readonly helperStringService: HelperStringService,
+        private readonly messageService: MessageService
+    ) {}
 
     validate(value: string): boolean {
         const validated = this.helperStringService.checkCustomEmail(value);
@@ -23,7 +27,8 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
         const validated = this.helperStringService.checkCustomEmail(
             validationArguments.value
         );
-        return validated.message;
+
+        return this.messageService.setMessage(validated.messagePath);
     }
 }
 

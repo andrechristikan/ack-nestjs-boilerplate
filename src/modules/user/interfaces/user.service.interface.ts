@@ -31,7 +31,6 @@ import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.resp
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
-import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { PipelineStage } from 'mongoose';
@@ -176,7 +175,6 @@ export interface IUserService {
     ): Promise<UserDoc>;
     softDelete(
         repository: UserDoc,
-        dto: DatabaseSoftDeleteDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     deleteMany(

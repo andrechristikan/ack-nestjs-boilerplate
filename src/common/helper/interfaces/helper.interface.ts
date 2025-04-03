@@ -10,5 +10,5 @@ export interface IHelperDateCreateOptions {
 
 export interface IHelperEmailValidation {
     validated: boolean;
-    message?: string;
+    messagePath?: string;
 }

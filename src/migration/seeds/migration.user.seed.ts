@@ -100,17 +100,6 @@ export class MigrationUserSeed {
                     ),
                     this.userService.create(
                         {
-                            role: premiumRole._id,
-                            name: 'premium',
-                            email: 'premium@mail.com',
-                            country: country._id,
-                            gender: ENUM_USER_GENDER.MALE,
-                        },
-                        passwordHash,
-                        ENUM_USER_SIGN_UP_FROM.SEED
-                    ),
-                    this.userService.create(
-                        {
                             role: businessRole._id,
                             name: 'business',
                             email: 'business@mail.com',

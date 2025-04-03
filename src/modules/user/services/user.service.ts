@@ -9,6 +9,7 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseUpdateOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
@@ -42,7 +43,6 @@ import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
-import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 import {
     CountryDoc,
@@ -513,10 +513,9 @@ export class UserService implements IUserService {
 
     async softDelete(
         repository: UserDoc,
-        dto: DatabaseSoftDeleteDto,
-        options?: IDatabaseSaveOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<UserDoc> {
-        return this.userRepository.softDelete(repository, dto, options);
+        return this.userRepository.softDelete(repository, options);
     }
 
     async deleteMany(

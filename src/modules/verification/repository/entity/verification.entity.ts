@@ -5,7 +5,7 @@ import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 import { ENUM_VERIFICATION_TYPE } from 'src/modules/verification/enums/verification.enum.constant';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
-export const VerificationTableName = 'verifications';
+export const VerificationTableName = 'Verifications';
 
 @DatabaseEntity({ collection: VerificationTableName })
 export class VerificationEntity extends DatabaseEntityBase {

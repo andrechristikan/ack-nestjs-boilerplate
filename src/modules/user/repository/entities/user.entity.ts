@@ -55,10 +55,7 @@ export class UserEntity extends DatabaseEntityBase {
     })
     mobileNumber?: UserMobileNumberEntity;
 
-    @DatabaseProp({
-        required: true,
-        schema: UserVerificationSchema,
-    })
+    @DatabaseProp(UserVerificationSchema)
     verification: UserVerificationEntity;
 
     @DatabaseProp({

@@ -31,7 +31,6 @@ services:
             - ./ci/jwks-server/jwks.conf:/etc/nginx/conf.d/default.conf
         networks:
             - app-network
-        restart: unless-stopped
         healthcheck:
             test:
                 [
