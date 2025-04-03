@@ -88,19 +88,19 @@ export class DatabaseOptionService implements IDatabaseOptionService {
 
 ### DatabaseService
 
-The `DatabaseService` provides core database functionality, including transaction management:
+The `DatabaseService` provides core database functionality, including transaction management and query helpers:
 
 ```typescript
 @Injectable()
 export class DatabaseService implements IDatabaseService {
     constructor(
         @InjectDatabaseConnection()
-        private readonly connection: Connection
+        private readonly databaseConnection: Connection
     ) {}
 
     // Transaction support
-    async startTransaction(): Promise<ClientSession> {
-        const session = await this.connection.startSession();
+    async createTransaction(): Promise<ClientSession> {
+        const session: ClientSession = await this.databaseConnection.startSession();
         session.startTransaction();
         return session;
     }
@@ -113,6 +113,66 @@ export class DatabaseService implements IDatabaseService {
     async abortTransaction(session: ClientSession): Promise<void> {
         await session.abortTransaction();
         await session.endSession();
+    }
+    
+    // Filter helpers
+    filterEqual<T = string>(field: string, filterValue: T): Record<string, { $eq: T }> {
+        return {
+            [field]: {
+                $eq: filterValue,
+            },
+        };
+    }
+
+    filterNotEqual<T = string>(field: string, filterValue: T): Record<string, { $ne: T }> {
+        return {
+            [field]: {
+                $ne: filterValue,
+            },
+        };
+    }
+
+    filterContain(field: string, filterValue: string): Record<string, any> {
+        return DatabaseHelperQueryContain(field, filterValue);
+    }
+
+    filterContainFullMatch(field: string, filterValue: string): Record<string, any> {
+        return DatabaseHelperQueryContain(field, filterValue, {
+            fullWord: true,
+        });
+    }
+
+    filterIn<T = string>(field: string, filterValue: T[]): Record<string, { $in: T[] }> {
+        return {
+            [field]: {
+                $in: filterValue,
+            },
+        };
+    }
+
+    filterDateBetween(
+        fieldStart: string,
+        fieldEnd: string,
+        filterStartValue: Date,
+        filterEndValue: Date
+    ): Record<string, any> {
+        if (fieldStart === fieldEnd) {
+            return {
+                [fieldStart]: {
+                    $gte: filterStartValue,
+                    $lte: filterEndValue,
+                },
+            };
+        }
+
+        return {
+            [fieldStart]: {
+                $gte: filterStartValue,
+            },
+            [fieldEnd]: {
+                $lte: filterEndValue,
+            },
+        };
     }
 }
 ```
@@ -141,7 +201,7 @@ export class DatabaseRepositoryBase<
         this._join = options;
     }
 
-    // Methods for CRUD operations
+    // Find methods
     async findAll<T = EntityDocument>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
@@ -152,6 +212,22 @@ export class DatabaseRepositoryBase<
         options?: IDatabaseFindOneOptions
     ): Promise<T> { /* ... */ }
 
+    async findOneById<T = EntityDocument>(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<T> { /* ... */ }
+
+    async getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number> { /* ... */ }
+
+    async exists(
+        find: Record<string, any>,
+        options?: IDatabaseExistsOptions
+    ): Promise<boolean> { /* ... */ }
+
+    // Create and update methods
     async create<T extends Entity>(
         data: T,
         options?: IDatabaseCreateOptions
@@ -162,6 +238,12 @@ export class DatabaseRepositoryBase<
         options?: IDatabaseSaveOptions
     ): Promise<EntityDocument> { /* ... */ }
 
+    async update(
+        find: Record<string, any>,
+        data: UpdateQuery<Entity>,
+        options?: IDatabaseUpdateOptions
+    ): Promise<EntityDocument> { /* ... */ }
+
     async delete(
         find: Record<string, any>,
         options?: IDatabaseDeleteOptions
@@ -170,8 +252,7 @@ export class DatabaseRepositoryBase<
     // Soft delete support
     async softDelete(
         repository: EntityDocument,
-        dto?: DatabaseSoftDeleteDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<EntityDocument> { /* ... */ }
 
     async restore(
@@ -179,8 +260,14 @@ export class DatabaseRepositoryBase<
         options?: IDatabaseSaveOptions
     ): Promise<EntityDocument> { /* ... */ }
 
+    // Join method
+    async join<T = any>(
+        repository: EntityDocument,
+        joins: PopulateOptions | (string | PopulateOptions)[]
+    ): Promise<T> { /* ... */ }
+
     // Bulk operations
-    async createMany<T = Entity>(
+    async createMany<T extends Partial<Entity>>(
         data: T[],
         options?: IDatabaseCreateManyOptions
     ): Promise<InsertManyResult<Entity>> { /* ... */ }
@@ -191,10 +278,26 @@ export class DatabaseRepositoryBase<
         options?: IDatabaseUpdateManyOptions
     ): Promise<UpdateResult<Entity>> { /* ... */ }
 
+    async updateManyRaw(
+        find: Record<string, any>,
+        data: UpdateQuery<Entity>,
+        options?: IDatabaseUpdateManyOptions
+    ): Promise<UpdateResult<Entity>> { /* ... */ }
+
     async deleteMany(
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<DeleteResult> { /* ... */ }
+
+    async softDeleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseSoftDeleteOptions
+    ): Promise<UpdateResult<Entity>> { /* ... */ }
+
+    async restoreMany(
+        find: Record<string, any>,
+        options?: IDatabaseSaveOptions
+    ): Promise<UpdateResult<Entity>> { /* ... */ }
 
     // Aggregate operations
     async aggregate<
@@ -204,6 +307,22 @@ export class DatabaseRepositoryBase<
         pipelines: AggregatePipeline[],
         options?: IDatabaseAggregateOptions
     ): Promise<AggregateResponse[]> { /* ... */ }
+
+    async findAllAggregate<
+        AggregatePipeline extends PipelineStage,
+        AggregateResponse = any,
+    >(
+        pipelines: AggregatePipeline[],
+        options?: IDatabaseFindAllAggregateOptions
+    ): Promise<AggregateResponse[]> { /* ... */ }
+
+    async getTotalAggregate<AggregatePipeline extends PipelineStage>(
+        pipelines: AggregatePipeline[],
+        options?: IDatabaseAggregateOptions
+    ): Promise<number> { /* ... */ }
+
+    // Model access
+    async model(): Promise<Model<Entity>> { /* ... */ }
 }
 ```
 
@@ -214,51 +333,56 @@ All database entities inherit from the `DatabaseEntityBase` class, which provide
 ```typescript
 export class DatabaseEntityBase {
     @DatabaseProp({
-        required: true,
-        unique: true,
         type: String,
-        default: () => uuidV4(),
+        required: true,
+        default: uuidV4,
     })
     _id: string;
 
     @DatabaseProp({
         required: true,
-        default: () => new Date(),
-        type: Date,
-        transformer: {
-            to: (value) => value,
-            from: (value) => value,
-        },
-    })
-    createdAt: Date;
-
-    @DatabaseProp({
-        default: () => new Date(),
-        type: Date,
-        transformer: {
-            to: (value) => value,
-            from: (value) => value,
-        },
-    })
-    updatedAt: Date;
-
-    @DatabaseProp({
-        default: false,
-        required: true,
         index: true,
-        type: Boolean,
+        default: false,
     })
     deleted: boolean;
 
     @DatabaseProp({
         required: false,
+        index: 'asc',
+        type: Date,
+        default: Date.now,
+    })
+    createdAt: Date;
+
+    @DatabaseProp({
+        required: false,
+        index: true,
+    })
+    createdBy?: string;
+
+    @DatabaseProp({
+        required: false,
+        index: 'asc',
+        type: Date,
+    })
+    updatedAt: Date;
+
+    @DatabaseProp({
+        required: false,
+        index: true,
+    })
+    updatedBy?: string;
+
+    @DatabaseProp({
+        required: false,
+        index: true,
         type: Date,
     })
     deletedAt?: Date;
 
     @DatabaseProp({
         required: false,
-        type: String,
+        index: true,
     })
     deletedBy?: string;
 }
@@ -324,33 +448,11 @@ export class UserRepository extends DatabaseRepositoryBase<
     UserEntity,
     UserDoc
 > {
-    readonly _joinActive: PopulateOptions[] = [
-        {
-            path: 'role',
-            localField: 'role',
-            foreignField: '_id',
-            model: RoleEntity.name,
-            justOne: true,
-            match: {
-                isActive: true,
-            },
-        },
-        {
-            path: 'country',
-            localField: 'country',
-            foreignField: '_id',
-            model: CountryEntity.name,
-            justOne: true,
-        }
-        // More join relationships...
-    ];
-
     constructor(
         @InjectDatabaseModel(UserEntity.name)
         private readonly userModel: Model<UserEntity>
     ) {
         super(userModel, [
-            // Join configurations for queries
             {
                 path: 'role',
                 localField: 'role',
@@ -358,7 +460,20 @@ export class UserRepository extends DatabaseRepositoryBase<
                 model: RoleEntity.name,
                 justOne: true,
             },
-            // More join configurations...
+            {
+                path: 'country',
+                localField: 'country',
+                foreignField: '_id',
+                model: CountryEntity.name,
+                justOne: true,
+            },
+            {
+                path: 'mobileNumber.country',
+                localField: 'mobileNumber.country',
+                foreignField: '_id',
+                model: CountryEntity.name,
+                justOne: true,
+            },
         ]);
     }
 }
@@ -395,34 +510,66 @@ Services use repositories for data access, implementing business logic on top of
 ```typescript
 @Injectable()
 export class UserService implements IUserService {
-    constructor(private readonly userRepository: UserRepository) {}
+    constructor(
+        private readonly userRepository: UserRepository,
+        private readonly helperDateService: HelperDateService,
+        private readonly configService: ConfigService
+    ) {}
 
-    async findAll(
+    async findAll<T>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserDoc[]> {
-        return this.userRepository.findAll<UserDoc>(find, {
+    ): Promise<T[]> {
+        return this.userRepository.findAll<T>(find, {
             ...options,
             join: true,
         });
     }
 
-    async create(
-        dto: UserCreateRequestDto,
-        passwordData: IAuthPassword,
-        signUpFrom: ENUM_USER_SIGN_UP_FROM,
+    async findOneById<T>(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<T> {
+        return this.userRepository.findOneById<T>(_id, {
+            ...options,
+            join: true,
+        });
+    }
+
+    async create<Dto>(
+        data: Dto,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
-        // Business logic implementation
         const create: UserEntity = new UserEntity();
-        create.email = dto.email;
-        create.firstName = dto.firstName;
-        create.lastName = dto.lastName;
-        // More property assignments...
-
+        
+        // Map DTO data to entity fields
+        Object.assign(create, data);
+        
         return this.userRepository.create<UserEntity>(create, options);
+    }
+
+    async delete(
+        find: Record<string, any>,
+        options?: IDatabaseDeleteOptions
+    ): Promise<UserDoc> {
+        return this.userRepository.delete(find, options);
+    }
+
+    async updateOneById<Dto>(
+        _id: string,
+        data: Dto,
+        options?: IDatabaseUpdateOptions
+    ): Promise<UserDoc> {
+        return this.userRepository.update({ _id }, { $set: data }, options);
+    }
+
+    async softDelete(
+        repository: UserDoc,
+        options?: IDatabaseSoftDeleteOptions
+    ): Promise<UserDoc> {
+        return this.userRepository.softDelete(repository, options);
     }
 
     // More service methods...
 }
-````
+```
