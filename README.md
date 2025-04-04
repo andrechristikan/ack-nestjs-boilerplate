@@ -52,6 +52,16 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
 -   For monitoring, this project will use `sentry.io`, and sent unhandled error and/or `internal server error`.
 -   By default, logs will not be written to the `/log` directory. You need to change the `DEBUG_INTO_FILE` environment variable to `true` to enable file logging.
 -   Since version `7.4.0`, the project uses the `ES512` algorithm for JWT authentication.
+-   When using multiple protection decorators, they must be applied in the correct order:
+    ```typescript
+    @ExampleDoc()
+    @PolicyAbilityProtected({...})
+    @PolicyRoleProtected(...)
+    @UserProtected()     
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/some-endpoint')
+    ```
 
 ## TODO
 
