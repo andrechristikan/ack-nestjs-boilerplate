@@ -25,7 +25,7 @@ services:
         image: nginx:alpine
         hostname: jwks-server
         ports:
-            - '3001:80'
+            - '3011:80'
         volumes:
             - ./src/keys/jwks.json:/usr/share/nginx/html/.well-known/jwks.json
             - ./ci/jwks-server/jwks.conf:/etc/nginx/conf.d/default.conf

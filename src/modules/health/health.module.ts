@@ -20,7 +20,13 @@ import { HealthAwsSESIndicator } from 'src/modules/health/indicators/health.aws-
         HealthAwsS3PrivateBucketIndicator,
         HealthAwsPinpointIndicator,
         HealthAwsSESIndicator,
+        TerminusModule,
     ],
-    imports: [AwsModule, TerminusModule],
+    imports: [
+        AwsModule,
+        TerminusModule.forRoot({
+            gracefulShutdownTimeoutMs: 1000,
+        }),
+    ],
 })
 export class HealthModule {}

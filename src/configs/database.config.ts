@@ -13,5 +13,11 @@ export default registerAs(
             socketTimeoutMS: 30 * 1000, // 30 secs
             heartbeatFrequencyMS: 5 * 1000, // 30 secs
         },
+        poolOptions: {
+            maxPoolSize: 20,
+            minPoolSize: 5,
+            maxIdleTimeMS: 60000,
+            waitQueueTimeoutMS: 30000,
+        },
     })
 );

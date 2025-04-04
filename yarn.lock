@@ -2500,6 +2500,14 @@
     path-to-regexp "8.2.0"
     tslib "2.8.1"
 
+"@nestjs/devtools-integration@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@nestjs/devtools-integration/-/devtools-integration-0.2.0.tgz#b54a5df9f21c0dc3ab4f32fe483d60d0a4af67a3"
+  integrity sha512-RwQDnCour8l3D8hwu+o61DFehR7740BwRG7Pg7gbFyZJmK8SmynZH3mmeCc0+X8cxOYzr7hO12z0JtIN89//8w==
+  dependencies:
+    chalk "^4.1.2"
+    node-fetch "^2.6.9"
+
 "@nestjs/jwt@^11.0.0":
   version "11.0.0"
   resolved "https://registry.yarnpkg.com/@nestjs/jwt/-/jwt-11.0.0.tgz#aef1590e70830c70fba0f59e9b17314dc4d36822"

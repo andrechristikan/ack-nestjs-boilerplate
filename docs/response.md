@@ -34,7 +34,6 @@ The response system consists of interceptors that transform controller return va
   - [Internationalization](#internationalization)
   - [Custom Response Metadata](#custom-response-metadata)
 
-
 ## Modules
 
 ### Types and DTOs

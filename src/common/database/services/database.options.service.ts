@@ -11,12 +11,17 @@ export class DatabaseOptionService implements IDatabaseOptionService {
 
     createOptions(): MongooseModuleOptions {
         const env = this.configService.get<string>('app.env');
+        const name = this.configService.get<string>('app.name');
 
         const url = this.configService.get<string>('database.url');
         const debug = this.configService.get<boolean>('database.debug');
 
         const timeoutOptions = this.configService.get<Record<string, number>>(
             'database.timeoutOptions'
+        );
+
+        const poolOptions = this.configService.get<Record<string, number>>(
+            'database.poolOptions'
         );
 
         if (env !== ENUM_APP_ENVIRONMENT.PRODUCTION) {
@@ -27,7 +32,11 @@ export class DatabaseOptionService implements IDatabaseOptionService {
             uri: url,
             autoCreate: env === ENUM_APP_ENVIRONMENT.MIGRATION,
             autoIndex: env === ENUM_APP_ENVIRONMENT.MIGRATION,
+            appName: name,
+            retryWrites: true,
+            retryReads: true,
             ...timeoutOptions,
+            ...poolOptions,
         };
 
         return mongooseOptions;

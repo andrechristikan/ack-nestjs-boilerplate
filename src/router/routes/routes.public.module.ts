@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ActivityModule } from 'src/modules/activity/activity.module';
+import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { AuthPublicController } from 'src/modules/auth/controllers/auth.public.controller';
 import { CountryModule } from 'src/modules/country/country.module';
@@ -36,6 +37,7 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         ActivityModule,
         ResetPasswordModule,
         VerificationModule,
+        ApiKeyModule,
         BullModule.registerQueueAsync({
             name: ENUM_WORKER_QUEUES.EMAIL_QUEUE,
         }),

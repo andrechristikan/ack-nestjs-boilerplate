@@ -12,7 +12,6 @@ import { PolicyModule } from 'src/modules/policy/policy.module';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import configs from 'src/configs';
-import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
 import { FileModule } from 'src/common/file/file.module';
 import { BullModule } from '@nestjs/bullmq';
@@ -103,7 +102,6 @@ import KeyvRedis from '@keyv/redis';
         RequestModule.forRoot(),
         PolicyModule.forRoot(),
         AuthModule.forRoot(),
-        ApiKeyModule.forRoot(),
         FileModule.forRoot(),
         DatabaseModule.forRoot(),
         PaginationModule.forRoot(),

@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ActivityModule } from 'src/modules/activity/activity.module';
 import { ActivitySharedController } from 'src/modules/activity/controllers/activity.shared.controller';
+import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { AuthSharedController } from 'src/modules/auth/controllers/auth.shared.controller';
 import { AwsModule } from 'src/modules/aws/aws.module';
@@ -34,6 +35,7 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         SessionModule,
         PasswordHistoryModule,
         ActivityModule,
+        ApiKeyModule,
         BullModule.registerQueueAsync({
             name: ENUM_WORKER_QUEUES.EMAIL_QUEUE,
         }),

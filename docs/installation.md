@@ -162,8 +162,8 @@ Before running with Docker, you need to complete two important steps:
    When using Docker, there's no need to upload the JWKS file to an external server. The Docker setup includes a dedicated NGINX container that serves the JWKS file. After generating the keys, you should:
    
    - Make sure the `jwks.json` file is in the `/src/keys` directory
-   - In your `.env` file, set `AUTH_JWT_JWKS_URI` to `http://jwks-server:3001/.well-known/jwks.json` for internal container communication
-   - From outside Docker, the JWKS file will be accessible at `http://localhost:3001/.well-known/jwks.json`
+   - In your `.env` file, set `AUTH_JWT_JWKS_URI` to `http://jwks-server:3011/.well-known/jwks.json` for internal container communication
+   - From outside Docker, the JWKS file will be accessible at `http://localhost:3011/.well-known/jwks.json`
 
 2. Create and configure your environment file:
    ```bash
@@ -192,8 +192,9 @@ Once the containers are running, you can access:
 - The main application at `http://localhost:3000`
 - Swagger documentation at `http://localhost:3000/docs`
 - BullMQ board at `http://localhost:3010`
+- JwksServer at `http://localhost:3011`
 
-> **Note**: BullMQ board only available with docker installation
+> **Note**: BullMQ board and JwksServer only available with docker installation
 
 ### Database Migration and Seed
 
