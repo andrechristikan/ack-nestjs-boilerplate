@@ -6,13 +6,99 @@ This document covers the audit functionality in ACK NestJS Boilerplate, includin
 - [Overview](#overview)
   - [Table of Contents](#table-of-contents)
   - [Activity Module](#activity-module)
+    - [Overview](#overview-1)
+    - [How to Use](#how-to-use)
   - [Password History Module](#password-history-module)
+    - [Overview](#overview-2)
+    - [How to Use](#how-to-use-1)
 
-// TODO: 
 ## Activity Module
 
-Coming soon...
+### Overview
+
+The Activity module provides comprehensive user activity tracking throughout the application. It records actions performed by users with detailed information about what was done, when it occurred, and who initiated the action.
+
+### How to Use
+
+The Activity module is designed to be used across the application to track important user actions. There are two main methods for creating activities:
+
+1. **User Activities**: Record actions initiated by the user themselves
+   ```typescript
+   activityService.createByUser(
+     user,
+     { description: 'Updated profile information' }
+   );
+   ```
+
+2. **Admin Activities**: Record actions performed by admins on user accounts
+   ```typescript
+   activityService.createByAdmin(
+     targetUser,
+     { 
+       by: adminUserId, 
+       description: 'Reset user password' 
+     }
+   );
+   ```
+
 
 ## Password History Module
 
-Coming soon...
+### Overview
+
+The Password History module tracks user password changes to enforce password policies such as preventing password reuse and monitoring password change frequency. This module is essential for maintaining security standards and compliance requirements.
+
+Key features:
+- Records password changes with timestamps
+- Stores password hashes for comparison
+- Differentiates between different types of password changes (SIGN_UP, FORGOT, TEMPORARY, CHANGE)
+- Supports querying password history for policy enforcement
+- Implements configurable password expiration periods
+
+### How to Use
+
+The Password History module provides two main methods for recording password changes:
+
+1. **User Password History**: Record password changes initiated by the user themselves
+   ```typescript
+   passwordHistoryService.createByUser(
+     user,
+     { type: ENUM_PASSWORD_HISTORY_TYPE.CHANGE }
+   );
+   ```
+
+2. **Admin Password History**: Record password changes performed by admins
+   ```typescript
+   passwordHistoryService.createByAdmin(
+     user,
+     { 
+       by: adminId, 
+       type: ENUM_PASSWORD_HISTORY_TYPE.TEMPORARY 
+     }
+   );
+   ```
+
+To check if a password has been recently used:
+
+```typescript
+const checkPassword = await this.passwordHistoryService.findOneUsedByUser(
+    user._id,
+    newPasswordHash
+);
+
+if (checkPassword) {
+    const passwordPeriod = await this.passwordHistoryService.getPasswordPeriod();
+    throw new BadRequestException({
+        statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW,
+        message: 'user.error.passwordMustNew',
+        _metadata: {
+            customProperty: {
+                messageProperties: {
+                    period: passwordPeriod,
+                    expiredAt: checkPassword.expiredAt,
+                },
+            },
+        },
+    });
+}
+```
