@@ -20,6 +20,7 @@ import {
     GreaterThanEqualOtherPropertyConstraint,
     GreaterThanOtherPropertyConstraint,
 } from 'src/common/request/validations/request.greater-than-other-property.validation';
+import { IsCustomEmailConstraint } from 'src/common/request/validations/request.custom-email.validation';
 import { IsPasswordConstraint } from 'src/common/request/validations/request.is-password.validation';
 import {
     LessThanEqualOtherPropertyConstraint,
@@ -57,6 +58,7 @@ export class RequestModule {
                 DateLessThanConstraint,
                 GreaterThanEqualOtherPropertyConstraint,
                 GreaterThanOtherPropertyConstraint,
+                IsCustomEmailConstraint,
                 IsPasswordConstraint,
                 LessThanEqualOtherPropertyConstraint,
                 LessThanOtherPropertyConstraint,

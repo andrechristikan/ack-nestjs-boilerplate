@@ -61,8 +61,7 @@ export class HelperStringService implements IHelperStringService {
     }
 
     checkCustomEmail(value: string): IHelperEmailValidation {
-        const regex = new RegExp(/\S+@\S+\.\S+/);
-        const valid = regex.test(value);
+        const valid = /\S+@\S+\.\S+/.test(value);
         if (!valid) {
             return {
                 validated: false,
@@ -116,7 +115,7 @@ export class HelperStringService implements IHelperStringService {
             };
         }
 
-        return;
+        return { validated: true };
     }
 
     checkWildcardUrl(url: string, patterns: string[]): boolean {

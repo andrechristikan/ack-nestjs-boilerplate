@@ -341,7 +341,7 @@ export class AuthPublicController {
         { email, name, password: passwordString, country }: AuthSignUpRequestDto
     ): Promise<void> {
         const promises: Promise<any>[] = [
-            this.roleService.findOneByName('user'),
+            this.roleService.findOneByName('individual'),
             this.userService.existByEmail(email),
             this.countryService.findOneById(country),
         ];
