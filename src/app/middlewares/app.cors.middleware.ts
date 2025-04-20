@@ -22,12 +22,22 @@ export class AppCorsMiddleware implements NestMiddleware {
     }
 
     use(req: Request, res: Response, next: NextFunction): void {
+        let credentials = true;
+        if (typeof this.allowOrigin === 'string' && this.allowOrigin === '*') {
+            credentials = false;
+        } else if (
+            Array.isArray(this.allowOrigin) &&
+            this.allowOrigin.includes('*')
+        ) {
+            credentials = false;
+        }
+
         const corsOptions: CorsOptions = {
             origin: this.allowOrigin,
             methods: this.allowMethod,
             allowedHeaders: this.allowHeader,
             preflightContinue: false,
-            credentials: true,
+            credentials,
             optionsSuccessStatus: HttpStatus.NO_CONTENT,
         };
 

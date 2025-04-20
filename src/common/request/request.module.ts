@@ -8,6 +8,7 @@ import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ValidationError } from 'class-validator';
 import { RequestValidationException } from 'src/common/request/exceptions/request.validation.exception';
 import { RequestTimeoutInterceptor } from 'src/common/request/interceptors/request.timeout.interceptor';
+import { IsCustomEmailConstraint } from 'src/common/request/validations/request.custom-email.validation';
 import {
     DateGreaterThanConstraint,
     DateGreaterThanEqualConstraint,
@@ -44,6 +45,7 @@ export class RequestModule {
                             transform: true,
                             skipUndefinedProperties: true,
                             forbidUnknownValues: true,
+                            stopAtFirstError: true,
                             errorHttpStatusCode:
                                 HttpStatus.UNPROCESSABLE_ENTITY,
                             exceptionFactory: async (
@@ -58,6 +60,7 @@ export class RequestModule {
                 GreaterThanEqualOtherPropertyConstraint,
                 GreaterThanOtherPropertyConstraint,
                 IsPasswordConstraint,
+                IsCustomEmailConstraint,
                 LessThanEqualOtherPropertyConstraint,
                 LessThanOtherPropertyConstraint,
             ],
