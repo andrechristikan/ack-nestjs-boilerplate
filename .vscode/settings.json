@@ -32,5 +32,9 @@
     "[typescript][json][jsonc][yaml][dockercompose][handlebars][javascript][dotenv][shellscript][dockerfile]": {
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode"
-    }
+    },
+
+    "editor.bracketPairColorization.enabled": true,
+    "better-comments.multilineComments": true,
+    "better-comments.highlightPlainText": true
 }

@@ -6,6 +6,7 @@ import {
     IDatabaseExistsOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
     IDatabaseSaveOptions,
@@ -36,6 +37,7 @@ import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.u
 import { PipelineStage } from 'mongoose';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
+import { UserCensorResponseDto } from 'src/modules/user/dtos/response/user.censor.response.dto';
 
 export interface IUserService {
     findAll(
@@ -62,12 +64,24 @@ export interface IUserService {
         find: Record<string, any>,
         options?: IDatabaseOptions
     ): Promise<UserDoc>;
-    findOneByEmail(email: string, options?: IDatabaseOptions): Promise<UserDoc>;
-    findOneByMobileNumber(
+    findOneByEmail(
+        email: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<UserDoc>;
+    findOneByUsername(
+        username: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<UserDoc>;
+    findOneByMobileNumberAndCountry(
         country: string,
         mobileNumber: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<UserDoc>;
+    findOneByMobileNumber(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<UserDoc>;
+
     findOneWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
@@ -204,6 +218,7 @@ export interface IUserService {
     checkUsernameBadWord(username: string): Promise<boolean>;
     mapProfile(user: IUserDoc | IUserEntity): UserProfileResponseDto;
     mapList(users: IUserDoc[] | IUserEntity[]): UserListResponseDto[];
+    mapCensor(user: UserDoc | UserEntity): UserCensorResponseDto;
     mapShort(users: IUserDoc[] | IUserEntity[]): UserShortResponseDto[];
     mapGet(user: IUserDoc | IUserEntity): UserGetResponseDto;
     checkMobileNumber(mobileNumber: string, country: CountryDoc): boolean;

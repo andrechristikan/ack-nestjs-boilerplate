@@ -1,7 +1,5 @@
 import {
-    BadRequestException,
     Body,
-    ConflictException,
     Controller,
     Get,
     HttpCode,
@@ -33,17 +31,21 @@ import {
 } from 'src/modules/user/constants/user.list.constant';
 import {
     UserSystemCheckEmailDoc,
+    UserSystemCheckMobileNumberDoc,
     UserSystemCheckUsernameDoc,
     UserSystemListDoc,
 } from 'src/modules/user/docs/user.system.doc';
+import { UserCheckMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.check-mobile-number.dto';
 import {
     UserCheckEmailRequestDto,
     UserCheckUsernameRequestDto,
 } from 'src/modules/user/dtos/request/user.check.request.dto';
-import { UserCheckResponseDto } from 'src/modules/user/dtos/response/user.check.response.dto';
+import {
+    UserCheckResponseDto,
+    UserCheckUsernameResponseDto,
+} from 'src/modules/user/dtos/response/user.check.response.dto';
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserService } from 'src/modules/user/services/user.service';
 
@@ -116,6 +118,25 @@ export class UserSystemController {
         };
     }
 
+    @UserSystemCheckMobileNumberDoc()
+    @Response('user.checkMobileNumber')
+    @ApiKeySystemProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/check/mobile-number')
+    async checkMobileNumber(
+        @Body() { number }: UserCheckMobileNumberRequestDto
+    ): Promise<IResponse<UserCheckResponseDto>> {
+        const user = await this.userService.findOneByMobileNumber(number);
+        const mapped = user ? this.userService.mapCensor(user) : undefined;
+
+        return {
+            data: {
+                exist: !!user,
+                user: mapped,
+            },
+        };
+    }
+
     @UserSystemCheckUsernameDoc()
     @Response('user.checkUsername')
     @ApiKeySystemProtected()
@@ -123,35 +144,21 @@ export class UserSystemController {
     @Post('/check/username')
     async checkUsername(
         @Body() { username }: UserCheckUsernameRequestDto
-    ): Promise<IResponse<UserCheckResponseDto>> {
+    ): Promise<IResponse<UserCheckUsernameResponseDto>> {
         const checkUsername = this.userService.checkUsernamePattern(username);
-        if (checkUsername) {
-            throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_NOT_ALLOWED,
-                message: 'user.error.usernameNotAllowed',
-            });
-        }
-
         const checkBadWord =
             await this.userService.checkUsernameBadWord(username);
-        if (checkBadWord) {
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USERNAME_CONTAIN_BAD_WORD,
-                message: 'user.error.usernameContainBadWord',
-            });
-        }
 
-        const exist = await this.userService.existByUsername(username);
-        if (exist) {
-            throw new ConflictException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_EXIST,
-                message: 'user.error.usernameExist',
-            });
-        }
+        const user = await this.userService.findOneByUsername(username);
+        const mapped = user ? this.userService.mapCensor(user) : undefined;
 
         return {
-            data: { passed: true },
+            data: {
+                badWord: checkBadWord,
+                exist: !!user,
+                pattern: checkUsername,
+                user: mapped,
+            },
         };
     }
 
@@ -163,16 +170,11 @@ export class UserSystemController {
     async checkEmail(
         @Body() { email }: UserCheckEmailRequestDto
     ): Promise<IResponse<UserCheckResponseDto>> {
-        const exist: boolean = await this.userService.existByEmail(email);
-        if (exist) {
-            throw new ConflictException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_EXIST,
-                message: 'user.error.emailExist',
-            });
-        }
+        const user = await this.userService.findOneByEmail(email);
+        const mapped = user ? this.userService.mapCensor(user) : undefined;
 
         return {
-            data: { passed: true },
+            data: { exist: !!user, user: mapped },
         };
     }
 }

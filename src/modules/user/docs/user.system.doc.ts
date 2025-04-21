@@ -12,11 +12,15 @@ import {
     UserDocQueryRoleType,
     UserDocQueryStatus,
 } from 'src/modules/user/constants/user.doc.constant';
+import { UserCheckMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.check-mobile-number.dto';
 import {
     UserCheckEmailRequestDto,
     UserCheckUsernameRequestDto,
 } from 'src/modules/user/dtos/request/user.check.request.dto';
-import { UserCheckResponseDto } from 'src/modules/user/dtos/response/user.check.response.dto';
+import {
+    UserCheckResponseDto,
+    UserCheckUsernameResponseDto,
+} from 'src/modules/user/dtos/response/user.check.response.dto';
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 
 export function UserSystemListDoc(): MethodDecorator {
@@ -52,8 +56,8 @@ export function UserSystemCheckUsernameDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
-        DocResponse<UserCheckResponseDto>('user.checkUsername', {
-            dto: UserCheckResponseDto,
+        DocResponse<UserCheckUsernameResponseDto>('user.checkUsername', {
+            dto: UserCheckUsernameResponseDto,
         })
     );
 }
@@ -71,6 +75,24 @@ export function UserSystemCheckEmailDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocResponse<UserCheckResponseDto>('user.checkEmail', {
+            dto: UserCheckResponseDto,
+        })
+    );
+}
+
+export function UserSystemCheckMobileNumberDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'check user by mobile number',
+        }),
+        DocRequest({
+            dto: UserCheckMobileNumberRequestDto,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+        }),
+        DocAuth({
+            xApiKey: true,
+        }),
+        DocResponse<UserCheckResponseDto>('user.checkMobileNumber', {
             dto: UserCheckResponseDto,
         })
     );

@@ -52,6 +52,7 @@ import { RoleTableName } from 'src/modules/role/repository/entities/role.entity'
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
 import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
+import { UserCensorResponseDto } from 'src/modules/user/dtos/response/user.censor.response.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -184,7 +185,14 @@ export class UserService implements IUserService {
         );
     }
 
-    async findOneByMobileNumber(
+    async findOneByUsername(
+        username: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<UserDoc> {
+        return this.userRepository.findOne<UserDoc>({ username }, options);
+    }
+
+    async findOneByMobileNumberAndCountry(
         country: string,
         mobileNumber: string,
         options?: IDatabaseFindOneOptions
@@ -193,6 +201,18 @@ export class UserService implements IUserService {
             {
                 'mobileNumber.number': mobileNumber,
                 'mobileNumber.country': country,
+            },
+            options
+        );
+    }
+
+    async findOneByMobileNumber(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<UserDoc> {
+        return this.userRepository.findOne<UserDoc>(
+            {
+                'mobileNumber.number': mobileNumber,
             },
             options
         );
@@ -596,6 +616,13 @@ export class UserService implements IUserService {
             UserProfileResponseDto,
             user instanceof Document ? user.toObject() : user
         );
+    }
+
+    mapCensor(user: UserDoc | UserEntity): UserCensorResponseDto {
+        const plainObject = user instanceof Document ? user.toObject() : user;
+        plainObject.name = this.helperStringService.censor(plainObject.name);
+
+        return plainToInstance(UserCensorResponseDto, plainObject);
     }
 
     mapList(users: IUserDoc[] | IUserEntity[]): UserListResponseDto[] {

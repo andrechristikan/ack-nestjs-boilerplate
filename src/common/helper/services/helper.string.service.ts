@@ -115,7 +115,9 @@ export class HelperStringService implements IHelperStringService {
             };
         }
 
-        return { validated: true };
+        return {
+            validated: true,
+        };
     }
 
     checkWildcardUrl(url: string, patterns: string[]): boolean {
