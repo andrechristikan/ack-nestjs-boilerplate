@@ -388,7 +388,7 @@ export class AuthPublicController {
                     session,
                 });
 
-            this.passwordHistoryService.createByUser(
+            await this.passwordHistoryService.createByUser(
                 user,
                 {
                     type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
@@ -396,7 +396,7 @@ export class AuthPublicController {
                 { session }
             );
 
-            this.activityService.createByUser(
+            await this.activityService.createByUser(
                 user,
                 {
                     description: this.messageService.setMessage(
