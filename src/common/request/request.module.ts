@@ -45,7 +45,6 @@ export class RequestModule {
                             transform: true,
                             skipUndefinedProperties: true,
                             forbidUnknownValues: true,
-                            stopAtFirstError: true,
                             errorHttpStatusCode:
                                 HttpStatus.UNPROCESSABLE_ENTITY,
                             exceptionFactory: async (

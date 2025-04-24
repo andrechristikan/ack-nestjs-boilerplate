@@ -26,10 +26,16 @@ export class MigrationRoleSeed {
             {
                 name: 'admin',
                 type: ENUM_POLICY_ROLE_TYPE.ADMIN,
-                permissions: Object.values(ENUM_POLICY_SUBJECT).map(val => ({
-                    subject: val,
-                    action: [ENUM_POLICY_ACTION.MANAGE],
-                })),
+                permissions: Object.values(ENUM_POLICY_SUBJECT)
+                    .filter(
+                        e =>
+                            e !== ENUM_POLICY_SUBJECT.API_KEY &&
+                            e !== ENUM_POLICY_SUBJECT.ALL
+                    )
+                    .map(val => ({
+                        subject: val,
+                        action: [ENUM_POLICY_ACTION.MANAGE],
+                    })),
             },
             {
                 name: 'individual',

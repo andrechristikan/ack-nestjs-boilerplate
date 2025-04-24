@@ -421,7 +421,7 @@ export class UserAdminController {
         @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
         user: UserDoc,
         @Body() { status }: UserUpdateStatusRequestDto
-    ): Promise<void> {
+    ): Promise<IResponse<void>> {
         if (user.status === ENUM_USER_STATUS.BLOCKED) {
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
@@ -454,7 +454,15 @@ export class UserAdminController {
 
             await this.databaseService.commitTransaction(session);
 
-            return;
+            return {
+                _metadata: {
+                    customProperty: {
+                        messageProperties: {
+                            status: status.toLowerCase(),
+                        },
+                    },
+                },
+            };
         } catch (err: any) {
             await this.databaseService.abortTransaction(session);
 

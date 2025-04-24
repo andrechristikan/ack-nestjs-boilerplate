@@ -59,29 +59,29 @@ export class MessageService implements IMessageService {
     ): IMessageValidationError[] {
         const messages: IMessageValidationError[] = [];
         for (const error of errors) {
-            const property = error.property;
+            let property = error.property;
+
             const constraints: string[] = Object.keys(error.constraints ?? []);
-
             if (constraints.length === 0) {
-                messages.push({
-                    property,
-                    message: this.setMessage('request.unknownMessage', {
-                        customLanguage: options?.customLanguage,
-                        properties: {
-                            property,
-                            value: error.value,
-                        },
-                    }),
-                });
+                let children: ValidationError[] = error.children ?? [];
+                let lastConstraint: Record<string, string> = {};
 
-                continue;
+                while (children.length > 0) {
+                    const child = children[0];
+
+                    lastConstraint = child.constraints ?? {};
+                    property = `${property}.${child.property}`;
+                    children = children[0].children;
+                }
+
+                constraints.push(...Object.keys(lastConstraint ?? []));
             }
 
             for (const constraint of constraints) {
                 const message = this.setMessage(`request.${constraint}`, {
                     customLanguage: options?.customLanguage,
                     properties: {
-                        property,
+                        property: property.split('.').pop(),
                         value: error.value,
                     },
                 });

@@ -383,25 +383,28 @@ export class AuthPublicController {
                 { session }
             );
 
-            const [verification] = await Promise.all([
-                this.verificationService.createEmailByUser(user, { session }),
-                this.passwordHistoryService.createByUser(
-                    user,
-                    {
-                        type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
-                    },
-                    { session }
-                ),
-                this.activityService.createByUser(
-                    user,
-                    {
-                        description: this.messageService.setMessage(
-                            'activity.user.signUp'
-                        ),
-                    },
-                    { session }
-                ),
-            ]);
+            const verification =
+                await this.verificationService.createEmailByUser(user, {
+                    session,
+                });
+
+            this.passwordHistoryService.createByUser(
+                user,
+                {
+                    type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
+                },
+                { session }
+            );
+
+            this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.signUp'
+                    ),
+                },
+                { session }
+            );
 
             await Promise.all([
                 this.emailQueue.add(

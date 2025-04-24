@@ -189,7 +189,12 @@ export class UserService implements IUserService {
         username: string,
         options?: IDatabaseFindOneOptions
     ): Promise<UserDoc> {
-        return this.userRepository.findOne<UserDoc>({ username }, options);
+        return this.userRepository.findOne<UserDoc>(
+            DatabaseHelperQueryContain('username', username, {
+                fullWord: true,
+            }),
+            options
+        );
     }
 
     async findOneByMobileNumberAndCountry(
@@ -282,7 +287,12 @@ export class UserService implements IUserService {
         options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(
-            { email, status: ENUM_USER_STATUS.ACTIVE },
+            {
+                ...DatabaseHelperQueryContain('email', email, {
+                    fullWord: true,
+                }),
+                status: ENUM_USER_STATUS.ACTIVE,
+            },
             {
                 ...options,
                 join: this.userRepository._joinActive,
@@ -318,7 +328,7 @@ export class UserService implements IUserService {
 
         const create: UserEntity = new UserEntity();
         create.name = name;
-        create.email = email;
+        create.email = email.toLowerCase();
         create.role = role;
         create.gender = gender;
         create.status = ENUM_USER_STATUS.ACTIVE;
@@ -349,7 +359,7 @@ export class UserService implements IUserService {
 
         const create: UserEntity = new UserEntity();
         create.name = name;
-        create.email = email;
+        create.email = email.toLowerCase();
         create.role = role;
         create.status = ENUM_USER_STATUS.ACTIVE;
         create.password = passwordHash;
@@ -517,7 +527,7 @@ export class UserService implements IUserService {
         { username }: UserUpdateClaimUsernameRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
-        repository.username = username;
+        repository.username = username.toLowerCase();
 
         return this.userRepository.save(repository, options);
     }
@@ -598,7 +608,7 @@ export class UserService implements IUserService {
     createRandomUsername(): string {
         const suffix = this.helperStringService.random(6);
 
-        return `${this.usernamePrefix}-${suffix}`;
+        return `${this.usernamePrefix}-${suffix}`.toLowerCase();
     }
 
     checkUsernamePattern(username: string): boolean {

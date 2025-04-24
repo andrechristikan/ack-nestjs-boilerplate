@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+    getMetadataStorage,
     registerDecorator,
     ValidationArguments,
     ValidationOptions,
@@ -17,7 +18,17 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
         private readonly messageService: MessageService
     ) {}
 
-    validate(value: string): boolean {
+    validate(
+        value: string,
+        validationArguments?: ValidationArguments
+    ): boolean {
+        if (
+            (value === null || value === undefined || value === '') &&
+            this.isPropertyOptional(validationArguments)
+        ) {
+            return true;
+        }
+
         const validated = this.helperStringService.checkCustomEmail(value);
 
         return validated.validated;
@@ -29,6 +40,30 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
         );
 
         return this.messageService.setMessage(validated.messagePath);
+    }
+
+    private isPropertyOptional(
+        validationArguments?: ValidationArguments
+    ): boolean {
+        if (!validationArguments || !validationArguments.object) {
+            return false;
+        }
+
+        // Access the validation metadata
+        const validationMetadatas =
+            getMetadataStorage().getTargetValidationMetadatas(
+                validationArguments.object.constructor,
+                '', // Property name is empty string to get all properties
+                false,
+                false
+            );
+
+        // Find optional decorators on this property
+        return validationMetadatas.some(
+            metadata =>
+                metadata.propertyName === validationArguments.property &&
+                metadata.type === 'conditionalValidation'
+        );
     }
 }
 
