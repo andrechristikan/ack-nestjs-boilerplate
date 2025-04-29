@@ -597,12 +597,17 @@ export class UserService implements IUserService {
 
     createRandomFilenamePhoto(
         user: string,
-        { type }: UserUploadPhotoRequestDto
+        { mime }: UserUploadPhotoRequestDto
     ): string {
-        const path: string = this.uploadPath.replace('{user}', user);
+        let path: string = this.uploadPath.replace('{user}', user);
         const randomPath = this.helperStringService.random(10);
+        const extension = mime.split('/')[1];
 
-        return `${path}/${randomPath}.${type.toLowerCase()}`;
+        if (path.startsWith('/')) {
+            path = path.replace('/', '');
+        }
+
+        return `${path}/${randomPath}.${extension.toLowerCase()}`;
     }
 
     createRandomUsername(): string {

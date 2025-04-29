@@ -91,7 +91,7 @@ export class AuthAdminController {
                     by: updatedBy,
                     type: ENUM_PASSWORD_HISTORY_TYPE.TEMPORARY,
                 },
-                { session }
+                { session, actionBy: updatedBy }
             );
 
             await this.databaseService.commitTransaction(session);

@@ -211,7 +211,7 @@ export interface IUserService {
     join(repository: UserDoc): Promise<IUserDoc>;
     createRandomFilenamePhoto(
         user: string,
-        { type }: UserUploadPhotoRequestDto
+        { mime }: UserUploadPhotoRequestDto
     ): string;
     createRandomUsername(): string;
     checkUsernamePattern(username: string): boolean;

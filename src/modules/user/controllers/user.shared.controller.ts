@@ -141,13 +141,16 @@ export class UserSharedController {
     async uploadPhotoProfile(
         @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user', UserParsePipe)
         user: UserDoc,
-        @Body() { type }: UserUploadPhotoRequestDto
+        @Body() { mime, size }: UserUploadPhotoRequestDto
     ): Promise<IResponse<AwsS3PresignResponseDto>> {
         const randomFilename: string =
-            this.userService.createRandomFilenamePhoto(user._id, { type });
+            this.userService.createRandomFilenamePhoto(user._id, {
+                mime,
+                size,
+            });
 
         const aws: AwsS3PresignResponseDto =
-            await this.awsS3Service.presignPutItem(randomFilename);
+            await this.awsS3Service.presignPutItem(randomFilename, size);
 
         return {
             data: aws,

@@ -69,6 +69,7 @@ export interface IAwsS3Service {
     ): Promise<void>;
     presignPutItem(
         key: string,
+        size: number,
         options?: IAwsS3PresignOptions
     ): Promise<AwsS3PresignResponseDto>;
     presignPutItemPart(

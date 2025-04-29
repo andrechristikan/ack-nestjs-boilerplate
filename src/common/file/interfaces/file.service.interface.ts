@@ -16,6 +16,9 @@ export interface IFileService {
     readCsv<T = Record<string, string | number | Date>>(
         file: Buffer
     ): IFileRows<T>;
+    readCsvFromString<T = Record<string, string | number | Date>>(
+        file: string
+    ): IFileRows<T>;
     readExcel<T = Record<string, string | number | Date>>(
         file: Buffer
     ): IFileRows<T>[];

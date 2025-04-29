@@ -4,7 +4,7 @@ export default registerAs(
     'aws',
     (): Record<string, any> => ({
         s3: {
-            presignExpired: 30 * 60 * 1000, // 30 mins
+            presignExpired: 30 * 60, // 30 mins
             config: {
                 public: {
                     credential: {

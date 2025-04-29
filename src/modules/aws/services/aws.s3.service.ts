@@ -64,7 +64,6 @@ import {
 import { AWS_S3_MAX_PART_NUMBER } from 'src/modules/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ENUM_AWS_S3_ACCESSIBILITY } from 'src/modules/aws/enums/aws.enum';
-import { FILE_SIZE_IN_BYTES } from 'src/common/file/constants/file.constant';
 import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
 import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
 import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
@@ -624,6 +623,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
 
     async presignPutItem(
         key: string,
+        size: number,
         options?: IAwsS3PresignOptions
     ): Promise<AwsS3PresignResponseDto> {
         if (key.startsWith('/')) {
@@ -653,7 +653,6 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         }
 
         const { extension, mime } = this.getFileInfo(key);
-        const size = options?.allowedSize ?? FILE_SIZE_IN_BYTES;
         const command = new PutObjectCommand({
             Bucket: config.bucket,
             Key: key,

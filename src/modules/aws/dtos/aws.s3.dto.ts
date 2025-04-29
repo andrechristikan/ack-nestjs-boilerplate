@@ -40,9 +40,9 @@ export class AwsS3Dto {
     @Exclude()
     @ApiHideProperty()
     data?: StreamingBlobTypes & {
-        transformToString?: (encode: string) => string;
-        transformToByteArray?: () => Buffer;
-        transformToWebStream?: () => ReadableStream<Buffer>;
+        transformToString?: (encode: string) => Promise<string>;
+        transformToByteArray?: () => Promise<Buffer>;
+        transformToWebStream?: () => Promise<ReadableStream<Buffer>>;
     };
 
     @ApiProperty({
