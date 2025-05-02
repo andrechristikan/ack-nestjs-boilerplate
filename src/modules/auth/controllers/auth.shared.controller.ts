@@ -150,7 +150,6 @@ export class AuthSharedController {
                     customProperty: {
                         messageProperties: {
                             period: passwordPeriod,
-                            expiredAt: checkPassword.expiredAt,
                         },
                     },
                 },
