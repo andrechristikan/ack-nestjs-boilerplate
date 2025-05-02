@@ -119,10 +119,10 @@ export class AuthSharedController {
             });
         }
 
-        const [matchPassword] = await Promise.all([
-            this.authService.validateUser(body.oldPassword, user.password),
-            this.userService.resetPasswordAttempt(user),
-        ]);
+        const matchPassword = this.authService.validateUser(
+            body.oldPassword,
+            user.password
+        );
         if (!matchPassword) {
             await this.userService.increasePasswordAttempt(user);
 
@@ -132,24 +132,24 @@ export class AuthSharedController {
             });
         }
 
-        const [password, checkPassword] = await Promise.all([
-            this.authService.createPassword(body.newPassword),
-            this.passwordHistoryService.findOneUsedByUser(
+        await this.userService.resetPasswordAttempt(user);
+
+        const password = this.authService.createPassword(body.newPassword);
+        const checkPassword =
+            await this.passwordHistoryService.findOneUsedByUser(
                 user._id,
-                user.password
-            ),
-        ]);
+                body.newPassword
+            );
         if (checkPassword) {
             const passwordPeriod =
                 await this.passwordHistoryService.getPasswordPeriod();
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW,
-                message: 'user.error.passwordMustNew',
+                message: 'auth.error.passwordMustNew',
                 _metadata: {
                     customProperty: {
                         messageProperties: {
                             period: passwordPeriod,
-                            expiredAt: checkPassword.expiredAt,
                         },
                     },
                 },

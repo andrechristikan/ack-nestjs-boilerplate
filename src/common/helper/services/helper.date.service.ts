@@ -80,7 +80,7 @@ export class HelperDateService implements IHelperDateService {
     }
 
     create(date?: Date, options?: IHelperDateCreateOptions): Date {
-        const mDate = date
+        let mDate = date
             ? DateTime.fromJSDate(date).setZone(this.defTz)
             : DateTime.now().setZone(this.defTz);
 
@@ -88,12 +88,12 @@ export class HelperDateService implements IHelperDateService {
             options?.dayOf &&
             options?.dayOf === ENUM_HELPER_DATE_DAY_OF.START
         ) {
-            mDate.startOf('day');
+            mDate = mDate.startOf('day');
         } else if (
             options?.dayOf &&
             options?.dayOf === ENUM_HELPER_DATE_DAY_OF.END
         ) {
-            mDate.endOf('day');
+            mDate = mDate.endOf('day');
         }
 
         return mDate.toJSDate();

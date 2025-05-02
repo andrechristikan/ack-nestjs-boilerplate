@@ -46,7 +46,7 @@ export default registerAs(
             saltLength: 8,
             expiredIn: ms('182d') / 1000, // 0.5 years
             expiredInTemporary: ms('3d') / 1000, // 3 days
-            period: ms('90d') / 1000, // 3 months
+            period: ms('90d') / 86400000, // 3 months
         },
 
         apple: {
