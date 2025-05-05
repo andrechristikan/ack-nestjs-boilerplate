@@ -210,7 +210,7 @@ class JwtKeysGenerator {
 function main() {
     const argv = process.argv.slice(2);
     const command = argv[0] || 'generate';
-    const keyDir = argv[1] || join(process.cwd(), 'src/keys');
+    const keyDir = argv[1] || join(process.cwd(), 'keys');
 
     const generator = new JwtKeysGenerator(keyDir);
 

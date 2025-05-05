@@ -1,72 +1,83 @@
-# Architecture
+# Overview
+
+## Table of Contents
+- [Overview](#overview)
+  - [Table of Contents](#table-of-contents)
+    - [Repository Design Pattern](#repository-design-pattern)
+    - [Module Structure](#module-structure)
+    - [Component Types](#component-types)
 
 The application architecture is built around two core design principles: Repository Pattern and Component-Based Folder Structure.
 
 ### Repository Design Pattern
 
-The application implements a clean repository design pattern to separate business logic from data access:
+The application implements a clean repository design pattern to separate concerns:
 
 ```mermaid
 flowchart LR
     Client(Client) --> Controller(Controllers\nAPI Endpoints)
     Controller --> Service(Services\nBusiness Logic)
     Service --> Repository(Repositories\nData Access Layer)
-    Repository --> Database[(MongoDB)]
-    Service -.-> Queue[(Redis\nBullMQ)]
-    Service -.-> Cache[(Redis\nCache)]
+    Repository --> Database[(Database)]
+    Service -.-> Queue[(Message Queue)]
+    Service -.-> Cache[(Cache)]
 ```
 
-- **Controllers** (`controllers/`) - Handle HTTP requests and delegate to services
-- **Entities** (`repository/entities/`) - MongoDB schema definitions with decorators for validation and configuration
-- **Repositories** (`repository/repositories/`) - Classes extending `DatabaseRepositoryBase` that handle database operations
-- **Repository Modules** (`repository/*.repository.module.ts`) - Module registration for repositories with MongoDB connection
-- **Services** (`services/`) - Business logic classes that use repositories for data operations
-- **Controllers** (`controllers/`) - API endpoints organized by access level that use services
-- **DTOs** (`dtos/`) - Data transfer objects for request/response validation and transformation
+- **Client** - External systems or users that interact with the application
+- **Controllers** - Handle HTTP requests and route them to appropriate services
+- **Services** - Contain business logic and orchestrate data operations
+- **Repositories** - Provide abstraction over the database with standardized operations
+- **Database** - Persistent storage for application data
+- **Message Queue** - Handles asynchronous processing and background tasks
+- **Cache** - Improves performance by storing frequently accessed data
 
-This pattern provides:
-- **Separation of concerns** - Clear boundaries between data access and business logic
-- **Testability** - Easy mocking of repositories for unit testing
-- **Database abstraction** - Ability to change database technologies with minimal impact
-- **Standardized data access** - Consistent patterns across all modules
+### Module Structure
 
-### Component-Based Folder Structure
-
-Each feature is encapsulated in its own module with a self-contained set of components:
+Each feature is encapsulated in its own module with a consistent internal structure:
 
 ```
 module-name/
-├── constants/               # Constants, default values, and enumerations
-├── controllers/             # HTTP endpoints separated by access level
-│   ├── module.admin.controller.ts  # Admin-specific endpoints
-│   ├── module.public.controller.ts # Public endpoints
-│   └── module.user.controller.ts   # User-specific endpoints
-├── decorators/              # Custom decorators for the feature
-├── docs/                    # Swagger documentation
-│   ├── module.admin.doc.ts  # Admin API documentation
-│   ├── module.public.doc.ts # Public API documentation
-│   └── module.user.doc.ts   # User API documentation
-├── dtos/                    # Data Transfer Objects
-│   ├── request/             # Request validation schemas
-│   └── response/            # Response formatting schemas
-├── enums/                   # Type enumerations and status codes
-├── guards/                  # Access control and validation guards
-├── interfaces/              # TypeScript interfaces for module models
-├── pipes/                   # Data transformation and validation pipes
-├── repository/              # Data access layer
-│   ├── entities/            # MongoDB schema definitions
-│   ├── repositories/        # Repository classes for database operations
-│   └── module.repository.module.ts # Repository module configuration
-├── services/                # Business logic services
-└── module.module.ts         # Module definition and dependency injection
+├── constants/
+├── controllers/
+├── decorators/
+├── docs/
+├── dtos/
+│   ├── request/
+│   └── response/
+├── enums/
+├── guards/
+├── interfaces/
+├── pipes/
+├── processors/
+├── indicators/
+├── repository/
+│   ├── entities/
+│   ├── repositories/
+│   └── *.repository.module.ts
+├── services/
+├── factories/
+└── *.module.ts
 ```
 
-The component-based folder structure ensures:
+### Component Types
 
-- **High cohesion** - Related functionality is grouped together
-- **Low coupling** - Modules interact through well-defined interfaces
-- **Maintainability** - Easy to locate and modify specific features
-- **Scalability** - New components can be added without disrupting existing ones
-- **Consistent patterns** - Each module follows the same structure
-- **Access level separation** - Controllers are organized by access type (admin/user/public)
+- **Controllers** - Handle HTTP requests, validate inputs, and delegate processing to services
+- **Services** - Implement business logic, orchestrate operations, and manage transactions
+- **Repositories** - Provide data access abstractions and database operations
+- **Entities** - Define data structures and schemas for database storage
+- **DTOs** - Structure data for requests and responses with validation rules
+- **Interfaces** - Define contracts and types to ensure consistency across components
+- **Docs** - Provide API specifications and usage examples
+- **Decorators** - Enhance classes and methods with metadata and cross-cutting concerns
+- **Guards** - Implement access control, permission checks, and request filtering
+- **Pipes** - Transform and validate data as it flows through the application
+- **Enums** - Define type-safe constants and option sets
+- **Processors** - Handle background and asynchronous tasks
+- **Factories** - Create complex objects and testing fixtures
 
+This pattern provides:
+- **Separation of concerns** - Each component has a single responsibility
+- **Testability** - Components can be tested in isolation with mocks
+- **Modularity** - Features can be developed and maintained independently
+- **Flexibility** - Implementation details can change without affecting consumers
+- **Consistency** - Common patterns are applied throughout the application

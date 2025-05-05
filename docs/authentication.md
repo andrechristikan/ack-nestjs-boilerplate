@@ -1,6 +1,6 @@
 # Overview
 
-This document covers the authentication system in ACK NestJS Boilerplate, including JWT authentication, API key authentication, social authentication, and session management.
+This document covers the authentication system, including JWT authentication, API key authentication, social authentication, and session management.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -30,7 +30,6 @@ This document covers the authentication system in ACK NestJS Boilerplate, includ
     - [Social Authentication Configuration](#social-authentication-configuration)
     - [Social Authentication Endpoints](#social-authentication-endpoints)
     - [Social Authentication Token Payload](#social-authentication-token-payload)
-    - [Social Authentication Guards and Decorators](#social-authentication-guards-and-decorators)
     - [Social Authentication Usage](#social-authentication-usage)
   - [Session Management](#session-management)
     - [Session Overview](#session-overview)
@@ -42,8 +41,7 @@ This document covers the authentication system in ACK NestJS Boilerplate, includ
     - [Session Cache](#session-cache)
     - [Session Configuration](#session-configuration)
     - [Session Usage](#session-usage)
-      - [Protecting Routes with Session Validation](#protecting-routes-with-session-validation)
-      - [Managing Sessions](#managing-sessions)
+      - [Token Management Approach](#token-management-approach)
 
 ## JWT Authentication
 
@@ -67,16 +65,16 @@ The JWT payload in this boilerplate contains the following claims:
 {
   "loginDate": "2023-01-01T00:00:00Z",   // When the user logged in
   "loginFrom": "MOBILE",                 // Login source (MOBILE, WEB, etc.)
-  "user": "5f8eff3fee4a6e001c394095",    // User ID
+  "user": "123e4567-e89b-12d3-a456-426614174000",    // User ID
   "email": "user@example.com",           // User email
-  "session": "6eff3fee4a6e001c394095f8", // Session ID
-  "role": "5f8eff3fee4a6e001c394123",    // Role ID
+  "session": "550e8400-e29b-41d4-a716-446655440000", // Session ID
+  "role": "f47ac10b-58cc-4372-a567-0e02b2c3d479",    // Role ID
   "type": "ADMIN",                       // Role type (ADMIN, USER, etc.)
   "iat": 1625097600,                     // Issued At timestamp
   "exp": 1625184000,                     // Expiration timestamp
   "aud": "https://example.com",          // Audience
   "iss": "nestjs-boilerplate",           // Issuer
-  "sub": "5f8eff3fee4a6e001c394095",     // Subject (user identifier)
+  "sub": "123e4567-e89b-12d3-a456-426614174000",     // Subject (user identifier)
   "kid": "access-token-key-id"           // Key ID used for signing
 }
 ```
@@ -86,13 +84,13 @@ The JWT payload in this boilerplate contains the following claims:
 {
   "loginDate": "2023-01-01T00:00:00Z",   // When the user logged in
   "loginFrom": "MOBILE",                 // Login source (MOBILE, WEB, etc.)
-  "user": "5f8eff3fee4a6e001c394095",    // User ID
-  "session": "6eff3fee4a6e001c394095f8", // Session ID
+  "user": "123e4567-e89b-12d3-a456-426614174000",    // User ID
+  "session": "550e8400-e29b-41d4-a716-446655440000", // Session ID
   "iat": 1625097600,                     // Issued At timestamp
   "exp": 1627689600,                     // Expiration timestamp (longer than access token)
   "aud": "https://example.com",          // Audience
   "iss": "nestjs-boilerplate",           // Issuer
-  "sub": "5f8eff3fee4a6e001c394095",     // Subject (user identifier)
+  "sub": "123e4567-e89b-12d3-a456-426614174000",     // Subject (user identifier)
   "kid": "refresh-token-key-id"          // Key ID used for signing
 }
 ```
@@ -102,8 +100,8 @@ The payload structure is defined in the `IAuthJwtAccessTokenPayload` and `IAuthJ
 ### JWT Authentication Flow
 
 1. **Login**: User provides credentials and receives an access token and refresh token
-2. **Access**: User includes the access token in request headers for protected resources
-3. **Refresh**: When the access token expires, the user uses the refresh token to get a new access token
+2. **Access Token**: User includes the access token in request headers for protected resources
+3. **Refresh Token**: When the access token expires, the user uses the refresh token to get a new access token
 4. **Logout**: Tokens can be invalidated through various strategies
 
 ### JWT Token Types
@@ -149,13 +147,15 @@ The boilerplate includes a script for generating ES512 key pairs:
 
 ```bash
 # Generate JWT keys
-npm run generate:keys
+yarn run generate:keys
 ```
 
 This script creates:
 - Public and private keys for access tokens
 - Public and private keys for refresh tokens
 - A JWKS file containing the public keys for token verification
+
+All generated keys will be stored in the `/keys` directory of your project.
 
 ### JWT Usage
 
@@ -179,6 +179,29 @@ token: string
 // For refresh token endpoints
 @AuthJwtRefreshProtected()
 async refreshTokenEndpoint() {
+  // Your refresh logic
+}
+```
+
+Here are examples of actual endpoint implementations:
+
+```typescript
+@Get('someEndpoint')
+@AuthJwtAccessProtected()
+async someEndpoint(
+  @AuthJwtPayload() payload: IAuthJwtAccessTokenPayload, 
+  @AuthJwtPayload('user') userId: string,
+  @AuthJwtToken() token: string
+) {
+  // Your endpoint code
+}
+
+@Post('refreshToken')
+@AuthJwtRefreshProtected()
+async refreshToken(
+  @AuthJwtPayload() payload: IAuthJwtRefreshTokenPayload,
+  @AuthJwtToken() refreshToken: string
+) {
   // Your refresh logic
 }
 ```
@@ -212,7 +235,7 @@ These components are combined for authentication and stored in the database as:
 Example API key structure in database:
 ```json
 {
-  "_id": "60d5f1b0c1e4a83d3c9f6c47",
+  "_id": "a2b0e45f-c6d9-4eff-90b3-8a25d7bce3ea",
   "key": "development_a1b2c3d4e5f6g7h8i9j0",
   "hash": "sha256-hash-of-key-and-secret",
   "name": "Service Integration Key",
@@ -316,9 +339,32 @@ async yourSystemEndpoint() {
 apiKey: ApiKeyPayloadDto
 ```
 
+Here are examples of actual endpoint implementations:
+
+```typescript
+
+@Get('someEndpoint')
+@ApiKeyProtected()
+async someEndpoint(
+  @ApiKeyPayload() apiKey: ApiKeyPayloadDto
+) {
+  // Your endpoint code
+}
+
+@Post('someEndpointSystem')
+@ApiKeySystemProtected()
+async someEndpointSystem(
+  @ApiKeyPayload('_id') apiKeyId: string,
+  @ApiKeyPayload('type') apiKeyType: string
+) {
+  // Your endpoint code
+}
+
+```
+
 ## Social Authentication
 
-The ACK NestJS Boilerplate provides built-in support for social authentication, allowing users to log in using their Google or Apple accounts.
+This boilerplate provides built-in support for social authentication, allowing users to log in using their Google or Apple accounts.
 
 ### Social Authentication Overview
 
@@ -406,7 +452,7 @@ interface IAuthSocialApplePayload {
 }
 ```
 
-### Social Authentication Guards and Decorators
+### Social Authentication Usage
 
 The system provides guards and decorators to protect routes for social authentication:
 
@@ -430,39 +476,6 @@ async loginWithApple(
 }
 ```
 
-### Social Authentication Usage
-
-The backend verifies social tokens using provider-specific libraries:
-
-**Google Token Verification**:
-```typescript
-async googleGetTokenInfo(idToken: string): Promise<IAuthSocialGooglePayload> {
-  const login: LoginTicket = await this.googleClient.verifyIdToken({
-    idToken: idToken,
-  });
-  const payload: TokenPayload = login.getPayload();
-
-  return {
-    email: payload.email,
-    emailVerified: true,
-    name: payload.name,
-    photo: payload.picture,
-  };
-}
-```
-
-**Apple Token Verification**:
-```typescript
-async appleGetTokenInfo(idToken: string): Promise<IAuthSocialApplePayload> {
-  const payload = await verifyAppleToken({
-    idToken,
-    clientId: [this.appleClientId, this.appleSignInClientId],
-  });
-
-  return { email: payload.email, emailVerified: payload.email_verified };
-}
-```
-
 ## Session Management
 
 The Session Management system provides tracking and management of active user sessions, integrated with the JWT authentication system.
@@ -470,7 +483,7 @@ The Session Management system provides tracking and management of active user se
 ### Session Overview
 
 Each time a user logs in, a new session is created and linked to their account. The session system:
-- Tracks active login sessions
+- Tracks active login sessions for refresh tokens only
 - Provides session revocation capabilities
 - Integrates with JWT authentication
 - Supports multiple simultaneous sessions per user
@@ -483,14 +496,16 @@ Key features:
 - Session listing for users and administrators
 - Redis-backed caching for performance
 
+Note that sessions are only stored and tracked for refresh tokens, not for access tokens. This approach ensures better security and efficient session management while allowing for session revocation when needed.
+
 ### Session Structure
 
 Each session contains detailed information about the login:
 
 ```json
 {
-  "_id": "60d5f1b0c1e4a83d3c9f6c47",     // Session ID
-  "user": "5f8eff3fee4a6e001c394095",     // User ID
+  "_id": "c8b2a97d-b9a8-4c84-9c7d-f5f2a3b1e0d9",     // Session ID
+  "user": "123e4567-e89b-12d3-a456-426614174000",     // User ID
   "status": "ACTIVE",                     // Status (ACTIVE, REVOKED)
   "expiredAt": "2023-01-15T00:00:00Z",    // Expiration date
   "revokeAt": null,                       // Revocation date (if revoked)
@@ -555,36 +570,12 @@ this.refreshTokenExpiration = this.configService.get<number>(
 
 ### Session Usage
 
-#### Protecting Routes with Session Validation
+The session management system in this boilerplate is designed to work seamlessly with JWT authentication, focusing specifically on refresh token management while allowing access tokens to function independently.
 
-JWT protection automatically includes session validation:
+#### Token Management Approach
 
-```typescript
-@AuthJwtAccessProtected()
-@Get('/profile')
-async getProfile(@AuthJwtPayload() payload: IAuthJwtAccessTokenPayload) {
-  // Session validation happens automatically in the AuthJwtAccessGuard
-  // If the session is revoked or expired, the request will be rejected
-  
-  return this.userService.findOneById(payload.user);
-}
-```
+- **Refresh Tokens**: The system actively manages and tracks refresh tokens through sessions. When a refresh token is used, the system verifies that its associated session is still active and not revoked.
 
-#### Managing Sessions
+- **Access Tokens**: Access tokens remain valid until their expiration, regardless of session status. This design allows for efficient API access without constant session verification.
 
-Revoking a session (logout):
-
-```typescript
-@Delete('/revoke/:session')
-async revoke(
-  @Param('session') session: string,
-  @AuthJwtPayload('session') currentSession: string
-) {
-  // Prevent revoking the current session
-  if (session === currentSession) {
-    throw new ForbiddenException('Cannot revoke current session');
-  }
-  
-  await this.sessionService.updateRevoke(session);
-}
-```
+> **Important Note**: Since access tokens have a short lifespan (typically 15-30 minutes) while sessions may be revoked at any time, there is an intentional security gap where a recently revoked session's access token might still work until it expires. This is a standard security trade-off that balances security with performance.

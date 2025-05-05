@@ -1,6 +1,6 @@
 # Overview
 
-This document covers the audit functionality in ACK NestJS Boilerplate, including activity logging and password history tracking.
+This document covers the audit functionality, including activity logging and password history tracking.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -24,7 +24,7 @@ The Activity module is designed to be used across the application to track impor
 
 1. **User Activities**: Record actions initiated by the user themselves
    ```typescript
-   activityService.createByUser(
+   this.activityService.createByUser(
      user,
      { description: 'Updated profile information' }
    );
@@ -32,7 +32,7 @@ The Activity module is designed to be used across the application to track impor
 
 2. **Admin Activities**: Record actions performed by admins on user accounts
    ```typescript
-   activityService.createByAdmin(
+   this.activityService.createByAdmin(
      targetUser,
      { 
        by: adminUserId, 
@@ -81,21 +81,22 @@ The Password History module provides two main methods for recording password cha
 To check if a password has been recently used:
 
 ```typescript
-const checkPassword = await this.passwordHistoryService.findOneUsedByUser(
-    user._id,
-    newPasswordHash
-);
-
+const password = this.authService.createPassword(newPassword);
+const checkPassword =
+    await this.passwordHistoryService.findOneUsedByUser(
+        user._id,
+        newPassword
+    );
 if (checkPassword) {
-    const passwordPeriod = await this.passwordHistoryService.getPasswordPeriod();
+    const passwordPeriod =
+        await this.passwordHistoryService.getPasswordPeriod();
     throw new BadRequestException({
         statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW,
-        message: 'user.error.passwordMustNew',
+        message: 'auth.error.passwordMustNew',
         _metadata: {
             customProperty: {
                 messageProperties: {
                     period: passwordPeriod,
-                    expiredAt: checkPassword.expiredAt,
                 },
             },
         },

@@ -1,6 +1,8 @@
 # Overview
 
-This document covers the authorization system in ACK NestJS Boilerplate role-based access control, and policy enforcement.
+This document covers the authorization system role-based access control, and policy enforcement.
+
+> **Important Note**: The `@AuthJwtAccessProtected()` decorator is a fundamental requirement for all protected routes in the system, including those using Role-Based Access Control (RBAC) and Policy-based permissions. It serves as the base authentication layer that validates the JWT token and extracts the user payload. All other protection decorators like `@UserProtected()`, `@PolicyRoleProtected()`, and `@PolicyAbilityProtected()` build upon this foundation and require a valid JWT token to function properly.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -10,20 +12,22 @@ This document covers the authorization system in ACK NestJS Boilerplate role-bas
     - [Role Management](#role-management)
     - [Role Structure](#role-structure)
       - [Example Role Entity Data](#example-role-entity-data)
+    - [RBAC Implementation Examples](#rbac-implementation-examples)
+  - [User Protection](#user-protection)
+    - [UserProtected Decorator](#userprotected-decorator)
+    - [UserGuard Implementation](#userguard-implementation)
+    - [Usage Examples](#usage-examples)
+      - [Basic User Protection](#basic-user-protection)
+      - [Combining with Role Protection](#combining-with-role-protection)
+      - [Combining with Policy Abilities](#combining-with-policy-abilities)
   - [Policies](#policies)
     - [CASL Integration](#casl-integration)
       - [How CASL Works in the Project](#how-casl-works-in-the-project)
     - [Policy Actions](#policy-actions)
     - [Policy Subjects](#policy-subjects)
-  - [Guards](#guards)
-    - [Policy Role Guard](#policy-role-guard)
-    - [Policy Ability Guard](#policy-ability-guard)
-    - [Guard Decorators](#guard-decorators)
-  - [Usage Examples](#usage-examples)
-    - [Basic Role Protection](#basic-role-protection)
-    - [Basic Policy Protection](#basic-policy-protection)
-    - [Combined Protection](#combined-protection)
-    - [Real-World Example](#real-world-example)
+    - [Policy Implementation Examples](#policy-implementation-examples)
+      - [Protecting Routes with Policy Abilities](#protecting-routes-with-policy-abilities)
+      - [Combining Role Protection with Policy Abilities](#combining-role-protection-with-policy-abilities)
 
 ## Role-Based Access Control
 
@@ -166,6 +170,117 @@ These examples demonstrate different role configurations:
 - The **Content Creator** role can manipulate content, media, and comments
 - The **Viewer** role has read-only access to content and comments
 
+### RBAC Implementation Examples
+
+
+Different role types can access different routes:
+
+```typescript
+// Admin-only route
+@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+@Post('/create')
+async createUser() {
+    // Only ADMIN can create users
+}
+
+// Super admin-only route
+@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN)
+@Delete('/delete/:id')
+async deleteRole() {
+    // Only SUPER_ADMIN can delete roles
+}
+
+// Multiple role types allowed
+@PolicyRoleProtected([ENUM_POLICY_ROLE_TYPE.ADMIN, ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN])
+@Get('/settings')
+async getSettings() {
+    // Both ADMIN and SUPER_ADMIN can access settings
+}
+```
+
+## User Protection
+
+The User Protection system ensures that only active user can access protected routes. The system validates the user's existence, and active status before allowing access to the protected endpoints.
+
+### UserProtected Decorator
+
+The `@UserProtected()` decorator is a custom NestJS decorator that applies the `UserGuard` to route handlers. This decorator is crucial for ensuring that only valid users can access protected routes.
+
+
+```typescript
+import { applyDecorators, UseGuards } from '@nestjs/common';
+import { UserGuard } from 'src/modules/user/guards/user.guard';
+
+export function UserProtected(): MethodDecorator {
+    return applyDecorators(UseGuards(UserGuard));
+}
+```
+
+### UserGuard Implementation
+
+The `UserGuard` performs several important validations:
+
+1. Verifies that the user exists in the database
+2. Checks if the user is active (not inactive, blocked, or deleted)
+3. Confirms that the user's assigned role is active
+4. Validates that the user's password is not expired
+
+### Usage Examples
+
+The `@UserProtected()` decorator is typically used together with other security decorators to build a comprehensive security layer for endpoints:
+
+#### Basic User Protection
+
+```typescript
+@Response('user.profile')
+@UserProtected()
+@AuthJwtAccessProtected()
+@ApiKeyProtected()
+@Get('/profile')
+async profile(
+    @AuthJwtPayload('user', UserActiveParsePipe) user: IUserDoc
+): Promise<IResponse<UserProfileResponseDto>> {
+    // This endpoint is only accessible by authenticated users with active status
+    // ...implementation
+}
+```
+
+#### Combining with Role Protection
+
+```typescript
+@Response('user.delete')
+@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+@UserProtected()
+@AuthJwtAccessProtected()
+@ApiKeyProtected()
+@Delete('/delete')
+async delete(
+    @AuthJwtPayload('user', UserParsePipe) user: UserDoc
+): Promise<void> {
+    // This endpoint is only accessible by authenticated users with USER role type
+    // ...implementation
+}
+```
+
+#### Combining with Policy Abilities
+
+```typescript
+@ResponsePaging('user.list')
+@PolicyAbilityProtected({
+    subject: ENUM_POLICY_SUBJECT.USER,
+    action: [ENUM_POLICY_ACTION.READ],
+})
+@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+@UserProtected()
+@AuthJwtAccessProtected()
+@ApiKeyProtected()
+@Get('/list')
+async list(): Promise<IResponsePaging<UserListResponseDto>> {
+    // This endpoint is only accessible by authenticated ADMIN users with READ permission on USER subject
+    // ...implementation
+}
+```
+
 ## Policies
 
 The policy system extends RBAC with fine-grained permission control using the CASL library for ability-based authorization. Policies define what actions a user can perform on which resources.
@@ -184,15 +299,12 @@ export class PolicyAbilityFactory {
             createMongoAbility
         );
 
-        if (permissions.some(e => e.subject === ENUM_POLICY_SUBJECT.ALL)) {
-            can(ENUM_POLICY_ACTION.MANAGE, 'all');
-        } else {
-            for (const permission of permissions) {
-                can(permission.action, permission.subject);
-            }
+        for (const permission of permissions) {
+            can(permission.action, permission.subject);
         }
 
         return build({
+            // Read https://casl.js.org/v6/en/guide/subject-type-detection#use-classes-as-subject-types for details
             detectSubjectType: (item: any) =>
                 item.constructor as ExtractSubjectType<IPolicyAbilitySubject>,
         });
@@ -216,8 +328,7 @@ handlerAbilities(
 ```
 
 3. **Hierarchical Permissions**: CASL allows for hierarchical permissions:
-   - The `manage` action implies all other actions (read, create, update, delete)
-   - The `ALL` subject grants permissions across all subjects
+  The `manage` action implies all other actions (read, create, update, delete)
 
 4. **Storage in MongoDB**: Permissions are stored as part of the role document in MongoDB, allowing for dynamic updates without code changes.
 
@@ -241,7 +352,6 @@ Subjects represent the resources that can be protected by policies:
 
 ```typescript
 export enum ENUM_POLICY_SUBJECT {
-    ALL = 'ALL',           // All resources
     AUTH = 'AUTH',         // Authentication related
     API_KEY = 'API_KEY',   // API key management
     SETTING = 'SETTING',   // System settings
@@ -253,100 +363,48 @@ export enum ENUM_POLICY_SUBJECT {
 }
 ```
 
-## Guards
+### Policy Implementation Examples
 
-The authorization system is enforced through NestJS guards, which are executed before the request handler. The project implements specialized guards to check both role-based and policy-based permissions.
+#### Protecting Routes with Policy Abilities
 
-### Policy Role Guard
-
-The `PolicyRoleGuard` verifies if the user's role type matches the required role types for a particular endpoint.
-
-### Policy Ability Guard
-
-The `PolicyAbilityGuard` uses CASL to verify if the user has the permissions needed to perform specific actions on specific subjects.
-
-
-### Guard Decorators
-
-The project uses custom decorators to apply the guards and specify the required roles and permissions:
-
-- **PolicyAbilityProtected**: Applies the PolicyAbilityGuard and defines required subject-action permissions
-- **PolicyRoleProtected**: Applies the PolicyRoleGuard and defines required role types
-
-These decorators make it easy to apply authorization requirements to controller routes in a declarative way, improving code readability and maintainability.
-
-## Usage Examples
-
-### Basic Role Protection
-
-To restrict a route to specific role types:
-
-```typescript
-@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-@Get('/admin-only')
-async adminOnly() {
-    // Only ADMIN and SUPER_ADMIN roles can access
-    return { message: 'Welcome, Admin!' };
-}
-```
-
-### Basic Policy Protection
-
-To restrict a route based on specific permissions:
+Routes can be protected using specific abilities defined by action and subject combinations:
 
 ```typescript
 @PolicyAbilityProtected({
     subject: ENUM_POLICY_SUBJECT.USER,
-    action: [ENUM_POLICY_ACTION.READ]
+    action: [ENUM_POLICY_ACTION.READ],
 })
-@Get('/users')
+@Get('/list')
 async listUsers() {
-    // Only users with READ permission on USER subject can access
-    return this.userService.findAll();
+    // Only accessible if the user has READ permission on USER subject
+    // ...implementation
 }
-```
 
-### Combined Protection
-
-For comprehensive protection, combine both role and policy protection:
-
-```typescript
 @PolicyAbilityProtected({
     subject: ENUM_POLICY_SUBJECT.USER,
-    action: [ENUM_POLICY_ACTION.CREATE]
+    action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
 })
-@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-@Post('/users')
-async createUser(@Body() userData: CreateUserDto) {
-    // Only ADMIN roles with CREATE permission on USER subject can access
-    return this.userService.create(userData);
+@Post('/create')
+async createUser() {
+    // Requires both READ and CREATE permissions on USER subject
+    // ...implementation
 }
 ```
 
-### Real-World Example
+#### Combining Role Protection with Policy Abilities
 
-A complete example from the role admin controller:
+For more granular control, combine role protection with policy abilities:
 
 ```typescript
-@RoleAdminUpdateDoc()
-@Response('role.update')
+// Requires ADMIN role AND specific policy abilities
 @PolicyAbilityProtected({
-    subject: ENUM_POLICY_SUBJECT.ROLE,
-    action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE]
+    subject: ENUM_POLICY_SUBJECT.USER,
+    action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
 })
 @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-@UserProtected()
-@AuthJwtAccessProtected()
-@ApiKeyProtected()
-@Put('/update/:role')
-async update(
-    @Param('role', RequestRequiredPipe, RoleParsePipe) role: RoleDoc,
-    @Body() { description, permissions, type }: RoleUpdateRequestDto
-): Promise<IResponse<DatabaseIdResponseDto>> {
-    await this.roleService.update(role, { description, permissions, type });
-
-    return {
-        data: { _id: role._id },
-    };
+@Put('/update/:user')
+async updateUser() {
+    // Only ADMIN with READ and UPDATE permissions on USER can access
+    // ...implementation
 }
 ```

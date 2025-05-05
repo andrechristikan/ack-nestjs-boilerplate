@@ -63,7 +63,7 @@ Since version `7.4.0`, the project uses the `ES512` algorithm for JWT authentica
 yarn generate:keys
 ```
 
-This command will generate the necessary keys in the `/src/keys` directory, along with a `jwks.json` file that follows the JSON Web Key Set (JWKS) standard.
+This command will generate the necessary keys in the `/keys` directory, along with a `jwks.json` file that follows the JSON Web Key Set (JWKS) standard.
 
 Upload the `jwks.json` file to AWS S3 or any publicly accessible server, and make note of the URL as you'll need it for your environment configuration.
 
@@ -87,11 +87,7 @@ These settings are essential for authentication and overall system functionality
 
 By default, `AutoCreate` and `AutoIndex` options are set to `false`, meaning MongoDB schemas won't automatically update with code changes.
 
-First, update the database schema:
-
-```bash
-yarn migrate:schema
-```
+First, you need to run the project and wait until the schema migration is complete.
 
 Then, populate the database with initial data:
 
@@ -161,7 +157,7 @@ Before running with Docker, you need to complete two important steps:
 
    When using Docker, there's no need to upload the JWKS file to an external server. The Docker setup includes a dedicated NGINX container that serves the JWKS file. After generating the keys, you should:
    
-   - Make sure the `jwks.json` file is in the `/src/keys` directory
+   - Make sure the `jwks.json` file is in the `/keys` directory
    - In your `.env` file, set `AUTH_JWT_JWKS_URI` to `http://jwks-server:3011/.well-known/jwks.json` for internal container communication
    - From outside Docker, the JWKS file will be accessible at `http://localhost:3011/.well-known/jwks.json`
 
@@ -201,9 +197,6 @@ Once the containers are running, you can access:
 When using Docker, you can run database migrations and seeds directly from within the app container:
 
 ```bash
-# Update database schema
-docker-compose exec apis yarn migrate:schema
-
 # Populate with initial data
 docker-compose exec apis yarn migrate:seed
 

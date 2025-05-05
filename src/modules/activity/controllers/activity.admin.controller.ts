@@ -50,23 +50,23 @@ export class ActivityAdminController {
     async list(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
         @PaginationQuery()
-        { _search, _limit, _offset, _order }: PaginationListDto
+        { _limit, _offset, _order }: PaginationListDto
     ): Promise<IResponsePaging<ActivityListResponseDto>> {
-        const find: Record<string, any> = {
-            ..._search,
-        };
-
         const userHistories: IActivityDoc[] =
-            await this.activityService.findAllByUser(user._id, find, {
-                paging: {
-                    limit: _limit,
-                    offset: _offset,
-                },
-                order: _order,
-            });
+            await this.activityService.findAllByUser(
+                user._id,
+                {},
+                {
+                    paging: {
+                        limit: _limit,
+                        offset: _offset,
+                    },
+                    order: _order,
+                }
+            );
         const total: number = await this.activityService.getTotalByUser(
             user._id,
-            find
+            {}
         );
         const totalPage: number = this.paginationService.totalPage(
             total,

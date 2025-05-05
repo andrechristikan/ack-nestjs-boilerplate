@@ -29,12 +29,11 @@
         "package:upgrade": "npx npm-check-updates -u",
         "package:check": "npx npm-check-updates -i",
         "generate:keys": "npx ts-node scripts/generate-keys.ts",
-        "migrate:fresh": "yarn migrate:remove && yarn migrate:schema && yarn migrate:seed",
-        "migrate:schema": "APP_ENV=migration nest start",
-        "migrate:seed": "APP_ENV=migration nestjs-command seed:country && nestjs-command seed:apikey && nestjs-command seed:role && nestjs-command seed:user",
-        "migrate:remove": "APP_ENV=migration nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apikey  && nestjs-command remove:role",
-        "migrate:template": "APP_ENV=migration nestjs-command migrate:template",
-        "rollback:template": "APP_ENV=migration nestjs-command rollback:template"
+        "migrate:fresh": "yarn migrate:remove && yarn migrate:seed",
+        "migrate:seed": "nestjs-command seed:country && nestjs-command seed:apikey && nestjs-command seed:role && nestjs-command seed:user",
+        "migrate:remove": "nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apikey  && nestjs-command remove:role",
+        "migrate:template": "nestjs-command migrate:template",
+        "rollback:template": "nestjs-command rollback:template"
     },
     "dependencies": {
         "@aws-sdk/client-pinpoint": "^3.777.0",
@@ -132,6 +131,7 @@
         "ts-prune": "^0.10.3",
         "tsconfig-paths": "^4.2.0",
         "typescript": "^5.8.2",
+        "rimraf": "^6.0.1",
         "typescript-eslint": "^8.29.0"
     },
     "lint-staged": {
