@@ -62,29 +62,45 @@ Required environment variables are defined in the `.env` file:
 
 ```dotenv
 # Redis Queue Configuration
-REDIS_QUEUE_HOST=localhost
-REDIS_QUEUE_PORT=6379
-REDIS_QUEUE_USERNAME=
-REDIS_QUEUE_PASSWORD=
-REDIS_QUEUE_TLS_ENABLE=false
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_USERNAME=
+REDIS_PASSWORD=
+REDIS_TLS_ENABLE=false
 ```
 
 ### Queue Management
 
-Each module that requires background processing defines its own queue using `BullModule.registerQueue()`. This approach follows the module isolation pattern, where each module is responsible for its own queue.
+In the boilerplate, the queue registration is primarily done in the route modules rather than in individual service modules. This centralized approach simplifies queue management and ensures consistent configuration.
 
 ```typescript
+// Example from routes.user.module.ts
 @Module({
     imports: [
-        BullModule.registerQueue({
+        // ...other imports
+        BullModule.registerQueueAsync({
             name: ENUM_WORKER_QUEUES.EMAIL_QUEUE,
         }),
+        BullModule.registerQueueAsync({
+            name: ENUM_WORKER_QUEUES.SMS_QUEUE,
+        }),
     ],
-    // ...other module configuration
 })
+export class RoutesUserModule {}
 ```
 
-Queue names are typically defined as enum to maintain consistency:
+Similarly, processors are registered in the `WorkerModule`:
+
+```typescript
+// src/worker/worker.module.ts
+@Module({
+    imports: [EmailModule, SessionModule, SmsModule],
+    providers: [EmailProcessor, SessionProcessor, SmsProcessor],
+})
+export class WorkerModule {}
+```
+
+Queue names are defined as enums to maintain consistency:
 
 ```typescript
 export enum ENUM_WORKER_QUEUES {
@@ -100,17 +116,16 @@ The SMS module handles queuing and processing of SMS messages, using AWS Pinpoin
 
 ### Add Queue Jobs
 
-To add SMS jobs to the queue, you need to inject the BullMQ Queue into your service or controller using the `@InjectQueue` decorator from `@nestjs/bullmq`. This allows you to add jobs to the SMS queue for background processing.
+To add SMS jobs to the queue, you need to inject the BullMQ Queue into your service or controller using the `@InjectQueue` decorator from `@nestjs/bullmq`. Note that the SMS queue is registered in the route modules, not in the SMS module itself, as explained in the Queue Management section.
 
 ```typescript
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+import { ENUM_WORKER_QUEUES, ENUM_WORKER_PRIORITY } from 'src/worker/enums/worker.enum';
 import { ENUM_SEND_SMS_PROCESS } from 'src/modules/sms/enums/sms.enum';
-import { SmsSendRequestDto } from 'src/modules/sms/dtos/sms.send.request.dto';
-import { SmsVerificationRequestDto } from 'src/modules/sms/dtos/sms.verification.request.dto';
-import { ENUM_WORKER_PRIORITY } from 'src/worker/enums/worker.enum';
+import { SmsSendRequestDto } from 'src/modules/sms/dtos/request/sms.send.request.dto';
+import { SmsVerificationRequestDto } from 'src/modules/sms/dtos/request/sms.verification.request.dto';
 
 @Injectable()
 export class YourService {
@@ -120,24 +135,6 @@ export class YourService {
     ) {}
 
     async sendOtpVerification(userId: string, mobileNumber: string): Promise<void> {
-        // Generate OTP code
-        const otp = '123456'; // 6-digit code
-        
-        // Calculate expiration time (e.g., 5 minutes from now)
-        const expiredAt = new Date();
-        expiredAt.setMinutes(expiredAt.getMinutes() + 5);
-        
-        // Prepare DTO objects
-        const send: SmsSendRequestDto = {
-            name: 'User', 
-            mobileNumber: mobileNumber,
-        };
-
-        const data: SmsVerificationRequestDto = {
-            expiredAt: expiredAt.toISOString(), 
-            otp: otp,
-        };
-
         // Add job to SMS queue
         await this.smsQueue.add(
             ENUM_SEND_SMS_PROCESS.VERIFICATION,
@@ -147,8 +144,6 @@ export class YourService {
             },
             {
                 priority: ENUM_WORKER_PRIORITY.HIGH,
-                removeOnComplete: true,
-                removeOnFail: true,
             }
         );
     }
@@ -161,29 +156,33 @@ The job options typically include:
 - `attempts`: Number of retry attempts (defaults to 3 as configured in the global settings)
 - `backoff`: Retry strategy (defaults to exponential with 3-second delay as configured in the global settings)
 
-To make the SMS queue available in your module, include it in the module imports:
+In the current implementation, the SMS processor is registered in the `WorkerModule` rather than directly in the SMS module:
 
 ```typescript
+// src/worker/worker.module.ts
 @Module({
-    imports: [
-        BullModule.registerQueueAsync({
-            name: ENUM_WORKER_QUEUES.SMS_QUEUE,
-        }),
-        // ...other imports
-    ],
-    providers: [YourService],
-    // ...other module configuration
+    imports: [EmailModule, SessionModule, SmsModule],
+    providers: [EmailProcessor, SessionProcessor, SmsProcessor],
 })
-export class YourModule {}
+export class WorkerModule {}
 ```
 
-This setup allows your application to queue SMS sending tasks for background processing, ensuring that API requests can return quickly while time-consuming SMS sending operations happen asynchronously.
+This architecture allows for a clean separation between the SMS service functionality and the queue processing logic.
 
 ### SMS Processors
 
 The `SmsProcessor` class handles SMS jobs from the queue by extending the `WorkerHost` class:
 
 ```typescript
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job } from 'bullmq';
+import { ENUM_SEND_SMS_PROCESS } from 'src/modules/sms/enums/sms.enum';
+import { SmsSendRequestDto } from 'src/modules/sms/dtos/request/sms.send.request.dto';
+import { SmsVerificationRequestDto } from 'src/modules/sms/dtos/request/sms.verification.request.dto';
+import { ISmsProcessor } from 'src/modules/sms/interfaces/sms.processor.interface';
+import { SmsService } from 'src/modules/sms/services/sms.service';
+import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+
 @Processor({
     name: ENUM_WORKER_QUEUES.SMS_QUEUE,
 })
@@ -223,7 +222,7 @@ export class SmsProcessor extends WorkerHost implements ISmsProcessor {
 SMS templates are defined as text files located in the `/src/modules/sms/templates/` directory. These are simple text files with placeholders that are replaced with actual values when sending an SMS:
 
 ```txt
-Hi {name}, Here is your OTP {otp} for verification. The OTP will expire until {expiredAt}. By: {homeName}.
+Hi {name}, Here is your OTP {otp} for verification. The OTP is valid until {expiredAt}. By: {homeName}.
 ```
 
 The SMS service replaces the placeholders in the template with actual values:
@@ -254,17 +253,16 @@ The Email Module handles queuing and processing of email messages, providing a r
 
 ### Add Queue Jobs
 
-To add email jobs to the queue, inject the BullMQ Queue into your service or controller using the `@InjectQueue` decorator:
+To add email jobs to the queue, inject the BullMQ Queue into your service or controller using the `@InjectQueue` decorator. As described in the Queue Management section, the email queue is registered in the route modules, not in the Email module itself.
 
 ```typescript
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+import { ENUM_WORKER_QUEUES, ENUM_WORKER_PRIORITY } from 'src/worker/enums/worker.enum';
 import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
 import { EmailVerificationDto } from 'src/modules/email/dtos/email.verification.dto';
-import { ENUM_WORKER_PRIORITY } from 'src/worker/enums/worker.enum';
 
 @Injectable()
 export class YourService {
@@ -274,26 +272,6 @@ export class YourService {
     ) {}
 
     async someFunction(email: string, name: string): Promise<void> {
-        // Generate verification token
-        const token = 'randomtoken123456'; // Should use a proper token generator
-        
-        // Set expiration time (e.g., 24 hours from now)
-        const expiredAt = new Date();
-        expiredAt.setHours(expiredAt.getHours() + 24);
-        
-        // Prepare DTO objects
-        const send: EmailSendDto = {
-            to: email,
-            subject: 'Account Verification'
-        };
-
-        const data: EmailVerificationDto = {
-            name: name,
-            token: token,
-            link: `https://yourapplication.com/auth/verify?token=${token}`,
-            expiredAt: expiredAt.toISOString()
-        };
-
         // Add job to email queue
         await this.emailQueue.add(
             ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
@@ -316,9 +294,7 @@ The job options follow the same pattern as described in the SMS Module section.
 The `EmailProcessor` class handles email jobs from the queue:
 
 ```typescript
-@Processor({
-    name: ENUM_WORKER_QUEUES.EMAIL_QUEUE,
-})
+@Processor(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
 export class EmailProcessor extends WorkerHost {
     constructor(
         private readonly emailService: EmailService,
@@ -327,16 +303,17 @@ export class EmailProcessor extends WorkerHost {
         super();
     }
 
-    async process(job: Job<any>): Promise<void> {
+    async process(job: Job<EmailWorkerDto, any, string>): Promise<void> {
         try {
             const jobName = job.name;
             switch (jobName) {
                 case ENUM_SEND_EMAIL_PROCESS.VERIFICATION:
                     await this.processVerification(
                         job.data.send,
-                        job.data.data
+                        job.data.data as EmailVerificationDto
                     );
                     break;
+                // Other email process cases...
                 default:
                     break;
             }
@@ -347,8 +324,11 @@ export class EmailProcessor extends WorkerHost {
         return;
     }
 
-    async processVerification(send: EmailSendDto, data: EmailVerificationDto): Promise<boolean> {
-        return this.emailService.sendVerification(send, data);
+    async processVerification(
+        data: EmailSendDto, 
+        verificationData: EmailVerificationDto
+    ): Promise<boolean> {
+        return this.emailService.sendVerification(data, verificationData);
     }
 }
 ```
@@ -428,3 +408,4 @@ Email templates can be managed through the service with methods to:
 - Send an email using a template
 
 This approach leverages AWS SES's template capabilities for reliable email delivery with consistent formatting and content.
+

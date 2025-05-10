@@ -8,7 +8,7 @@ export default registerAs(
             port: Number.parseInt(process.env.REDIS_PORT),
             password: process.env.REDIS_PASSWORD,
             username: process.env.REDIS_USERNAME,
-            ttl: 5 * 1000, // 5 mins
+            ttl: 5 * 60 * 1000, // 5 mins
             max: 10,
         },
         queue: {

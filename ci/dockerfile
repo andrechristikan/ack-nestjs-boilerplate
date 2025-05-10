@@ -1,33 +1,55 @@
-# Test Image
-FROM node:lts-alpine as builder
-LABEL maintainer "andrechristikan@gmail.com"
+# Build stage for compiling the application
+FROM node:lts-alpine AS builder
 
+LABEL maintainer="andrechristikan@gmail.com"
+
+# Set environment to testing for build process
 ENV NODE_ENV=testing
 
 WORKDIR /app
+
+# Copy package files for dependency installation
 COPY package.json yarn.lock ./
 
+# Install dependencies with clear logging and no user interaction
 RUN set -x && yarn --frozen-lockfile --non-interactive
 
+# Copy application source code
 COPY . .
 
+# Build the application
 RUN yarn build
 
-# Production Image
-FROM node:lts-alpine as main
-LABEL maintainer "andrechristikan@gmail.com"
+# Production stage with minimal footprint
+FROM node:lts-alpine AS main
 
+LABEL maintainer="andrechristikan@gmail.com"
+
+# Create non-root user for security
+RUN addgroup -S ec2-user && adduser -S ec2-user -G ec2-user
+
+# Set environment variable from build arg
 ARG NODE_ENV
 ENV NODE_ENV=${NODE_ENV}
 
+# Set working directory and expose API port
 WORKDIR /app
 EXPOSE 3000
 
+# Copy only necessary files from builder stage
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/yarn.lock  ./yarn.lock
 COPY --from=builder /app/dist ./dist
+
+# Create .env file if needed
 RUN touch .env
 
+# Install only production dependencies
 RUN set -x && yarn --frozen-lockfile --non-interactive --production
 
+# Set ownership to non-root user
+RUN chown -R ec2-user:ec2-user /app
+USER ec2-user
+
+# Start the application in production mode
 CMD ["yarn", "start:prod"]

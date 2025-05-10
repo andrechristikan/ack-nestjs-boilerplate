@@ -16,11 +16,11 @@ export class DatabaseOptionService implements IDatabaseOptionService {
         const url = this.configService.get<string>('database.url');
         const debug = this.configService.get<boolean>('database.debug');
 
-        const timeoutOptions = this.configService.get<Record<string, number>>(
+        let timeoutOptions = this.configService.get<Record<string, number>>(
             'database.timeoutOptions'
         );
 
-        const poolOptions = this.configService.get<Record<string, number>>(
+        let poolOptions = this.configService.get<Record<string, number>>(
             'database.poolOptions'
         );
 
@@ -28,10 +28,25 @@ export class DatabaseOptionService implements IDatabaseOptionService {
             mongoose.set('debug', debug);
         }
 
+        if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
+            timeoutOptions = {
+                serverSelectionTimeoutMS: 60 * 1000, // 60 secs
+                socketTimeoutMS: 300 * 1000, // 5 minutes
+                heartbeatFrequencyMS: 10 * 1000, // 10 secs
+            };
+
+            poolOptions = {
+                maxPoolSize: 20,
+                minPoolSize: 5,
+                maxIdleTimeMS: 120000, // Increased from 60000
+                waitQueueTimeoutMS: 60000, // Increased from 30000
+            };
+        }
+
         const mongooseOptions: MongooseModuleOptions = {
             uri: url,
-            autoCreate: true,
-            autoIndex: true,
+            autoCreate: env !== ENUM_APP_ENVIRONMENT.MIGRATION,
+            autoIndex: env !== ENUM_APP_ENVIRONMENT.MIGRATION,
             appName: name,
             retryWrites: true,
             retryReads: true,

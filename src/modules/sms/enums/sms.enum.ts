@@ -1,0 +1,3 @@
+export enum ENUM_SEND_SMS_PROCESS {
+    VERIFICATION = 'VERIFICATION',
+}

@@ -68,20 +68,50 @@ export class DatabaseOptionService implements IDatabaseOptionService {
 
     createOptions(): MongooseModuleOptions {
         const env = this.configService.get<string>('app.env');
+        const name = this.configService.get<string>('app.name');
+
         const url = this.configService.get<string>('database.url');
         const debug = this.configService.get<boolean>('database.debug');
-        const timeoutOptions = this.configService.get<Record<string, number>>('database.timeoutOptions');
+
+        let timeoutOptions = this.configService.get<Record<string, number>>(
+            'database.timeoutOptions'
+        );
+
+        let poolOptions = this.configService.get<Record<string, number>>(
+            'database.poolOptions'
+        );
 
         if (env !== ENUM_APP_ENVIRONMENT.PRODUCTION) {
             mongoose.set('debug', debug);
         }
 
-        return {
+        if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
+            timeoutOptions = {
+                serverSelectionTimeoutMS: 60 * 1000, // 60 secs
+                socketTimeoutMS: 300 * 1000, // 5 minutes
+                heartbeatFrequencyMS: 10 * 1000, // 10 secs
+            };
+
+            poolOptions = {
+                maxPoolSize: 20,
+                minPoolSize: 5,
+                maxIdleTimeMS: 120000, // Increased from 60000
+                waitQueueTimeoutMS: 60000, // Increased from 30000
+            };
+        }
+
+        const mongooseOptions: MongooseModuleOptions = {
             uri: url,
-            autoCreate: env === ENUM_APP_ENVIRONMENT.MIGRATION,
-            autoIndex: env === ENUM_APP_ENVIRONMENT.MIGRATION,
+            autoCreate: env !== ENUM_APP_ENVIRONMENT.MIGRATION,
+            autoIndex: env !== ENUM_APP_ENVIRONMENT.MIGRATION,
+            appName: name,
+            retryWrites: true,
+            retryReads: true,
             ...timeoutOptions,
+            ...poolOptions,
         };
+
+        return mongooseOptions;
     }
 }
 ```
@@ -149,6 +179,22 @@ export class DatabaseService implements IDatabaseService {
             },
         };
     }
+    
+    filterNin<T = string>(
+        field: string,
+        filterValue: T[]
+    ): Record<
+        string,
+        {
+            $nin: T[];
+        }
+    > {
+        return {
+            [field]: {
+                $nin: filterValue,
+            },
+        };
+    }
 
     filterDateBetween(
         fieldStart: string,
@@ -183,7 +229,7 @@ The repository pattern implementation provides a consistent approach to database
 
 ### Base Repository Class
 
-The `DatabaseRepositoryBase` class serves as the foundation for all repositories, providing a comprehensive set of common database operations:
+The `DatabaseRepositoryBase` class serves as the foundation for all repositories, providing a comprehensive set of common database operations. Repositories that extend this class inherit all commonly used database operations without having to reimplement them.
 
 ```typescript
 export class DatabaseRepositoryBase<
@@ -201,137 +247,53 @@ export class DatabaseRepositoryBase<
         this._join = options;
     }
 
-    // Find methods
-    async findAll<T = EntityDocument>(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<T[]> { /* ... */ }
+    // Categories of operations provided:
+    
+    // 1. Query Methods - for searching and retrieving data
+    async findAll<T = EntityDocument>(...): Promise<T[]> { /* ... */ }
+    async findOne<T = EntityDocument>(...): Promise<T> { /* ... */ }
+    async findOneById<T = EntityDocument>(...): Promise<T> { /* ... */ }
+    async getTotal(...): Promise<number> { /* ... */ }
+    async exists(...): Promise<boolean> { /* ... */ }
 
-    async findOne<T = EntityDocument>(
-        find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
-    ): Promise<T> { /* ... */ }
+    // 2. Mutation Methods - for creating and modifying data
+    async create<T extends Entity>(...): Promise<EntityDocument> { /* ... */ }
+    async save(...): Promise<EntityDocument> { /* ... */ }
+    async update(...): Promise<EntityDocument> { /* ... */ }
+    async delete(...): Promise<EntityDocument> { /* ... */ }
 
-    async findOneById<T = EntityDocument>(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<T> { /* ... */ }
+    // 3. Soft Delete - supports data deletion without actually removing it
+    async softDelete(...): Promise<EntityDocument> { /* ... */ }
+    async restore(...): Promise<EntityDocument> { /* ... */ }
 
-    async getTotal(
-        find?: Record<string, any>,
-        options?: IDatabaseGetTotalOptions
-    ): Promise<number> { /* ... */ }
+    // 4. Relation Methods - for accessing relationships between entities
+    async join<T = any>(...): Promise<T> { /* ... */ }
 
-    async exists(
-        find: Record<string, any>,
-        options?: IDatabaseExistsOptions
-    ): Promise<boolean> { /* ... */ }
+    // 5. Bulk Operations - for mass operations
+    async createMany<T extends Partial<Entity>>(...): Promise<InsertManyResult<Entity>> { /* ... */ }
+    async updateMany<T = Entity>(...): Promise<UpdateResult<Entity>> { /* ... */ }
+    async updateManyRaw(...): Promise<UpdateResult<Entity>> { /* ... */ }
+    async deleteMany(...): Promise<DeleteResult> { /* ... */ }
+    async softDeleteMany(...): Promise<UpdateResult<Entity>> { /* ... */ }
+    async restoreMany(...): Promise<UpdateResult<Entity>> { /* ... */ }
 
-    // Create and update methods
-    async create<T extends Entity>(
-        data: T,
-        options?: IDatabaseCreateOptions
-    ): Promise<EntityDocument> { /* ... */ }
+    // 6. Aggregate Operations - for aggregation queries
+    async aggregate<AggregatePipeline extends PipelineStage, AggregateResponse = any>(...): Promise<AggregateResponse[]> { /* ... */ }
+    async findAllAggregate<AggregatePipeline extends PipelineStage, AggregateResponse = any>(...): Promise<AggregateResponse[]> { /* ... */ }
+    async getTotalAggregate<AggregatePipeline extends PipelineStage>(...): Promise<number> { /* ... */ }
 
-    async save(
-        repository: EntityDocument,
-        options?: IDatabaseSaveOptions
-    ): Promise<EntityDocument> { /* ... */ }
-
-    async update(
-        find: Record<string, any>,
-        data: UpdateQuery<Entity>,
-        options?: IDatabaseUpdateOptions
-    ): Promise<EntityDocument> { /* ... */ }
-
-    async delete(
-        find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
-    ): Promise<EntityDocument> { /* ... */ }
-
-    // Soft delete support
-    async softDelete(
-        repository: EntityDocument,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<EntityDocument> { /* ... */ }
-
-    async restore(
-        repository: EntityDocument,
-        options?: IDatabaseSaveOptions
-    ): Promise<EntityDocument> { /* ... */ }
-
-    // Join method
-    async join<T = any>(
-        repository: EntityDocument,
-        joins: PopulateOptions | (string | PopulateOptions)[]
-    ): Promise<T> { /* ... */ }
-
-    // Bulk operations
-    async createMany<T extends Partial<Entity>>(
-        data: T[],
-        options?: IDatabaseCreateManyOptions
-    ): Promise<InsertManyResult<Entity>> { /* ... */ }
-
-    async updateMany<T = Entity>(
-        find: Record<string, any>,
-        data: T,
-        options?: IDatabaseUpdateManyOptions
-    ): Promise<UpdateResult<Entity>> { /* ... */ }
-
-    async updateManyRaw(
-        find: Record<string, any>,
-        data: UpdateQuery<Entity>,
-        options?: IDatabaseUpdateManyOptions
-    ): Promise<UpdateResult<Entity>> { /* ... */ }
-
-    async deleteMany(
-        find: Record<string, any>,
-        options?: IDatabaseDeleteManyOptions
-    ): Promise<DeleteResult> { /* ... */ }
-
-    async softDeleteMany(
-        find: Record<string, any>,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<UpdateResult<Entity>> { /* ... */ }
-
-    async restoreMany(
-        find: Record<string, any>,
-        options?: IDatabaseSaveOptions
-    ): Promise<UpdateResult<Entity>> { /* ... */ }
-
-    // Aggregate operations
-    async aggregate<
-        AggregatePipeline extends PipelineStage,
-        AggregateResponse = any,
-    >(
-        pipelines: AggregatePipeline[],
-        options?: IDatabaseAggregateOptions
-    ): Promise<AggregateResponse[]> { /* ... */ }
-
-    async findAllAggregate<
-        AggregatePipeline extends PipelineStage,
-        AggregateResponse = any,
-    >(
-        pipelines: AggregatePipeline[],
-        options?: IDatabaseFindAllAggregateOptions
-    ): Promise<AggregateResponse[]> { /* ... */ }
-
-    async getTotalAggregate<AggregatePipeline extends PipelineStage>(
-        pipelines: AggregatePipeline[],
-        options?: IDatabaseAggregateOptions
-    ): Promise<number> { /* ... */ }
-
-    // Model access
+    // 7. Model Access - direct access to the Mongoose model
     async model(): Promise<Model<Entity>> { /* ... */ }
 }
 ```
 
 ### Entity Base Class
 
-All database entities inherit from the `DatabaseEntityBase` class, which provides common fields like ID, created/updated timestamps, and soft delete support:
+All database entities inherit from the `DatabaseEntityBase` class, which provides common fields like ID, created/updated timestamps, and soft delete support. This model provides a standard infrastructure for all database entities.
 
 ```typescript
 export class DatabaseEntityBase {
+    // Primary key using UUID by default
     @DatabaseProp({
         type: String,
         required: true,
@@ -339,6 +301,7 @@ export class DatabaseEntityBase {
     })
     _id: string;
 
+    // Soft delete flag
     @DatabaseProp({
         required: true,
         index: true,
@@ -346,45 +309,7 @@ export class DatabaseEntityBase {
     })
     deleted: boolean;
 
-    @DatabaseProp({
-        required: false,
-        index: 'asc',
-        type: Date,
-        default: Date.now,
-    })
-    createdAt: Date;
-
-    @DatabaseProp({
-        required: false,
-        index: true,
-    })
-    createdBy?: string;
-
-    @DatabaseProp({
-        required: false,
-        index: 'asc',
-        type: Date,
-    })
-    updatedAt: Date;
-
-    @DatabaseProp({
-        required: false,
-        index: true,
-    })
-    updatedBy?: string;
-
-    @DatabaseProp({
-        required: false,
-        index: true,
-        type: Date,
-    })
-    deletedAt?: Date;
-
-    @DatabaseProp({
-        required: false,
-        index: true,
-    })
-    deletedBy?: string;
+    // And other audit fields...
 }
 ```
 
@@ -406,53 +331,49 @@ Each module in the application follows a consistent repository structure:
 
 ### Entity
 
-An entity definition includes schema fields and validation through decorators:
+Entity definitions include schema fields and validation through decorators. Each entity defines the data structure stored in MongoDB.
 
 ```typescript
 @DatabaseEntity({ collection: UserTableName })
 export class UserEntity extends DatabaseEntityBase {
+    // Field definitions with decorators for index configuration and validation
     @DatabaseProp({
         required: true,
         index: true,
-        unique: true,
+        unique: true, // Ensures email uniqueness
         type: String,
     })
     email: string;
 
+    // Other fields with validation
     @DatabaseProp({
         required: true,
         type: String,
     })
     firstName: string;
 
-    @DatabaseProp({
-        required: true,
-        type: String,
-    })
-    lastName: string;
-
-    // More properties and relationships...
+    // Add entity fields according to requirements
 }
 
+// Code to generate schema and define document type
 export const UserSchema = DatabaseSchema(UserEntity);
 export type UserDoc = IDatabaseDocument<UserEntity>;
 ```
 
 ### Repository
 
-Each repository extends the base repository and customizes functionality as needed:
+Each repository extends the base repository and can customize functionality as needed. The repository handles all data operations for a specific entity.
 
 ```typescript
 @Injectable()
-export class UserRepository extends DatabaseRepositoryBase<
-    UserEntity,
-    UserDoc
-> {
+export class UserRepository extends DatabaseRepositoryBase<UserEntity, UserDoc> {
     constructor(
         @InjectDatabaseModel(UserEntity.name)
         private readonly userModel: Model<UserEntity>
     ) {
+        // Call parent constructor with model and join (relation) definitions
         super(userModel, [
+            // Example of join configuration: User with Role
             {
                 path: 'role',
                 localField: 'role',
@@ -460,28 +381,24 @@ export class UserRepository extends DatabaseRepositoryBase<
                 model: RoleEntity.name,
                 justOne: true,
             },
-            {
-                path: 'country',
-                localField: 'country',
-                foreignField: '_id',
-                model: CountryEntity.name,
-                justOne: true,
-            },
-            {
-                path: 'mobileNumber.country',
-                localField: 'mobileNumber.country',
-                foreignField: '_id',
-                model: CountryEntity.name,
-                justOne: true,
-            },
+            // Other join definitions...
         ]);
     }
+
+    // Add custom methods if needed
 }
 ```
 
+Repositories provide a clean abstraction over Mongoose and enable:
+- Complete CRUD operations on entities
+- Automatic relations/joins based on configuration
+- Soft delete and restore
+- Bulk operations for high performance
+
+
 ### Repository Module Example
 
-Each repository has its own module to handle dependencies and exports:
+Each repository has its own module to handle dependencies and exports. This module facilitates dependency injection and NestJS integration.
 
 ```typescript
 @Module({
@@ -489,6 +406,7 @@ Each repository has its own module to handle dependencies and exports:
     exports: [UserRepository],
     controllers: [],
     imports: [
+        // Register schema with Mongoose
         MongooseModule.forFeature(
             [
                 {
@@ -505,71 +423,41 @@ export class UserRepositoryModule {}
 
 ### Service
 
-Services use repositories for data access, implementing business logic on top of the repository layer:
+Services use repositories for data access, implementing business logic on top of the repository layer. The service layer bridges controllers and the data access layer.
 
 ```typescript
 @Injectable()
 export class UserService implements IUserService {
     constructor(
         private readonly userRepository: UserRepository,
+        // Other dependencies...
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {}
 
-    async findAll<T>(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<T[]> {
+    // Service method implementations
+    async findAll<T>(find?: Record<string, any>, options?: IDatabaseFindAllOptions): Promise<T[]> {
+        // Call repository with required parameters
         return this.userRepository.findAll<T>(find, {
             ...options,
-            join: true,
+            join: true, // Enable automatic relation joining
         });
     }
 
-    async findOneById<T>(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<T> {
-        return this.userRepository.findOneById<T>(_id, {
-            ...options,
-            join: true,
-        });
-    }
-
-    async create<Dto>(
-        data: Dto,
-        options?: IDatabaseCreateOptions
-    ): Promise<UserDoc> {
+    async create<Dto>(data: Dto, options?: IDatabaseCreateOptions): Promise<UserDoc> {
+        // Transform DTO to entity before saving
         const create: UserEntity = new UserEntity();
-        
-        // Map DTO data to entity fields
         Object.assign(create, data);
         
         return this.userRepository.create<UserEntity>(create, options);
     }
 
-    async delete(
-        find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
-    ): Promise<UserDoc> {
-        return this.userRepository.delete(find, options);
-    }
-
-    async updateOneById<Dto>(
-        _id: string,
-        data: Dto,
-        options?: IDatabaseUpdateOptions
-    ): Promise<UserDoc> {
-        return this.userRepository.update({ _id }, { $set: data }, options);
-    }
-
-    async softDelete(
-        repository: UserDoc,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<UserDoc> {
-        return this.userRepository.softDelete(repository, options);
-    }
-
-    // More service methods...
+    // Other service methods...
 }
 ```
+
+The service layer provides:
+- Business logic abstraction over repositories
+- Transformation between DTOs and entities
+- Validation and error handling
+- Coordination between repositories when needed

@@ -23,7 +23,6 @@ Key features of the error handling system:
   - [Examples](#examples)
     - [HTTP Exception](#http-exception)
     - [Validation Exception](#validation-exception)
-    - [Custom Exception](#custom-exception)
 
 ## Error Filter Modules
 
@@ -192,52 +191,6 @@ Response for an invalid request:
     "timestamp": 1635739200,
     "timezone": "UTC", 
     "path": "/api/v1/users",
-    "version": "1",
-    "repoVersion": "1.0.0"
-  }
-}
-```
-
-### Custom Exception
-
-Creating and using a custom exception:
-
-```typescript
-// src/modules/user/exceptions/user-blocked.exception.ts
-export class UserBlockedException extends BadRequestException {
-  constructor() {
-    super({
-      statusCode: ENUM_USER_STATUS_CODE_ERROR.BLOCKED,
-      message: 'user.error.blocked',
-    });
-  }
-}
-
-// Usage in a service
-@Injectable()
-export class AuthService {
-  async validateUser(email: string, password: string): Promise<UserDoc> {
-    const user = await this.userService.findOneByEmail(email);
-    
-    if (user.blocked) {
-      throw new UserBlockedException();
-    }
-    
-    // Continue with authentication
-  }
-}
-```
-
-Response:
-```json
-{
-  "statusCode": 400,
-  "message": "User is blocked",
-  "_metadata": {
-    "language": "en",
-    "timestamp": 1635739200,
-    "timezone": "UTC",
-    "path": "/api/v1/auth/login",
     "version": "1",
     "repoVersion": "1.0.0"
   }

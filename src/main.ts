@@ -90,13 +90,6 @@ async function bootstrap() {
     // Listen
     await app.listen(port, host);
 
-    if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
-        logger.log(`On migrate the schema`);
-
-        await app.close();
-        process.exit(0);
-    }
-
     logger.log(`Http versioning is ${versionEnable}`);
 
     logger.log(

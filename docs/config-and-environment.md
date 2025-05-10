@@ -49,7 +49,7 @@ Contains general application settings:
   name: process.env.APP_NAME,                                       // Application name used throughout the system
   env: process.env.APP_ENV,                                         // Current environment (development, production, etc.)
   timezone: process.env.APP_TIMEZONE,                               // Default timezone for date operations
-  version: '1',                                                     // Application version from package.json
+  version: version,                                                 // Application version imported from package.json
   globalPrefix: '/api',                                             // Global prefix for all API endpoints
   http: {
     host: process.env.HTTP_HOST,                                    // Host for the HTTP server
@@ -95,7 +95,7 @@ JWT and authentication related settings:
     saltLength: 8,                                                  // Length of salt for password hashing
     expiredIn: ms('182d') / 1000,                                   // Password expiration (0.5 years)
     expiredInTemporary: ms('3d') / 1000,                            // Temporary password expiration (3 days)
-    period: ms('90d') / 1000,                                       // Password renewal period (3 months)
+    period: ms('90d') / 1000,                                   // Password renewal period (3 months)
   },
   apple: {
     header: 'Authorization',                                        // HTTP header for Apple auth
@@ -134,7 +134,7 @@ Settings for AWS services:
 ```typescript
 {
   s3: {
-    presignExpired: 30 * 60 * 1000,                                 // Presigned URL expiration time (30 minutes)
+    presignExpired: 30 * 60,                                        // Presigned URL expiration time (30 mins in seconds)
     config: {
       public: {
         credential: {
@@ -154,7 +154,7 @@ Settings for AWS services:
         bucket: process.env.AWS_S3_PRIVATE_BUCKET ?? 'bucketPrivate', // S3 private bucket name (with fallback)
         region: process.env.AWS_S3_PRIVATE_REGION,                  // AWS region for private bucket
         baseUrl: `https://${process.env.AWS_S3_PRIVATE_BUCKET}.s3.${process.env.AWS_S3_PRIVATE_REGION}.amazonaws.com`, // S3 base URL
-        cdnUrl: process.env.AWS_S3_PRIVATE_REGION ? `https://${process.env.AWS_S3_PRIVATE_REGION}` : undefined, // CDN URL if available
+        cdnUrl: process.env.AWS_S3_PRIVATE_CDN ? `https://${process.env.AWS_S3_PRIVATE_CDN}` : undefined, // CDN URL if available
       },
     },
   },
@@ -167,7 +167,7 @@ Settings for AWS services:
   },
   pinpoint: {
     credential: {
-      key: process.env.AWS_PINPOINT_CREDENTIAL_KEY,                 // AWS access key for Pinpoint (mobile push notifications)
+      key: process.env.AWS_PINPOINT_CREDENTIAL_KEY,                 // AWS access key for Pinpoint (mobile push notifications and SMS service)
       secret: process.env.AWS_PINPOINT_CREDENTIAL_SECRET,           // AWS secret key for Pinpoint
     },
     region: process.env.AWS_PINPOINT_REGION,                        // AWS region for Pinpoint
@@ -190,7 +190,7 @@ Debugging and logging settings:
   prettier: process.env.DEBUG_PRETTIER === 'true',                  // Format logs for readability
   sentry: {
     dsn: process.env.SENTRY_DSN,                                    // Sentry DSN for error tracking
-    timeout: ms('10s'),                                             // Sentry timeout setting
+    timeout: ms('10s'),                                             // Sentry timeout setting (fixed at 10 seconds)
   },
 }
 ```
@@ -251,8 +251,9 @@ Redis settings for caching and queues:
     port: Number.parseInt(process.env.REDIS_PORT),                 // Redis server port for caching
     password: process.env.REDIS_PASSWORD,                          // Redis password for caching
     username: process.env.REDIS_USERNAME,                          // Redis username for caching
-    ttl: 5 * 1000,                                                 // Cache TTL (5 minutes)
+    ttl: 5 * 60 * 1000,                                                 // Cache TTL (5 minutes)
     max: 10,                                                       // Maximum cache size
+    tls: process.env.REDIS_TLS_ENABLE === 'true',                  // TLS for secure connections
   },
   queue: {
     host: process.env.REDIS_HOST,                                  // Redis server hostname for queues
@@ -423,6 +424,7 @@ Here's a comprehensive list of supported environment variables:
 - **`REDIS_PORT`** (required): Redis server port
 - **`REDIS_USERNAME`** (optional): Redis username
 - **`REDIS_PASSWORD`** (optional): Redis password
+- **`REDIS_TLS_ENABLE`** (optional): Enable TLS for Redis connections (true/false)
 
 ### Debug Settings
 - **`DEBUG_ENABLE`** (required): Enable/disable debug mode (true/false)

@@ -85,7 +85,7 @@ These settings are essential for authentication and overall system functionality
 
 ### Database Migration and Seed
 
-By default, `AutoCreate` and `AutoIndex` options are set to `false`, meaning MongoDB schemas won't automatically update with code changes.
+By default, `AutoCreate` and `AutoIndex` options are set to `true`, meaning MongoDB schemas will automatically update with code changes.
 
 First, you need to run the project and wait until the schema migration is complete.
 

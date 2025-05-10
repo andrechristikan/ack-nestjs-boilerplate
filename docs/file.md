@@ -37,6 +37,7 @@ export class FileService implements IFileService {
     writeCsv<T = Record<string, string | number | Date>>(rows: IFileRows<T>): Buffer;
     writeCsvFromArray<T = Record<string, string | number | Date>>(rows: T[][]): Buffer;
     readCsv<T = Record<string, string | number | Date>>(file: Buffer): IFileRows<T>;
+    readCsvFromString<T = Record<string, string | number | Date>>(file: string): IFileRows<T>;
     
     // Excel operations
     writeExcel<T = Record<string, string | number | Date>>(rows: IFileRows<T>[]): Buffer;
@@ -140,6 +141,18 @@ export enum ENUM_FILE_STATUS_CODE_ERROR {
 )
 ```
 
+### File Part Number
+
+```typescript
+@Get('upload')
+async getPartNumber(
+    @FilePartNumber() partNumber: number
+) {
+    // Handle the part number
+    // Used for supporting multipart uploads with resumability
+}
+```
+
 ## Pipes
 
 ### Required Validation
@@ -210,6 +223,8 @@ async import(
 }
 ```
 
+Note: The `FileExcelValidationPipe` should only be used after `FileExcelParsePipe`.
+
 ## Response Handling for Excel/CSV Files
 
 The module integrates with the Response module to handle Excel/CSV file responses:
@@ -232,6 +247,8 @@ async export(): Promise<IResponseFileExcel> {
     };
 }
 ```
+
+For CSV files, only the first sheet in the returned data array will be used, as CSV files don't support multiple sheets.
 
 ## DTOs for File Operations
 
