@@ -41,17 +41,17 @@ export class VerificationService implements IVerificationService {
     ) {
         this.expiredInMinutes = this.configService.get<number>(
             'verification.expiredInMinutes'
-        );
+        )!;
         this.otpLength = this.configService.get<number>(
             'verification.otpLength'
-        );
+        )!;
 
         this.referenceLength = this.configService.get<number>(
             'verification.reference.length'
-        );
+        )!;
         this.referencePrefix = this.configService.get<string>(
             'verification.reference.prefix'
-        );
+        )!;
     }
 
     async findAll(
@@ -124,7 +124,7 @@ export class VerificationService implements IVerificationService {
 
         const create: VerificationEntity = new VerificationEntity();
         create.user = user._id;
-        create.to = user.mobileNumber.number;
+        create.to = user.mobileNumber!.number;
         create.type = ENUM_VERIFICATION_TYPE.MOBILE_NUMBER;
         create.otp = otp;
         create.expiredDate = expiredDate;

@@ -1,4 +1,10 @@
-import { Model, PipelineStage, PopulateOptions, UpdateQuery } from 'mongoose';
+import {
+    Model,
+    PipelineStage,
+    PopulateOptions,
+    RootFilterQuery,
+    UpdateQuery,
+} from 'mongoose';
 import {
     IDatabaseAggregateOptions,
     IDatabaseCreateManyOptions,
@@ -16,7 +22,7 @@ import {
     IDatabaseUpdateManyOptions,
     IDatabaseUpdateOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { UpdateResult, DeleteResult, InsertManyResult } from 'mongodb';
+import { DeleteResult, InsertManyResult, UpdateResult } from 'mongodb';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 
@@ -37,7 +43,7 @@ export class DatabaseRepositoryBase<
 
     // Find
     async findAll<T = EntityDocument>(
-        find?: Record<string, any>,
+        find?: RootFilterQuery<Entity>,
         options?: IDatabaseFindAllOptions
     ): Promise<T[]> {
         const repository = this._repository.find<T>({
@@ -75,7 +81,7 @@ export class DatabaseRepositoryBase<
     }
 
     async findOne<T = EntityDocument>(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         options?: IDatabaseFindOneOptions
     ): Promise<T> {
         const repository = this._repository.findOne<T>({
@@ -143,7 +149,7 @@ export class DatabaseRepositoryBase<
     }
 
     async findOneAndLock<T = EntityDocument>(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         options?: IDatabaseFindOneOptions
     ): Promise<T> {
         const repository = this._repository.findOneAndUpdate<T>(
@@ -223,7 +229,7 @@ export class DatabaseRepositoryBase<
     }
 
     async getTotal(
-        find?: Record<string, any>,
+        find?: RootFilterQuery<Entity>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number> {
         const repository = this._repository.countDocuments({
@@ -249,7 +255,7 @@ export class DatabaseRepositoryBase<
     }
 
     async exists(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         options?: IDatabaseExistsOptions
     ): Promise<boolean> {
         const repository = this._repository.exists({
@@ -290,12 +296,12 @@ export class DatabaseRepositoryBase<
 
         const created = await this._repository.create([data], options);
 
-        return created[0] as any;
+        return created[0] as EntityDocument;
     }
 
     // Action
     async update(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         data: UpdateQuery<Entity>,
         options?: IDatabaseUpdateOptions
     ): Promise<EntityDocument> {
@@ -320,7 +326,7 @@ export class DatabaseRepositoryBase<
             };
         }
 
-        return this._repository.findOneAndUpdate(
+        return (await this._repository.findOneAndUpdate(
             {
                 ...find,
                 deleted: options?.withDeleted ?? false,
@@ -330,14 +336,14 @@ export class DatabaseRepositoryBase<
                 ...options,
                 new: true,
             }
-        );
+        ))!;
     }
 
     async delete(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         options?: IDatabaseDeleteOptions
     ): Promise<EntityDocument> {
-        return this._repository.findOneAndDelete(
+        return (await this._repository.findOneAndDelete(
             {
                 ...find,
                 deleted: options?.withDeleted ?? false,
@@ -346,7 +352,7 @@ export class DatabaseRepositoryBase<
                 ...options,
                 new: false,
             }
-        );
+        ))!;
     }
 
     async save(
@@ -366,11 +372,11 @@ export class DatabaseRepositoryBase<
         return repository.save(options);
     }
 
-    async join<T = any>(
+    async join<T>(
         repository: EntityDocument,
         joins: PopulateOptions | (string | PopulateOptions)[]
     ): Promise<T> {
-        return repository.populate(joins);
+        return repository.populate<T>(joins);
     }
 
     // Soft delete
@@ -411,8 +417,8 @@ export class DatabaseRepositoryBase<
                     createdAt: now,
                     updatedAt: now,
                     createdBy: options?.actionBy,
-                };
-            }) as any,
+                } as unknown as Entity;
+            }),
             {
                 ...options,
                 rawResult: true,
@@ -421,7 +427,7 @@ export class DatabaseRepositoryBase<
     }
 
     async updateMany<T = Entity>(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         data: T,
         options?: IDatabaseUpdateManyOptions
     ): Promise<UpdateResult<Entity>> {
@@ -442,7 +448,7 @@ export class DatabaseRepositoryBase<
     }
 
     async updateManyRaw(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         data: UpdateQuery<Entity>,
         options?: IDatabaseUpdateManyOptions
     ): Promise<UpdateResult<Entity>> {
@@ -481,7 +487,7 @@ export class DatabaseRepositoryBase<
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<DeleteResult> {
         return this._repository.deleteMany(
@@ -494,7 +500,7 @@ export class DatabaseRepositoryBase<
     }
 
     async softDeleteMany(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
@@ -514,7 +520,7 @@ export class DatabaseRepositoryBase<
     }
 
     async restoreMany(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         options?: IDatabaseSaveOptions
     ): Promise<UpdateResult<Entity>> {
         return this._repository.updateMany(
@@ -536,10 +542,7 @@ export class DatabaseRepositoryBase<
     }
 
     // Raw
-    async aggregate<
-        AggregatePipeline extends PipelineStage,
-        AggregateResponse = any,
-    >(
+    async aggregate<AggregateResponse, AggregatePipeline extends PipelineStage>(
         pipelines: AggregatePipeline[],
         options?: IDatabaseAggregateOptions
     ): Promise<AggregateResponse[]> {
@@ -567,8 +570,8 @@ export class DatabaseRepositoryBase<
     }
 
     async findAllAggregate<
-        AggregatePipeline extends PipelineStage,
-        AggregateResponse = any,
+        AggregateResponse,
+        AggregatePipeline extends PipelineStage = PipelineStage,
     >(
         pipelines: AggregatePipeline[],
         options?: IDatabaseFindAllAggregateOptions
@@ -593,7 +596,7 @@ export class DatabaseRepositoryBase<
                     (a, b) => ({
                         ...a,
                         [b]:
-                            options?.order[b] ===
+                            options.order![b] ===
                             ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC
                                 ? 1
                                 : -1,

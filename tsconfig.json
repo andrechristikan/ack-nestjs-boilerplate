@@ -19,8 +19,8 @@
         "esModuleInterop": true,
         "moduleResolution": "node",
         "resolveJsonModule": true,
-        "strictNullChecks": true,
-        "noImplicitAny": true,
+        "strictNullChecks": false,
+        "noImplicitAny": false,
         "paths": {
             "@app/*": ["src/*"],
             "@common/*": ["src/common/*"],

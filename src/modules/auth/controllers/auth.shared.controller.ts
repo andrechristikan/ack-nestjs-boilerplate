@@ -198,13 +198,13 @@ export class AuthSharedController {
                     },
                 }
             );
-        } catch (err: any) {
+        } catch (err: unknown) {
             await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }

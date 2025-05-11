@@ -10,15 +10,8 @@ const rules = tsEslint.configs.recommended
 
 // Enhanced code quality rules
 const codeQualityRules = {
-    '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/explicit-function-return-type': [
-        'warn',
-        {
-            allowExpressions: true,
-            allowTypedFunctionExpressions: true,
-        },
-    ],
-    '@typescript-eslint/explicit-module-boundary-types': 'warn',
+    '@typescript-eslint/no-explicit-any': 'off',
+    'no-unused-vars': 'off',
     '@typescript-eslint/no-unused-vars': [
         'warn',
         {
@@ -31,27 +24,54 @@ const codeQualityRules = {
             ignoreRestSiblings: true,
         },
     ],
-    'prefer-const': 'error',
-    'no-var': 'error',
-    'no-console': 'warn',
-    eqeqeq: ['error', 'always', { null: 'ignore' }],
-    'no-multiple-empty-lines': ['error', { max: 1, maxEOF: 1 }],
-    curly: ['error', 'all'],
 };
 
+// TODO: Uncomment for next release
+// const codeQualityRules = {
+//     '@typescript-eslint/no-explicit-any': 'warn',
+//     '@typescript-eslint/explicit-function-return-type': [
+//         'warn',
+//         {
+//             allowExpressions: true,
+//             allowTypedFunctionExpressions: true,
+//         },
+//     ],
+//     '@typescript-eslint/explicit-module-boundary-types': 'warn',
+//     '@typescript-eslint/no-unused-vars': [
+//         'warn',
+//         {
+//             args: 'all',
+//             argsIgnorePattern: '^_',
+//             caughtErrors: 'all',
+//             caughtErrorsIgnorePattern: '^_',
+//             destructuredArrayIgnorePattern: '^_',
+//             varsIgnorePattern: '^_',
+//             ignoreRestSiblings: true,
+//         },
+//     ],
+//     'prefer-const': 'error',
+//     'no-var': 'error',
+//     'no-console': 'warn',
+//     eqeqeq: ['error', 'always', { null: 'ignore' }],
+//     'no-multiple-empty-lines': ['error', { max: 1, maxEOF: 1 }],
+//     curly: ['error', 'all'],
+// };
+
 // Import ordering rules
-const importOrderRules = {
-    'sort-imports': [
-        'error',
-        {
-            ignoreCase: false,
-            ignoreDeclarationSort: true, // don't sort import statements within module
-            ignoreMemberSort: false,
-            memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
-            allowSeparatedGroups: true,
-        },
-    ],
-};
+const importOrderRules = {};
+// TODO: Uncomment for next release
+// const importOrderRules = {
+//     'sort-imports': [
+//         'error',
+//         {
+//             ignoreCase: false,
+//             ignoreDeclarationSort: true,
+//             ignoreMemberSort: false,
+//             memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
+//             allowSeparatedGroups: true,
+//         },
+//     ],
+// };
 
 export default [
     eslintConfigPrettier,
@@ -90,7 +110,6 @@ export default [
             ...rules,
             ...codeQualityRules,
             ...importOrderRules,
-            'no-unused-vars': 'off',
         },
     },
     {

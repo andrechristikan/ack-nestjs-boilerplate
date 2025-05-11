@@ -29,7 +29,7 @@ Internationalization is handled through the `MessageModule` which provides trans
 
 ## Structure
 
-The internationalization system is primarily implemented through:
+The internationalization system consists of:
 
 - **MessageModule**: Global module that sets up the i18n system
 - **MessageService**: Service that provides translation methods
@@ -49,7 +49,7 @@ export default (): AppLanguage => ({
 });
 ```
 
-The `MessageModule` is set up in a global scope and configured in `message.module.ts`:
+The `MessageModule` is set up as a global module:
 
 ```typescript
 @Global()
@@ -80,7 +80,6 @@ export class MessageModule {
                     }),
                 }),
             ],
-            controllers: [],
         };
     }
 }
@@ -90,61 +89,29 @@ export class MessageModule {
 
 Language files are stored in the `src/languages` directory, organized by language code:
 
-- `src/languages/en/`
-- `src/languages/id/`
+- `src/languages/en/` - English translations
+- `src/languages/id/` - Indonesian translations
 
-Each language directory contains multiple JSON files for different types of messages:
+Key language files include:
 
-- `auth.json`: Authentication-related messages
-- `error.json`: Error messages
-- `app.json`: Application-specific messages
-- `request.json`: Request validation messages
-- `response.json`: Response messages
-
-Here are some real examples from the language files:
-
-**src/languages/en/auth.json:**
 ```json
+// src/languages/en/auth.json
 {
     "login": {
         "success": "Login success",
         "error": {
             "notFound": "Email not found",
-            "passwordNotMatch": "Password not match",
-            "inactive": "User inactive"
+            "passwordNotMatch": "Password not match"
         }
-    },
-    "refresh": "Refresh token success",
-    "signUp": {
-        "success": "Sign up success"
-    },
-    "signUpAdmin": {
-        "success": "Sign up admin success"
-    },
-    "info": "Auth info success"
-}
-```
-
-**src/languages/en/request.json:**
-```json
-{
-    "validationInvalid": "Request validation error",
-    "validationValidError": "Request data invalid",
-    "validationDocumentNotFound": "File needed",
-    "validationFileNotFound": "File needed",
-    "file": {
-        "maxFiles": "Files must be less than {max}",
-        "maxSize": "File {file} too large, maximal size {maxSize}",
-        "type": "File {file} must be of types {types}"
     }
 }
-```
 
-**src/languages/en/response.json:**
-```json
+// src/languages/en/request.json
 {
-    "default": "Response received",
-    "success": "Request success"
+    "validationInvalid": "Request validation error",
+    "file": {
+        "maxFiles": "Files must be less than {max}"
+    }
 }
 ```
 
@@ -168,138 +135,71 @@ export class SampleService {
 ### Translation with Variables
 
 ```typescript
+// If 'hello.user' is defined as 'Hello, {name}!' 
 const message = this.messageService.get('hello.user', { name: 'John' });
-// If 'hello.user' is defined as 'Hello, {name}' it will return 'Hello, John'
+// Output: "Hello, John!"
 ```
 
 ### Request Validation
 
-The `MessageService` provides functionality to transform validation errors from class-validator into localized error messages:
+Transform validation errors to localized messages:
 
 ```typescript
 const validationErrors = this.messageService.getValidationMessage(errors);
-// Transforms validation errors to localized messages
 ```
-
-This method accepts errors that follow the interface from class-validator's `ValidationError` and transforms them into a structured format with translated messages. The method handles both simple validation errors and nested validation structures. 
 
 ### Import Validation Messages
 
-The `setValidationImportMessage` method is specifically designed to handle validation errors during file import operations. This is commonly used when validating CSV files being imported into the system.
+Handle file import validation errors:
 
 ```typescript
-const importErrors = this.messageService.setValidationImportMessage(errors, options);
-// Transforms import validation errors to localized messages
+const importErrors = this.messageService.setValidationImportMessage(errors, {
+    customLanguage: 'en'
+});
 ```
-
-This method takes import validation errors that conform to the `IMessageValidationImportErrorParam` interface, which extends the standard class-validator structure but includes additional properties specific to file imports, such as row numbers and field identifiers.
-
-The interface for import validation errors follows this structure:
-
-```typescript
-interface IMessageValidationImportErrorParam {
-    row: number;
-    file?: string;
-    errors: ValidationError[];
-}
-```
-
-This functionality is particularly useful for providing detailed, localized feedback when processing bulk imports, helping users to identify and correct errors in their imported data.
 
 ## Integration with Error Handling
 
-The i18n system is tightly integrated with the error handling mechanism. All exception filters in the application use the `MessageService` to translate error messages based on the detected language from request headers.
-
-The application uses several specialized exception filters, each handling different types of errors:
-
-- **AppHttpFilter**: Handles standard HTTP exceptions
-- **AppValidationFilter**: Processes validation errors
-- **AppValidationImportFilter**: Manages file import validation errors
-- **AppGeneralFilter**: Catches all unhandled exceptions
-
-Each filter extracts the language from the request and uses the `MessageService` to localize error messages:
+Exception filters use the `MessageService` to translate error messages:
 
 ```typescript
 // Example from AppHttpFilter
 async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
-    const ctx: HttpArgumentsHost = host.switchToHttp();
-    const request: IRequestApp = ctx.getRequest<IRequestApp>();
-    
     // Get language from request
     const xLanguage: string = request.__language ?? 
         this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
     
-    // Translate the error message
+    // Translate error message
     const message: string = this.messageService.setMessage(messagePath, {
         customLanguage: xLanguage,
         properties: messageProperties,
     });
     
-    // Return localized error response
-    const responseBody: IAppException = {
+    // Return localized response
+    const responseBody = {
         statusCode,
         message,
         _metadata: metadata,
-        data,
     };
-    
-    // ...rest of the handler
 }
 ```
-
-When throwing exceptions in your controllers or services, you can specify message keys that will be translated:
-
-```typescript
-// Throwing an exception with translated message and variables
-throw new BadRequestException({
-    statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS,
-    message: 'user.error.emailExists',
-    _metadata: {
-        customProperty: {
-            messageProperties: {
-                email: 'test@example.com'
-            }
-        },
-    }
-});
-```
-
-The error filters will use the specified message key to look up the appropriate translation in the language files based on the client's preferred language.
-
-For internal server errors, the application typically uses:
-
-```typescript
-throw new InternalServerErrorException({
-    statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
-    message: 'http.serverError.internalServerError',
-    _error: err.message,
-});
-```
-
-The integration with internationalization ensures that all error messages are consistent and properly localized regardless of where they originate in the application.
 
 ## Integration with Response Decorator
 
-The Response decorator integrates with the i18n system by using message keys:
+The Response decorator supports i18n message keys:
 
 ```typescript
-@Response('user.create')
+@Response('user.create') // Key from language files
 @Post('/')
 async create(@Body() dto: CreateUserDto): Promise<IResponse> {
     const user = await this.userService.create(dto);
-    return user;
+    return { data: user };
 }
 ```
 
-Here, `'user.create'` is a key in the language files that will be translated based on the request's language.
-
 ## Custom Properties
 
-Both error filters and response decorators support custom properties that can modify the behavior of the response.
-
 ### in Error Filters
-
-Error filters can include custom properties to override default behavior:
 
 ```typescript
 throw new BadRequestException({
@@ -307,9 +207,7 @@ throw new BadRequestException({
     message: 'user.error.emailExists',
     _metadata: {
         customProperty: {
-            messageProperties: {
-                // Some extra information
-            }
+            messageProperties: { email: 'test@example.com' }
         },
     }
 });
@@ -317,125 +215,59 @@ throw new BadRequestException({
 
 ### in Response Decorators
 
-Response decorators can also include custom properties:
-
 ```typescript
-@Response('user.create')
-@Post('/')
-async create(@Body() dto: CreateUserDto): Promise<IResponse> {
-    const user = await this.userService.create(dto);
-    
-    return {
-        data: user,
-        _metadata: {
-            customProperty: {
-                messageProperties: {
-                    // Some extra information
-                }
-            },
-        }
-    };
-}
+return {
+    data: user,
+    _metadata: {
+        customProperty: {
+            messageProperties: { /* variables */ }
+        },
+    }
+};
 ```
 
 ## Adding a New Language
 
-To add a new language to the application:
+To add a new language:
 
-1. Create a new directory under `src/languages` with the language code (e.g., `fr` for French)
-2. Copy all JSON files from an existing language directory (e.g., `en`)
-3. Translate all message values in the copied JSON files
-4. Add the new language code to the `ENUM_MESSAGE_LANGUAGE` enum in the configuration
-5. Restart the application to load the new language files
+1. Create a directory under `src/languages/` with the language code (e.g., `fr`)
+2. Copy and translate JSON files from an existing language directory
+3. Add the language code to `ENUM_MESSAGE_LANGUAGE` enum
+4. Restart the application
 
 ## Examples
 
 ### Translating Simple Messages
 
-**Language File (en/common.json):**
-```json
+```typescript
+// Language file (en/common.json)
 {
     "welcome": "Welcome to our application",
     "greeting": "Hello, {name}!"
 }
-```
 
-**Usage in Service:**
-```typescript
-@Injectable()
-export class GreetingService {
-    constructor(private readonly messageService: MessageService) {}
-
-    getWelcome(): string {
-        return this.messageService.get('common.welcome');
-    }
-
-    greetUser(name: string): string {
-        return this.messageService.get('common.greeting', { name });
-    }
-}
+// Usage
+const welcome = this.messageService.get('common.welcome');
+const greeting = this.messageService.get('common.greeting', { name: 'User' });
 ```
 
 ### Working with Error Messages
 
-**Language File (en/user.json):**
-```json
-{
-    "error": {
-        "notFound": "User not found",
-        "alreadyExists": "User with email {email} already exists"
-    }
-}
-```
-
-**Usage in Controller:**
 ```typescript
-@Controller('users')
-export class UserController {
-    constructor(
-        private readonly userService: UserService
-    ) {}
-
-    @Get(':id')
-    async findById(@Param('id') id: string): Promise<IResponse> {
-        const user = await this.userService.findById(id);
-        if (!user) {
-            throw new NotFoundException({
-                message: 'user.error.notFound',
-                statusCode: ENUM_USER_STATUS_CODE.USER_NOT_FOUND
-            });
-        }
-        return user;
-    }
-}
+// When throwing an exception
+throw new NotFoundException({
+    message: 'user.error.notFound', // Will be translated
+    statusCode: ENUM_USER_STATUS_CODE.USER_NOT_FOUND
+});
 ```
 
 ### Using with Response Decorator
 
-**Language File (en/user.json):**
-```json
-{
-    "create": "User successfully created",
-    "update": "User successfully updated"
-}
-```
-
-**Usage in Controller:**
 ```typescript
-@Controller('users')
-export class UserController {
-    constructor(private readonly userService: UserService) {}
-
-    @Response('user.create')
-    @Post('/')
-    async create(@Body() dto: CreateUserDto): Promise<IResponse> {
-        const user = await this.userService.create(dto);
-        
-        return {
-            data: user,
-        };
-    }
+@Response('user.create') // Will be translated to "User successfully created"
+@Post('/')
+async create(@Body() dto: CreateUserDto): Promise<IResponse> {
+    const user = await this.userService.create(dto);
+    return { data: user };
 }
 ```
-
-This response will include the translated "User successfully created" message in the language specified by the `x-custom-lang` header.

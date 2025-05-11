@@ -206,7 +206,10 @@ export class ResetPasswordService implements IResetPasswordService {
         repository: ResetPasswordDoc,
         options?: IDatabaseSaveOptions
     ): Promise<ResetPasswordDoc> {
-        return this.resetPasswordRepository.delete(repository, options);
+        return this.resetPasswordRepository.delete(
+            { _id: repository._id },
+            options
+        );
     }
 
     async reset(

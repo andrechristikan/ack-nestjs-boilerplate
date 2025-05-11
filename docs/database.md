@@ -339,15 +339,19 @@ export class UserEntity extends DatabaseEntityBase {
     // Field definitions with decorators for index configuration and validation
     @DatabaseProp({
         required: true,
+        unique: true,
         index: true,
-        unique: true, // Ensures email uniqueness
+        trim: true,
         type: String,
+        maxlength: 100,
     })
     email: string;
 
     // Other fields with validation
     @DatabaseProp({
         required: true,
+        index: true,
+        trim: true,
         type: String,
     })
     firstName: string;

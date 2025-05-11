@@ -13,6 +13,7 @@ The File Module provides comprehensive file handling capabilities across the app
     - [Single File Upload](#single-file-upload)
     - [Multiple Files Upload](#multiple-files-upload)
     - [Multiple Fields Upload](#multiple-fields-upload)
+    - [File Part Number](#file-part-number)
   - [Pipes](#pipes)
     - [Required Validation](#required-validation)
     - [Type Validation](#type-validation)
@@ -28,21 +29,18 @@ The File Module provides comprehensive file handling capabilities across the app
 
 ## Service
 
-The `FileService` implements `IFileService` and provides methods for reading and writing Excel and CSV files.
+The `FileService` implements `IFileService` and provides methods for reading and writing Excel and CSV files:
 
 ```typescript
 @Injectable()
 export class FileService implements IFileService {
     // CSV operations
-    writeCsv<T = Record<string, string | number | Date>>(rows: IFileRows<T>): Buffer;
-    writeCsvFromArray<T = Record<string, string | number | Date>>(rows: T[][]): Buffer;
-    readCsv<T = Record<string, string | number | Date>>(file: Buffer): IFileRows<T>;
-    readCsvFromString<T = Record<string, string | number | Date>>(file: string): IFileRows<T>;
+    writeCsv<T>(rows: IFileRows<T>): Buffer;
+    readCsv<T>(file: Buffer): IFileRows<T>;
     
     // Excel operations
-    writeExcel<T = Record<string, string | number | Date>>(rows: IFileRows<T>[]): Buffer;
-    writeExcelFromArray<T = Record<string, string | number | Date>>(rows: T[][]): Buffer;
-    readExcel<T = Record<string, string | number | Date>>(file: Buffer): IFileRows<T>[];
+    writeExcel<T>(rows: IFileRows<T>[]): Buffer;
+    readExcel<T>(file: Buffer): IFileRows<T>[];
 }
 ```
 
@@ -64,23 +62,9 @@ export enum ENUM_FILE_MIME_IMAGE {
     PNG = 'image/png',
 }
 
-export enum ENUM_FILE_MIME_DOCUMENT {
-    PDF = 'application/pdf',
-}
-
 export enum ENUM_FILE_MIME_EXCEL {
     XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     CSV = 'text/csv',
-}
-
-export enum ENUM_FILE_MIME_AUDIO {
-    MPEG = 'audio/mpeg',
-    M4A = 'audio/m4a',
-    MP3 = 'audio/mp3',
-}
-
-export enum ENUM_FILE_MIME_VIDEO {
-    MP4 = 'video/mp4',
 }
 ```
 
@@ -103,8 +87,6 @@ export enum ENUM_FILE_STATUS_CODE_ERROR {
     MAX_SIZE = 5021,
     MIME_INVALID = 5022,
     MAX_FILES = 5023,
-    VALIDATION_DTO = 5024,
-    REQUIRED_EXTRACT_FIRST = 5025,
 }
 ```
 
@@ -114,8 +96,8 @@ export enum ENUM_FILE_STATUS_CODE_ERROR {
 
 ```typescript
 @FileUploadSingle({
-    field: 'file',  // Field name in form data
-    fileSize: FILE_SIZE_IN_BYTES  // Optional file size limit
+    field: 'file',
+    fileSize: FILE_SIZE_IN_BYTES
 })
 ```
 
@@ -123,9 +105,9 @@ export enum ENUM_FILE_STATUS_CODE_ERROR {
 
 ```typescript
 @FileUploadMultiple({
-    field: 'files',  // Field name in form data
-    maxFiles: 5,      // Maximum number of files allowed
-    fileSize: FILE_SIZE_IN_BYTES  // Optional file size limit
+    field: 'files',
+    maxFiles: 5,
+    fileSize: FILE_SIZE_IN_BYTES
 })
 ```
 
@@ -137,7 +119,7 @@ export enum ENUM_FILE_STATUS_CODE_ERROR {
         { field: 'avatar', maxFiles: 1 },
         { field: 'documents', maxFiles: 5 }
     ],
-    { fileSize: FILE_SIZE_IN_BYTES }  // Optional file size limit
+    { fileSize: FILE_SIZE_IN_BYTES }
 )
 ```
 
@@ -177,7 +159,7 @@ The `FileTypePipe` validates that uploaded files match the expected MIME types:
 async uploadImage(
     @UploadedFile(
         new FileRequiredPipe(),
-        new FileTypePipe([ENUM_FILE_MIME.JPG, ENUM_FILE_MIME.PNG])
+        new FileTypePipe([ENUM_FILE_MIME_IMAGE.JPG, ENUM_FILE_MIME_IMAGE.PNG])
     ) file: IFile
 ) {
     // Process image file
@@ -201,7 +183,9 @@ async import(
         new FileExcelParsePipe<RecordType>()
     ) file: IFileRows<RecordType>[]
 ) {
-    // Process extracted data
+    // Implementation
+    const rows = file[0].data;
+    // Process rows
 }
 ```
 
@@ -214,12 +198,12 @@ The `FileExcelValidationPipe` validates the extracted data against a DTO:
 async import(
     @UploadedFile(
         new FileRequiredPipe(),
-        new FileTypePipe([ENUM_FILE_MIME_EXCEL.XLSX, ENUM_FILE_MIME_EXCEL.CSV]),
+        new FileTypePipe([ENUM_FILE_MIME_EXCEL.XLSX]),
         new FileExcelParsePipe<RecordType>(),
         new FileExcelValidationPipe<ValidatedRecordType>(RecordDto)
     ) file: IFileRows<ValidatedRecordType>[]
 ) {
-    // Process validated data
+    // Implementation with validated data
 }
 ```
 
@@ -231,19 +215,14 @@ The module integrates with the Response module to handle Excel/CSV file response
 
 ```typescript
 @ResponseFileExcel({
-    type: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX // or ENUM_HELPER_FILE_EXCEL_TYPE.CSV
+    type: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX
 })
 @Get('export')
 async export(): Promise<IResponseFileExcel> {
     const data = await this.service.getData();
     
     return {
-        data: [
-            {
-                data: data,
-                sheetName: 'Sheet1'
-            }
-        ]
+        data: [{ data, sheetName: 'Sheet1' }]
     };
 }
 ```
@@ -260,10 +239,10 @@ export class FileSingleDto {
     @ApiProperty({
         type: 'string',
         format: 'binary',
-        description: 'Single file',
     })
     file: IFile;
 }
+
 
 // For multiple file uploads
 export class FileMultipleDto {
@@ -288,7 +267,6 @@ async uploadFile(
         new FileTypePipe([ENUM_FILE_MIME_IMAGE.JPG, ENUM_FILE_MIME_IMAGE.PNG])
     ) file: IFile
 ) {
-    // Process the uploaded file
     return { filename: file.originalname, size: file.size };
 }
 ```
@@ -306,7 +284,6 @@ async importData(
         new FileExcelValidationPipe<RecordDto>(RecordDto)
     ) file: IFileRows<RecordDto>[]
 ) {
-    // Process the validated data
     return await this.service.importData(file);
 }
 ```
@@ -314,20 +291,12 @@ async importData(
 ### Excel Export
 
 ```typescript
-@ResponseFileExcel({
-    type: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX
-})
+@ResponseFileExcel({ type: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX })
 @Get('export')
 async exportData(): Promise<IResponseFileExcel> {
     const data = await this.service.getData();
-    
     return {
-        data: [
-            {
-                data: data,
-                sheetName: 'Data Export'
-            }
-        ]
+        data: [{ data, sheetName: 'Data Export' }]
     };
 }
 ```

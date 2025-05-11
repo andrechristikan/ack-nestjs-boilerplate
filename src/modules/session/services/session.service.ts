@@ -49,8 +49,8 @@ export class SessionService implements ISessionService {
     ) {
         this.refreshTokenExpiration = this.configService.get<number>(
             'auth.jwt.refreshToken.expirationTime'
-        );
-        this.appName = this.configService.get<string>('app.name');
+        )!;
+        this.appName = this.configService.get<string>('app.name')!;
     }
 
     async findAll(
@@ -151,7 +151,7 @@ export class SessionService implements ISessionService {
         const create = new SessionEntity();
         create.user = user;
         create.hostname = request.hostname;
-        create.ip = request.ip;
+        create.ip = request.ip ?? '0.0.0.0';
         create.protocol = request.protocol;
         create.originalUrl = request.originalUrl;
         create.method = request.method;
@@ -179,9 +179,9 @@ export class SessionService implements ISessionService {
     }
 
     async findLoginSession(_id: string): Promise<string> {
-        return this.cacheManager.get<string>(
+        return (await this.cacheManager.get<string>(
             `${this.appName}:${SessionLoginPrefix}:${_id}`
-        );
+        ))!;
     }
 
     async setLoginSession(user: IUserDoc, session: SessionDoc): Promise<void> {

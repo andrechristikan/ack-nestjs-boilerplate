@@ -331,13 +331,13 @@ export class UserAdminController {
             return {
                 data: { _id: created._id },
             };
-        } catch (err: any) {
+        } catch (err: unknown) {
             await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
@@ -395,13 +395,13 @@ export class UserAdminController {
             );
 
             await this.databaseService.commitTransaction(session);
-        } catch (err: any) {
+        } catch (err: unknown) {
             await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
@@ -463,13 +463,13 @@ export class UserAdminController {
                     },
                 },
             };
-        } catch (err: any) {
+        } catch (err: unknown) {
             await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }

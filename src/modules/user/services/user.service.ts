@@ -142,7 +142,7 @@ export class UserService implements IUserService {
         const pipeline: PipelineStage[] =
             this.createRawQueryFindAllWithRoleAndCountry(find);
 
-        return this.userRepository.findAllAggregate<PipelineStage, IUserEntity>(
+        return this.userRepository.findAllAggregate<IUserEntity>(
             pipeline,
             options
         );
@@ -155,10 +155,7 @@ export class UserService implements IUserService {
         const pipeline: PipelineStage[] =
             this.createRawQueryFindAllWithRoleAndCountry(find);
 
-        return this.userRepository.getTotalAggregate<PipelineStage>(
-            pipeline,
-            options
-        );
+        return this.userRepository.getTotalAggregate(pipeline, options);
     }
 
     async findOneById(
@@ -592,7 +589,7 @@ export class UserService implements IUserService {
     }
 
     async join(repository: UserDoc): Promise<IUserDoc> {
-        return this.userRepository.join(repository, this.userRepository._join);
+        return this.userRepository.join(repository, this.userRepository._join!);
     }
 
     createRandomFilenamePhoto(

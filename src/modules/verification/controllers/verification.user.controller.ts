@@ -1,3 +1,4 @@
+import { ENUM_SEND_SMS_PROCESS } from '@app/modules/sms/enums/sms.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
     BadRequestException,
@@ -23,10 +24,7 @@ import {
     AuthJwtPayload,
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { IAuthJwtAccessTokenPayload } from 'src/modules/auth/interfaces/auth.interface';
-import {
-    ENUM_SEND_EMAIL_PROCESS,
-    ENUM_SEND_SMS_PROCESS,
-} from 'src/modules/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { PolicyRoleProtected } from 'src/modules/policy/decorators/policy.decorator';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { UserProtected } from 'src/modules/user/decorators/user.decorator';
@@ -187,13 +185,13 @@ export class VerificationUserController {
             return {
                 data: mapped,
             };
-        } catch (err: any) {
+        } catch (err: unknown) {
             await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
@@ -263,13 +261,13 @@ export class VerificationUserController {
             return {
                 data: mapped,
             };
-        } catch (err: any) {
+        } catch (err: unknown) {
             await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
@@ -341,13 +339,13 @@ export class VerificationUserController {
             );
 
             return;
-        } catch (err: any) {
+        } catch (err: unknown) {
             await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
@@ -423,13 +421,13 @@ export class VerificationUserController {
             );
 
             return;
-        } catch (err: any) {
+        } catch (err: unknown) {
             await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
