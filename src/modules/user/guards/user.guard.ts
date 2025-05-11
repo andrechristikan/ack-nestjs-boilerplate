@@ -50,6 +50,11 @@ export class UserGuard implements CanActivate {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
                 message: 'auth.error.passwordExpired',
             });
+        } else if (userWithRole.verification.email !== true) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_NOT_VERIFIED,
+                message: 'user.error.emailNotVerified',
+            });
         }
 
         request.__user = userWithRole;

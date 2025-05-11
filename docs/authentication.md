@@ -1,4 +1,4 @@
-# Overview
+# Authentication
 
 This document covers the authentication system, including JWT authentication, API key authentication, social authentication, and session management.
 

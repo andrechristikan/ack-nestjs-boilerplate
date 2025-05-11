@@ -1,4 +1,4 @@
-# Overview
+# Pagination
 
 The Pagination module provides a standardized approach to implementing data pagination throughout the application. It offers a set of tools for handling page-based data retrieval, sorting, filtering, and search functionality. The module is designed to work seamlessly with the [Response module](response.md) to provide consistent API responses for paginated data.
 
@@ -18,17 +18,17 @@ The Pagination module provides a standardized approach to implementing data pagi
 
 ## Module
 
-The Pagination module is a global module.
+The Pagination module is a global module that is automatically imported and configured in the application. It provides a comprehensive set of tools for pagination, filtering, and ordering.
 
 ### Services
 
 - **PaginationService**: Core service that handles page calculation, offset calculation, and order processing.
   - `offset(page, perPage)`: Calculates the offset based on page number and page size
   - `totalPage(totalData, perPage)`: Calculates the total number of pages
-  - `page(page)`: Validates and normalizes the page number
-  - `perPage(perPage)`: Validates and normalizes the items per page
+  - `page(page)`: Validates and normalizes the page number (maximum: 20)
+  - `perPage(perPage)`: Validates and normalizes the items per page (maximum: 100)
   - `order(orderBy, orderDirection, availableOrderBy)`: Processes ordering parameters
-  - `search(searchValue, availableSearch)`: Processes search parameters
+  - `search(searchValue, availableSearch)`: Processes search parameters and returns a MongoDB query object
 
 ### Decorators
 
@@ -99,7 +99,7 @@ The pagination pipes transform raw HTTP query parameters into MongoDB query oper
 - **PaginationFilterNinEnumPipe**: Creates enum array exclusion queries using MongoDB's `$nin` (not in) operator
 - **PaginationFilterDateBetweenPipe**: Generates date range queries using MongoDB's `$gte` and `$lte` operators
 
-Each pipe adds its processed parameters to the request instance, making them available throughout the request lifecycle, and returns the appropriate MongoDB query object that can be merged with other filters.
+Each pipe adds its processed parameters to the request instance through the `__pagination` property, making them available throughout the request lifecycle, and returns the appropriate MongoDB query object that can be merged with other filters.
 
 ### DTOs
 
@@ -107,7 +107,7 @@ Each pipe adds its processed parameters to the request instance, making them ava
   - `_search`: Search criteria record
   - `_limit`: Number of items per page
   - `_offset`: Offset for pagination
-  - `_order`: Order specifications
+  - `_order`: Order specifications (field-direction mapping)
   - `_availableOrderBy`: Array of fields available for ordering
   - `_availableOrderDirection`: Array of available order directions
   - `perPage`: Number of items per page (optional)
@@ -177,6 +177,19 @@ async list(
     };
 }
 ```
+
+### Database Integration
+
+The pagination module integrates seamlessly with the database module through the `DatabaseService`. Each pagination filter decorator internally uses the corresponding database helper method:
+
+- `@PaginationQueryFilterEqual` uses `databaseService.filterEqual()`
+- `@PaginationQueryFilterNotEqual` uses `databaseService.filterNotEqual()`
+- `@PaginationQueryFilterStringContain` uses `databaseService.filterContain()`
+- `@PaginationQueryFilterInBoolean` and `@PaginationQueryFilterInEnum` use `databaseService.filterIn()`
+- `@PaginationQueryFilterNinEnum` uses `databaseService.filterNin()`
+- `@PaginationQueryFilterDateBetween` uses `databaseService.filterDateBetween()`
+
+The search functionality in `PaginationService` uses the `DatabaseHelperQueryContain` decorator to create MongoDB `$regex` queries with case-insensitive matching for the specified search fields.
 
 ### Advanced Filtering
 

@@ -65,11 +65,11 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
 
 ## TODO
 
-- [ ] Make email verification required (high priority)
-- [ ] Make sign up from and login restrict for security purpose (high priority)
-- [ ] Move some function in service layer into repository module, because a bit wrong implementation (high priority)
-- [ ] 2FA Feats (high priority)
-- [ ] Unit test (medium priority)
+- [x] Make email verification required (high priority)
+- [ ] Improve eslint rule for better code quality (high priority, in version 8)
+- [ ] Move some function in service layer into repository module, because a bit wrong implementation (high priority, in version 8)
+- [ ] 2FA Feats (high priority, in version 8)
+- [ ] Unit test (medium priority, in version 8)
 - [ ] Export Module in Background using bullmq (medium priority)
 - [ ] Add Github SSO (low priority)
 - [ ] Privacy Policy Module (versioning, lowest priority)

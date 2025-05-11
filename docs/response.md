@@ -1,55 +1,115 @@
-# Overview
+# Response
 
-The response system in ACK NestJS Boilerplate provides a standardized way to structure API responses throughout the application. It ensures that all responses follow a consistent format, which improves API usability and makes integration easier for frontend developers.
-
-It provides several key features:
-
-1. **Consistent Response Structure**: All API responses follow the same JSON structure with standardized fields.
-2. **Metadata Enrichment**: Automatically includes metadata like timestamps, API version, and language information.
-3. **Internationalization Support**: Integrates with the message service to provide localized response messages.
-4. **Pagination Support**: Built-in pagination response format for list endpoints.
-5. **File Export**: Support for exporting data in Excel or CSV formats.
-6. **Response Caching**: Optional response caching capabilities.
-
-The response system consists of interceptors that transform controller return values into standardized response objects, decorators that simplify controller implementation, and DTOs that define the response structure.
+The Response in ACK NestJS Boilerplate provides a standardized way to structure API responses throughout the application. It ensures that all responses follow a consistent format, which improves API usability and makes integration easier for frontend developers.
 
 ## Table of Contents
 
 - [Overview](#overview)
   - [Table of Contents](#table-of-contents)
-  - [Modules](#modules)
-    - [Types and DTOs](#types-and-dtos)
-      - [Standard Response](#standard-response)
-      - [Paging Response](#paging-response)
-      - [File Response](#file-response)
-    - [Interceptors](#interceptors)
+  - [Key Features](#key-features)
+  - [Components](#components)
+    - [Response DTOs](#response-dtos)
+    - [Response Interfaces](#response-interfaces)
     - [Decorators](#decorators)
-  - [Examples](#examples)
+    - [Interceptors](#interceptors)
+  - [Response Types](#response-types)
+    - [Standard Response](#standard-response)
+    - [Pagination Response](#pagination-response)
+    - [File Response](#file-response)
+  - [Usage Examples](#usage-examples)
     - [Standard Response Example](#standard-response-example)
-    - [Paging Response Example](#paging-response-example)
-    - [File Export Response Example](#file-export-response-example)
+    - [Pagination Response Example](#pagination-response-example)
+    - [File Response Example](#file-response-example)
     - [Response Caching Example](#response-caching-example)
       - [Basic Caching](#basic-caching)
-      - [Advanced Caching Options](#advanced-caching-options)
-  - [Internationalization](#internationalization)
-  - [Custom Response Metadata](#custom-response-metadata)
+  - [Custom Response Properties](#custom-response-properties)
 
-## Modules
+## Key Features
 
-### Types and DTOs
+1. **Consistent Response Structure**: All API responses follow the same JSON structure with standardized fields, making it easier for clients to consume the API.
+2. **Metadata Enrichment**: Automatically includes metadata like timestamps, API version, language information, and more.
+3. **Internationalization Support**: Integrates with the message service to provide localized response messages.
+4. **Pagination Support**: Built-in pagination response format for list endpoints, including metadata about the pagination.
+5. **File Export**: Support for exporting data in Excel or CSV formats with appropriate headers and content types.
+6. **Response Caching**: Optional response caching capabilities with configurable TTL and custom cache keys.
+7. **Customizable Status Codes**: Ability to customize HTTP status codes and message responses for each endpoint.
 
-The boilerplate defines both response data structures (DTOs) and response formats (Types) to ensure consistent API responses:
+## Components
 
-#### Standard Response
+The Response System in `/src/common/response/` is structured around these components:
 
-- **ResponseDto**: Base DTO for all responses
-  - Contains `statusCode`, `message`, `_metadata`, and optional `data` fields
-  - Used for single object responses
+### Response DTOs
 
-- **ResponseMetadataDto**: Contains metadata about the response
-  - Includes `language`, `timestamp`, `timezone`, `path`, `version`, and `repoVersion`
+DTOs (Data Transfer Objects) define the structure of responses:
 
-Standard responses are used for single object responses or simple operations. The structure is:
+1. **ResponseDto** (`/dtos/response.dto.ts`): 
+   - Base DTO for all standard responses
+   - Contains `statusCode`, `message`, `_metadata`, and optional `data` fields
+
+2. **ResponseMetadataDto** (`/dtos/response.dto.ts`):
+   - Contains metadata like `language`, `timestamp`, `timezone`, `path`, `version`, and `repoVersion`
+
+3. **ResponsePagingDto** (`/dtos/response.paging.dto.ts`):
+   - Extends ResponseDto for paginated responses
+   - Includes additional pagination metadata
+
+### Response Interfaces
+
+Interfaces define the contract for controller responses and decorator options:
+
+1. **IResponse** (`/interfaces/response.interface.ts`):
+   - Base interface for standard responses
+   - Contains optional `_metadata` and `data` properties
+
+2. **IResponsePaging** (`/interfaces/response.interface.ts`):
+   - Interface for paginated responses
+   - Contains `_pagination` with metadata about pagination and an array of `data`
+
+3. **IResponseFileExcel** (`/interfaces/response.interface.ts`):
+   - Interface for file export responses
+   - Contains `data` array for Excel/CSV export
+
+4. **IResponseOptions** and **IResponseFileExcelOptions** (`/interfaces/response.interface.ts`):
+   - Configuration options for response decorators
+   - Includes caching options, message properties, and file type settings
+
+### Decorators
+
+Decorators simplify controller implementation by applying interceptors and metadata:
+
+1. **@Response()** (`/decorators/response.decorator.ts`):
+   - For standard responses
+   - Takes a message path and optional configuration
+
+2. **@ResponsePaging()** (`/decorators/response.decorator.ts`):
+   - For paginated responses
+   - Takes a message path and optional configuration
+
+3. **@ResponseFileExcel()** (`/decorators/response.decorator.ts`):
+   - For file export responses
+   - Takes options including file type (CSV or XLSX)
+
+### Interceptors
+
+Interceptors transform controller return values into standardized response objects:
+
+1. **ResponseInterceptor** (`/interceptors/response.interceptor.ts`):
+   - Transforms basic responses to follow the standardized format
+   - Adds metadata including language, timestamps, version info
+
+2. **ResponsePagingInterceptor** (`/interceptors/response.paging.interceptor.ts`):
+   - Specialized for handling paginated responses
+   - Adds pagination metadata to the response
+
+3. **ResponseFileExcelInterceptor** (`/interceptors/response.file.interceptor.ts`):
+   - Transforms responses into downloadable Excel or CSV files
+   - Sets appropriate HTTP headers for file downloads
+
+## Response Types
+
+### Standard Response
+
+The standard response format follows this structure:
 
 ```json
 {
@@ -66,25 +126,14 @@ Standard responses are used for single object responses or simple operations. Th
   "data": {
     "id": "5f9d1e7c9d3e2c001c8f0b1e",
     "name": "John Doe",
-    "email": "john.doe@example.com",
-    "role": {
-      "id": "5f9d1e7c9d3e2c001c8f0b1d",
-      "name": "User"
-    }
+    "email": "john.doe@example.com"
   }
 }
 ```
 
-#### Paging Response
+### Pagination Response
 
-- **ResponsePagingDto**: Extended response for paginated data
-  - Includes all fields from ResponseDto plus pagination metadata
-  - Contains an array of data objects
-  
-- **ResponsePagingMetadataDto**: Extended metadata for paginated responses
-  - Includes pagination information like `page`, `perPage`, `total`, etc.
-
-Paging responses are used for list endpoints with pagination. The structure is:
+Pagination responses extend the standard format with pagination information:
 
 ```json
 {
@@ -122,45 +171,15 @@ Paging responses are used for list endpoints with pagination. The structure is:
 }
 ```
 
-#### File Response
+### File Response
 
-File responses are used to export data in Excel or CSV format. The response is a file download rather than JSON. This type doesn't have a specific DTO representation as it returns a file stream.
+File responses don't return JSON but instead return a file download with appropriate headers:
 
-### Interceptors
+- For XLSX files: `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- For CSV files: `Content-Type: text/csv`
+- Both types include a `Content-Disposition` header for downloading with a timestamp-based filename
 
-The system includes three main interceptors:
-
-- **ResponseInterceptor**: Transforms controller responses into a standardized ResponseDto format
-  - Adds metadata like language, timestamp, API version
-  - Handles message translation using the message service
-  
-- **ResponsePagingInterceptor**: Specialized interceptor for paginated responses
-  - Extends ResponseInterceptor with pagination metadata
-  - Handles pagination-specific structure
-
-- **ResponseFileExcelInterceptor**: Handles file exports in Excel or CSV format
-  - Transforms data into downloadable files
-  - Sets appropriate HTTP headers for file downloads
-
-### Decorators
-
-Decorators simplify the implementation of controllers by abstracting away the complexity of response transformation:
-
-- **@Response()**: Basic response decorator for standard responses
-  - Parameters:
-    - `messagePath`: Path to the message in the language file
-    - `options`: Optional configuration including message properties and caching
-  
-- **@ResponsePaging()**: Decorator for paginated responses
-  - Parameters:
-    - `messagePath`: Path to the message in the language file
-    - `options`: Optional configuration including message properties and caching
-  
-- **@ResponseFileExcel()**: Decorator for file export responses
-  - Parameters:
-    - `options`: Configuration for file export including type (CSV or XLSX)
-
-## Examples
+## Usage Examples
 
 ### Standard Response Example
 
@@ -168,30 +187,28 @@ Decorators simplify the implementation of controllers by abstracting away the co
 import { Controller, Get } from '@nestjs/common';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { UserProfileResponseDto } from './dtos/response/user.profile.response.dto';
+import { UserProfileDto } from './dtos/user.profile.dto';
 
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Response('user.getProfile')
+  @Response('user.profile') // 'user.profile' is the message path in language files
   @Get('/profile')
-  async getProfile(): Promise<IResponse<UserProfileResponseDto>> {
+  async getProfile(): Promise<IResponse<UserProfileDto>> {
     const user = await this.userService.findById('userId');
-    const mappedUser = this.userService.mapProfile(user);
     
-    return { data: mappedUser };
+    return { data: user };
   }
 }
 ```
 
-### Paging Response Example
+### Pagination Response Example
 
 ```typescript
 import { Controller, Get, Query } from '@nestjs/common';
 import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
-import { UserListResponseDto } from './dtos/response/user.list.response.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 
 @Controller('users')
@@ -204,9 +221,8 @@ export class UserController {
   @ResponsePaging('user.list')
   @Get('/')
   async findAll(
-    @Query()
-    query: Record<string, any>
-  ): Promise<IResponsePaging<UserListResponseDto>> {
+    @Query() query: Record<string, any>
+  ): Promise<IResponsePaging<UserListDto>> {
     const pagination = this.paginationService.create(query);
     const { data, totalData } = await this.userService.findAll(pagination);
     const totalPage = this.paginationService.totalPage(totalData, pagination.perPage);
@@ -222,10 +238,10 @@ export class UserController {
 }
 ```
 
-### File Export Response Example
+### File Response Example
 
 ```typescript
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { ResponseFileExcel } from 'src/common/response/decorators/response.decorator';
 import { IResponseFileExcel } from 'src/common/response/interfaces/response.interface';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/enums/helper.enum';
@@ -234,17 +250,20 @@ import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/enums/helper.enum
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @ResponseFileExcel({ type: ENUM_HELPER_FILE_EXCEL_TYPE.CSV })
+  @ResponseFileExcel({ type: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX })
   @Get('/export')
   async export(): Promise<IResponseFileExcel> {
     const users = await this.userService.findAll();
-    const data = users.map(user => ({
-      name: user.name,
-      email: user.email,
-      role: user.role.name
+    
+    // Format data for Excel export 
+    const formattedData = users.map(user => ({
+      ID: user.id,
+      Name: user.name,
+      Email: user.email,
+      CreatedAt: user.createdAt
     }));
     
-    return { data: [data] };
+    return { data: [formattedData] };
   }
 }
 ```
@@ -258,110 +277,35 @@ The boilerplate supports response caching through the `@nestjs/cache-manager` in
 Simple boolean flag to enable caching with default TTL settings from your Redis configuration:
 
 ```typescript
-import { Controller, Get } from '@nestjs/common';
-import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { UserProfileResponseDto } from './dtos/response/user.profile.response.dto';
+// Basic caching with default TTL
+@Response('user.profile', { cached: true })
+@Get('/profile')
+async getProfile(): Promise<IResponse<UserProfileDto>> {
+  // This response will be cached with default TTL
+  const user = await this.userService.findById('userId');
+  return { data: user };
+}
 
-@Controller('users')
-export class UserController {
-  constructor(private readonly userService: UserService) {}
-
-  @Response('user.getProfile', { cached: true })
-  @Get('/profile')
-  async getProfile(): Promise<IResponse<UserProfileResponseDto>> {
-    const user = await this.userService.findById('userId');
-    const mappedUser = this.userService.mapProfile(user);
-    
-    return { data: mappedUser };
+// Advanced caching with custom TTL and key
+@Response('user.profile', { 
+  cached: {
+    ttl: 60000, // 1 minute cache
+    key: 'user-profile-cache'
   }
+})
+@Get('/:id/profile')
+async getUserProfile(
+  @Param('id') id: string
+): Promise<IResponse<UserProfileDto>> {
+  // This response will be cached for 1 minute with a custom key
+  const user = await this.userService.findById(id);
+  return { data: user };
 }
 ```
 
-#### Advanced Caching Options
+## Custom Response Properties
 
-For more control over cache behavior, you can specify a custom TTL (time-to-live) and cache key:
-
-```typescript
-import { Controller, Get, Param } from '@nestjs/common';
-import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { UserProfileResponseDto } from './dtos/response/user.profile.response.dto';
-
-@Controller('users')
-export class UserController {
-  constructor(private readonly userService: UserService) {}
-
-  @Response('user.getProfile', { 
-    cached: {
-      ttl: 60000, // Cache for 1 minute (60000ms)
-      key: 'user-profile' // Custom cache key
-    }
-  })
-  @Get('/:id/profile')
-  async getProfile(
-    @Param('id') id: string
-  ): Promise<IResponse<UserProfileResponseDto>> {
-    const user = await this.userService.findById(id);
-    const mappedUser = this.userService.mapProfile(user);
-    
-    return { data: mappedUser };
-  }
-}
-```
-
-You can also use caching with paginated responses:
-
-```typescript
-import { Controller, Get, Query } from '@nestjs/common';
-import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
-import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
-import { UserListResponseDto } from './dtos/response/user.list.response.dto';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
-
-@Controller('users')
-export class UserController {
-  constructor(
-    private readonly userService: UserService,
-    private readonly paginationService: PaginationService
-  ) {}
-
-  @ResponsePaging('user.list', {
-    cached: {
-      ttl: 30000, // Cache for 30 seconds
-      key: 'users-list'
-    }
-  })
-  @Get('/')
-  async findAll(
-    @Query()
-    query: Record<string, any>
-  ): Promise<IResponsePaging<UserListResponseDto>> {
-    const pagination = this.paginationService.create(query);
-    const { data, totalData } = await this.userService.findAll(pagination);
-    const totalPage = this.paginationService.totalPage(totalData, pagination.perPage);
-    
-    return {
-      _pagination: {
-        totalPage,
-        total: totalData
-      },
-      data
-    };
-  }
-}
-```
-
-
-## Internationalization
-
-The response system integrates with the message service to provide localized response messages. The `messagePath` parameter in the response decorators is used to retrieve the appropriate message from the language files based on the user's preferred language.
-
-For more information on how internationalization works, please see the [Internationalization documentation](internationalization.md).
-
-## Custom Response Metadata
-
-You can add custom metadata to responses by returning an object with a `_metadata` property:
+You can customize status codes, messages, and other properties by including a `_metadata.customProperty` object:
 
 ```typescript
 @Response('user.create')
@@ -373,11 +317,11 @@ async create(@Body() dto: CreateUserDto): Promise<IResponse> {
     _metadata: {
       customProperty: {
         statusCode: 201,
-        httpStatus: HttpStatus.CREATED
+        httpStatus: HttpStatus.CREATED,
+        message: 'user.created.success' // Override the message path
       }
-    }
+    },
+    data: user
   };
 }
 ```
-
-This allows you to customize the response status code and other metadata properties.

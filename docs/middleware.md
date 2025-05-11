@@ -1,7 +1,6 @@
-# Overview
+# Middleware
 
-Middleware functions are functions that have access to the request object (req), the response object (res), and the next middleware function in the application's request-response cycle. ACK NestJS Boilerplate uses several middleware components to process HTTP requests before they reach the route handlers.
-
+Middleware functions are functions that have access to the request object (req), the response object (res), and the next middleware function in the application's request-response cycle.
 
 The middleware is configured in `src/app/app.middleware.module.ts` and applied globally to all routes using the pattern `{*wildcard}`. The middleware is executed in the order they are applied.
 
@@ -29,10 +28,48 @@ All middleware is registered in the `AppMiddlewareModule` using the `configure` 
 
 Assigns a unique UUID to each incoming request, making it easier to track requests through logs and debugging.
 
+```typescript
+@Injectable()
+export class AppRequestIdMiddleware implements NestMiddleware {
+    use(req: Request, _res: Response, next: NextFunction): void {
+        req.id = uuid();
+        next();
+    }
+}
+```
+
+This middleware creates a UUID v4 for each request and attaches it to the request object, which can then be used by loggers and other components to correlate logs for a single request.
+
 ### Helmet Middleware
 **File**: `src/app/middlewares/app.helmet.middleware.ts`
 
 Secures the application by setting various HTTP headers to help protect against common web vulnerabilities like XSS attacks, content type sniffing, etc.
+
+```typescript
+@Injectable()
+export class AppHelmetMiddleware implements NestMiddleware {
+    use(req: Request, res: Response, next: NextFunction): void {
+        helmet()(req, res, next);
+    }
+}
+```
+
+This middleware adds the following security headers by default:
+- Content-Security-Policy
+- X-DNS-Prefetch-Control
+- Expect-CT
+- X-Frame-Options
+- X-Powered-By
+- Strict-Transport-Security
+- X-Download-Options
+- X-Content-Type-Options
+- Origin-Agent-Cluster
+- X-Permitted-Cross-Domain-Policies
+- Referrer-Policy
+- X-XSS-Protection
+- Cross-Origin-Resource-Policy
+- Cross-Origin-Opener-Policy
+- Cross-Origin-Embedder-Policy
 
 ### Body Parser Middleware
 **File**: `src/app/middlewares/app.body-parser.middleware.ts`
@@ -88,3 +125,10 @@ In addition to middleware, the application uses global guards and filters:
 
 ### ThrottlerGuard
 Prevents abuse through rate limiting. Configuration is defined in `middleware.config.ts`:
+
+```typescript
+throttle: {
+    ttl: ms('500'), // 0.5 secs
+    limit: 10, // max request per reset time
+}
+```

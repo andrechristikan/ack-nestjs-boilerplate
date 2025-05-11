@@ -20,6 +20,7 @@
         "blockedInvalid": "Invalid blocked status.",
         "notFound": "Sorry, we couldn't find the user you requested.",
         "statusInvalid": "Invalid user status.",
-        "usernameExist": "This username has already been taken."
+        "usernameExist": "This username has already been taken.",
+        "emailNotVerified": "Email not verified."
     }
 }

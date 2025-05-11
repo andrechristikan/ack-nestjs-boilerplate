@@ -1,4 +1,4 @@
-# Overview
+# Audit
 
 This document covers the audit functionality, including activity logging and password history tracking.
 

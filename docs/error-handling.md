@@ -1,4 +1,4 @@
-# Overview
+# Error Handling
 
 The error handling system in ACK NestJS Boilerplate provides a consistent way to handle exceptions throughout the application. It uses NestJS's built-in exception filter mechanism to catch and transform exceptions into standardized HTTP responses.
 

@@ -1,4 +1,4 @@
-# Overview
+# Migration
 
 > In the future will replace `nestjs-command` with `commander`
 
@@ -7,6 +7,30 @@ This document covers the migration and seed functionality in the ACK NestJS Boil
 The migration system in ACK NestJS Boilerplate provides a way to populate the database with initial data, ensuring consistent and repeatable database setups. The system uses `nestjs-command` to create CLI commands that can be executed to seed or remove data from the database.
 
 Each seed module is responsible for a specific domain area and can be executed independently or as part of the full migration process. Seeds can also be reversed, allowing you to clean up the database as needed.
+
+The entry point for all migrations is the `src/cli.ts` file, which creates a NestJS application context specifically for migration operations:
+
+```typescript
+async function bootstrap() {
+    process.env.APP_ENV = ENUM_APP_ENVIRONMENT.MIGRATION;
+
+    const app = await NestFactory.createApplicationContext(MigrationModule, {
+        logger: ['error', 'fatal'],
+        abortOnError: true,
+        bufferLogs: false,
+    });
+
+    const logger = new Logger('NestJs-Seed');
+
+    try {
+        await app.select(CommandModule).get(CommandService).exec();
+        process.exit(0);
+    } catch (err: unknown) {
+        logger.error(err);
+        process.exit(1);
+    }
+}
+```
 
 
 ## Table of Contents
@@ -27,8 +51,8 @@ Each seed module is responsible for a specific domain area and can be executed i
     - [Commands](#commands)
     - [Usage](#usage)
   - [Running Migrations](#running-migrations)
-  - [Structure](#structure)
   - [Creating Custom Seeds](#creating-custom-seeds)
+    - [Testing Seeds](#testing-seeds)
 
 
 ## Modules 
@@ -93,17 +117,149 @@ The seed process follows a logical progression where dependent data is seeded fi
 Seeds the database with default API keys for different types of access:
 
 - Default API Key: Used for general access
+  - Key: `v8VB0yY887lMpTA2VJMV`
+  - Secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
 - System API Key: Used for system-level operations or service-to-service
+  - Key: `OgXYkQyOtP7Zl5uCbKd8`
+  - Secret: `3kh0hW7pIAH3wW9DwUGrP8Y5RW9Ywv`
 
 Commands:
 - `seed:apikey` - Creates API keys
 - `remove:apikey` - Removes all API keys
+
+Implementation:
+
+```typescript
+@Injectable()
+export class MigrationApiKeySeed {
+    constructor(private readonly apiKeyService: ApiKeyService) {}
+
+    @Command({
+        command: 'seed:apikey',
+        describe: 'seeds apikeys',
+    })
+    async seeds(): Promise<void> {
+        try {
+            const apiKeyDefaultKey = 'v8VB0yY887lMpTA2VJMV';
+            const apiKeyDefaultSecret = 'zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg';
+            await this.apiKeyService.createRaw({
+                name: 'Api Key Default Migration',
+                type: ENUM_API_KEY_TYPE.DEFAULT,
+                key: apiKeyDefaultKey,
+                secret: apiKeyDefaultSecret,
+            });
+
+            // Additional API key for system use
+            const apiKeyPrivateKey = 'OgXYkQyOtP7Zl5uCbKd8';
+            const apiKeyPrivateSecret = '3kh0hW7pIAH3wW9DwUGrP8Y5RW9Ywv';
+            await this.apiKeyService.createRaw({
+                name: 'Api Key System Migration',
+                type: ENUM_API_KEY_TYPE.SYSTEM,
+                key: apiKeyPrivateKey,
+                secret: apiKeyPrivateSecret,
+            });
+        } catch (err: any) {
+            throw new Error(err.message);
+        }
+    }
+    
+    @Command({
+        command: 'remove:apikey',
+        describe: 'remove apikeys',
+    })
+    async remove(): Promise<void> {
+        try {
+            await this.apiKeyService.deleteMany({});
+        } catch (err: any) {
+            throw new Error(err.message);
+        }
+    }
+}
+```
 
 ### Country Seed
 
 **File**: `src/migration/seeds/migration.country.seed.ts`
 
 Seeds the database with country information. By default, it adds Indonesia with all its related data.
+
+Implementation:
+
+```typescript
+@Injectable()
+export class MigrationCountrySeed {
+    constructor(private readonly countryService: CountryService) {}
+
+    @Command({
+        command: 'seed:country',
+        describe: 'seed countries',
+    })
+    async seeds(): Promise<void> {
+        try {
+            const countries = [
+                {
+                    iso2: 'ID',
+                    iso3: 'IDN',
+                    name: 'Indonesia',
+                    dialCode: '+62',
+                    provinces: [
+                        // List of provinces for Indonesia
+                        { name: 'Aceh' },
+                        { name: 'Bali' },
+                        { name: 'Banten' },
+                        // Additional provinces...
+                    ],
+                    cities: [
+                        // List of cities for Indonesia
+                        { name: 'Jakarta', province: 'DKI Jakarta' },
+                        { name: 'Surabaya', province: 'Jawa Timur' },
+                        { name: 'Bandung', province: 'Jawa Barat' },
+                        // Additional cities...
+                    ],
+                    languages: [
+                        // List of languages for Indonesia
+                        { name: 'Indonesian (Bahasa Indonesia)', iso2: 'id' },
+                        { name: 'Javanese', iso2: 'jv' },
+                        { name: 'Sundanese', iso2: 'su' },
+                        // Additional languages...
+                    ],
+                    timezones: [
+                        // List of timezones for Indonesia
+                        { name: 'Western Indonesian Time', offset: '+07:00' },
+                        { name: 'Central Indonesian Time', offset: '+08:00' },
+                        { name: 'Eastern Indonesian Time', offset: '+09:00' },
+                    ],
+                    currencies: [
+                        // Currency for Indonesia
+                        { name: 'Indonesian Rupiah', symbol: 'Rp', iso: 'IDR' },
+                    ],
+                },
+                // Additional countries can be added here
+            ];
+            
+            await Promise.all(
+                countries.map(async country => {
+                    await this.countryService.create(country);
+                })
+            );
+        } catch (err: any) {
+            throw new Error(err.message);
+        }
+    }
+
+    @Command({
+        command: 'remove:country',
+        describe: 'remove countries',
+    })
+    async remove(): Promise<void> {
+        try {
+            await this.countryService.deleteMany({});
+        } catch (err: any) {
+            throw new Error(err.message);
+        }
+    }
+}
+```
 
 Commands:
 - `seed:country` - Adds countries
@@ -121,6 +277,53 @@ Seeds the database with predefined roles and their permissions:
 - `premium` - Premium user role
 - `business` - Business user role
 
+Implementation:
+
+```typescript
+@Injectable()
+export class MigrationRoleSeed {
+    constructor(private readonly roleService: RoleService) {}
+
+    @Command({
+        command: 'seed:role',
+        describe: 'seed roles',
+    })
+    async seeds(): Promise<void> {
+        const data: RoleCreateRequestDto[] = [
+            {
+                name: 'superadmin',
+                type: ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN,
+                permissions: [],
+            },
+            {
+                name: 'admin',
+                type: ENUM_POLICY_ROLE_TYPE.ADMIN,
+                permissions: Object.values(ENUM_POLICY_SUBJECT)
+                    .filter(e => e !== ENUM_POLICY_SUBJECT.API_KEY)
+                    .map(val => ({
+                        subject: val,
+                        action: [ENUM_POLICY_ACTION.MANAGE],
+                    })),
+            },
+            {
+                name: 'individual',
+                type: ENUM_POLICY_ROLE_TYPE.USER,
+                permissions: [],
+            },
+            // Additional roles...
+        ];
+
+        try {
+            await this.roleService.createMany(data);
+        } catch (err: any) {
+            throw new Error(err);
+        }
+    }
+
+    // Remove method...
+}
+```
+
 Commands:
 - `seed:role` - Creates roles
 - `remove:role` - Removes all roles
@@ -130,6 +333,86 @@ Commands:
 **File**: `src/migration/seeds/migration.user.seed.ts`
 
 Seeds the database with default users for each role type. It also creates corresponding password history and activity records for each user.
+
+Implementation:
+
+```typescript
+@Injectable()
+export class MigrationUserSeed {
+    constructor(
+        private readonly authService: AuthService,
+        private readonly userService: UserService,
+        private readonly roleService: RoleService,
+        private readonly countryService: CountryService,
+        private readonly passwordHistoryService: PasswordHistoryService,
+        private readonly activityService: ActivityService,
+        private readonly messageService: MessageService,
+        private readonly sessionService: SessionService
+    ) {}
+
+    @Command({
+        command: 'seed:user',
+        describe: 'seed users',
+    })
+    async seeds(): Promise<void> {
+        const password = 'aaAA@123';
+        const passwordHash = this.authService.createPassword(password);
+        const superAdminRole: RoleDoc =
+            await this.roleService.findOneByName('superadmin');
+        const adminRole: RoleDoc =
+            await this.roleService.findOneByName('admin');
+
+        const country: CountryDoc =
+            await this.countryService.findOneByAlpha2('ID');
+
+        // Get other roles by name...
+
+        try {
+            // Create all users in parallel
+            const [superAdmin, admin, individual, premium, business] =
+                await Promise.all([
+                    this.userService.create(
+                        {
+                            role: superAdminRole._id,
+                            name: 'superadmin',
+                            email: 'superadmin@mail.com',
+                            // Additional user properties...
+                        },
+                        passwordHash
+                    ),
+                    // Additional user creations...
+                ]);
+
+            // Create password histories for each user
+            await Promise.all([
+                this.passwordHistoryService.create({
+                    user: superAdmin._id,
+                    password: passwordHash,
+                    type: ENUM_PASSWORD_HISTORY_TYPE.CREATED,
+                }),
+                // Additional password histories...
+            ]);
+
+            // Create activities for each user
+            await Promise.all([
+                this.activityService.create({
+                    user: superAdmin._id,
+                    message: this.messageService.get('activity.createUser', {
+                        properties: {
+                            email: superAdmin.email,
+                        },
+                    }),
+                }),
+                // Additional activities...
+            ]);
+        } catch (err: any) {
+            throw new Error(err.message);
+        }
+    }
+
+    // Remove method...
+}
+```
 
 Commands:
 - `seed:user` - Creates users
@@ -148,7 +431,7 @@ All with the default password: `aaAA@123`
 
 **File**: `src/migration/seeds/migration.template.seed.ts`
 
-Unlike other seed modules that populate database records, the Template Seed module is responsible for importing and registering email templates used by the application's notification system. These templates are injected into AWS Simple Email Service (SES) for email delivery.
+Unlike other seed modules that populate database records, the Template Seed module is responsible for importing and registering email templates used by the application's notification system. These templates are registered with AWS Simple Email Service (SES) for email delivery.
 
 ### Purpose
 Email templates are essential for consistent communication with users across various application events such as registration, password resets, and account verifications. Using AWS SES templates allows for standardized and scalable email communications with proper formatting and branding.
@@ -172,14 +455,76 @@ Each template is stored as an HTML file in the `/src/templates/` directory and p
 The MigrationTemplateSeed uses the EmailService to import templates:
 
 ```typescript
-try {
-    await this.emailService.importWelcome();
-} catch (err: any) {
-    throw new Error(err);
+@Injectable()
+export class MigrationTemplateSeed {
+    constructor(private readonly emailService: EmailService) {}
+
+    @Command({
+        command: 'migrate:template',
+        describe: 'migrate templates',
+    })
+    async migrate(): Promise<void> {
+        try {
+            await this.emailService.importWelcome();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailService.importCreate();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        // Additional template imports for:
+        // - Change password
+        // - Temporary password
+        // - Reset password
+        // - Verification
+        // - Email verified
+        // - Mobile number verified
+    }
+
+    @Command({
+        command: 'rollback:template',
+        describe: 'rollback templates',
+    })
+    async rollback(): Promise<void> {
+        try {
+            await this.emailService.deleteWelcome();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        // Additional template deletion methods
+        // for all template types
+    }
 }
 ```
 
-Behind the scenes, the EmailService reads the template file and uses the AWS SES service to create or update the template in your AWS account.
+Behind the scenes, the EmailService reads the template file and uses the AWS SES service to create or update the template in your AWS account:
+
+```typescript
+async importWelcome(): Promise<boolean> {
+    try {
+        const templatePath = join(
+            process.cwd(),
+            'src/templates/welcome.template.html'
+        );
+
+        await this.awsSESService.createTemplate({
+            name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
+            subject: `Welcome to ${this.homeName}`,
+            htmlBody: readFileSync(templatePath, 'utf8'),
+        });
+
+        return true;
+    } catch (err: unknown) {
+        this.logger.error(err);
+        return false;
+    }
+}
+```
 
 ### Commands
 - `migrate:template` - Imports all email templates to AWS SES
@@ -190,10 +535,10 @@ Templates are processed separately from database seeds and can be managed indepe
 
 ```bash
 # Import all templates to AWS SES
-npm run migrate:template
+yarn migrate:template
 
 # Remove all templates from AWS SES
-npm run rollback:template
+yarn rollback:template
 ```
 
 ## Running Migrations
@@ -201,77 +546,47 @@ npm run rollback:template
 The project includes npm scripts to simplify migration operations:
 
 ```bash
-# Run all migrations
-npm run migrate
+# Run all data migrations
+yarn migrate:seed
 
 # Run migrations in reverse (clean up the database)
-npm run migrate:remove
+yarn migrate:remove
 
-# Only migrate template data
-npm run migrate:template
+# Only migrate email templates
+yarn migrate:template
 
-# Remove template data
-npm run rollback:template
+# Remove email templates
+yarn rollback:template
 
 # Complete reset and rebuild of the database
-npm run migrate:fresh
+yarn migrate:fresh
 ```
 
 These commands are defined in the `package.json` file:
 
 ```json
 "scripts": {
-    "migrate": "APP_ENV=migration nestjs-command seed:apikey && nestjs-command seed:country && nestjs-command seed:role && nestjs-command seed:user",
-    "migrate:remove": "APP_ENV=migration nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apikey  && nestjs-command remove:role",
-    "migrate:template": "APP_ENV=migration nestjs-command migrate:template",
-    "rollback:template": "APP_ENV=migration nestjs-command rollback:template",
-    "migrate:fresh": "APP_ENV=migration nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apikey && nestjs-command remove:role && nestjs-command seed:apikey && nestjs-command seed:country && nestjs-command seed:role && nestjs-command seed:user"
+    "migrate:fresh": "yarn migrate:remove && yarn migrate:seed",
+    "migrate:seed": "nestjs-command seed:country && nestjs-command seed:apikey && nestjs-command seed:role && nestjs-command seed:user",
+    "migrate:remove": "nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apikey  && nestjs-command remove:role",
+    "migrate:template": "nestjs-command migrate:template",
+    "rollback:template": "nestjs-command rollback:template"
 }
 ```
 
-## Structure
+Note that the scripts handle the ordering of operations automatically. For example, the `migrate:seed` script ensures that countries are seeded before users since users depend on countries being available in the database.
 
-Each seed class follows a similar structure:
-
-1. Injectable decorator and constructor with service dependencies
-2. Command decorator with command name and description
-3. Seeds method for adding data
-4. Remove method for cleaning up data
-
-Example structure:
-
-```typescript
-@Injectable()
-export class MigrationCountrySeed {
-    constructor(private readonly countryService: CountryService) {}
-
-    @Command({
-        command: 'seed:country',
-        describe: 'seeds countries',
-    })
-    async seeds(): Promise<void> {
-        // Implementation for adding data
-    }
-
-    @Command({
-        command: 'remove:country',
-        describe: 'remove countries',
-    })
-    async remove(): Promise<void> {
-        // Implementation for removing data
-    }
-}
-```
 
 ## Creating Custom Seeds
 
 To create a custom seed module:
 
-1. Create a new file in `src/migration/seeds/`
+1. Create a new file in `src/migration/seeds/` with a meaningful name like `migration.your-entity.seed.ts`
 2. Implement the seed class with `@Injectable()` decorator
 3. Inject required services in the constructor
 4. Add `@Command()` methods for seed and remove operations
 5. Register your seed class in `src/migration/migration.module.ts`
+6. Update the npm scripts in `package.json` to include your new commands
 
 Example of a custom seed:
 
@@ -331,4 +646,23 @@ Then add your new seed to the `MigrationModule`:
 export class MigrationModule {}
 ```
 
-Finally, update the npm scripts in `package.json` to include your new commands.
+Finally, update the npm scripts in `package.json` to include your new commands:
+
+```json
+"scripts": {
+    "migrate:seed": "nestjs-command seed:country && nestjs-command seed:apikey && nestjs-command seed:role && nestjs-command seed:user && nestjs-command seed:your-command",
+    "migrate:remove": "nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apikey && nestjs-command remove:role && nestjs-command remove:your-command",
+}
+```
+
+### Testing Seeds
+
+Before committing your new seed, test it with:
+
+```bash
+# Test seeding the data
+yarn nestjs-command seed:your-command
+
+# Test removal
+yarn nestjs-command remove:your-command
+```

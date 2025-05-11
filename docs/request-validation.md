@@ -1,48 +1,39 @@
-# Overview
+# Request Validation
 
-Request validation is a critical part of any robust API, ensuring that incoming data meets specified requirements before processing. This documentation covers the request validation system in the ACK NestJS Boilerplate, which leverages NestJS's built-in validation capabilities along with custom validators for advanced validation scenarios.
+Request validation is a critical part of any robust API, ensuring that incoming data meets specified requirements before processing. This documentation covers the request validation system in the ACK NestJS Boilerplate, specifically focusing on the implementation in the `/common/request` directory.
 
 The boilerplate uses [class-validator](https://github.com/typestack/class-validator) and [class-transformer](https://github.com/typestack/class-transformer) libraries to implement validation, with custom validators extending the basic functionality to handle complex business rules.
 
 ## Table of Contents
 
-- [Overview](#overview)
+- [Request Validation](#request-validation)
   - [Table of Contents](#table-of-contents)
   - [Core Components](#core-components)
-  - [Validation Decorators](#validation-decorators)
-    - [Standard Validators](#standard-validators)
-    - [Custom Validators](#custom-validators)
-  - [Validation Flow](#validation-flow)
-  - [Error Handling](#error-handling)
+  - [Custom Validators](#custom-validators)
+  - [Validation Exception Handling](#validation-exception-handling)
   - [Request Timeout](#request-timeout)
-  - [Examples](#examples)
-    - [Validation with extends other class](#validation-with-extends-other-class)
+  - [Usage Examples](#usage-examples)
+    - [Using Custom Validators](#using-custom-validators)
+    - [Setting Custom Timeout](#setting-custom-timeout)
+    - [Using Required Pipe](#using-required-pipe)
 
 ## Core Components
 
-The request validation system consists of several key components:
+The request validation system in `/common/request` consists of several key components:
 
-1. **Request DTOs**: Data Transfer Objects that define the structure and validation rules for incoming requests
-2. **Validation Decorators**: Class decorators that apply validation rules to DTO properties
-3. **Custom Validators**: Custom validation logic for complex validation scenarios
-4. **Validation Pipes**: NestJS pipes that transform and validate incoming data
-5. **Exception Filters**: Handlers for validation exceptions that format and return error responses
+1. **Custom Validators**: Located in `src/common/request/validations/` folder, these validators extend the basic validators from class-validator to handle complex validation scenarios
+2. **Validation Exception**: The `RequestValidationException` in `src/common/request/exceptions/request.validation.exception.ts` is thrown when validation fails
+3. **Request Pipes**: The `RequestRequiredPipe` in `src/common/request/pipes/request.required.pipe.ts` ensures that required parameters are present
+4. **Request Decorators**: The `@RequestTimeout()` decorator in `src/common/request/decorators/request.decorator.ts` allows for custom timeout settings
+5. **Request Timeout Interceptor**: The interceptor in `src/common/request/interceptors/request.timeout.interceptor.ts` handles request timeouts
 
-## Validation Decorators
+## Custom Validators
 
-### Standard Validators
+The `/common/request/validations/` directory contains custom validators for complex validation scenarios:
 
-The boilerplate uses the standard validators from [class-validator](https://github.com/typestack/class-validator) library. These validators provide a wide range of validation rules for common scenarios. For a comprehensive list of available decorators and their usage, please refer to the [class-validator documentation](https://github.com/typestack/class-validator#validation-decorators).
-
-Some commonly used decorators include `@IsString()`, `@IsNotEmpty()`, `@MinLength()`, `@MaxLength()`, `@IsEmail()`, `@IsNumber()`, `@IsBoolean()`, `@IsEnum()`, `@IsDate()`, `@IsArray()`, etc.
-
-### Custom Validators
-
-The boilerplate includes custom validators in `src/common/request/validations/` for more complex validation scenarios:
-
-| Validator | Description | Path |
+| Validator | Description | File Path |
 |-----------|-------------|------|
-| `@IsPassword()` | Validates password strength | `request.is-password.validation.ts` |
+| `@IsPassword()` | Validates password strength using HelperStringService | `request.is-password.validation.ts` |
 | `@IsCustomEmail()` | Validates emails with custom business rules | `request.custom-email.validation.ts` |
 | `@DateGreaterThan()` | Validates that a date is greater than another date | `request.date-greater-than.validation.ts` |
 | `@DateGreaterThanEqual()` | Validates that a date is greater than or equal to another date | `request.date-greater-than.validation.ts` |
@@ -53,96 +44,128 @@ The boilerplate includes custom validators in `src/common/request/validations/` 
 | `@LessThanOtherProperty()` | Validates that a value is less than another property | `request.less-than-other-property.validation.ts` |
 | `@LessThanEqualOtherProperty()` | Validates that a value is less than or equal to another property | `request.less-than-other-property.validation.ts` |
 
-## Validation Flow
+Example of custom validator implementation (IsPassword):
 
-The validation flow in the boilerplate works as follows:
+```typescript
+@ValidatorConstraint({ async: true })
+@Injectable()
+export class IsPasswordConstraint implements ValidatorConstraintInterface {
+    constructor(protected readonly helperStringService: HelperStringService) {}
 
-1. Client sends a request to an API endpoint
-2. NestJS parses the request body, params, and query
-3. The data is passed to validation pipes, which:
-   - Transform the data using class-transformer
-   - Validate the data using class-validator
-4. If validation passes, the data is passed to the controller handler
-5. If validation fails, a `RequestValidationException` is thrown
-6. The `AppValidationFilter` catches the exception and formats an error response
+    validate(value: string): boolean {
+        return value
+            ? this.helperStringService.checkPasswordStrength(value)
+            : false;
+    }
+}
 
-## Error Handling
+export function IsPassword(validationOptions?: ValidationOptions) {
+    return function (object: Record<string, any>, propertyName: string): void {
+        registerDecorator({
+            name: 'IsPassword',
+            target: object.constructor,
+            propertyName: propertyName,
+            options: validationOptions,
+            constraints: [],
+            validator: IsPasswordConstraint,
+        });
+    };
+}
+```
 
-When validation fails, the boilerplate provides detailed error messages through the `AppValidationFilter`. Key components:
+## Validation Exception Handling
 
-1. **RequestValidationException**: Custom exception in `src/common/request/exceptions/request.validation.exception.ts`
-2. **AppValidationFilter**: Filter in `src/app/filters/app.validation.filter.ts` that formats validation errors
-3. **MessageService**: Service that localizes error messages based on the client's preferred language
+When validation fails, the `RequestValidationException` is thrown:
 
-Error responses include:
+```typescript
+export class RequestValidationException extends Error {
+    readonly httpStatus: HttpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
+    readonly statusCode: number = ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION;
+    readonly errors: ValidationError[];
+
+    constructor(errors: ValidationError[]) {
+        super('request.validation');
+
+        this.errors = errors;
+    }
+}
+```
+
+The exception is caught by the `AppValidationFilter` in `src/app/filters/app.validation.filter.ts`, which formats the error response with detailed validation errors for each invalid property. The response includes:
+
 - HTTP status code (422 Unprocessable Entity)
-- Error message ("There are validation errors")
+- Error message based on the language setting
 - Detailed validation errors for each invalid property
 - Metadata including language, timestamp, timezone, and version information
 
 ## Request Timeout
 
-The boilerplate includes a mechanism to prevent long-running requests from consuming server resources. This is implemented using:
+The request timeout system in the `/common/request` directory includes:
 
-1. **Request timeout middleware**: Sets a maximum time limit for request processing
-2. **Timeout interceptor**: Throws an exception if a request exceeds the time limit
-3. **Configuration**: Timeout durations are configurable in the application settings
+1. **RequestTimeout Decorator**: 
+   ```typescript
+   export function RequestTimeout(seconds: string): MethodDecorator {
+       return applyDecorators(
+           SetMetadata(REQUEST_CUSTOM_TIMEOUT_META_KEY, true),
+           SetMetadata(REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY, seconds)
+       );
+   }
+   ```
 
-## Examples
+2. **RequestTimeoutInterceptor**: Intercepts requests and applies a timeout based on configuration or the custom timeout from the decorator. If a request exceeds the time limit, a `RequestTimeoutException` is thrown with appropriate error details.
 
+## Usage Examples
 
-```typescript
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
-
-export class CreateUserDto {
-    @ApiProperty({
-        description: 'User name',
-        example: 'John Doe',
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(3)
-    @MaxLength(100)
-    name: string;
-
-    @ApiProperty({
-        description: 'User email',
-        example: 'john.doe@example.com',
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @IsEmail()
-    email: string;
-}
-```
-
-### Validation with extends other class
-
-The `AuthSignUpRequestDto` from the boilerplate demonstrates custom password validation:
+### Using Custom Validators
 
 ```typescript
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, MaxLength, MinLength } from 'class-validator';
 import { IsPassword } from 'src/common/request/validations/request.is-password.validation';
 
-export class AuthSignUpRequestDto extends OmitType(UserCreateRequestDto, [
-    'role',
-    'gender',
-] as const) {
+export class UserCreateDto {
     @ApiProperty({
-        description: 'string password',
+        description: 'User password',
         example: 'Password123@@!',
         required: true,
-        maxLength: 50,
-        minLength: 8,
     })
     @IsNotEmpty()
     @IsPassword()
     @MinLength(8)
     @MaxLength(50)
     password: string;
+}
+```
+
+### Setting Custom Timeout
+
+```typescript
+import { Controller, Get } from '@nestjs/common';
+import { RequestTimeout } from 'src/common/request/decorators/request.decorator';
+
+@Controller('users')
+export class UserController {
+    @Get()
+    @RequestTimeout('30s')  // Sets a custom timeout of 30 seconds for this route
+    findAll() {
+        // This operation now has 30 seconds to complete
+        return this.userService.findAll();
+    }
+}
+```
+
+### Using Required Pipe
+
+```typescript
+import { Controller, Get, Param } from '@nestjs/common';
+import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
+
+@Controller('users')
+export class UserController {
+    @Get(':id')
+    findOne(@Param('id', RequestRequiredPipe) id: string) {
+        // The RequestRequiredPipe ensures that the id parameter is present
+        return this.userService.findOne(id);
+    }
 }
 ```

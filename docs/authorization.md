@@ -1,4 +1,4 @@
-# Overview
+# Authorization
 
 This document covers the authorization system role-based access control, and policy enforcement.
 

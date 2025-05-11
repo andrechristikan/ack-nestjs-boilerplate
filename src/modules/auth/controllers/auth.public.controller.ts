@@ -133,6 +133,11 @@ export class AuthPublicController {
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'role.error.inactive',
             });
+        } else if (userWithRole.verification.email !== true) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_NOT_VERIFIED,
+                message: 'user.error.emailNotVerified',
+            });
         }
 
         await this.userService.resetPasswordAttempt(user);
@@ -209,6 +214,11 @@ export class AuthPublicController {
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'role.error.inactive',
             });
+        } else if (userWithRole.verification.email !== true) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_NOT_VERIFIED,
+                message: 'user.error.emailNotVerified',
+            });
         }
 
         await this.userService.resetPasswordAttempt(user);
@@ -284,6 +294,11 @@ export class AuthPublicController {
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'role.error.inactive',
+            });
+        } else if (userWithRole.verification.email !== true) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_NOT_VERIFIED,
+                message: 'user.error.emailNotVerified',
             });
         }
 
