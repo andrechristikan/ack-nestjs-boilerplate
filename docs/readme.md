@@ -8,15 +8,13 @@ Welcome to the ACK NestJS Boilerplate documentation. This guide provides compreh
 - [Installation](./installation.md)
 - [Project Structure](./structure.md)
 
-### Core Concepts
+### Features
 - [Authentication](./authentication.md)
 - [Authorization](./authorization.md)
 - [Database](./database.md)
 - [Migration](./migration.md)
 - [Configuration & Environment](./config-and-environment.md)
 - [Error Handling](./error-handling.md)
-
-### Features
 - [Request Validation](./request-validation.md)
 - [Response Handling](./response.md)
 - [Pagination](./pagination.md)
