@@ -8,7 +8,7 @@ The boilerplate uses [class-validator](https://github.com/typestack/class-valida
 
 - [Request Validation](#request-validation)
   - [Table of Contents](#table-of-contents)
-  - [Core Components](#core-components)
+  - [Components](#components)
   - [Custom Validators](#custom-validators)
   - [Validation Exception Handling](#validation-exception-handling)
   - [Request Timeout](#request-timeout)
@@ -17,7 +17,7 @@ The boilerplate uses [class-validator](https://github.com/typestack/class-valida
     - [Setting Custom Timeout](#setting-custom-timeout)
     - [Using Required Pipe](#using-required-pipe)
 
-## Core Components
+## Components
 
 The request validation system in `/common/request` consists of several key components:
 

@@ -4,7 +4,7 @@ The Pagination module provides a standardized approach to implementing data pagi
 
 ## Table of Contents
 
-- [Overview](#overview)
+- [Pagination](#pagination)
   - [Table of Contents](#table-of-contents)
   - [Module](#module)
     - [Services](#services)
@@ -13,6 +13,7 @@ The Pagination module provides a standardized approach to implementing data pagi
     - [DTOs](#dtos)
   - [Using Pagination](#using-pagination)
     - [Basic Implementation](#basic-implementation)
+    - [Database Integration](#database-integration)
     - [Advanced Filtering](#advanced-filtering)
     - [Complete Example](#complete-example)
 
@@ -22,7 +23,7 @@ The Pagination module is a global module that is automatically imported and conf
 
 ### Services
 
-- **PaginationService**: Core service that handles page calculation, offset calculation, and order processing.
+- **PaginationService**: service that handles page calculation, offset calculation, and order processing.
   - `offset(page, perPage)`: Calculates the offset based on page number and page size
   - `totalPage(totalData, perPage)`: Calculates the total number of pages
   - `page(page)`: Validates and normalizes the page number (maximum: 20)

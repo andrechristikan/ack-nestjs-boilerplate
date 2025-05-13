@@ -227,6 +227,7 @@ If your branch is behind the `origin/main` branch, please update your branch and
 
 <!-- Repo LINKS -->
 
+[ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
 [ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate/issues
 [ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members

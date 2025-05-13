@@ -1,10 +1,10 @@
-# Audit
+# Overview
 
 This document covers the audit functionality, including activity logging and password history tracking.
 
-## Table of Contents
+# Table of Contents
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
+- [Table of Contents](#table-of-contents)
   - [Activity Module](#activity-module)
     - [Overview](#overview-1)
     - [How to Use](#how-to-use)
@@ -51,7 +51,7 @@ The Password History module tracks user password changes to enforce password pol
 Key features:
 - Records password changes with timestamps
 - Stores password hashes for comparison
-- Differentiates between different types of password changes (SIGN_UP, FORGOT, TEMPORARY, CHANGE)
+- Differentiates between different types of password changes (`SIGN_UP`, `FORGOT`, `TEMPORARY`, `CHANGE`)
 - Supports querying password history for policy enforcement
 - Implements configurable password expiration periods
 
@@ -77,29 +77,3 @@ The Password History module provides two main methods for recording password cha
      }
    );
    ```
-
-To check if a password has been recently used:
-
-```typescript
-const password = this.authService.createPassword(newPassword);
-const checkPassword =
-    await this.passwordHistoryService.findOneUsedByUser(
-        user._id,
-        newPassword
-    );
-if (checkPassword) {
-    const passwordPeriod =
-        await this.passwordHistoryService.getPasswordPeriod();
-    throw new BadRequestException({
-        statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW,
-        message: 'auth.error.passwordMustNew',
-        _metadata: {
-            customProperty: {
-                messageProperties: {
-                    period: passwordPeriod,
-                },
-            },
-        },
-    });
-}
-```

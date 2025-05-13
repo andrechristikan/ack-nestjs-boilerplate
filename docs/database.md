@@ -1,4 +1,4 @@
-# Database
+# Overview
 
 The database architecture in ACK NestJS Boilerplate follows a clean repository pattern that provides a clear separation between business logic and data access layers. The architecture is built on MongoDB using Mongoose as the Object Data Modeling (ODM) library, offering a robust, type-safe approach to database operations.
 
@@ -10,10 +10,11 @@ The database functionality is organized into several key components:
 4. **Repository Implementations** - Concrete data access implementations
 
 
-## Table of Contents
+# Table of Contents
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
+- [Table of Contents](#table-of-contents)
   - [Modules](#modules)
+  - [Services](#services)
     - [DatabaseOptionService](#databaseoptionservice)
     - [DatabaseService](#databaseservice)
   - [Repository](#repository)
@@ -56,6 +57,8 @@ export class DatabaseModule {
     }
 }
 ```
+
+## Services
 
 ### DatabaseOptionService
 
@@ -118,7 +121,7 @@ export class DatabaseOptionService implements IDatabaseOptionService {
 
 ### DatabaseService
 
-The `DatabaseService` provides core database functionality, including transaction management and query helpers:
+The `DatabaseService` provides database functionality, including transaction management and query helpers:
 
 ```typescript
 @Injectable()
@@ -145,81 +148,7 @@ export class DatabaseService implements IDatabaseService {
         await session.endSession();
     }
     
-    // Filter helpers
-    filterEqual<T = string>(field: string, filterValue: T): Record<string, { $eq: T }> {
-        return {
-            [field]: {
-                $eq: filterValue,
-            },
-        };
-    }
-
-    filterNotEqual<T = string>(field: string, filterValue: T): Record<string, { $ne: T }> {
-        return {
-            [field]: {
-                $ne: filterValue,
-            },
-        };
-    }
-
-    filterContain(field: string, filterValue: string): Record<string, any> {
-        return DatabaseHelperQueryContain(field, filterValue);
-    }
-
-    filterContainFullMatch(field: string, filterValue: string): Record<string, any> {
-        return DatabaseHelperQueryContain(field, filterValue, {
-            fullWord: true,
-        });
-    }
-
-    filterIn<T = string>(field: string, filterValue: T[]): Record<string, { $in: T[] }> {
-        return {
-            [field]: {
-                $in: filterValue,
-            },
-        };
-    }
-    
-    filterNin<T = string>(
-        field: string,
-        filterValue: T[]
-    ): Record<
-        string,
-        {
-            $nin: T[];
-        }
-    > {
-        return {
-            [field]: {
-                $nin: filterValue,
-            },
-        };
-    }
-
-    filterDateBetween(
-        fieldStart: string,
-        fieldEnd: string,
-        filterStartValue: Date,
-        filterEndValue: Date
-    ): Record<string, any> {
-        if (fieldStart === fieldEnd) {
-            return {
-                [fieldStart]: {
-                    $gte: filterStartValue,
-                    $lte: filterEndValue,
-                },
-            };
-        }
-
-        return {
-            [fieldStart]: {
-                $gte: filterStartValue,
-            },
-            [fieldEnd]: {
-                $lte: filterEndValue,
-            },
-        };
-    }
+    // ...
 }
 ```
 

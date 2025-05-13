@@ -2,13 +2,10 @@
 
 Welcome to the ACK NestJS Boilerplate documentation. This guide provides comprehensive information about using and extending this boilerplate for your NestJS applications.
 
-## Table of Contents
+# Table of Contents
 
-### Getting Started
-- [Installation](./installation.md)
 - [Project Structure](./structure.md)
-
-### Features
+- [Installation](./installation.md)
 - [Authentication](./authentication.md)
 - [Authorization](./authorization.md)
 - [Database](./database.md)
@@ -25,14 +22,4 @@ Welcome to the ACK NestJS Boilerplate documentation. This guide provides compreh
 - [Settings Management](./setting.md)
 - [Background Processing](./background-processing.md)
 - [Audit Logging](./audit.md)
-
-### Advanced Topics
 - [Third-Party Integrations](./third-party-intergration.md)
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the terms of the license provided in the repository.

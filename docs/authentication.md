@@ -1,14 +1,13 @@
-# Authentication
+# Overview
 
 This document covers the authentication system, including JWT authentication, API key authentication, social authentication, and session management.
 
-## Table of Contents
+# Table of Contents
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
+- [Table of Contents](#table-of-contents)
   - [JWT Authentication](#jwt-authentication)
     - [JWT Overview](#jwt-overview)
     - [JWT Structure](#jwt-structure)
-    - [JWT Authentication Flow](#jwt-authentication-flow)
     - [JWT Token Types](#jwt-token-types)
     - [JWT Configuration](#jwt-configuration)
     - [JWT Generate Keys](#jwt-generate-keys)
@@ -16,32 +15,32 @@ This document covers the authentication system, including JWT authentication, AP
   - [API Key Authentication](#api-key-authentication)
     - [API Key Overview](#api-key-overview)
     - [API Key Structure](#api-key-structure)
-    - [API Key Authentication Flow](#api-key-authentication-flow)
     - [API Key Types](#api-key-types)
     - [API Key Configuration](#api-key-configuration)
     - [API Key Management](#api-key-management)
     - [API Key Usage](#api-key-usage)
   - [Social Authentication](#social-authentication)
-    - [Social Authentication Overview](#social-authentication-overview)
-    - [Supported Social Providers](#supported-social-providers)
-      - [Google Authentication](#google-authentication)
-      - [Apple Authentication](#apple-authentication)
-    - [Social Authentication Flow](#social-authentication-flow)
-    - [Social Authentication Configuration](#social-authentication-configuration)
-    - [Social Authentication Endpoints](#social-authentication-endpoints)
-    - [Social Authentication Token Payload](#social-authentication-token-payload)
-    - [Social Authentication Usage](#social-authentication-usage)
+    - [Google Authentication](#google-authentication)
+    - [Google Authentication Overview](#google-authentication-overview)
+      - [Google Authentication Configuration](#google-authentication-configuration)
+      - [Google Authentication Endpoints](#google-authentication-endpoints)
+      - [Google Authentication Token Payload](#google-authentication-token-payload)
+      - [Google Authentication Usage](#google-authentication-usage)
+    - [Apple Authentication](#apple-authentication)
+    - [Apple Authentication Overview](#apple-authentication-overview)
+      - [Apple Authentication Configuration](#apple-authentication-configuration)
+      - [Apple Authentication Endpoints](#apple-authentication-endpoints)
+      - [Apple Authentication Token Payload](#apple-authentication-token-payload)
+      - [Apple Authentication Usage](#apple-authentication-usage)
   - [Session Management](#session-management)
     - [Session Overview](#session-overview)
     - [Session Structure](#session-structure)
-    - [Session Authentication Flow](#session-authentication-flow)
     - [Session Management](#session-management-1)
       - [User Session Endpoints](#user-session-endpoints)
       - [Admin Session Endpoints](#admin-session-endpoints)
     - [Session Cache](#session-cache)
     - [Session Configuration](#session-configuration)
     - [Session Usage](#session-usage)
-      - [Token Management Approach](#token-management-approach)
 
 ## JWT Authentication
 
@@ -96,13 +95,6 @@ The JWT payload in this boilerplate contains the following claims:
 ```
 
 The payload structure is defined in the `IAuthJwtAccessTokenPayload` and `IAuthJwtRefreshTokenPayload` interfaces in the auth module.
-
-### JWT Authentication Flow
-
-1. **Login**: User provides credentials and receives an access token and refresh token
-2. **Access Token**: User includes the access token in request headers for protected resources
-3. **Refresh Token**: When the access token expires, the user uses the refresh token to get a new access token
-4. **Logout**: Tokens can be invalidated through various strategies
 
 ### JWT Token Types
 
@@ -168,13 +160,23 @@ async yourProtectedEndpoint() {
   // Your endpoint code
 }
 
-// Get the payload
-@AuthJwtPayload()
-payload: IAuthJwtAccessTokenPayload
+// Get the payload/
+async endpoint(
+  @AuthJwtPayload()
+  payload: IAuthJwtAccessTokenPayload
+){
+  // ...
+}
+
 
 // Get the raw token
-@AuthJwtToken()
-token: string
+async endpoint(
+  @AuthJwtToken()
+  token: string
+){
+  // ...
+}
+
 
 // For refresh token endpoints
 @AuthJwtRefreshProtected()
@@ -246,22 +248,6 @@ Example API key structure in database:
 }
 ```
 
-### API Key Authentication Flow
-
-1. **Client Request**: Client makes a request to a protected endpoint with the API key in the header
-2. **Guard Interception**: The `ApiKeyXApiKeyGuard` intercepts the request
-3. **Header Extraction**: The guard extracts the API key from the header (using the configured header name, default is `x-api-key`)
-4. **Key-Secret Parsing**: The guard splits the header value into key and secret components
-5. **API Key Lookup**: The system looks up the API key in the database
-6. **Validation Checks**:
-   - Verifies the API key exists
-   - Checks if the API key is active
-   - Validates the API key is not expired (if start/end dates are set)
-   - Compares the provided key-secret hash with the stored hash
-7. **Type Verification**: The `ApiKeyXApiKeyTypeGuard` verifies the key has the required type
-8. **Request Enrichment**: The API key information is added to the request object
-9. **Controller Execution**: The request proceeds to the controller if all checks pass
-
 ### API Key Types
 
 The system supports two types of API keys:
@@ -302,21 +288,6 @@ The system includes a comprehensive API for managing API keys through the `ApiKe
 | `/api-key/update/:id/date` | PUT | Update API key validity dates |
 | `/api-key/delete/:id` | DELETE | Delete an API key |
 
-**API Key Creation Process:**
-
-```typescript
-async create({ name, type, startDate, endDate }: ApiKeyCreateRequestDto): Promise<ApiKeyCreateResponseDto> {
-  const key = await this.createKey();
-  const secret = await this.createSecret();
-  const hash: string = await this.createHashApiKey(key, secret);
-  
-  // Create and save the API key entity
-  // ...
-  
-  return { _id: created._id, key: created.key, secret };
-}
-```
-
 ### API Key Usage
 
 Protect your routes with API key authentication using decorators:
@@ -335,8 +306,12 @@ async yourSystemEndpoint() {
 }
 
 // Access the API key information in your controller
-@ApiKeyPayload()
-apiKey: ApiKeyPayloadDto
+async yourSystemEndpoint(
+  @ApiKeyPayload()
+  apiKey: ApiKeyPayloadDto
+) {
+  // ...
+}
 ```
 
 Here are examples of actual endpoint implementations:
@@ -364,57 +339,24 @@ async someEndpointSystem(
 
 ## Social Authentication
 
-This boilerplate provides built-in support for social authentication, allowing users to log in using their Google or Apple accounts.
+This boilerplate provides built-in support for social authentication, allowing users to log in using their Google or Apple accounts. Each authentication provider has its own implementation and configuration details.
 
-### Social Authentication Overview
+### Google Authentication
 
-Social authentication enables users to access your application using credentials from popular identity providers. The boilerplate supports:
+### Google Authentication Overview
 
-- Google Authentication
-- Apple Authentication
+Google authentication uses OAuth 2.0 and OpenID Connect to verify user identities:
 
-### Supported Social Providers
+- Implements Google's secure sign-in flow
+- Validates tokens through Google's verification APIs
+- Extracts user profile information from the ID token
+- Provides a convenient way for users to sign in with their Google accounts
 
-#### Google Authentication
+#### Google Authentication Configuration
 
-Google authentication uses OAuth 2.0 to verify user identities:
-
-1. Client application obtains an ID token from Google
-2. Backend validates the ID token using Google's verification APIs
-3. If valid, the user is logged in
-
-#### Apple Authentication
-
-Apple authentication follows OAuth 2.0 and OpenID Connect standards:
-
-1. Client application obtains an ID token from Apple
-2. Backend validates the ID token using Apple's public keys
-3. If valid, the user is logged in
-
-### Social Authentication Flow
-
-The general flow for social authentication is:
-
-1. **Frontend Authentication**: User authenticates with the social provider (Google/Apple) client-side
-2. **Token Acquisition**: Frontend obtains an ID token from the social provider
-3. **Token Submission**: Frontend sends the ID token to the backend
-4. **Token Verification**: Backend verifies the token with the provider's services
-5. **User Lookup/Creation**: Backend finds a user account based on the email
-6. **Session Creation**: A new session is created for the user
-7. **JWT Generation**: Access and refresh tokens are generated
-8. **Response**: Tokens are returned to the client
-
-### Social Authentication Configuration
-
-Social authentication is configured in `auth.config.ts`:
+Google authentication is configured in `auth.config.ts`:
 
 ```typescript
-apple: {
-  header: 'Authorization',                                        // HTTP header for Apple auth
-  prefix: 'Bearer',                                               // Prefix for Apple auth token
-  clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID,              // Apple OAuth client ID
-  signInClientId: process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID,// Apple Sign In client ID
-},
 google: {
   header: 'Authorization',                                        // HTTP header for Google auth
   prefix: 'Bearer',                                               // Prefix for Google auth token
@@ -423,18 +365,16 @@ google: {
 }
 ```
 
-### Social Authentication Endpoints
+#### Google Authentication Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/auth/login/social/google` | POST | Login with Google ID token |
-| `/auth/login/social/apple` | POST | Login with Apple ID token |
 
-### Social Authentication Token Payload
+#### Google Authentication Token Payload
 
-When validating social tokens, the system extracts relevant information:
+When validating Google tokens, the system extracts the following information:
 
-**Google Token Payload**:
 ```typescript
 interface IAuthSocialGooglePayload {
   email: string;          // User's email address
@@ -444,35 +384,78 @@ interface IAuthSocialGooglePayload {
 }
 ```
 
-**Apple Token Payload**:
-```typescript
-interface IAuthSocialApplePayload {
-  email: string;          // User's email address
-  emailVerified: boolean; // Whether email is verified
-}
-```
+#### Google Authentication Usage
 
-### Social Authentication Usage
-
-The system provides guards and decorators to protect routes for social authentication:
+The system provides guards and decorators to protect routes for Google authentication:
 
 ```typescript
 // Google authentication guard
 @AuthSocialGoogleProtected()
 @Post('/login/social/google')
 async loginWithGoogle(
-  @AuthJwtPayload<IAuthSocialGooglePayload>('email') email: string
+  @AuthSocialGooglePayload() googlePayload: IAuthSocialGooglePayload,
+  @AuthSocialGooglePayload('email') email: string
 ) {
-  // Your login logic
+  // Your login logic using the Google payload
+  return this.authService.loginWithGoogle(googlePayload);
 }
+```
 
+### Apple Authentication
+
+### Apple Authentication Overview
+
+Apple authentication follows OAuth 2.0 and OpenID Connect standards to provide a secure sign-in mechanism:
+
+- Complies with Apple's strict privacy and security requirements
+- Uses Apple's identity services to verify users
+- Supports Sign in with Apple feature for iOS and web applications
+- Provides privacy-focused authentication with minimal data collection
+
+#### Apple Authentication Configuration
+
+Apple authentication is configured in `auth.config.ts`:
+
+```typescript
+apple: {
+  header: 'Authorization',                                        // HTTP header for Apple auth
+  prefix: 'Bearer',                                               // Prefix for Apple auth token
+  clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID,              // Apple OAuth client ID
+  signInClientId: process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID,// Apple Sign In client ID
+}
+```
+
+#### Apple Authentication Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/auth/login/social/apple` | POST | Login with Apple ID token |
+
+#### Apple Authentication Token Payload
+
+When validating Apple tokens, the system extracts the following information:
+
+```typescript
+interface IAuthSocialApplePayload {
+  email: string;          // User's email address (may be private relay)
+  emailVerified: boolean; // Whether email is verified
+}
+```
+
+#### Apple Authentication Usage
+
+The system provides guards and decorators to protect routes for Apple authentication:
+
+```typescript
 // Apple authentication guard
 @AuthSocialAppleProtected()
 @Post('/login/social/apple')
 async loginWithApple(
-  @AuthJwtPayload<IAuthSocialApplePayload>('email') email: string
+  @AuthSocialApplePayload() applePayload: IAuthSocialApplePayload,
+  @AuthSocialApplePayload('email') email: string
 ) {
-  // Your login logic
+  // Your login logic using the Apple payload
+  return this.authService.loginWithApple(applePayload);
 }
 ```
 
@@ -521,17 +504,6 @@ Each session contains detailed information about the login:
 }
 ```
 
-### Session Authentication Flow
-
-1. **User Login**: When a user logs in via any authentication method (credentials, social, etc.)
-2. **Session Creation**: A new session is created with client information (IP, user agent, etc.)
-3. **Token Generation**: JWT tokens are generated with the session ID included in the payload
-4. **Session Cache**: Session information is cached in Redis for quick access
-5. **Session Expiration**: A background job is scheduled to handle session expiration
-6. **Token Usage**: The user uses the tokens to access protected resources
-7. **Session Validation**: On protected endpoints, the session is verified to be active
-8. **Session Revocation**: When a user logs out, the session is revoked
-
 ### Session Management
 
 The system provides APIs for managing sessions:
@@ -571,11 +543,5 @@ this.refreshTokenExpiration = this.configService.get<number>(
 ### Session Usage
 
 The session management system in this boilerplate is designed to work seamlessly with JWT authentication, focusing specifically on refresh token management while allowing access tokens to function independently.
-
-#### Token Management Approach
-
-- **Refresh Tokens**: The system actively manages and tracks refresh tokens through sessions. When a refresh token is used, the system verifies that its associated session is still active and not revoked.
-
-- **Access Tokens**: Access tokens remain valid until their expiration, regardless of session status. This design allows for efficient API access without constant session verification.
 
 > **Important Note**: Since access tokens have a short lifespan (typically 15-30 minutes) while sessions may be revoked at any time, there is an intentional security gap where a recently revoked session's access token might still work until it expires. This is a standard security trade-off that balances security with performance.

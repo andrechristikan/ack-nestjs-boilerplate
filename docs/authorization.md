@@ -1,15 +1,17 @@
-# Authorization
+# Overview
 
 This document covers the authorization system role-based access control, and policy enforcement.
 
-> **Important Note**: The `@AuthJwtAccessProtected()` decorator is a fundamental requirement for all protected routes in the system, including those using Role-Based Access Control (RBAC) and Policy-based permissions. It serves as the base authentication layer that validates the JWT token and extracts the user payload. All other protection decorators like `@UserProtected()`, `@PolicyRoleProtected()`, and `@PolicyAbilityProtected()` build upon this foundation and require a valid JWT token to function properly.
+> **Note**: The `@AuthJwtAccessProtected()` decorator is a fundamental requirement for all protected routes in the system, including those using Role-Based Access Control (RBAC) and Policy-based permissions. It serves as the base authentication layer that validates the JWT token and extracts the user payload. All other protection decorators like `@UserProtected()`, `@PolicyRoleProtected()`, and `@PolicyAbilityProtected()` build upon this foundation and require a valid JWT token to function properly.
 
-## Table of Contents
+# Table of Contents
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
+- [Table of Contents](#table-of-contents)
   - [Role-Based Access Control](#role-based-access-control)
     - [Role Types](#role-types)
     - [Role Management](#role-management)
+      - [Admin Role Endpoints](#admin-role-endpoints)
+      - [System Role Endpoints](#system-role-endpoints)
     - [Role Structure](#role-structure)
       - [Example Role Entity Data](#example-role-entity-data)
     - [RBAC Implementation Examples](#rbac-implementation-examples)
@@ -51,13 +53,27 @@ export enum ENUM_POLICY_ROLE_TYPE {
 
 ### Role Management
 
-Roles are managed through the `RoleService` and can be created, updated, activated, deactivated, and deleted via the admin API endpoints. Each role has the following operations:
+Roles are managed through the `RoleService` and can be accessed via both admin and system API endpoints. The system provides comprehensive role management through the following API endpoints:
 
-- **Create Role**: Create a new role with specified permissions
-- **Update Role**: Modify an existing role's permissions or properties
-- **Activate/Deactivate Role**: Enable or disable a role without deleting it
-- **Delete Role**: Permanently remove a role (only if not in use)
-- **List Roles**: View all available roles with filtering options
+#### Admin Role Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/role/list` | GET | List all roles with pagination and filtering options |
+| `/role/get/:role` | GET | Get detailed information about a specific role |
+| `/role/create` | POST | Create a new role with specified permissions |
+| `/role/update/:role` | PUT | Update an existing role's description, permissions, or type |
+| `/role/update/:role/inactive` | PATCH | Deactivate a role (disable it without deletion) |
+| `/role/update/:role/active` | PATCH | Activate a previously inactive role |
+| `/role/delete/:role` | DELETE | Permanently delete a role (only if not in use) |
+
+#### System Role Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/role/list` | GET | List all roles with pagination (system access) |
+
+All role management endpoints include proper validation, error handling, and permission checks to ensure secure role administration.
 
 ### Role Structure
 
@@ -178,6 +194,7 @@ Different role types can access different routes:
 ```typescript
 // Admin-only route
 @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+@AuthJwtAccessProtected()
 @Post('/create')
 async createUser() {
     // Only ADMIN can create users
@@ -185,6 +202,7 @@ async createUser() {
 
 // Super admin-only route
 @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN)
+@AuthJwtAccessProtected()
 @Delete('/delete/:id')
 async deleteRole() {
     // Only SUPER_ADMIN can delete roles
@@ -192,6 +210,7 @@ async deleteRole() {
 
 // Multiple role types allowed
 @PolicyRoleProtected([ENUM_POLICY_ROLE_TYPE.ADMIN, ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN])
+@AuthJwtAccessProtected()
 @Get('/settings')
 async getSettings() {
     // Both ADMIN and SUPER_ADMIN can access settings
@@ -235,7 +254,6 @@ The `@UserProtected()` decorator is typically used together with other security 
 @Response('user.profile')
 @UserProtected()
 @AuthJwtAccessProtected()
-@ApiKeyProtected()
 @Get('/profile')
 async profile(
     @AuthJwtPayload('user', UserActiveParsePipe) user: IUserDoc
@@ -252,7 +270,6 @@ async profile(
 @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
 @UserProtected()
 @AuthJwtAccessProtected()
-@ApiKeyProtected()
 @Delete('/delete')
 async delete(
     @AuthJwtPayload('user', UserParsePipe) user: UserDoc
@@ -273,7 +290,6 @@ async delete(
 @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
 @UserProtected()
 @AuthJwtAccessProtected()
-@ApiKeyProtected()
 @Get('/list')
 async list(): Promise<IResponsePaging<UserListResponseDto>> {
     // This endpoint is only accessible by authenticated ADMIN users with READ permission on USER subject
@@ -374,6 +390,7 @@ Routes can be protected using specific abilities defined by action and subject c
     subject: ENUM_POLICY_SUBJECT.USER,
     action: [ENUM_POLICY_ACTION.READ],
 })
+@AuthJwtAccessProtected()
 @Get('/list')
 async listUsers() {
     // Only accessible if the user has READ permission on USER subject
@@ -384,6 +401,7 @@ async listUsers() {
     subject: ENUM_POLICY_SUBJECT.USER,
     action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
 })
+@AuthJwtAccessProtected()
 @Post('/create')
 async createUser() {
     // Requires both READ and CREATE permissions on USER subject
@@ -402,6 +420,7 @@ For more granular control, combine role protection with policy abilities:
     action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
 })
 @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+@AuthJwtAccessProtected()
 @Put('/update/:user')
 async updateUser() {
     // Only ADMIN with READ and UPDATE permissions on USER can access
