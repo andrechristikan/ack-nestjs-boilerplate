@@ -1,10 +1,10 @@
-# Installation
+# Overview
 
 This guide covers both standard installation and Docker-based setup of the ACK NestJS Boilerplate.
 
 # Table of Contents
 
-- [Installation](#installation)
+- [Overview](#overview)
 - [Table of Contents](#table-of-contents)
   - [Standard Installation](#standard-installation)
     - [Prerequisites](#prerequisites)
@@ -33,10 +33,10 @@ I recommend using the LTS versions for all tools and packages.
 
 > Always verify that the tools have been installed successfully.
 
-1. [NodeJs](http://nodejs.org) (v22.11.0 or later)
+1. [NodeJs](http://nodejs.org) (v22.13.x or later)
 2. [MongoDB](https://docs.mongodb.com/) (v8.x)
 3. [Redis](https://redis.io) (v8.x)
-4. [Yarn](https://yarnpkg.com) (v1.22.22)
+4. [Yarn](https://yarnpkg.com) (v1.22.x)
 5. [Git](https://git-scm.com) (v2.39.x)
 
 ### Clone Repo

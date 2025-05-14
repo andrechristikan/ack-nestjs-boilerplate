@@ -1,12 +1,16 @@
-# Middleware
+# Overview
 
 Middleware functions are functions that have access to the request object (req), the response object (res), and the next middleware function in the application's request-response cycle.
 
 The middleware is configured in `src/app/app.middleware.module.ts` and applied globally to all routes using the pattern `{*wildcard}`. The middleware is executed in the order they are applied.
 
-## Table of Contents
+This documentation explains the features and usage of:
+- **App Middleware Module**: Located at `src/app/app.middleware.module.ts`
+- **Middleware Module**: Located at `src/app/middlewares/*.middleware.ts`
+
+# Table of Contents
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
+- [Table of Contents](#table-of-contents)
   - [Middleware Modules](#middleware-modules)
     - [Request ID Middleware](#request-id-middleware)
     - [Helmet Middleware](#helmet-middleware)
@@ -18,10 +22,9 @@ The middleware is configured in `src/app/app.middleware.module.ts` and applied g
   - [Global Guards and Filters](#global-guards-and-filters)
     - [ThrottlerGuard](#throttlerguard)
 
+## Middleware Modules
 
 All middleware is registered in the `AppMiddlewareModule` using the `configure` method:
-
-## Middleware Modules
 
 ### Request ID Middleware
 **File**: `src/app/middlewares/app.request-id.middleware.ts`
@@ -129,6 +132,6 @@ Prevents abuse through rate limiting. Configuration is defined in `middleware.co
 ```typescript
 throttle: {
     ttl: ms('500'), // 0.5 secs
-    limit: 10, // max request per reset time
+    limit: 10, // max request per request reset time
 }
 ```

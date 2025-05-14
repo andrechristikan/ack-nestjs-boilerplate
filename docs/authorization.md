@@ -2,6 +2,11 @@
 
 This document covers the authorization system role-based access control, and policy enforcement.
 
+This documentation explains the features and usage of:
+- **Policy Module**: Located at `src/modules/policy`
+- **Role Module**: Located at `src/modules/role`
+- **User Module** (protection features): Located at `src/modules/user`
+
 > **Note**: The `@AuthJwtAccessProtected()` decorator is a fundamental requirement for all protected routes in the system, including those using Role-Based Access Control (RBAC) and Policy-based permissions. It serves as the base authentication layer that validates the JWT token and extracts the user payload. All other protection decorators like `@UserProtected()`, `@PolicyRoleProtected()`, and `@PolicyAbilityProtected()` build upon this foundation and require a valid JWT token to function properly.
 
 # Table of Contents

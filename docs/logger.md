@@ -1,17 +1,21 @@
-# Logger
+# Overview
 
 The ACK NestJS Boilerplate implements a comprehensive logging system using Pino, a very low overhead Node.js logger.
 
+This documentation explains the features and usage of:
+- **Logger Module**: Located at `src/common/logger`
+- **Sentry Integration**: Located at `src/instrument.ts`
+
 The logger is configured globally and is automatically available throughout the application via dependency injection.
 
-## Table of Contents
+# Table of Contents
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
+- [Table of Contents](#table-of-contents)
   - [Configuration](#configuration)
     - [Environment Variables](#environment-variables)
     - [Debug Configuration](#debug-configuration)
   - [Modules](#modules)
-    - [Logger Option](#logger-option)
+    - [Logger Option Module](#logger-option-module)
   - [Sentry](#sentry)
     - [Configuration](#configuration-1)
     - [How It Works](#how-it-works)
@@ -86,9 +90,24 @@ These excluded routes help reduce noise in the logs and improve performance by a
 
 ## Modules
 
-### Logger Option
+### Logger Option Module
 
-The `LoggerOptionService` (`src/common/logger/services/logger.option.service.ts`) is responsible for creating Pino logger configuration based on the application's environment settings.
+The `LoggerOptionModule` (`src/common/logger/logger.option.module.ts`) sets up the Logger configuration. It consists of:
+
+- **LoggerOptionService**: Located at `src/common/logger/services/logger.option.service.ts`, this service is responsible for creating Pino logger configuration based on the application's environment settings.
+- **Logger Constants**: Located at `src/common/logger/constants/logger.constant.ts`, these constants define excluded routes and sensitive data fields for redaction.
+
+The logger is integrated globally in the `CommonModule` (`src/common/common.module.ts`) using:
+
+```typescript
+PinoLoggerModule.forRootAsync({
+    imports: [LoggerOptionModule],
+    inject: [LoggerOptionService],
+    useFactory: async (loggerOptionService: LoggerOptionService) => {
+        return loggerOptionService.createOptions();
+    },
+}),
+```
 
 ## Sentry
 
@@ -273,7 +292,16 @@ redact: {
                 ? `req.headers["${field}"]`
                 : `req.headers.${field}`
         ),
-        // Additional paths for response body and headers
+        ...LOGGER_SENSITIVE_FIELDS.map(field =>
+            field.includes('-')
+                ? `res.body["${field}"]`
+                : `res.body.${field}`
+        ),
+        ...LOGGER_SENSITIVE_FIELDS.map(field =>
+            field.includes('-')
+                ? `res.headers["${field}"]`
+                : `res.headers.${field}`
+        ),
     ],
     censor: '***REDACTED***',
 },

@@ -1,6 +1,11 @@
 # Overview
 
-This document covers the authentication system, including JWT authentication, API key authentication, social authentication, and session management.
+This document covers the authentication system, including JWT authentication, API key authentication, social authentication, and session management. 
+
+This documentation explains the features and usage of:
+- **Auth Module**: Located at `src/modules/auth`
+- **API Key Module**: Located at `src/modules/api-key`
+- **Session Module**: Located at `src/modules/session`
 
 # Table of Contents
 - [Overview](#overview)

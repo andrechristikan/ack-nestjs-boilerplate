@@ -1,17 +1,21 @@
-# Internationalization
+# Overview
 
 The ACK NestJS Boilerplate provides a robust internationalization (i18n) system that enables your application to support multiple languages. The system is built using NestJS's i18n module with a custom implementation that integrates seamlessly with the application's error handling and response mechanisms.
 
+This documentation explains the features and usage of:
+- **Message Module**: Located at `src/common/message`
+- **Language Files**: Located at `src/languages`
+
 Internationalization is handled through the `MessageModule` which provides translation services throughout the application. Language detection is primarily done through the `x-custom-lang` header, and all messages are stored in JSON files within the `src/languages` directory.
 
-## Table of Contents
+# Table of Contents
 
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
+- [Table of Contents](#table-of-contents)
   - [Structure](#structure)
   - [Configuration](#configuration)
   - [Language Files](#language-files)
-  - [Using the Message Service](#using-the-message-service)
+  - [Service](#service)
     - [Basic Translation](#basic-translation)
     - [Translation with Variables](#translation-with-variables)
     - [Request Validation](#request-validation)
@@ -115,7 +119,7 @@ Key language files include:
 }
 ```
 
-## Using the Message Service
+## Service
 
 The `MessageService` provides several methods for translating messages:
 

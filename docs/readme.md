@@ -22,4 +22,4 @@ Welcome to the ACK NestJS Boilerplate documentation. This guide provides compreh
 - [Settings Management](./setting.md)
 - [Background Processing](./background-processing.md)
 - [Audit Logging](./audit.md)
-- [Third-Party Integrations](./third-party-intergration.md)
+- [Third-Party Integrations](./third-party-integration.md)

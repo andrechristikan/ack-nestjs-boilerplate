@@ -1,21 +1,28 @@
-# Background Processing
+# Overview
 
 This document explains the background processing system in ACK NestJS Boilerplate, which uses BullMQ for job queuing and processing, particularly for SMS and email sending.
 
-## Table of Contents
+This documentation explains the features and usage of:
+- **Worker Module**: Located at `src/worker/worker.module.ts`
+- **SMS Module**: Located at `src/modules/sms`
+- **Email Module**: Located at `src/modules/email`
+- **Session Module**: Located at `src/modules/session`
+
+# Table of Contents
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
+- [Table of Contents](#table-of-contents)
   - [BullMQ](#bullmq)
     - [Configuration](#configuration)
     - [Queue Management](#queue-management)
-  - [SMS Module](#sms-module)
-    - [Add Queue Jobs](#add-queue-jobs)
-    - [SMS Processors](#sms-processors)
-    - [SMS Templates](#sms-templates)
-  - [Email Module](#email-module)
-    - [Add Queue Jobs](#add-queue-jobs-1)
-    - [Email Processors](#email-processors)
-    - [Email Templates](#email-templates)
+  - [Modules](#modules)
+    - [SMS Module](#sms-module)
+      - [Add Queue Jobs](#add-queue-jobs)
+      - [SMS Processors](#sms-processors)
+      - [SMS Templates](#sms-templates)
+    - [Email Module](#email-module)
+      - [Add Queue Jobs](#add-queue-jobs-1)
+      - [Email Processors](#email-processors)
+      - [Email Templates](#email-templates)
 
 ## BullMQ
 
@@ -110,11 +117,13 @@ export enum ENUM_WORKER_QUEUES {
 }
 ```
 
-## SMS Module
+## Modules
+
+### SMS Module
 
 The SMS module handles queuing and processing of SMS messages, using AWS Pinpoint as the SMS provider.
 
-### Add Queue Jobs
+#### Add Queue Jobs
 
 To add SMS jobs to the queue, you need to inject the BullMQ Queue into your service or controller using the `@InjectQueue` decorator from `@nestjs/bullmq`. Note that the SMS queue is registered in the route modules, not in the SMS module itself, as explained in the Queue Management section.
 
@@ -169,7 +178,7 @@ export class WorkerModule {}
 
 This architecture allows for a clean separation between the SMS service functionality and the queue processing logic.
 
-### SMS Processors
+#### SMS Processors
 
 The `SmsProcessor` class handles SMS jobs from the queue by extending the `WorkerHost` class:
 
@@ -217,7 +226,7 @@ export class SmsProcessor extends WorkerHost implements ISmsProcessor {
 }
 ```
 
-### SMS Templates
+#### SMS Templates
 
 SMS templates are defined as text files located in the `/src/modules/sms/templates/` directory. These are simple text files with placeholders that are replaced with actual values when sending an SMS:
 
@@ -247,11 +256,11 @@ async sendVerification(
 
 This approach allows for simple templating while maintaining flexibility for different types of SMS messages.
 
-## Email Module
+### Email Module
 
 The Email Module handles queuing and processing of email messages, providing a reliable asynchronous way to send emails throughout the application.
 
-### Add Queue Jobs
+#### Add Queue Jobs
 
 To add email jobs to the queue, inject the BullMQ Queue into your service or controller using the `@InjectQueue` decorator. As described in the Queue Management section, the email queue is registered in the route modules, not in the Email module itself.
 
@@ -289,7 +298,7 @@ export class YourService {
 
 The job options follow the same pattern as described in the SMS Module section.
 
-### Email Processors
+#### Email Processors
 
 The `EmailProcessor` class handles email jobs from the queue:
 
@@ -333,9 +342,9 @@ export class EmailProcessor extends WorkerHost {
 }
 ```
 
-### Email Templates
+#### Email Templates
 
-The Email module uses AWS SES (Simple Email Service) templates for sending emails. These templates are HTML files stored in the project's `src/templates/` directory with the `.template.html` extension.
+The Email module uses AWS SES (Simple Email Service) templates for sending emails. These templates are Handlebars (HBS) files stored in the project's `src/templates/` directory with the `.template.hbs` extension.
 
 Templates are first imported into AWS SES before they can be used:
 
@@ -344,7 +353,7 @@ async importVerification(): Promise<boolean> {
     try {
         const templatePath = join(
             process.cwd(),
-            'src/templates/email-verification.template.html'
+            'src/templates/email-verification.template.hbs'
         );
 
         await this.awsSESService.createTemplate({

@@ -43,7 +43,7 @@ export class EmailService implements IEmailService {
         try {
             const templatePath = join(
                 process.cwd(),
-                'src/templates/change-password.template.html'
+                'src/templates/change-password.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -106,7 +106,7 @@ export class EmailService implements IEmailService {
         try {
             const templatePath = join(
                 process.cwd(),
-                'src/templates/welcome.template.html'
+                'src/templates/welcome.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -170,7 +170,7 @@ export class EmailService implements IEmailService {
         try {
             const templatePath = join(
                 process.cwd(),
-                'src/templates/create.template.html'
+                'src/templates/create.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -242,7 +242,7 @@ export class EmailService implements IEmailService {
         try {
             const templatePath = join(
                 process.cwd(),
-                'src/templates/temp-password.template.html'
+                'src/templates/temp-password.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -321,7 +321,7 @@ export class EmailService implements IEmailService {
         try {
             const templatePath = join(
                 process.cwd(),
-                'src/templates/reset-password.template.html'
+                'src/templates/reset-password.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -390,7 +390,7 @@ export class EmailService implements IEmailService {
         try {
             const templatePath = join(
                 process.cwd(),
-                'src/templates/email-verification.template.html'
+                'src/templates/email-verification.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -460,7 +460,7 @@ export class EmailService implements IEmailService {
         try {
             const templatePath = join(
                 process.cwd(),
-                'src/templates/email-verified.template.html'
+                'src/templates/email-verified.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -527,7 +527,7 @@ export class EmailService implements IEmailService {
         try {
             const templatePath = join(
                 process.cwd(),
-                'src/templates/mobile-number-verified.template.html'
+                'src/templates/mobile-number-verified.template.hbs'
             );
 
             await this.awsSESService.createTemplate({

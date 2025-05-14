@@ -1,13 +1,17 @@
-# Config and Environment
+# Overview
 
 This document provides a detailed explanation of how configuration works in the ACK NestJS Boilerplate project, including the configuration files structure and environment variables used.
 
 The project uses a modular configuration approach through the NestJS `ConfigModule`. Configuration is split into multiple dedicated files for different aspects of the application, making it easier to maintain and understand.
 
-## Table of Contents
+This documentation explains the features and usage of:
+- **Config Module**: Located at `src/configs`
+- **Env File**: Located at `.env`
+
+# Table of Contents
 
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
+- [Table of Contents](#table-of-contents)
   - [Configuration](#configuration)
     - [App Configuration](#app-configuration)
     - [Auth Configuration](#auth-configuration)
@@ -19,6 +23,7 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
     - [User Configuration](#user-configuration)
     - [Documentation Configuration](#documentation-configuration)
     - [Message Configuration](#message-configuration)
+    - [Email Configuration](#email-configuration)
     - [Verification Configuration](#verification-configuration)
     - [Reset Password Configuration](#reset-password-configuration)
     - [Home Configuration](#home-configuration)
@@ -251,9 +256,8 @@ Redis settings for caching and queues:
     port: Number.parseInt(process.env.REDIS_PORT),                 // Redis server port for caching
     password: process.env.REDIS_PASSWORD,                          // Redis password for caching
     username: process.env.REDIS_USERNAME,                          // Redis username for caching
-    ttl: 5 * 60 * 1000,                                                 // Cache TTL (5 minutes)
+    ttl: 5 * 60 * 1000,                                            // Cache TTL (5 minutes)
     max: 10,                                                       // Maximum cache size
-    tls: process.env.REDIS_TLS_ENABLE === 'true',                  // TLS for secure connections
   },
   queue: {
     host: process.env.REDIS_HOST,                                  // Redis server hostname for queues
@@ -296,6 +300,17 @@ Internationalization settings:
 {
   availableLanguage: Object.values(ENUM_MESSAGE_LANGUAGE),         // List of supported languages
   language: process.env.APP_LANGUAGE,                              // Default application language
+}
+```
+
+### Email Configuration
+
+Default email addresses for system communications:
+
+```typescript
+{
+  fromEmail: 'noreply@mail.com',                                  // Default sender email address
+  supportEmail: 'support@mail.com',                               // Support email address
 }
 ```
 

@@ -2,6 +2,10 @@
 
 This document covers the audit functionality, including activity logging and password history tracking.
 
+This documentation explains the features and usage of:
+- **Activity Module**: Located at `src/modules/activity`
+- **Password History Module**: Located at `src/modules/password-history`
+
 # Table of Contents
 - [Overview](#overview)
 - [Table of Contents](#table-of-contents)

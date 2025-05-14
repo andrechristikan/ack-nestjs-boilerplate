@@ -16,7 +16,7 @@ import { RoleModule } from 'src/modules/role/role.module';
 import { SessionModule } from 'src/modules/session/session.module';
 import { UserModule } from 'src/modules/user/user.module';
 
-// TODO: CHANGE WITH COMMANDER
+// TODO: (v8) CHANGE WITH COMMANDER
 @Module({
     imports: [
         CommonModule,

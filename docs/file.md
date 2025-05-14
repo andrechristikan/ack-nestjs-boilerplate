@@ -1,11 +1,14 @@
-# File
+# Overview
 
 The File Module provides comprehensive file handling capabilities across the application. It's designed to handle various file operations, including uploading, validating, parsing, and processing different file types such as Excel, CSV, images, and other media formats.
 
-## Table of Contents
+This documentation explains the features and usage of:
+- **File Module**: Located at `src/common/file`
+
+# Table of Contents
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
-  - [Service](#service)
+- [Table of Contents](#table-of-contents)
+  - [Services](#services)
   - [Enums](#enums)
   - [Constants](#constants)
   - [Error Handling](#error-handling)
@@ -24,10 +27,12 @@ The File Module provides comprehensive file handling capabilities across the app
   - [DTOs for File Operations](#dtos-for-file-operations)
   - [Examples](#examples)
     - [Basic File Upload](#basic-file-upload)
+    - [Bulk File Upload](#bulk-file-upload)
+    - [Multiple Field Bulk Upload](#multiple-field-bulk-upload)
     - [Excel Import](#excel-import)
     - [Excel Export](#excel-export)
 
-## Service
+## Services
 
 The `FileService` implements `IFileService` and provides methods for reading and writing Excel and CSV files:
 
@@ -36,10 +41,13 @@ The `FileService` implements `IFileService` and provides methods for reading and
 export class FileService implements IFileService {
     // CSV operations
     writeCsv<T>(rows: IFileRows<T>): Buffer;
+    writeCsvFromArray<T>(rows: T[][]): Buffer;
     readCsv<T>(file: Buffer): IFileRows<T>;
+    readCsvFromString<T>(file: string): IFileRows<T>;
     
     // Excel operations
     writeExcel<T>(rows: IFileRows<T>[]): Buffer;
+    writeExcelFromArray<T>(rows: T[][]): Buffer;
     readExcel<T>(file: Buffer): IFileRows<T>[];
 }
 ```
@@ -60,6 +68,10 @@ export enum ENUM_FILE_MIME_IMAGE {
     JPG = 'image/jpg',
     JPEG = 'image/jpeg',
     PNG = 'image/png',
+}
+
+export enum ENUM_FILE_MIME_DOCUMENT {
+    PDF = 'application/pdf',
 }
 
 export enum ENUM_FILE_MIME_EXCEL {
@@ -87,6 +99,8 @@ export enum ENUM_FILE_STATUS_CODE_ERROR {
     MAX_SIZE = 5021,
     MIME_INVALID = 5022,
     MAX_FILES = 5023,
+    VALIDATION_DTO = 5024,
+    REQUIRED_EXTRACT_FIRST = 5025,
 }
 ```
 
@@ -207,7 +221,7 @@ async import(
 }
 ```
 
-Note: The `FileExcelValidationPipe` should only be used after `FileExcelParsePipe`.
+Note: The `FileExcelValidationPipe` should only be used after `FileExcelParsePipe`. If not, it will throw a `REQUIRED_EXTRACT_FIRST` error.
 
 ## Response Handling for Excel/CSV Files
 
@@ -268,6 +282,63 @@ async uploadFile(
     ) file: IFile
 ) {
     return { filename: file.originalname, size: file.size };
+}
+```
+
+### Bulk File Upload
+
+```typescript
+@Post('upload-multiple')
+@FileUploadMultiple({
+    field: 'files',
+    maxFiles: 5,
+    fileSize: FILE_SIZE_IN_BYTES
+})
+async uploadMultipleFiles(
+    @UploadedFiles(
+        new FileRequiredPipe(),
+        new FileTypePipe([ENUM_FILE_MIME_IMAGE.JPG, ENUM_FILE_MIME_IMAGE.PNG])
+    ) files: IFile[]
+) {
+    return {
+        uploadedCount: files.length,
+        files: files.map(file => ({ filename: file.originalname, size: file.size }))
+    };
+}
+```
+
+### Multiple Field Bulk Upload
+
+```typescript
+@Post('upload-multiple-fields')
+@FileUploadMultipleFields(
+    [
+        { field: 'avatars', maxFiles: 2 },
+        { field: 'documents', maxFiles: 3 }
+    ],
+    { fileSize: FILE_SIZE_IN_BYTES }
+)
+async uploadMultipleFields(
+    @UploadedFiles() files: Record<string, IFile[]>
+) {
+    // Process different file fields separately
+    const avatars = files.avatars.map(file => ({ 
+        filename: file.originalname, 
+        size: file.size,
+        type: 'avatar'
+    }));
+    
+    const documents = files.documents.map(file => ({ 
+        filename: file.originalname, 
+        size: file.size,
+        type: 'document'
+    }));
+    
+    return {
+        avatarsCount: avatars.length,
+        documentsCount: documents.length,
+        files: [...avatars, ...documents]
+    };
 }
 ```
 

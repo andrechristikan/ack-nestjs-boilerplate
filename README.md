@@ -41,16 +41,10 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
 
 ## Important
 
-> Documentation ongoing...
-
 -   Stateful Authorization, using `redis-session` and `JWT`.
 -   Must run MongoDB as a `replication set` for `database transactions`.
--   Redis is required for caching, session management, and job queues (background processing).
--   If you want to implement `Google SSO`. You must have google cloud console account, then create your own Credential to get the `clientId` and `clientSecret`.
--   If you want to implement `Apple SSO`. You must have `clientId` and `signInClientId` from apple connect.
 -   If you change the environment value of `APP_ENV` to `production`, it will disable Documentation.
 -   For monitoring, this project will use `sentry.io`, and sent unhandled error and/or `internal server error`.
--   By default, logs will not be written to the `/log` directory. You need to change the `DEBUG_INTO_FILE` environment variable to `true` to enable file logging.
 -   Since version `7.4.0`, the project uses the `ES512` algorithm for JWT authentication.
 -   When using multiple protection decorators, they must be applied in the correct order:
     ```typescript
@@ -65,19 +59,18 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
 
 ## TODO
 
-- [x] Make email verification required (high priority)
-- [ ] Improve eslint rule for better code quality (high priority, in version 8)
-- [ ] Move some function in service layer into repository module, because a bit wrong implementation (high priority, in version 8)
-- [ ] 2FA Feats (high priority, in version 8)
-- [ ] Unit test (medium priority, in version 8)
-- [ ] Export Module in Background using bullmq (medium priority)
+- [ ] Improve eslint rule for better code quality (high priority, in v8)
+- [ ] Move some function in service layer into repository module, because a bit wrong implementation (high priority, in v8
+- [ ] 2FA Feats (high priority, in v8)
+- [ ] Export Module in Background using bullmq (medium priority, in v8)
+- [ ] Unit test (medium priority)
 - [ ] Add Github SSO (low priority)
 - [ ] Privacy Policy Module (versioning, lowest priority)
 - [ ] Term and Condition Module (versioning, lowest priority)
 
 ## Support me
 
-If you find this project helpful and would like to support its development, you can buy me a coffee!
+If you find this project helpful and would like to support its development, you can buy me a coffee
 
 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
   <a href='https://ko-fi.com/andrechristikan' target='_blank'>
@@ -102,7 +95,7 @@ I assume that everyone who comes here is a **`programmer with intermediate knowl
 3. [ExpressJs Fundamentals][ref-nodejs], as the base NodeJs Framework. This will help you understand how the NestJs Framework works.
 4. Understanding of databases, especially NoSQL and [MongoDB][ref-mongodb].
 5. Repository Design Pattern or Data Access Object Design Pattern. This will help in reading and writing the source code.
-6. The SOLID Principle and KISS Principle for better code writing.
+6. The SOLID Principle for better code writing.
 7. Optional. Microservice Architecture. This can help you understand this project more deeply.
 8. Optional. [The Twelve Factor Apps][ref-12factor]. This can help with project deployment.
 9. Optional. [Docker][ref-docker].

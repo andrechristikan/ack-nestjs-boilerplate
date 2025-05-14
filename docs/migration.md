@@ -1,10 +1,37 @@
-# Migration
+# Overview
 
-> In the future will replace `nestjs-command` with `commander`
+> TODO: (v8) In the future will replace `nestjs-command` with `commander`
+
+This documentation explains the features and usage of:
+- **Migration Module**: Located at `src/migration/**`
 
 This document covers the migration and seed functionality in the ACK NestJS Boilerplate project, explaining how database seeding works and how to use the migration commands.
 
-The migration system in ACK NestJS Boilerplate provides a way to populate the database with initial data, ensuring consistent and repeatable database setups. The system uses `nestjs-command` to create CLI commands that can be executed to seed or remove data from the database.
+# Table of Contents
+- [Overview](#overview)
+- [Table of Contents](#table-of-contents)
+  - [Modules](#modules)
+    - [Migration Module](#migration-module)
+    - [Seed Modules](#seed-modules)
+  - [Data Seed](#data-seed)
+    - [API Key Seed](#api-key-seed)
+    - [Country Seed](#country-seed)
+    - [Role Seed](#role-seed)
+    - [User Seed](#user-seed)
+  - [Template Seed](#template-seed)
+    - [Purpose](#purpose)
+    - [Supported Templates](#supported-templates)
+    - [Implementation](#implementation)
+    - [Commands](#commands)
+    - [Usage](#usage)
+  - [Running Migrations](#running-migrations)
+  - [Creating Custom Seeds](#creating-custom-seeds)
+    - [Testing Seeds](#testing-seeds)
+
+
+## Modules 
+
+The system uses `nestjs-command` to create CLI commands that can be executed to seed or remove data from the database.
 
 Each seed module is responsible for a specific domain area and can be executed independently or as part of the full migration process. Seeds can also be reversed, allowing you to clean up the database as needed.
 
@@ -31,31 +58,6 @@ async function bootstrap() {
     }
 }
 ```
-
-
-## Table of Contents
-- [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
-  - [Modules](#modules)
-    - [Migration Module](#migration-module)
-    - [Seed Modules](#seed-modules)
-  - [Data Seed](#data-seed)
-    - [API Key Seed](#api-key-seed)
-    - [Country Seed](#country-seed)
-    - [Role Seed](#role-seed)
-    - [User Seed](#user-seed)
-  - [Template Seed](#template-seed)
-    - [Purpose](#purpose)
-    - [Supported Templates](#supported-templates)
-    - [Implementation](#implementation)
-    - [Commands](#commands)
-    - [Usage](#usage)
-  - [Running Migrations](#running-migrations)
-  - [Creating Custom Seeds](#creating-custom-seeds)
-    - [Testing Seeds](#testing-seeds)
-
-
-## Modules 
 
 ### Migration Module
 
@@ -449,7 +451,7 @@ The Template Seed imports templates for:
 - Mobile number verification
 - Mobile verification confirmation
 
-Each template is stored as an HTML file in the `/src/templates/` directory and processed by the EmailService which registers them with AWS SES.
+Each template is stored as a Handlebars (HBS) file in the `/src/templates/` directory and processed by the EmailService which registers them with AWS SES.
 
 ### Implementation
 The MigrationTemplateSeed uses the EmailService to import templates:
@@ -509,7 +511,7 @@ async importWelcome(): Promise<boolean> {
     try {
         const templatePath = join(
             process.cwd(),
-            'src/templates/welcome.template.html'
+            'src/templates/welcome.template.hbs'
         );
 
         await this.awsSESService.createTemplate({

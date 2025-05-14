@@ -1,6 +1,9 @@
-# Error Handling
+# Overview
 
 The error handling system in ACK NestJS Boilerplate provides a consistent way to handle exceptions throughout the application. It uses NestJS's built-in exception filter mechanism to catch and transform exceptions into standardized HTTP responses.
+
+This documentation explains the features and usage of:
+- **Error Handling Core**: Located at `src/app/filters`
 
 Key features of the error handling system:
 
@@ -10,10 +13,10 @@ Key features of the error handling system:
 4. **Sentry Integration**: Critical errors are automatically reported to Sentry for monitoring and troubleshooting.
 5. **Metadata Enrichment**: Each error response includes metadata such as timestamp, timezone, API version, and more.
 
-## Table of Contents
+# Table of Contents
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
-  - [Error Filter Modules](#error-filter-modules)
+- [Table of Contents](#table-of-contents)
+  - [Filters](#filters)
     - [General Filter](#general-filter)
     - [HTTP Filter](#http-filter)
     - [Validation Filter](#validation-filter)
@@ -24,7 +27,7 @@ Key features of the error handling system:
     - [HTTP Exception](#http-exception)
     - [Validation Exception](#validation-exception)
 
-## Error Filter Modules
+## Filters
 
 The error handling system consists of several specialized exception filters, each responsible for handling specific types of exceptions.
 
@@ -161,8 +164,7 @@ throw new NotFoundException({
   message: 'user.error.notFound',
 });
 
-Response:
-```json
+// Response:
 {
   "statusCode": 404,
   "message": "User not found",
@@ -207,3 +209,4 @@ export class CreateUserDto {
   }
 }
 ```
+

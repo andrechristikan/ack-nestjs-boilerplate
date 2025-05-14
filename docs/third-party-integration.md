@@ -1,28 +1,25 @@
-
 # Overview
 
 The ACK NestJS Boilerplate integrates with various third-party services to provide a complete application framework. This document outlines these integrations and how they're configured in the application.
 
 | Category | Service | Purpose |
 |----------|---------|---------|
-| Cloud Services | AWS S3, SES, Pinpoint | File storage, Email, Notifications |
+| Amazon Web Service | S3, SES, Pinpoint | File storage, Email, SMS |
 | Database | MongoDB | Primary data storage |
 | Caching | Redis | Caching, Session storage |
 | Queue | BullMQ + Redis | Background processing |
 | Authentication | JWT, Google OAuth, Apple OAuth | User authentication |
 | Monitoring | Sentry | Error tracking and performance monitoring |
 | Logging | Pino | Structured logging |
-| Security | Helmet, CORS | API protection |
 
 
-## Table of Contents
+# Table of Contents
 - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
-  - [Cloud Services](#cloud-services)
-    - [AWS](#aws)
-      - [S3 (Simple Storage Service)](#s3-simple-storage-service)
-      - [SES (Simple Email Service)](#ses-simple-email-service)
-      - [Pinpoint](#pinpoint)
+- [Table of Contents](#table-of-contents)
+  - [Amazon Web Service](#amazon-web-service)
+    - [S3 (Simple Storage Service)](#s3-simple-storage-service)
+    - [SES (Simple Email Service)](#ses-simple-email-service)
+    - [Pinpoint](#pinpoint)
   - [Database \& Caching](#database--caching)
     - [MongoDB](#mongodb)
     - [Redis](#redis)
@@ -31,16 +28,14 @@ The ACK NestJS Boilerplate integrates with various third-party services to provi
   - [Authentication](#authentication)
     - [JWT Authentication](#jwt-authentication)
     - [Social Authentication](#social-authentication)
-    - [API Key Authentication](#api-key-authentication)
   - [Monitoring \& Logging](#monitoring--logging)
     - [Sentry](#sentry)
     - [Pino Logger](#pino-logger)
 
-## Cloud Services
 
-### AWS
+## Amazon Web Service
 
-#### S3 (Simple Storage Service)
+### S3 (Simple Storage Service)
 - **Purpose**: File storage with separate public and private buckets
 - **Environment Variables**:
   - Public bucket: `AWS_S3_PUBLIC_CREDENTIAL_KEY`, `AWS_S3_PUBLIC_CREDENTIAL_SECRET`, `AWS_S3_PUBLIC_REGION`, `AWS_S3_PUBLIC_BUCKET`, `AWS_S3_PUBLIC_CDN`
@@ -50,12 +45,12 @@ The ACK NestJS Boilerplate integrates with various third-party services to provi
   - Pre-signed URL generation
   - Secure file uploads
 
-#### SES (Simple Email Service)
+### SES (Simple Email Service)
 - **Purpose**: Transactional emails
 - **Environment Variables**: `AWS_SES_CREDENTIAL_KEY`, `AWS_SES_CREDENTIAL_SECRET`, `AWS_SES_REGION`
 - **Implementation**: Used by the `EmailModule` for sending emails
 
-#### Pinpoint
+### Pinpoint
 - **Purpose**: SMS and push notifications
 - **Environment Variables**: `AWS_PINPOINT_CREDENTIAL_KEY`, `AWS_PINPOINT_CREDENTIAL_SECRET`, `AWS_PINPOINT_REGION`, `AWS_PINPOINT_APPLICATION_ID`
 - **Implementation**: Used by the `SmsModule` for sending SMS messages
@@ -107,10 +102,6 @@ The ACK NestJS Boilerplate integrates with various third-party services to provi
 - **Apple OAuth**
   - **Environment Variables**: `AUTH_SOCIAL_APPLE_CLIENT_ID`, `AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID`
 
-### API Key Authentication
-- **Purpose**: Machine-to-machine authentication
-- **Implementation**: Uses `x-api-key` header for API key authentication
-
 ## Monitoring & Logging
 
 ### Sentry
@@ -127,8 +118,7 @@ The ACK NestJS Boilerplate integrates with various third-party services to provi
 - **Purpose**: Fast, structured logging
 - **Environment Variables**: `DEBUG_ENABLE`, `DEBUG_LEVEL`, `DEBUG_INTO_FILE`, `DEBUG_PRETTIER`
 - **Features**:
-  - Level-based filtering (debug, info, warn, error)
-  - File-based logging with rotation
-  - Sensitive data masking
-  - Route-based exclusion
-  - Pretty printing in development
+  - JSON-formatted logs
+  - Multiple log levels
+  - Optional file logging
+  - Performance-optimized logging

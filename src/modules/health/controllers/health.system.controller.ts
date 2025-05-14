@@ -46,7 +46,7 @@ export class HealthSystemController {
         private readonly awsPinPointIndicator: HealthAwsPinpointIndicator
     ) {}
 
-    // TODO: MORE HEALTH CHECK
+    // TODO: (v8) MORE HEALTH CHECK
     // - google
     // - apple
     // - sentry

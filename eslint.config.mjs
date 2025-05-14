@@ -26,7 +26,7 @@ const codeQualityRules = {
     ],
 };
 
-// TODO: Uncomment for next release
+// TODO: (v8) Uncomment for next release
 // const codeQualityRules = {
 //     '@typescript-eslint/no-explicit-any': 'warn',
 //     '@typescript-eslint/explicit-function-return-type': [
@@ -59,7 +59,7 @@ const codeQualityRules = {
 
 // Import ordering rules
 const importOrderRules = {};
-// TODO: Uncomment for next release
+// TODO: (v8) Uncomment for next release
 // const importOrderRules = {
 //     'sort-imports': [
 //         'error',

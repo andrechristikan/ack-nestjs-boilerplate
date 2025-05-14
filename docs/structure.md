@@ -1,11 +1,11 @@
-# Structure
+# Overview
 
 This project is a comprehensive NestJS boilerplate with a modular architecture designed for building scalable and maintainable applications. It follows industry best practices, including the Repository pattern, SOLID principles, and provides a robust foundation for building enterprise-grade applications.
 
-## Table of Contents
+# Table of Contents
 
-- [Structure](#structure)
-  - [Table of Contents](#table-of-contents)
+- [Overview](#overview)
+- [Table of Contents](#table-of-contents)
   - [Directory Structure](#directory-structure)
   - [Components](#components)
     - [Application (`src/app`)](#application-srcapp)

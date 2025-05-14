@@ -2,6 +2,9 @@
 
 The database architecture in ACK NestJS Boilerplate follows a clean repository pattern that provides a clear separation between business logic and data access layers. The architecture is built on MongoDB using Mongoose as the Object Data Modeling (ODM) library, offering a robust, type-safe approach to database operations.
 
+This documentation explains the features and usage of:
+- **Database Core**: Located at `src/common/database`
+
 The database functionality is organized into several key components:
 
 1. **Database Module** - Global module providing database services

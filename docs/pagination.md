@@ -1,11 +1,14 @@
-# Pagination
+# Overview
 
 The Pagination module provides a standardized approach to implementing data pagination throughout the application. It offers a set of tools for handling page-based data retrieval, sorting, filtering, and search functionality. The module is designed to work seamlessly with the [Response module](response.md) to provide consistent API responses for paginated data.
 
-## Table of Contents
+This documentation explains the features and usage of:
+- **Pagination Module**: Located at `src/common/pagination`
 
-- [Pagination](#pagination)
-  - [Table of Contents](#table-of-contents)
+# Table of Contents
+
+- [Overview](#overview)
+- [Table of Contents](#table-of-contents)
   - [Module](#module)
     - [Services](#services)
     - [Decorators](#decorators)

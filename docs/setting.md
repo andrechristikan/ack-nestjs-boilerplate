@@ -1,11 +1,14 @@
-# Settings
+# Overview
 
 The Settings module in ACK NestJS Boilerplate provides a centralized mechanism for accessing and exposing application configuration values. Instead of storing settings in a database, this implementation retrieves values from the application's configuration (via ConfigService) and formats them into structured, type-safe response objects.
 
-## Table of Contents
+This documentation explains the features and usage of:
+- **Setting Module**: Located at `src/modules/setting`
 
-- [Settings Module](#settings-module)
-  - [Table of Contents](#table-of-contents)
+# Table of Contents
+
+- [Overview](#overview)
+- [Table of Contents](#table-of-contents)
   - [DTOs](#dtos)
   - [Available Settings](#available-settings)
   - [Security](#security)
