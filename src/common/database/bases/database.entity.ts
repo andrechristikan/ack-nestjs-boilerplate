@@ -55,4 +55,14 @@ export class DatabaseEntityBase {
         index: true,
     })
     deletedBy?: string;
+
+    @DatabaseProp({
+        type: Number,
+        default: 0,
+        required: true,
+        index: true,
+        description:
+            'Document version for optimistic concurrency control by Mongoose',
+    })
+    __v: number;
 }

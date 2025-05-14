@@ -22,6 +22,7 @@ The database functionality is organized into several key components:
     - [DatabaseService](#databaseservice)
   - [Repository](#repository)
     - [Base Repository Class](#base-repository-class)
+      - [Soft Delete Implementation](#soft-delete-implementation)
     - [Entity Base Class](#entity-base-class)
   - [Structure](#structure)
   - [Example](#example)
@@ -219,6 +220,36 @@ export class DatabaseRepositoryBase<
 }
 ```
 
+#### Soft Delete Implementation
+
+The repository implements soft delete functionality where records are marked as deleted but not physically removed from the database. This provides data recoverability and historical preservation when needed.
+
+When querying data:
+- By default, soft-deleted records are filtered out (only returns records where `deleted: false`)
+- When the `withDeleted` option is set to `true`, both deleted and non-deleted records are returned
+
+Implementation example:
+
+```typescript
+async findAll<T = EntityDocument>(
+    find?: RootFilterQuery<Entity>,
+    options?: IDatabaseFindAllOptions
+): Promise<T[]> {
+    const repository = this._repository.find<T>({
+        ...find,
+        ...(!options?.withDeleted && {
+            deleted: false,
+        }),
+    });
+    
+    // Additional query operations...
+    
+    return repository.exec();
+}
+```
+
+This pattern is consistently applied across all query methods to ensure proper handling of soft-deleted records.
+
 ### Entity Base Class
 
 All database entities inherit from the `DatabaseEntityBase` class, which provides common fields like ID, created/updated timestamps, and soft delete support. This model provides a standard infrastructure for all database entities.
@@ -379,6 +410,15 @@ export class UserService implements IUserService {
             join: true, // Enable automatic relation joining
         });
     }
+    
+    // Method that includes soft-deleted records in results
+    async findAllWithDeleted<T>(find?: Record<string, any>, options?: IDatabaseFindAllOptions): Promise<T[]> {
+        return this.userRepository.findAll<T>(find, {
+            ...options,
+            join: true,
+            withDeleted: true, // This will include soft-deleted records
+        });
+    }
 
     async create<Dto>(data: Dto, options?: IDatabaseCreateOptions): Promise<UserDoc> {
         // Transform DTO to entity before saving
@@ -387,13 +427,28 @@ export class UserService implements IUserService {
         
         return this.userRepository.create<UserEntity>(create, options);
     }
+    
+    // Soft delete a record
+    async softDelete(id: string, options?: IDatabaseSoftDeleteOptions): Promise<UserDoc> {
+        const user = await this.userRepository.findOneById<UserDoc>(id);
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+        
+        return this.userRepository.softDelete(user, options);
+    }
+    
+    // Restore a soft-deleted record
+    async restore(id: string, options?: IDatabaseSaveOptions): Promise<UserDoc> {
+        // We need to include deleted records to find the one to restore
+        const user = await this.userRepository.findOneById<UserDoc>(id, { withDeleted: true });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+        
+        return this.userRepository.restore(user, options);
+    }
 
     // Other service methods...
 }
 ```
-
-The service layer provides:
-- Business logic abstraction over repositories
-- Transformation between DTOs and entities
-- Validation and error handling
-- Coordination between repositories when needed

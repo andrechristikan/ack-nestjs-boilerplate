@@ -43,6 +43,8 @@ export type IDatabaseCreateOptions = Pick<IDatabaseOptions, 'session'> &
     IDatabaseActionByOptions;
 export type IDatabaseUpdateOptions = Omit<IDatabaseOptions, 'select' | 'join'> &
     IDatabaseActionByOptions;
+export type IDatabaseUpsertOptions = Omit<IDatabaseOptions, 'select' | 'join'> &
+    IDatabaseActionByOptions;
 export type IDatabaseDeleteOptions = Omit<IDatabaseOptions, 'select' | 'join'> &
     IDatabaseActionByOptions;
 export type IDatabaseSaveOptions = Pick<IDatabaseOptions, 'session'> &
