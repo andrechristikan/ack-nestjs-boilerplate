@@ -137,7 +137,6 @@
     },
     "lint-staged": {
         "**/*.ts": [
-            "prettier --write '{src,test}/**/*.{ts,json,yml,yaml}'",
             "eslint",
             "stop-only --file"
         ],
