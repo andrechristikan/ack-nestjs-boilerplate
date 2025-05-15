@@ -1,23 +1,23 @@
-import { DatabaseProp } from 'src/common/database/decorators/database.decorator';
-import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
+import { DatabaseEntityBase } from '@common/database/bases/database.entity';
+import { DatabaseProp } from '@common/database/decorators/database.decorator';
 
 /**
-@DatabaseEntity({
+ @DatabaseEntity({
   collection: AppSettingTableName,
-})
-*/
+  })
+ */
 export class AppBaseConfigEntityBase<T = any> extends DatabaseEntityBase {
-  @DatabaseProp({ required: true, unique: true })
-  key: string;
+    @DatabaseProp({ required: true, unique: true })
+    key: string;
 
-  @DatabaseProp({ type: String })
-  description: string;
+    @DatabaseProp({ type: String })
+    description: string;
 
-  @DatabaseProp({ type: Object }) // Stores JSON/flexible values
-  value: T;
+    @DatabaseProp({ type: Object }) // Stores JSON/flexible values
+    value: T;
 }
 
 /**
-export const AppSettingSchema = SchemaFactory.createForClass(AppSettingEntityBase);
-export type AppSettingDoc = IDatabaseDocument<AppSettingEntityBase>;
+ export const AppSettingSchema = SchemaFactory.createForClass(AppSettingEntityBase);
+ export type AppSettingDoc = IDatabaseDocument<AppSettingEntityBase>;
  */

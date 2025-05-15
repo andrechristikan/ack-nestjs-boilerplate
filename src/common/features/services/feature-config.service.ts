@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { IDatabaseFindAllOptions } from 'src/common/database/interfaces/database.interface';
 import { AppBaseConfigService } from '@common/features/bases/base-config.service';
-import { FeatureConfigRepository } from 'src/common/features/repository/repositories/feature-config-repository.service';
-import { FeatureConfigDoc, FeatureConfigEntity } from 'src/common/features/repository/entities/feature-config.entity';
+import { FeatureConfigDoc, FeatureConfigEntity } from '@common/features/repository/entities/feature-config.entity';
+import { IDatabaseFindAllOptions } from '@common/database/interfaces/database.interface';
+import { FeatureConfigRepository } from '@common/features/repository/repositories/feature-config-repository.service';
 
 @Injectable()
 export class FeatureConfigService extends AppBaseConfigService<FeatureConfigEntity, FeatureConfigDoc, FeatureConfigRepository> {
