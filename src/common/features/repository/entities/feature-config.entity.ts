@@ -1,7 +1,7 @@
 import { AppBaseConfigEntityBase } from '@common/features/bases/base-config.entity';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { SchemaFactory } from '@nestjs/mongoose';
-import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+import { DatabaseEntity } from '@common/database/decorators/database.decorator';
+import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
 
 
 export const FeatureTableName = 'FeatureConfigs';

@@ -1,7 +1,7 @@
 import { Logger, OnModuleInit } from '@nestjs/common';
 import { AppBaseConfigRepositoryBase } from '@common/features/bases/base-config.repository';
-import { IDatabaseDeleteManyOptions, IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 import { AppBaseConfigEntityBase } from '@common/features/bases/base-config.entity';
+import { IDatabaseDeleteManyOptions, IDatabaseDocument } from '@common/database/interfaces/database.interface';
 
 
 export abstract class AppBaseConfigService<

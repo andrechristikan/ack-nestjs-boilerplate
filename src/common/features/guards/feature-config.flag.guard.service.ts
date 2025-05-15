@@ -1,8 +1,8 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { FEATURE_CONFIG_FLAG_META_KEY } from '@common/features/constants/feature-config.flag.constant';
-import { FeatureConfigService } from 'src/common/features/services/feature-config.service';
 import { ENUM_FEATURE_FLAG_STATUS_CODE_ERROR } from '@common/features/enums/feature-config.enum.status-code';
+import { FeatureConfigService } from '@common/features/services/feature-config.service';
 
 @Injectable()
 export class FeatureConfigFlagGuard implements CanActivate {

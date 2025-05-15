@@ -1,6 +1,6 @@
 import { DynamicModule, Global, Module } from '@nestjs/common';
-import { FeatureConfigService } from 'src/common/features/services/feature-config.service';
-import { FeatureConfigRepositoryModule } from 'src/common/features/repository/feature-config.repository.module';
+import { FeatureConfigRepositoryModule } from '@common/features/repository/feature-config.repository.module';
+import { FeatureConfigService } from '@common/features/services/feature-config.service';
 
 @Global()
 @Module({})
