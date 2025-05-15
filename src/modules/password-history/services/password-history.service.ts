@@ -196,7 +196,7 @@ export class PasswordHistoryService implements IPasswordHistoryService {
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
         await this.passwordHistoryRepository.deleteMany(find, options);

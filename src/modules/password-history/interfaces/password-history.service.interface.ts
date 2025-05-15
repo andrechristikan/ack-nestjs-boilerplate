@@ -63,7 +63,7 @@ export interface IPasswordHistoryService {
         options?: IDatabaseCreateOptions
     ): Promise<PasswordHistoryDoc>;
     deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
     mapList(

@@ -261,7 +261,7 @@ export class ResetPasswordService implements IResetPasswordService {
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<DeleteResult> {
         return this.resetPasswordRepository.deleteMany(find, options);

@@ -81,7 +81,7 @@ export interface IRoleService {
         options?: IDatabaseDeleteOptions
     ): Promise<boolean>;
     deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
     createMany(

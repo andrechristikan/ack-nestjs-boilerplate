@@ -41,7 +41,7 @@ export class MigrationCountrySeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.countryService.deleteMany({});
+            await this.countryService.deleteMany();
         } catch (err: any) {
             throw new Error(err.message);
         }

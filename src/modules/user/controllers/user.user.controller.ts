@@ -56,7 +56,7 @@ export class UserUserController {
     @UserUserDeleteDoc()
     @Response('user.delete')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
-    @UserProtected()
+    @UserProtected([false])
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/delete')

@@ -247,7 +247,7 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
         await this.apiKeyRepository.deleteMany(find, options);

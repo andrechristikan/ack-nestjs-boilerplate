@@ -1,4 +1,4 @@
-import { UpdateResult } from 'mongoose';
+import { DeleteResult, UpdateResult } from 'mongoose';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -61,4 +61,8 @@ export interface IVerificationService {
     createExpiredDate(): Date;
     createReference(): string;
     map(verification: VerificationDoc): VerificationResponse;
+    deleteMany(
+        find?: Record<string, any>,
+        options?: IDatabaseUpdateManyOptions
+    ): Promise<DeleteResult>;
 }

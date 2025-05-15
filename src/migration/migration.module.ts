@@ -1,3 +1,4 @@
+import { VerificationModule } from '@app/modules/verification/verification.module';
 import { Module } from '@nestjs/common';
 import { CommandModule } from 'nestjs-command';
 import { CommonModule } from 'src/common/common.module';
@@ -31,6 +32,7 @@ import { UserModule } from 'src/modules/user/user.module';
         PasswordHistoryModule,
         SessionModule,
         CountryModule,
+        VerificationModule,
     ],
     providers: [
         MigrationApiKeySeed,

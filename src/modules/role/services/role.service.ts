@@ -185,7 +185,7 @@ export class RoleService implements IRoleService {
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
         await this.roleRepository.deleteMany(find, options);

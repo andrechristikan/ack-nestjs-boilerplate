@@ -50,7 +50,7 @@ export interface IActivityService {
         options?: IDatabaseCreateOptions
     ): Promise<ActivityDoc>;
     deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
     mapList(

@@ -20,7 +20,7 @@ import { IVerificationService } from 'src/modules/verification/interfaces/verifi
 import { Duration } from 'luxon';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { ENUM_VERIFICATION_TYPE } from 'src/modules/verification/enums/verification.enum.constant';
-import { UpdateResult } from 'mongoose';
+import { DeleteResult, UpdateResult } from 'mongoose';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { VerificationResponse } from 'src/modules/verification/dtos/response/verification.response';
 
@@ -243,5 +243,12 @@ export class VerificationService implements IVerificationService {
             expiredIn: verification.expiredDate.valueOf(),
             to: this.helperStringService.censor(verification.to),
         };
+    }
+
+    async deleteMany(
+        find?: Record<string, any>,
+        options?: IDatabaseUpdateManyOptions
+    ): Promise<DeleteResult> {
+        return this.verificationRepository.deleteMany(find, options);
     }
 }

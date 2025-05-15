@@ -192,7 +192,7 @@ export interface IUserService {
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
     updateProfile(

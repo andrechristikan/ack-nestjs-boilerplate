@@ -104,7 +104,7 @@ export class ActivityService implements IActivityService {
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
         await this.activityRepository.deleteMany(find, options);

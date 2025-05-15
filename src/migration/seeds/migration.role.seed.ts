@@ -65,7 +65,7 @@ export class MigrationRoleSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.roleService.deleteMany({});
+            await this.roleService.deleteMany();
         } catch (err: any) {
             throw new Error(err);
         }

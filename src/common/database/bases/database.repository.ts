@@ -463,7 +463,14 @@ export class DatabaseRepositoryBase<
         data: UpdateQuery<Entity>,
         options?: IDatabaseUpsertOptions
     ): Promise<EntityDocument> {
-        // TODO: Check if the data is valid
+        if (
+            !find ||
+            typeof find !== 'object' ||
+            Object.keys(find).length === 0
+        ) {
+            throw new Error('Find criteria must be a non-empty object');
+        }
+
         if (
             !data ||
             typeof data !== 'object' ||
@@ -741,20 +748,22 @@ export class DatabaseRepositoryBase<
     }
 
     async deleteMany(
-        find: RootFilterQuery<Entity>,
+        find?: RootFilterQuery<Entity>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<DeleteResult> {
+        // Allow find to be optional, but if provided it must be a valid object
         if (
-            !find ||
-            typeof find !== 'object' ||
-            Object.keys(find).length === 0
+            find !== undefined &&
+            (typeof find !== 'object' || Object.keys(find).length === 0)
         ) {
-            throw new Error('Find criteria must be a non-empty object');
+            throw new Error(
+                'If provided, find criteria must be a non-empty object'
+            );
         }
 
         return this._repository.deleteMany(
             {
-                ...find,
+                ...(find || {}),
                 ...(!options?.withDeleted && {
                     deleted: false,
                 }),
@@ -764,20 +773,22 @@ export class DatabaseRepositoryBase<
     }
 
     async softDeleteMany(
-        find: RootFilterQuery<Entity>,
+        find?: RootFilterQuery<Entity>,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<UpdateResult<Entity>> {
+        // Allow find to be optional, but if provided it must be a valid object
         if (
-            !find ||
-            typeof find !== 'object' ||
-            Object.keys(find).length === 0
+            find !== undefined &&
+            (typeof find !== 'object' || Object.keys(find).length === 0)
         ) {
-            throw new Error('Find criteria must be a non-empty object');
+            throw new Error(
+                'If provided, find criteria must be a non-empty object'
+            );
         }
 
         return this._repository.updateMany(
             {
-                ...find,
+                ...(find || {}),
                 deleted: false,
             },
             {
@@ -792,20 +803,22 @@ export class DatabaseRepositoryBase<
     }
 
     async restoreMany(
-        find: RootFilterQuery<Entity>,
+        find?: RootFilterQuery<Entity>,
         options?: IDatabaseSaveOptions
     ): Promise<UpdateResult<Entity>> {
+        // Allow find to be optional, but if provided it must be a valid object
         if (
-            !find ||
-            typeof find !== 'object' ||
-            Object.keys(find).length === 0
+            find !== undefined &&
+            (typeof find !== 'object' || Object.keys(find).length === 0)
         ) {
-            throw new Error('Find criteria must be a non-empty object');
+            throw new Error(
+                'If provided, find criteria must be a non-empty object'
+            );
         }
 
         return this._repository.updateMany(
             {
-                ...find,
+                ...(find || {}),
                 deleted: true,
             },
             {

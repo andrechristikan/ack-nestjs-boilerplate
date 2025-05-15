@@ -461,7 +461,7 @@ export class UserService implements IUserService {
         repository: UserDoc,
         options?: IDatabaseUpdateOptions
     ): Promise<UserDoc> {
-        return this.userRepository.update(
+        return this.userRepository.updateRaw(
             { _id: repository._id },
             {
                 $inc: {
@@ -546,7 +546,7 @@ export class UserService implements IUserService {
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
         await this.userRepository.deleteMany(find, options);

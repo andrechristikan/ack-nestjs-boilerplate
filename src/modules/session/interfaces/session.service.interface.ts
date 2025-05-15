@@ -68,7 +68,7 @@ export interface ISessionService {
         options?: IDatabaseUpdateManyOptions
     ): Promise<boolean>;
     deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
 }

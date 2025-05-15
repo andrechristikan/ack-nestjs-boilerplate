@@ -86,7 +86,7 @@ export class CountryService implements ICountryService {
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
         await this.countryRepository.deleteMany(find, options);
