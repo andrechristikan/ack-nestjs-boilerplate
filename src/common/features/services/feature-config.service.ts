@@ -15,9 +15,6 @@ export class FeatureConfigService extends AppBaseConfigService<FeatureConfigEnti
   }
 
   async isEnabled(key: string, fallback = false, forceReload = false): Promise<boolean> {
-    //WARNING: We are FORCING everytime to read from the database and skipping the cache.
-    // This is mainly because the enable/disable flag is very important and we want to detect immediately if
-    // the value is changed in the database.
     return await this.get<boolean>(key, fallback,forceReload) === true;
   }
 
