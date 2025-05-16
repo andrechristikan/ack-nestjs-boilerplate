@@ -6,6 +6,9 @@
     },
     "jsc": {
         "baseUrl": "./",
+        "paths": {
+            "src/*": ["src/*"]
+        },
         "target": "esnext",
         "parser": {
             "syntax": "typescript",
@@ -23,6 +26,7 @@
         "dist",
         "coverage",
         "templates",
-        "src/metadata.ts"
+        "src/metadata.ts",
+        "logs"
     ]
 }

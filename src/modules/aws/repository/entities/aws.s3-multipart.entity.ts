@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -18,6 +19,48 @@ export class AwsS3MultipartEntity {
 
     @DatabaseProp({
         required: true,
+        type: String,
+    })
+    bucket: string;
+
+    @DatabaseProp({
+        required: true,
+        type: String,
+    })
+    key: string;
+
+    @DatabaseProp({
+        required: true,
+        type: String,
+    })
+    completedUrl: string;
+
+    @DatabaseProp({
+        required: false,
+        type: String,
+    })
+    cdnUrl?: string;
+
+    @DatabaseProp({
+        required: true,
+        type: String,
+    })
+    mime: string;
+
+    @DatabaseProp({
+        required: true,
+        type: String,
+    })
+    extension: string;
+
+    @DatabaseProp({
+        required: true,
+        type: Types.Decimal128,
+    })
+    size: Types.Decimal128;
+
+    @DatabaseProp({
+        required: true,
         type: Number,
     })
     lastPartNumber: number;
@@ -28,10 +71,7 @@ export class AwsS3MultipartEntity {
     })
     maxPartNumber: number;
 
-    @DatabaseProp({
-        required: true,
-        schema: AwsS3MultipartPartSchema,
-    })
+    @DatabaseProp([AwsS3MultipartPartSchema])
     parts: AwsS3MultipartPartEntity[];
 }
 

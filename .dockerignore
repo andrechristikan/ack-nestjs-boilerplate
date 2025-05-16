@@ -7,6 +7,7 @@ swagger.json
 .github/
 assets/
 src/metadata.ts
+keys/*
 
 # Logs
 logs/

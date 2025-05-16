@@ -11,7 +11,7 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ClientSession, Connection } from 'mongoose';
+import { ClientSession } from 'mongoose';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -19,10 +19,7 @@ import {
     AuthJwtRefreshProtected,
     AuthJwtToken,
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
-import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
-import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
 import { AuthService } from 'src/modules/auth/services/auth.service';
-import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
@@ -46,6 +43,11 @@ import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserProtected } from 'src/modules/user/decorators/user.decorator';
+import { DatabaseService } from 'src/common/database/services/database.service';
+import {
+    IAuthJwtAccessTokenPayload,
+    IAuthJwtRefreshTokenPayload,
+} from 'src/modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.shared.auth')
 @Controller({
@@ -54,8 +56,7 @@ import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 })
 export class AuthSharedController {
     constructor(
-        @InjectDatabaseConnection()
-        private readonly databaseConnection: Connection,
+        private readonly databaseService: DatabaseService,
         @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly userService: UserService,
@@ -75,8 +76,8 @@ export class AuthSharedController {
     @Post('/refresh')
     async refresh(
         @AuthJwtToken() refreshToken: string,
-        @AuthJwtPayload<AuthJwtRefreshPayloadDto>()
-        { user: userFromPayload, session }: AuthJwtRefreshPayloadDto
+        @AuthJwtPayload<IAuthJwtRefreshTokenPayload>()
+        { user: userFromPayload, session }: IAuthJwtRefreshTokenPayload
     ): Promise<IResponse<AuthRefreshResponseDto>> {
         const checkActive = await this.sessionService.findLoginSession(session);
         if (!checkActive) {
@@ -88,7 +89,7 @@ export class AuthSharedController {
 
         const user: IUserDoc =
             await this.userService.findOneActiveById(userFromPayload);
-        const token = await this.authService.refreshToken(user, refreshToken);
+        const token = this.authService.refreshToken(user, refreshToken);
 
         return {
             data: token,
@@ -103,15 +104,14 @@ export class AuthSharedController {
     @Patch('/change-password')
     async changePassword(
         @Body() body: AuthChangePasswordRequestDto,
-        @AuthJwtPayload<AuthJwtAccessPayloadDto>('user')
+        @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user')
         userFromPayload: string
     ): Promise<void> {
         let user = await this.userService.findOneById(userFromPayload);
 
-        const passwordAttempt: boolean =
-            await this.authService.getPasswordAttempt();
+        const passwordAttempt: boolean = this.authService.getPasswordAttempt();
         const passwordMaxAttempt: number =
-            await this.authService.getPasswordMaxAttempt();
+            this.authService.getPasswordMaxAttempt();
         if (passwordAttempt && user.passwordAttempt >= passwordMaxAttempt) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
@@ -119,10 +119,10 @@ export class AuthSharedController {
             });
         }
 
-        const [matchPassword] = await Promise.all([
-            this.authService.validateUser(body.oldPassword, user.password),
-            this.userService.resetPasswordAttempt(user),
-        ]);
+        const matchPassword = this.authService.validateUser(
+            body.oldPassword,
+            user.password
+        );
         if (!matchPassword) {
             await this.userService.increasePasswordAttempt(user);
 
@@ -132,24 +132,24 @@ export class AuthSharedController {
             });
         }
 
-        const [password, checkPassword] = await Promise.all([
-            this.authService.createPassword(body.newPassword),
-            this.passwordHistoryService.findOneUsedByUser(
+        await this.userService.resetPasswordAttempt(user);
+
+        const password = this.authService.createPassword(body.newPassword);
+        const checkPassword =
+            await this.passwordHistoryService.findOneUsedByUser(
                 user._id,
-                user.password
-            ),
-        ]);
+                body.newPassword
+            );
         if (checkPassword) {
             const passwordPeriod =
                 await this.passwordHistoryService.getPasswordPeriod();
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW,
-                message: 'user.error.passwordMustNew',
+                message: 'auth.error.passwordMustNew',
                 _metadata: {
                     customProperty: {
                         messageProperties: {
                             period: passwordPeriod,
-                            expiredAt: checkPassword.expiredAt,
                         },
                     },
                 },
@@ -157,38 +157,34 @@ export class AuthSharedController {
         }
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             user = await this.userService.updatePassword(user, password, {
                 session,
             });
 
-            await Promise.all([
-                this.passwordHistoryService.createByUser(
-                    user,
-                    {
-                        type: ENUM_PASSWORD_HISTORY_TYPE.CHANGE,
-                    },
-                    { session }
-                ),
-                this.activityService.createByUser(
-                    user,
-                    {
-                        description: this.messageService.setMessage(
-                            'activity.user.changePassword'
-                        ),
-                    },
-                    { session }
-                ),
-                this.sessionService.updateManyRevokeByUser(user._id, {
-                    session,
-                }),
-            ]);
+            await this.passwordHistoryService.createByUser(
+                user,
+                {
+                    type: ENUM_PASSWORD_HISTORY_TYPE.CHANGE,
+                },
+                { session }
+            );
+            await this.activityService.createByUser(
+                user,
+                {
+                    description: this.messageService.setMessage(
+                        'activity.user.changePassword'
+                    ),
+                },
+                { session }
+            );
+            await this.sessionService.updateManyRevokeByUser(user._id, {
+                session,
+            });
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
 
             await this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
@@ -202,14 +198,13 @@ export class AuthSharedController {
                     },
                 }
             );
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }

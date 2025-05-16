@@ -26,10 +26,12 @@ export class MigrationRoleSeed {
             {
                 name: 'admin',
                 type: ENUM_POLICY_ROLE_TYPE.ADMIN,
-                permissions: Object.values(ENUM_POLICY_SUBJECT).map(val => ({
-                    subject: val,
-                    action: [ENUM_POLICY_ACTION.MANAGE],
-                })),
+                permissions: Object.values(ENUM_POLICY_SUBJECT)
+                    .filter(e => e !== ENUM_POLICY_SUBJECT.API_KEY)
+                    .map(val => ({
+                        subject: val,
+                        action: [ENUM_POLICY_ACTION.MANAGE],
+                    })),
             },
             {
                 name: 'individual',
@@ -63,7 +65,7 @@ export class MigrationRoleSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.roleService.deleteMany({});
+            await this.roleService.deleteMany();
         } catch (err: any) {
             throw new Error(err);
         }

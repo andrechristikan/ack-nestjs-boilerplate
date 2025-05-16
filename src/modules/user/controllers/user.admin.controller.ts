@@ -46,8 +46,7 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { AuthService } from 'src/modules/auth/services/auth.service';
-import { ClientSession, Connection } from 'mongoose';
-import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { ClientSession } from 'mongoose';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { CountryService } from 'src/modules/country/services/country.service';
 import {
@@ -92,6 +91,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { VerificationService } from 'src/modules/verification/services/verification.service';
 import { UserProtected } from 'src/modules/user/decorators/user.decorator';
+import { DatabaseService } from 'src/common/database/services/database.service';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -100,8 +100,7 @@ import { UserProtected } from 'src/modules/user/decorators/user.decorator';
 })
 export class UserAdminController {
     constructor(
-        @InjectDatabaseConnection()
-        private readonly databaseConnection: Connection,
+        private readonly databaseService: DatabaseService,
         @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly paginationService: PaginationService,
@@ -243,8 +242,8 @@ export class UserAdminController {
             });
         }
 
-        const passwordString = await this.authService.createPasswordRandom();
-        const password: IAuthPassword = await this.authService.createPassword(
+        const passwordString = this.authService.createPasswordRandom();
+        const password: IAuthPassword = this.authService.createPassword(
             passwordString,
             {
                 temporary: true,
@@ -252,8 +251,7 @@ export class UserAdminController {
         );
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             const created = await this.userService.create(
@@ -269,29 +267,28 @@ export class UserAdminController {
                 { session }
             );
 
-            const [verification] = await Promise.all([
-                this.verificationService.createEmailByUser(created, {
+            const verification =
+                await this.verificationService.createEmailByUser(created, {
                     session,
-                }),
-                this.passwordHistoryService.createByAdmin(
-                    created,
-                    {
-                        by: createBy,
-                        type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
-                    },
-                    { session }
-                ),
-                this.activityService.createByAdmin(
-                    created,
-                    {
-                        by: createBy,
-                        description: this.messageService.setMessage(
-                            'activity.user.createByAdmin'
-                        ),
-                    },
-                    { session }
-                ),
-            ]);
+                });
+            await this.passwordHistoryService.createByAdmin(
+                created,
+                {
+                    by: createBy,
+                    type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
+                },
+                { session }
+            );
+            await this.activityService.createByAdmin(
+                created,
+                {
+                    by: createBy,
+                    description: this.messageService.setMessage(
+                        'activity.user.createByAdmin'
+                    ),
+                },
+                { session }
+            );
 
             await Promise.all([
                 this.emailQueue.add(
@@ -329,20 +326,18 @@ export class UserAdminController {
                 ),
             ]);
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
 
             return {
                 data: { _id: created._id },
             };
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
@@ -380,8 +375,7 @@ export class UserAdminController {
         }
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             await this.userService.update(
@@ -400,16 +394,14 @@ export class UserAdminController {
                 { session }
             );
 
-            await session.commitTransaction();
-            await session.endSession();
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
@@ -429,7 +421,7 @@ export class UserAdminController {
         @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
         user: UserDoc,
         @Body() { status }: UserUpdateStatusRequestDto
-    ): Promise<void> {
+    ): Promise<IResponse<void>> {
         if (user.status === ENUM_USER_STATUS.BLOCKED) {
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
@@ -445,8 +437,7 @@ export class UserAdminController {
         }
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             await this.userService.updateStatus(user, { status }, { session });
@@ -461,18 +452,24 @@ export class UserAdminController {
                 { session }
             );
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
 
-            return;
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+            return {
+                _metadata: {
+                    customProperty: {
+                        messageProperties: {
+                            status: status.toLowerCase(),
+                        },
+                    },
+                },
+            };
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }

@@ -1,3 +1,4 @@
+import { VerificationModule } from '@app/modules/verification/verification.module';
 import { Module } from '@nestjs/common';
 import { CommandModule } from 'nestjs-command';
 import { CommonModule } from 'src/common/common.module';
@@ -16,6 +17,7 @@ import { RoleModule } from 'src/modules/role/role.module';
 import { SessionModule } from 'src/modules/session/session.module';
 import { UserModule } from 'src/modules/user/user.module';
 
+// TODO: (v8) CHANGE WITH COMMANDER
 @Module({
     imports: [
         CommonModule,
@@ -30,6 +32,7 @@ import { UserModule } from 'src/modules/user/user.module';
         PasswordHistoryModule,
         SessionModule,
         CountryModule,
+        VerificationModule,
     ],
     providers: [
         MigrationApiKeySeed,

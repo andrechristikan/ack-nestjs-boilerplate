@@ -1,11 +1,12 @@
-export const EXCLUDED_ROUTES = [
-    '/api/health',
-    '/metrics',
+export const LOGGER_EXCLUDED_ROUTES: string[] = [
+    '/api/health*',
+    '/metrics*',
     '/favicon.ico',
-    '/docs',
+    '/docs*',
+    '/',
 ] as const;
 
-export const LOGGER_SENSITIVE_FIELDS = [
+export const LOGGER_SENSITIVE_FIELDS: string[] = [
     'password',
     'newPassword',
     'oldPassword',

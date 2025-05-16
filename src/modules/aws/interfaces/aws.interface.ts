@@ -5,6 +5,10 @@ export interface IAwsS3Options {
     access?: ENUM_AWS_S3_ACCESSIBILITY;
 }
 
+export interface IAwsS3MultipartOptions extends IAwsS3Options {
+    forceUpdate?: boolean;
+}
+
 export interface IAwsS3GetItemsOptions extends IAwsS3Options {
     continuationToken?: string;
 }
@@ -16,15 +20,14 @@ export interface IAwsS3PutItemWithAclOptions extends IAwsS3Options {
 }
 
 export interface IAwsS3PresignOptions extends IAwsS3Options {
-    allowedSize?: number;
     expired?: number;
+    forceUpdate?: boolean;
 }
 
 export interface IAwsS3PutItem {
     file?: Buffer;
     key: string;
     size?: number;
-    duration?: number;
 }
 
 export interface IAwsS3ConfigCredential {
@@ -44,4 +47,11 @@ export interface IAwsS3ConfigBucket {
 export interface IAwsS3Config {
     public: IAwsS3ConfigBucket;
     private: IAwsS3ConfigBucket;
+}
+
+export interface IAwsS3FileInfo {
+    pathWithFilename: string;
+    filename: string;
+    extension: string;
+    mime: string;
 }

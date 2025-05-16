@@ -2,7 +2,9 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
+import { passportJwtSecret } from 'jwks-rsa';
+import { Algorithm } from 'jsonwebtoken';
+import { IAuthJwtAccessTokenPayload } from 'src/modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class AuthJwtAccessStrategy extends PassportStrategy(
@@ -20,15 +22,19 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
                 audience: configService.get<string>('auth.jwt.audience'),
                 issuer: configService.get<string>('auth.jwt.issuer'),
             },
-            secretOrKey: configService.get<string>(
-                'auth.jwt.accessToken.secretKey'
-            ),
+            secretOrKeyProvider: passportJwtSecret({
+                cache: true,
+                rateLimit: true,
+                jwksRequestsPerMinute: 5,
+                jwksUri: configService.get<string>('auth.jwt.jwksUri'),
+            }),
+            algorithms: [configService.get<Algorithm>('auth.jwt.algorithm')],
         });
     }
 
     async validate(
-        data: AuthJwtAccessPayloadDto
-    ): Promise<AuthJwtAccessPayloadDto> {
+        data: IAuthJwtAccessTokenPayload
+    ): Promise<IAuthJwtAccessTokenPayload> {
         return data;
     }
 }

@@ -1,3 +1,4 @@
+import { ENUM_SEND_SMS_PROCESS } from '@app/modules/sms/enums/sms.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
     BadRequestException,
@@ -12,9 +13,9 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Queue } from 'bullmq';
-import { ClientSession, Connection } from 'mongoose';
+import { ClientSession } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { DatabaseService } from 'src/common/database/services/database.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
@@ -22,11 +23,8 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
-import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
-import {
-    ENUM_SEND_EMAIL_PROCESS,
-    ENUM_SEND_SMS_PROCESS,
-} from 'src/modules/email/enums/email.enum';
+import { IAuthJwtAccessTokenPayload } from 'src/modules/auth/interfaces/auth.interface';
+import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
 import { PolicyRoleProtected } from 'src/modules/policy/decorators/policy.decorator';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { UserProtected } from 'src/modules/user/decorators/user.decorator';
@@ -59,8 +57,7 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 })
 export class VerificationUserController {
     constructor(
-        @InjectDatabaseConnection()
-        private readonly databaseConnection: Connection,
+        private readonly databaseService: DatabaseService,
         @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         @InjectQueue(ENUM_WORKER_QUEUES.SMS_QUEUE)
@@ -72,12 +69,12 @@ export class VerificationUserController {
     @VerificationUserGetEmailDoc()
     @Response('verification.getEmail')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
-    @UserProtected()
+    @UserProtected([false])
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/get/email')
     async getEmail(
-        @AuthJwtPayload<AuthJwtAccessPayloadDto>('user', UserParsePipe)
+        @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user', UserParsePipe)
         user: UserDoc
     ): Promise<IResponse<VerificationResponse>> {
         const verification: VerificationDoc =
@@ -105,7 +102,7 @@ export class VerificationUserController {
     @ApiKeyProtected()
     @Get('/get/mobile-number')
     async getMobileNumber(
-        @AuthJwtPayload<AuthJwtAccessPayloadDto>('user', UserParsePipe)
+        @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user', UserParsePipe)
         user: UserDoc
     ): Promise<IResponse<VerificationResponse>> {
         const verification: VerificationDoc =
@@ -130,12 +127,12 @@ export class VerificationUserController {
     @VerificationUserResendEmailDoc()
     @Response('verification.resendEmail')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
-    @UserProtected()
+    @UserProtected([false])
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Post('/resend/email')
     async resendEmail(
-        @AuthJwtPayload<AuthJwtAccessPayloadDto>('user', UserParsePipe)
+        @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user', UserParsePipe)
         user: UserDoc
     ): Promise<IResponse<VerificationResponse>> {
         const latestVerification: VerificationDoc =
@@ -150,8 +147,7 @@ export class VerificationUserController {
         }
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             await this.verificationService.inactiveEmailManyByUser(user._id, {
@@ -163,8 +159,7 @@ export class VerificationUserController {
                     session,
                 });
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
 
             await this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
@@ -190,14 +185,13 @@ export class VerificationUserController {
             return {
                 data: mapped,
             };
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
@@ -210,7 +204,7 @@ export class VerificationUserController {
     @ApiKeyProtected()
     @Post('/resend/mobile-number')
     async resendMobileNumber(
-        @AuthJwtPayload<AuthJwtAccessPayloadDto>('user', UserParsePipe)
+        @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user', UserParsePipe)
         user: UserDoc
     ): Promise<IResponse<VerificationResponse>> {
         const latestVerification: VerificationDoc =
@@ -227,8 +221,7 @@ export class VerificationUserController {
         }
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             await this.verificationService.inactiveMobileNumberManyByUser(
@@ -243,8 +236,7 @@ export class VerificationUserController {
                     session,
                 });
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
 
             await this.smsQueue.add(
                 ENUM_SEND_SMS_PROCESS.VERIFICATION,
@@ -269,14 +261,13 @@ export class VerificationUserController {
             return {
                 data: mapped,
             };
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
@@ -284,13 +275,13 @@ export class VerificationUserController {
     @VerificationUserVerifyEmailDoc()
     @Response('verification.verifyEmail')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
-    @UserProtected()
+    @UserProtected([false])
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/verify/email')
     async verifyEmail(
-        @AuthJwtPayload<AuthJwtAccessPayloadDto>(
+        @AuthJwtPayload<IAuthJwtAccessTokenPayload>(
             'user',
             UserParsePipe,
             VerificationUserEmailNotVerifiedYetPipe
@@ -319,21 +310,17 @@ export class VerificationUserController {
         }
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
-            await Promise.all([
-                this.verificationService.verify(verification, {
-                    session,
-                }),
-                this.userService.updateVerificationEmail(user, {
-                    session,
-                }),
-            ]);
+            await this.verificationService.verify(verification, {
+                session,
+            });
+            await this.userService.updateVerificationEmail(user, {
+                session,
+            });
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
 
             await this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED,
@@ -352,14 +339,13 @@ export class VerificationUserController {
             );
 
             return;
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
@@ -373,7 +359,7 @@ export class VerificationUserController {
     @HttpCode(HttpStatus.OK)
     @Post('/verify/mobile-number')
     async verifyMobileNumber(
-        @AuthJwtPayload<AuthJwtAccessPayloadDto>(
+        @AuthJwtPayload<IAuthJwtAccessTokenPayload>(
             'user',
             UserParsePipe,
             VerificationUserMobileNumberNotVerifiedYetPipe
@@ -404,21 +390,17 @@ export class VerificationUserController {
         }
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
-            await Promise.all([
-                this.verificationService.verify(verification, {
-                    session,
-                }),
-                this.userService.updateVerificationMobileNumber(user, {
-                    session,
-                }),
-            ]);
+            await this.verificationService.verify(verification, {
+                session,
+            });
+            await this.userService.updateVerificationMobileNumber(user, {
+                session,
+            });
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
 
             await this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED,
@@ -439,14 +421,13 @@ export class VerificationUserController {
             );
 
             return;
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }

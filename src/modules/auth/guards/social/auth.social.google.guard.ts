@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/enums/auth.status-code.enum';
-import { AuthSocialGooglePayloadDto } from 'src/modules/auth/dtos/social/auth.social.google-payload.dto';
 import { AuthService } from 'src/modules/auth/services/auth.service';
 import { ConfigService } from '@nestjs/config';
+import { IAuthSocialGooglePayload } from 'src/modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class AuthSocialGoogleGuard implements CanActivate {
@@ -26,7 +26,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context
             .switchToHttp()
-            .getRequest<IRequestApp<AuthSocialGooglePayloadDto>>();
+            .getRequest<IRequestApp<IAuthSocialGooglePayload>>();
 
         const requestHeader =
             (request.headers[`${this.header?.toLowerCase()}`] as string)?.split(
@@ -42,7 +42,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
 
         try {
             const accessToken: string = requestHeader[1];
-            const payload: AuthSocialGooglePayloadDto =
+            const payload: IAuthSocialGooglePayload =
                 await this.authService.googleGetTokenInfo(accessToken);
 
             request.user = payload;

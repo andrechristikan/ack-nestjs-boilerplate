@@ -8,7 +8,7 @@ import {
     SchemaFactory,
     SchemaOptions,
 } from '@nestjs/mongoose';
-import { Schema as MongooseSchema } from 'mongoose';
+import { SchemaType as MongooseSchema } from 'mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { IDatabaseQueryContainOptions } from 'src/common/database/interfaces/database.interface';
 
@@ -28,9 +28,9 @@ export function InjectDatabaseModel(
 export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {
     return Schema({
         ...options,
-        timestamps: options?.timestamps ?? {
-            createdAt: true,
-            updatedAt: true,
+        timestamps: {
+            createdAt: 'createdAt',
+            updatedAt: 'updatedAt',
         },
     });
 }

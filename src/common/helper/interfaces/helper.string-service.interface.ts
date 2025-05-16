@@ -13,4 +13,5 @@ export interface IHelperStringService {
     ): boolean;
     formatCurrency(num: number, locale: string): string;
     checkCustomEmail(value: string): IHelperEmailValidation;
+    checkWildcardUrl(url: string, patterns: string[]): boolean;
 }

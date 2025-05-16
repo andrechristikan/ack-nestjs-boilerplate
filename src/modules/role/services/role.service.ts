@@ -3,15 +3,15 @@ import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
 import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
 import {
-    IDatabaseCreateOptions,
-    IDatabaseFindAllOptions,
-    IDatabaseGetTotalOptions,
     IDatabaseCreateManyOptions,
-    IDatabaseSaveOptions,
+    IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
-    IDatabaseFindOneOptions,
-    IDatabaseExistsOptions,
     IDatabaseDeleteOptions,
+    IDatabaseExistsOptions,
+    IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
+    IDatabaseGetTotalOptions,
+    IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
@@ -174,13 +174,18 @@ export class RoleService implements IRoleService {
         repository: RoleDoc,
         options?: IDatabaseDeleteOptions
     ): Promise<boolean> {
-        await this.roleRepository.delete(repository, options);
+        await this.roleRepository.delete(
+            {
+                _id: repository._id,
+            },
+            options
+        );
 
         return true;
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
         await this.roleRepository.deleteMany(find, options);

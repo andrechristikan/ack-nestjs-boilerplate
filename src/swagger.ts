@@ -5,15 +5,15 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { writeFileSync } from 'fs';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 
-export default async function (app: NestApplication) {
+export default async function (app: NestApplication): Promise<void> {
     const configService = app.get(ConfigService);
-    const env: string = configService.get<string>('app.env');
+    const env: string = configService.get<string>('app.env')!;
     const logger = new Logger('NestJs-Swagger');
 
-    const docName: string = configService.get<string>('doc.name');
-    const docDesc: string = configService.get<string>('doc.description');
-    const docVersion: string = configService.get<string>('app.version');
-    const docPrefix: string = configService.get<string>('doc.prefix');
+    const docName: string = configService.get<string>('doc.name')!;
+    const docDesc: string = configService.get<string>('doc.description')!;
+    const docVersion: string = configService.get<string>('app.version')!;
+    const docPrefix: string = configService.get<string>('doc.prefix')!;
 
     if (env !== ENUM_APP_ENVIRONMENT.PRODUCTION) {
         const documentBuild = new DocumentBuilder()

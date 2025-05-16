@@ -1,11 +1,11 @@
 import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
-import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
-import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
-import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.social.apple-payload.dto';
-import { AuthSocialGooglePayloadDto } from 'src/modules/auth/dtos/social/auth.social.google-payload.dto';
 import {
+    IAuthJwtAccessTokenPayload,
+    IAuthJwtRefreshTokenPayload,
     IAuthPassword,
     IAuthPasswordOptions,
+    IAuthSocialApplePayload,
+    IAuthSocialGooglePayload,
 } from 'src/modules/auth/interfaces/auth.interface';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
@@ -13,44 +13,42 @@ import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.
 export interface IAuthService {
     createAccessToken(
         subject: string,
-        payload: AuthJwtAccessPayloadDto
-    ): Promise<string>;
-    validateAccessToken(subject: string, token: string): Promise<boolean>;
-    payloadAccessToken(token: string): Promise<AuthJwtAccessPayloadDto>;
+        payload: IAuthJwtAccessTokenPayload
+    ): string;
+    validateAccessToken(subject: string, token: string): boolean;
+    payload<T = any>(token: string): T;
     createRefreshToken(
         subject: string,
-        payload: AuthJwtRefreshPayloadDto
-    ): Promise<string>;
-    validateRefreshToken(subject: string, token: string): Promise<boolean>;
-    payloadRefreshToken(token: string): Promise<AuthJwtRefreshPayloadDto>;
-    validateUser(
-        passwordString: string,
-        passwordHash: string
-    ): Promise<boolean>;
+        payload: IAuthJwtRefreshTokenPayload
+    ): string;
+    validateRefreshToken(subject: string, token: string): boolean;
+    validateUser(passwordString: string, passwordHash: string): boolean;
     createPayloadAccessToken(
         data: IUserDoc,
         session: string,
         loginDate: Date,
         loginFrom: ENUM_AUTH_LOGIN_FROM
-    ): Promise<AuthJwtAccessPayloadDto>;
+    ): IAuthJwtAccessTokenPayload;
     createPayloadRefreshToken({
         user,
         session,
         loginFrom,
         loginDate,
-    }: AuthJwtAccessPayloadDto): Promise<AuthJwtRefreshPayloadDto>;
-    createSalt(length: number): Promise<string>;
+    }: IAuthJwtAccessTokenPayload): IAuthJwtRefreshTokenPayload;
+    createSalt(length: number): string;
     createPassword(
         password: string,
         options?: IAuthPasswordOptions
-    ): Promise<IAuthPassword>;
-    createPasswordRandom(): Promise<string>;
-    checkPasswordExpired(passwordExpired: Date): Promise<boolean>;
-    createToken(user: IUserDoc, session: string): Promise<AuthLoginResponseDto>;
-    getPasswordAttempt(): Promise<boolean>;
-    getPasswordMaxAttempt(): Promise<number>;
-    appleGetTokenInfo(code: string): Promise<AuthSocialApplePayloadDto>;
-    googleGetTokenInfo(
-        accessToken: string
-    ): Promise<AuthSocialGooglePayloadDto>;
+    ): IAuthPassword;
+    createPasswordRandom(): string;
+    checkPasswordExpired(passwordExpired: Date): boolean;
+    createToken(user: IUserDoc, session: string): AuthLoginResponseDto;
+    refreshToken(
+        user: IUserDoc,
+        refreshTokenFromRequest: string
+    ): AuthLoginResponseDto;
+    getPasswordAttempt(): boolean;
+    getPasswordMaxAttempt(): number;
+    appleGetTokenInfo(idToken: string): Promise<IAuthSocialApplePayload>;
+    googleGetTokenInfo(idToken: string): Promise<IAuthSocialGooglePayload>;
 }

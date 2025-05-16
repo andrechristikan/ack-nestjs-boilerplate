@@ -1,0 +1,149 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start Development Server",
+            "type": "shell",
+            "command": "yarn start:dev",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Project",
+            "type": "shell",
+            "command": "yarn build",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Format Code",
+            "type": "shell",
+            "command": "yarn format",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Lint Project",
+            "type": "shell",
+            "command": "yarn lint",
+            "group": "test",
+            "problemMatcher": ["$eslint-stylish"]
+        },
+        {
+            "label": "Lint and Fix",
+            "type": "shell",
+            "command": "yarn lint:fix",
+            "group": "none",
+            "problemMatcher": ["$eslint-stylish"]
+        },
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "yarn test",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Check Dead Code",
+            "type": "shell",
+            "command": "yarn deadcode",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Spell Check",
+            "type": "shell",
+            "command": "yarn spell",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Generate Keys",
+            "type": "shell",
+            "command": "yarn generate:keys",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Fresh Migration",
+            "type": "shell",
+            "command": "yarn migrate:fresh",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Seed Database",
+            "type": "shell",
+            "command": "yarn migrate:seed",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Remove Migration Data",
+            "type": "shell",
+            "command": "yarn migrate:remove",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Migrate Template",
+            "type": "shell",
+            "command": "yarn migrate:template",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Rollback Template",
+            "type": "shell",
+            "command": "yarn rollback:template",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Package Upgrade",
+            "type": "shell",
+            "command": "yarn package:upgrade",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Package Check",
+            "type": "shell",
+            "command": "yarn package:check",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Docker Compose Up",
+            "type": "shell",
+            "command": "docker-compose up -d",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Docker Compose Down",
+            "type": "shell",
+            "command": "docker-compose down",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean Project",
+            "type": "shell",
+            "command": "yarn clean",
+            "group": "none",
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "migrationName",
+            "description": "Name of the migration",
+            "default": "NewMigration",
+            "type": "promptString"
+        }
+    ]
+}

@@ -22,11 +22,11 @@ export enum ENUM_FILE_MIME_EXCEL {
 
 export enum ENUM_FILE_MIME_AUDIO {
     MPEG = 'audio/mpeg',
+    M4A = 'audio/m4a',
     MP3 = 'audio/mp3',
 }
 
 export enum ENUM_FILE_MIME_VIDEO {
-    M4A = 'audio/x-m4a',
     MP4 = 'video/mp4',
 }
 

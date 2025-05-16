@@ -125,25 +125,50 @@ export class AppEnvDto {
     @MinLength(1)
     AUTH_JWT_ISSUER: string;
 
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(1)
+    AUTH_JWT_JWKS_URI: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(1)
+    AUTH_JWT_ACCESS_TOKEN_KID: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(1)
+    AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY_PATH: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(1)
+    AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY_PATH: string;
+
     @IsNotEmpty()
     @IsString()
     @MinLength(1)
     AUTH_JWT_ACCESS_TOKEN_EXPIRED: string;
 
-    @IsNotEmpty()
     @IsString()
+    @IsNotEmpty()
     @MinLength(1)
-    AUTH_JWT_ACCESS_TOKEN_SECRET_KEY: string;
+    AUTH_JWT_REFRESH_TOKEN_KID: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(1)
+    AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY_PATH: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(1)
+    AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY_PATH: string;
 
     @IsNotEmpty()
     @IsString()
     @MinLength(1)
     AUTH_JWT_REFRESH_TOKEN_EXPIRED: string;
-
-    @IsNotEmpty()
-    @IsString()
-    @MinLength(1)
-    AUTH_JWT_REFRESH_TOKEN_SECRET_KEY: string;
 
     @IsOptional()
     @IsString()

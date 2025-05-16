@@ -76,7 +76,7 @@ export interface IResetPasswordService {
         options?: IDatabaseCreateManyOptions
     ): Promise<InsertManyResult<ResetPasswordEntity>>;
     deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<DeleteResult>;
     createOtp(): string;

@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Queue } from 'bullmq';
-import { ClientSession, Connection } from 'mongoose';
+import { ClientSession } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { DatabaseService } from 'src/common/database/services/database.service';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
@@ -45,8 +45,7 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 })
 export class AuthAdminController {
     constructor(
-        @InjectDatabaseConnection()
-        private readonly databaseConnection: Connection,
+        private readonly databaseService: DatabaseService,
         @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly authService: AuthService,
@@ -71,18 +70,13 @@ export class AuthAdminController {
         user: UserDoc
     ): Promise<void> {
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
-            const passwordString =
-                await this.authService.createPasswordRandom();
-            const password = await this.authService.createPassword(
-                passwordString,
-                {
-                    temporary: true,
-                }
-            );
+            const passwordString = this.authService.createPasswordRandom();
+            const password = this.authService.createPassword(passwordString, {
+                temporary: true,
+            });
 
             user = await this.userService.updatePassword(user, password, {
                 session,
@@ -97,11 +91,10 @@ export class AuthAdminController {
                     by: updatedBy,
                     type: ENUM_PASSWORD_HISTORY_TYPE.TEMPORARY,
                 },
-                { session }
+                { session, actionBy: updatedBy }
             );
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
 
             await this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
@@ -121,14 +114,13 @@ export class AuthAdminController {
             );
 
             return;
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }

@@ -1,8 +1,3 @@
-import {
-    IHelperJwtOptions,
-    IHelperJwtVerifyOptions,
-} from 'src/common/helper/interfaces/helper.interface';
-
 export interface IHelperEncryptionService {
     base64Encrypt(data: string): string;
     base64Decrypt(data: string): string;
@@ -18,10 +13,4 @@ export interface IHelperEncryptionService {
         iv: string
     ): T;
     aes256Compare(aes1: string, aes2: string): boolean;
-    jwtEncrypt(
-        payload: Record<string, any>,
-        options: IHelperJwtOptions
-    ): string;
-    jwtDecrypt<T>(token: string): T;
-    jwtVerify(token: string, options: IHelperJwtVerifyOptions): boolean;
 }

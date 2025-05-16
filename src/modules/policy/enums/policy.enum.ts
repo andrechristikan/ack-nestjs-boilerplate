@@ -7,15 +7,15 @@ export enum ENUM_POLICY_ACTION {
 }
 
 export enum ENUM_POLICY_SUBJECT {
-    ALL = 'ALL',
     AUTH = 'AUTH',
     API_KEY = 'API_KEY',
-    SETTING = 'SETTING',
     COUNTRY = 'COUNTRY',
     ROLE = 'ROLE',
     USER = 'USER',
     SESSION = 'SESSION',
     ACTIVITY = 'ACTIVITY',
+    DASHBOARD = 'DASHBOARD',
+    UTILITIES = 'UTILITIES',
 }
 
 export enum ENUM_POLICY_ROLE_TYPE {

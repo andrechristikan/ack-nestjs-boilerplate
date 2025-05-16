@@ -1,13 +1,17 @@
 import { _Object } from '@aws-sdk/client-s3';
 import { AwsS3MultipartDto } from 'src/modules/aws/dtos/aws.s3-multipart.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { AwsS3MultipartPresignCompletePartRequestDto } from 'src/modules/aws/dtos/request/aws.s3-multipart-presign-complete.request.dto';
 import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
 import { AwsS3PresignMultiPartResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign-multipart.response.dto';
 import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
 import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
 import {
+    IAwsS3ConfigBucket,
     IAwsS3DeleteDirOptions,
+    IAwsS3FileInfo,
     IAwsS3GetItemsOptions,
+    IAwsS3MultipartOptions,
     IAwsS3Options,
     IAwsS3PresignOptions,
     IAwsS3PutItem,
@@ -15,7 +19,8 @@ import {
 } from 'src/modules/aws/interfaces/aws.interface';
 
 export interface IAwsS3Service {
-    onModuleInit(): void;
+    getConfig(options?: IAwsS3Options): IAwsS3ConfigBucket;
+    getFileInfo(key: string): IAwsS3FileInfo;
     checkConnection(options?: IAwsS3Options): Promise<boolean>;
     checkBucket(options?: IAwsS3Options): Promise<boolean>;
     checkItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto>;
@@ -38,7 +43,7 @@ export interface IAwsS3Service {
     createMultiPart(
         file: IAwsS3PutItem,
         maxPartNumber: number,
-        options?: IAwsS3Options
+        options?: IAwsS3MultipartOptions
     ): Promise<AwsS3MultipartDto>;
     createMultiPartWithAcl(
         file: IAwsS3PutItem,
@@ -54,6 +59,7 @@ export interface IAwsS3Service {
     completeMultipart(
         key: string,
         uploadId: string,
+        parts: AwsS3MultipartPresignCompletePartRequestDto[],
         options?: IAwsS3Options
     ): Promise<void>;
     abortMultipart(
@@ -63,16 +69,17 @@ export interface IAwsS3Service {
     ): Promise<void>;
     presignPutItem(
         key: string,
+        size: number,
         options?: IAwsS3PresignOptions
     ): Promise<AwsS3PresignResponseDto>;
-    presignPutItemMultipart(
+    presignPutItemPart(
         key: string,
         uploadId: string,
         partNumber: number,
         options?: IAwsS3PresignOptions
     ): Promise<AwsS3PresignMultiPartResponseDto>;
     mapPresign(
-        { key, size, duration }: AwsS3PresignRequestDto,
+        { key, size }: AwsS3PresignRequestDto,
         options?: IAwsS3Options
     ): AwsS3Dto;
     mapResponse(dto: AwsS3Dto): AwsS3ResponseDto;

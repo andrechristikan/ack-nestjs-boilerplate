@@ -99,7 +99,7 @@ jobs:
                           "docker pull ${{ vars.AWS_ECR_REPO_URL }}:production",
                           "docker stop ${{ vars.DOCKER_CONTAINER_NAME }} && docker rm ${{ vars.DOCKER_CONTAINER_NAME }}",
                           "docker network create app-network --driver=bridge",
-                          "docker run -itd --env NODE_ENV=production --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.AWS_ECR_REPO_URL }}:production"
+                          "docker run -itd --env NODE_ENV=production --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/keys/:/app/keys/ --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.AWS_ECR_REPO_URL }}:production"
                       ]'
 
             - name: Update AWS EC2 Instance for Development
@@ -114,7 +114,7 @@ jobs:
                           "docker pull ${{ vars.AWS_ECR_REPO_URL }}:development",
                           "docker stop ${{ vars.DOCKER_CONTAINER_NAME }} && docker rm ${{ vars.DOCKER_CONTAINER_NAME }}",
                           "docker network create app-network --driver=bridge",
-                          "docker run -itd --env NODE_ENV=development --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.AWS_ECR_REPO_URL }}:development"
+                          "docker run -itd --env NODE_ENV=development --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/keys/:/app/keys/ --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.AWS_ECR_REPO_URL }}:development"
                       ]'
     clean:
         needs: [deploy]

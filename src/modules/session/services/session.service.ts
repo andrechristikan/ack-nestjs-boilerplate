@@ -18,7 +18,6 @@ import {
     IDatabaseUpdateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { SessionLoginPrefix } from 'src/modules/session/constants/session.constant';
 import { SessionCreateRequestDto } from 'src/modules/session/dtos/request/session.create.request.dto';
 import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
 import {
@@ -39,6 +38,8 @@ export class SessionService implements ISessionService {
     private readonly refreshTokenExpiration: number;
     private readonly appName: string;
 
+    private readonly sessionKeyPrefix: string;
+
     constructor(
         @InjectQueue(ENUM_WORKER_QUEUES.SESSION_QUEUE)
         private readonly sessionQueue: Queue,
@@ -49,8 +50,11 @@ export class SessionService implements ISessionService {
     ) {
         this.refreshTokenExpiration = this.configService.get<number>(
             'auth.jwt.refreshToken.expirationTime'
-        );
-        this.appName = this.configService.get<string>('app.name');
+        )!;
+        this.appName = this.configService.get<string>('app.name')!;
+
+        this.sessionKeyPrefix =
+            this.configService.get<string>('session.keyPrefix')!;
     }
 
     async findAll(
@@ -151,7 +155,7 @@ export class SessionService implements ISessionService {
         const create = new SessionEntity();
         create.user = user;
         create.hostname = request.hostname;
-        create.ip = request.ip;
+        create.ip = request.ip ?? '0.0.0.0';
         create.protocol = request.protocol;
         create.originalUrl = request.originalUrl;
         create.method = request.method;
@@ -179,13 +183,13 @@ export class SessionService implements ISessionService {
     }
 
     async findLoginSession(_id: string): Promise<string> {
-        return this.cacheManager.get<string>(
-            `${this.appName}:${SessionLoginPrefix}:${_id}`
-        );
+        return (await this.cacheManager.get<string>(
+            `${this.appName}:${this.sessionKeyPrefix}:${_id}`
+        ))!;
     }
 
     async setLoginSession(user: IUserDoc, session: SessionDoc): Promise<void> {
-        const key = `${this.appName}:${SessionLoginPrefix}:${session._id}`;
+        const key = `${this.appName}:${this.sessionKeyPrefix}:${session._id}`;
 
         await this.cacheManager.set(
             key,
@@ -209,7 +213,7 @@ export class SessionService implements ISessionService {
     }
 
     async deleteLoginSession(_id: string): Promise<void> {
-        const key = `${this.appName}:${SessionLoginPrefix}:${_id}`;
+        const key = `${this.appName}:${this.sessionKeyPrefix}:${_id}`;
         await this.cacheManager.del(key);
 
         await this.sessionQueue.remove(key);
@@ -260,7 +264,7 @@ export class SessionService implements ISessionService {
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
         await this.sessionRepository.deleteMany(find, options);

@@ -49,11 +49,7 @@ export class RoleEntity extends DatabaseEntityBase {
     })
     type: ENUM_POLICY_ROLE_TYPE;
 
-    @DatabaseProp({
-        required: true,
-        default: [],
-        schema: [RolePermissionSchema],
-    })
+    @DatabaseProp([RolePermissionSchema])
     permissions: RolePermissionEntity[];
 }
 

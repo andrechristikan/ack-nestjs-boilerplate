@@ -9,7 +9,7 @@ import {
     Param,
     Post,
 } from '@nestjs/common';
-import { ClientSession, Connection } from 'mongoose';
+import { ClientSession } from 'mongoose';
 import { UserService } from 'src/modules/user/services/user.service';
 import { ApiTags } from '@nestjs/swagger';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
@@ -19,7 +19,6 @@ import {
     ResetPasswordPublicResetDoc,
     ResetPasswordPublicVerifyDoc,
 } from 'src/modules/reset-password/docs/reset-password.public.doc';
-import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ResetPasswordCreateRequestDto } from 'src/modules/reset-password/dtos/request/reset-password.create.request.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
@@ -45,6 +44,7 @@ import { AuthService } from 'src/modules/auth/services/auth.service';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
 import { ResetPasswordVerifyRequestDto } from 'src/modules/reset-password/dtos/request/reset-password.verify.request.dto';
+import { DatabaseService } from 'src/common/database/services/database.service';
 
 @ApiTags('modules.public.resetPassword')
 @Controller({
@@ -53,8 +53,7 @@ import { ResetPasswordVerifyRequestDto } from 'src/modules/reset-password/dtos/r
 })
 export class ResetPasswordPublicController {
     constructor(
-        @InjectDatabaseConnection()
-        private readonly databaseConnection: Connection,
+        private readonly databaseService: DatabaseService,
         @InjectQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
         private readonly emailQueue: Queue,
         private readonly userService: UserService,
@@ -91,8 +90,7 @@ export class ResetPasswordPublicController {
         }
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             await this.resetPasswordService.inactiveEmailManyByUser(user._id, {
@@ -122,20 +120,18 @@ export class ResetPasswordPublicController {
                 }
             );
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
 
             return {
                 data: resetPassword.created,
             };
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }
@@ -242,12 +238,11 @@ export class ResetPasswordPublicController {
         }
 
         const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
+            await this.databaseService.createTransaction();
 
         try {
             const password: IAuthPassword =
-                await this.authService.createPassword(newPassword);
+                this.authService.createPassword(newPassword);
 
             user = await this.userService.updatePassword(user, password, {
                 session,
@@ -272,18 +267,16 @@ export class ResetPasswordPublicController {
                 }
             );
 
-            await session.commitTransaction();
-            await session.endSession();
+            await this.databaseService.commitTransaction(session);
 
             return;
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                _error: err.message,
+                _error: err,
             });
         }
     }

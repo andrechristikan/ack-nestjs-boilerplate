@@ -87,7 +87,7 @@ export interface IApiKeyService {
     createSecret(): Promise<string>;
     createHashApiKey(key: string, secret: string): Promise<string>;
     deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
     inactiveManyByEndDate(

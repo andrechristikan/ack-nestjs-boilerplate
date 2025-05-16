@@ -11,6 +11,7 @@ import {
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { PasswordHistoryCreateByAdminRequestDto } from 'src/modules/password-history/dtos/request/password-history.create-by-admin.request.dto';
 import { PasswordHistoryCreateRequestDto } from 'src/modules/password-history/dtos/request/password-history.create.request.dto';
 import { PasswordHistoryListResponseDto } from 'src/modules/password-history/dtos/response/password-history.list.response.dto';
@@ -33,6 +34,7 @@ export class PasswordHistoryService implements IPasswordHistoryService {
     constructor(
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
+        private readonly helperHashService: HelperHashService,
         private readonly passwordHistoryRepository: PasswordHistoryRepository
     ) {
         this.passwordPeriod = this.configService.get<number>(
@@ -101,17 +103,26 @@ export class PasswordHistoryService implements IPasswordHistoryService {
         options?: IDatabaseFindOneOptions
     ): Promise<PasswordHistoryDoc> {
         const today = this.helperDateService.create();
-
-        return this.passwordHistoryRepository.findOne<PasswordHistoryDoc>(
-            {
-                user,
-                password,
-                expiredAt: {
-                    $gte: today,
+        const allHistoryPasswords =
+            await this.passwordHistoryRepository.findAll<PasswordHistoryDoc>(
+                {
+                    user,
+                    expiredAt: { $gte: today },
                 },
-            },
-            options
-        );
+                options
+            );
+
+        for (const historyPassword of allHistoryPasswords) {
+            const isMatch = this.helperHashService.bcryptCompare(
+                password,
+                historyPassword.password
+            );
+            if (isMatch) {
+                return historyPassword;
+            }
+        }
+
+        return null;
     }
 
     async getTotal(
@@ -185,7 +196,7 @@ export class PasswordHistoryService implements IPasswordHistoryService {
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
         await this.passwordHistoryRepository.deleteMany(find, options);

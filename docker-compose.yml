@@ -1,8 +1,9 @@
 name: ack-nestjs-boilerplate
 
 services:
+    # Main API service
     apis:
-        build: 
+        build:
             context: .
         hostname: apis
         ports:
@@ -10,13 +11,56 @@ services:
         volumes:
             - ./src/:/app/src/
             - .env/:/app/.env
+            - ./keys/access-token.pem:/keys/access-token.pem
+            - ./keys/access-token.pub:/keys/access-token.pub
+            - ./keys/refresh-token.pem:/keys/refresh-token.pem
+            - ./keys/refresh-token.pub:/keys/refresh-token.pub
         restart: on-failure
         networks:
             - app-network
         depends_on:
             - redis
             - mongodb1
+            - jwks-server
+        deploy:
+            resources:
+                limits:
+                    cpus: '1'
+                    memory: 1G
+                reservations:
+                    cpus: '0.5'
+                    memory: 512M
 
+    # JWKS Server for token validation
+    jwks-server:
+        image: nginx:alpine
+        hostname: jwks-server
+        ports:
+            - '3011:80'
+        volumes:
+            - ./keys/jwks.json:/usr/share/nginx/html/.well-known/jwks.json
+            - ./ci/jwks-server/jwks.conf:/etc/nginx/conf.d/default.conf
+        networks:
+            - app-network
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.5'
+                    memory: 128M
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'wget',
+                    '-qO-',
+                    'http://localhost:80/.well-known/jwks.json',
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 5s
+
+    # Redis for caching and queues
     redis:
         image: redis:latest
         hostname: redis
@@ -26,12 +70,18 @@ services:
             - redis_data:/data
         networks:
             - app-network
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.5'
+                    memory: 256M
         healthcheck:
             test: ['CMD', 'redis-cli', 'ping']
             interval: 10s
             timeout: 30s
             retries: 5
 
+    # Bull dashboard for queue monitoring
     redis-bullboard:
         image: deadly0/bull-board:3.2.6
         hostname: redis-bullboard
@@ -47,71 +97,132 @@ services:
             - USER_PASSWORD=admin123
         depends_on:
             - redis
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.3'
+                    memory: 128M
 
+    # MongoDB Replica Set - Primary Node
     mongodb1:
         image: mongo:latest
         hostname: mongodb1
         ports:
             - '27017:27017'
-        links:
-            - mongodb2
-            - mongodb3
-        depends_on:
-            mongodb2:
-                condition: service_started
-            mongodb3:
-                condition: service_started
         networks:
             - app-network
         volumes:
             - mongodb1_data:/data/db
-            - mongodb1_config:/data/configdb
         command: mongod --bind_ip_all --replSet rs0 --port 27017
         extra_hosts:
             - 'host.docker.internal:host-gateway'
+        deploy:
+            resources:
+                limits:
+                    cpus: '1'
+                    memory: 1G
+                reservations:
+                    memory: 512M
         healthcheck:
-            test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017',priority:1},{_id:1,host:'host.docker.internal:27018',priority:0.5},{_id:2,host:'host.docker.internal:27019',priority:0.5}]}) }" | mongosh --port 27017 --quiet
-            interval: 5s
-            timeout: 30s
-            start_period: 0s
-            start_interval: 1s
-            retries: 10
+            test: mongosh --eval "db.adminCommand('ping')" --quiet
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 20s
 
+    # MongoDB Replica Set - Secondary Node 1
     mongodb2:
         image: mongo:latest
         hostname: mongodb2
         networks:
             - app-network
         ports:
-            - '27018:27018'
+            - '27018:27017'
+        depends_on:
+            mongodb1:
+                condition: service_started
         volumes:
             - mongodb2_data:/data/db
-            - mongodb2_config:/data/configdb
-        command: mongod --bind_ip_all --replSet rs0 --port 27018
+        command: mongod --bind_ip_all --replSet rs0 --port 27017
         extra_hosts:
             - 'host.docker.internal:host-gateway'
+        deploy:
+            resources:
+                limits:
+                    cpus: '1'
+                    memory: 1G
+        healthcheck:
+            test: mongosh --eval "db.adminCommand('ping')" --quiet
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 20s
 
+    # MongoDB Replica Set - Secondary Node 2
     mongodb3:
         image: mongo:latest
         hostname: mongodb3
         networks:
             - app-network
         ports:
-            - '27019:27019'
+            - '27019:27017'
+        depends_on:
+            mongodb1:
+                condition: service_started
         volumes:
             - mongodb3_data:/data/db
-            - mongodb3_config:/data/configdb
-        command: mongod --bind_ip_all --replSet rs0 --port 27019
+        command: mongod --bind_ip_all --replSet rs0 --port 27017
         extra_hosts:
             - 'host.docker.internal:host-gateway'
+        deploy:
+            resources:
+                limits:
+                    cpus: '1'
+                    memory: 1G
+        healthcheck:
+            test: mongosh --eval "db.adminCommand('ping')" --quiet
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 20s
+
+    # MongoDB Replica Set Initialization service
+    mongo-init:
+        image: mongo:latest
+        restart: 'no'
+        depends_on:
+            mongodb1:
+                condition: service_healthy
+            mongodb2:
+                condition: service_healthy
+            mongodb3:
+                condition: service_healthy
+        networks:
+            - app-network
+        command: >
+            bash -c "
+            echo 'Waiting for MongoDB instances to be ready...' &&
+            mongosh --host host.docker.internal:27017 --eval '
+            config = {
+                    \"_id\": \"rs0\",
+                    \"members\": [
+                    { \"_id\": 0, \"host\": \"host.docker.internal:27017\", \"priority\": 2 },
+                    { \"_id\": 1, \"host\": \"host.docker.internal:27018\", \"priority\": 1 },
+                    { \"_id\": 2, \"host\": \"host.docker.internal:27019\", \"priority\": 1 }
+                ]
+            };
+            rs.initiate(config);
+            rs.status();'&&
+            echo 'Replica set initialized successfully. Container will exit now.'
+            "
+        deploy:
+            restart_policy:
+                condition: none
 
 volumes:
     mongodb1_data:
     mongodb2_data:
     mongodb3_data:
-    mongodb1_config:
-    mongodb2_config:
-    mongodb3_config:
     redis_data:
 
 networks:

@@ -9,6 +9,7 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseUpdateOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
@@ -42,7 +43,6 @@ import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
-import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 import {
     CountryDoc,
@@ -52,6 +52,7 @@ import { RoleTableName } from 'src/modules/role/repository/entities/role.entity'
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
 import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
+import { UserCensorResponseDto } from 'src/modules/user/dtos/response/user.censor.response.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -141,7 +142,7 @@ export class UserService implements IUserService {
         const pipeline: PipelineStage[] =
             this.createRawQueryFindAllWithRoleAndCountry(find);
 
-        return this.userRepository.findAllAggregate<PipelineStage, IUserEntity>(
+        return this.userRepository.findAllAggregate<IUserEntity>(
             pipeline,
             options
         );
@@ -154,10 +155,7 @@ export class UserService implements IUserService {
         const pipeline: PipelineStage[] =
             this.createRawQueryFindAllWithRoleAndCountry(find);
 
-        return this.userRepository.getTotalAggregate<PipelineStage>(
-            pipeline,
-            options
-        );
+        return this.userRepository.getTotalAggregate(pipeline, options);
     }
 
     async findOneById(
@@ -184,7 +182,19 @@ export class UserService implements IUserService {
         );
     }
 
-    async findOneByMobileNumber(
+    async findOneByUsername(
+        username: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<UserDoc> {
+        return this.userRepository.findOne<UserDoc>(
+            DatabaseHelperQueryContain('username', username, {
+                fullWord: true,
+            }),
+            options
+        );
+    }
+
+    async findOneByMobileNumberAndCountry(
         country: string,
         mobileNumber: string,
         options?: IDatabaseFindOneOptions
@@ -193,6 +203,18 @@ export class UserService implements IUserService {
             {
                 'mobileNumber.number': mobileNumber,
                 'mobileNumber.country': country,
+            },
+            options
+        );
+    }
+
+    async findOneByMobileNumber(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<UserDoc> {
+        return this.userRepository.findOne<UserDoc>(
+            {
+                'mobileNumber.number': mobileNumber,
             },
             options
         );
@@ -262,7 +284,12 @@ export class UserService implements IUserService {
         options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(
-            { email, status: ENUM_USER_STATUS.ACTIVE },
+            {
+                ...DatabaseHelperQueryContain('email', email, {
+                    fullWord: true,
+                }),
+                status: ENUM_USER_STATUS.ACTIVE,
+            },
             {
                 ...options,
                 join: this.userRepository._joinActive,
@@ -298,7 +325,7 @@ export class UserService implements IUserService {
 
         const create: UserEntity = new UserEntity();
         create.name = name;
-        create.email = email;
+        create.email = email.toLowerCase();
         create.role = role;
         create.gender = gender;
         create.status = ENUM_USER_STATUS.ACTIVE;
@@ -329,7 +356,7 @@ export class UserService implements IUserService {
 
         const create: UserEntity = new UserEntity();
         create.name = name;
-        create.email = email;
+        create.email = email.toLowerCase();
         create.role = role;
         create.status = ENUM_USER_STATUS.ACTIVE;
         create.password = passwordHash;
@@ -434,7 +461,7 @@ export class UserService implements IUserService {
         repository: UserDoc,
         options?: IDatabaseUpdateOptions
     ): Promise<UserDoc> {
-        return this.userRepository.update(
+        return this.userRepository.updateRaw(
             { _id: repository._id },
             {
                 $inc: {
@@ -497,7 +524,7 @@ export class UserService implements IUserService {
         { username }: UserUpdateClaimUsernameRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
-        repository.username = username;
+        repository.username = username.toLowerCase();
 
         return this.userRepository.save(repository, options);
     }
@@ -513,14 +540,13 @@ export class UserService implements IUserService {
 
     async softDelete(
         repository: UserDoc,
-        dto: DatabaseSoftDeleteDto,
-        options?: IDatabaseSaveOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<UserDoc> {
-        return this.userRepository.softDelete(repository, dto, options);
+        return this.userRepository.softDelete(repository, options);
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
         await this.userRepository.deleteMany(find, options);
@@ -563,23 +589,28 @@ export class UserService implements IUserService {
     }
 
     async join(repository: UserDoc): Promise<IUserDoc> {
-        return this.userRepository.join(repository, this.userRepository._join);
+        return this.userRepository.join(repository, this.userRepository._join!);
     }
 
     createRandomFilenamePhoto(
         user: string,
-        { type }: UserUploadPhotoRequestDto
+        { mime }: UserUploadPhotoRequestDto
     ): string {
-        const path: string = this.uploadPath.replace('{user}', user);
+        let path: string = this.uploadPath.replace('{user}', user);
         const randomPath = this.helperStringService.random(10);
+        const extension = mime.split('/')[1];
 
-        return `${path}/${randomPath}.${type.toLowerCase()}`;
+        if (path.startsWith('/')) {
+            path = path.replace('/', '');
+        }
+
+        return `${path}/${randomPath}.${extension.toLowerCase()}`;
     }
 
     createRandomUsername(): string {
         const suffix = this.helperStringService.random(6);
 
-        return `${this.usernamePrefix}-${suffix}`;
+        return `${this.usernamePrefix}-${suffix}`.toLowerCase();
     }
 
     checkUsernamePattern(username: string): boolean {
@@ -597,6 +628,13 @@ export class UserService implements IUserService {
             UserProfileResponseDto,
             user instanceof Document ? user.toObject() : user
         );
+    }
+
+    mapCensor(user: UserDoc | UserEntity): UserCensorResponseDto {
+        const plainObject = user instanceof Document ? user.toObject() : user;
+        plainObject.name = this.helperStringService.censor(plainObject.name);
+
+        return plainToInstance(UserCensorResponseDto, plainObject);
     }
 
     mapList(users: IUserDoc[] | IUserEntity[]): UserListResponseDto[] {

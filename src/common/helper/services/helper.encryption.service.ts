@@ -1,18 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Injectable } from '@nestjs/common';
 import { AES, enc, mode, pad } from 'crypto-js';
 import { IHelperEncryptionService } from 'src/common/helper/interfaces/helper.encryption-service.interface';
-import {
-    IHelperJwtOptions,
-    IHelperJwtVerifyOptions,
-} from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
 export class HelperEncryptionService implements IHelperEncryptionService {
-    private readonly logger = new Logger(HelperEncryptionService.name);
-
-    constructor(private readonly jwtService: JwtService) {}
-
     base64Encrypt(data: string): string {
         const buff: Buffer = Buffer.from(data, 'utf8');
         return buff.toString('base64');
@@ -59,41 +50,5 @@ export class HelperEncryptionService implements IHelperEncryptionService {
 
     aes256Compare(aes1: string, aes2: string): boolean {
         return aes1 === aes2;
-    }
-
-    jwtEncrypt(
-        payload: Record<string, any>,
-        options: IHelperJwtOptions
-    ): string {
-        return this.jwtService.sign(payload, {
-            secret: options.secretKey,
-            expiresIn: options.expiredIn,
-            notBefore: options.notBefore ?? 0,
-            audience: options.audience,
-            issuer: options.issuer,
-            subject: options.subject,
-        });
-    }
-
-    jwtDecrypt<T>(token: string): T {
-        return this.jwtService.decode<T>(token);
-    }
-
-    jwtVerify(token: string, options: IHelperJwtVerifyOptions): boolean {
-        try {
-            this.jwtService.verify(token, {
-                secret: options.secretKey,
-                audience: options.audience,
-                issuer: options.issuer,
-                subject: options.subject,
-                ignoreExpiration: options.ignoreExpiration ?? false,
-            });
-
-            return true;
-        } catch (err: unknown) {
-            this.logger.error(err);
-
-            return false;
-        }
     }
 }

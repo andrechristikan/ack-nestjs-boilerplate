@@ -93,6 +93,25 @@ export class FileService implements IFileService {
         };
     }
 
+    readCsvFromString<T = Record<string, string | number | Date>>(
+        file: string
+    ): IFileRows<T> {
+        // workbook
+        const workbook = read(file, {
+            type: 'string',
+        });
+
+        // worksheet
+        const worksheetsName: string = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[worksheetsName];
+        const rows: T[] = utils.sheet_to_json(worksheet);
+
+        return {
+            data: rows,
+            sheetName: worksheetsName,
+        };
+    }
+
     readExcel<T = Record<string, string | number | Date>>(
         file: Buffer
     ): IFileRows<T>[] {

@@ -3,36 +3,42 @@ import { ConfigService } from '@nestjs/config';
 import verifyAppleToken from 'verify-apple-id-token';
 import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
+import { Algorithm } from 'jsonwebtoken';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { IAuthService } from 'src/modules/auth/interfaces/auth.service.interface';
-import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
-import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
 import {
+    IAuthJwtAccessTokenPayload,
+    IAuthJwtRefreshTokenPayload,
     IAuthPassword,
     IAuthPasswordOptions,
+    IAuthSocialApplePayload,
+    IAuthSocialGooglePayload,
 } from 'src/modules/auth/interfaces/auth.interface';
-import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.social.apple-payload.dto';
-import { AuthSocialGooglePayloadDto } from 'src/modules/auth/dtos/social/auth.social.google-payload.dto';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
-import { plainToInstance } from 'class-transformer';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
-import { Duration } from 'luxon';
+import { readFileSync } from 'fs';
+import { JwtService, JwtSignOptions } from '@nestjs/jwt';
+import { join } from 'path';
 
 @Injectable()
 export class AuthService implements IAuthService {
     // jwt
-    private readonly jwtAccessTokenSecretKey: string;
+    private readonly jwtAccessTokenKid: string;
+    private readonly jwtAccessTokenPrivateKey: string;
+    private readonly jwtAccessTokenPublicKey: string;
     private readonly jwtAccessTokenExpirationTime: number;
 
-    private readonly jwtRefreshTokenSecretKey: string;
+    private readonly jwtRefreshTokenKid: string;
+    private readonly jwtRefreshTokenPrivateKey: string;
+    private readonly jwtRefreshTokenPublicKey: string;
     private readonly jwtRefreshTokenExpirationTime: number;
 
     private readonly jwtPrefix: string;
     private readonly jwtAudience: string;
     private readonly jwtIssuer: string;
+    private readonly jwtAlgorithm: Algorithm;
 
     // password
     private readonly passwordExpiredIn: number;
@@ -53,19 +59,54 @@ export class AuthService implements IAuthService {
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
-        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly jwtService: JwtService,
         private readonly configService: ConfigService
     ) {
-        // jwt
-        this.jwtAccessTokenSecretKey = this.configService.get<string>(
-            'auth.jwt.accessToken.secretKey'
+        this.jwtAccessTokenKid = this.configService.get<string>(
+            'auth.jwt.accessToken.kid'
+        );
+        this.jwtAccessTokenPrivateKey = readFileSync(
+            join(
+                process.cwd(),
+                this.configService.get<string>(
+                    'auth.jwt.accessToken.privateKeyPath'
+                )
+            ),
+            'utf8'
+        );
+        this.jwtAccessTokenPublicKey = readFileSync(
+            join(
+                process.cwd(),
+                this.configService.get<string>(
+                    'auth.jwt.accessToken.publicKeyPath'
+                )
+            ),
+            'utf8'
         );
         this.jwtAccessTokenExpirationTime = this.configService.get<number>(
             'auth.jwt.accessToken.expirationTime'
         );
 
-        this.jwtRefreshTokenSecretKey = this.configService.get<string>(
-            'auth.jwt.refreshToken.secretKey'
+        this.jwtRefreshTokenKid = this.configService.get<string>(
+            'auth.jwt.refreshToken.kid'
+        );
+        this.jwtRefreshTokenPrivateKey = readFileSync(
+            join(
+                process.cwd(),
+                this.configService.get<string>(
+                    'auth.jwt.refreshToken.privateKeyPath'
+                )
+            ),
+            'utf8'
+        );
+        this.jwtRefreshTokenPublicKey = readFileSync(
+            join(
+                process.cwd(),
+                this.configService.get<string>(
+                    'auth.jwt.refreshToken.publicKeyPath'
+                )
+            ),
+            'utf8'
         );
         this.jwtRefreshTokenExpirationTime = this.configService.get<number>(
             'auth.jwt.refreshToken.expirationTime'
@@ -74,6 +115,8 @@ export class AuthService implements IAuthService {
         this.jwtPrefix = this.configService.get<string>('auth.jwt.prefix');
         this.jwtAudience = this.configService.get<string>('auth.jwt.audience');
         this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer');
+        this.jwtAlgorithm =
+            this.configService.get<Algorithm>('auth.jwt.algorithm');
 
         // password
         this.passwordExpiredIn = this.configService.get<number>(
@@ -108,111 +151,102 @@ export class AuthService implements IAuthService {
         );
     }
 
-    async createAccessToken(
+    createAccessToken(
         subject: string,
-        payload: AuthJwtAccessPayloadDto
-    ): Promise<string> {
-        return this.helperEncryptionService.jwtEncrypt(
-            { ...payload },
-            {
-                secretKey: this.jwtAccessTokenSecretKey,
-                expiredIn: this.jwtAccessTokenExpirationTime,
-                audience: this.jwtAudience,
-                issuer: this.jwtIssuer,
-                subject,
-            }
-        );
-    }
-
-    async validateAccessToken(
-        subject: string,
-        token: string
-    ): Promise<boolean> {
-        return this.helperEncryptionService.jwtVerify(token, {
-            secretKey: this.jwtAccessTokenSecretKey,
+        payload: IAuthJwtAccessTokenPayload
+    ): string {
+        return this.jwtService.sign(payload, {
+            privateKey: this.jwtAccessTokenPrivateKey,
+            expiresIn: this.jwtAccessTokenExpirationTime,
             audience: this.jwtAudience,
             issuer: this.jwtIssuer,
             subject,
-        });
+            algorithm: this.jwtAlgorithm,
+            keyid: this.jwtAccessTokenKid,
+        } as JwtSignOptions);
     }
 
-    async payloadAccessToken(token: string): Promise<AuthJwtAccessPayloadDto> {
-        return this.helperEncryptionService.jwtDecrypt<AuthJwtAccessPayloadDto>(
-            token
-        );
-    }
-
-    async createRefreshToken(
-        subject: string,
-        payload: AuthJwtRefreshPayloadDto
-    ): Promise<string> {
-        return this.helperEncryptionService.jwtEncrypt(
-            { ...payload },
-            {
-                secretKey: this.jwtRefreshTokenSecretKey,
-                expiredIn: this.jwtRefreshTokenExpirationTime,
+    validateAccessToken(subject: string, token: string): boolean {
+        try {
+            this.jwtService.verify(token, {
+                publicKey: this.jwtAccessTokenPublicKey,
+                algorithms: [this.jwtAlgorithm],
                 audience: this.jwtAudience,
                 issuer: this.jwtIssuer,
                 subject,
-            }
-        );
+            });
+
+            return true;
+        } catch {
+            return false;
+        }
     }
 
-    async validateRefreshToken(
+    payload<T = any>(token: string): T {
+        return this.jwtService.decode<T>(token);
+    }
+
+    createRefreshToken(
         subject: string,
-        token: string
-    ): Promise<boolean> {
-        return this.helperEncryptionService.jwtVerify(token, {
-            secretKey: this.jwtRefreshTokenSecretKey,
+        payload: IAuthJwtRefreshTokenPayload
+    ): string {
+        return this.jwtService.sign(payload, {
+            privateKey: this.jwtRefreshTokenPrivateKey,
+            expiresIn: this.jwtRefreshTokenExpirationTime,
             audience: this.jwtAudience,
             issuer: this.jwtIssuer,
             subject,
-        });
+            algorithm: this.jwtAlgorithm,
+            keyid: this.jwtRefreshTokenKid,
+        } as JwtSignOptions);
     }
 
-    async payloadRefreshToken(
-        token: string
-    ): Promise<AuthJwtRefreshPayloadDto> {
-        return this.helperEncryptionService.jwtDecrypt<AuthJwtRefreshPayloadDto>(
-            token
-        );
+    validateRefreshToken(subject: string, token: string): boolean {
+        try {
+            this.jwtService.verify(token, {
+                publicKey: this.jwtRefreshTokenPublicKey,
+                algorithms: [this.jwtAlgorithm],
+                audience: this.jwtAudience,
+                issuer: this.jwtIssuer,
+                subject,
+            });
+
+            return true;
+        } catch {
+            return false;
+        }
     }
 
-    async validateUser(
-        passwordString: string,
-        passwordHash: string
-    ): Promise<boolean> {
+    validateUser(passwordString: string, passwordHash: string): boolean {
         return this.helperHashService.bcryptCompare(
             passwordString,
             passwordHash
         );
     }
 
-    async createPayloadAccessToken(
+    createPayloadAccessToken(
         data: IUserDoc,
         session: string,
         loginDate: Date,
         loginFrom: ENUM_AUTH_LOGIN_FROM
-    ): Promise<AuthJwtAccessPayloadDto> {
-        return plainToInstance(AuthJwtAccessPayloadDto, {
+    ): IAuthJwtAccessTokenPayload {
+        return {
             user: data._id,
             type: data.role.type,
             role: data.role._id,
             email: data.email,
-            permissions: data.role.permissions,
-            status: data.status,
             session,
             loginDate,
             loginFrom,
-        } as AuthJwtAccessPayloadDto);
+        };
     }
 
-    async createPayloadRefreshToken({
+    createPayloadRefreshToken({
         user,
         session,
         loginFrom,
         loginDate,
-    }: AuthJwtAccessPayloadDto): Promise<AuthJwtRefreshPayloadDto> {
+    }: IAuthJwtAccessTokenPayload): IAuthJwtRefreshTokenPayload {
         return {
             user,
             session,
@@ -221,20 +255,20 @@ export class AuthService implements IAuthService {
         };
     }
 
-    async createSalt(length: number): Promise<string> {
+    createSalt(length: number): string {
         return this.helperHashService.randomSalt(length);
     }
 
-    async createPassword(
+    createPassword(
         password: string,
         options?: IAuthPasswordOptions
-    ): Promise<IAuthPassword> {
-        const salt: string = await this.createSalt(this.passwordSaltLength);
+    ): IAuthPassword {
+        const salt: string = this.createSalt(this.passwordSaltLength);
 
         const today = this.helperDateService.create();
         const passwordExpired: Date = this.helperDateService.forward(
             today,
-            Duration.fromObject({
+            this.helperDateService.createDuration({
                 seconds: options?.temporary
                     ? this.passwordExpiredTemporary
                     : this.passwordExpiredIn,
@@ -250,11 +284,11 @@ export class AuthService implements IAuthService {
         };
     }
 
-    async createPasswordRandom(): Promise<string> {
+    createPasswordRandom(): string {
         return this.helperStringService.random(10);
     }
 
-    async checkPasswordExpired(passwordExpired: Date): Promise<boolean> {
+    checkPasswordExpired(passwordExpired: Date): boolean {
         const today: Date = this.helperDateService.create();
         const passwordExpiredConvert: Date =
             this.helperDateService.create(passwordExpired);
@@ -262,28 +296,25 @@ export class AuthService implements IAuthService {
         return today > passwordExpiredConvert;
     }
 
-    async createToken(
-        user: IUserDoc,
-        session: string
-    ): Promise<AuthLoginResponseDto> {
+    createToken(user: IUserDoc, session: string): AuthLoginResponseDto {
         const loginDate = this.helperDateService.create();
         const roleType = user.role.type;
 
-        const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.createPayloadAccessToken(
+        const payloadAccessToken: IAuthJwtAccessTokenPayload =
+            this.createPayloadAccessToken(
                 user,
                 session,
                 loginDate,
                 ENUM_AUTH_LOGIN_FROM.CREDENTIAL
             );
-        const accessToken: string = await this.createAccessToken(
+        const accessToken: string = this.createAccessToken(
             user._id,
             payloadAccessToken
         );
 
-        const payloadRefreshToken: AuthJwtRefreshPayloadDto =
-            await this.createPayloadRefreshToken(payloadAccessToken);
-        const refreshToken: string = await this.createRefreshToken(
+        const payloadRefreshToken: IAuthJwtRefreshTokenPayload =
+            this.createPayloadRefreshToken(payloadAccessToken);
+        const refreshToken: string = this.createRefreshToken(
             user._id,
             payloadRefreshToken
         );
@@ -297,24 +328,23 @@ export class AuthService implements IAuthService {
         };
     }
 
-    async refreshToken(
+    refreshToken(
         user: IUserDoc,
         refreshTokenFromRequest: string
-    ): Promise<AuthLoginResponseDto> {
+    ): AuthLoginResponseDto {
         const roleType = user.role.type;
 
-        const payloadRefreshToken =
-            this.helperEncryptionService.jwtDecrypt<AuthJwtRefreshPayloadDto>(
-                refreshTokenFromRequest
-            );
-        const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.createPayloadAccessToken(
+        const payloadRefreshToken = this.payload<IAuthJwtRefreshTokenPayload>(
+            refreshTokenFromRequest
+        );
+        const payloadAccessToken: IAuthJwtAccessTokenPayload =
+            this.createPayloadAccessToken(
                 user,
                 payloadRefreshToken.session,
                 payloadRefreshToken.loginDate,
                 payloadRefreshToken.loginFrom
             );
-        const accessToken: string = await this.createAccessToken(
+        const accessToken: string = this.createAccessToken(
             user._id,
             payloadAccessToken
         );
@@ -328,17 +358,15 @@ export class AuthService implements IAuthService {
         };
     }
 
-    async getPasswordAttempt(): Promise<boolean> {
+    getPasswordAttempt(): boolean {
         return this.passwordAttempt;
     }
 
-    async getPasswordMaxAttempt(): Promise<number> {
+    getPasswordMaxAttempt(): number {
         return this.passwordMaxAttempt;
     }
 
-    async appleGetTokenInfo(
-        idToken: string
-    ): Promise<AuthSocialApplePayloadDto> {
+    async appleGetTokenInfo(idToken: string): Promise<IAuthSocialApplePayload> {
         const payload = await verifyAppleToken({
             idToken,
             clientId: [this.appleClientId, this.appleSignInClientId],
@@ -349,7 +377,7 @@ export class AuthService implements IAuthService {
 
     async googleGetTokenInfo(
         idToken: string
-    ): Promise<AuthSocialGooglePayloadDto> {
+    ): Promise<IAuthSocialGooglePayload> {
         const login: LoginTicket = await this.googleClient.verifyIdToken({
             idToken: idToken,
         });

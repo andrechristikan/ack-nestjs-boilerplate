@@ -18,7 +18,19 @@
         "allowJs": false,
         "esModuleInterop": true,
         "moduleResolution": "node",
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "strictNullChecks": false,
+        "noImplicitAny": false,
+        "paths": {
+            "@app/*": ["src/*"],
+            "@common/*": ["src/common/*"],
+            "@config/*": ["src/config/*"],
+            "@modules/*": ["src/modules/*"],
+            "@router/*": ["src/router/*"],
+            "@worker/*": ["src/worker/*"],
+            "@migration/*": ["src/migration/*"],
+            "@test/*": ["test/*"]
+        }
     },
     "include": ["src/**/*", "test/**/*"],
     "exclude": [

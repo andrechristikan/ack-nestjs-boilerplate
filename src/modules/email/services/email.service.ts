@@ -14,6 +14,7 @@ import { EmailCreateDto } from 'src/modules/email/dtos/email.create.dto';
 import { EmailVerificationDto } from 'src/modules/email/dtos/email.verification.dto';
 import { EmailVerifiedDto } from 'src/modules/email/dtos/email.verified.dto';
 import { EmailMobileNumberVerifiedDto } from 'src/modules/email/dtos/email.mobile-number-verified.dto';
+import { join } from 'path';
 
 @Injectable()
 export class EmailService implements IEmailService {
@@ -40,13 +41,15 @@ export class EmailService implements IEmailService {
 
     async importChangePassword(): Promise<boolean> {
         try {
+            const templatePath = join(
+                process.cwd(),
+                'src/templates/change-password.template.hbs'
+            );
+
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
                 subject: `Change Password`,
-                htmlBody: readFileSync(
-                    `${__dirname}/../templates/change-password.template.html`,
-                    'utf8'
-                ),
+                htmlBody: readFileSync(templatePath, 'utf8'),
             });
 
             return true;
@@ -101,13 +104,15 @@ export class EmailService implements IEmailService {
 
     async importWelcome(): Promise<boolean> {
         try {
+            const templatePath = join(
+                process.cwd(),
+                'src/templates/welcome.template.hbs'
+            );
+
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
                 subject: `Welcome`,
-                htmlBody: readFileSync(
-                    `${__dirname}/../templates/welcome.template.html`,
-                    'utf8'
-                ),
+                htmlBody: readFileSync(templatePath, 'utf8'),
             });
 
             return true;
@@ -163,13 +168,15 @@ export class EmailService implements IEmailService {
 
     async importCreate(): Promise<boolean> {
         try {
+            const templatePath = join(
+                process.cwd(),
+                'src/templates/create.template.hbs'
+            );
+
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.CREATE,
                 subject: `Create`,
-                htmlBody: readFileSync(
-                    `${__dirname}/../templates/create.template.html`,
-                    'utf8'
-                ),
+                htmlBody: readFileSync(templatePath, 'utf8'),
             });
 
             return true;
@@ -233,13 +240,15 @@ export class EmailService implements IEmailService {
 
     async importTempPassword(): Promise<boolean> {
         try {
+            const templatePath = join(
+                process.cwd(),
+                'src/templates/temp-password.template.hbs'
+            );
+
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 subject: `Temporary Password`,
-                htmlBody: readFileSync(
-                    `${__dirname}/../templates/temp-password.template.html`,
-                    'utf8'
-                ),
+                htmlBody: readFileSync(templatePath, 'utf8'),
             });
 
             return true;
@@ -310,13 +319,15 @@ export class EmailService implements IEmailService {
 
     async importResetPassword(): Promise<boolean> {
         try {
+            const templatePath = join(
+                process.cwd(),
+                'src/templates/reset-password.template.hbs'
+            );
+
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
                 subject: `Reset Password`,
-                htmlBody: readFileSync(
-                    `${__dirname}/../templates/reset-password.template.html`,
-                    'utf8'
-                ),
+                htmlBody: readFileSync(templatePath, 'utf8'),
             });
 
             return true;
@@ -377,13 +388,15 @@ export class EmailService implements IEmailService {
 
     async importVerification(): Promise<boolean> {
         try {
+            const templatePath = join(
+                process.cwd(),
+                'src/templates/email-verification.template.hbs'
+            );
+
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
                 subject: `Email Verification`,
-                htmlBody: readFileSync(
-                    `${__dirname}/../templates/email-verification.template.html`,
-                    'utf8'
-                ),
+                htmlBody: readFileSync(templatePath, 'utf8'),
             });
 
             return true;
@@ -445,13 +458,15 @@ export class EmailService implements IEmailService {
 
     async importEmailVerified(): Promise<boolean> {
         try {
+            const templatePath = join(
+                process.cwd(),
+                'src/templates/email-verified.template.hbs'
+            );
+
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED,
                 subject: `Email Verified`,
-                htmlBody: readFileSync(
-                    `${__dirname}/../templates/email-verified.template.html`,
-                    'utf8'
-                ),
+                htmlBody: readFileSync(templatePath, 'utf8'),
             });
 
             return true;
@@ -510,13 +525,15 @@ export class EmailService implements IEmailService {
 
     async importMobileNumberVerified(): Promise<boolean> {
         try {
+            const templatePath = join(
+                process.cwd(),
+                'src/templates/mobile-number-verified.template.hbs'
+            );
+
             await this.awsSESService.createTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED,
                 subject: `MobileNumber Verified`,
-                htmlBody: readFileSync(
-                    `${__dirname}/../templates/mobile-number-verified.template.html`,
-                    'utf8'
-                ),
+                htmlBody: readFileSync(templatePath, 'utf8'),
             });
 
             return true;

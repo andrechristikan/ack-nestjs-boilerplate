@@ -34,43 +34,44 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
   - [Features](#features)
     - [Main Features](#main-features)
   - [Installation](#installation)
-    - [Clone Repo](#clone-repo)
-    - [Install Dependencies](#install-dependencies)
-    - [Create environment](#create-environment)
-    - [Database Migration and Seed](#database-migration-and-seed)
-    - [Template Migration](#template-migration)
-    - [Run Project](#run-project)
-  - [Installation with Docker](#installation-with-docker)
-  - [Test](#test)
-  - [Swagger](#swagger)
-  - [API Key](#api-key)
-  - [User](#user)
-  - [BullMQ Board](#bullmq-board)
+  - [Migration](#migration)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
 
 ## Important
 
-> Very limited documentation
-
 -   Stateful Authorization, using `redis-session` and `JWT`.
--   Must run MongoDB as a `replication set` for `database transactions`.
--   If you want to implement `Google SSO`. You must have google cloud console account, then create your own Credential to get the `clientId` and `clientSecret`.
--   If you want to implement `Apple SSO`. You must have `clientId` and `signInClientId` from apple connect.
+-   Must run MongoDB as a `replication set` for `database transactions`.
 -   If you change the environment value of `APP_ENV` to `production`, it will disable Documentation.
 -   For monitoring, this project will use `sentry.io`, and sent unhandled error and/or `internal server error`.
+-   Since version `7.4.0`, the project uses the `ES512` algorithm for JWT authentication.
+-   When using multiple protection decorators, they must be applied in the correct order:
+    ```typescript
+    @ExampleDoc()
+    @PolicyAbilityProtected({...})
+    @PolicyRoleProtected(...)
+    @UserProtected()     
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/some-endpoint')
+    ```
 
 ## TODO
 
-- [ ] 2FA Feats
-- [ ] Export Module in Background using bullmq
-- [ ] Privacy Policy Module
-- [ ] Term and Condition Module
+- [ ] Improve eslint rule for better code quality (high priority, in v8)
+- [ ] Move some function in service layer into repository module, because a bit wrong implementation (high priority, in v8
+- [ ] 2FA Feats (high priority, in v8)
+- [ ] Reset password (medium priority, in v8)
+- [ ] Export Module in Background using bullmq (medium priority, in v8)
+- [ ] Unit test (medium priority)
+- [ ] Add Github SSO (low priority)
+- [ ] Privacy Policy Module (versioning, lowest priority)
+- [ ] Term and Condition Module (versioning, lowest priority)
 
 ## Support me
 
-If you find this project helpful and would like to support its development, you can buy me a coffee!
+If you find this project helpful and would like to support its development, you can buy me a coffee
 
 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
   <a href='https://ko-fi.com/andrechristikan' target='_blank'>
@@ -88,29 +89,29 @@ or support via PayPal
 
 ## Prerequisites
 
-We assume that everyone who comes here is **`programmer with intermediate knowledge`** and we also need to understand more before we begin in order to reduce the knowledge gap.
+I assume that everyone who comes here is a **`programmer with intermediate knowledge`**. To get the most out of this project, here's what you should understand:
 
-1. Understand [NestJs Fundamental][ref-nestjs], Main Framework. NodeJs Framework with support fully TypeScript.
-2. Understand [Typescript Fundamental][ref-typescript], Programming Language. It will help us to write and read the code.
-3. Understand [ExpressJs Fundamental][ref-nodejs], NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
-4. Understand what and how database works, especially NoSql and [MongoDB.][ref-mongodb]
-5. Understand Repository Design Pattern or Data Access Object Design Pattern. It will help to read, and write the source code
-6. Understand The SOLID Principle and KISS Principle for better write the code.
-7. Optional. Understand Microservice Architecture. It can help you to understand more deep about this project.
-8. Optional. Understanding [The Twelve Factor Apps][ref-12factor]. It can help to serve the project.
-9. Optional. Understanding [Docker][ref-docker].
+1. [NestJs Fundamentals][ref-nestjs], as the main Framework. A NodeJs Framework with full TypeScript support.
+2. [Typescript Fundamentals][ref-typescript], as the main Programming Language. This will help you read and write the code.
+3. [ExpressJs Fundamentals][ref-nodejs], as the base NodeJs Framework. This will help you understand how the NestJs Framework works.
+4. Understanding of databases, especially NoSQL and [MongoDB][ref-mongodb].
+5. Repository Design Pattern or Data Access Object Design Pattern. This will help in reading and writing the source code.
+6. The SOLID Principle for better code writing.
+7. Optional. Microservice Architecture. This can help you understand this project more deeply.
+8. Optional. [The Twelve Factor Apps][ref-12factor]. This can help with project deployment.
+9. Optional. [Docker][ref-docker].
 
 ## Build with
 
-Describes which version.
+The project is built using the following technologies and versions:
 
 | Name           | Version  |
 | -------------- | -------- |
 | NestJs         | v11.x    |
 | NestJs Swagger | v11.0.x  |
-| Node           | v22.11.x |
-| Typescript     | v5.7.x   |
-| Mongoose       | v11.0.x  |
+| Node           | v22.13.x |
+| Typescript     | v5.8.x   |
+| Mongoose       | v8.12.x  |
 | MongoDB        | v8.x     |
 | Yarn           | v1.22.x  |
 | Docker         | v27.4.x  |
@@ -154,131 +155,17 @@ Describes which version.
 
 ## Installation
 
-Before start, we need to install some packages and/or tools.
-The recommended version is the LTS version for every tool and package.
+For detailed installation instructions (both standard and Docker-based), please refer to the [Installation](docs/installation.md).
 
-> Make sure to check that tools have been installed successfully.
+## Migration
 
-1. [NodeJs][ref-nodejs]
-2. [MongoDB][ref-mongodb]
-3. [Redis][ref-redis]
-4. [Yarn][ref-yarn]
-5. [Git][ref-git]
+The project includes a migration system for populating the database with initial data using `nestjs-command`. Migration functions include:
 
-### Clone Repo
+- Seeding default API keys, countries, roles, and users
+- Managing email templates for the notification system
+- Commands for adding or removing seed data
 
-Clone the project with git.
-
-```bash
-git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
-```
-
-### Install Dependencies
-
-This project needs some dependencies. Let's go install it.
-
-```bash
-yarn install
-```
-
-### Create environment
-
-Make your own environment file with a copy of `env.example` and adjust values to suit your own environment.
-
-```bash
-cp .env.example .env
-```
-
-### Database Migration and Seed
-
-> By default the options of `AutoCreate` and `AutoIndex` will be `false`. Thats means the schema in MongoDb will not change with the latest update.
-
-in the first place, you need to update the schema
-
-```bash
-yarn migrate:schema
-```
-
-After migrate the schema, also we need to run data seed
-
-```bash
-yarn migrate:seed
-```
-
-For rollback
-
-```bash
-yarn migrate:remove
-```
-
-### Template Migration
-
-> Optional
-
-The template migration will automatically upload `/email/templates` through AWS SES.
-
-```bash
-yarn migrate:template
-```
-
-### Run Project
-
-Finally, Cheers 🍻🍻 !!! you passed all steps.
-
-Now you can run the project.
-
-```bash
-yarn start:dev
-```
-
-## Installation with Docker
-
-We need more tools to be installed.
-
-1. [Docker][ref-docker]
-2. [Docker-Compose][ref-dockercompose]
-
-Copy `.env.example` and change value
-
-```bash
-cp .env.example .env
-```
-
-Run docker compose
-
-> if `host.docker.internal` cannot be resolved, you must add a line in your `/etc/hosts` file to map `host.docker.internal` to the IP address `127.0.0.1`
-
-```bash
-docker-compose up -d
-```
-
-## Test
-
-The project only provide `unit testing`.
-
-```bash
-yarn test
-```
-
-## Swagger
-
-You can check The Swagger after running this project. Url `localhost:3000/docs`
-
-## API Key
-
-See it in `/migration/seeds/api-key`
-The pattern is `{key}:{secret}`
-
-## User
-
-See it in `/migration/seeds/user`
-
-## BullMQ Board
-
-> This available with docker installation
-
-You can check and monitor your queue.
-Url `localhost:3010`
+For complete documentation and instructions on using migrations, see the [Migration](docs/migration.md).
 
 ## License
 
@@ -286,7 +173,7 @@ Distributed under [MIT licensed][license].
 
 ## Contribute
 
-We welcome contributions to this project! To contribute, follow these steps:
+I welcome contributions to this project! To contribute, follow these steps:
 
 1. Fork the repository.
 2. Create a new branch: `git checkout -b feature/your-feature-name`.
@@ -334,6 +221,7 @@ If your branch is behind the `origin/main` branch, please update your branch and
 
 <!-- Repo LINKS -->
 
+[ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
 [ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate/issues
 [ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members

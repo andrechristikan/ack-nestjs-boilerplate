@@ -32,5 +32,13 @@
     "[typescript][json][jsonc][yaml][dockercompose][handlebars][javascript][dotenv][shellscript][dockerfile]": {
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode"
-    }
+    },
+
+    "editor.bracketPairColorization.enabled": true,
+    "better-comments.multilineComments": true,
+    "better-comments.highlightPlainText": true,
+
+    // Disable auto-updating header/title in Markdown
+    "markdown.extension.toc.updateOnSave": true,
+    "markdown.extension.toc.slugifyMode": "github"
 }

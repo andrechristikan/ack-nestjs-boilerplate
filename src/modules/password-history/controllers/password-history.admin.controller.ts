@@ -39,7 +39,7 @@ export class PasswordHistoryAdminController {
     @PasswordHistoryAdminListDoc()
     @ResponsePaging('passwordHistory.list')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.USER,
+        subject: ENUM_POLICY_SUBJECT.ACTIVITY,
         action: [ENUM_POLICY_ACTION.READ],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
@@ -50,23 +50,23 @@ export class PasswordHistoryAdminController {
     async list(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
         @PaginationQuery()
-        { _search, _limit, _offset, _order }: PaginationListDto
+        { _limit, _offset, _order }: PaginationListDto
     ): Promise<IResponsePaging<PasswordHistoryListResponseDto>> {
-        const find: Record<string, any> = {
-            ..._search,
-        };
-
         const passwordHistories: IPasswordHistoryDoc[] =
-            await this.passwordHistoryService.findAllByUser(user._id, find, {
-                paging: {
-                    limit: _limit,
-                    offset: _offset,
-                },
-                order: _order,
-            });
+            await this.passwordHistoryService.findAllByUser(
+                user._id,
+                {},
+                {
+                    paging: {
+                        limit: _limit,
+                        offset: _offset,
+                    },
+                    order: _order,
+                }
+            );
         const total: number = await this.passwordHistoryService.getTotalByUser(
             user._id,
-            find
+            {}
         );
         const totalPage: number = this.paginationService.totalPage(
             total,

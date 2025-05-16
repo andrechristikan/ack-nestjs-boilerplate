@@ -40,7 +40,7 @@ export interface ICountryService {
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
     createMany(

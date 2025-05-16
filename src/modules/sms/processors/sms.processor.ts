@@ -1,6 +1,6 @@
+import { ENUM_SEND_SMS_PROCESS } from '@app/modules/sms/enums/sms.enum';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { ENUM_SEND_SMS_PROCESS } from 'src/modules/email/enums/email.enum';
 import { SmsSendRequestDto } from 'src/modules/sms/dtos/request/sms.send.request.dto';
 import { SmsVerificationRequestDto } from 'src/modules/sms/dtos/request/sms.verification.request.dto';
 import { ISmsProcessor } from 'src/modules/sms/interfaces/sms.processor.interface';

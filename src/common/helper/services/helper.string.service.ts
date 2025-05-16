@@ -4,12 +4,9 @@ import {
     IHelperStringPasswordOptions,
 } from 'src/common/helper/interfaces/helper.interface';
 import { IHelperStringService } from 'src/common/helper/interfaces/helper.string-service.interface';
-import { MessageService } from 'src/common/message/services/message.service';
 
 @Injectable()
 export class HelperStringService implements IHelperStringService {
-    constructor(private readonly messageService: MessageService) {}
-
     randomReference(length: number): string {
         const timestamp = `${new Date().getTime()}`;
         const randomString: string = this.random(length);
@@ -69,9 +66,7 @@ export class HelperStringService implements IHelperStringService {
         if (!valid) {
             return {
                 validated: false,
-                message: this.messageService.setMessage(
-                    'request.email.invalid'
-                ),
+                messagePath: 'request.email.invalid',
             };
         }
 
@@ -79,9 +74,7 @@ export class HelperStringService implements IHelperStringService {
         if (atSymbolCount !== 1) {
             return {
                 validated: false,
-                message: this.messageService.setMessage(
-                    'request.email.multipleAtSymbols'
-                ),
+                messagePath: 'request.email.multipleAtSymbols',
             };
         }
 
@@ -91,37 +84,27 @@ export class HelperStringService implements IHelperStringService {
         if (!localPart || localPart.length === 0) {
             return {
                 validated: false,
-                message: this.messageService.setMessage(
-                    'request.email.localPartNotEmpty'
-                ),
+                messagePath: 'request.email.localPartNotEmpty',
             };
         } else if (!domain || domain.length > 255) {
             return {
                 validated: false,
-                message: this.messageService.setMessage(
-                    'request.email.domainLength'
-                ),
+                messagePath: 'request.email.domainLength',
             };
         } else if (localPart.length > 64) {
             return {
                 validated: false,
-                message: this.messageService.setMessage(
-                    'request.email.localPartMaxLength'
-                ),
+                messagePath: 'request.email.localPartMaxLength',
             };
         } else if (localPart.startsWith('.') || localPart.endsWith('.')) {
             return {
                 validated: false,
-                message: this.messageService.setMessage(
-                    'request.email.localPartDot'
-                ),
+                messagePath: 'request.email.localPartDot',
             };
         } else if (localPart.includes('..')) {
             return {
                 validated: false,
-                message: this.messageService.setMessage(
-                    'request.email.consecutiveDots'
-                ),
+                messagePath: 'request.email.consecutiveDots',
             };
         }
 
@@ -129,12 +112,36 @@ export class HelperStringService implements IHelperStringService {
         if (!allowedLocalPartChars.test(localPart)) {
             return {
                 validated: false,
-                message: this.messageService.setMessage(
-                    'request.email.invalidChars'
-                ),
+                messagePath: 'request.email.invalidChars',
             };
         }
 
-        return;
+        return {
+            validated: true,
+        };
+    }
+
+    checkWildcardUrl(url: string, patterns: string[]): boolean {
+        if (patterns.includes(url)) {
+            return true;
+        }
+
+        return patterns.some(pattern => {
+            if (pattern.includes('*')) {
+                try {
+                    // Convert wildcard pattern to regex pattern
+                    const regexPattern = pattern
+                        .replace(/\./g, '\\.') // Escape dots
+                        .replace(/\*/g, '.*'); // Replace * with .*
+
+                    // Create regex and test URL
+                    const regex = new RegExp(`^${regexPattern}$`);
+                    return regex.test(url);
+                } catch {
+                    return false;
+                }
+            }
+            return false;
+        });
     }
 }

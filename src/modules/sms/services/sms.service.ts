@@ -23,7 +23,7 @@ export class SmsService implements ISmsService {
             'utf8'
         );
 
-        this.homeName = this.configService.get<string>('home.name');
+        this.homeName = this.configService.get<string>('home.name')!;
     }
 
     async sendVerification(

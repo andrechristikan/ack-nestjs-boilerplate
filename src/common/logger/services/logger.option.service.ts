@@ -3,8 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { Params } from 'nestjs-pino';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import {
-    EXCLUDED_ROUTES,
+    LOGGER_EXCLUDED_ROUTES,
     LOGGER_SENSITIVE_FIELDS,
 } from 'src/common/logger/constants/logger.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
@@ -25,7 +26,8 @@ export class LoggerOptionService {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService
     ) {
         this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
         this.name = this.configService.get<string>('app.name');
@@ -204,23 +206,13 @@ export class LoggerOptionService {
                 autoLogging: this.autoLogger
                     ? {
                           ignore: (req: any) =>
-                              EXCLUDED_ROUTES.includes(req.url),
+                              this.helperStringService.checkWildcardUrl(
+                                  req.url,
+                                  LOGGER_EXCLUDED_ROUTES
+                              ),
                       }
-                    : undefined,
+                    : this.autoLogger,
             },
         };
-    }
-
-    private mapLevelToSeverity(level: string): string {
-        const mapping: Record<string, string> = {
-            trace: 'TRACE',
-            debug: 'DEBUG',
-            info: 'INFO',
-            warn: 'WARNING',
-            error: 'ERROR',
-            fatal: 'CRITICAL',
-        };
-
-        return mapping[level.toLowerCase()] || 'DEFAULT';
     }
 }

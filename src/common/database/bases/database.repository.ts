@@ -1,9 +1,10 @@
 import {
+    Document,
     Model,
     PipelineStage,
     PopulateOptions,
+    RootFilterQuery,
     UpdateQuery,
-    UpdateWithAggregationPipeline,
 } from 'mongoose';
 import {
     IDatabaseAggregateOptions,
@@ -17,14 +18,14 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseOptions,
     IDatabaseSaveOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseUpdateManyOptions,
     IDatabaseUpdateOptions,
+    IDatabaseUpsertOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { UpdateResult, DeleteResult, InsertManyResult } from 'mongodb';
+import { DeleteResult, InsertManyResult, UpdateResult } from 'mongodb';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
-import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
 
 export class DatabaseRepositoryBase<
@@ -44,12 +45,14 @@ export class DatabaseRepositoryBase<
 
     // Find
     async findAll<T = EntityDocument>(
-        find?: Record<string, any>,
+        find?: RootFilterQuery<Entity>,
         options?: IDatabaseFindAllOptions
     ): Promise<T[]> {
         const repository = this._repository.find<T>({
             ...find,
-            deleted: options?.withDeleted ?? false,
+            ...(!options?.withDeleted && {
+                deleted: false,
+            }),
         });
 
         if (options?.select) {
@@ -82,12 +85,22 @@ export class DatabaseRepositoryBase<
     }
 
     async findOne<T = EntityDocument>(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         options?: IDatabaseFindOneOptions
     ): Promise<T> {
+        if (
+            !find ||
+            typeof find !== 'object' ||
+            Object.keys(find).length === 0
+        ) {
+            throw new Error('Find criteria must be a non-empty object');
+        }
+
         const repository = this._repository.findOne<T>({
             ...find,
-            deleted: options?.withDeleted ?? false,
+            ...(!options?.withDeleted && {
+                deleted: false,
+            }),
         });
 
         if (options?.select) {
@@ -119,9 +132,15 @@ export class DatabaseRepositoryBase<
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<T> {
+        if (!_id || typeof _id !== 'string') {
+            throw new Error('ID must be a non-empty string');
+        }
+
         const repository = this._repository.findOne<T>({
             _id,
-            deleted: options?.withDeleted ?? false,
+            ...(!options?.withDeleted && {
+                deleted: false,
+            }),
         });
 
         if (options?.select) {
@@ -150,17 +169,33 @@ export class DatabaseRepositoryBase<
     }
 
     async findOneAndLock<T = EntityDocument>(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         options?: IDatabaseFindOneOptions
     ): Promise<T> {
+        if (
+            !find ||
+            typeof find !== 'object' ||
+            Object.keys(find).length === 0
+        ) {
+            throw new Error('Find criteria must be a non-empty object');
+        }
+
         const repository = this._repository.findOneAndUpdate<T>(
             {
                 ...find,
-                deleted: options?.withDeleted ?? false,
+                ...(!options?.withDeleted && {
+                    deleted: false,
+                }),
+            },
+            {
+                $set: {
+                    updatedAt: new Date(),
+                },
             },
             {
                 new: true,
-                useFindAndModify: false,
+                upsert: false,
+                timestamps: true,
             }
         );
 
@@ -193,14 +228,26 @@ export class DatabaseRepositoryBase<
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<T> {
+        if (!_id || typeof _id !== 'string') {
+            throw new Error('ID must be a non-empty string');
+        }
+
         const repository = this._repository.findOneAndUpdate<T>(
             {
                 _id,
-                deleted: options?.withDeleted ?? false,
+                ...(!options?.withDeleted && {
+                    deleted: false,
+                }),
+            },
+            {
+                $set: {
+                    updatedAt: new Date(),
+                },
             },
             {
                 new: true,
-                useFindAndModify: false,
+                upsert: false,
+                timestamps: true,
             }
         );
 
@@ -230,12 +277,14 @@ export class DatabaseRepositoryBase<
     }
 
     async getTotal(
-        find?: Record<string, any>,
+        find?: RootFilterQuery<Entity>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number> {
         const repository = this._repository.countDocuments({
             ...find,
-            deleted: options?.withDeleted ?? false,
+            ...(!options?.withDeleted && {
+                deleted: false,
+            }),
         });
 
         if (options?.join) {
@@ -256,12 +305,22 @@ export class DatabaseRepositoryBase<
     }
 
     async exists(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         options?: IDatabaseExistsOptions
     ): Promise<boolean> {
+        if (
+            !find ||
+            typeof find !== 'object' ||
+            Object.keys(find).length === 0
+        ) {
+            throw new Error('Find criteria must be a non-empty object');
+        }
+
         const repository = this._repository.exists({
             ...find,
-            deleted: options?.withDeleted ?? false,
+            ...(!options?.withDeleted && {
+                deleted: false,
+            }),
         });
 
         if (options?.join) {
@@ -290,21 +349,106 @@ export class DatabaseRepositoryBase<
         data: T,
         options?: IDatabaseCreateOptions
     ): Promise<EntityDocument> {
+        if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error('Data must be a non-empty object');
+        }
+
+        const now = new Date();
+        data.createdAt = now;
+        data.updatedAt = now;
+        data.createdBy = options?.actionBy;
+
         const created = await this._repository.create([data], options);
 
-        return created[0] as any;
+        return created[0] as EntityDocument;
     }
 
     // Action
-    async update(
-        find: Record<string, any>,
-        data: UpdateQuery<Entity> | UpdateWithAggregationPipeline,
+    async update<T extends Entity>(
+        find: RootFilterQuery<Entity>,
+        data: T,
         options?: IDatabaseUpdateOptions
     ): Promise<EntityDocument> {
+        if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error('Data must be a non-empty object');
+        }
+
+        const now = new Date();
+
+        const finalData = {
+            $set: {
+                ...data,
+                updatedAt: now,
+                updatedBy: options?.actionBy,
+            },
+        };
+
         return this._repository.findOneAndUpdate(
             {
                 ...find,
-                deleted: options?.withDeleted ?? false,
+                ...(!options?.withDeleted && {
+                    deleted: false,
+                }),
+            },
+            finalData,
+            {
+                ...options,
+                new: true,
+            }
+        );
+    }
+
+    async updateRaw(
+        find: RootFilterQuery<Entity>,
+        data: UpdateQuery<Entity>,
+        options?: IDatabaseUpdateOptions
+    ): Promise<EntityDocument> {
+        if (Array.isArray(data)) {
+            // Validate data structure
+            const hasInvalidOperation = data.some(
+                operation =>
+                    !operation ||
+                    typeof operation !== 'object' ||
+                    Object.keys(operation).length === 0
+            );
+
+            if (hasInvalidOperation) {
+                throw new Error('Data contains invalid operations');
+            }
+        } else {
+            throw new Error('Data must be an array');
+        }
+
+        const now = new Date();
+
+        // Handle array data update
+        const setIndexOf = data.findLastIndex(e => e['$set']);
+        if (setIndexOf > -1) {
+            data[setIndexOf]['$set'].updatedAt = now;
+            data[setIndexOf]['$set'].updatedBy = options?.actionBy;
+        } else {
+            data.push({
+                $set: {
+                    updatedAt: now,
+                    updatedBy: options?.actionBy,
+                },
+            });
+        }
+
+        return this._repository.findOneAndUpdate(
+            {
+                ...find,
+                ...(!options?.withDeleted && {
+                    deleted: false,
+                }),
             },
             data,
             {
@@ -314,45 +458,140 @@ export class DatabaseRepositoryBase<
         );
     }
 
-    async delete(
-        find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+    async upsert(
+        find: RootFilterQuery<Entity>,
+        data: UpdateQuery<Entity>,
+        options?: IDatabaseUpsertOptions
     ): Promise<EntityDocument> {
-        return this._repository.findOneAndDelete(
+        if (
+            !find ||
+            typeof find !== 'object' ||
+            Object.keys(find).length === 0
+        ) {
+            throw new Error('Find criteria must be a non-empty object');
+        }
+
+        if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error('Data must be a non-empty object');
+        }
+
+        const now = new Date();
+
+        data['$set'] = {
+            ...data['$set'],
+            updatedAt: now,
+            updatedBy: options?.actionBy,
+        };
+
+        // For new documents
+        if (!data['$setOnInsert']) {
+            data['$setOnInsert'] = {
+                createdAt: now,
+                createdBy: options?.actionBy,
+            };
+        } else {
+            data['$setOnInsert'] = {
+                ...data['$setOnInsert'],
+                createdAt: now,
+                createdBy: options?.actionBy,
+            };
+        }
+
+        return this._repository.findOneAndUpdate(
             {
                 ...find,
-                deleted: options?.withDeleted ?? false,
+                ...(!options?.withDeleted && {
+                    deleted: false,
+                }),
+            },
+            data,
+            {
+                ...options,
+                new: true,
+                upsert: true,
+                timestamps: true,
+            }
+        );
+    }
+
+    async delete(
+        find: RootFilterQuery<Entity>,
+        options?: IDatabaseDeleteOptions
+    ): Promise<EntityDocument> {
+        if (
+            !find ||
+            typeof find !== 'object' ||
+            Object.keys(find).length === 0
+        ) {
+            throw new Error('Find criteria must be a non-empty object');
+        }
+
+        return (await this._repository.findOneAndDelete(
+            {
+                ...find,
+                ...(!options?.withDeleted && {
+                    deleted: false,
+                }),
             },
             {
                 ...options,
                 new: false,
             }
-        );
+        )) as unknown as EntityDocument;
     }
 
     async save(
         repository: EntityDocument,
         options?: IDatabaseSaveOptions
     ): Promise<EntityDocument> {
+        if (!repository || !(repository instanceof Document)) {
+            throw new Error('Repository must be a valid document');
+        }
+
+        if (repository.isNew) {
+            const now = new Date();
+            repository.createdAt = now;
+            repository.updatedAt = now;
+            repository.createdBy = options?.actionBy;
+        } else {
+            repository.updatedAt = new Date();
+            repository.updatedBy = options?.actionBy;
+        }
+
         return repository.save(options);
     }
 
-    async join<T = any>(
+    async join<T>(
         repository: EntityDocument,
         joins: PopulateOptions | (string | PopulateOptions)[]
     ): Promise<T> {
-        return repository.populate(joins);
+        if (!repository || !(repository instanceof Document)) {
+            throw new Error('Repository must be a valid document');
+        }
+
+        if (!joins || (Array.isArray(joins) && joins.length === 0)) {
+            throw new Error('Joins must be valid population options');
+        }
+
+        return repository.populate<T>(joins);
     }
 
     // Soft delete
     async softDelete(
         repository: EntityDocument,
-        dto?: DatabaseSoftDeleteDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<EntityDocument> {
+        if (!repository || !(repository instanceof Document)) {
+            throw new Error('Repository must be a valid document');
+        }
+
         repository.deletedAt = new Date();
         repository.deleted = true;
-        repository.deletedBy = dto?.deletedBy;
+        repository.deletedBy = options?.actionBy;
 
         return repository.save(options);
     }
@@ -361,84 +600,202 @@ export class DatabaseRepositoryBase<
         repository: EntityDocument,
         options?: IDatabaseSaveOptions
     ): Promise<EntityDocument> {
+        if (!repository || !(repository instanceof Document)) {
+            throw new Error('Repository must be a valid document');
+        }
+
         repository.deletedAt = undefined;
-        repository.deleted = false;
         repository.deletedBy = undefined;
+        repository.deleted = false;
+        repository.updatedAt = new Date();
+        repository.updatedBy = options?.actionBy;
 
         return repository.save(options);
     }
 
     // Bulk
-    async createMany<T = Entity>(
+    async createMany<T extends Partial<Entity>>(
         data: T[],
         options?: IDatabaseCreateManyOptions
     ): Promise<InsertManyResult<Entity>> {
-        return this._repository.insertMany(data as any, {
-            ...options,
-            rawResult: true,
-        });
+        if (!data || !Array.isArray(data) || data.length === 0) {
+            throw new Error('Data must be a non-empty array');
+        }
+
+        // Validate data structure
+        const hasInvalidItem = data.some(
+            item =>
+                !item ||
+                typeof item !== 'object' ||
+                Object.keys(item).length === 0
+        );
+
+        if (hasInvalidItem) {
+            throw new Error('Data contains invalid items');
+        }
+
+        const now = new Date();
+        return this._repository.insertMany(
+            data.map(e => {
+                return {
+                    ...e,
+                    createdAt: now,
+                    updatedAt: now,
+                    createdBy: options?.actionBy,
+                } as unknown as Entity;
+            }),
+            {
+                ...options,
+                rawResult: true,
+            }
+        );
     }
 
     async updateMany<T = Entity>(
-        find: Record<string, any>,
+        find: RootFilterQuery<Entity>,
         data: T,
         options?: IDatabaseUpdateManyOptions
     ): Promise<UpdateResult<Entity>> {
+        if (
+            !find ||
+            typeof find !== 'object' ||
+            Object.keys(find).length === 0
+        ) {
+            throw new Error('Find criteria must be a non-empty object');
+        }
+
+        if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error('Data must be a non-empty object');
+        }
+
         return this._repository.updateMany(
             {
                 ...find,
-                deleted: options?.withDeleted ?? false,
+                ...(!options?.withDeleted && {
+                    deleted: false,
+                }),
             },
             {
-                $set: data,
+                $set: {
+                    ...data,
+                    updatedAt: new Date(),
+                    updatedBy: options?.actionBy,
+                },
             },
             { ...options, rawResult: true }
         );
     }
 
     async updateManyRaw(
-        find: Record<string, any>,
-        data: UpdateQuery<Entity> | UpdateWithAggregationPipeline,
+        find: RootFilterQuery<Entity>,
+        data: UpdateQuery<Entity>,
         options?: IDatabaseUpdateManyOptions
     ): Promise<UpdateResult<Entity>> {
+        if (
+            !find ||
+            typeof find !== 'object' ||
+            Object.keys(find).length === 0
+        ) {
+            throw new Error('Find criteria must be a non-empty object');
+        }
+
+        if (!Array.isArray(data)) {
+            throw new Error('Data must be an array');
+        }
+
+        // Validate data structure
+        const hasInvalidOperation = data.some(
+            operation =>
+                !operation ||
+                typeof operation !== 'object' ||
+                Object.keys(operation).length === 0
+        );
+
+        if (hasInvalidOperation) {
+            throw new Error('Data contains invalid operations');
+        }
+
+        const setIndexOf = data.findLastIndex(e => e['$set']);
+        if (setIndexOf > -1) {
+            data[setIndexOf]['$set'].updatedAt = new Date();
+            data[setIndexOf]['$set'].updatedBy = options?.actionBy;
+        } else {
+            data.push({
+                $set: {
+                    updatedAt: new Date(),
+                    updatedBy: options?.actionBy,
+                },
+            });
+        }
+
         return this._repository.updateMany(
             {
                 ...find,
-                deleted: options?.withDeleted ?? false,
+                ...(!options?.withDeleted && {
+                    deleted: false,
+                }),
             },
             data,
-            { ...options, rawResult: true }
+            {
+                ...options,
+                rawResult: true,
+            }
         );
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: RootFilterQuery<Entity>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<DeleteResult> {
+        // Allow find to be optional, but if provided it must be a valid object
+        if (
+            find !== undefined &&
+            (typeof find !== 'object' || Object.keys(find).length === 0)
+        ) {
+            throw new Error(
+                'If provided, find criteria must be a non-empty object'
+            );
+        }
+
         return this._repository.deleteMany(
             {
-                ...find,
-                deleted: options?.withDeleted ?? false,
+                ...(find || {}),
+                ...(!options?.withDeleted && {
+                    deleted: false,
+                }),
             },
             { ...options, rawResult: true }
         );
     }
 
     async softDeleteMany(
-        find: Record<string, any>,
-        dto?: DatabaseSoftDeleteDto,
-        options?: IDatabaseOptions
+        find?: RootFilterQuery<Entity>,
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<UpdateResult<Entity>> {
+        // Allow find to be optional, but if provided it must be a valid object
+        if (
+            find !== undefined &&
+            (typeof find !== 'object' || Object.keys(find).length === 0)
+        ) {
+            throw new Error(
+                'If provided, find criteria must be a non-empty object'
+            );
+        }
+
         return this._repository.updateMany(
             {
-                ...find,
+                ...(find || {}),
                 deleted: false,
             },
             {
                 $set: {
                     deletedAt: new Date(),
                     deleted: true,
-                    deletedBy: dto?.deletedBy,
+                    deletedBy: options?.actionBy,
                 },
             },
             { ...options, rawResult: true }
@@ -446,19 +803,31 @@ export class DatabaseRepositoryBase<
     }
 
     async restoreMany(
-        find: Record<string, any>,
-        options?: IDatabaseOptions
+        find?: RootFilterQuery<Entity>,
+        options?: IDatabaseSaveOptions
     ): Promise<UpdateResult<Entity>> {
+        // Allow find to be optional, but if provided it must be a valid object
+        if (
+            find !== undefined &&
+            (typeof find !== 'object' || Object.keys(find).length === 0)
+        ) {
+            throw new Error(
+                'If provided, find criteria must be a non-empty object'
+            );
+        }
+
         return this._repository.updateMany(
             {
-                ...find,
+                ...(find || {}),
                 deleted: true,
             },
             {
                 $set: {
                     deletedAt: undefined,
-                    deleted: false,
                     deletedBy: undefined,
+                    deleted: false,
+                    updatedAt: new Date(),
+                    updatedBy: options?.actionBy,
                 },
             },
             { ...options, rawResult: true }
@@ -466,10 +835,7 @@ export class DatabaseRepositoryBase<
     }
 
     // Raw
-    async aggregate<
-        AggregatePipeline extends PipelineStage,
-        AggregateResponse = any,
-    >(
+    async aggregate<AggregateResponse, AggregatePipeline extends PipelineStage>(
         pipelines: AggregatePipeline[],
         options?: IDatabaseAggregateOptions
     ): Promise<AggregateResponse[]> {
@@ -480,7 +846,9 @@ export class DatabaseRepositoryBase<
         const newPipelines: PipelineStage[] = [
             {
                 $match: {
-                    deleted: options?.withDeleted ?? false,
+                    ...(!options?.withDeleted && {
+                        deleted: false,
+                    }),
                 },
             },
             ...pipelines,
@@ -497,8 +865,8 @@ export class DatabaseRepositoryBase<
     }
 
     async findAllAggregate<
-        AggregatePipeline extends PipelineStage,
-        AggregateResponse = any,
+        AggregateResponse,
+        AggregatePipeline extends PipelineStage = PipelineStage,
     >(
         pipelines: AggregatePipeline[],
         options?: IDatabaseFindAllAggregateOptions
@@ -510,7 +878,9 @@ export class DatabaseRepositoryBase<
         const newPipelines: PipelineStage[] = [
             {
                 $match: {
-                    deleted: options?.withDeleted ?? false,
+                    ...(!options?.withDeleted && {
+                        deleted: false,
+                    }),
                 },
             },
             ...pipelines,
@@ -523,7 +893,7 @@ export class DatabaseRepositoryBase<
                     (a, b) => ({
                         ...a,
                         [b]:
-                            options?.order[b] ===
+                            options.order![b] ===
                             ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC
                                 ? 1
                                 : -1,
@@ -563,7 +933,9 @@ export class DatabaseRepositoryBase<
         const newPipelines: PipelineStage[] = [
             {
                 $match: {
-                    deleted: options?.withDeleted ?? false,
+                    ...(!options?.withDeleted && {
+                        deleted: false,
+                    }),
                 },
             },
             ...pipelines,
@@ -578,7 +950,7 @@ export class DatabaseRepositoryBase<
         const aggregate = this._repository.aggregate(newPipelines);
 
         if (options?.session) {
-            aggregate.session(options?.session);
+            aggregate.session(options.session);
         }
 
         const raw = await aggregate;

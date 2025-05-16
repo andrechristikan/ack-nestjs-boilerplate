@@ -6,7 +6,6 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.social.apple-payload.dto';
 import { ApiKeyService } from 'src/modules/api-key/services/api-key.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ConfigService } from '@nestjs/config';
@@ -26,9 +25,7 @@ export class ApiKeyXApiKeyGuard implements CanActivate {
     }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const request = context
-            .switchToHttp()
-            .getRequest<IRequestApp<AuthSocialApplePayloadDto>>();
+        const request = context.switchToHttp().getRequest<IRequestApp>();
         const xApiKey: string = request.headers[
             `${this.header.toLowerCase()}`
         ] as string;
@@ -70,7 +67,7 @@ export class ApiKeyXApiKeyGuard implements CanActivate {
                         ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED,
                     message: 'apiKey.error.xApiKey.expired',
                 });
-            } else if (apiKey.startDate < today) {
+            } else if (today < apiKey.startDate) {
                 throw new ForbiddenException({
                     statusCode:
                         ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE,

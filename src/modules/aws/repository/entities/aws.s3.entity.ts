@@ -38,10 +38,10 @@ export class AwsS3Entity {
     mime: string;
 
     @DatabaseProp({
-        required: false,
-        type: Number,
+        required: true,
+        type: String,
     })
-    duration?: number;
+    extension: string;
 
     @DatabaseProp({
         required: true,

@@ -4,10 +4,7 @@ import {
     ExtractSubjectType,
 } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
-import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/enums/policy.enum';
+import { ENUM_POLICY_ACTION } from 'src/modules/policy/enums/policy.enum';
 import {
     IPolicyAbility,
     IPolicyAbilityRule,
@@ -22,12 +19,8 @@ export class PolicyAbilityFactory {
             createMongoAbility
         );
 
-        if (permissions.some(e => e.subject === ENUM_POLICY_SUBJECT.ALL)) {
-            can(ENUM_POLICY_ACTION.MANAGE, 'all');
-        } else {
-            for (const permission of permissions) {
-                can(permission.action, permission.subject);
-            }
+        for (const permission of permissions) {
+            can(permission.action, permission.subject);
         }
 
         return build({

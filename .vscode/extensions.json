@@ -1,0 +1,20 @@
+{
+    "recommendations": [
+        "dbaeumer.vscode-eslint", // ESLint for linting
+        "esbenp.prettier-vscode", // Prettier for code formatting
+        "firsttris.vscode-jest-runner", // Jest test runner
+        "ms-vscode.vscode-typescript-next", // TypeScript support
+        "mikestead.dotenv", // .env file support
+        "streetsidesoftware.code-spell-checker", // Spell checking
+        "pkief.material-icon-theme", // Nice icons for better project navigation
+        "yzhang.markdown-all-in-one", // Markdown support
+        "gruntfuggly.todo-tree", // TODO comments highlighting
+        "aaron-bond.better-comments", // Better comments highlighting
+        "redhat.vscode-yaml", // YAML support for Docker Compose
+        "ms-azuretools.vscode-docker", // Docker support
+        "mhutchie.git-graph", // Git visualization
+        "eamodio.gitlens", // Git integration
+        "christian-kohler.path-intellisense", // Path autocompletion
+        "christian-kohler.npm-intellisense" // NPM package autocompletion
+    ]
+}

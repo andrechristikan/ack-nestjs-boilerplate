@@ -22,17 +22,17 @@ export class SettingService implements ISettingService {
 
     async core(): Promise<SettingCoreResponseDto> {
         // app
-        const name = this.configService.get<string>('app.name');
-        const env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
-        const timeout = this.configService.get<number>('middleware.timeout');
+        const name = this.configService.get<string>('app.name')!;
+        const env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env')!;
+        const timeout = this.configService.get<number>('middleware.timeout')!;
 
         // language
         const availableLanguage: ENUM_MESSAGE_LANGUAGE[] =
             this.configService.get<ENUM_MESSAGE_LANGUAGE[]>(
                 'message.availableLanguage'
-            );
+            )!;
         const currentLanguage: ENUM_MESSAGE_LANGUAGE =
-            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language')!;
         const settingLanguage: SettingLanguageResponseDto = {
             language: currentLanguage,
             availableLanguage,
@@ -56,16 +56,16 @@ export class SettingService implements ISettingService {
         // auth
         const passwordMaxAttempt = this.configService.get<number>(
             'auth.password.maxAttempt'
-        );
+        )!;
         const passwordExpiredIn = this.configService.get<number>(
             'auth.password.expiredIn'
-        );
+        )!;
         const passwordExpiredInTemporary = this.configService.get<number>(
             'auth.password.expiredInTemporary'
-        );
+        )!;
         const passwordPeriod = this.configService.get<number>(
             'auth.password.period'
-        );
+        )!;
         const settingAuth: SettingAuthResponseDto = {
             passwordMaxAttempt,
             passwordExpiredIn,
@@ -78,16 +78,16 @@ export class SettingService implements ISettingService {
 
         const bodyJson = this.configService.get<number>(
             'middleware.body.json.maxFileSize'
-        );
+        )!;
         const bodyRaw = this.configService.get<number>(
             'middleware.body.raw.maxFileSize'
-        );
+        )!;
         const bodyText = this.configService.get<number>(
             'middleware.body.text.maxFileSize'
-        );
+        )!;
         const bodyUrlencoded = this.configService.get<number>(
             'middleware.body.urlencoded.maxFileSize'
-        );
+        )!;
         const settingMiddleware: SettingMiddlewareResponseDto = {
             bodyJson,
             bodyJsonUnit: ENUM_SETTING_UNIT.BYTE,
@@ -102,7 +102,7 @@ export class SettingService implements ISettingService {
         // user
         const usernamePrefix = this.configService.get<string>(
             'user.usernamePrefix'
-        );
+        )!;
         const settingUser: SettingUserResponseDto = {
             usernamePrefix,
         };

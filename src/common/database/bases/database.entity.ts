@@ -4,6 +4,7 @@ import { v4 as uuidV4 } from 'uuid';
 export class DatabaseEntityBase {
     @DatabaseProp({
         type: String,
+        required: true,
         default: uuidV4,
     })
     _id: string;
@@ -19,9 +20,9 @@ export class DatabaseEntityBase {
         required: false,
         index: 'asc',
         type: Date,
-        default: new Date(),
+        default: Date.now,
     })
-    createdAt?: Date;
+    createdAt: Date;
 
     @DatabaseProp({
         required: false,
@@ -33,9 +34,8 @@ export class DatabaseEntityBase {
         required: false,
         index: 'asc',
         type: Date,
-        default: new Date(),
     })
-    updatedAt?: Date;
+    updatedAt: Date;
 
     @DatabaseProp({
         required: false,
@@ -55,4 +55,14 @@ export class DatabaseEntityBase {
         index: true,
     })
     deletedBy?: string;
+
+    @DatabaseProp({
+        type: Number,
+        default: 0,
+        required: true,
+        index: true,
+        description:
+            'Document version for optimistic concurrency control by Mongoose',
+    })
+    __v: number;
 }

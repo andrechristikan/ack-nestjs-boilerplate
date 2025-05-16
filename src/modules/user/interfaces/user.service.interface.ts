@@ -6,6 +6,7 @@ import {
     IDatabaseExistsOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
     IDatabaseSaveOptions,
@@ -31,12 +32,12 @@ import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.resp
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
-import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { PipelineStage } from 'mongoose';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
+import { UserCensorResponseDto } from 'src/modules/user/dtos/response/user.censor.response.dto';
 
 export interface IUserService {
     findAll(
@@ -63,12 +64,24 @@ export interface IUserService {
         find: Record<string, any>,
         options?: IDatabaseOptions
     ): Promise<UserDoc>;
-    findOneByEmail(email: string, options?: IDatabaseOptions): Promise<UserDoc>;
-    findOneByMobileNumber(
+    findOneByEmail(
+        email: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<UserDoc>;
+    findOneByUsername(
+        username: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<UserDoc>;
+    findOneByMobileNumberAndCountry(
         country: string,
         mobileNumber: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseFindOneOptions
     ): Promise<UserDoc>;
+    findOneByMobileNumber(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<UserDoc>;
+
     findOneWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
@@ -176,11 +189,10 @@ export interface IUserService {
     ): Promise<UserDoc>;
     softDelete(
         repository: UserDoc,
-        dto: DatabaseSoftDeleteDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
     updateProfile(
@@ -199,13 +211,14 @@ export interface IUserService {
     join(repository: UserDoc): Promise<IUserDoc>;
     createRandomFilenamePhoto(
         user: string,
-        { type }: UserUploadPhotoRequestDto
+        { mime }: UserUploadPhotoRequestDto
     ): string;
     createRandomUsername(): string;
     checkUsernamePattern(username: string): boolean;
     checkUsernameBadWord(username: string): Promise<boolean>;
     mapProfile(user: IUserDoc | IUserEntity): UserProfileResponseDto;
     mapList(users: IUserDoc[] | IUserEntity[]): UserListResponseDto[];
+    mapCensor(user: UserDoc | UserEntity): UserCensorResponseDto;
     mapShort(users: IUserDoc[] | IUserEntity[]): UserShortResponseDto[];
     mapGet(user: IUserDoc | IUserEntity): UserGetResponseDto;
     checkMobileNumber(mobileNumber: string, country: CountryDoc): boolean;

@@ -223,7 +223,7 @@ export class ApiKeyService implements IApiKeyService {
         repository: ApiKeyDoc,
         options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.softDelete(repository, null, options);
+        return this.apiKeyRepository.softDelete(repository, options);
     }
 
     async validateHashApiKey(
@@ -247,7 +247,7 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
         await this.apiKeyRepository.deleteMany(find, options);

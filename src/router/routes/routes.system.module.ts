@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { TerminusModule } from '@nestjs/terminus';
+import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
 import { CountrySystemController } from 'src/modules/country/controllers/country.system.controller';
 import { CountryModule } from 'src/modules/country/country.module';
 import { HealthSystemController } from 'src/modules/health/controllers/health.system.controller';
@@ -23,12 +23,12 @@ import { UserModule } from 'src/modules/user/user.module';
     exports: [],
     imports: [
         HealthModule,
-        TerminusModule,
         SettingModule,
         CountryModule,
         UserModule,
         RoleModule,
         HealthModule,
+        ApiKeyModule,
     ],
 })
 export class RoutesSystemModule {}
