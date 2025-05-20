@@ -67,6 +67,8 @@ This command will generate the necessary keys in the `/keys` directory, along wi
 
 Upload the `jwks.json` file to AWS S3 or any publicly accessible server, and make note of the URL as you'll need it for your environment configuration.
 
+For convenience, after running `yarn generate:keys`, the generated key IDs (kids) will be automatically updated in your `.env` file (if it does not exist, it will be created by copying from `.env.example`).
+
 ### Create Environment
 
 Create your environment file by copying the example:
