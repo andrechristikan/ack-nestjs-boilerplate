@@ -41,6 +41,7 @@ export class FeatureConfigAdminController {
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @UserProtected()
     @AuthJwtAccessProtected()
+    @ApiKeyProtected()
     async reload(): Promise<IResponse<any>> {
         await this.featureSettingService.reload();
         const appSettings = this.featureSettingService.all();
