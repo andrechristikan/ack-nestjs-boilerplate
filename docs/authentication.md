@@ -152,7 +152,7 @@ This script creates:
 - Public and private keys for refresh tokens
 - A JWKS file containing the public keys for token verification
 
-All generated keys will be stored in the `/keys` directory of your project.
+All generated keys will be stored in the `/keys` directory of your project and the generated key IDs (kids) will be automatically updated in your `.env` file (if it does not exist, it will be created by copying from `.env.example`).
 
 ### JWT Usage
 
