@@ -957,7 +957,7 @@ export class DatabaseRepositoryBase<
         return raw && raw.length > 0 ? raw[0].count : 0;
     }
 
-    async model(): Promise<Model<Entity>> {
+    model(): Model<Entity> {
         return this._repository;
     }
 }

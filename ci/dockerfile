@@ -3,9 +3,6 @@ FROM node:lts-alpine AS builder
 
 LABEL maintainer="andrechristikan@gmail.com"
 
-# Set environment to testing for build process
-ENV NODE_ENV=testing
-
 WORKDIR /app
 
 # Copy package files for dependency installation
