@@ -27,7 +27,7 @@ export class FeatureConfigAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     async list(): Promise<IResponse<any>> {
-        const appSettings = this.featureSettingService.all();
+        const appSettings = await this.featureSettingService.findAll();
         return {
             data: appSettings,
         };
@@ -43,8 +43,8 @@ export class FeatureConfigAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     async reload(): Promise<IResponse<any>> {
-        await this.featureSettingService.reload();
-        const appSettings = this.featureSettingService.all();
+        await this.featureSettingService.reloadFromDb();
+        const appSettings = this.featureSettingService.findAllCache();
         return {
             data: appSettings,
         };

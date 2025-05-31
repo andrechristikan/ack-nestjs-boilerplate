@@ -2,5 +2,7 @@ import { AppBaseConfigEntityBase } from '@common/features/bases/base-config.enti
 import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
 import { DatabaseRepositoryBase } from '@common/database/bases/database.repository';
 
-export abstract class AppBaseConfigRepositoryBase<T extends AppBaseConfigEntityBase, D extends IDatabaseDocument<T>> extends DatabaseRepositoryBase<T, D> {
-}
+export abstract class AppBaseConfigRepositoryBase<
+    Entity extends AppBaseConfigEntityBase,
+    Document extends IDatabaseDocument<Entity>,
+> extends DatabaseRepositoryBase<Entity, Document> {}

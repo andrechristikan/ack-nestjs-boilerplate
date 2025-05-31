@@ -18,16 +18,16 @@ export abstract class AppBaseConfigService<
   }
 
   async onModuleInit(): Promise<void> {
-    await this.reload();
+    await this.reloadFromDb();
   }
 
-  async reload(): Promise<void> {
+  async reloadFromDb(): Promise<void> {
     const settings = await this.settingRepository.findAll();
     this.cache.clear();
     for (const setting of settings) {
       this.cache.set(setting.key, setting.value);
     }
-    this.logger.log(`Reloaded ${settings.length} settings`);
+    this.logger.log(`Reloaded ${settings.length} feature configs from database`);
   }
 
   async get<T = any>(key: string, fallback?: T, forceReload = false): Promise<T> {
@@ -77,7 +77,7 @@ export abstract class AppBaseConfigService<
     return [...this.cache.keys()];
   }
 
-  all(): Record<string, any> {
+  findAllCache(): Record<string, any> {
     return Object.fromEntries(this.cache);
   }
 }
