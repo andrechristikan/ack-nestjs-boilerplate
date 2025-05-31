@@ -5,7 +5,8 @@ import { IDatabaseDeleteManyOptions, IDatabaseDocument } from '@common/database/
 
 
 export abstract class AppBaseConfigService<
-  TEntity extends AppBaseConfigEntityBase = AppBaseConfigEntityBase,
+  TValue = any,
+  TEntity extends AppBaseConfigEntityBase = AppBaseConfigEntityBase<TValue>,
   TDoc extends IDatabaseDocument<TEntity> = IDatabaseDocument<TEntity>,
   TRepo extends AppBaseConfigRepositoryBase<TEntity, TDoc> = AppBaseConfigRepositoryBase<TEntity, TDoc>
 > implements OnModuleInit {
@@ -30,15 +31,15 @@ export abstract class AppBaseConfigService<
     this.logger.log(`Reloaded ${settings.length} feature configs from database`);
   }
 
-  async get<T = any>(key: string, fallback?: T, forceReload = false): Promise<T> {
+  async get<T = TValue>(key: string, fallback?: T, forceReload = false): Promise<T | undefined> {
     if (!forceReload && this.cache.has(key)) {
-      return this.cache.get(key);
+      return this.cache.get(key) as T;
     }
 
     const setting = await this.settingRepository.findOne({ key });
     if (setting) {
       this.cache.set(key, setting.value);
-      return setting.value;
+      return setting.value as T;
     }
 
     if (fallback !== undefined) {
