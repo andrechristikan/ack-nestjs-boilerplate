@@ -26,6 +26,7 @@ import { ResetPasswordCreateRequestDto } from 'src/modules/reset-password/dtos/r
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { IResetPasswordRequest } from 'src/modules/reset-password/interfaces/reset-password.interface';
 import { ResetPasswordCreteResponseDto } from 'src/modules/reset-password/dtos/response/reset-password.create.response.dto';
+import { DatabaseService } from '@app/common/database/services/database.service';
 
 @Injectable()
 export class ResetPasswordService implements IResetPasswordService {
@@ -44,7 +45,8 @@ export class ResetPasswordService implements IResetPasswordService {
         private readonly helperDateService: HelperDateService,
         private readonly helperNumberService: HelperNumberService,
         private readonly helperStringService: HelperStringService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly databaseService: DatabaseService
     ) {
         this.expiredInMinutes = this.configService.get<number>(
             'resetPassword.expiredInMinutes'
@@ -122,9 +124,10 @@ export class ResetPasswordService implements IResetPasswordService {
                     type: ENUM_RESET_PASSWORD_TYPE.EMAIL,
                     isActive: true,
                     isReset: false,
-                    expired: {
-                        $gte: this.helperDateService.create(),
-                    },
+                    ...this.databaseService.filterGte(
+                        'expired',
+                        this.helperDateService.create()
+                    ),
                 },
                 {
                     ...options,

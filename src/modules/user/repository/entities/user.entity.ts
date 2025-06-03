@@ -1,4 +1,4 @@
-import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
+import { DatabaseUUIDEntityBase } from 'src/common/database/bases/database.uuid.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -28,7 +28,7 @@ import {
 export const UserTableName = 'Users';
 
 @DatabaseEntity({ collection: UserTableName })
-export class UserEntity extends DatabaseEntityBase {
+export class UserEntity extends DatabaseUUIDEntityBase {
     @DatabaseProp({
         required: true,
         index: true,

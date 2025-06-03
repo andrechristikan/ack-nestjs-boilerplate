@@ -1,14 +1,14 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
+import { DatabaseUUIDEntityBase } from 'src/common/database/bases/database.uuid.entity';
 import { ENUM_VERIFICATION_TYPE } from 'src/modules/verification/enums/verification.enum.constant';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
 export const VerificationTableName = 'Verifications';
 
 @DatabaseEntity({ collection: VerificationTableName })
-export class VerificationEntity extends DatabaseEntityBase {
+export class VerificationEntity extends DatabaseUUIDEntityBase {
     @Prop({
         required: true,
         ref: UserEntity.name,

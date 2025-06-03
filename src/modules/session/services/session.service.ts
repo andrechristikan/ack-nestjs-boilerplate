@@ -1,3 +1,4 @@
+import { DatabaseService } from '@app/common/database/services/database.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
@@ -46,7 +47,8 @@ export class SessionService implements ISessionService {
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
-        private readonly sessionRepository: SessionRepository
+        private readonly sessionRepository: SessionRepository,
+        private readonly databaseService: DatabaseService
     ) {
         this.refreshTokenExpiration = this.configService.get<number>(
             'auth.jwt.refreshToken.expirationTime'
@@ -98,9 +100,7 @@ export class SessionService implements ISessionService {
         return this.sessionRepository.findOne<SessionDoc>(
             {
                 _id,
-                expiredAt: {
-                    $gte: today,
-                },
+                ...this.databaseService.filterGte('expiredAt', today),
             },
             options
         );
@@ -117,9 +117,7 @@ export class SessionService implements ISessionService {
             {
                 _id,
                 user,
-                expiredAt: {
-                    $gte: today,
-                },
+                ...this.databaseService.filterGte('expiredAt', today),
             },
             options
         );

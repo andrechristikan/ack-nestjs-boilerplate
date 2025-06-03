@@ -2,25 +2,23 @@ import { Inject, Injectable, mixin, Type } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import { DatabaseService } from 'src/common/database/services/database.service';
-import { IPaginationFilterEqualOptions } from 'src/common/pagination/interfaces/pagination.interface';
+import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
+import { IPaginationFilterOptions } from 'src/common/pagination/interfaces/pagination.interface';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
-export function PaginationFilterNotEqualPipe(
+export function PaginationFilterInPipe<T>(
     field: string,
-    options?: IPaginationFilterEqualOptions
+    options?: IPaginationFilterOptions
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
-    class MixinPaginationFilterEqualPipe implements PipeTransform {
+    class MixinPaginationFilterInPipe implements PipeTransform {
         constructor(
             @Inject(REQUEST) protected readonly request: IRequestApp,
-            private readonly databaseService: DatabaseService
+            private readonly databaseService: DatabaseService,
+            private readonly helperArrayService: HelperArrayService
         ) {}
 
         async transform(value: string): Promise<any> {
-            if (!value) {
-                return;
-            }
-
             if (options?.raw) {
                 this.addToRequestInstance(value);
                 return {
@@ -28,12 +26,11 @@ export function PaginationFilterNotEqualPipe(
                 };
             }
 
-            const finalValue: string | number = options?.isNumber
-                ? Number.parseInt(value)
-                : value.trim();
+            const finalValue: T[] = this.helperArrayService.unique<T>(
+                value.split(',') as T[]
+            );
 
-            this.addToRequestInstance(finalValue);
-            return this.databaseService.filterNotEqual(field, finalValue);
+            return this.databaseService.filterIn<T>(field, finalValue);
         }
 
         addToRequestInstance(value: any): void {
@@ -49,5 +46,5 @@ export function PaginationFilterNotEqualPipe(
         }
     }
 
-    return mixin(MixinPaginationFilterEqualPipe);
+    return mixin(MixinPaginationFilterInPipe);
 }

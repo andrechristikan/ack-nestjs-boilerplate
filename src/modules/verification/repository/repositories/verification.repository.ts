@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { DatabaseRepositoryBase } from 'src/common/database/bases/database.repository';
+import { DatabaseUUIDRepositoryBase } from 'src/common/database/bases/database.uuid.repository';
 import { InjectDatabaseModel } from 'src/common/database/decorators/database.decorator';
 import {
     VerificationDoc,
@@ -8,7 +8,7 @@ import {
 } from 'src/modules/verification/repository/entity/verification.entity';
 
 @Injectable()
-export class VerificationRepository extends DatabaseRepositoryBase<
+export class VerificationRepository extends DatabaseUUIDRepositoryBase<
     VerificationEntity,
     VerificationDoc
 > {

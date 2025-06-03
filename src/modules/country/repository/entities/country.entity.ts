@@ -1,4 +1,4 @@
-import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
+import { DatabaseUUIDEntityBase } from 'src/common/database/bases/database.uuid.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -9,7 +9,7 @@ import { IDatabaseDocument } from 'src/common/database/interfaces/database.inter
 export const CountryTableName = 'Countries';
 
 @DatabaseEntity({ collection: CountryTableName })
-export class CountryEntity extends DatabaseEntityBase {
+export class CountryEntity extends DatabaseUUIDEntityBase {
     @DatabaseProp({
         required: true,
         index: true,

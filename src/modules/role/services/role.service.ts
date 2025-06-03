@@ -1,3 +1,4 @@
+import { DatabaseService } from '@app/common/database/services/database.service';
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
@@ -28,7 +29,10 @@ import { RoleRepository } from 'src/modules/role/repository/repositories/role.re
 
 @Injectable()
 export class RoleService implements IRoleService {
-    constructor(private readonly roleRepository: RoleRepository) {}
+    constructor(
+        private readonly roleRepository: RoleRepository,
+        private readonly databaseService: DatabaseService
+    ) {}
 
     async findAll(
         find?: Record<string, any>,
@@ -76,11 +80,7 @@ export class RoleService implements IRoleService {
         options?: IDatabaseFindAllOptions
     ): Promise<RoleDoc[]> {
         return this.roleRepository.findAll(
-            {
-                type: {
-                    $in: types,
-                },
-            },
+            this.databaseService.filterIn('type', types),
             options
         );
     }

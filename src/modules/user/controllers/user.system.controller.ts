@@ -10,6 +10,7 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     PaginationQuery,
     PaginationQueryFilterEqual,
+    PaginationQueryFilterIn,
     PaginationQueryFilterInEnum,
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
@@ -23,10 +24,8 @@ import {
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
-    USER_DEFAULT_POLICY_ROLE_TYPE,
     USER_DEFAULT_STATUS,
 } from 'src/modules/user/constants/user.list.constant';
 import {
@@ -73,15 +72,8 @@ export class UserSystemController {
             ENUM_USER_STATUS
         )
         status: Record<string, any>,
-        @PaginationQueryFilterInEnum(
-            'role.type',
-            USER_DEFAULT_POLICY_ROLE_TYPE,
-            ENUM_POLICY_ROLE_TYPE,
-            {
-                queryField: 'roleType',
-            }
-        )
-        roleType: Record<string, any>,
+        @PaginationQueryFilterIn('role')
+        role: Record<string, any>,
         @PaginationQueryFilterEqual('country', {
             queryField: 'country',
         })
@@ -89,7 +81,7 @@ export class UserSystemController {
     ): Promise<IResponsePaging<UserShortResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
-            ...roleType,
+            ...role,
             ...country,
             ...status,
         };

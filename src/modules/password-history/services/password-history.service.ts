@@ -1,3 +1,4 @@
+import { DatabaseService } from '@app/common/database/services/database.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
@@ -35,7 +36,8 @@ export class PasswordHistoryService implements IPasswordHistoryService {
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
-        private readonly passwordHistoryRepository: PasswordHistoryRepository
+        private readonly passwordHistoryRepository: PasswordHistoryRepository,
+        private readonly databaseService: DatabaseService
     ) {
         this.passwordPeriod = this.configService.get<number>(
             'auth.password.period'
@@ -107,7 +109,7 @@ export class PasswordHistoryService implements IPasswordHistoryService {
             await this.passwordHistoryRepository.findAll<PasswordHistoryDoc>(
                 {
                     user,
-                    expiredAt: { $gte: today },
+                    ...this.databaseService.filterGte('expiredAt', today),
                 },
                 options
             );

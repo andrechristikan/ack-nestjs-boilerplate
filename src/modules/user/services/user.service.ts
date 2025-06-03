@@ -16,7 +16,7 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 import { ConfigService } from '@nestjs/config';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { plainToInstance } from 'class-transformer';
-import { Document, PipelineStage, Types } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import {
@@ -44,15 +44,12 @@ import { HelperStringService } from 'src/common/helper/services/helper.string.se
 import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
-import {
-    CountryDoc,
-    CountryTableName,
-} from 'src/modules/country/repository/entities/country.entity';
-import { RoleTableName } from 'src/modules/role/repository/entities/role.entity';
+import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
 import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
 import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
 import { UserCensorResponseDto } from 'src/modules/user/dtos/response/user.censor.response.dto';
+import { DatabaseService } from '@app/common/database/services/database.service';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -64,7 +61,8 @@ export class UserService implements IUserService {
         private readonly userRepository: UserRepository,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService
+        private readonly helperStringService: HelperStringService,
+        private readonly databaseService: DatabaseService
     ) {
         this.usernamePrefix = this.configService.get<string>(
             'user.usernamePrefix'
@@ -89,73 +87,24 @@ export class UserService implements IUserService {
         return this.userRepository.getTotal(find, options);
     }
 
-    createRawQueryFindAllWithRoleAndCountry(
-        find?: Record<string, any>
-    ): PipelineStage[] {
-        return [
-            {
-                $lookup: {
-                    from: RoleTableName,
-                    as: 'role',
-                    foreignField: '_id',
-                    localField: 'role',
-                },
-            },
-            {
-                $unwind: '$role',
-            },
-            {
-                $lookup: {
-                    from: CountryTableName,
-                    as: 'mobileNumber.country',
-                    foreignField: '_id',
-                    localField: 'mobileNumber.country',
-                },
-            },
-            {
-                $unwind: {
-                    path: '$mobileNumber.country',
-                    preserveNullAndEmptyArrays: true,
-                },
-            },
-            {
-                $lookup: {
-                    from: CountryTableName,
-                    as: 'country',
-                    foreignField: '_id',
-                    localField: 'country',
-                },
-            },
-            {
-                $unwind: '$country',
-            },
-            {
-                $match: find,
-            },
-        ];
-    }
-
     async findAllWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllAggregateOptions
     ): Promise<IUserEntity[]> {
-        const pipeline: PipelineStage[] =
-            this.createRawQueryFindAllWithRoleAndCountry(find);
-
-        return this.userRepository.findAllAggregate<IUserEntity>(
-            pipeline,
-            options
-        );
+        return this.userRepository.findAll<IUserEntity>(find, {
+            ...options,
+            join: true,
+        });
     }
 
     async getTotalWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseAggregateOptions
     ): Promise<number> {
-        const pipeline: PipelineStage[] =
-            this.createRawQueryFindAllWithRoleAndCountry(find);
-
-        return this.userRepository.getTotalAggregate(pipeline, options);
+        return this.userRepository.getTotal(find, {
+            ...options,
+            join: true,
+        });
     }
 
     async findOneById(
@@ -463,11 +412,7 @@ export class UserService implements IUserService {
     ): Promise<UserDoc> {
         return this.userRepository.updateRaw(
             { _id: repository._id },
-            {
-                $inc: {
-                    passwordAttempt: 1,
-                },
-            },
+            this.databaseService.aggregateIncrement('passwordAttempt', 1),
             options
         );
     }

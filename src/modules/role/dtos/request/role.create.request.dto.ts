@@ -1,17 +1,9 @@
 import { faker } from '@faker-js/faker';
-import {
-    ApiProperty,
-    IntersectionType,
-    OmitType,
-    PickType,
-} from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
 import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
 
-export class RoleCreateRequestDto extends IntersectionType(
-    OmitType(RoleUpdateRequestDto, ['description'] as const),
-    PickType(RoleUpdateRequestDto, ['description'] as const)
-) {
+export class RoleCreateRequestDto extends RoleUpdateRequestDto {
     @ApiProperty({
         description: 'Name of role',
         example: faker.person.jobTitle(),

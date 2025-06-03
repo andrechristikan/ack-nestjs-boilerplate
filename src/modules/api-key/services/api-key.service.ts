@@ -31,6 +31,7 @@ import {
 import { ApiKeyRepository } from 'src/modules/api-key/repository/repositories/api-key.repository';
 import { Document } from 'mongoose';
 import { ENUM_HELPER_DATE_DAY_OF } from 'src/common/helper/enums/helper.enum';
+import { DatabaseService } from '@app/common/database/services/database.service';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -41,7 +42,8 @@ export class ApiKeyService implements IApiKeyService {
         private readonly configService: ConfigService,
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
-        private readonly apiKeyRepository: ApiKeyRepository
+        private readonly apiKeyRepository: ApiKeyRepository,
+        private readonly databaseService: DatabaseService
     ) {
         this.env = this.configService.get<string>('app.env');
     }
@@ -261,9 +263,7 @@ export class ApiKeyService implements IApiKeyService {
         const today = this.helperDateService.create();
         await this.apiKeyRepository.updateMany(
             {
-                endDate: {
-                    $lte: today,
-                },
+                ...this.databaseService.filterLte('endDate', today),
                 isActive: true,
             },
             {

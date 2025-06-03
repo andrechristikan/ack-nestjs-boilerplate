@@ -4,6 +4,7 @@ import {
     PipelineStage,
     PopulateOptions,
     RootFilterQuery,
+    Types,
     UpdateQuery,
 } from 'mongoose';
 import {
@@ -26,10 +27,10 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { DeleteResult, InsertManyResult, UpdateResult } from 'mongodb';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
-import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
+import { DatabaseObjectIdEntityBase } from 'src/common/database/bases/database.object-id.entity';
 
-export class DatabaseRepositoryBase<
-    Entity extends DatabaseEntityBase,
+export class DatabaseObjectIdRepositoryBase<
+    Entity extends DatabaseObjectIdEntityBase,
     EntityDocument extends IDatabaseDocument<Entity>,
 > {
     protected readonly _repository: Model<Entity>;
@@ -41,6 +42,11 @@ export class DatabaseRepositoryBase<
     ) {
         this._repository = repository;
         this._join = options;
+    }
+
+    // Helper method to convert string to ObjectId if needed
+    protected toObjectId(id: string | Types.ObjectId): Types.ObjectId {
+        return typeof id === 'string' ? new Types.ObjectId(id) : id;
     }
 
     // Find
@@ -129,19 +135,21 @@ export class DatabaseRepositoryBase<
     }
 
     async findOneById<T = EntityDocument>(
-        _id: string,
+        _id: string | Types.ObjectId,
         options?: IDatabaseFindOneOptions
     ): Promise<T> {
-        if (!_id || typeof _id !== 'string') {
-            throw new Error('ID must be a non-empty string');
+        if (!_id) {
+            throw new Error('ID must be provided');
         }
 
+        const objectId = this.toObjectId(_id);
+
         const repository = this._repository.findOne<T>({
-            _id,
+            _id: objectId,
             ...(!options?.withDeleted && {
                 deleted: false,
             }),
-        });
+        } as any);
 
         if (options?.select) {
             repository.select(options.select);
@@ -225,20 +233,22 @@ export class DatabaseRepositoryBase<
     }
 
     async findOneByIdAndLock<T = EntityDocument>(
-        _id: string,
+        _id: string | Types.ObjectId,
         options?: IDatabaseFindOneOptions
     ): Promise<T> {
-        if (!_id || typeof _id !== 'string') {
-            throw new Error('ID must be a non-empty string');
+        if (!_id) {
+            throw new Error('ID must be provided');
         }
+
+        const objectId = this.toObjectId(_id);
 
         const repository = this._repository.findOneAndUpdate<T>(
             {
-                _id,
+                _id: objectId,
                 ...(!options?.withDeleted && {
                     deleted: false,
                 }),
-            },
+            } as any,
             {
                 $set: {
                     updatedAt: new Date(),
@@ -338,7 +348,13 @@ export class DatabaseRepositoryBase<
         }
 
         if (options?.excludeId) {
-            repository.where('_id').ne(options.excludeId);
+            repository
+                .where('_id')
+                .ne(
+                    typeof options.excludeId === 'string'
+                        ? new Types.ObjectId(options.excludeId)
+                        : options.excludeId
+                );
         }
 
         const result = await repository;
@@ -360,7 +376,13 @@ export class DatabaseRepositoryBase<
         const now = new Date();
         data.createdAt = now;
         data.updatedAt = now;
-        data.createdBy = options?.actionBy;
+
+        if (options?.actionBy) {
+            data.createdBy =
+                typeof options.actionBy === 'string'
+                    ? (new Types.ObjectId(options.actionBy) as any)
+                    : (options.actionBy as any);
+        }
 
         const created = await this._repository.create([data], options);
 
@@ -382,12 +404,17 @@ export class DatabaseRepositoryBase<
         }
 
         const now = new Date();
+        const actionBy = options?.actionBy
+            ? typeof options.actionBy === 'string'
+                ? new Types.ObjectId(options.actionBy)
+                : options.actionBy
+            : undefined;
 
         const finalData = {
             $set: {
                 ...data,
                 updatedAt: now,
-                updatedBy: options?.actionBy,
+                ...(actionBy && { updatedBy: actionBy }),
             },
         };
 
@@ -428,17 +455,24 @@ export class DatabaseRepositoryBase<
         }
 
         const now = new Date();
+        const actionBy = options?.actionBy
+            ? typeof options.actionBy === 'string'
+                ? new Types.ObjectId(options.actionBy)
+                : options.actionBy
+            : undefined;
 
         // Handle array data update
         const setIndexOf = data.findLastIndex(e => e['$set']);
         if (setIndexOf > -1) {
             data[setIndexOf]['$set'].updatedAt = now;
-            data[setIndexOf]['$set'].updatedBy = options?.actionBy;
+            if (actionBy) {
+                data[setIndexOf]['$set'].updatedBy = actionBy;
+            }
         } else {
             data.push({
                 $set: {
                     updatedAt: now,
-                    updatedBy: options?.actionBy,
+                    ...(actionBy && { updatedBy: actionBy }),
                 },
             });
         }
@@ -480,24 +514,29 @@ export class DatabaseRepositoryBase<
         }
 
         const now = new Date();
+        const actionBy = options?.actionBy
+            ? typeof options.actionBy === 'string'
+                ? new Types.ObjectId(options.actionBy)
+                : options.actionBy
+            : undefined;
 
         data['$set'] = {
             ...data['$set'],
             updatedAt: now,
-            updatedBy: options?.actionBy,
+            ...(actionBy && { updatedBy: actionBy }),
         };
 
         // For new documents
         if (!data['$setOnInsert']) {
             data['$setOnInsert'] = {
                 createdAt: now,
-                createdBy: options?.actionBy,
+                ...(actionBy && { createdBy: actionBy }),
             };
         } else {
             data['$setOnInsert'] = {
                 ...data['$setOnInsert'],
                 createdAt: now,
-                createdBy: options?.actionBy,
+                ...(actionBy && { createdBy: actionBy }),
             };
         }
 
@@ -556,10 +595,20 @@ export class DatabaseRepositoryBase<
             const now = new Date();
             repository.createdAt = now;
             repository.updatedAt = now;
-            repository.createdBy = options?.actionBy;
+            if (options?.actionBy) {
+                repository.createdBy =
+                    typeof options.actionBy === 'string'
+                        ? (new Types.ObjectId(options.actionBy) as any)
+                        : (options.actionBy as any);
+            }
         } else {
             repository.updatedAt = new Date();
-            repository.updatedBy = options?.actionBy;
+            if (options?.actionBy) {
+                repository.updatedBy =
+                    typeof options.actionBy === 'string'
+                        ? (new Types.ObjectId(options.actionBy) as any)
+                        : (options.actionBy as any);
+            }
         }
 
         return repository.save(options);
@@ -591,7 +640,12 @@ export class DatabaseRepositoryBase<
 
         repository.deletedAt = new Date();
         repository.deleted = true;
-        repository.deletedBy = options?.actionBy;
+        if (options?.actionBy) {
+            repository.deletedBy =
+                typeof options.actionBy === 'string'
+                    ? (new Types.ObjectId(options.actionBy) as any)
+                    : (options.actionBy as any);
+        }
 
         return repository.save(options);
     }
@@ -608,7 +662,12 @@ export class DatabaseRepositoryBase<
         repository.deletedBy = undefined;
         repository.deleted = false;
         repository.updatedAt = new Date();
-        repository.updatedBy = options?.actionBy;
+        if (options?.actionBy) {
+            repository.updatedBy =
+                typeof options.actionBy === 'string'
+                    ? (new Types.ObjectId(options.actionBy) as any)
+                    : (options.actionBy as any);
+        }
 
         return repository.save(options);
     }
@@ -635,13 +694,19 @@ export class DatabaseRepositoryBase<
         }
 
         const now = new Date();
+        const actionBy = options?.actionBy
+            ? typeof options.actionBy === 'string'
+                ? new Types.ObjectId(options.actionBy)
+                : options.actionBy
+            : undefined;
+
         return this._repository.insertMany(
             data.map(e => {
                 return {
                     ...e,
                     createdAt: now,
                     updatedAt: now,
-                    createdBy: options?.actionBy,
+                    ...(actionBy && { createdBy: actionBy }),
                 } as unknown as Entity;
             }),
             {
@@ -672,6 +737,12 @@ export class DatabaseRepositoryBase<
             throw new Error('Data must be a non-empty object');
         }
 
+        const actionBy = options?.actionBy
+            ? typeof options.actionBy === 'string'
+                ? new Types.ObjectId(options.actionBy)
+                : options.actionBy
+            : undefined;
+
         return this._repository.updateMany(
             {
                 ...find,
@@ -683,7 +754,7 @@ export class DatabaseRepositoryBase<
                 $set: {
                     ...data,
                     updatedAt: new Date(),
-                    updatedBy: options?.actionBy,
+                    ...(actionBy && { updatedBy: actionBy }),
                 },
             },
             { ...options, rawResult: true }
@@ -719,15 +790,23 @@ export class DatabaseRepositoryBase<
             throw new Error('Data contains invalid operations');
         }
 
+        const actionBy = options?.actionBy
+            ? typeof options.actionBy === 'string'
+                ? new Types.ObjectId(options.actionBy)
+                : options.actionBy
+            : undefined;
+
         const setIndexOf = data.findLastIndex(e => e['$set']);
         if (setIndexOf > -1) {
             data[setIndexOf]['$set'].updatedAt = new Date();
-            data[setIndexOf]['$set'].updatedBy = options?.actionBy;
+            if (actionBy) {
+                data[setIndexOf]['$set'].updatedBy = actionBy;
+            }
         } else {
             data.push({
                 $set: {
                     updatedAt: new Date(),
-                    updatedBy: options?.actionBy,
+                    ...(actionBy && { updatedBy: actionBy }),
                 },
             });
         }
@@ -786,6 +865,12 @@ export class DatabaseRepositoryBase<
             );
         }
 
+        const actionBy = options?.actionBy
+            ? typeof options.actionBy === 'string'
+                ? new Types.ObjectId(options.actionBy)
+                : options.actionBy
+            : undefined;
+
         return this._repository.updateMany(
             {
                 ...(find || {}),
@@ -795,7 +880,7 @@ export class DatabaseRepositoryBase<
                 $set: {
                     deletedAt: new Date(),
                     deleted: true,
-                    deletedBy: options?.actionBy,
+                    ...(actionBy && { deletedBy: actionBy }),
                 },
             },
             { ...options, rawResult: true }
@@ -816,6 +901,12 @@ export class DatabaseRepositoryBase<
             );
         }
 
+        const actionBy = options?.actionBy
+            ? typeof options.actionBy === 'string'
+                ? new Types.ObjectId(options.actionBy)
+                : options.actionBy
+            : undefined;
+
         return this._repository.updateMany(
             {
                 ...(find || {}),
@@ -827,7 +918,7 @@ export class DatabaseRepositoryBase<
                     deletedBy: undefined,
                     deleted: false,
                     updatedAt: new Date(),
-                    updatedBy: options?.actionBy,
+                    ...(actionBy && { updatedBy: actionBy }),
                 },
             },
             { ...options, rawResult: true }

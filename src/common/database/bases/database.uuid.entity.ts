@@ -1,7 +1,7 @@
 import { DatabaseProp } from 'src/common/database/decorators/database.decorator';
 import { v4 as uuidV4 } from 'uuid';
 
-export class DatabaseEntityBase {
+export class DatabaseUUIDEntityBase {
     @DatabaseProp({
         type: String,
         required: true,

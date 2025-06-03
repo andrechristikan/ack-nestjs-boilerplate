@@ -12,7 +12,7 @@ import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
 import {
     UserDocParamsId,
     UserDocQueryCountry,
-    UserDocQueryRoleType,
+    UserDocQueryRole,
     UserDocQueryStatus,
 } from 'src/modules/user/constants/user.doc.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
@@ -29,7 +29,7 @@ export function UserAdminListDoc(): MethodDecorator {
         DocRequest({
             queries: [
                 ...UserDocQueryStatus,
-                ...UserDocQueryRoleType,
+                ...UserDocQueryRole,
                 ...UserDocQueryCountry,
             ],
         }),
