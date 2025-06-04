@@ -1,7 +1,7 @@
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class FeatureConfigGetResponseDto<T = any> extends DatabaseDto {
+export class SettingGetResponseDto<T = any> extends DatabaseDto {
     @ApiProperty({
         description: 'Unique key identifying the feature configuration',
         example: 'feature_key',

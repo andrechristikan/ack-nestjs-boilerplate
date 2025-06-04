@@ -21,7 +21,6 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { LoggerOptionModule } from '@common/logger/logger.option.module';
 import { LoggerOptionService } from '@common/logger/services/logger.option.service';
 import KeyvRedis from '@keyv/redis';
-import { FeatureConfigModule } from '@common/features/feature-config.module';
 
 @Module({
     controllers: [],
@@ -105,7 +104,6 @@ import { FeatureConfigModule } from '@common/features/feature-config.module';
         AuthModule.forRoot(),
         FileModule.forRoot(),
         DatabaseModule.forRoot(),
-        FeatureConfigModule.forRoot(),
         PaginationModule.forRoot(),
     ],
 })

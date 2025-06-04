@@ -1,0 +1,3 @@
+export enum ENUM_SETTING_STATUS_CODE_ERROR {
+  INACTIVE = 6000,
+}

@@ -1,25 +1,40 @@
-import { Logger, OnModuleInit } from '@nestjs/common';
-import { AppBaseConfigRepositoryBase } from '@common/features/bases/base-config.repository';
-import { AppBaseConfigEntityBase } from '@common/features/bases/base-config.entity';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
     IDatabaseDeleteManyOptions,
-    IDatabaseDocument,
+    IDatabaseFindAllOptions,
 } from '@common/database/interfaces/database.interface';
+import { plainToInstance } from 'class-transformer';
+import { Document } from 'mongoose';
+import {
+    SettingDoc,
+    SettingEntity,
+} from '@modules/setting/repository/entities/setting.entity';
+import { SettingRepository } from '@modules/setting/repository/repositories/setting.repository';
+import { SettingListResponseDto } from '@modules/setting/dtos/response/setting.list.response.dto';
+import { SettingGetResponseDto } from '@modules/setting/dtos/response/setting.get.response.dto';
 
-export abstract class AppBaseConfigService<
-    TValue = any,
-    TEntity extends AppBaseConfigEntityBase = AppBaseConfigEntityBase<TValue>,
-    TDoc extends IDatabaseDocument<TEntity> = IDatabaseDocument<TEntity>,
-    TRepo extends AppBaseConfigRepositoryBase<
-        TEntity,
-        TDoc
-    > = AppBaseConfigRepositoryBase<TEntity, TDoc>,
-> implements OnModuleInit
+@Injectable()
+export class SettingDbService implements OnModuleInit
 {
     protected cache = new Map<string, any>();
-    protected readonly logger = new Logger(AppBaseConfigService.name);
+    protected readonly logger = new Logger(SettingDbService.name);
 
-    constructor(protected readonly settingRepository: TRepo) {}
+    constructor(protected readonly settingRepository: SettingRepository) {}
+
+    async isEnabled(
+        key: string,
+        fallback = false,
+        forceReload = false
+    ): Promise<boolean> {
+        return this.get<boolean>(key, fallback, forceReload);
+    }
+
+    async findAll(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<SettingEntity[]> {
+        return this.settingRepository.findAll(find, options);
+    }
 
     async onModuleInit(): Promise<void> {
         await this.reloadAllKeysFromDb();
@@ -50,7 +65,7 @@ export abstract class AppBaseConfigService<
         );
     }
 
-    async get<T = TValue>(
+    async get<T = any>(
         key: string,
         fallback?: T,
         forceReload = false
@@ -85,7 +100,7 @@ export abstract class AppBaseConfigService<
         return true;
     }
 
-    async createMany(entries: TEntity[]) {
+    async createMany(entries: SettingEntity[]) {
         try {
             await this.settingRepository.createMany(entries);
         } catch (error) {
@@ -96,7 +111,7 @@ export abstract class AppBaseConfigService<
         }
     }
 
-    async create(entry: TEntity): Promise<TEntity | null> {
+    async create(entry: SettingEntity): Promise<SettingEntity | null> {
         try {
             const createdEntry = await this.settingRepository.create(entry);
             return createdEntry;
@@ -131,5 +146,23 @@ export abstract class AppBaseConfigService<
             this.cache.delete(key);
             this.logger.log(`Removed key "${key}" from cache`);
         });
+    }
+
+
+
+    mapList(entities: SettingDoc[] | SettingEntity[]): SettingListResponseDto[] {
+        return plainToInstance(
+            SettingListResponseDto,
+            entities.map((e: SettingDoc | SettingEntity) =>
+                e instanceof Document ? e.toObject() : e
+            )
+        );
+    }
+
+    mapGet(entity: SettingDoc | SettingEntity): SettingGetResponseDto {
+        return plainToInstance(
+            SettingGetResponseDto,
+            entity instanceof Document ? entity.toObject() : entity
+        );
     }
 }

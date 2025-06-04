@@ -19,7 +19,7 @@ import { UserAdminController } from 'src/modules/user/controllers/user.admin.con
 import { UserModule } from 'src/modules/user/user.module';
 import { VerificationModule } from 'src/modules/verification/verification.module';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
-import { FeatureConfigAdminController } from '@common/features/controllers/feature-config.admin.controller';
+import { SettingAdminController } from '@modules/setting/controllers/setting.admin.controller';
 
 @Module({
     controllers: [
@@ -30,7 +30,7 @@ import { FeatureConfigAdminController } from '@common/features/controllers/featu
         SessionAdminController,
         PasswordHistoryAdminController,
         ActivityAdminController,
-        FeatureConfigAdminController
+        SettingAdminController
     ],
     providers: [],
     exports: [],

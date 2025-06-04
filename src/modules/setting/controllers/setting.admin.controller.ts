@@ -1,14 +1,8 @@
 import { ApiTags } from '@nestjs/swagger';
 import { Controller, Get } from '@nestjs/common';
 import { IResponse } from '@common/response/interfaces/response.interface';
-import { FeatureConfigService } from 'src/common/features/services/feature-config.service';
-import {
-    FeatureConfigAdminCacheListDoc,
-    FeatureConfigAdminCacheReloadDoc,
-    FeatureConfigAdminListDoc,
-} from '@common/features/docs/feature-config.admin.doc';
+
 import { Response } from '@common/response/decorators/response.decorator';
-import { FeatureConfigListResponseDto } from '@common/features/dtos/response/feature-config.list.response.dto';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
@@ -21,37 +15,44 @@ import {
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { ApiKeyProtected } from '@app/modules/api-key/decorators/api-key.decorator';
+import {
+    SettingAdminCacheListDoc,
+    SettingAdminCacheReloadDoc,
+    SettingAdminListDoc,
+} from '@modules/setting/docs/setting.admin.doc';
+import { SettingDbService } from '@modules/setting/services/setting.db.service';
+import { SettingListResponseDto } from '@modules/setting/dtos/response/setting.list.response.dto';
 
-@ApiTags('common.admin.feature')
+@ApiTags('common.admin.setting')
 @Controller({
     version: '1',
-    path: '/features',
+    path: '/setting',
 })
-export class FeatureConfigAdminController {
-    constructor(private readonly featureSettingService: FeatureConfigService) {}
+export class SettingAdminController {
+    constructor(private readonly settingService: SettingDbService) {}
 
-    @FeatureConfigAdminListDoc()
+    @SettingAdminListDoc()
     @Get('/')
-    @Response('feature.list')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.FEATURES,
-        action: [ENUM_POLICY_ACTION.READ],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    async list(): Promise<IResponse<FeatureConfigListResponseDto[]>> {
-        const appSettings = await this.featureSettingService.findAll();
-        const output = this.featureSettingService.mapList(appSettings);
+    @Response('setting.list')
+    //@PolicyAbilityProtected({
+    //    subject: ENUM_POLICY_SUBJECT.FEATURES,
+    //    action: [ENUM_POLICY_ACTION.READ],
+    //})
+    //@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    //@UserProtected()
+    //@AuthJwtAccessProtected()
+    //@ApiKeyProtected()
+    async list(): Promise<IResponse<SettingListResponseDto[]>> {
+        const appSettings = await this.settingService.findAll();
+        const output = this.settingService.mapList(appSettings);
         return {
             data: output,
         };
     }
 
-    @FeatureConfigAdminCacheListDoc()
+    @SettingAdminCacheListDoc()
     @Get('/cache')
-    @Response('feature.list')
+    @Response('setting.list')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.FEATURES,
         action: [ENUM_POLICY_ACTION.READ],
@@ -61,15 +62,15 @@ export class FeatureConfigAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     async listCache(): Promise<IResponse<Record<string, any>>> {
-        const appSettings = this.featureSettingService.findAllCache();
+        const appSettings = this.settingService.findAllCache();
         return {
             data: appSettings,
         };
     }
 
-    @FeatureConfigAdminCacheReloadDoc()
+    @SettingAdminCacheReloadDoc()
     @Get('/cache/reload')
-    @Response('feature.reload')
+    @Response('setting.reload')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.FEATURES,
         action: [ENUM_POLICY_ACTION.UPDATE],
@@ -79,8 +80,8 @@ export class FeatureConfigAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     async reload(): Promise<IResponse<Record<string, any>>> {
-        await this.featureSettingService.reloadAllKeysFromDb();
-        const appSettings = this.featureSettingService.findAllCache();
+        await this.settingService.reloadAllKeysFromDb();
+        const appSettings = this.settingService.findAllCache();
         return {
             data: appSettings,
         };

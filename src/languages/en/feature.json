@@ -1,7 +1,0 @@
-{
-    "list": "Feature configs retrieve successfully.",
-    "reload": "Feature configs reloaded successfully.",
-    "error": {
-        "inactive": "This feature is currently disabled"
-    }
-}

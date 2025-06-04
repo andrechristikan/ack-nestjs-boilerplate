@@ -1,9 +1,9 @@
 import { ApiHideProperty, OmitType } from '@nestjs/swagger';
-import { FeatureConfigGetResponseDto } from '@common/features/dtos/response/feature-config.get.response.dto';
 import { Exclude } from 'class-transformer';
+import { SettingGetResponseDto } from '@modules/setting/dtos/response/setting.get.response.dto';
 
-export class FeatureConfigListResponseDto extends OmitType(
-    FeatureConfigGetResponseDto,
+export class SettingListResponseDto extends OmitType(
+    SettingGetResponseDto,
     ['_id', '__v', 'deleted'] as const
 ) {
     @ApiHideProperty()
