@@ -4,7 +4,8 @@ import { IsNotEmpty, IsString } from 'class-validator';
 
 export class ActivityCreateResponse {
     @ApiProperty({
-        example: faker.string.uuid(),
+        example: faker.lorem.paragraph(),
+        description: 'Description of the activity',
         required: true,
     })
     @IsNotEmpty()

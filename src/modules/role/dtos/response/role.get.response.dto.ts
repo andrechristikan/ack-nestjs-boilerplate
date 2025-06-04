@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { DatabaseDto } from 'src/common/database/dtos/database.dto';
+import { DatabaseUUIDDto } from 'src/common/database/dtos/database.uuid.dto';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { RolePermissionDto } from 'src/modules/role/dtos/role.permission.dto';
 
-export class RoleGetResponseDto extends DatabaseDto {
+export class RoleGetResponseDto extends DatabaseUUIDDto {
     @ApiProperty({
         description: 'Name of role',
         example: faker.person.jobTitle(),

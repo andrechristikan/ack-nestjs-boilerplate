@@ -25,6 +25,7 @@ import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dt
 import {
     PaginationQuery,
     PaginationQueryFilterEqual,
+    PaginationQueryFilterIn,
     PaginationQueryFilterInEnum,
 } from 'src/common/pagination/decorators/pagination.decorator';
 import {
@@ -66,7 +67,6 @@ import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.prof
 import { UserService } from 'src/modules/user/services/user.service';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
-    USER_DEFAULT_POLICY_ROLE_TYPE,
     USER_DEFAULT_STATUS,
 } from 'src/modules/user/constants/user.list.constant';
 import {
@@ -136,24 +136,15 @@ export class UserAdminController {
             ENUM_USER_STATUS
         )
         status: Record<string, any>,
-        @PaginationQueryFilterInEnum(
-            'role.type',
-            USER_DEFAULT_POLICY_ROLE_TYPE,
-            ENUM_POLICY_ROLE_TYPE,
-            {
-                queryField: 'roleType',
-            }
-        )
-        roleType: Record<string, any>,
-        @PaginationQueryFilterEqual('country._id', {
-            queryField: 'country',
-        })
+        @PaginationQueryFilterIn('role')
+        role: Record<string, any>,
+        @PaginationQueryFilterEqual('country')
         country: Record<string, any>
     ): Promise<IResponsePaging<UserListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
             ...status,
-            ...roleType,
+            ...role,
             ...country,
         };
 

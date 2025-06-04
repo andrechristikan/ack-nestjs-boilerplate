@@ -2,10 +2,6 @@ FROM node:lts-alpine
 
 LABEL maintainer="andrechristikan@gmail.com"
 
-ARG NODE_ENV
-
-ENV NODE_ENV=${NODE_ENV}
-
 WORKDIR /app
 EXPOSE 3000
 

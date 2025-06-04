@@ -9,7 +9,7 @@ import {
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
 import {
     UserDocQueryCountry,
-    UserDocQueryRoleType,
+    UserDocQueryRole,
     UserDocQueryStatus,
 } from 'src/modules/user/constants/user.doc.constant';
 import { UserCheckMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.check-mobile-number.dto';
@@ -31,7 +31,7 @@ export function UserSystemListDoc(): MethodDecorator {
         DocRequest({
             queries: [
                 ...UserDocQueryStatus,
-                ...UserDocQueryRoleType,
+                ...UserDocQueryRole,
                 ...UserDocQueryCountry,
             ],
         }),

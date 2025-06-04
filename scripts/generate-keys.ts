@@ -205,6 +205,69 @@ class JwtKeysGenerator {
             process.exit(1);
         }
     }
+
+    updateEnv(): void {
+        const envPath = path.join(process.cwd(), '.env');
+        const envExamplePath = path.join(process.cwd(), '.env.example');
+
+        // 1. Read jwks.json
+        const jwksPath = path.join(this.keyDir, 'jwks.json');
+        if (!fs.existsSync(jwksPath)) {
+            console.error(`jwks.json not found at ${jwksPath}`);
+            process.exit(1);
+        }
+        const jwks = JSON.parse(fs.readFileSync(jwksPath, 'utf8'));
+        const [accessJwk, refreshJwk] = jwks.keys;
+
+        // 2. Ensure .env exists
+        if (!fs.existsSync(envPath)) {
+            if (fs.existsSync(envExamplePath)) {
+                fs.copyFileSync(envExamplePath, envPath);
+                console.log('.env file created from .env.example');
+            } else {
+                console.error('.env.example not found. Cannot create .env');
+                process.exit(1);
+            }
+        }
+
+        // 3. Extract current KIDs from .env
+        const envContent = fs.readFileSync(envPath, 'utf8');
+        const accessKidMatch = envContent.match(
+            /^AUTH_JWT_ACCESS_TOKEN_KID=(.*)$/m
+        );
+        const refreshKidMatch = envContent.match(
+            /^AUTH_JWT_REFRESH_TOKEN_KID=(.*)$/m
+        );
+        const accessKid = accessKidMatch ? accessKidMatch[1] : '';
+        const refreshKid = refreshKidMatch ? refreshKidMatch[1] : '';
+
+        // 4. If already up-to-date, skip
+        if (accessKid === accessJwk.kid && refreshKid === refreshJwk.kid) {
+            console.log('.env KIDs are already up to date.');
+            return;
+        }
+
+        // 5. Update .env with new KIDs
+        let newEnv = envContent;
+        if (accessKidMatch) {
+            newEnv = newEnv.replace(
+                /^AUTH_JWT_ACCESS_TOKEN_KID=.*$/m,
+                `AUTH_JWT_ACCESS_TOKEN_KID=${accessJwk.kid}`
+            );
+        } else {
+            newEnv += `\nAUTH_JWT_ACCESS_TOKEN_KID=${accessJwk.kid}`;
+        }
+        if (refreshKidMatch) {
+            newEnv = newEnv.replace(
+                /^AUTH_JWT_REFRESH_TOKEN_KID=.*$/m,
+                `AUTH_JWT_REFRESH_TOKEN_KID=${refreshJwk.kid}`
+            );
+        } else {
+            newEnv += `\nAUTH_JWT_REFRESH_TOKEN_KID=${refreshJwk.kid}`;
+        }
+        fs.writeFileSync(envPath, newEnv);
+        console.log('.env KIDs updated successfully.');
+    }
 }
 
 function main() {
@@ -216,6 +279,7 @@ function main() {
 
     if (command === 'generate') {
         generator.generateKeys();
+        generator.updateEnv();
     } else if (command === 'rollback') {
         generator.rollbackKeys();
     } else {

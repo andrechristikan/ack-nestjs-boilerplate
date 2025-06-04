@@ -23,6 +23,7 @@ import { ENUM_VERIFICATION_TYPE } from 'src/modules/verification/enums/verificat
 import { DeleteResult, UpdateResult } from 'mongoose';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { VerificationResponse } from 'src/modules/verification/dtos/response/verification.response';
+import { DatabaseService } from '@app/common/database/services/database.service';
 
 @Injectable()
 export class VerificationService implements IVerificationService {
@@ -37,7 +38,8 @@ export class VerificationService implements IVerificationService {
         private readonly helperDateService: HelperDateService,
         private readonly helperNumberService: HelperNumberService,
         private readonly helperStringService: HelperStringService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly databaseService: DatabaseService
     ) {
         this.expiredInMinutes = this.configService.get<number>(
             'verification.expiredInMinutes'
@@ -147,9 +149,10 @@ export class VerificationService implements IVerificationService {
                 isActive: true,
                 isVerify: false,
                 type: ENUM_VERIFICATION_TYPE.EMAIL,
-                expired: {
-                    $gte: this.helperDateService.create(),
-                },
+                ...this.databaseService.filterGte(
+                    'expired',
+                    this.helperDateService.create()
+                ),
             },
             {
                 ...options,
@@ -168,9 +171,10 @@ export class VerificationService implements IVerificationService {
                 isActive: true,
                 isVerify: false,
                 type: ENUM_VERIFICATION_TYPE.MOBILE_NUMBER,
-                expired: {
-                    $gte: this.helperDateService.create(),
-                },
+                ...this.databaseService.filterGte(
+                    'expired',
+                    this.helperDateService.create()
+                ),
             },
             {
                 ...options,

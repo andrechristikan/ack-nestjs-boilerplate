@@ -1,4 +1,4 @@
-import { DatabaseEntityBase } from 'src/common/database/bases/database.entity';
+import { DatabaseUUIDEntityBase } from 'src/common/database/bases/database.uuid.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -10,7 +10,7 @@ import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 export const ActivityTableName = 'Activities';
 
 @DatabaseEntity({ collection: ActivityTableName })
-export class ActivityEntity extends DatabaseEntityBase {
+export class ActivityEntity extends DatabaseUUIDEntityBase {
     @DatabaseProp({
         required: true,
         index: true,

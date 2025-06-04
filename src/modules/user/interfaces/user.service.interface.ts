@@ -34,7 +34,6 @@ import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
-import { PipelineStage } from 'mongoose';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
 import { UserCensorResponseDto } from 'src/modules/user/dtos/response/user.censor.response.dto';
@@ -48,9 +47,6 @@ export interface IUserService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-    createRawQueryFindAllWithRoleAndCountry(
-        find?: Record<string, any>
-    ): PipelineStage[];
     findAllWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllAggregateOptions

@@ -2,10 +2,10 @@ import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 
-export class DatabaseDto {
+export class DatabaseObjectIdDto {
     @ApiProperty({
         description: 'Alias id of api key',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
         required: true,
     })
     _id: string;

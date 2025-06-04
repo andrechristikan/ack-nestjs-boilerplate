@@ -1,3 +1,4 @@
+import { PaginationFilterInPipe } from '@app/common/pagination/pipes/pagination.filter-in.pipe';
 import { Query } from '@nestjs/common';
 import {
     IPaginationFilterDateBetweenOptions,
@@ -9,8 +10,6 @@ import { PaginationFilterDateBetweenPipe } from 'src/common/pagination/pipes/pag
 import { PaginationFilterEqualPipe } from 'src/common/pagination/pipes/pagination.filter-equal.pipe';
 import { PaginationFilterInBooleanPipe } from 'src/common/pagination/pipes/pagination.filter-in-boolean.pipe';
 import { PaginationFilterInEnumPipe } from 'src/common/pagination/pipes/pagination.filter-in-enum.pipe';
-import { PaginationFilterNinEnumPipe } from 'src/common/pagination/pipes/pagination.filter-nin-enum.pipe';
-import { PaginationFilterNotEqualPipe } from 'src/common/pagination/pipes/pagination.filter-not-equal.pipe';
 import { PaginationFilterStringContainPipe } from 'src/common/pagination/pipes/pagination.filter-string-contain.pipe';
 import { PaginationOrderPipe } from 'src/common/pagination/pipes/pagination.order.pipe';
 import { PaginationPagingPipe } from 'src/common/pagination/pipes/pagination.paging.pipe';
@@ -53,30 +52,13 @@ export function PaginationQueryFilterInEnum<T>(
     );
 }
 
-export function PaginationQueryFilterNinEnum<T>(
+export function PaginationQueryFilterIn<T>(
     field: string,
-    defaultValue: T,
-    defaultEnum: Record<string, any>,
     options?: IPaginationFilterOptions
 ): ParameterDecorator {
     return Query(
         options?.queryField ?? field,
-        PaginationFilterNinEnumPipe<T>(
-            field,
-            defaultValue,
-            defaultEnum,
-            options
-        )
-    );
-}
-
-export function PaginationQueryFilterNotEqual(
-    field: string,
-    options?: IPaginationFilterEqualOptions
-): ParameterDecorator {
-    return Query(
-        options?.queryField ?? field,
-        PaginationFilterNotEqualPipe(field, options)
+        PaginationFilterInPipe<T>(field, options)
     );
 }
 
