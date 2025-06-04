@@ -188,8 +188,8 @@ File responses don't return JSON but instead return a file download with appropr
 
 ```typescript
 import { Controller, Get } from '@nestjs/common';
-import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { Response } from '@common/response/decorators/response.decorator';
+import { IResponse } from '@common/response/interfaces/response.interface';
 import { UserProfileDto } from './dtos/user.profile.dto';
 
 @Controller('users')
@@ -210,9 +210,9 @@ export class UserController {
 
 ```typescript
 import { Controller, Get, Query } from '@nestjs/common';
-import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
-import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
+import { ResponsePaging } from '@common/response/decorators/response.decorator';
+import { IResponsePaging } from '@common/response/interfaces/response.interface';
+import { PaginationService } from '@common/pagination/services/pagination.service';
 
 @Controller('users')
 export class UserController {
@@ -245,9 +245,9 @@ export class UserController {
 
 ```typescript
 import { Controller, Get } from '@nestjs/common';
-import { ResponseFileExcel } from 'src/common/response/decorators/response.decorator';
-import { IResponseFileExcel } from 'src/common/response/interfaces/response.interface';
-import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/enums/helper.enum';
+import { ResponseFileExcel } from '@common/response/decorators/response.decorator';
+import { IResponseFileExcel } from '@common/response/interfaces/response.interface';
+import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
 
 @Controller('users')
 export class UserController {

@@ -1,4 +1,4 @@
-import { DatabaseService } from '@app/common/database/services/database.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
@@ -17,22 +17,22 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
     IDatabaseUpdateManyOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { SessionCreateRequestDto } from 'src/modules/session/dtos/request/session.create.request.dto';
-import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
+} from '@common/database/interfaces/database.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { SessionCreateRequestDto } from '@module/session/dtos/request/session.create.request.dto';
+import { SessionListResponseDto } from '@module/session/dtos/response/session.list.response.dto';
 import {
     ENUM_SESSION_PROCESS,
     ENUM_SESSION_STATUS,
-} from 'src/modules/session/enums/session.enum';
-import { ISessionService } from 'src/modules/session/interfaces/session.service.interface';
+} from '@module/session/enums/session.enum';
+import { ISessionService } from '@module/session/interfaces/session.service.interface';
 import {
     SessionDoc,
     SessionEntity,
-} from 'src/modules/session/repository/entities/session.entity';
-import { SessionRepository } from 'src/modules/session/repository/repositories/session.repository';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+} from '@module/session/repository/entities/session.entity';
+import { SessionRepository } from '@module/session/repository/repositories/session.repository';
+import { IUserDoc } from '@module/user/interfaces/user.interface';
+import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
 
 @Injectable()
 export class SessionService implements ISessionService {

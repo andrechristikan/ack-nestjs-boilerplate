@@ -1,9 +1,9 @@
 import { ApiHideProperty, OmitType } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
-import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
-import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
-import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
-import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
+import { RoleListResponseDto } from '@module/role/dtos/response/role.list.response.dto';
+import { ENUM_USER_STATUS } from '@module/user/enums/user.enum';
+import { UserListResponseDto } from '@module/user/dtos/response/user.list.response.dto';
+import { AwsS3ResponseDto } from '@module/aws/dtos/response/aws.s3-response.dto';
 
 export class UserShortResponseDto extends OmitType(UserListResponseDto, [
     'role',

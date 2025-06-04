@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { IDatabaseService } from 'src/common/database/interfaces/database.service.interface';
+import { IDatabaseService } from '@common/database/interfaces/database.service.interface';
 import {
     DatabaseHelperQueryContain,
     InjectDatabaseConnection,
-} from 'src/common/database/decorators/database.decorator';
+} from '@common/database/decorators/database.decorator';
 import { ClientSession, Connection } from 'mongoose';
 
 @Injectable()

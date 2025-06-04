@@ -1,9 +1,9 @@
 import { applyDecorators, UseGuards } from '@nestjs/common';
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { AuthJwtAccessGuard } from 'src/modules/auth/guards/jwt/auth.jwt.access.guard';
-import { AuthJwtRefreshGuard } from 'src/modules/auth/guards/jwt/auth.jwt.refresh.guard';
-import { IAuthJwtAccessTokenPayload } from 'src/modules/auth/interfaces/auth.interface';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { AuthJwtAccessGuard } from '@module/auth/guards/jwt/auth.jwt.access.guard';
+import { AuthJwtRefreshGuard } from '@module/auth/guards/jwt/auth.jwt.refresh.guard';
+import { IAuthJwtAccessTokenPayload } from '@module/auth/interfaces/auth.interface';
 
 export const AuthJwtPayload = createParamDecorator(
     <T = IAuthJwtAccessTokenPayload>(

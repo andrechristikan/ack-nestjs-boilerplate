@@ -6,39 +6,39 @@ import {
     Param,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
-import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
+import { PaginationQuery } from '@common/pagination/decorators/pagination.decorator';
+import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
+import { PaginationService } from '@common/pagination/services/pagination.service';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
     ResponsePaging,
-} from 'src/common/response/decorators/response.decorator';
-import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
-import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
+} from '@common/response/decorators/response.decorator';
+import { IResponsePaging } from '@common/response/interfaces/response.interface';
+import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
+import { AuthJwtAccessProtected } from '@module/auth/decorators/auth.jwt.decorator';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
-} from 'src/modules/policy/decorators/policy.decorator';
+} from '@module/policy/decorators/policy.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/enums/policy.enum';
+} from '@module/policy/enums/policy.enum';
 import {
     SessionAdminListDoc,
     SessionAdminRevokeDoc,
-} from 'src/modules/session/docs/session.admin.doc';
-import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
-import { ENUM_SESSION_STATUS_CODE_ERROR } from 'src/modules/session/enums/session.status-code.enum';
-import { SessionActiveParsePipe } from 'src/modules/session/pipes/session.parse.pipe';
-import { SessionDoc } from 'src/modules/session/repository/entities/session.entity';
-import { SessionService } from 'src/modules/session/services/session.service';
-import { UserProtected } from 'src/modules/user/decorators/user.decorator';
-import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
-import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+} from '@module/session/docs/session.admin.doc';
+import { SessionListResponseDto } from '@module/session/dtos/response/session.list.response.dto';
+import { ENUM_SESSION_STATUS_CODE_ERROR } from '@module/session/enums/session.status-code.enum';
+import { SessionActiveParsePipe } from '@module/session/pipes/session.parse.pipe';
+import { SessionDoc } from '@module/session/repository/entities/session.entity';
+import { SessionService } from '@module/session/services/session.service';
+import { UserProtected } from '@module/user/decorators/user.decorator';
+import { UserNotSelfPipe } from '@module/user/pipes/user.not-self.pipe';
+import { UserParsePipe } from '@module/user/pipes/user.parse.pipe';
+import { UserDoc } from '@module/user/repository/entities/user.entity';
 
 @ApiTags('modules.admin.session')
 @Controller({

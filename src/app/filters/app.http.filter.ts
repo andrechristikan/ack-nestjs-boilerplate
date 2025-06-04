@@ -9,13 +9,13 @@ import {
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
-import { IAppException } from 'src/app/interfaces/app.interface';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
-import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
-import { MessageService } from 'src/common/message/services/message.service';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
+import { IAppException } from '@app/interfaces/app.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { IMessageOptionsProperties } from '@common/message/interfaces/message.interface';
+import { MessageService } from '@common/message/services/message.service';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
 
 @Catch(HttpException)
 export class AppHttpFilter implements ExceptionFilter {

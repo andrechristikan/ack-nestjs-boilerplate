@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { DatabaseUUIDRepositoryBase } from 'src/common/database/bases/database.uuid.repository';
-import { InjectDatabaseModel } from 'src/common/database/decorators/database.decorator';
+import { DatabaseUUIDRepositoryBase } from '@common/database/bases/database.uuid.repository';
+import { InjectDatabaseModel } from '@common/database/decorators/database.decorator';
 import {
     VerificationDoc,
     VerificationEntity,
-} from 'src/modules/verification/repository/entity/verification.entity';
+} from '@module/verification/repository/entity/verification.entity';
 
 @Injectable()
 export class VerificationRepository extends DatabaseUUIDRepositoryBase<

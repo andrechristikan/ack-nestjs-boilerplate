@@ -2,11 +2,11 @@ import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
-} from 'src/common/database/decorators/database.decorator';
+} from '@common/database/decorators/database.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/enums/policy.enum';
+} from '@module/policy/enums/policy.enum';
 
 @DatabaseEntity({ timestamps: false, _id: false })
 export class RolePermissionEntity {

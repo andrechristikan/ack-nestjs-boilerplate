@@ -3,11 +3,11 @@ import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
-} from 'src/common/database/decorators/database.decorator';
+} from '@common/database/decorators/database.decorator';
 import {
     AwsS3MultipartPartEntity,
     AwsS3MultipartPartSchema,
-} from 'src/modules/aws/repository/entities/aws.s3-multipart-part.entity';
+} from '@module/aws/repository/entities/aws.s3-multipart-part.entity';
 
 @DatabaseEntity({ timestamps: false, _id: false })
 export class AwsS3MultipartEntity {

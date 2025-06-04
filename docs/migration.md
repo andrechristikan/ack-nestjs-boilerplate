@@ -595,7 +595,7 @@ Example of a custom seed:
 ```typescript
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { YourService } from 'src/modules/your-module/services/your.service';
+import { YourService } from '@modules/your-module/services/your.service';
 
 @Injectable()
 export class MigrationYourSeed {

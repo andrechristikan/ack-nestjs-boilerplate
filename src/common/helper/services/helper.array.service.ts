@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
-import { IHelperArrayService } from 'src/common/helper/interfaces/helper.array-service.interface';
+import { IHelperArrayService } from '@common/helper/interfaces/helper.array-service.interface';
 
 @Injectable()
 export class HelperArrayService implements IHelperArrayService {

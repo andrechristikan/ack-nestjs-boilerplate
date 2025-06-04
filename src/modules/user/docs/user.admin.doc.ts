@@ -1,5 +1,5 @@
 import { HttpStatus, applyDecorators } from '@nestjs/common';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
+import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import {
     Doc,
     DocAuth,
@@ -7,19 +7,19 @@ import {
     DocGuard,
     DocResponse,
     DocResponsePaging,
-} from 'src/common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
+} from '@common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import {
     UserDocParamsId,
     UserDocQueryCountry,
     UserDocQueryRole,
     UserDocQueryStatus,
-} from 'src/modules/user/constants/user.doc.constant';
-import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
-import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
-import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
-import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
-import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
+} from '@module/user/constants/user.doc.constant';
+import { UserCreateRequestDto } from '@module/user/dtos/request/user.create.request.dto';
+import { UserUpdateStatusRequestDto } from '@module/user/dtos/request/user.update-status.request.dto';
+import { UserUpdateRequestDto } from '@module/user/dtos/request/user.update.request.dto';
+import { UserListResponseDto } from '@module/user/dtos/response/user.list.response.dto';
+import { UserProfileResponseDto } from '@module/user/dtos/response/user.profile.response.dto';
 
 export function UserAdminListDoc(): MethodDecorator {
     return applyDecorators(

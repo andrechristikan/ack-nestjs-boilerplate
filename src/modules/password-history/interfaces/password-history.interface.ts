@@ -1,11 +1,11 @@
 import {
     PasswordHistoryDoc,
     PasswordHistoryEntity,
-} from 'src/modules/password-history/repository/entities/password-history.entity';
+} from '@module/password-history/repository/entities/password-history.entity';
 import {
     UserDoc,
     UserEntity,
-} from 'src/modules/user/repository/entities/user.entity';
+} from '@module/user/repository/entities/user.entity';
 
 export interface IPasswordHistoryEntity
     extends Omit<PasswordHistoryEntity, 'by'> {

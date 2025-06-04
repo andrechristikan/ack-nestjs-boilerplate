@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
-import { DatabaseUUIDDto } from 'src/common/database/dtos/database.uuid.dto';
+import { DatabaseUUIDDto } from '@common/database/dtos/database.uuid.dto';
 
 export class CountryListResponseDto extends DatabaseUUIDDto {
     @ApiProperty({

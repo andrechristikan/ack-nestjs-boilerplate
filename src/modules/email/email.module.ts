@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AwsModule } from 'src/modules/aws/aws.module';
-import { EmailService } from 'src/modules/email/services/email.service';
+import { AwsModule } from '@module/aws/aws.module';
+import { EmailService } from '@module/email/services/email.service';
 
 @Module({
     imports: [AwsModule],

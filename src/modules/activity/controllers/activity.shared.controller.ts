@@ -1,23 +1,23 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
-import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
-import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
-import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
-import { ActivitySharedListDoc } from 'src/modules/activity/docs/activity.shared.doc';
-import { ActivityListResponseDto } from 'src/modules/activity/dtos/response/activity.list.response.dto';
-import { IActivityDoc } from 'src/modules/activity/interfaces/activity.interface';
-import { ActivityService } from 'src/modules/activity/services/activity.service';
-import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+import { PaginationQuery } from '@common/pagination/decorators/pagination.decorator';
+import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
+import { PaginationService } from '@common/pagination/services/pagination.service';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { ResponsePaging } from '@common/response/decorators/response.decorator';
+import { IResponsePaging } from '@common/response/interfaces/response.interface';
+import { ActivitySharedListDoc } from '@module/activity/docs/activity.shared.doc';
+import { ActivityListResponseDto } from '@module/activity/dtos/response/activity.list.response.dto';
+import { IActivityDoc } from '@module/activity/interfaces/activity.interface';
+import { ActivityService } from '@module/activity/services/activity.service';
+import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from 'src/modules/auth/decorators/auth.jwt.decorator';
-import { UserProtected } from 'src/modules/user/decorators/user.decorator';
-import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+} from '@module/auth/decorators/auth.jwt.decorator';
+import { UserProtected } from '@module/user/decorators/user.decorator';
+import { UserParsePipe } from '@module/user/pipes/user.parse.pipe';
+import { UserDoc } from '@module/user/repository/entities/user.entity';
 
 @ApiTags('modules.shared.activity')
 @Controller({

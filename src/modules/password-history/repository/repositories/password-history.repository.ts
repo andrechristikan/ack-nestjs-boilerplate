@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { DatabaseUUIDRepositoryBase } from 'src/common/database/bases/database.uuid.repository';
-import { InjectDatabaseModel } from 'src/common/database/decorators/database.decorator';
-import { CountryEntity } from 'src/modules/country/repository/entities/country.entity';
+import { DatabaseUUIDRepositoryBase } from '@common/database/bases/database.uuid.repository';
+import { InjectDatabaseModel } from '@common/database/decorators/database.decorator';
+import { CountryEntity } from '@module/country/repository/entities/country.entity';
 import {
     PasswordHistoryDoc,
     PasswordHistoryEntity,
-} from 'src/modules/password-history/repository/entities/password-history.entity';
-import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+} from '@module/password-history/repository/entities/password-history.entity';
+import { RoleEntity } from '@module/role/repository/entities/role.entity';
+import { UserEntity } from '@module/user/repository/entities/user.entity';
 
 @Injectable()
 export class PasswordHistoryRepository extends DatabaseUUIDRepositoryBase<

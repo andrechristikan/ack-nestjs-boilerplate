@@ -2,16 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ValidationError } from 'class-validator';
 import { I18nService } from 'nestjs-i18n';
-import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import {
     IMessageErrorOptions,
     IMessageSetOptions,
     IMessageValidationError,
     IMessageValidationImportError,
     IMessageValidationImportErrorParam,
-} from 'src/common/message/interfaces/message.interface';
-import { IMessageService } from 'src/common/message/interfaces/message.service.interface';
+} from '@common/message/interfaces/message.interface';
+import { IMessageService } from '@common/message/interfaces/message.service.interface';
 
 @Injectable()
 export class MessageService implements IMessageService {

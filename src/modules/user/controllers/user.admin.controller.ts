@@ -12,86 +12,83 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
+import { PaginationService } from '@common/pagination/services/pagination.service';
 import {
     Response,
     ResponsePaging,
-} from 'src/common/response/decorators/response.decorator';
+} from '@common/response/decorators/response.decorator';
 import {
     IResponse,
     IResponsePaging,
-} from 'src/common/response/interfaces/response.interface';
-import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
+} from '@common/response/interfaces/response.interface';
+import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
 import {
     PaginationQuery,
     PaginationQueryFilterEqual,
     PaginationQueryFilterIn,
     PaginationQueryFilterInEnum,
-} from 'src/common/pagination/decorators/pagination.decorator';
+} from '@common/pagination/decorators/pagination.decorator';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
-} from 'src/modules/policy/decorators/policy.decorator';
+} from '@module/policy/decorators/policy.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/enums/policy.enum';
-import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+} from '@module/policy/enums/policy.enum';
+import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from 'src/modules/auth/decorators/auth.jwt.decorator';
-import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
-import { RoleService } from 'src/modules/role/services/role.service';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
-import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
-import { AuthService } from 'src/modules/auth/services/auth.service';
+} from '@module/auth/decorators/auth.jwt.decorator';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RoleService } from '@module/role/services/role.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from '@module/role/enums/role.status-code.enum';
+import { IAuthPassword } from '@module/auth/interfaces/auth.interface';
+import { AuthService } from '@module/auth/services/auth.service';
 import { ClientSession } from 'mongoose';
-import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
-import { CountryService } from 'src/modules/country/services/country.service';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@module/country/enums/country.status-code.enum';
+import { CountryService } from '@module/country/services/country.service';
 import {
     UserAdminCreateDoc,
     UserAdminGetDoc,
     UserAdminListDoc,
     UserAdminUpdateDoc,
     UserAdminUpdateStatusDoc,
-} from 'src/modules/user/docs/user.admin.doc';
+} from '@module/user/docs/user.admin.doc';
 import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
-} from 'src/modules/user/enums/user.enum';
-import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
-import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
-import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
-import { UserService } from 'src/modules/user/services/user.service';
+} from '@module/user/enums/user.enum';
+import { UserListResponseDto } from '@module/user/dtos/response/user.list.response.dto';
+import { UserParsePipe } from '@module/user/pipes/user.parse.pipe';
+import { UserProfileResponseDto } from '@module/user/dtos/response/user.profile.response.dto';
+import { UserService } from '@module/user/services/user.service';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_STATUS,
-} from 'src/modules/user/constants/user.list.constant';
-import {
-    IUserDoc,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
-import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
-import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
+} from '@module/user/constants/user.list.constant';
+import { IUserDoc, IUserEntity } from '@module/user/interfaces/user.interface';
+import { UserDoc } from '@module/user/repository/entities/user.entity';
+import { UserCreateRequestDto } from '@module/user/dtos/request/user.create.request.dto';
+import { ENUM_USER_STATUS_CODE_ERROR } from '@module/user/enums/user.status-code.enum';
+import { UserNotSelfPipe } from '@module/user/pipes/user.not-self.pipe';
+import { UserUpdateRequestDto } from '@module/user/dtos/request/user.update.request.dto';
+import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
+import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
+import { ENUM_SEND_EMAIL_PROCESS } from '@module/email/enums/email.enum';
 import { Queue } from 'bullmq';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
-import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
-import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
-import { ActivityService } from 'src/modules/activity/services/activity.service';
-import { MessageService } from 'src/common/message/services/message.service';
+import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
+import { PasswordHistoryService } from '@module/password-history/services/password-history.service';
+import { ENUM_PASSWORD_HISTORY_TYPE } from '@module/password-history/enums/password-history.enum';
+import { ActivityService } from '@module/activity/services/activity.service';
+import { MessageService } from '@common/message/services/message.service';
 import { InjectQueue } from '@nestjs/bullmq';
-import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
-import { VerificationService } from 'src/modules/verification/services/verification.service';
-import { UserProtected } from 'src/modules/user/decorators/user.decorator';
-import { DatabaseService } from 'src/common/database/services/database.service';
+import { UserUpdateStatusRequestDto } from '@module/user/dtos/request/user.update-status.request.dto';
+import { VerificationService } from '@module/verification/services/verification.service';
+import { UserProtected } from '@module/user/decorators/user.decorator';
+import { DatabaseService } from '@common/database/services/database.service';
 
 @ApiTags('modules.admin.user')
 @Controller({

@@ -1,7 +1,7 @@
 import {
     IHelperEmailValidation,
     IHelperStringPasswordOptions,
-} from 'src/common/helper/interfaces/helper.interface';
+} from '@common/helper/interfaces/helper.interface';
 
 export interface IHelperStringService {
     randomReference(length: number): string;

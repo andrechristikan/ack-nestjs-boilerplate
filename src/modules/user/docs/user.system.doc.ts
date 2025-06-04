@@ -5,23 +5,23 @@ import {
     DocRequest,
     DocResponse,
     DocResponsePaging,
-} from 'src/common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
+} from '@common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import {
     UserDocQueryCountry,
     UserDocQueryRole,
     UserDocQueryStatus,
-} from 'src/modules/user/constants/user.doc.constant';
-import { UserCheckMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.check-mobile-number.dto';
+} from '@module/user/constants/user.doc.constant';
+import { UserCheckMobileNumberRequestDto } from '@module/user/dtos/request/user.check-mobile-number.dto';
 import {
     UserCheckEmailRequestDto,
     UserCheckUsernameRequestDto,
-} from 'src/modules/user/dtos/request/user.check.request.dto';
+} from '@module/user/dtos/request/user.check.request.dto';
 import {
     UserCheckResponseDto,
     UserCheckUsernameResponseDto,
-} from 'src/modules/user/dtos/response/user.check.response.dto';
-import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
+} from '@module/user/dtos/response/user.check.response.dto';
+import { UserShortResponseDto } from '@module/user/dtos/response/user.short.response.dto';
 
 export function UserSystemListDoc(): MethodDecorator {
     return applyDecorators(

@@ -22,13 +22,15 @@
         "strictNullChecks": false,
         "noImplicitAny": false,
         "paths": {
-            "@app/*": ["src/*"],
+            "@app/*": ["src/app/*"],
             "@common/*": ["src/common/*"],
-            "@config/*": ["src/config/*"],
-            "@modules/*": ["src/modules/*"],
+            "@config/*": ["src/configs/*"],
+            "@config": ["src/configs/index.ts"],
+            "@module/*": ["src/modules/*"],
             "@router/*": ["src/router/*"],
             "@worker/*": ["src/worker/*"],
             "@migration/*": ["src/migration/*"],
+            "@template/*": ["src/templates/*"],
             "@test/*": ["test/*"]
         }
     },

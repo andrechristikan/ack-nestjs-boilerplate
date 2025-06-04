@@ -4,14 +4,14 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
-import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
-import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
+} from '@common/database/interfaces/database.interface';
+import { CountryCreateRequestDto } from '@module/country/dtos/request/country.create.request.dto';
+import { CountryListResponseDto } from '@module/country/dtos/response/country.list.response.dto';
+import { CountryShortResponseDto } from '@module/country/dtos/response/country.short.response.dto';
 import {
     CountryDoc,
     CountryEntity,
-} from 'src/modules/country/repository/entities/country.entity';
+} from '@module/country/repository/entities/country.entity';
 
 export interface ICountryService {
     findAll(

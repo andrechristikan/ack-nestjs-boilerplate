@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { ENUM_SETTING_UNIT } from 'src/modules/setting/enums/setting.enum';
-import { SettingCoreResponseDto } from 'src/modules/setting/dtos/response/setting.core.response.dto';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
-import { SettingLanguageResponseDto } from 'src/modules/setting/dtos/response/setting.language.response.dto';
-import { SettingTimezoneResponseDto } from 'src/modules/setting/dtos/response/setting.timezone.response.dto';
-import { FILE_SIZE_IN_BYTES } from 'src/common/file/constants/file.constant';
-import { SettingFileResponseDto } from 'src/modules/setting/dtos/response/setting.file.response.dto';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
-import { SettingAuthResponseDto } from 'src/modules/setting/dtos/response/setting.auth.response.dto';
-import { SettingMiddlewareResponseDto } from 'src/modules/setting/dtos/response/setting.middleware.response.dto';
-import { SettingUserResponseDto } from 'src/modules/setting/dtos/response/setting.user.response.dto';
-import { ISettingService } from 'src/modules/setting/interfaces/setting.service.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { ENUM_SETTING_UNIT } from '@module/setting/enums/setting.enum';
+import { SettingCoreResponseDto } from '@module/setting/dtos/response/setting.core.response.dto';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { SettingLanguageResponseDto } from '@module/setting/dtos/response/setting.language.response.dto';
+import { SettingTimezoneResponseDto } from '@module/setting/dtos/response/setting.timezone.response.dto';
+import { FILE_SIZE_IN_BYTES } from '@common/file/constants/file.constant';
+import { SettingFileResponseDto } from '@module/setting/dtos/response/setting.file.response.dto';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { SettingAuthResponseDto } from '@module/setting/dtos/response/setting.auth.response.dto';
+import { SettingMiddlewareResponseDto } from '@module/setting/dtos/response/setting.middleware.response.dto';
+import { SettingUserResponseDto } from '@module/setting/dtos/response/setting.user.response.dto';
+import { ISettingService } from '@module/setting/interfaces/setting.service.interface';
 @Injectable()
 export class SettingService implements ISettingService {
     constructor(

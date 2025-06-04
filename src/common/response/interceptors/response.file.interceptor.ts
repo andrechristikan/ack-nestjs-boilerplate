@@ -10,12 +10,12 @@ import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { Reflector } from '@nestjs/core';
-import { RESPONSE_FILE_EXCEL_TYPE_META_KEY } from 'src/common/response/constants/response.constant';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { IResponseFileExcel } from 'src/common/response/interfaces/response.interface';
-import { FileService } from 'src/common/file/services/file.service';
-import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/enums/helper.enum';
-import { ENUM_FILE_MIME } from 'src/common/file/enums/file.enum';
+import { RESPONSE_FILE_EXCEL_TYPE_META_KEY } from '@common/response/constants/response.constant';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { IResponseFileExcel } from '@common/response/interfaces/response.interface';
+import { FileService } from '@common/file/services/file.service';
+import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
+import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
 
 @Injectable()
 export class ResponseFileExcelInterceptor

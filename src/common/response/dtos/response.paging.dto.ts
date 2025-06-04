@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, PickType } from '@nestjs/swagger';
-import { PAGINATION_DEFAULT_AVAILABLE_ORDER_DIRECTION } from 'src/common/pagination/constants/pagination.constant';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
+import { PAGINATION_DEFAULT_AVAILABLE_ORDER_DIRECTION } from '@common/pagination/constants/pagination.constant';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import {
     ResponseDto,
     ResponseMetadataDto,
-} from 'src/common/response/dtos/response.dto';
+} from '@common/response/dtos/response.dto';
 
 export class ResponsePagingMetadataPaginationRequestDto {
     @ApiProperty({

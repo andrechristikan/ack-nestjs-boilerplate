@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
-import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from '@module/role/enums/role.status-code.enum';
+import { RoleDoc } from '@module/role/repository/entities/role.entity';
 
 @Injectable()
 export class RoleIsActivePipe implements PipeTransform {

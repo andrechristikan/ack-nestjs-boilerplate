@@ -4,10 +4,10 @@ import {
     DocAuth,
     DocRequest,
     DocResponse,
-} from 'src/common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
-import { AuthChangePasswordRequestDto } from 'src/modules/auth/dtos/request/auth.change-password.request.dto';
-import { AuthRefreshResponseDto } from 'src/modules/auth/dtos/response/auth.refresh.response.dto';
+} from '@common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { AuthChangePasswordRequestDto } from '@module/auth/dtos/request/auth.change-password.request.dto';
+import { AuthRefreshResponseDto } from '@module/auth/dtos/response/auth.refresh.response.dto';
 
 export function AuthSharedRefreshDoc(): MethodDecorator {
     return applyDecorators(

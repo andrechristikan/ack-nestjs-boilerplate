@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
 import {
     SessionEntity,
     SessionSchema,
-} from 'src/modules/session/repository/entities/session.entity';
-import { SessionRepository } from 'src/modules/session/repository/repositories/session.repository';
+} from '@module/session/repository/entities/session.entity';
+import { SessionRepository } from '@module/session/repository/repositories/session.repository';
 
 @Module({
     providers: [SessionRepository],

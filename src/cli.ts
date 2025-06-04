@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { CommandModule, CommandService } from 'nestjs-command';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
-import { MigrationModule } from 'src/migration/migration.module';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { MigrationModule } from '@migration/migration.module';
 
 async function bootstrap() {
     process.env.APP_ENV = ENUM_APP_ENVIRONMENT.MIGRATION;

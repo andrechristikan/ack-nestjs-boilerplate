@@ -8,24 +8,24 @@ import {
     MongooseHealthIndicator,
 } from '@nestjs/terminus';
 import { Connection } from 'mongoose';
-import { ApiKeySystemProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { InjectDatabaseConnection } from 'src/common/database/decorators/database.decorator';
-import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { ApiKeySystemProtected } from '@module/api-key/decorators/api-key.decorator';
+import { InjectDatabaseConnection } from '@common/database/decorators/database.decorator';
+import { Response } from '@common/response/decorators/response.decorator';
+import { IResponse } from '@common/response/interfaces/response.interface';
 import {
     HealthAwsS3PrivateBucketIndicator,
     HealthAwsS3PublicBucketIndicator,
-} from 'src/modules/health/indicators/health.aws-s3.indicator';
-import { HealthAwsResponseDto } from 'src/modules/health/dtos/response/health.aws.response.dto';
-import { HealthDatabaseResponseDto } from 'src/modules/health/dtos/response/health.database.response.dto';
+} from '@module/health/indicators/health.aws-s3.indicator';
+import { HealthAwsResponseDto } from '@module/health/dtos/response/health.aws.response.dto';
+import { HealthDatabaseResponseDto } from '@module/health/dtos/response/health.database.response.dto';
 import {
     HealthSystemCheckAwsDoc,
     HealthSystemCheckDatabaseDoc,
     HealthSystemCheckInstanceDoc,
-} from 'src/modules/health/docs/health.system.doc';
-import { HealthInstanceResponseDto } from 'src/modules/health/dtos/response/health.instance.response.dto';
-import { HealthAwsSESIndicator } from 'src/modules/health/indicators/health.aws-ses.indicator';
-import { HealthAwsPinpointIndicator } from 'src/modules/health/indicators/health.aws-pinpoint.indicator';
+} from '@module/health/docs/health.system.doc';
+import { HealthInstanceResponseDto } from '@module/health/dtos/response/health.instance.response.dto';
+import { HealthAwsSESIndicator } from '@module/health/indicators/health.aws-ses.indicator';
+import { HealthAwsPinpointIndicator } from '@module/health/indicators/health.aws-pinpoint.indicator';
 
 @ApiTags('modules.system.health')
 @Controller({

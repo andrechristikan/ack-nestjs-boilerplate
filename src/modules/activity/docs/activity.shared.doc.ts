@@ -3,8 +3,8 @@ import {
     Doc,
     DocAuth,
     DocResponsePaging,
-} from 'src/common/doc/decorators/doc.decorator';
-import { ActivityListResponseDto } from 'src/modules/activity/dtos/response/activity.list.response.dto';
+} from '@common/doc/decorators/doc.decorator';
+import { ActivityListResponseDto } from '@module/activity/dtos/response/activity.list.response.dto';
 
 export function ActivitySharedListDoc(): MethodDecorator {
     return applyDecorators(

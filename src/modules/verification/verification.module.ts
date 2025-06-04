@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { VerificationRepositoryModule } from 'src/modules/verification/repository/verification.repository.module';
-import { VerificationService } from 'src/modules/verification/services/verification.service';
+import { VerificationRepositoryModule } from '@module/verification/repository/verification.repository.module';
+import { VerificationService } from '@module/verification/services/verification.service';
 
 @Module({
     imports: [VerificationRepositoryModule],

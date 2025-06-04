@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { writeFileSync } from 'fs';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 
 export default async function (app: NestApplication): Promise<void> {
     const configService = app.get(ConfigService);

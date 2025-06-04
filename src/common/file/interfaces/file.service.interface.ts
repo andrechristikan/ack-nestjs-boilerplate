@@ -1,4 +1,4 @@
-import { IFileRows } from 'src/common/file/interfaces/file.interface';
+import { IFileRows } from '@common/file/interfaces/file.interface';
 
 export interface IFileService {
     writeCsv<T = Record<string, string | number | Date>>(

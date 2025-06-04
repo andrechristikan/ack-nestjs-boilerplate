@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
-import { DatabaseUUIDDto } from 'src/common/database/dtos/database.uuid.dto';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
+import { DatabaseUUIDDto } from '@common/database/dtos/database.uuid.dto';
+import { ENUM_API_KEY_TYPE } from '@module/api-key/enums/api-key.enum';
 
 export class ApiKeyGetResponseDto extends DatabaseUUIDDto {
     @ApiHideProperty()

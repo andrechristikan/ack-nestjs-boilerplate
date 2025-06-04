@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { SettingService } from 'src/modules/setting/services/setting.service';
+import { SettingService } from '@module/setting/services/setting.service';
 
 @Module({
     imports: [],

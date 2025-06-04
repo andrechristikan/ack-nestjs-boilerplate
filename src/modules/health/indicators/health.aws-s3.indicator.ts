@@ -3,8 +3,8 @@ import {
     HealthIndicatorResult,
     HealthIndicatorService,
 } from '@nestjs/terminus';
-import { ENUM_AWS_S3_ACCESSIBILITY } from 'src/modules/aws/enums/aws.enum';
-import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
+import { ENUM_AWS_S3_ACCESSIBILITY } from '@module/aws/enums/aws.enum';
+import { AwsS3Service } from '@module/aws/services/aws.s3.service';
 
 @Injectable()
 export class HealthAwsS3PublicBucketIndicator {

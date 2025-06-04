@@ -1,5 +1,5 @@
 import { DynamicModule, Global, Module } from '@nestjs/common';
-import { PolicyAbilityFactory } from 'src/modules/policy/factories/policy.factory';
+import { PolicyAbilityFactory } from '@module/policy/factories/policy.factory';
 
 @Global()
 @Module({})

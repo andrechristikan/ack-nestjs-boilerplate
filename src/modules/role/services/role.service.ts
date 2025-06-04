@@ -1,8 +1,8 @@
-import { DatabaseService } from '@app/common/database/services/database.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
-import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
+import { DatabaseHelperQueryContain } from '@common/database/decorators/database.decorator';
 import {
     IDatabaseCreateManyOptions,
     IDatabaseCreateOptions,
@@ -13,19 +13,19 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
-import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
-import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
-import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';
-import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
-import { RoleShortResponseDto } from 'src/modules/role/dtos/response/role.short.response.dto';
-import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
+} from '@common/database/interfaces/database.interface';
+import { ENUM_POLICY_ROLE_TYPE } from '@module/policy/enums/policy.enum';
+import { RoleCreateRequestDto } from '@module/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestDto } from '@module/role/dtos/request/role.update.request.dto';
+import { RoleGetResponseDto } from '@module/role/dtos/response/role.get.response.dto';
+import { RoleListResponseDto } from '@module/role/dtos/response/role.list.response.dto';
+import { RoleShortResponseDto } from '@module/role/dtos/response/role.short.response.dto';
+import { IRoleService } from '@module/role/interfaces/role.service.interface';
 import {
     RoleDoc,
     RoleEntity,
-} from 'src/modules/role/repository/entities/role.entity';
-import { RoleRepository } from 'src/modules/role/repository/repositories/role.repository';
+} from '@module/role/repository/entities/role.entity';
+import { RoleRepository } from '@module/role/repository/repositories/role.repository';
 
 @Injectable()
 export class RoleService implements IRoleService {

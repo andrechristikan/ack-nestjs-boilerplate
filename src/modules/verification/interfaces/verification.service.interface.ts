@@ -6,10 +6,10 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
     IDatabaseUpdateManyOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { VerificationResponse } from 'src/modules/verification/dtos/response/verification.response';
-import { VerificationDoc } from 'src/modules/verification/repository/entity/verification.entity';
+} from '@common/database/interfaces/database.interface';
+import { UserDoc } from '@module/user/repository/entities/user.entity';
+import { VerificationResponse } from '@module/verification/dtos/response/verification.response';
+import { VerificationDoc } from '@module/verification/repository/entity/verification.entity';
 
 export interface IVerificationService {
     findAll(

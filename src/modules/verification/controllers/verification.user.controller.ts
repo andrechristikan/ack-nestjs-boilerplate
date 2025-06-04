@@ -1,4 +1,4 @@
-import { ENUM_SEND_SMS_PROCESS } from '@app/modules/sms/enums/sms.enum';
+import { ENUM_SEND_SMS_PROCESS } from '@module/sms/enums/sms.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
     BadRequestException,
@@ -14,23 +14,23 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { Queue } from 'bullmq';
 import { ClientSession } from 'mongoose';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { DatabaseService } from 'src/common/database/services/database.service';
-import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
+import { DatabaseService } from '@common/database/services/database.service';
+import { Response } from '@common/response/decorators/response.decorator';
+import { IResponse } from '@common/response/interfaces/response.interface';
+import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from 'src/modules/auth/decorators/auth.jwt.decorator';
-import { IAuthJwtAccessTokenPayload } from 'src/modules/auth/interfaces/auth.interface';
-import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
-import { PolicyRoleProtected } from 'src/modules/policy/decorators/policy.decorator';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
-import { UserProtected } from 'src/modules/user/decorators/user.decorator';
-import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserService } from 'src/modules/user/services/user.service';
+} from '@module/auth/decorators/auth.jwt.decorator';
+import { IAuthJwtAccessTokenPayload } from '@module/auth/interfaces/auth.interface';
+import { ENUM_SEND_EMAIL_PROCESS } from '@module/email/enums/email.enum';
+import { PolicyRoleProtected } from '@module/policy/decorators/policy.decorator';
+import { ENUM_POLICY_ROLE_TYPE } from '@module/policy/enums/policy.enum';
+import { UserProtected } from '@module/user/decorators/user.decorator';
+import { UserParsePipe } from '@module/user/pipes/user.parse.pipe';
+import { UserDoc } from '@module/user/repository/entities/user.entity';
+import { UserService } from '@module/user/services/user.service';
 import {
     VerificationUserGetEmailDoc,
     VerificationUserGetMobileNumberDoc,
@@ -38,17 +38,17 @@ import {
     VerificationUserResendMobileNumberDoc,
     VerificationUserVerifyEmailDoc,
     VerificationUserVerifyMobileNumberDoc,
-} from 'src/modules/verification/docs/verification.user.doc';
-import { VerificationVerifyRequestDto } from 'src/modules/verification/dtos/request/verification.verify.request.dto';
-import { VerificationResponse } from 'src/modules/verification/dtos/response/verification.response';
-import { ENUM_VERIFICATION_STATUS_CODE_ERROR } from 'src/modules/verification/enums/verification.status-code.constant';
+} from '@module/verification/docs/verification.user.doc';
+import { VerificationVerifyRequestDto } from '@module/verification/dtos/request/verification.verify.request.dto';
+import { VerificationResponse } from '@module/verification/dtos/response/verification.response';
+import { ENUM_VERIFICATION_STATUS_CODE_ERROR } from '@module/verification/enums/verification.status-code.constant';
 import {
     VerificationUserEmailNotVerifiedYetPipe,
     VerificationUserMobileNumberNotVerifiedYetPipe,
-} from 'src/modules/verification/pipes/verification.user-not-verified-yet.pipe';
-import { VerificationDoc } from 'src/modules/verification/repository/entity/verification.entity';
-import { VerificationService } from 'src/modules/verification/services/verification.service';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+} from '@module/verification/pipes/verification.user-not-verified-yet.pipe';
+import { VerificationDoc } from '@module/verification/repository/entity/verification.entity';
+import { VerificationService } from '@module/verification/services/verification.service';
+import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
 
 @ApiTags('modules.user.verification')
 @Controller({

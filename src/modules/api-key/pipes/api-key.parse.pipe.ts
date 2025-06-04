@@ -1,7 +1,7 @@
 import { PipeTransform, Injectable, NotFoundException } from '@nestjs/common';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
-import { ApiKeyDoc } from 'src/modules/api-key/repository/entities/api-key.entity';
-import { ApiKeyService } from 'src/modules/api-key/services/api-key.service';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@module/api-key/enums/api-key.status-code.enum';
+import { ApiKeyDoc } from '@module/api-key/repository/entities/api-key.entity';
+import { ApiKeyService } from '@module/api-key/services/api-key.service';
 
 @Injectable()
 export class ApiKeyParsePipe implements PipeTransform {

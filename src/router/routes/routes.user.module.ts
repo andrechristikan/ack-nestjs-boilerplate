@@ -1,15 +1,15 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ActivityModule } from 'src/modules/activity/activity.module';
-import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
-import { AuthModule } from 'src/modules/auth/auth.module';
-import { CountryModule } from 'src/modules/country/country.module';
-import { SessionModule } from 'src/modules/session/session.module';
-import { UserUserController } from 'src/modules/user/controllers/user.user.controller';
-import { UserModule } from 'src/modules/user/user.module';
-import { VerificationUserController } from 'src/modules/verification/controllers/verification.user.controller';
-import { VerificationModule } from 'src/modules/verification/verification.module';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+import { ActivityModule } from '@module/activity/activity.module';
+import { ApiKeyModule } from '@module/api-key/api-key.module';
+import { AuthModule } from '@module/auth/auth.module';
+import { CountryModule } from '@module/country/country.module';
+import { SessionModule } from '@module/session/session.module';
+import { UserUserController } from '@module/user/controllers/user.user.controller';
+import { UserModule } from '@module/user/user.module';
+import { VerificationUserController } from '@module/verification/controllers/verification.user.controller';
+import { VerificationModule } from '@module/verification/verification.module';
+import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
 
 @Module({
     controllers: [UserUserController, VerificationUserController],

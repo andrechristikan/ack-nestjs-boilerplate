@@ -1,15 +1,15 @@
-import { DatabaseUUIDEntityBase } from 'src/common/database/bases/database.uuid.entity';
+import { DatabaseUUIDEntityBase } from '@common/database/bases/database.uuid.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
-} from 'src/common/database/decorators/database.decorator';
-import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
+} from '@common/database/decorators/database.decorator';
+import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
+import { ENUM_POLICY_ROLE_TYPE } from '@module/policy/enums/policy.enum';
 import {
     RolePermissionEntity,
     RolePermissionSchema,
-} from 'src/modules/role/repository/entities/role.permission.entity';
+} from '@module/role/repository/entities/role.permission.entity';
 
 export const RoleTableName = 'Roles';
 

@@ -5,9 +5,9 @@ import {
     DocGuard,
     DocRequest,
     DocResponsePaging,
-} from 'src/common/doc/decorators/doc.decorator';
-import { PasswordHistoryListResponseDto } from 'src/modules/password-history/dtos/response/password-history.list.response.dto';
-import { UserDocParamsId } from 'src/modules/user/constants/user.doc.constant';
+} from '@common/doc/decorators/doc.decorator';
+import { PasswordHistoryListResponseDto } from '@module/password-history/dtos/response/password-history.list.response.dto';
+import { UserDocParamsId } from '@module/user/constants/user.doc.constant';
 
 export function PasswordHistoryAdminListDoc(): MethodDecorator {
     return applyDecorators(

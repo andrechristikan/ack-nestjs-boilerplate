@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { RouterModule } from 'src/router/router.module';
-import { CommonModule } from 'src/common/common.module';
-import { AppMiddlewareModule } from 'src/app/app.middleware.module';
-import { WorkerModule } from 'src/worker/worker.module';
+import { RouterModule } from '@router/router.module';
+import { CommonModule } from '@common/common.module';
+import { AppMiddlewareModule } from '@app/app.middleware.module';
+import { WorkerModule } from '@worker/worker.module';
 
 @Module({
     controllers: [],

@@ -1,6 +1,6 @@
 import { DynamicModule, Global, Module } from '@nestjs/common';
-import { DatabaseOptionService } from 'src/common/database/services/database.options.service';
-import { DatabaseService } from 'src/common/database/services/database.service';
+import { DatabaseOptionService } from '@common/database/services/database.options.service';
+import { DatabaseService } from '@common/database/services/database.service';
 
 @Module({
     providers: [DatabaseOptionService],

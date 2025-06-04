@@ -1,7 +1,7 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { CountryService } from 'src/modules/country/services/country.service';
-import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
+import { CountryService } from '@module/country/services/country.service';
+import { CountryCreateRequestDto } from '@module/country/dtos/request/country.create.request.dto';
 
 @Injectable()
 export class MigrationCountrySeed {

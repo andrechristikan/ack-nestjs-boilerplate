@@ -7,21 +7,21 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { ActivityCreateByAdminResponse } from 'src/modules/activity/dtos/request/activity.create-by-admin.response.dto';
-import { ActivityCreateResponse } from 'src/modules/activity/dtos/request/activity.create.response.dto';
-import { ActivityListResponseDto } from 'src/modules/activity/dtos/response/activity.list.response.dto';
+} from '@common/database/interfaces/database.interface';
+import { ActivityCreateByAdminResponse } from '@module/activity/dtos/request/activity.create-by-admin.response.dto';
+import { ActivityCreateResponse } from '@module/activity/dtos/request/activity.create.response.dto';
+import { ActivityListResponseDto } from '@module/activity/dtos/response/activity.list.response.dto';
 import {
     IActivityDoc,
     IActivityEntity,
-} from 'src/modules/activity/interfaces/activity.interface';
-import { IActivityService } from 'src/modules/activity/interfaces/activity.service.interface';
+} from '@module/activity/interfaces/activity.interface';
+import { IActivityService } from '@module/activity/interfaces/activity.service.interface';
 import {
     ActivityDoc,
     ActivityEntity,
-} from 'src/modules/activity/repository/entities/activity.entity';
-import { ActivityRepository } from 'src/modules/activity/repository/repositories/activity.repository';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+} from '@module/activity/repository/entities/activity.entity';
+import { ActivityRepository } from '@module/activity/repository/repositories/activity.repository';
+import { UserDoc } from '@module/user/repository/entities/user.entity';
 
 @Injectable()
 export class ActivityService implements IActivityService {

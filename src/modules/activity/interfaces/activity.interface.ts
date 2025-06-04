@@ -1,11 +1,11 @@
 import {
     ActivityDoc,
     ActivityEntity,
-} from 'src/modules/activity/repository/entities/activity.entity';
+} from '@module/activity/repository/entities/activity.entity';
 import {
     UserDoc,
     UserEntity,
-} from 'src/modules/user/repository/entities/user.entity';
+} from '@module/user/repository/entities/user.entity';
 
 export interface IActivityEntity extends Omit<ActivityEntity, 'by'> {
     by: UserEntity;

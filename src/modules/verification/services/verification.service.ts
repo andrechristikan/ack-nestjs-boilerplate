@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { VerificationRepository } from 'src/modules/verification/repository/repositories/verification.repository';
+import { VerificationRepository } from '@module/verification/repository/repositories/verification.repository';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -7,23 +7,23 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
     IDatabaseUpdateManyOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+} from '@common/database/interfaces/database.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     VerificationDoc,
     VerificationEntity,
-} from 'src/modules/verification/repository/entity/verification.entity';
+} from '@module/verification/repository/entity/verification.entity';
 import { ConfigService } from '@nestjs/config';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { IVerificationService } from 'src/modules/verification/interfaces/verification.service.interface';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { IVerificationService } from '@module/verification/interfaces/verification.service.interface';
 import { Duration } from 'luxon';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { ENUM_VERIFICATION_TYPE } from 'src/modules/verification/enums/verification.enum.constant';
+import { UserDoc } from '@module/user/repository/entities/user.entity';
+import { ENUM_VERIFICATION_TYPE } from '@module/verification/enums/verification.enum.constant';
 import { DeleteResult, UpdateResult } from 'mongoose';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
-import { VerificationResponse } from 'src/modules/verification/dtos/response/verification.response';
-import { DatabaseService } from '@app/common/database/services/database.service';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { VerificationResponse } from '@module/verification/dtos/response/verification.response';
+import { DatabaseService } from '@common/database/services/database.service';
 
 @Injectable()
 export class VerificationService implements IVerificationService {

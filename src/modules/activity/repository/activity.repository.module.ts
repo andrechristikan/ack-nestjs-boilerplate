@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
 import {
     ActivityEntity,
     ActivitySchema,
-} from 'src/modules/activity/repository/entities/activity.entity';
-import { ActivityRepository } from 'src/modules/activity/repository/repositories/activity.repository';
+} from '@module/activity/repository/entities/activity.entity';
+import { ActivityRepository } from '@module/activity/repository/repositories/activity.repository';
 
 @Module({
     providers: [ActivityRepository],

@@ -4,11 +4,11 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/enums/auth.status-code.enum';
-import { AuthService } from 'src/modules/auth/services/auth.service';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from '@module/auth/enums/auth.status-code.enum';
+import { AuthService } from '@module/auth/services/auth.service';
 import { ConfigService } from '@nestjs/config';
-import { IAuthSocialGooglePayload } from 'src/modules/auth/interfaces/auth.interface';
+import { IAuthSocialGooglePayload } from '@module/auth/interfaces/auth.interface';
 
 @Injectable()
 export class AuthSocialGoogleGuard implements CanActivate {

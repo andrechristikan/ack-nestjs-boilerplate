@@ -9,34 +9,34 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from 'src/modules/auth/decorators/auth.jwt.decorator';
-import { PolicyRoleProtected } from 'src/modules/policy/decorators/policy.decorator';
-import { Response } from 'src/common/response/decorators/response.decorator';
-import { UserService } from 'src/modules/user/services/user.service';
+} from '@module/auth/decorators/auth.jwt.decorator';
+import { PolicyRoleProtected } from '@module/policy/decorators/policy.decorator';
+import { Response } from '@common/response/decorators/response.decorator';
+import { UserService } from '@module/user/services/user.service';
 import {
     UserUserDeleteDoc,
     UserUserUpdateMobileNumberDoc,
     UserUserUpdateUsernameDoc,
-} from 'src/modules/user/docs/user.user.doc';
-import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
-import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
-import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+} from '@module/user/docs/user.user.doc';
+import { UserUpdateMobileNumberRequestDto } from '@module/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserUpdateClaimUsernameRequestDto } from '@module/user/dtos/request/user.update-claim-username.dto';
+import { ENUM_USER_STATUS_CODE_ERROR } from '@module/user/enums/user.status-code.enum';
+import { UserParsePipe } from '@module/user/pipes/user.parse.pipe';
+import { UserDoc } from '@module/user/repository/entities/user.entity';
 import { ClientSession } from 'mongoose';
-import { ActivityService } from 'src/modules/activity/services/activity.service';
-import { MessageService } from 'src/common/message/services/message.service';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { SessionService } from 'src/modules/session/services/session.service';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
-import { CountryService } from 'src/modules/country/services/country.service';
-import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
-import { UserProtected } from 'src/modules/user/decorators/user.decorator';
-import { DatabaseService } from 'src/common/database/services/database.service';
+import { ActivityService } from '@module/activity/services/activity.service';
+import { MessageService } from '@common/message/services/message.service';
+import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
+import { SessionService } from '@module/session/services/session.service';
+import { ENUM_POLICY_ROLE_TYPE } from '@module/policy/enums/policy.enum';
+import { CountryService } from '@module/country/services/country.service';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@module/country/enums/country.status-code.enum';
+import { UserProtected } from '@module/user/decorators/user.decorator';
+import { DatabaseService } from '@common/database/services/database.service';
 
 @ApiTags('modules.user.user')
 @Controller({

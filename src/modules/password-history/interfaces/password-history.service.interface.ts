@@ -4,16 +4,16 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { PasswordHistoryCreateByAdminRequestDto } from 'src/modules/password-history/dtos/request/password-history.create-by-admin.request.dto';
-import { PasswordHistoryCreateRequestDto } from 'src/modules/password-history/dtos/request/password-history.create.request.dto';
-import { PasswordHistoryListResponseDto } from 'src/modules/password-history/dtos/response/password-history.list.response.dto';
+} from '@common/database/interfaces/database.interface';
+import { PasswordHistoryCreateByAdminRequestDto } from '@module/password-history/dtos/request/password-history.create-by-admin.request.dto';
+import { PasswordHistoryCreateRequestDto } from '@module/password-history/dtos/request/password-history.create.request.dto';
+import { PasswordHistoryListResponseDto } from '@module/password-history/dtos/response/password-history.list.response.dto';
 import {
     IPasswordHistoryDoc,
     IPasswordHistoryEntity,
-} from 'src/modules/password-history/interfaces/password-history.interface';
-import { PasswordHistoryDoc } from 'src/modules/password-history/repository/entities/password-history.entity';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+} from '@module/password-history/interfaces/password-history.interface';
+import { PasswordHistoryDoc } from '@module/password-history/repository/entities/password-history.entity';
+import { UserDoc } from '@module/user/repository/entities/user.entity';
 
 export interface IPasswordHistoryService {
     findAll(

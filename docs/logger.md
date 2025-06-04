@@ -54,7 +54,7 @@ SENTRY_DSN=https://your-sentry-dsn
 
 ### Debug Configuration
 
-The logger's behavior is defined in `src/configs/debug.config.ts`:
+The logger's behavior is defined in `'@configdebug.config.ts`:
 
 ```typescript
 export default registerAs(

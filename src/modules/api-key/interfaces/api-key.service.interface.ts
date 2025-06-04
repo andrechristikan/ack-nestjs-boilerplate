@@ -6,21 +6,21 @@ import {
     IDatabaseOptions,
     IDatabaseSaveOptions,
     IDatabaseUpdateManyOptions,
-} from 'src/common/database/interfaces/database.interface';
+} from '@common/database/interfaces/database.interface';
 import {
     ApiKeyCreateRawRequestDto,
     ApiKeyCreateRequestDto,
-} from 'src/modules/api-key/dtos/request/api-key.create.request.dto';
-import { ApiKeyUpdateDateRequestDto } from 'src/modules/api-key/dtos/request/api-key.update-date.request.dto';
-import { ApiKeyUpdateRequestDto } from 'src/modules/api-key/dtos/request/api-key.update.request.dto';
-import { ApiKeyCreateResponseDto } from 'src/modules/api-key/dtos/response/api-key.create.dto';
-import { ApiKeyGetResponseDto } from 'src/modules/api-key/dtos/response/api-key.get.response.dto';
-import { ApiKeyListResponseDto } from 'src/modules/api-key/dtos/response/api-key.list.response.dto';
-import { ApiKeyResetResponseDto } from 'src/modules/api-key/dtos/response/api-key.reset.dto';
+} from '@module/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyUpdateDateRequestDto } from '@module/api-key/dtos/request/api-key.update-date.request.dto';
+import { ApiKeyUpdateRequestDto } from '@module/api-key/dtos/request/api-key.update.request.dto';
+import { ApiKeyCreateResponseDto } from '@module/api-key/dtos/response/api-key.create.dto';
+import { ApiKeyGetResponseDto } from '@module/api-key/dtos/response/api-key.get.response.dto';
+import { ApiKeyListResponseDto } from '@module/api-key/dtos/response/api-key.list.response.dto';
+import { ApiKeyResetResponseDto } from '@module/api-key/dtos/response/api-key.reset.dto';
 import {
     ApiKeyDoc,
     ApiKeyEntity,
-} from 'src/modules/api-key/repository/entities/api-key.entity';
+} from '@module/api-key/repository/entities/api-key.entity';
 
 export interface IApiKeyService {
     findAll(

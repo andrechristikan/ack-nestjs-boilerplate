@@ -4,9 +4,9 @@ import {
     DocAuth,
     DocRequest,
     DocResponsePaging,
-} from 'src/common/doc/decorators/doc.decorator';
-import { RoleDocQueryType } from 'src/modules/role/constants/role.doc.constant';
-import { RoleShortResponseDto } from 'src/modules/role/dtos/response/role.short.response.dto';
+} from '@common/doc/decorators/doc.decorator';
+import { RoleDocQueryType } from '@module/role/constants/role.doc.constant';
+import { RoleShortResponseDto } from '@module/role/dtos/response/role.short.response.dto';
 
 export function RoleSystemListDoc(): MethodDecorator {
     return applyDecorators(

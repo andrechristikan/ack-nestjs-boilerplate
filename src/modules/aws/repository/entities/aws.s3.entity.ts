@@ -3,7 +3,7 @@ import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
-} from 'src/common/database/decorators/database.decorator';
+} from '@common/database/decorators/database.decorator';
 
 @DatabaseEntity({ timestamps: false, _id: false })
 export class AwsS3Entity {

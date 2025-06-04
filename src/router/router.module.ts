@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { RouterModule as NestJsRouterModule } from '@nestjs/core';
-import { RoutesUserModule } from 'src/router/routes/routes.user.module';
-import { RoutesPublicModule } from 'src/router/routes/routes.public.module';
-import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
-import { RoutesSystemModule } from 'src/router/routes/routes.system.module';
-import { RoutesSharedModule } from 'src/router/routes/routes.shared.module';
+import { RoutesUserModule } from '@router/routes/routes.user.module';
+import { RoutesPublicModule } from '@router/routes/routes.public.module';
+import { RoutesAdminModule } from '@router/routes/routes.admin.module';
+import { RoutesSystemModule } from '@router/routes/routes.system.module';
+import { RoutesSharedModule } from '@router/routes/routes.shared.module';
 
 @Module({
     providers: [],

@@ -1,23 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
-import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
+import { DatabaseHelperQueryContain } from '@common/database/decorators/database.decorator';
 import {
     IDatabaseCreateManyOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
-import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
-import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
-import { ICountryService } from 'src/modules/country/interfaces/country.service.interface';
+} from '@common/database/interfaces/database.interface';
+import { CountryCreateRequestDto } from '@module/country/dtos/request/country.create.request.dto';
+import { CountryListResponseDto } from '@module/country/dtos/response/country.list.response.dto';
+import { CountryShortResponseDto } from '@module/country/dtos/response/country.short.response.dto';
+import { ICountryService } from '@module/country/interfaces/country.service.interface';
 import {
     CountryDoc,
     CountryEntity,
-} from 'src/modules/country/repository/entities/country.entity';
-import { CountryRepository } from 'src/modules/country/repository/repositories/country.repository';
+} from '@module/country/repository/entities/country.entity';
+import { CountryRepository } from '@module/country/repository/repositories/country.repository';
 
 @Injectable()
 export class CountryService implements ICountryService {

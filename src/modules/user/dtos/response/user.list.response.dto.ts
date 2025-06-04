@@ -5,15 +5,15 @@ import {
     OmitType,
 } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
-import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
-import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
+import { CountryShortResponseDto } from '@module/country/dtos/response/country.short.response.dto';
+import { RoleListResponseDto } from '@module/role/dtos/response/role.list.response.dto';
 import {
     ENUM_USER_GENDER,
     ENUM_USER_SIGN_UP_FROM,
-} from 'src/modules/user/enums/user.enum';
-import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
-import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
-import { UserVerificationResponseDto } from 'src/modules/user/dtos/response/user.verification.response.dto';
+} from '@module/user/enums/user.enum';
+import { UserUpdateMobileNumberRequestDto } from '@module/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserGetResponseDto } from '@module/user/dtos/response/user.get.response.dto';
+import { UserVerificationResponseDto } from '@module/user/dtos/response/user.verification.response.dto';
 
 export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     'passwordExpired',

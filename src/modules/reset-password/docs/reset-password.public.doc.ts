@@ -4,13 +4,13 @@ import {
     DocAuth,
     DocRequest,
     DocResponse,
-} from 'src/common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
-import { ResetPasswordDocParamsToken } from 'src/modules/reset-password/constants/reset-password.doc.constant';
-import { ResetPasswordCreateRequestDto } from 'src/modules/reset-password/dtos/request/reset-password.create.request.dto';
-import { ResetPasswordResetRequestDto } from 'src/modules/reset-password/dtos/request/reset-password.reset.request.dto';
-import { ResetPasswordVerifyRequestDto } from 'src/modules/reset-password/dtos/request/reset-password.verify.request.dto';
-import { ResetPasswordCreteResponseDto } from 'src/modules/reset-password/dtos/response/reset-password.create.response.dto';
+} from '@common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { ResetPasswordDocParamsToken } from '@module/reset-password/constants/reset-password.doc.constant';
+import { ResetPasswordCreateRequestDto } from '@module/reset-password/dtos/request/reset-password.create.request.dto';
+import { ResetPasswordResetRequestDto } from '@module/reset-password/dtos/request/reset-password.reset.request.dto';
+import { ResetPasswordVerifyRequestDto } from '@module/reset-password/dtos/request/reset-password.verify.request.dto';
+import { ResetPasswordCreteResponseDto } from '@module/reset-password/dtos/response/reset-password.create.response.dto';
 
 export function ResetPasswordPublicRequestDoc(): MethodDecorator {
     return applyDecorators(
