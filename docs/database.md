@@ -21,9 +21,13 @@ The database functionality is organized into several key components:
     - [DatabaseOptionService](#databaseoptionservice)
     - [DatabaseService](#databaseservice)
   - [Repository](#repository)
-    - [Base Repository Class](#base-repository-class)
+    - [Base Repository Classes](#base-repository-classes)
+      - [Database UUID Repository Base](#database-uuid-repository-base)
+      - [Database Object ID Repository Base](#database-object-id-repository-base)
       - [Soft Delete Implementation](#soft-delete-implementation)
-    - [Entity Base Class](#entity-base-class)
+    - [Entity Base Classes](#entity-base-classes)
+      - [Database UUID Entity Base](#database-uuid-entity-base)
+      - [Database Object ID Entity Base](#database-object-id-entity-base)
   - [Structure](#structure)
   - [Example](#example)
     - [Entity](#entity)
@@ -160,13 +164,17 @@ export class DatabaseService implements IDatabaseService {
 
 The repository pattern implementation provides a consistent approach to database operations across all entities in the application.
 
-### Base Repository Class
+### Base Repository Classes
 
-The `DatabaseRepositoryBase` class serves as the foundation for all repositories, providing a comprehensive set of common database operations. Repositories that extend this class inherit all commonly used database operations without having to reimplement them.
+The boilerplate provides two base repository implementations to support different MongoDB ID types:
+
+#### Database UUID Repository Base
+
+The `DatabaseUUIDRepositoryBase` class serves as the foundation for repositories that use UUID strings as primary keys. This is the recommended approach for most use cases as it provides readable IDs that can be generated on the client side and don't expose incremental information about record counts.
 
 ```typescript
-export class DatabaseRepositoryBase<
-    Entity extends DatabaseEntityBase,
+export class DatabaseUUIDRepositoryBase<
+    Entity extends DatabaseUUIDEntityBase,
     EntityDocument extends IDatabaseDocument<Entity>,
 > {
     protected readonly _repository: Model<Entity>;
@@ -220,6 +228,12 @@ export class DatabaseRepositoryBase<
 }
 ```
 
+#### Database Object ID Repository Base
+
+The `DatabaseObjectIdRepositoryBase` class serves a similar function but uses MongoDB's native ObjectId type as the primary key. This can be useful for specific use cases where native ObjectId performance benefits are needed.
+
+The API surface is almost identical to the UUID version with the main difference being the handling of ID fields.
+
 #### Soft Delete Implementation
 
 The repository implements soft delete functionality where records are marked as deleted but not physically removed from the database. This provides data recoverability and historical preservation when needed.
@@ -250,12 +264,16 @@ async findAll<T = EntityDocument>(
 
 This pattern is consistently applied across all query methods to ensure proper handling of soft-deleted records.
 
-### Entity Base Class
+### Entity Base Classes
 
-All database entities inherit from the `DatabaseEntityBase` class, which provides common fields like ID, created/updated timestamps, and soft delete support. This model provides a standard infrastructure for all database entities.
+The boilerplate provides two entity base classes that correspond to the repository base classes.
+
+#### Database UUID Entity Base
+
+The `DatabaseUUIDEntityBase` class provides a foundation for entities using UUID strings as primary keys. It includes common fields like timestamps and soft delete flags.
 
 ```typescript
-export class DatabaseEntityBase {
+export class DatabaseUUIDEntityBase {
     // Primary key using UUID by default
     @DatabaseProp({
         type: String,
@@ -264,15 +282,25 @@ export class DatabaseEntityBase {
     })
     _id: string;
 
-    // Soft delete flag
-    @DatabaseProp({
-        required: true,
-        index: true,
-        default: false,
-    })
-    deleted: boolean;
+    // Other fields for auditing
+}
+```
 
-    // And other audit fields...
+#### Database Object ID Entity Base
+
+The `DatabaseObjectIdEntityBase` class serves the same purpose but uses MongoDB's native ObjectId type as the primary key.
+
+```typescript
+export class DatabaseObjectIdEntityBase {
+    @DatabaseProp({
+        type: Types.ObjectId,
+        required: true,
+        default: () => new Types.ObjectId(),
+    })
+    _id: Types.ObjectId;
+
+    // Similar fields to UUID version but with ObjectId references
+    // ...
 }
 ```
 
@@ -298,7 +326,7 @@ Entity definitions include schema fields and validation through decorators. Each
 
 ```typescript
 @DatabaseEntity({ collection: UserTableName })
-export class UserEntity extends DatabaseEntityBase {
+export class UserEntity extends DatabaseUUIDEntityBase {
     // Field definitions with decorators for index configuration and validation
     @DatabaseProp({
         required: true,
@@ -329,11 +357,11 @@ export type UserDoc = IDatabaseDocument<UserEntity>;
 
 ### Repository
 
-Each repository extends the base repository and can customize functionality as needed. The repository handles all data operations for a specific entity.
+Each repository extends the appropriate base repository and can customize functionality as needed. The repository handles all data operations for a specific entity.
 
 ```typescript
 @Injectable()
-export class UserRepository extends DatabaseRepositoryBase<UserEntity, UserDoc> {
+export class UserRepository extends DatabaseUUIDRepositoryBase<UserEntity, UserDoc> {
     constructor(
         @InjectDatabaseModel(UserEntity.name)
         private readonly userModel: Model<UserEntity>

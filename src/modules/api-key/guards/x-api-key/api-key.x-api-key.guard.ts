@@ -88,7 +88,7 @@ export class ApiKeyXApiKeyGuard implements CanActivate {
 
         request.apiKey = {
             _id: apiKey._id,
-            name: apiKey._id,
+            name: apiKey.name,
             key: apiKey.key,
             type: apiKey.type,
         };
