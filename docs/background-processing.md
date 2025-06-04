@@ -33,8 +33,6 @@ BullMQ is a Redis-based queue system that allows for reliable background job pro
 The BullMQ configuration is defined in the `CommonModule` through the `BullModule.forRootAsync()` method. This establishes the Redis connection and default job options for all queues.
 
 ```typescript
-// /Users/ack/Development/repos/ack-nestjs-boilerplate/src/common/common.module.ts
-
 @Module({
     // ...existing code...
     imports: [
@@ -131,7 +129,7 @@ To add SMS jobs to the queue, you need to inject the BullMQ Queue into your serv
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { ENUM_WORKER_QUEUES, ENUM_WORKER_PRIORITY } from 'src/worker/enums/worker.enum';
+import { ENUM_WORKER_QUEUES, ENUM_WORKER_PRIORITY } from '@worker/enums/worker.enum';
 import { ENUM_SEND_SMS_PROCESS } from '@modules/sms/enums/sms.enum';
 import { SmsSendRequestDto } from '@modules/sms/dtos/request/sms.send.request.dto';
 import { SmsVerificationRequestDto } from '@modules/sms/dtos/request/sms.verification.request.dto';
@@ -190,7 +188,7 @@ import { SmsSendRequestDto } from '@modules/sms/dtos/request/sms.send.request.dt
 import { SmsVerificationRequestDto } from '@modules/sms/dtos/request/sms.verification.request.dto';
 import { ISmsProcessor } from '@modules/sms/interfaces/sms.processor.interface';
 import { SmsService } from '@modules/sms/services/sms.service';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
 
 @Processor({
     name: ENUM_WORKER_QUEUES.SMS_QUEUE,
@@ -268,7 +266,7 @@ To add email jobs to the queue, inject the BullMQ Queue into your service or con
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { ENUM_WORKER_QUEUES, ENUM_WORKER_PRIORITY } from 'src/worker/enums/worker.enum';
+import { ENUM_WORKER_QUEUES, ENUM_WORKER_PRIORITY } from '@worker/enums/worker.enum';
 import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
