@@ -5,14 +5,14 @@ import {
     Injectable,
 } from '@nestjs/common';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { AuthService } from '@module/auth/services/auth.service';
-import { UserService } from '@module/user/services/user.service';
-import { IUserDoc } from '@module/user/interfaces/user.interface';
-import { ENUM_USER_STATUS } from '@module/user/enums/user.enum';
-import { ENUM_USER_STATUS_CODE_ERROR } from '@module/user/enums/user.status-code.enum';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from '@module/role/enums/role.status-code.enum';
+import { AuthService } from '@modules/auth/services/auth.service';
+import { UserService } from '@modules/user/services/user.service';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { ENUM_USER_STATUS } from '@modules/user/enums/user.enum';
+import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { Reflector } from '@nestjs/core';
-import { USER_GUARD_EMAIL_VERIFIED_META_KEY } from '@module/user/constants/user.constant';
+import { USER_GUARD_EMAIL_VERIFIED_META_KEY } from '@modules/user/constants/user.constant';
 
 @Injectable()
 export class UserGuard implements CanActivate {

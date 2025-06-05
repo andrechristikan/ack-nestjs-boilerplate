@@ -4,8 +4,8 @@ import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.co
 import {
     ActivityEntity,
     ActivitySchema,
-} from '@module/activity/repository/entities/activity.entity';
-import { ActivityRepository } from '@module/activity/repository/repositories/activity.repository';
+} from '@modules/activity/repository/entities/activity.entity';
+import { ActivityRepository } from '@modules/activity/repository/repositories/activity.repository';
 
 @Module({
     providers: [ActivityRepository],

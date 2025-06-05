@@ -1,4 +1,4 @@
-import { VerificationModule } from '@module/verification/verification.module';
+import { VerificationModule } from '@modules/verification/verification.module';
 import { Module } from '@nestjs/common';
 import { CommandModule } from 'nestjs-command';
 import { CommonModule } from '@common/common.module';
@@ -7,15 +7,15 @@ import { MigrationCountrySeed } from '@migration/seeds/migration.country.seed';
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
 import { MigrationTemplateSeed } from '@migration/seeds/migration.template.seed';
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
-import { ActivityModule } from '@module/activity/activity.module';
-import { ApiKeyModule } from '@module/api-key/api-key.module';
-import { AuthModule } from '@module/auth/auth.module';
-import { CountryModule } from '@module/country/country.module';
-import { EmailModule } from '@module/email/email.module';
-import { PasswordHistoryModule } from '@module/password-history/password-history.module';
-import { RoleModule } from '@module/role/role.module';
-import { SessionModule } from '@module/session/session.module';
-import { UserModule } from '@module/user/user.module';
+import { ActivityModule } from '@modules/activity/activity.module';
+import { ApiKeyModule } from '@modules/api-key/api-key.module';
+import { AuthModule } from '@modules/auth/auth.module';
+import { CountryModule } from '@modules/country/country.module';
+import { EmailModule } from '@modules/email/email.module';
+import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
+import { RoleModule } from '@modules/role/role.module';
+import { SessionModule } from '@modules/session/session.module';
+import { UserModule } from '@modules/user/user.module';
 
 // TODO: (v8) CHANGE WITH COMMANDER
 @Module({

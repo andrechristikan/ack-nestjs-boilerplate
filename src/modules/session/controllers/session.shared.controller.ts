@@ -15,21 +15,21 @@ import {
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
 import { IResponsePaging } from '@common/response/interfaces/response.interface';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from '@module/auth/decorators/auth.jwt.decorator';
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     SessionSharedListDoc,
     SessionSharedRevokeDoc,
-} from '@module/session/docs/session.shared.doc';
-import { SessionListResponseDto } from '@module/session/dtos/response/session.list.response.dto';
-import { ENUM_SESSION_STATUS_CODE_ERROR } from '@module/session/enums/session.status-code.enum';
-import { SessionActiveByUserParsePipe } from '@module/session/pipes/session.parse.pipe';
-import { SessionDoc } from '@module/session/repository/entities/session.entity';
-import { SessionService } from '@module/session/services/session.service';
-import { UserProtected } from '@module/user/decorators/user.decorator';
+} from '@modules/session/docs/session.shared.doc';
+import { SessionListResponseDto } from '@modules/session/dtos/response/session.list.response.dto';
+import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
+import { SessionActiveByUserParsePipe } from '@modules/session/pipes/session.parse.pipe';
+import { SessionDoc } from '@modules/session/repository/entities/session.entity';
+import { SessionService } from '@modules/session/services/session.service';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
 
 @ApiTags('modules.shared.session')
 @Controller({

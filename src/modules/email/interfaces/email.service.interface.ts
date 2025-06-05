@@ -1,10 +1,10 @@
 import { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
-import { EmailMobileNumberVerifiedDto } from '@module/email/dtos/email.mobile-number-verified.dto';
-import { EmailResetPasswordDto } from '@module/email/dtos/email.reset-password.dto';
-import { EmailSendDto } from '@module/email/dtos/email.send.dto';
-import { EmailTempPasswordDto } from '@module/email/dtos/email.temp-password.dto';
-import { EmailVerificationDto } from '@module/email/dtos/email.verification.dto';
-import { EmailVerifiedDto } from '@module/email/dtos/email.verified.dto';
+import { EmailMobileNumberVerifiedDto } from '@modules/email/dtos/email.mobile-number-verified.dto';
+import { EmailResetPasswordDto } from '@modules/email/dtos/email.reset-password.dto';
+import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
+import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
+import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
+import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
 
 export interface IEmailService {
     importChangePassword(): Promise<boolean>;

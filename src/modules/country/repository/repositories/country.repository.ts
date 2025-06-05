@@ -5,7 +5,7 @@ import { InjectDatabaseModel } from '@common/database/decorators/database.decora
 import {
     CountryDoc,
     CountryEntity,
-} from '@module/country/repository/entities/country.entity';
+} from '@modules/country/repository/entities/country.entity';
 
 @Injectable()
 export class CountryRepository extends DatabaseUUIDRepositoryBase<

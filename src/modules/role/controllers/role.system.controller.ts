@@ -1,23 +1,23 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeySystemProtected } from '@module/api-key/decorators/api-key.decorator';
+import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     PaginationQuery,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { ENUM_POLICY_ROLE_TYPE } from '@module/policy/enums/policy.enum';
+import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePaging } from '@common/response/interfaces/response.interface';
 import {
     ROLE_DEFAULT_AVAILABLE_SEARCH,
     ROLE_DEFAULT_POLICY_ROLE_TYPE,
-} from '@module/role/constants/role.list.constant';
-import { RoleShortResponseDto } from '@module/role/dtos/response/role.short.response.dto';
-import { RoleDoc } from '@module/role/repository/entities/role.entity';
-import { RoleService } from '@module/role/services/role.service';
-import { RoleSystemListDoc } from '@module/role/docs/role.system.doc';
+} from '@modules/role/constants/role.list.constant';
+import { RoleShortResponseDto } from '@modules/role/dtos/response/role.short.response.dto';
+import { RoleDoc } from '@modules/role/repository/entities/role.entity';
+import { RoleService } from '@modules/role/services/role.service';
+import { RoleSystemListDoc } from '@modules/role/docs/role.system.doc';
 
 @ApiTags('modules.system.role')
 @Controller({

@@ -6,8 +6,8 @@ import {
     DocResponse,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { SessionDocParamsId } from '@module/session/constants/session.doc.constant';
-import { SessionListResponseDto } from '@module/session/dtos/response/session.list.response.dto';
+import { SessionDocParamsId } from '@modules/session/constants/session.doc.constant';
+import { SessionListResponseDto } from '@modules/session/dtos/response/session.list.response.dto';
 
 export function SessionSharedListDoc(): MethodDecorator {
     return applyDecorators(

@@ -4,7 +4,7 @@ import {
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { CountryListResponseDto } from '@module/country/dtos/response/country.list.response.dto';
+import { CountryListResponseDto } from '@modules/country/dtos/response/country.list.response.dto';
 
 export function CountrySystemListDoc(): MethodDecorator {
     return applyDecorators(

@@ -7,13 +7,13 @@ import {
     IDatabaseOptions,
     IDatabaseUpdateManyOptions,
 } from '@common/database/interfaces/database.interface';
-import { SessionCreateRequestDto } from '@module/session/dtos/request/session.create.request.dto';
-import { SessionListResponseDto } from '@module/session/dtos/response/session.list.response.dto';
+import { SessionCreateRequestDto } from '@modules/session/dtos/request/session.create.request.dto';
+import { SessionListResponseDto } from '@modules/session/dtos/response/session.list.response.dto';
 import {
     SessionDoc,
     SessionEntity,
-} from '@module/session/repository/entities/session.entity';
-import { IUserDoc } from '@module/user/interfaces/user.interface';
+} from '@modules/session/repository/entities/session.entity';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
 
 export interface ISessionService {
     findAll(

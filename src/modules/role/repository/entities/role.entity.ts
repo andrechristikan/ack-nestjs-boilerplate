@@ -5,11 +5,11 @@ import {
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
 import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
-import { ENUM_POLICY_ROLE_TYPE } from '@module/policy/enums/policy.enum';
+import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 import {
     RolePermissionEntity,
     RolePermissionSchema,
-} from '@module/role/repository/entities/role.permission.entity';
+} from '@modules/role/repository/entities/role.permission.entity';
 
 export const RoleTableName = 'Roles';
 

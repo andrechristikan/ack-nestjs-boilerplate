@@ -5,7 +5,7 @@ import {
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
 import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
-import { UserEntity } from '@module/user/repository/entities/user.entity';
+import { UserEntity } from '@modules/user/repository/entities/user.entity';
 
 export const ActivityTableName = 'Activities';
 

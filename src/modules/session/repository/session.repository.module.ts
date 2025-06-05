@@ -4,8 +4,8 @@ import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.co
 import {
     SessionEntity,
     SessionSchema,
-} from '@module/session/repository/entities/session.entity';
-import { SessionRepository } from '@module/session/repository/repositories/session.repository';
+} from '@modules/session/repository/entities/session.entity';
+import { SessionRepository } from '@modules/session/repository/repositories/session.repository';
 
 @Module({
     providers: [SessionRepository],

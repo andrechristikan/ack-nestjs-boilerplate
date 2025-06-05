@@ -5,7 +5,7 @@ import { InjectDatabaseModel } from '@common/database/decorators/database.decora
 import {
     RoleDoc,
     RoleEntity,
-} from '@module/role/repository/entities/role.entity';
+} from '@modules/role/repository/entities/role.entity';
 
 @Injectable()
 export class RoleRepository extends DatabaseUUIDRepositoryBase<

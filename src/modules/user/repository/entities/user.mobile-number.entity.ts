@@ -4,7 +4,7 @@ import {
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
 import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
-import { CountryEntity } from '@module/country/repository/entities/country.entity';
+import { CountryEntity } from '@modules/country/repository/entities/country.entity';
 
 @DatabaseEntity({
     _id: false,

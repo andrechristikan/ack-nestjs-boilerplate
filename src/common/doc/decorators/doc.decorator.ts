@@ -30,9 +30,9 @@ import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/p
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
 import { ResponseDto } from '@common/response/dtos/response.dto';
 import { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@module/api-key/enums/api-key.status-code.enum';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from '@module/auth/enums/auth.status-code.enum';
-import { ENUM_POLICY_STATUS_CODE_ERROR } from '@module/policy/enums/policy.status-code.enum';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 

@@ -8,7 +8,7 @@ import {
     SendMessagesCommandInput,
 } from '@aws-sdk/client-pinpoint';
 import { ConfigService } from '@nestjs/config';
-import { IAwsPinpointService } from '@module/aws/interfaces/aws.pinpoint-service.interface';
+import { IAwsPinpointService } from '@modules/aws/interfaces/aws.pinpoint-service.interface';
 
 @Injectable()
 export class AwsPinpointService implements IAwsPinpointService {

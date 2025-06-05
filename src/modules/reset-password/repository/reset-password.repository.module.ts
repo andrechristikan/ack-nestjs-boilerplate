@@ -4,8 +4,8 @@ import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.co
 import {
     ResetPasswordEntity,
     ResetPasswordSchema,
-} from '@module/reset-password/repository/entities/reset-password.entity';
-import { ResetPasswordRepository } from '@module/reset-password/repository/repositories/reset-password.repository';
+} from '@modules/reset-password/repository/entities/reset-password.entity';
+import { ResetPasswordRepository } from '@modules/reset-password/repository/repositories/reset-password.repository';
 
 @Module({
     providers: [ResetPasswordRepository],

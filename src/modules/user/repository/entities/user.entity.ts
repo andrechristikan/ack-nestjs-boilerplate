@@ -8,22 +8,22 @@ import { IDatabaseDocument } from '@common/database/interfaces/database.interfac
 import {
     AwsS3Entity,
     AwsS3Schema,
-} from '@module/aws/repository/entities/aws.s3.entity';
-import { CountryEntity } from '@module/country/repository/entities/country.entity';
-import { RoleEntity } from '@module/role/repository/entities/role.entity';
+} from '@modules/aws/repository/entities/aws.s3.entity';
+import { CountryEntity } from '@modules/country/repository/entities/country.entity';
+import { RoleEntity } from '@modules/role/repository/entities/role.entity';
 import {
     ENUM_USER_GENDER,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
-} from '@module/user/enums/user.enum';
+} from '@modules/user/enums/user.enum';
 import {
     UserMobileNumberEntity,
     UserMobileNumberSchema,
-} from '@module/user/repository/entities/user.mobile-number.entity';
+} from '@modules/user/repository/entities/user.mobile-number.entity';
 import {
     UserVerificationEntity,
     UserVerificationSchema,
-} from '@module/user/repository/entities/user.verification.entity';
+} from '@modules/user/repository/entities/user.verification.entity';
 
 export const UserTableName = 'Users';
 

@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { DatabaseUUIDDto } from '@common/database/dtos/database.uuid.dto';
-import { ENUM_SESSION_STATUS } from '@module/session/enums/session.enum';
+import { ENUM_SESSION_STATUS } from '@modules/session/enums/session.enum';
 
 export class SessionListResponseDto extends DatabaseUUIDDto {
     @ApiProperty({

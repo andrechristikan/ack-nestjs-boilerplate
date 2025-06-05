@@ -4,13 +4,13 @@ import {
     ExtractSubjectType,
 } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
-import { ENUM_POLICY_ACTION } from '@module/policy/enums/policy.enum';
+import { ENUM_POLICY_ACTION } from '@modules/policy/enums/policy.enum';
 import {
     IPolicyAbility,
     IPolicyAbilityRule,
     IPolicyAbilitySubject,
-} from '@module/policy/interfaces/policy.interface';
-import { RolePermissionEntity } from '@module/role/repository/entities/role.permission.entity';
+} from '@modules/policy/interfaces/policy.interface';
+import { RolePermissionEntity } from '@modules/role/repository/entities/role.permission.entity';
 
 @Injectable()
 export class PolicyAbilityFactory {

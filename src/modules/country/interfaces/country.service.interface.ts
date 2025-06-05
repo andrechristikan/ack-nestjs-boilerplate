@@ -5,13 +5,13 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
 } from '@common/database/interfaces/database.interface';
-import { CountryCreateRequestDto } from '@module/country/dtos/request/country.create.request.dto';
-import { CountryListResponseDto } from '@module/country/dtos/response/country.list.response.dto';
-import { CountryShortResponseDto } from '@module/country/dtos/response/country.short.response.dto';
+import { CountryCreateRequestDto } from '@modules/country/dtos/request/country.create.request.dto';
+import { CountryListResponseDto } from '@modules/country/dtos/response/country.list.response.dto';
+import { CountryShortResponseDto } from '@modules/country/dtos/response/country.short.response.dto';
 import {
     CountryDoc,
     CountryEntity,
-} from '@module/country/repository/entities/country.entity';
+} from '@modules/country/repository/entities/country.entity';
 
 export interface ICountryService {
     findAll(

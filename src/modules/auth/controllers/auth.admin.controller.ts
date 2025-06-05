@@ -12,31 +12,31 @@ import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response } from '@common/response/decorators/response.decorator';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from '@module/auth/decorators/auth.jwt.decorator';
-import { AuthAdminUpdatePasswordDoc } from '@module/auth/docs/auth.admin.doc';
-import { AuthService } from '@module/auth/services/auth.service';
-import { ENUM_SEND_EMAIL_PROCESS } from '@module/email/enums/email.enum';
-import { ENUM_PASSWORD_HISTORY_TYPE } from '@module/password-history/enums/password-history.enum';
-import { PasswordHistoryService } from '@module/password-history/services/password-history.service';
+} from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthAdminUpdatePasswordDoc } from '@modules/auth/docs/auth.admin.doc';
+import { AuthService } from '@modules/auth/services/auth.service';
+import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
+import { ENUM_PASSWORD_HISTORY_TYPE } from '@modules/password-history/enums/password-history.enum';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
-} from '@module/policy/decorators/policy.decorator';
+} from '@modules/policy/decorators/policy.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from '@module/policy/enums/policy.enum';
-import { UserProtected } from '@module/user/decorators/user.decorator';
-import { UserNotSelfPipe } from '@module/user/pipes/user.not-self.pipe';
-import { UserParsePipe } from '@module/user/pipes/user.parse.pipe';
-import { UserDoc } from '@module/user/repository/entities/user.entity';
-import { UserService } from '@module/user/services/user.service';
-import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
+} from '@modules/policy/enums/policy.enum';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { UserNotSelfPipe } from '@modules/user/pipes/user.not-self.pipe';
+import { UserParsePipe } from '@modules/user/pipes/user.parse.pipe';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
+import { UserService } from '@modules/user/services/user.service';
+import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 
 @ApiTags('modules.admin.auth')
 @Controller({

@@ -6,7 +6,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { Algorithm } from 'jsonwebtoken';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { IAuthService } from '@module/auth/interfaces/auth.service.interface';
+import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
 import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
@@ -14,10 +14,10 @@ import {
     IAuthPasswordOptions,
     IAuthSocialApplePayload,
     IAuthSocialGooglePayload,
-} from '@module/auth/interfaces/auth.interface';
-import { ENUM_AUTH_LOGIN_FROM } from '@module/auth/enums/auth.enum';
-import { IUserDoc } from '@module/user/interfaces/user.interface';
-import { AuthLoginResponseDto } from '@module/auth/dtos/response/auth.login.response.dto';
+} from '@modules/auth/interfaces/auth.interface';
+import { ENUM_AUTH_LOGIN_FROM } from '@modules/auth/enums/auth.enum';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { AuthLoginResponseDto } from '@modules/auth/dtos/response/auth.login.response.dto';
 import { readFileSync } from 'fs';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { join } from 'path';

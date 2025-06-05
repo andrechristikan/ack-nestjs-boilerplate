@@ -24,13 +24,13 @@
         "paths": {
             "@app/*": ["src/app/*"],
             "@common/*": ["src/common/*"],
-            "@config/*": ["src/configs/*"],
+            "@configs/*": ["src/configs/*"],
             "@config": ["src/configs/index.ts"],
-            "@module/*": ["src/modules/*"],
-            "@router/*": ["src/router/*"],
-            "@worker/*": ["src/worker/*"],
+            "@modules/*": ["src/modules/*"],
+            "@routes/*": ["src/router/routes/*"],
+            "@router": ["src/router/router.module.ts"],
+            "@workers/*": ["src/worker/*"],
             "@migration/*": ["src/migration/*"],
-            "@template/*": ["src/templates/*"],
             "@test/*": ["test/*"]
         }
     },

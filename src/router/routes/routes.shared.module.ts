@@ -1,20 +1,20 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ActivityModule } from '@module/activity/activity.module';
-import { ActivitySharedController } from '@module/activity/controllers/activity.shared.controller';
-import { ApiKeyModule } from '@module/api-key/api-key.module';
-import { AuthModule } from '@module/auth/auth.module';
-import { AuthSharedController } from '@module/auth/controllers/auth.shared.controller';
-import { AwsModule } from '@module/aws/aws.module';
-import { CountryModule } from '@module/country/country.module';
-import { EmailModule } from '@module/email/email.module';
-import { PasswordHistorySharedController } from '@module/password-history/controllers/password-history.shared.controller';
-import { PasswordHistoryModule } from '@module/password-history/password-history.module';
-import { SessionSharedController } from '@module/session/controllers/session.shared.controller';
-import { SessionModule } from '@module/session/session.module';
-import { UserSharedController } from '@module/user/controllers/user.shared.controller';
-import { UserModule } from '@module/user/user.module';
-import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
+import { ActivityModule } from '@modules/activity/activity.module';
+import { ActivitySharedController } from '@modules/activity/controllers/activity.shared.controller';
+import { ApiKeyModule } from '@modules/api-key/api-key.module';
+import { AuthModule } from '@modules/auth/auth.module';
+import { AuthSharedController } from '@modules/auth/controllers/auth.shared.controller';
+import { AwsModule } from '@modules/aws/aws.module';
+import { CountryModule } from '@modules/country/country.module';
+import { EmailModule } from '@modules/email/email.module';
+import { PasswordHistorySharedController } from '@modules/password-history/controllers/password-history.shared.controller';
+import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
+import { SessionSharedController } from '@modules/session/controllers/session.shared.controller';
+import { SessionModule } from '@modules/session/session.module';
+import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
+import { UserModule } from '@modules/user/user.module';
+import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 
 @Module({
     controllers: [

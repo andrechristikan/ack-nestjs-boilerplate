@@ -4,7 +4,7 @@ import {
     DocAuth,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { ActivityListResponseDto } from '@module/activity/dtos/response/activity.list.response.dto';
+import { ActivityListResponseDto } from '@modules/activity/dtos/response/activity.list.response.dto';
 
 export function ActivitySharedListDoc(): MethodDecorator {
     return applyDecorators(

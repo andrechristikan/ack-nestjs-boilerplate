@@ -7,9 +7,9 @@ import {
     DocResponse,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { SessionDocParamsId } from '@module/session/constants/session.doc.constant';
-import { SessionListResponseDto } from '@module/session/dtos/response/session.list.response.dto';
-import { UserDocParamsId } from '@module/user/constants/user.doc.constant';
+import { SessionDocParamsId } from '@modules/session/constants/session.doc.constant';
+import { SessionListResponseDto } from '@modules/session/dtos/response/session.list.response.dto';
+import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 
 export function SessionAdminListDoc(): MethodDecorator {
     return applyDecorators(

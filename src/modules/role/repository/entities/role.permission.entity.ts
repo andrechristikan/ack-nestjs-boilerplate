@@ -6,7 +6,7 @@ import {
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
-} from '@module/policy/enums/policy.enum';
+} from '@modules/policy/enums/policy.enum';
 
 @DatabaseEntity({ timestamps: false, _id: false })
 export class RolePermissionEntity {

@@ -1,19 +1,19 @@
 import {
     CountryDoc,
     CountryEntity,
-} from '@module/country/repository/entities/country.entity';
+} from '@modules/country/repository/entities/country.entity';
 import {
     RoleDoc,
     RoleEntity,
-} from '@module/role/repository/entities/role.entity';
+} from '@modules/role/repository/entities/role.entity';
 import {
     UserDoc,
     UserEntity,
-} from '@module/user/repository/entities/user.entity';
+} from '@modules/user/repository/entities/user.entity';
 import {
     UserMobileNumberDoc,
     UserMobileNumberEntity,
-} from '@module/user/repository/entities/user.mobile-number.entity';
+} from '@modules/user/repository/entities/user.mobile-number.entity';
 
 export interface IUserMobileNumberEntity
     extends Omit<UserMobileNumberEntity, 'country'> {

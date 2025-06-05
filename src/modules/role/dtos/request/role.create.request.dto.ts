@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
-import { RoleUpdateRequestDto } from '@module/role/dtos/request/role.update.request.dto';
+import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 
 export class RoleCreateRequestDto extends RoleUpdateRequestDto {
     @ApiProperty({

@@ -4,9 +4,9 @@ import {
     DocAuth,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
-import { HealthAwsResponseDto } from '@module/health/dtos/response/health.aws.response.dto';
-import { HealthDatabaseResponseDto } from '@module/health/dtos/response/health.database.response.dto';
-import { HealthInstanceResponseDto } from '@module/health/dtos/response/health.instance.response.dto';
+import { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
+import { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
+import { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
 
 export function HealthSystemCheckAwsDoc(): MethodDecorator {
     return applyDecorators(

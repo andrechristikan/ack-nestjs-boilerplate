@@ -4,8 +4,8 @@ import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.co
 import {
     ApiKeyEntity,
     ApiKeySchema,
-} from '@module/api-key/repository/entities/api-key.entity';
-import { ApiKeyRepository } from '@module/api-key/repository/repositories/api-key.repository';
+} from '@modules/api-key/repository/entities/api-key.entity';
+import { ApiKeyRepository } from '@modules/api-key/repository/repositories/api-key.repository';
 
 @Module({
     providers: [ApiKeyRepository],

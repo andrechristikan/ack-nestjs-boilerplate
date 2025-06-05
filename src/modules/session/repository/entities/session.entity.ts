@@ -5,8 +5,8 @@ import {
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
 import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
-import { ENUM_SESSION_STATUS } from '@module/session/enums/session.enum';
-import { UserEntity } from '@module/user/repository/entities/user.entity';
+import { ENUM_SESSION_STATUS } from '@modules/session/enums/session.enum';
+import { UserEntity } from '@modules/user/repository/entities/user.entity';
 
 export const SessionTableName = 'Sessions';
 

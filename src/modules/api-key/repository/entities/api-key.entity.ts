@@ -3,7 +3,7 @@ import {
     DatabaseProp,
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
-import { ENUM_API_KEY_TYPE } from '@module/api-key/enums/api-key.enum';
+import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
 import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
 import { DatabaseUUIDEntityBase } from '@common/database/bases/database.uuid.entity';
 

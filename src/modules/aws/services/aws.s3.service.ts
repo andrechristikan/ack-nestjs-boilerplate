@@ -43,8 +43,8 @@ import {
     ListBucketsCommand,
     NotFound,
 } from '@aws-sdk/client-s3';
-import { IAwsS3Service } from '@module/aws/interfaces/aws.s3-service.interface';
-import { AwsS3Dto } from '@module/aws/dtos/aws.s3.dto';
+import { IAwsS3Service } from '@modules/aws/interfaces/aws.s3-service.interface';
+import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
 import {
     IAwsS3Config,
     IAwsS3ConfigBucket,
@@ -56,21 +56,21 @@ import {
     IAwsS3PresignOptions,
     IAwsS3PutItem,
     IAwsS3PutItemWithAclOptions,
-} from '@module/aws/interfaces/aws.interface';
+} from '@modules/aws/interfaces/aws.interface';
 import {
     AwsS3MultipartDto,
     AwsS3MultipartPartDto,
-} from '@module/aws/dtos/aws.s3-multipart.dto';
-import { AWS_S3_MAX_PART_NUMBER } from '@module/aws/constants/aws.constant';
+} from '@modules/aws/dtos/aws.s3-multipart.dto';
+import { AWS_S3_MAX_PART_NUMBER } from '@modules/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { ENUM_AWS_S3_ACCESSIBILITY } from '@module/aws/enums/aws.enum';
-import { AwsS3PresignResponseDto } from '@module/aws/dtos/response/aws.s3-presign.response.dto';
-import { AwsS3PresignRequestDto } from '@module/aws/dtos/request/aws.s3-presign.request.dto';
-import { AwsS3ResponseDto } from '@module/aws/dtos/response/aws.s3-response.dto';
+import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
+import { AwsS3PresignResponseDto } from '@modules/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3PresignRequestDto } from '@modules/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3ResponseDto } from '@modules/aws/dtos/response/aws.s3-response.dto';
 import { plainToInstance } from 'class-transformer';
-import { AwsS3PresignMultiPartResponseDto } from '@module/aws/dtos/response/aws.s3-presign-multipart.response.dto';
+import { AwsS3PresignMultiPartResponseDto } from '@modules/aws/dtos/response/aws.s3-presign-multipart.response.dto';
 import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
-import { AwsS3MultipartPresignCompletePartRequestDto } from '@module/aws/dtos/request/aws.s3-multipart-presign-complete.request.dto';
+import { AwsS3MultipartPresignCompletePartRequestDto } from '@modules/aws/dtos/request/aws.s3-multipart-presign-complete.request.dto';
 
 @Injectable()
 export class AwsS3Service implements OnModuleInit, IAwsS3Service {

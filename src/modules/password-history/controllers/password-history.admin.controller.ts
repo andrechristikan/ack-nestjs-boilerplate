@@ -6,24 +6,24 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePaging } from '@common/response/interfaces/response.interface';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@module/auth/decorators/auth.jwt.decorator';
-import { PasswordHistoryAdminListDoc } from '@module/password-history/docs/password-history.admin.doc';
-import { PasswordHistoryListResponseDto } from '@module/password-history/dtos/response/password-history.list.response.dto';
-import { IPasswordHistoryDoc } from '@module/password-history/interfaces/password-history.interface';
-import { PasswordHistoryService } from '@module/password-history/services/password-history.service';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import { PasswordHistoryAdminListDoc } from '@modules/password-history/docs/password-history.admin.doc';
+import { PasswordHistoryListResponseDto } from '@modules/password-history/dtos/response/password-history.list.response.dto';
+import { IPasswordHistoryDoc } from '@modules/password-history/interfaces/password-history.interface';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
-} from '@module/policy/decorators/policy.decorator';
+} from '@modules/policy/decorators/policy.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from '@module/policy/enums/policy.enum';
-import { UserProtected } from '@module/user/decorators/user.decorator';
-import { UserParsePipe } from '@module/user/pipes/user.parse.pipe';
-import { UserDoc } from '@module/user/repository/entities/user.entity';
+} from '@modules/policy/enums/policy.enum';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { UserParsePipe } from '@modules/user/pipes/user.parse.pipe';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
 
 @ApiTags('modules.admin.passwordHistory')
 @Controller({

@@ -6,18 +6,18 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePaging } from '@common/response/interfaces/response.interface';
-import { ActivitySharedListDoc } from '@module/activity/docs/activity.shared.doc';
-import { ActivityListResponseDto } from '@module/activity/dtos/response/activity.list.response.dto';
-import { IActivityDoc } from '@module/activity/interfaces/activity.interface';
-import { ActivityService } from '@module/activity/services/activity.service';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
+import { ActivitySharedListDoc } from '@modules/activity/docs/activity.shared.doc';
+import { ActivityListResponseDto } from '@modules/activity/dtos/response/activity.list.response.dto';
+import { IActivityDoc } from '@modules/activity/interfaces/activity.interface';
+import { ActivityService } from '@modules/activity/services/activity.service';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from '@module/auth/decorators/auth.jwt.decorator';
-import { UserProtected } from '@module/user/decorators/user.decorator';
-import { UserParsePipe } from '@module/user/pipes/user.parse.pipe';
-import { UserDoc } from '@module/user/repository/entities/user.entity';
+} from '@modules/auth/decorators/auth.jwt.decorator';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { UserParsePipe } from '@modules/user/pipes/user.parse.pipe';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
 
 @ApiTags('modules.shared.activity')
 @Controller({

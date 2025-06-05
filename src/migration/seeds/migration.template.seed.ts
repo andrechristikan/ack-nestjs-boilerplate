@@ -1,6 +1,6 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { EmailService } from '@module/email/services/email.service';
+import { EmailService } from '@modules/email/services/email.service';
 
 @Injectable()
 export class MigrationTemplateSeed {

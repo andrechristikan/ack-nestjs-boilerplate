@@ -5,8 +5,8 @@ import {
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
 import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
-import { ENUM_PASSWORD_HISTORY_TYPE } from '@module/password-history/enums/password-history.enum';
-import { UserEntity } from '@module/user/repository/entities/user.entity';
+import { ENUM_PASSWORD_HISTORY_TYPE } from '@modules/password-history/enums/password-history.enum';
+import { UserEntity } from '@modules/user/repository/entities/user.entity';
 
 export const PasswordHistoryTableName = 'PasswordHistories';
 

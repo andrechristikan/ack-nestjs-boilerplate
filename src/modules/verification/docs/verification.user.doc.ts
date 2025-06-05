@@ -7,8 +7,8 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
-import { VerificationVerifyRequestDto } from '@module/verification/dtos/request/verification.verify.request.dto';
-import { VerificationResponse } from '@module/verification/dtos/response/verification.response';
+import { VerificationVerifyRequestDto } from '@modules/verification/dtos/request/verification.verify.request.dto';
+import { VerificationResponse } from '@modules/verification/dtos/response/verification.response';
 
 export function VerificationUserGetEmailDoc(): MethodDecorator {
     return applyDecorators(

@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, PickType } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
-import { UserCreateRequestDto } from '@module/user/dtos/request/user.create.request.dto';
+import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 
 export class UserUpdateMobileNumberRequestDto extends PickType(
     UserCreateRequestDto,

@@ -3,8 +3,8 @@ import { ApiTags } from '@nestjs/swagger';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponse } from '@common/response/interfaces/response.interface';
-import { HelloDoc } from '@module/hello/docs/hello.doc';
-import { HelloResponseDto } from '@module/hello/dtos/response/hello.response.dto';
+import { HelloDoc } from '@modules/hello/docs/hello.doc';
+import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
 
 @ApiTags('modules.public.hello')
 @Controller({

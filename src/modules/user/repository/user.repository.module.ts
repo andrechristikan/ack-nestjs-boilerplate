@@ -4,8 +4,8 @@ import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.co
 import {
     UserEntity,
     UserSchema,
-} from '@module/user/repository/entities/user.entity';
-import { UserRepository } from '@module/user/repository/repositories/user.repository';
+} from '@modules/user/repository/entities/user.entity';
+import { UserRepository } from '@modules/user/repository/repositories/user.repository';
 
 @Module({
     providers: [UserRepository],

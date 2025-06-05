@@ -9,12 +9,12 @@ import {
     IDatabaseSaveOptions,
     IDatabaseUpdateManyOptions,
 } from '@common/database/interfaces/database.interface';
-import { ResetPasswordCreateRequestDto } from '@module/reset-password/dtos/request/reset-password.create.request.dto';
-import { IResetPasswordRequest } from '@module/reset-password/interfaces/reset-password.interface';
+import { ResetPasswordCreateRequestDto } from '@modules/reset-password/dtos/request/reset-password.create.request.dto';
+import { IResetPasswordRequest } from '@modules/reset-password/interfaces/reset-password.interface';
 import {
     ResetPasswordDoc,
     ResetPasswordEntity,
-} from '@module/reset-password/repository/entities/reset-password.entity';
+} from '@modules/reset-password/repository/entities/reset-password.entity';
 
 export interface IResetPasswordService {
     findAll(

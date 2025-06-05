@@ -5,15 +5,15 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
 } from '@common/database/interfaces/database.interface';
-import { ActivityCreateByAdminResponse } from '@module/activity/dtos/request/activity.create-by-admin.response.dto';
-import { ActivityCreateResponse } from '@module/activity/dtos/request/activity.create.response.dto';
-import { ActivityListResponseDto } from '@module/activity/dtos/response/activity.list.response.dto';
+import { ActivityCreateByAdminResponse } from '@modules/activity/dtos/request/activity.create-by-admin.response.dto';
+import { ActivityCreateResponse } from '@modules/activity/dtos/request/activity.create.response.dto';
+import { ActivityListResponseDto } from '@modules/activity/dtos/response/activity.list.response.dto';
 import {
     IActivityDoc,
     IActivityEntity,
-} from '@module/activity/interfaces/activity.interface';
-import { ActivityDoc } from '@module/activity/repository/entities/activity.entity';
-import { UserDoc } from '@module/user/repository/entities/user.entity';
+} from '@modules/activity/interfaces/activity.interface';
+import { ActivityDoc } from '@modules/activity/repository/entities/activity.entity';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
 
 export interface IActivityService {
     findAll(

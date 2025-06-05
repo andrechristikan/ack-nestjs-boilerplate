@@ -8,8 +8,8 @@ import {
 import { MessageModule } from '@common/message/message.module';
 import { HelperModule } from '@common/helper/helper.module';
 import { RequestModule } from '@common/request/request.module';
-import { PolicyModule } from '@module/policy/policy.module';
-import { AuthModule } from '@module/auth/auth.module';
+import { PolicyModule } from '@modules/policy/policy.module';
+import { AuthModule } from '@modules/auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import configs from '@config';
 import { PaginationModule } from '@common/pagination/pagination.module';

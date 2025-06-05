@@ -7,9 +7,9 @@ import {
     IDatabaseSaveOptions,
     IDatabaseUpdateManyOptions,
 } from '@common/database/interfaces/database.interface';
-import { UserDoc } from '@module/user/repository/entities/user.entity';
-import { VerificationResponse } from '@module/verification/dtos/response/verification.response';
-import { VerificationDoc } from '@module/verification/repository/entity/verification.entity';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
+import { VerificationResponse } from '@modules/verification/dtos/response/verification.response';
+import { VerificationDoc } from '@modules/verification/repository/entity/verification.entity';
 
 export interface IVerificationService {
     findAll(

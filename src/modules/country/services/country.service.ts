@@ -9,15 +9,15 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
 } from '@common/database/interfaces/database.interface';
-import { CountryCreateRequestDto } from '@module/country/dtos/request/country.create.request.dto';
-import { CountryListResponseDto } from '@module/country/dtos/response/country.list.response.dto';
-import { CountryShortResponseDto } from '@module/country/dtos/response/country.short.response.dto';
-import { ICountryService } from '@module/country/interfaces/country.service.interface';
+import { CountryCreateRequestDto } from '@modules/country/dtos/request/country.create.request.dto';
+import { CountryListResponseDto } from '@modules/country/dtos/response/country.list.response.dto';
+import { CountryShortResponseDto } from '@modules/country/dtos/response/country.short.response.dto';
+import { ICountryService } from '@modules/country/interfaces/country.service.interface';
 import {
     CountryDoc,
     CountryEntity,
-} from '@module/country/repository/entities/country.entity';
-import { CountryRepository } from '@module/country/repository/repositories/country.repository';
+} from '@modules/country/repository/entities/country.entity';
+import { CountryRepository } from '@modules/country/repository/repositories/country.repository';
 
 @Injectable()
 export class CountryService implements ICountryService {

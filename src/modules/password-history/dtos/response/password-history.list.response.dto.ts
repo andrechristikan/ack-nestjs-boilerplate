@@ -8,9 +8,9 @@ import {
 } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { DatabaseUUIDDto } from '@common/database/dtos/database.uuid.dto';
-import { ENUM_PASSWORD_HISTORY_TYPE } from '@module/password-history/enums/password-history.enum';
-import { SessionListResponseDto } from '@module/session/dtos/response/session.list.response.dto';
-import { UserShortResponseDto } from '@module/user/dtos/response/user.short.response.dto';
+import { ENUM_PASSWORD_HISTORY_TYPE } from '@modules/password-history/enums/password-history.enum';
+import { SessionListResponseDto } from '@modules/session/dtos/response/session.list.response.dto';
+import { UserShortResponseDto } from '@modules/user/dtos/response/user.short.response.dto';
 
 export class PasswordHistoryListResponseDto extends IntersectionType(
     DatabaseUUIDDto,

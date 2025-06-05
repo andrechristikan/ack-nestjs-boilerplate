@@ -12,51 +12,51 @@ import {
     Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
-import { AuthJwtPayload } from '@module/auth/decorators/auth.jwt.decorator';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     AuthSocialAppleProtected,
     AuthSocialGoogleProtected,
-} from '@module/auth/decorators/auth.social.decorator';
-import { AuthService } from '@module/auth/services/auth.service';
+} from '@modules/auth/decorators/auth.social.decorator';
+import { AuthService } from '@modules/auth/services/auth.service';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponse } from '@common/response/interfaces/response.interface';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from '@module/role/enums/role.status-code.enum';
-import { AuthLoginResponseDto } from '@module/auth/dtos/response/auth.login.response.dto';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
+import { AuthLoginResponseDto } from '@modules/auth/dtos/response/auth.login.response.dto';
 import {
     AuthPublicLoginCredentialDoc,
     AuthPublicLoginSocialAppleDoc,
     AuthPublicLoginSocialGoogleDoc,
     AuthPublicSignUpDoc,
-} from '@module/auth/docs/auth.public.doc';
-import { AuthLoginRequestDto } from '@module/auth/dtos/request/auth.login.request.dto';
-import { UserService } from '@module/user/services/user.service';
-import { UserDoc } from '@module/user/repository/entities/user.entity';
-import { ENUM_USER_STATUS_CODE_ERROR } from '@module/user/enums/user.status-code.enum';
-import { ENUM_USER_STATUS } from '@module/user/enums/user.enum';
-import { IUserDoc } from '@module/user/interfaces/user.interface';
-import { AuthSignUpRequestDto } from '@module/auth/dtos/request/auth.sign-up.request.dto';
-import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@module/country/enums/country.status-code.enum';
+} from '@modules/auth/docs/auth.public.doc';
+import { AuthLoginRequestDto } from '@modules/auth/dtos/request/auth.login.request.dto';
+import { UserService } from '@modules/user/services/user.service';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
+import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
+import { ENUM_USER_STATUS } from '@modules/user/enums/user.enum';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { AuthSignUpRequestDto } from '@modules/auth/dtos/request/auth.sign-up.request.dto';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
 import { ClientSession } from 'mongoose';
-import { ENUM_SEND_EMAIL_PROCESS } from '@module/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
-import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
+import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 import { Queue } from 'bullmq';
-import { CountryService } from '@module/country/services/country.service';
-import { RoleService } from '@module/role/services/role.service';
-import { PasswordHistoryService } from '@module/password-history/services/password-history.service';
-import { ENUM_PASSWORD_HISTORY_TYPE } from '@module/password-history/enums/password-history.enum';
-import { SessionService } from '@module/session/services/session.service';
+import { CountryService } from '@modules/country/services/country.service';
+import { RoleService } from '@modules/role/services/role.service';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { ENUM_PASSWORD_HISTORY_TYPE } from '@modules/password-history/enums/password-history.enum';
+import { SessionService } from '@modules/session/services/session.service';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ActivityService } from '@module/activity/services/activity.service';
+import { ActivityService } from '@modules/activity/services/activity.service';
 import { MessageService } from '@common/message/services/message.service';
 import { InjectQueue } from '@nestjs/bullmq';
-import { VerificationService } from '@module/verification/services/verification.service';
+import { VerificationService } from '@modules/verification/services/verification.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import {
     IAuthSocialApplePayload,
     IAuthSocialGooglePayload,
-} from '@module/auth/interfaces/auth.interface';
+} from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.public.auth')
 @Controller({

@@ -9,7 +9,7 @@ import {
     Min,
     ValidateNested,
 } from 'class-validator';
-import { AwsS3PartPresignRequestDto } from '@module/aws/dtos/request/aws.s3-part-presign.request.dto';
+import { AwsS3PartPresignRequestDto } from '@modules/aws/dtos/request/aws.s3-part-presign.request.dto';
 
 export class AwsS3MultipartPresignCompletePartRequestDto {
     @ApiProperty({

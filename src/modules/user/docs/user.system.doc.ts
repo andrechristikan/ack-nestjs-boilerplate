@@ -11,17 +11,17 @@ import {
     UserDocQueryCountry,
     UserDocQueryRole,
     UserDocQueryStatus,
-} from '@module/user/constants/user.doc.constant';
-import { UserCheckMobileNumberRequestDto } from '@module/user/dtos/request/user.check-mobile-number.dto';
+} from '@modules/user/constants/user.doc.constant';
+import { UserCheckMobileNumberRequestDto } from '@modules/user/dtos/request/user.check-mobile-number.dto';
 import {
     UserCheckEmailRequestDto,
     UserCheckUsernameRequestDto,
-} from '@module/user/dtos/request/user.check.request.dto';
+} from '@modules/user/dtos/request/user.check.request.dto';
 import {
     UserCheckResponseDto,
     UserCheckUsernameResponseDto,
-} from '@module/user/dtos/response/user.check.response.dto';
-import { UserShortResponseDto } from '@module/user/dtos/response/user.short.response.dto';
+} from '@modules/user/dtos/response/user.check.response.dto';
+import { UserShortResponseDto } from '@modules/user/dtos/response/user.short.response.dto';
 
 export function UserSystemListDoc(): MethodDecorator {
     return applyDecorators(

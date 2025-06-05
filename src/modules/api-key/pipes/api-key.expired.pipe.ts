@@ -1,7 +1,7 @@
 import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@module/api-key/enums/api-key.status-code.enum';
-import { ApiKeyDoc } from '@module/api-key/repository/entities/api-key.entity';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
+import { ApiKeyDoc } from '@modules/api-key/repository/entities/api-key.entity';
 
 @Injectable()
 export class ApiKeyNotExpiredPipe implements PipeTransform {

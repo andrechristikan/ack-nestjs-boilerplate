@@ -6,9 +6,9 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
-import { AuthLoginRequestDto } from '@module/auth/dtos/request/auth.login.request.dto';
-import { AuthSignUpRequestDto } from '@module/auth/dtos/request/auth.sign-up.request.dto';
-import { AuthLoginResponseDto } from '@module/auth/dtos/response/auth.login.response.dto';
+import { AuthLoginRequestDto } from '@modules/auth/dtos/request/auth.login.request.dto';
+import { AuthSignUpRequestDto } from '@modules/auth/dtos/request/auth.sign-up.request.dto';
+import { AuthLoginResponseDto } from '@modules/auth/dtos/response/auth.login.response.dto';
 
 export function AuthPublicLoginCredentialDoc(): MethodDecorator {
     return applyDecorators(

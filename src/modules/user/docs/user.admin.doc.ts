@@ -14,12 +14,12 @@ import {
     UserDocQueryCountry,
     UserDocQueryRole,
     UserDocQueryStatus,
-} from '@module/user/constants/user.doc.constant';
-import { UserCreateRequestDto } from '@module/user/dtos/request/user.create.request.dto';
-import { UserUpdateStatusRequestDto } from '@module/user/dtos/request/user.update-status.request.dto';
-import { UserUpdateRequestDto } from '@module/user/dtos/request/user.update.request.dto';
-import { UserListResponseDto } from '@module/user/dtos/response/user.list.response.dto';
-import { UserProfileResponseDto } from '@module/user/dtos/response/user.profile.response.dto';
+} from '@modules/user/constants/user.doc.constant';
+import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import { UserUpdateRequestDto } from '@modules/user/dtos/request/user.update.request.dto';
+import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
+import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 
 export function UserAdminListDoc(): MethodDecorator {
     return applyDecorators(

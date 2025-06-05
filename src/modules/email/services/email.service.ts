@@ -1,19 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ENUM_SEND_EMAIL_PROCESS } from '@module/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { title } from 'case';
 import { ConfigService } from '@nestjs/config';
-import { IEmailService } from '@module/email/interfaces/email.service.interface';
+import { IEmailService } from '@modules/email/interfaces/email.service.interface';
 import { readFileSync } from 'fs';
 import { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
-import { EmailSendDto } from '@module/email/dtos/email.send.dto';
+import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EmailTempPasswordDto } from '@module/email/dtos/email.temp-password.dto';
-import { AwsSESService } from '@module/aws/services/aws.ses.service';
-import { EmailResetPasswordDto } from '@module/email/dtos/email.reset-password.dto';
-import { EmailCreateDto } from '@module/email/dtos/email.create.dto';
-import { EmailVerificationDto } from '@module/email/dtos/email.verification.dto';
-import { EmailVerifiedDto } from '@module/email/dtos/email.verified.dto';
-import { EmailMobileNumberVerifiedDto } from '@module/email/dtos/email.mobile-number-verified.dto';
+import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
+import { AwsSESService } from '@modules/aws/services/aws.ses.service';
+import { EmailResetPasswordDto } from '@modules/email/dtos/email.reset-password.dto';
+import { EmailCreateDto } from '@modules/email/dtos/email.create.dto';
+import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
+import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
+import { EmailMobileNumberVerifiedDto } from '@modules/email/dtos/email.mobile-number-verified.dto';
 import { join } from 'path';
 
 @Injectable()

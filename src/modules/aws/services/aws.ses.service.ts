@@ -31,8 +31,8 @@ import {
     AwsSESSendBulkDto,
     AwsSESSendDto,
     AwsSESUpdateTemplateDto,
-} from '@module/aws/dtos/aws.ses.dto';
-import { IAwsSESService } from '@module/aws/interfaces/aws.ses-service.interface';
+} from '@modules/aws/dtos/aws.ses.dto';
+import { IAwsSESService } from '@modules/aws/interfaces/aws.ses-service.interface';
 
 @Injectable()
 export class AwsSESService implements IAwsSESService {

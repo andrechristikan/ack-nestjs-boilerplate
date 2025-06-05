@@ -5,16 +5,16 @@ import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePaging } from '@common/response/interfaces/response.interface';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from '@module/auth/decorators/auth.jwt.decorator';
-import { PasswordHistorySharedListDoc } from '@module/password-history/docs/password-history.shared.doc';
-import { PasswordHistoryListResponseDto } from '@module/password-history/dtos/response/password-history.list.response.dto';
-import { IPasswordHistoryDoc } from '@module/password-history/interfaces/password-history.interface';
-import { PasswordHistoryService } from '@module/password-history/services/password-history.service';
-import { UserProtected } from '@module/user/decorators/user.decorator';
+} from '@modules/auth/decorators/auth.jwt.decorator';
+import { PasswordHistorySharedListDoc } from '@modules/password-history/docs/password-history.shared.doc';
+import { PasswordHistoryListResponseDto } from '@modules/password-history/dtos/response/password-history.list.response.dto';
+import { IPasswordHistoryDoc } from '@modules/password-history/interfaces/password-history.interface';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
 
 @ApiTags('modules.shared.passwordHistory')
 @Controller({

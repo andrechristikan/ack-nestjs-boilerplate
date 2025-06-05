@@ -1,5 +1,5 @@
 import { ObjectCannedACL, S3Client } from '@aws-sdk/client-s3';
-import { ENUM_AWS_S3_ACCESSIBILITY } from '@module/aws/enums/aws.enum';
+import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
 
 export interface IAwsS3Options {
     access?: ENUM_AWS_S3_ACCESSIBILITY;

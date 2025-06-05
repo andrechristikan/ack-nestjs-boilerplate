@@ -10,7 +10,7 @@ import {
     Post,
 } from '@nestjs/common';
 import { ClientSession } from 'mongoose';
-import { UserService } from '@module/user/services/user.service';
+import { UserService } from '@modules/user/services/user.service';
 import { ApiTags } from '@nestjs/swagger';
 import { IResponse } from '@common/response/interfaces/response.interface';
 import {
@@ -18,32 +18,32 @@ import {
     ResetPasswordPublicRequestDoc,
     ResetPasswordPublicResetDoc,
     ResetPasswordPublicVerifyDoc,
-} from '@module/reset-password/docs/reset-password.public.doc';
-import { ResetPasswordCreateRequestDto } from '@module/reset-password/dtos/request/reset-password.create.request.dto';
-import { IUserDoc } from '@module/user/interfaces/user.interface';
-import { ENUM_USER_STATUS_CODE_ERROR } from '@module/user/enums/user.status-code.enum';
-import { ResetPasswordService } from '@module/reset-password/services/reset-password.service';
-import { ResetPasswordCreteResponseDto } from '@module/reset-password/dtos/response/reset-password.create.response.dto';
+} from '@modules/reset-password/docs/reset-password.public.doc';
+import { ResetPasswordCreateRequestDto } from '@modules/reset-password/dtos/request/reset-password.create.request.dto';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
+import { ResetPasswordService } from '@modules/reset-password/services/reset-password.service';
+import { ResetPasswordCreteResponseDto } from '@modules/reset-password/dtos/response/reset-password.create.response.dto';
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
-import { IResetPasswordRequest } from '@module/reset-password/interfaces/reset-password.interface';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
+import { IResetPasswordRequest } from '@modules/reset-password/interfaces/reset-password.interface';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
-import { ENUM_SEND_EMAIL_PROCESS } from '@module/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { InjectQueue } from '@nestjs/bullmq';
-import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
+import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 import { Queue } from 'bullmq';
-import { PasswordHistoryService } from '@module/password-history/services/password-history.service';
-import { ResetPasswordParseByTokenPipe } from '@module/reset-password/pipes/reset-password.parse.pipe';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { ResetPasswordParseByTokenPipe } from '@modules/reset-password/pipes/reset-password.parse.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
-import { ResetPasswordActivePipe } from '@module/reset-password/pipes/reset-password.active.pipe';
-import { ResetPasswordExpiredPipe } from '@module/reset-password/pipes/reset-password.expired.pipe';
-import { ResetPasswordDoc } from '@module/reset-password/repository/entities/reset-password.entity';
-import { ENUM_RESET_PASSWORD_STATUS_CODE_ERROR } from '@module/reset-password/enums/reset-password.status-code.enum';
-import { ResetPasswordResetRequestDto } from '@module/reset-password/dtos/request/reset-password.reset.request.dto';
-import { AuthService } from '@module/auth/services/auth.service';
-import { IAuthPassword } from '@module/auth/interfaces/auth.interface';
-import { ENUM_PASSWORD_HISTORY_TYPE } from '@module/password-history/enums/password-history.enum';
-import { ResetPasswordVerifyRequestDto } from '@module/reset-password/dtos/request/reset-password.verify.request.dto';
+import { ResetPasswordActivePipe } from '@modules/reset-password/pipes/reset-password.active.pipe';
+import { ResetPasswordExpiredPipe } from '@modules/reset-password/pipes/reset-password.expired.pipe';
+import { ResetPasswordDoc } from '@modules/reset-password/repository/entities/reset-password.entity';
+import { ENUM_RESET_PASSWORD_STATUS_CODE_ERROR } from '@modules/reset-password/enums/reset-password.status-code.enum';
+import { ResetPasswordResetRequestDto } from '@modules/reset-password/dtos/request/reset-password.reset.request.dto';
+import { AuthService } from '@modules/auth/services/auth.service';
+import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { ENUM_PASSWORD_HISTORY_TYPE } from '@modules/password-history/enums/password-history.enum';
+import { ResetPasswordVerifyRequestDto } from '@modules/reset-password/dtos/request/reset-password.verify.request.dto';
 import { DatabaseService } from '@common/database/services/database.service';
 
 @ApiTags('modules.public.resetPassword')

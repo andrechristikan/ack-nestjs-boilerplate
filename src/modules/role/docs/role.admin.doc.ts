@@ -13,11 +13,11 @@ import {
     RoleDocParamsId,
     RoleDocQueryIsActive,
     RoleDocQueryType,
-} from '@module/role/constants/role.doc.constant';
-import { RoleCreateRequestDto } from '@module/role/dtos/request/role.create.request.dto';
-import { RoleUpdateRequestDto } from '@module/role/dtos/request/role.update.request.dto';
-import { RoleGetResponseDto } from '@module/role/dtos/response/role.get.response.dto';
-import { RoleListResponseDto } from '@module/role/dtos/response/role.list.response.dto';
+} from '@modules/role/constants/role.doc.constant';
+import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
+import { RoleGetResponseDto } from '@modules/role/dtos/response/role.get.response.dto';
+import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 
 export function RoleAdminListDoc(): MethodDecorator {
     return applyDecorators(

@@ -9,7 +9,7 @@ import {
     IsEnum,
 } from 'class-validator';
 import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
-import { ENUM_USER_GENDER } from '@module/user/enums/user.enum';
+import { ENUM_USER_GENDER } from '@modules/user/enums/user.enum';
 
 export class UserCreateRequestDto {
     @ApiProperty({

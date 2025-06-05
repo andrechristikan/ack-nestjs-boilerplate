@@ -2,8 +2,8 @@ import { faker } from '@faker-js/faker';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { DatabaseUUIDDto } from '@common/database/dtos/database.uuid.dto';
-import { ENUM_POLICY_ROLE_TYPE } from '@module/policy/enums/policy.enum';
-import { RolePermissionDto } from '@module/role/dtos/role.permission.dto';
+import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
+import { RolePermissionDto } from '@modules/role/dtos/role.permission.dto';
 
 export class RoleGetResponseDto extends DatabaseUUIDDto {
     @ApiProperty({

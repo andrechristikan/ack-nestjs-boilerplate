@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, PipeTransform } from '@nestjs/common';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from '@module/role/enums/role.status-code.enum';
-import { RoleDoc } from '@module/role/repository/entities/role.entity';
-import { RoleService } from '@module/role/services/role.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
+import { RoleDoc } from '@modules/role/repository/entities/role.entity';
+import { RoleService } from '@modules/role/services/role.service';
 
 @Injectable()
 export class RoleParsePipe implements PipeTransform {

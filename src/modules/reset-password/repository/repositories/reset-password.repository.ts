@@ -5,7 +5,7 @@ import { InjectDatabaseModel } from '@common/database/decorators/database.decora
 import {
     ResetPasswordDoc,
     ResetPasswordEntity,
-} from '@module/reset-password/repository/entities/reset-password.entity';
+} from '@modules/reset-password/repository/entities/reset-password.entity';
 
 @Injectable()
 export class ResetPasswordRepository extends DatabaseUUIDRepositoryBase<

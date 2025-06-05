@@ -1,8 +1,8 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
 import { DatabaseEntity } from '@common/database/decorators/database.decorator';
-import { UserEntity } from '@module/user/repository/entities/user.entity';
+import { UserEntity } from '@modules/user/repository/entities/user.entity';
 import { DatabaseUUIDEntityBase } from '@common/database/bases/database.uuid.entity';
-import { ENUM_RESET_PASSWORD_TYPE } from '@module/reset-password/enums/reset-password.enum';
+import { ENUM_RESET_PASSWORD_TYPE } from '@modules/reset-password/enums/reset-password.enum';
 import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
 
 export const ResetPasswordTableName = 'ResetPasswords';

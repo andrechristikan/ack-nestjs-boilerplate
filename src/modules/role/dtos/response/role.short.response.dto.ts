@@ -1,6 +1,6 @@
 import { ApiHideProperty, OmitType } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
-import { RoleListResponseDto } from '@module/role/dtos/response/role.list.response.dto';
+import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 
 export class RoleShortResponseDto extends OmitType(RoleListResponseDto, [
     'permissions',

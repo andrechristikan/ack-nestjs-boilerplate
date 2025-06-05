@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { UserDoc } from '@module/user/repository/entities/user.entity';
-import { ENUM_VERIFICATION_STATUS_CODE_ERROR } from '@module/verification/enums/verification.status-code.constant';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
+import { ENUM_VERIFICATION_STATUS_CODE_ERROR } from '@modules/verification/enums/verification.status-code.constant';
 
 @Injectable()
 export class VerificationUserEmailNotVerifiedYetPipe implements PipeTransform {

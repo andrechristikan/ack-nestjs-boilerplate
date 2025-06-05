@@ -4,8 +4,8 @@ import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.co
 import {
     CountryEntity,
     CountrySchema,
-} from '@module/country/repository/entities/country.entity';
-import { CountryRepository } from '@module/country/repository/repositories/country.repository';
+} from '@modules/country/repository/entities/country.entity';
+import { CountryRepository } from '@modules/country/repository/repositories/country.repository';
 
 @Module({
     providers: [CountryRepository],

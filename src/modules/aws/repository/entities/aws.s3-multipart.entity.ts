@@ -7,7 +7,7 @@ import {
 import {
     AwsS3MultipartPartEntity,
     AwsS3MultipartPartSchema,
-} from '@module/aws/repository/entities/aws.s3-multipart-part.entity';
+} from '@modules/aws/repository/entities/aws.s3-multipart-part.entity';
 
 @DatabaseEntity({ timestamps: false, _id: false })
 export class AwsS3MultipartEntity {

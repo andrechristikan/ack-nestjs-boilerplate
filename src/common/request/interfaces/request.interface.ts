@@ -1,8 +1,8 @@
 import { Request } from 'express';
-import { ApiKeyPayloadDto } from '@module/api-key/dtos/api-key.payload.dto';
+import { ApiKeyPayloadDto } from '@modules/api-key/dtos/api-key.payload.dto';
 import { ResponsePagingMetadataPaginationRequestDto } from '@common/response/dtos/response.paging.dto';
-import { IUserDoc } from '@module/user/interfaces/user.interface';
-import { IAuthJwtAccessTokenPayload } from '@module/auth/interfaces/auth.interface';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 
 export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
     apiKey?: ApiKeyPayloadDto;

@@ -26,23 +26,23 @@ import {
     IResponse,
     IResponsePaging,
 } from '@common/response/interfaces/response.interface';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@module/auth/decorators/auth.jwt.decorator';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from '@module/policy/enums/policy.enum';
+} from '@modules/policy/enums/policy.enum';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
-} from '@module/policy/decorators/policy.decorator';
+} from '@modules/policy/decorators/policy.decorator';
 import {
     ROLE_DEFAULT_AVAILABLE_SEARCH,
     ROLE_DEFAULT_IS_ACTIVE,
     ROLE_DEFAULT_POLICY_ROLE_TYPE,
-} from '@module/role/constants/role.list.constant';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from '@module/role/enums/role.status-code.enum';
+} from '@modules/role/constants/role.list.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import {
     RoleAdminActiveDoc,
     RoleAdminCreateDoc,
@@ -51,18 +51,18 @@ import {
     RoleAdminInactiveDoc,
     RoleAdminListDoc,
     RoleAdminUpdateDoc,
-} from '@module/role/docs/role.admin.doc';
-import { RoleCreateRequestDto } from '@module/role/dtos/request/role.create.request.dto';
-import { RoleUpdateRequestDto } from '@module/role/dtos/request/role.update.request.dto';
-import { RoleGetResponseDto } from '@module/role/dtos/response/role.get.response.dto';
-import { RoleListResponseDto } from '@module/role/dtos/response/role.list.response.dto';
-import { RoleIsActivePipe } from '@module/role/pipes/role.is-active.pipe';
-import { RoleParsePipe } from '@module/role/pipes/role.parse.pipe';
-import { RoleDoc } from '@module/role/repository/entities/role.entity';
-import { RoleService } from '@module/role/services/role.service';
+} from '@modules/role/docs/role.admin.doc';
+import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
+import { RoleGetResponseDto } from '@modules/role/dtos/response/role.get.response.dto';
+import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleIsActivePipe } from '@modules/role/pipes/role.is-active.pipe';
+import { RoleParsePipe } from '@modules/role/pipes/role.parse.pipe';
+import { RoleDoc } from '@modules/role/repository/entities/role.entity';
+import { RoleService } from '@modules/role/services/role.service';
 import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
-import { UserProtected } from '@module/user/decorators/user.decorator';
-import { RoleIsUsedPipe } from '@module/role/pipes/role.is-used.pipe';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { RoleIsUsedPipe } from '@modules/role/pipes/role.is-used.pipe';
 
 @ApiTags('modules.admin.role')
 @Controller({

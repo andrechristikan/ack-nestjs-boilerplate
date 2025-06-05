@@ -16,36 +16,36 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { MessageService } from '@common/message/services/message.service';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponse } from '@common/response/interfaces/response.interface';
-import { ActivityService } from '@module/activity/services/activity.service';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
+import { ActivityService } from '@modules/activity/services/activity.service';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from '@module/auth/decorators/auth.jwt.decorator';
-import { IAuthJwtAccessTokenPayload } from '@module/auth/interfaces/auth.interface';
-import { AwsS3Dto } from '@module/aws/dtos/aws.s3.dto';
-import { AwsS3PresignRequestDto } from '@module/aws/dtos/request/aws.s3-presign.request.dto';
-import { AwsS3PresignResponseDto } from '@module/aws/dtos/response/aws.s3-presign.response.dto';
-import { AwsS3Service } from '@module/aws/services/aws.s3.service';
-import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@module/country/enums/country.status-code.enum';
-import { CountryService } from '@module/country/services/country.service';
-import { UserProtected } from '@module/user/decorators/user.decorator';
+} from '@modules/auth/decorators/auth.jwt.decorator';
+import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
+import { AwsS3PresignRequestDto } from '@modules/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignResponseDto } from '@modules/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3Service } from '@modules/aws/services/aws.s3.service';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
+import { CountryService } from '@modules/country/services/country.service';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     UserSharedProfileDoc,
     UserSharedUpdatePhotoProfileDoc,
     UserSharedUpdateProfileDoc,
     UserSharedUploadPhotoProfileDoc,
-} from '@module/user/docs/user.shared.doc';
-import { UserUpdateProfileRequestDto } from '@module/user/dtos/request/user.update-profile.dto';
-import { UserUploadPhotoRequestDto } from '@module/user/dtos/request/user.upload-photo.request.dto';
-import { UserProfileResponseDto } from '@module/user/dtos/response/user.profile.response.dto';
-import { IUserDoc } from '@module/user/interfaces/user.interface';
+} from '@modules/user/docs/user.shared.doc';
+import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.dto';
+import { UserUploadPhotoRequestDto } from '@modules/user/dtos/request/user.upload-photo.request.dto';
+import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
 import {
     UserActiveParsePipe,
     UserParsePipe,
-} from '@module/user/pipes/user.parse.pipe';
-import { UserDoc } from '@module/user/repository/entities/user.entity';
-import { UserService } from '@module/user/services/user.service';
+} from '@modules/user/pipes/user.parse.pipe';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
+import { UserService } from '@modules/user/services/user.service';
 
 @ApiTags('modules.shared.user')
 @Controller({

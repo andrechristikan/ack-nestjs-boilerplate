@@ -1,13 +1,13 @@
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
-import { SettingAuthResponseDto } from '@module/setting/dtos/response/setting.auth.response.dto';
-import { SettingFileResponseDto } from '@module/setting/dtos/response/setting.file.response.dto';
-import { SettingLanguageResponseDto } from '@module/setting/dtos/response/setting.language.response.dto';
-import { SettingMiddlewareResponseDto } from '@module/setting/dtos/response/setting.middleware.response.dto';
-import { SettingTimezoneResponseDto } from '@module/setting/dtos/response/setting.timezone.response.dto';
-import { SettingUserResponseDto } from '@module/setting/dtos/response/setting.user.response.dto';
-import { ENUM_SETTING_UNIT } from '@module/setting/enums/setting.enum';
+import { SettingAuthResponseDto } from '@modules/setting/dtos/response/setting.auth.response.dto';
+import { SettingFileResponseDto } from '@modules/setting/dtos/response/setting.file.response.dto';
+import { SettingLanguageResponseDto } from '@modules/setting/dtos/response/setting.language.response.dto';
+import { SettingMiddlewareResponseDto } from '@modules/setting/dtos/response/setting.middleware.response.dto';
+import { SettingTimezoneResponseDto } from '@modules/setting/dtos/response/setting.timezone.response.dto';
+import { SettingUserResponseDto } from '@modules/setting/dtos/response/setting.user.response.dto';
+import { ENUM_SETTING_UNIT } from '@modules/setting/enums/setting.enum';
 
 export class SettingCoreResponseDto {
     @ApiProperty({

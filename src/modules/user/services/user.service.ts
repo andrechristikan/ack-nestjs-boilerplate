@@ -14,38 +14,38 @@ import {
 } from '@common/database/interfaces/database.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ConfigService } from '@nestjs/config';
-import { IAuthPassword } from '@module/auth/interfaces/auth.interface';
+import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { plainToInstance } from 'class-transformer';
 import { Document, Types } from 'mongoose';
-import { IUserService } from '@module/user/interfaces/user.service.interface';
-import { UserRepository } from '@module/user/repository/repositories/user.repository';
+import { IUserService } from '@modules/user/interfaces/user.service.interface';
+import { UserRepository } from '@modules/user/repository/repositories/user.repository';
 import {
     UserDoc,
     UserEntity,
-} from '@module/user/repository/entities/user.entity';
-import { IUserDoc, IUserEntity } from '@module/user/interfaces/user.interface';
+} from '@modules/user/repository/entities/user.entity';
+import { IUserDoc, IUserEntity } from '@modules/user/interfaces/user.interface';
 import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
-} from '@module/user/enums/user.enum';
-import { UserCreateRequestDto } from '@module/user/dtos/request/user.create.request.dto';
-import { UserUpdatePasswordAttemptRequestDto } from '@module/user/dtos/request/user.update-password-attempt.request.dto';
-import { UserUpdateRequestDto } from '@module/user/dtos/request/user.update.request.dto';
-import { UserUpdateMobileNumberRequestDto } from '@module/user/dtos/request/user.update-mobile-number.request.dto';
-import { UserProfileResponseDto } from '@module/user/dtos/response/user.profile.response.dto';
-import { UserListResponseDto } from '@module/user/dtos/response/user.list.response.dto';
-import { UserShortResponseDto } from '@module/user/dtos/response/user.short.response.dto';
-import { UserGetResponseDto } from '@module/user/dtos/response/user.get.response.dto';
-import { AwsS3Dto } from '@module/aws/dtos/aws.s3.dto';
+} from '@modules/user/enums/user.enum';
+import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { UserUpdatePasswordAttemptRequestDto } from '@modules/user/dtos/request/user.update-password-attempt.request.dto';
+import { UserUpdateRequestDto } from '@modules/user/dtos/request/user.update.request.dto';
+import { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
+import { UserShortResponseDto } from '@modules/user/dtos/response/user.short.response.dto';
+import { UserGetResponseDto } from '@modules/user/dtos/response/user.get.response.dto';
+import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { AuthSignUpRequestDto } from '@module/auth/dtos/request/auth.sign-up.request.dto';
-import { UserUpdateClaimUsernameRequestDto } from '@module/user/dtos/request/user.update-claim-username.dto';
-import { UserUpdateProfileRequestDto } from '@module/user/dtos/request/user.update-profile.dto';
-import { CountryDoc } from '@module/country/repository/entities/country.entity';
-import { UserUpdateStatusRequestDto } from '@module/user/dtos/request/user.update-status.request.dto';
+import { AuthSignUpRequestDto } from '@modules/auth/dtos/request/auth.sign-up.request.dto';
+import { UserUpdateClaimUsernameRequestDto } from '@modules/user/dtos/request/user.update-claim-username.dto';
+import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.dto';
+import { CountryDoc } from '@modules/country/repository/entities/country.entity';
+import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { DatabaseHelperQueryContain } from '@common/database/decorators/database.decorator';
-import { UserUploadPhotoRequestDto } from '@module/user/dtos/request/user.upload-photo.request.dto';
-import { UserCensorResponseDto } from '@module/user/dtos/response/user.censor.response.dto';
+import { UserUploadPhotoRequestDto } from '@modules/user/dtos/request/user.upload-photo.request.dto';
+import { UserCensorResponseDto } from '@modules/user/dtos/response/user.censor.response.dto';
 import { DatabaseService } from '@common/database/services/database.service';
 
 @Injectable()

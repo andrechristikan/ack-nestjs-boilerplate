@@ -6,24 +6,24 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePaging } from '@common/response/interfaces/response.interface';
-import { ActivityAdminListDoc } from '@module/activity/docs/activity.admin.doc';
-import { ActivityListResponseDto } from '@module/activity/dtos/response/activity.list.response.dto';
-import { IActivityDoc } from '@module/activity/interfaces/activity.interface';
-import { ActivityService } from '@module/activity/services/activity.service';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@module/auth/decorators/auth.jwt.decorator';
+import { ActivityAdminListDoc } from '@modules/activity/docs/activity.admin.doc';
+import { ActivityListResponseDto } from '@modules/activity/dtos/response/activity.list.response.dto';
+import { IActivityDoc } from '@modules/activity/interfaces/activity.interface';
+import { ActivityService } from '@modules/activity/services/activity.service';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
-} from '@module/policy/decorators/policy.decorator';
+} from '@modules/policy/decorators/policy.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from '@module/policy/enums/policy.enum';
-import { UserProtected } from '@module/user/decorators/user.decorator';
-import { UserParsePipe } from '@module/user/pipes/user.parse.pipe';
-import { UserDoc } from '@module/user/repository/entities/user.entity';
+} from '@modules/policy/enums/policy.enum';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { UserParsePipe } from '@modules/user/pipes/user.parse.pipe';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
 
 @ApiTags('modules.admin.activity')
 @Controller({

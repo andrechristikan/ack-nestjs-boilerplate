@@ -6,7 +6,7 @@ import {
     DocRequest,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
-import { UserDocParamsId } from '@module/user/constants/user.doc.constant';
+import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 
 export function AuthAdminUpdatePasswordDoc(): MethodDecorator {
     return applyDecorators(

@@ -6,8 +6,8 @@ import {
     DocRequest,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { ActivityListResponseDto } from '@module/activity/dtos/response/activity.list.response.dto';
-import { UserDocParamsId } from '@module/user/constants/user.doc.constant';
+import { ActivityListResponseDto } from '@modules/activity/dtos/response/activity.list.response.dto';
+import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 
 export function ActivityAdminListDoc(): MethodDecorator {
     return applyDecorators(

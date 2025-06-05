@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, PipeTransform } from '@nestjs/common';
-import { ENUM_USER_STATUS_CODE_ERROR } from '@module/user/enums/user.status-code.enum';
-import { IUserDoc } from '@module/user/interfaces/user.interface';
-import { UserDoc } from '@module/user/repository/entities/user.entity';
-import { UserService } from '@module/user/services/user.service';
+import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
+import { UserService } from '@modules/user/services/user.service';
 
 @Injectable()
 export class UserParsePipe implements PipeTransform {

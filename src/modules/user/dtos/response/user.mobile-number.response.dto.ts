@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { CountryShortResponseDto } from '@module/country/dtos/response/country.short.response.dto';
+import { CountryShortResponseDto } from '@modules/country/dtos/response/country.short.response.dto';
 
 export class UserMobileNumberResponseDto {
     @ApiProperty({

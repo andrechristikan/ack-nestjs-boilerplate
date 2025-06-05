@@ -6,12 +6,12 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ENUM_POLICY_STATUS_CODE_ERROR } from '@module/policy/enums/policy.status-code.enum';
-import { PolicyAbilityFactory } from '@module/policy/factories/policy.factory';
-import { IPolicyAbility } from '@module/policy/interfaces/policy.interface';
-import { POLICY_ABILITY_META_KEY } from '@module/policy/constants/policy.constant';
-import { ENUM_POLICY_ROLE_TYPE } from '@module/policy/enums/policy.enum';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from '@module/auth/enums/auth.status-code.enum';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import { POLICY_ABILITY_META_KEY } from '@modules/policy/constants/policy.constant';
+import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
 
 @Injectable()
 export class PolicyAbilityGuard implements CanActivate {

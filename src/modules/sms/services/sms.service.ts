@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { readFileSync } from 'fs';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { AwsPinpointService } from '@module/aws/services/aws.pinpoint.service';
-import { SmsSendRequestDto } from '@module/sms/dtos/request/sms.send.request.dto';
-import { SmsVerificationRequestDto } from '@module/sms/dtos/request/sms.verification.request.dto';
-import { ISmsService } from '@module/sms/interfaces/sms.service.interface';
+import { AwsPinpointService } from '@modules/aws/services/aws.pinpoint.service';
+import { SmsSendRequestDto } from '@modules/sms/dtos/request/sms.send.request.dto';
+import { SmsVerificationRequestDto } from '@modules/sms/dtos/request/sms.verification.request.dto';
+import { ISmsService } from '@modules/sms/interfaces/sms.service.interface';
 
 @Injectable()
 export class SmsService implements ISmsService {

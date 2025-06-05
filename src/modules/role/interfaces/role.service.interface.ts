@@ -9,16 +9,16 @@ import {
     IDatabaseOptions,
     IDatabaseSaveOptions,
 } from '@common/database/interfaces/database.interface';
-import { ENUM_POLICY_ROLE_TYPE } from '@module/policy/enums/policy.enum';
-import { RoleCreateRequestDto } from '@module/role/dtos/request/role.create.request.dto';
-import { RoleUpdateRequestDto } from '@module/role/dtos/request/role.update.request.dto';
-import { RoleGetResponseDto } from '@module/role/dtos/response/role.get.response.dto';
-import { RoleListResponseDto } from '@module/role/dtos/response/role.list.response.dto';
-import { RoleShortResponseDto } from '@module/role/dtos/response/role.short.response.dto';
+import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
+import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
+import { RoleGetResponseDto } from '@modules/role/dtos/response/role.get.response.dto';
+import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleShortResponseDto } from '@modules/role/dtos/response/role.short.response.dto';
 import {
     RoleDoc,
     RoleEntity,
-} from '@module/role/repository/entities/role.entity';
+} from '@modules/role/repository/entities/role.entity';
 
 export interface IRoleService {
     findAll(

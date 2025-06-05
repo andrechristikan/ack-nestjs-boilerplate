@@ -6,10 +6,10 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
-import { AwsS3PresignRequestDto } from '@module/aws/dtos/request/aws.s3-presign.request.dto';
-import { AwsS3PresignResponseDto } from '@module/aws/dtos/response/aws.s3-presign.response.dto';
-import { UserUpdateProfileRequestDto } from '@module/user/dtos/request/user.update-profile.dto';
-import { UserProfileResponseDto } from '@module/user/dtos/response/user.profile.response.dto';
+import { AwsS3PresignRequestDto } from '@modules/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignResponseDto } from '@modules/aws/dtos/response/aws.s3-presign.response.dto';
+import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.dto';
+import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 
 export function UserSharedProfileDoc(): MethodDecorator {
     return applyDecorators(

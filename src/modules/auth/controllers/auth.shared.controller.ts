@@ -12,42 +12,42 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ClientSession } from 'mongoose';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
     AuthJwtRefreshProtected,
     AuthJwtToken,
-} from '@module/auth/decorators/auth.jwt.decorator';
-import { AuthService } from '@module/auth/services/auth.service';
+} from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthService } from '@modules/auth/services/auth.service';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponse } from '@common/response/interfaces/response.interface';
-import { ENUM_USER_STATUS_CODE_ERROR } from '@module/user/enums/user.status-code.enum';
-import { UserService } from '@module/user/services/user.service';
-import { AuthRefreshResponseDto } from '@module/auth/dtos/response/auth.refresh.response.dto';
-import { AuthChangePasswordRequestDto } from '@module/auth/dtos/request/auth.change-password.request.dto';
+import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
+import { UserService } from '@modules/user/services/user.service';
+import { AuthRefreshResponseDto } from '@modules/auth/dtos/response/auth.refresh.response.dto';
+import { AuthChangePasswordRequestDto } from '@modules/auth/dtos/request/auth.change-password.request.dto';
 import {
     AuthSharedChangePasswordDoc,
     AuthSharedRefreshDoc,
-} from '@module/auth/docs/auth.shared.doc';
+} from '@modules/auth/docs/auth.shared.doc';
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
-import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
+import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 import { Queue } from 'bullmq';
-import { ENUM_PASSWORD_HISTORY_TYPE } from '@module/password-history/enums/password-history.enum';
-import { PasswordHistoryService } from '@module/password-history/services/password-history.service';
-import { SessionService } from '@module/session/services/session.service';
-import { ENUM_SESSION_STATUS_CODE_ERROR } from '@module/session/enums/session.status-code.enum';
-import { ActivityService } from '@module/activity/services/activity.service';
+import { ENUM_PASSWORD_HISTORY_TYPE } from '@modules/password-history/enums/password-history.enum';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { SessionService } from '@modules/session/services/session.service';
+import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
+import { ActivityService } from '@modules/activity/services/activity.service';
 import { MessageService } from '@common/message/services/message.service';
-import { ENUM_SEND_EMAIL_PROCESS } from '@module/email/enums/email.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { InjectQueue } from '@nestjs/bullmq';
-import { IUserDoc } from '@module/user/interfaces/user.interface';
-import { UserProtected } from '@module/user/decorators/user.decorator';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { DatabaseService } from '@common/database/services/database.service';
 import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
-} from '@module/auth/interfaces/auth.interface';
+} from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.shared.auth')
 @Controller({

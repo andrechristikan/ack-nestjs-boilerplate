@@ -1,4 +1,4 @@
-import { ENUM_AUTH_LOGIN_FROM } from '@module/auth/enums/auth.enum';
+import { ENUM_AUTH_LOGIN_FROM } from '@modules/auth/enums/auth.enum';
 import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
@@ -6,9 +6,9 @@ import {
     IAuthPasswordOptions,
     IAuthSocialApplePayload,
     IAuthSocialGooglePayload,
-} from '@module/auth/interfaces/auth.interface';
-import { IUserDoc } from '@module/user/interfaces/user.interface';
-import { AuthLoginResponseDto } from '@module/auth/dtos/response/auth.login.response.dto';
+} from '@modules/auth/interfaces/auth.interface';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { AuthLoginResponseDto } from '@modules/auth/dtos/response/auth.login.response.dto';
 
 export interface IAuthService {
     createAccessToken(

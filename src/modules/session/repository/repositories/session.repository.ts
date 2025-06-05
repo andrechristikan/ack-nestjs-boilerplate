@@ -5,7 +5,7 @@ import { InjectDatabaseModel } from '@common/database/decorators/database.decora
 import {
     SessionDoc,
     SessionEntity,
-} from '@module/session/repository/entities/session.entity';
+} from '@modules/session/repository/entities/session.entity';
 
 @Injectable()
 export class SessionRepository extends DatabaseUUIDRepositoryBase<

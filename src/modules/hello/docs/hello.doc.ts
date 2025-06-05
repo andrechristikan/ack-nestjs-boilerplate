@@ -4,7 +4,7 @@ import {
     DocAuth,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
-import { HelloResponseDto } from '@module/hello/dtos/response/hello.response.dto';
+import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
 
 export function HelloDoc(): MethodDecorator {
     return applyDecorators(

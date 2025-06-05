@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
-import { ApiKeyModule } from '@module/api-key/api-key.module';
-import { CountrySystemController } from '@module/country/controllers/country.system.controller';
-import { CountryModule } from '@module/country/country.module';
-import { HealthSystemController } from '@module/health/controllers/health.system.controller';
-import { HealthModule } from '@module/health/health.module';
-import { RoleSystemController } from '@module/role/controllers/role.system.controller';
-import { RoleModule } from '@module/role/role.module';
-import { SettingSystemController } from '@module/setting/controllers/setting.system.controller';
-import { SettingModule } from '@module/setting/setting.module';
-import { UserSystemController } from '@module/user/controllers/user.system.controller';
-import { UserModule } from '@module/user/user.module';
+import { ApiKeyModule } from '@modules/api-key/api-key.module';
+import { CountrySystemController } from '@modules/country/controllers/country.system.controller';
+import { CountryModule } from '@modules/country/country.module';
+import { HealthSystemController } from '@modules/health/controllers/health.system.controller';
+import { HealthModule } from '@modules/health/health.module';
+import { RoleSystemController } from '@modules/role/controllers/role.system.controller';
+import { RoleModule } from '@modules/role/role.module';
+import { SettingSystemController } from '@modules/setting/controllers/setting.system.controller';
+import { SettingModule } from '@modules/setting/setting.module';
+import { UserSystemController } from '@modules/user/controllers/user.system.controller';
+import { UserModule } from '@modules/user/user.module';
 
 @Module({
     controllers: [

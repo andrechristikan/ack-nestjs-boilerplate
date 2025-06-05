@@ -13,20 +13,20 @@ import {
 } from '@common/database/interfaces/database.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { PasswordHistoryCreateByAdminRequestDto } from '@module/password-history/dtos/request/password-history.create-by-admin.request.dto';
-import { PasswordHistoryCreateRequestDto } from '@module/password-history/dtos/request/password-history.create.request.dto';
-import { PasswordHistoryListResponseDto } from '@module/password-history/dtos/response/password-history.list.response.dto';
+import { PasswordHistoryCreateByAdminRequestDto } from '@modules/password-history/dtos/request/password-history.create-by-admin.request.dto';
+import { PasswordHistoryCreateRequestDto } from '@modules/password-history/dtos/request/password-history.create.request.dto';
+import { PasswordHistoryListResponseDto } from '@modules/password-history/dtos/response/password-history.list.response.dto';
 import {
     IPasswordHistoryDoc,
     IPasswordHistoryEntity,
-} from '@module/password-history/interfaces/password-history.interface';
-import { IPasswordHistoryService } from '@module/password-history/interfaces/password-history.service.interface';
+} from '@modules/password-history/interfaces/password-history.interface';
+import { IPasswordHistoryService } from '@modules/password-history/interfaces/password-history.service.interface';
 import {
     PasswordHistoryDoc,
     PasswordHistoryEntity,
-} from '@module/password-history/repository/entities/password-history.entity';
-import { PasswordHistoryRepository } from '@module/password-history/repository/repositories/password-history.repository';
-import { UserDoc } from '@module/user/repository/entities/user.entity';
+} from '@modules/password-history/repository/entities/password-history.entity';
+import { PasswordHistoryRepository } from '@modules/password-history/repository/repositories/password-history.repository';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
 
 @Injectable()
 export class PasswordHistoryService implements IPasswordHistoryService {

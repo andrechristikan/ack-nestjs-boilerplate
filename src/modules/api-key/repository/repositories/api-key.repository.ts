@@ -5,7 +5,7 @@ import { InjectDatabaseModel } from '@common/database/decorators/database.decora
 import {
     ApiKeyDoc,
     ApiKeyEntity,
-} from '@module/api-key/repository/entities/api-key.entity';
+} from '@modules/api-key/repository/entities/api-key.entity';
 
 @Injectable()
 export class ApiKeyRepository extends DatabaseUUIDRepositoryBase<

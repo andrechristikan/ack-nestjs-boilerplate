@@ -5,7 +5,7 @@ import { InjectDatabaseModel } from '@common/database/decorators/database.decora
 import {
     VerificationDoc,
     VerificationEntity,
-} from '@module/verification/repository/entity/verification.entity';
+} from '@modules/verification/repository/entity/verification.entity';
 
 @Injectable()
 export class VerificationRepository extends DatabaseUUIDRepositoryBase<

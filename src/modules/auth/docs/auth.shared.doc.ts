@@ -6,8 +6,8 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
-import { AuthChangePasswordRequestDto } from '@module/auth/dtos/request/auth.change-password.request.dto';
-import { AuthRefreshResponseDto } from '@module/auth/dtos/response/auth.refresh.response.dto';
+import { AuthChangePasswordRequestDto } from '@modules/auth/dtos/request/auth.change-password.request.dto';
+import { AuthRefreshResponseDto } from '@modules/auth/dtos/response/auth.refresh.response.dto';
 
 export function AuthSharedRefreshDoc(): MethodDecorator {
     return applyDecorators(

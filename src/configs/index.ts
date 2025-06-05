@@ -1,19 +1,19 @@
-import AppConfig from '@config/app.config';
-import AuthConfig from '@config/auth.config';
-import DatabaseConfig from '@config/database.config';
-import HelperConfig from '@config/helper.config';
-import AwsConfig from '@config/aws.config';
-import UserConfig from '@config/user.config';
-import MiddlewareConfig from '@config/middleware.config';
-import DocConfig from '@config/doc.config';
-import MessageConfig from '@config/message.config';
-import EmailConfig from '@config/email.config';
-import RedisConfig from '@config/redis.config';
-import DebugConfig from '@config/debug.config';
-import ResetPasswordConfig from '@config/reset-password.config';
-import VerificationConfig from '@config/verification.config';
-import HomeConfig from '@config/home.config';
-import SessionConfig from '@config/session.config';
+import AppConfig from '@configs/app.config';
+import AuthConfig from '@configs/auth.config';
+import DatabaseConfig from '@configs/database.config';
+import HelperConfig from '@configs/helper.config';
+import AwsConfig from '@configs/aws.config';
+import UserConfig from '@configs/user.config';
+import MiddlewareConfig from '@configs/middleware.config';
+import DocConfig from '@configs/doc.config';
+import MessageConfig from '@configs/message.config';
+import EmailConfig from '@configs/email.config';
+import RedisConfig from '@configs/redis.config';
+import DebugConfig from '@configs/debug.config';
+import ResetPasswordConfig from '@configs/reset-password.config';
+import VerificationConfig from '@configs/verification.config';
+import HomeConfig from '@configs/home.config';
+import SessionConfig from '@configs/session.config';
 
 export default [
     AppConfig,

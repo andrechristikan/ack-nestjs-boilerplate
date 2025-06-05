@@ -1,21 +1,21 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { AuthService } from '@module/auth/services/auth.service';
-import { UserService } from '@module/user/services/user.service';
-import { RoleDoc } from '@module/role/repository/entities/role.entity';
-import { RoleService } from '@module/role/services/role.service';
+import { AuthService } from '@modules/auth/services/auth.service';
+import { UserService } from '@modules/user/services/user.service';
+import { RoleDoc } from '@modules/role/repository/entities/role.entity';
+import { RoleService } from '@modules/role/services/role.service';
 import {
     ENUM_USER_GENDER,
     ENUM_USER_SIGN_UP_FROM,
-} from '@module/user/enums/user.enum';
-import { CountryDoc } from '@module/country/repository/entities/country.entity';
-import { CountryService } from '@module/country/services/country.service';
-import { PasswordHistoryService } from '@module/password-history/services/password-history.service';
-import { ActivityService } from '@module/activity/services/activity.service';
+} from '@modules/user/enums/user.enum';
+import { CountryDoc } from '@modules/country/repository/entities/country.entity';
+import { CountryService } from '@modules/country/services/country.service';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { ActivityService } from '@modules/activity/services/activity.service';
 import { MessageService } from '@common/message/services/message.service';
-import { ENUM_PASSWORD_HISTORY_TYPE } from '@module/password-history/enums/password-history.enum';
-import { SessionService } from '@module/session/services/session.service';
-import { VerificationService } from '@module/verification/services/verification.service';
+import { ENUM_PASSWORD_HISTORY_TYPE } from '@modules/password-history/enums/password-history.enum';
+import { SessionService } from '@modules/session/services/session.service';
+import { VerificationService } from '@modules/verification/services/verification.service';
 
 @Injectable()
 export class MigrationUserSeed {

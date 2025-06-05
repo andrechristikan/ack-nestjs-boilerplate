@@ -25,13 +25,13 @@ import {
     IResponse,
     IResponsePaging,
 } from '@common/response/interfaces/response.interface';
-import { ENUM_API_KEY_TYPE } from '@module/api-key/enums/api-key.enum';
+import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
 import {
     API_KEY_DEFAULT_AVAILABLE_SEARCH,
     API_KEY_DEFAULT_IS_ACTIVE,
     API_KEY_DEFAULT_TYPE,
-} from '@module/api-key/constants/api-key.list.constant';
-import { ApiKeyProtected } from '@module/api-key/decorators/api-key.decorator';
+} from '@modules/api-key/constants/api-key.list.constant';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     ApiKeyAdminActiveDoc,
     ApiKeyAdminCreateDoc,
@@ -42,30 +42,30 @@ import {
     ApiKeyAdminResetDoc,
     ApiKeyAdminUpdateDateDoc,
     ApiKeyAdminUpdateDoc,
-} from '@module/api-key/docs/api-key.admin.doc';
-import { ApiKeyCreateRequestDto } from '@module/api-key/dtos/request/api-key.create.request.dto';
-import { ApiKeyUpdateDateRequestDto } from '@module/api-key/dtos/request/api-key.update-date.request.dto';
-import { ApiKeyUpdateRequestDto } from '@module/api-key/dtos/request/api-key.update.request.dto';
-import { ApiKeyCreateResponseDto } from '@module/api-key/dtos/response/api-key.create.dto';
-import { ApiKeyGetResponseDto } from '@module/api-key/dtos/response/api-key.get.response.dto';
-import { ApiKeyListResponseDto } from '@module/api-key/dtos/response/api-key.list.response.dto';
-import { ApiKeyResetResponseDto } from '@module/api-key/dtos/response/api-key.reset.dto';
-import { ApiKeyParsePipe } from '@module/api-key/pipes/api-key.parse.pipe';
-import { ApiKeyDoc } from '@module/api-key/repository/entities/api-key.entity';
-import { ApiKeyService } from '@module/api-key/services/api-key.service';
-import { AuthJwtAccessProtected } from '@module/auth/decorators/auth.jwt.decorator';
+} from '@modules/api-key/docs/api-key.admin.doc';
+import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
+import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
+import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.dto';
+import { ApiKeyGetResponseDto } from '@modules/api-key/dtos/response/api-key.get.response.dto';
+import { ApiKeyListResponseDto } from '@modules/api-key/dtos/response/api-key.list.response.dto';
+import { ApiKeyResetResponseDto } from '@modules/api-key/dtos/response/api-key.reset.dto';
+import { ApiKeyParsePipe } from '@modules/api-key/pipes/api-key.parse.pipe';
+import { ApiKeyDoc } from '@modules/api-key/repository/entities/api-key.entity';
+import { ApiKeyService } from '@modules/api-key/services/api-key.service';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from '@module/policy/enums/policy.enum';
+} from '@modules/policy/enums/policy.enum';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
-} from '@module/policy/decorators/policy.decorator';
-import { ApiKeyNotExpiredPipe } from '@module/api-key/pipes/api-key.expired.pipe';
-import { ApiKeyIsActivePipe } from '@module/api-key/pipes/api-key.is-active.pipe';
-import { UserProtected } from '@module/user/decorators/user.decorator';
+} from '@modules/policy/decorators/policy.decorator';
+import { ApiKeyNotExpiredPipe } from '@modules/api-key/pipes/api-key.expired.pipe';
+import { ApiKeyIsActivePipe } from '@modules/api-key/pipes/api-key.is-active.pipe';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
 
 @ApiTags('common.admin.apiKey')
 @Controller({

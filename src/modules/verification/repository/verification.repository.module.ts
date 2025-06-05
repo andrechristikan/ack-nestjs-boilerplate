@@ -4,8 +4,8 @@ import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.co
 import {
     VerificationEntity,
     VerificationSchema,
-} from '@module/verification/repository/entity/verification.entity';
-import { VerificationRepository } from '@module/verification/repository/repositories/verification.repository';
+} from '@modules/verification/repository/entity/verification.entity';
+import { VerificationRepository } from '@modules/verification/repository/repositories/verification.repository';
 
 @Module({
     providers: [VerificationRepository],

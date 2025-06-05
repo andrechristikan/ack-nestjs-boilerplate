@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { passportJwtSecret } from 'jwks-rsa';
 import { Algorithm } from 'jsonwebtoken';
-import { IAuthJwtRefreshTokenPayload } from '@module/auth/interfaces/auth.interface';
+import { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class AuthJwtRefreshStrategy extends PassportStrategy(

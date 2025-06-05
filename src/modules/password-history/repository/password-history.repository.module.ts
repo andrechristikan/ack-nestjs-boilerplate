@@ -4,8 +4,8 @@ import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.co
 import {
     PasswordHistoryEntity,
     PasswordHistorySchema,
-} from '@module/password-history/repository/entities/password-history.entity';
-import { PasswordHistoryRepository } from '@module/password-history/repository/repositories/password-history.repository';
+} from '@modules/password-history/repository/entities/password-history.entity';
+import { PasswordHistoryRepository } from '@modules/password-history/repository/repositories/password-history.repository';
 
 @Module({
     providers: [PasswordHistoryRepository],

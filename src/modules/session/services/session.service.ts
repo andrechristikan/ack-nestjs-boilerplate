@@ -17,16 +17,16 @@ import {
     IDatabaseUpdateManyOptions,
 } from '@common/database/interfaces/database.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { SessionCreateRequestDto } from '@module/session/dtos/request/session.create.request.dto';
-import { SessionListResponseDto } from '@module/session/dtos/response/session.list.response.dto';
-import { ENUM_SESSION_STATUS } from '@module/session/enums/session.enum';
-import { ISessionService } from '@module/session/interfaces/session.service.interface';
+import { SessionCreateRequestDto } from '@modules/session/dtos/request/session.create.request.dto';
+import { SessionListResponseDto } from '@modules/session/dtos/response/session.list.response.dto';
+import { ENUM_SESSION_STATUS } from '@modules/session/enums/session.enum';
+import { ISessionService } from '@modules/session/interfaces/session.service.interface';
 import {
     SessionDoc,
     SessionEntity,
-} from '@module/session/repository/entities/session.entity';
-import { SessionRepository } from '@module/session/repository/repositories/session.repository';
-import { IUserDoc } from '@module/user/interfaces/user.interface';
+} from '@modules/session/repository/entities/session.entity';
+import { SessionRepository } from '@modules/session/repository/repositories/session.repository';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class SessionService implements ISessionService {

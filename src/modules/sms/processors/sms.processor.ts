@@ -1,11 +1,11 @@
-import { ENUM_SEND_SMS_PROCESS } from '@module/sms/enums/sms.enum';
+import { ENUM_SEND_SMS_PROCESS } from '@modules/sms/enums/sms.enum';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { SmsSendRequestDto } from '@module/sms/dtos/request/sms.send.request.dto';
-import { SmsVerificationRequestDto } from '@module/sms/dtos/request/sms.verification.request.dto';
-import { ISmsProcessor } from '@module/sms/interfaces/sms.processor.interface';
-import { SmsService } from '@module/sms/services/sms.service';
-import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
+import { SmsSendRequestDto } from '@modules/sms/dtos/request/sms.send.request.dto';
+import { SmsVerificationRequestDto } from '@modules/sms/dtos/request/sms.verification.request.dto';
+import { ISmsProcessor } from '@modules/sms/interfaces/sms.processor.interface';
+import { SmsService } from '@modules/sms/services/sms.service';
+import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 
 @Processor({
     name: ENUM_WORKER_QUEUES.SMS_QUEUE,

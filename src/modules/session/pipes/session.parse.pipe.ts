@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ENUM_SESSION_STATUS_CODE_ERROR } from '@module/session/enums/session.status-code.enum';
-import { SessionDoc } from '@module/session/repository/entities/session.entity';
-import { SessionService } from '@module/session/services/session.service';
+import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
+import { SessionDoc } from '@modules/session/repository/entities/session.entity';
+import { SessionService } from '@modules/session/services/session.service';
 
 @Injectable()
 export class SessionActiveParsePipe implements PipeTransform {

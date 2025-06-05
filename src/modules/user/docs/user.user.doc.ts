@@ -7,8 +7,8 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
-import { UserUpdateClaimUsernameRequestDto } from '@module/user/dtos/request/user.update-claim-username.dto';
-import { UserUpdateMobileNumberRequestDto } from '@module/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserUpdateClaimUsernameRequestDto } from '@modules/user/dtos/request/user.update-claim-username.dto';
+import { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
 
 export function UserUserDeleteDoc(): MethodDecorator {
     return applyDecorators(

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { AwsPinpointService } from '@module/aws/services/aws.pinpoint.service';
-import { AwsS3Service } from '@module/aws/services/aws.s3.service';
-import { AwsSESService } from '@module/aws/services/aws.ses.service';
+import { AwsPinpointService } from '@modules/aws/services/aws.pinpoint.service';
+import { AwsS3Service } from '@modules/aws/services/aws.s3.service';
+import { AwsSESService } from '@modules/aws/services/aws.ses.service';
 
 @Module({
     exports: [AwsS3Service, AwsSESService, AwsPinpointService],

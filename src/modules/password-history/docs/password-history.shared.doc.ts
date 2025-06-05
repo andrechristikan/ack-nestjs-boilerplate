@@ -4,7 +4,7 @@ import {
     DocAuth,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { PasswordHistoryListResponseDto } from '@module/password-history/dtos/response/password-history.list.response.dto';
+import { PasswordHistoryListResponseDto } from '@modules/password-history/dtos/response/password-history.list.response.dto';
 
 export function PasswordHistorySharedListDoc(): MethodDecorator {
     return applyDecorators(
