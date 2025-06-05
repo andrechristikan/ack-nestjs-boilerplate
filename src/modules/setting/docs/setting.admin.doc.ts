@@ -20,21 +20,6 @@ export function SettingAdminListDoc(): MethodDecorator {
         })
     );
 }
-export function SettingAdminCacheListDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'return list of all settings from redis',
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        // FIXME: How can we return a list of DTOs without Pagination ?
-        DocResponse<SettingListResponseDto>('setting.list', {
-            dto: SettingListResponseDto,
-        })
-    );
-}
 
 export function SettingAdminCacheReloadDoc(): MethodDecorator {
     return applyDecorators(

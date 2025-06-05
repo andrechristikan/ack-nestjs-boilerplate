@@ -8,7 +8,7 @@ import { DatabaseEntityBase } from '@common/database/bases/database.entity';
 
 export const SettingTableName = 'Settings';
 
-export interface SettingBaseValue {
+export interface SettingAdvancedValue {
     enabled: boolean;
 
     [key: string]: any;

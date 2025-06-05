@@ -21,19 +21,19 @@ export class SettingGuard implements CanActivate {
             SETTING_META_KEY,
             context.getHandler()
         );
-        const isFeatureEnabled = await this.settingService.isEnabled(
+        const isSettingEnabled = await this.settingService.isEnabled(
             featureKey,
             false,
             true
         );
 
-        if (!isFeatureEnabled) {
+        if (!isSettingEnabled) {
             throw new ForbiddenException({
                 statusCode: ENUM_SETTING_STATUS_CODE_ERROR.INACTIVE,
                 message: 'setting.error.featureInactive',
             });
         }
 
-        return isFeatureEnabled;
+        return isSettingEnabled;
     }
 }
