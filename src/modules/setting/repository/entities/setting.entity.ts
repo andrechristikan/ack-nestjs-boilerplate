@@ -4,7 +4,7 @@ import {
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
 import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
-import { DatabaseEntityBase } from '@common/database/bases/database.entity';
+import { DatabaseUUIDEntityBase } from '@common/database/bases/database.uuid.entity';
 
 export const SettingTableName = 'Settings';
 
@@ -17,7 +17,7 @@ export interface SettingAdvancedValue {
 @DatabaseEntity({
     collection: SettingTableName,
 })
-export class SettingEntity<T = any> extends DatabaseEntityBase{
+export class SettingEntity<T = any> extends DatabaseUUIDEntityBase {
     @DatabaseProp({ required: true, unique: true })
     key: string;
 

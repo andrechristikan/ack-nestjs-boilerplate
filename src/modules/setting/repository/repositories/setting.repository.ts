@@ -1,14 +1,14 @@
-import { InjectDatabaseModel } from '@app/common/database/decorators/database.decorator';
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import {
     SettingDoc,
     SettingEntity,
 } from '@modules/setting/repository/entities/setting.entity';
-import { DatabaseRepositoryBase } from '@common/database/bases/database.repository';
+import { DatabaseUUIDRepositoryBase } from '@common/database/bases/database.uuid.repository';
+import { InjectDatabaseModel } from '@common/database/decorators/database.decorator';
 
 @Injectable()
-export class SettingRepository<TValue = any> extends DatabaseRepositoryBase<
+export class SettingRepository<TValue = any> extends DatabaseUUIDRepositoryBase<
     SettingEntity<TValue>,
     SettingDoc
 > {
@@ -16,6 +16,6 @@ export class SettingRepository<TValue = any> extends DatabaseRepositoryBase<
         @InjectDatabaseModel(SettingEntity.name)
         private readonly settingModel: Model<SettingEntity<TValue>>
     ) {
-        super(settingModel)
+        super(settingModel);
     }
 }

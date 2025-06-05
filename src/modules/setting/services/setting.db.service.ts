@@ -17,12 +17,12 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 
 @Injectable()
-export class SettingDbService implements OnModuleInit {
+export class SettingDbService<T = any> implements OnModuleInit {
     protected readonly logger = new Logger(SettingDbService.name);
     private readonly CACHE_PREFIX = 'setting:';
 
     constructor(
-        protected readonly settingRepository: SettingRepository,
+        protected readonly settingRepository: SettingRepository<T>,
         @Inject(CACHE_MANAGER) private cacheManager: Cache
     ) {}
 
@@ -93,7 +93,7 @@ export class SettingDbService implements OnModuleInit {
         const setting = await this.settingRepository.findOne({ key });
         if (setting) {
             await this.cacheManager.set(cacheKey, setting.value);
-            return setting.value as T;
+            return setting.value;
         }
 
         if (fallback !== undefined) {

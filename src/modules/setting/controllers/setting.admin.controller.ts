@@ -17,16 +17,13 @@ import {
 } from '@modules/policy/enums/policy.enum';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { ApiKeyProtected } from '@app/modules/api-key/decorators/api-key.decorator';
-import {
-    SettingAdminCacheReloadDoc,
-    SettingAdminListDoc,
-} from '@modules/setting/docs/setting.admin.doc';
 import { SettingDbService } from '@modules/setting/services/setting.db.service';
 import { SettingListResponseDto } from '@modules/setting/dtos/response/setting.list.response.dto';
 import { PaginationQuery } from '@common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from '@common/pagination/services/pagination.service';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { SettingAdminCacheReloadDoc, SettingAdminListDoc } from '../docs/setting.admin.doc';
 
 @ApiTags('common.admin.setting')
 @Controller({
