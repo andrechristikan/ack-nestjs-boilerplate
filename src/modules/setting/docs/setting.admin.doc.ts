@@ -2,7 +2,7 @@ import { applyDecorators } from '@nestjs/common';
 import {
     Doc,
     DocAuth,
-    DocResponse,
+    DocResponse, DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { SettingListResponseDto } from '@modules/setting/dtos/response/setting.list.response.dto';
 
@@ -15,8 +15,7 @@ export function SettingAdminListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        // FIXME: How can we return a list of DTOs without Pagination ?
-        DocResponse<SettingListResponseDto>('setting.list', {
+        DocResponsePaging<SettingListResponseDto>('setting.list', {
             dto: SettingListResponseDto,
         })
     );
@@ -40,15 +39,12 @@ export function SettingAdminCacheListDoc(): MethodDecorator {
 export function SettingAdminCacheReloadDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'reload in-memory settings from database',
+            summary: 'reload redis settings from database',
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        // FIXME: How can we return a list of DTOs without Pagination ?
-        DocResponse<SettingListResponseDto>('setting.reload', {
-            dto: SettingListResponseDto,
-        })
+        DocResponse('setting.reload')
     );
 }

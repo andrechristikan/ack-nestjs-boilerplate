@@ -1,8 +1,11 @@
 import { ApiTags } from '@nestjs/swagger';
 import { Controller, Get } from '@nestjs/common';
-import { IResponse } from '@common/response/interfaces/response.interface';
+import { IResponsePaging } from '@common/response/interfaces/response.interface';
 
-import { Response } from '@common/response/decorators/response.decorator';
+import {
+    Response,
+    ResponsePaging,
+} from '@common/response/decorators/response.decorator';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
@@ -16,12 +19,14 @@ import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { ApiKeyProtected } from '@app/modules/api-key/decorators/api-key.decorator';
 import {
-    SettingAdminCacheListDoc,
     SettingAdminCacheReloadDoc,
     SettingAdminListDoc,
 } from '@modules/setting/docs/setting.admin.doc';
 import { SettingDbService } from '@modules/setting/services/setting.db.service';
 import { SettingListResponseDto } from '@modules/setting/dtos/response/setting.list.response.dto';
+import { PaginationQuery } from '@common/pagination/decorators/pagination.decorator';
+import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
+import { PaginationService } from '@common/pagination/services/pagination.service';
 
 @ApiTags('common.admin.setting')
 @Controller({
@@ -29,42 +34,46 @@ import { SettingListResponseDto } from '@modules/setting/dtos/response/setting.l
     path: '/setting',
 })
 export class SettingAdminController {
-    constructor(private readonly settingService: SettingDbService) {}
+    constructor(
+        private readonly settingService: SettingDbService,
+        private readonly paginationService: PaginationService
+    ) {}
 
     @SettingAdminListDoc()
     @Get('/')
-    @Response('setting.list')
-    //@PolicyAbilityProtected({
-    //    subject: ENUM_POLICY_SUBJECT.FEATURES,
-    //    action: [ENUM_POLICY_ACTION.READ],
-    //})
-    //@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    //@UserProtected()
-    //@AuthJwtAccessProtected()
-    //@ApiKeyProtected()
-    async list(): Promise<IResponse<SettingListResponseDto[]>> {
-        const appSettings = await this.settingService.findAll();
-        const output = this.settingService.mapList(appSettings);
-        return {
-            data: output,
-        };
-    }
-
-    @SettingAdminCacheListDoc()
-    @Get('/cache')
-    @Response('setting.list')
+    @ResponsePaging('setting.list')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.FEATURES,
+        subject: ENUM_POLICY_SUBJECT.SETTINGS,
         action: [ENUM_POLICY_ACTION.READ],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    async listCache(): Promise<IResponse<Record<string, any>>> {
-        const appSettings = this.settingService.findAllCache();
+    async list(
+        @PaginationQuery()
+        { _limit, _offset, _order }: PaginationListDto
+    ): Promise<IResponsePaging<SettingListResponseDto>> {
+        const appSettings = await this.settingService.findAll(
+            {},
+            {
+                paging: {
+                    limit: _limit,
+                    offset: _offset,
+                },
+                order: _order,
+            }
+        );
+        const total: number = await this.settingService.getTotal();
+        const totalPage: number = this.paginationService.totalPage(
+            total,
+            _limit
+        );
+
+        const mapped = this.settingService.mapList(appSettings);
         return {
-            data: appSettings,
+            _pagination: { total, totalPage },
+            data: mapped,
         };
     }
 
@@ -72,18 +81,15 @@ export class SettingAdminController {
     @Get('/cache/reload')
     @Response('setting.reload')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.FEATURES,
+        subject: ENUM_POLICY_SUBJECT.SETTINGS,
         action: [ENUM_POLICY_ACTION.UPDATE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    async reload(): Promise<IResponse<Record<string, any>>> {
+    async reload(): Promise<void> {
         await this.settingService.reloadAllKeysFromDb();
-        const appSettings = this.settingService.findAllCache();
-        return {
-            data: appSettings,
-        };
+        return;
     }
 }
