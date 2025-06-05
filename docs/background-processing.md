@@ -1,12 +1,20 @@
 # Overview
 
-This document explains the background processing system in ACK NestJS Boilerplate, which uses BullMQ for job queuing and processing, particularly for SMS and email sending.
+This document explains the background processing system using BullMQ for job queuing and processing, particularly for SMS and email sending
+
+```typescript
+// src/worker/worker.module.ts
+@Module({
+    imports: [EmailModule, SessionModule, SmsModule],
+    providers: [EmailProcessor, SmsProcessor],
+})
+export class WorkerModule {}
+```
 
 This documentation explains the features and usage of:
 - **Worker Module**: Located at `src/worker/worker.module.ts`
 - **SMS Module**: Located at `src/modules/sms`
 - **Email Module**: Located at `src/modules/email`
-- **Session Module**: Located at `src/modules/session`
 
 # Table of Contents
 - [Overview](#overview)

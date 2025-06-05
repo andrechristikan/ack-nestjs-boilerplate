@@ -1,9 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { InjectQueue } from '@nestjs/bullmq';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Queue } from 'bullmq';
 import { Cache } from 'cache-manager';
 import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
@@ -21,10 +19,7 @@ import {
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionCreateRequestDto } from '@module/session/dtos/request/session.create.request.dto';
 import { SessionListResponseDto } from '@module/session/dtos/response/session.list.response.dto';
-import {
-    ENUM_SESSION_PROCESS,
-    ENUM_SESSION_STATUS,
-} from '@module/session/enums/session.enum';
+import { ENUM_SESSION_STATUS } from '@module/session/enums/session.enum';
 import { ISessionService } from '@module/session/interfaces/session.service.interface';
 import {
     SessionDoc,
@@ -32,7 +27,6 @@ import {
 } from '@module/session/repository/entities/session.entity';
 import { SessionRepository } from '@module/session/repository/repositories/session.repository';
 import { IUserDoc } from '@module/user/interfaces/user.interface';
-import { ENUM_WORKER_QUEUES } from '@worker/enums/worker.enum';
 
 @Injectable()
 export class SessionService implements ISessionService {
@@ -42,8 +36,6 @@ export class SessionService implements ISessionService {
     private readonly sessionKeyPrefix: string;
 
     constructor(
-        @InjectQueue(ENUM_WORKER_QUEUES.SESSION_QUEUE)
-        private readonly sessionQueue: Queue,
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
@@ -195,26 +187,12 @@ export class SessionService implements ISessionService {
             this.refreshTokenExpiration
         );
 
-        await this.sessionQueue.add(
-            ENUM_SESSION_PROCESS.REVOKE,
-            {
-                session: session._id,
-            },
-            {
-                jobId: key,
-                timestamp: session.createdAt.valueOf(),
-                delay: this.refreshTokenExpiration * 1000,
-            }
-        );
-
         return;
     }
 
     async deleteLoginSession(_id: string): Promise<void> {
         const key = `${this.appName}:${this.sessionKeyPrefix}:${_id}`;
         await this.cacheManager.del(key);
-
-        await this.sessionQueue.remove(key);
 
         return;
     }
