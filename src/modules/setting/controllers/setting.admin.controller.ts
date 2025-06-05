@@ -52,10 +52,13 @@ export class SettingAdminController {
     @ApiKeyProtected()
     async list(
         @PaginationQuery()
-        { _limit, _offset, _order }: PaginationListDto
+        { _search, _limit, _offset, _order }: PaginationListDto
     ): Promise<IResponsePaging<SettingListResponseDto>> {
+        const find: Record<string, any> = {
+            ..._search,
+        };
         const appSettings = await this.settingService.findAll(
-            {},
+            find,
             {
                 paging: {
                     limit: _limit,

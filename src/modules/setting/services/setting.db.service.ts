@@ -1,7 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
+    IDatabaseGetTotalOptions,
 } from '@common/database/interfaces/database.interface';
 import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
@@ -12,14 +13,18 @@ import {
 import { SettingRepository } from '@modules/setting/repository/repositories/setting.repository';
 import { SettingListResponseDto } from '@modules/setting/dtos/response/setting.list.response.dto';
 import { SettingGetResponseDto } from '@modules/setting/dtos/response/setting.get.response.dto';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
-export class SettingDbService implements OnModuleInit
-{
-    protected cache = new Map<string, any>();
+export class SettingDbService implements OnModuleInit {
     protected readonly logger = new Logger(SettingDbService.name);
+    private readonly CACHE_PREFIX = 'setting:';
 
-    constructor(protected readonly settingRepository: SettingRepository) {}
+    constructor(
+        protected readonly settingRepository: SettingRepository,
+        @Inject(CACHE_MANAGER) private cacheManager: Cache
+    ) {}
 
     async isEnabled(
         key: string,
@@ -42,13 +47,12 @@ export class SettingDbService implements OnModuleInit
 
     async reloadAllKeysFromDb(): Promise<void> {
         const settings = await this.settingRepository.findAll();
-        this.cache.clear();
-        for (const setting of settings) {
-            this.cache.set(setting.key, setting.value);
-        }
-        this.logger.log(
-            `Reloaded ${settings.length} feature configs from database`
-        );
+
+        const settingsKey = settings.map(setting => setting.key);
+
+        await this.reloadKeysFromDb(settingsKey);
+
+        this.logger.log(`Reloaded ${settings.length} settings from database`);
     }
 
     async reloadKeysFromDb(keys: string[]): Promise<void> {
@@ -56,13 +60,20 @@ export class SettingDbService implements OnModuleInit
             key: { $in: keys },
         });
 
-        for (const setting of settings) {
-            this.cache.set(setting.key, setting.value);
+        const cacheKeys = settings.map(
+            setting => `${this.CACHE_PREFIX}${setting.key}`
+        );
+        const deletionBatch = await this.cacheManager.mdel(cacheKeys);
+        if (!deletionBatch) {
+            this.logger.error('Cleanup of cacheManager failed');
         }
 
-        this.logger.log(
-            `Reloaded ${settings.length} feature configs from database`
-        );
+        for (const setting of settings) {
+            await this.cacheManager.set(
+                `${this.CACHE_PREFIX}${setting.key}`,
+                setting.value
+            );
+        }
     }
 
     async get<T = any>(
@@ -70,18 +81,23 @@ export class SettingDbService implements OnModuleInit
         fallback?: T,
         forceReload = false
     ): Promise<T | undefined> {
-        if (!forceReload && this.cache.has(key)) {
-            return this.cache.get(key) as T;
+        const cacheKey = `${this.CACHE_PREFIX}${key}`;
+
+        if (!forceReload) {
+            const cachedValue = await this.cacheManager.get<T>(cacheKey);
+            if (cachedValue !== undefined) {
+                return cachedValue;
+            }
         }
 
         const setting = await this.settingRepository.findOne({ key });
         if (setting) {
-            this.cache.set(key, setting.value);
+            await this.cacheManager.set(cacheKey, setting.value);
             return setting.value as T;
         }
 
         if (fallback !== undefined) {
-            this.cache.set(key, fallback);
+            await this.cacheManager.set(cacheKey, fallback);
         }
 
         return fallback;
@@ -137,20 +153,16 @@ export class SettingDbService implements OnModuleInit
         }
     }
 
-    findAllCache(): Record<string, any> {
-        return Object.fromEntries(this.cache);
+    async getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number> {
+        return this.settingRepository.getTotal(find, options);
     }
 
-    deleteCacheKeys(keys: string[]): void {
-        keys.forEach(key => {
-            this.cache.delete(key);
-            this.logger.log(`Removed key "${key}" from cache`);
-        });
-    }
-
-
-
-    mapList(entities: SettingDoc[] | SettingEntity[]): SettingListResponseDto[] {
+    mapList(
+        entities: SettingDoc[] | SettingEntity[]
+    ): SettingListResponseDto[] {
         return plainToInstance(
             SettingListResponseDto,
             entities.map((e: SettingDoc | SettingEntity) =>
