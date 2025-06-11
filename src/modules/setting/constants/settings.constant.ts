@@ -1,1 +1,1 @@
-export const SETTING_META_KEY = 'SettingMetaKey';
+export const SETTING_FEATURE_META_KEY = 'SettingFeatureMetaKey';

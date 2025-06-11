@@ -1,5 +1,5 @@
 import { ApiTags } from '@nestjs/swagger';
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post } from '@nestjs/common';
 import { IResponsePaging } from '@common/response/interfaces/response.interface';
 
 import {
@@ -17,13 +17,16 @@ import {
 } from '@modules/policy/enums/policy.enum';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { SettingDbService } from '@modules/setting/services/setting.db.service';
-import { SettingListResponseDto } from '@modules/setting/dtos/response/setting.list.response.dto';
 import { PaginationQuery } from '@common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { SettingAdminCacheReloadDoc, SettingAdminListDoc } from '../docs/setting.admin.doc';
+import {
+    SettingAdminCacheReloadDoc,
+    SettingAdminListDoc,
+} from '../docs/setting.admin.doc';
+import { SettingFeatureService } from '@modules/setting/services/setting-feature.service';
+import { SettingFeatureListResponseDto } from '@modules/setting/dtos/response/setting-feature.list.response.dto';
 
 @ApiTags('common.admin.setting')
 @Controller({
@@ -32,12 +35,11 @@ import { SettingAdminCacheReloadDoc, SettingAdminListDoc } from '../docs/setting
 })
 export class SettingAdminController {
     constructor(
-        private readonly settingService: SettingDbService,
+        private readonly settingFeatureService: SettingFeatureService,
         private readonly paginationService: PaginationService
     ) {}
 
     @SettingAdminListDoc()
-    @Get('/')
     @ResponsePaging('setting.list')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.SETTINGS,
@@ -47,30 +49,29 @@ export class SettingAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @Get('/')
     async list(
         @PaginationQuery()
         { _search, _limit, _offset, _order }: PaginationListDto
-    ): Promise<IResponsePaging<SettingListResponseDto>> {
+    ): Promise<IResponsePaging<SettingFeatureListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
         };
-        const appSettings = await this.settingService.findAll(
-            find,
-            {
-                paging: {
-                    limit: _limit,
-                    offset: _offset,
-                },
-                order: _order,
-            }
-        );
-        const total: number = await this.settingService.getTotal();
+        const settingFeatures = await this.settingFeatureService.findAll(find, {
+            paging: {
+                limit: _limit,
+                offset: _offset,
+            },
+            order: _order,
+        });
+
+        const total: number = await this.settingFeatureService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
             total,
             _limit
         );
 
-        const mapped = this.settingService.mapList(appSettings);
+        const mapped = this.settingFeatureService.mapList(settingFeatures);
         return {
             _pagination: { total, totalPage },
             data: mapped,
@@ -78,7 +79,6 @@ export class SettingAdminController {
     }
 
     @SettingAdminCacheReloadDoc()
-    @Get('/cache/reload')
     @Response('setting.reload')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.SETTINGS,
@@ -88,8 +88,10 @@ export class SettingAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @Post('/reload')
     async reload(): Promise<void> {
-        await this.settingService.reloadAllKeysFromDb();
+        await this.settingFeatureService.reloadAllKeys();
+
         return;
     }
 }

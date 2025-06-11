@@ -1,22 +1,22 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
-import { SettingRepository } from '@modules/setting/repository/repositories/setting.repository';
+import { SettingFeatureRepository } from '@modules/setting/repository/repositories/setting-feature.repository';
 import {
-    SettingEntity,
-    SettingSchema,
-} from '@modules/setting/repository/entities/setting.entity';
+    SettingFeatureEntity,
+    SettingFeatureSchema,
+} from '@modules/setting/repository/entities/setting-feature.entity';
 
 @Module({
-    providers: [SettingRepository],
-    exports: [SettingRepository],
+    providers: [SettingFeatureRepository],
+    exports: [SettingFeatureRepository],
     controllers: [],
     imports: [
         MongooseModule.forFeature(
             [
                 {
-                    name: SettingEntity.name,
-                    schema: SettingSchema,
+                    name: SettingFeatureEntity.name,
+                    schema: SettingFeatureSchema,
                 },
             ],
             DATABASE_CONNECTION_NAME

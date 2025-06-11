@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { DatabaseUUIDDto } from '@common/database/dtos/database.uuid.dto';
+import { SettingValue } from '@modules/setting/interfaces/setting.interface';
 
-export class SettingGetResponseDto<T = any> extends DatabaseUUIDDto {
+export class SettingFeatureGetResponseDto extends DatabaseUUIDDto {
     @ApiProperty({
         description: 'Unique key identifying the feature configuration',
         example: 'feature_key',
@@ -20,6 +21,13 @@ export class SettingGetResponseDto<T = any> extends DatabaseUUIDDto {
         description: 'Value of the feature configuration',
         example: 'true',
         required: true,
+        oneOf: [
+            { type: 'string' },
+            { type: 'number' },
+            { type: 'boolean' },
+            { type: 'object' },
+            { type: 'array' },
+        ],
     })
-    value: T;
+    value: SettingValue;
 }

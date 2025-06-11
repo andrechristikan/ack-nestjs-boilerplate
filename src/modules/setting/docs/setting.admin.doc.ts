@@ -2,21 +2,27 @@ import { applyDecorators } from '@nestjs/common';
 import {
     Doc,
     DocAuth,
-    DocResponse, DocResponsePaging,
+    DocGuard,
+    DocResponse,
+    DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { SettingListResponseDto } from '@modules/setting/dtos/response/setting.list.response.dto';
+import { SettingFeatureListResponseDto } from '@modules/setting/dtos/response/setting-feature.list.response.dto';
 
 export function SettingAdminListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'return list of all settings from database',
+            summary: 'return list of all feature settings',
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponsePaging<SettingListResponseDto>('setting.list', {
-            dto: SettingListResponseDto,
+        DocGuard({
+            policy: true,
+            role: true,
+        }),
+        DocResponsePaging<SettingFeatureListResponseDto>('setting.list', {
+            dto: SettingFeatureListResponseDto,
         })
     );
 }
@@ -24,11 +30,15 @@ export function SettingAdminListDoc(): MethodDecorator {
 export function SettingAdminCacheReloadDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'reload redis settings from database',
+            summary: 'reload feature settings',
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
+        }),
+        DocGuard({
+            policy: true,
+            role: true,
         }),
         DocResponse('setting.reload')
     );

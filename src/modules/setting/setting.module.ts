@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { SettingDbService } from '@modules/setting/services/setting.db.service';
 import { SettingRepositoryModule } from '@modules/setting/repository/setting.repository.module';
 import { SettingService } from '@modules/setting/services/setting.service';
+import { SettingFeatureService } from '@modules/setting/services/setting-feature.service';
 
 @Module({
     imports: [SettingRepositoryModule],
-    exports: [SettingDbService, SettingService],
-    providers: [SettingDbService, SettingService],
+    exports: [SettingFeatureService, SettingService],
+    providers: [SettingFeatureService, SettingService],
     controllers: [],
 })
 export class SettingModule {}
