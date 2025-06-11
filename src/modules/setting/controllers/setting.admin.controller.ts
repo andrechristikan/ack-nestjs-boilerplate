@@ -21,12 +21,12 @@ import { PaginationQuery } from '@common/pagination/decorators/pagination.decora
 import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { SettingFeatureService } from '@modules/setting/services/setting-feature.service';
+import { SettingFeatureListResponseDto } from '@modules/setting/dtos/response/setting-feature.list.response.dto';
 import {
     SettingAdminCacheReloadDoc,
     SettingAdminListDoc,
-} from '../docs/setting.admin.doc';
-import { SettingFeatureService } from '@modules/setting/services/setting-feature.service';
-import { SettingFeatureListResponseDto } from '@modules/setting/dtos/response/setting-feature.list.response.dto';
+} from '@modules/setting/docs/setting.admin.doc';
 
 @ApiTags('common.admin.setting')
 @Controller({
