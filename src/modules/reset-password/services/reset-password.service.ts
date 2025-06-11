@@ -8,25 +8,25 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
     IDatabaseUpdateManyOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+} from '@common/database/interfaces/database.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ConfigService } from '@nestjs/config';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { ResetPasswordRepository } from 'src/modules/reset-password/repository/repositories/reset-password.repository';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { ResetPasswordRepository } from '@modules/reset-password/repository/repositories/reset-password.repository';
 import {
     ResetPasswordDoc,
     ResetPasswordEntity,
-} from 'src/modules/reset-password/repository/entities/reset-password.entity';
-import { IResetPasswordService } from 'src/modules/reset-password/interfaces/reset-password.service.interface';
-import { ENUM_RESET_PASSWORD_TYPE } from 'src/modules/reset-password/enums/reset-password.enum';
+} from '@modules/reset-password/repository/entities/reset-password.entity';
+import { IResetPasswordService } from '@modules/reset-password/interfaces/reset-password.service.interface';
+import { ENUM_RESET_PASSWORD_TYPE } from '@modules/reset-password/enums/reset-password.enum';
 import { Duration } from 'luxon';
 import { DeleteResult, InsertManyResult, UpdateResult } from 'mongoose';
-import { ResetPasswordCreateRequestDto } from 'src/modules/reset-password/dtos/request/reset-password.create.request.dto';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
-import { IResetPasswordRequest } from 'src/modules/reset-password/interfaces/reset-password.interface';
-import { ResetPasswordCreteResponseDto } from 'src/modules/reset-password/dtos/response/reset-password.create.response.dto';
-import { DatabaseService } from '@app/common/database/services/database.service';
+import { ResetPasswordCreateRequestDto } from '@modules/reset-password/dtos/request/reset-password.create.request.dto';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { IResetPasswordRequest } from '@modules/reset-password/interfaces/reset-password.interface';
+import { ResetPasswordCreteResponseDto } from '@modules/reset-password/dtos/response/reset-password.create.response.dto';
+import { DatabaseService } from '@common/database/services/database.service';
 
 @Injectable()
 export class ResetPasswordService implements IResetPasswordService {

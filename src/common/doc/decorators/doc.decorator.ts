@@ -23,18 +23,18 @@ import {
     IDocRequestOptions,
     IDocResponseFileOptions,
     IDocResponseOptions,
-} from 'src/common/doc/interfaces/doc.interface';
-import { ENUM_FILE_MIME } from 'src/common/file/enums/file.enum';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/enums/request.status-code.enum';
-import { ResponseDto } from 'src/common/response/dtos/response.dto';
-import { ResponsePagingDto } from 'src/common/response/dtos/response.paging.dto';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/enums/auth.status-code.enum';
-import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/modules/policy/enums/policy.status-code.enum';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
+} from '@common/doc/interfaces/doc.interface';
+import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
+import { ResponseDto } from '@common/response/dtos/response.dto';
+import { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
+import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 
 export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
     const docs = [];

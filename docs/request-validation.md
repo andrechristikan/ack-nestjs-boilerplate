@@ -124,7 +124,7 @@ The request timeout system in the `/common/request` directory includes:
 ```typescript
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, MaxLength, MinLength } from 'class-validator';
-import { IsPassword } from 'src/common/request/validations/request.is-password.validation';
+import { IsPassword } from '@common/request/validations/request.is-password.validation';
 
 export class UserCreateDto {
     @ApiProperty({
@@ -144,7 +144,7 @@ export class UserCreateDto {
 
 ```typescript
 import { Controller, Get } from '@nestjs/common';
-import { RequestTimeout } from 'src/common/request/decorators/request.decorator';
+import { RequestTimeout } from '@common/request/decorators/request.decorator';
 
 @Controller('users')
 export class UserController {
@@ -161,7 +161,7 @@ export class UserController {
 
 ```typescript
 import { Controller, Get, Param } from '@nestjs/common';
-import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 
 @Controller('users')
 export class UserController {

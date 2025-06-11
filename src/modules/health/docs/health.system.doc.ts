@@ -3,10 +3,10 @@ import {
     Doc,
     DocAuth,
     DocResponse,
-} from 'src/common/doc/decorators/doc.decorator';
-import { HealthAwsResponseDto } from 'src/modules/health/dtos/response/health.aws.response.dto';
-import { HealthDatabaseResponseDto } from 'src/modules/health/dtos/response/health.database.response.dto';
-import { HealthInstanceResponseDto } from 'src/modules/health/dtos/response/health.instance.response.dto';
+} from '@common/doc/decorators/doc.decorator';
+import { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
+import { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
+import { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
 
 export function HealthSystemCheckAwsDoc(): MethodDecorator {
     return applyDecorators(

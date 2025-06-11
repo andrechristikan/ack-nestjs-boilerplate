@@ -9,29 +9,29 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
     IDatabaseUpdateManyOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+} from '@common/database/interfaces/database.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     ApiKeyCreateRawRequestDto,
     ApiKeyCreateRequestDto,
-} from 'src/modules/api-key/dtos/request/api-key.create.request.dto';
-import { ApiKeyUpdateDateRequestDto } from 'src/modules/api-key/dtos/request/api-key.update-date.request.dto';
-import { ApiKeyUpdateRequestDto } from 'src/modules/api-key/dtos/request/api-key.update.request.dto';
-import { ApiKeyCreateResponseDto } from 'src/modules/api-key/dtos/response/api-key.create.dto';
-import { ApiKeyGetResponseDto } from 'src/modules/api-key/dtos/response/api-key.get.response.dto';
-import { ApiKeyListResponseDto } from 'src/modules/api-key/dtos/response/api-key.list.response.dto';
-import { ApiKeyResetResponseDto } from 'src/modules/api-key/dtos/response/api-key.reset.dto';
-import { IApiKeyService } from 'src/modules/api-key/interfaces/api-key.service.interface';
+} from '@modules/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
+import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
+import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.dto';
+import { ApiKeyGetResponseDto } from '@modules/api-key/dtos/response/api-key.get.response.dto';
+import { ApiKeyListResponseDto } from '@modules/api-key/dtos/response/api-key.list.response.dto';
+import { ApiKeyResetResponseDto } from '@modules/api-key/dtos/response/api-key.reset.dto';
+import { IApiKeyService } from '@modules/api-key/interfaces/api-key.service.interface';
 import {
     ApiKeyDoc,
     ApiKeyEntity,
-} from 'src/modules/api-key/repository/entities/api-key.entity';
-import { ApiKeyRepository } from 'src/modules/api-key/repository/repositories/api-key.repository';
+} from '@modules/api-key/repository/entities/api-key.entity';
+import { ApiKeyRepository } from '@modules/api-key/repository/repositories/api-key.repository';
 import { Document } from 'mongoose';
-import { ENUM_HELPER_DATE_DAY_OF } from 'src/common/helper/enums/helper.enum';
-import { DatabaseService } from '@app/common/database/services/database.service';
+import { ENUM_HELPER_DATE_DAY_OF } from '@common/helper/enums/helper.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {

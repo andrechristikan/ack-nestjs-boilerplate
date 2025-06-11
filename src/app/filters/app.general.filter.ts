@@ -11,14 +11,14 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost } from '@nestjs/core';
 import { Response } from 'express';
-import { IAppException } from 'src/app/interfaces/app.interface';
-import { FileImportException } from 'src/common/file/exceptions/file.import.exception';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
-import { MessageService } from 'src/common/message/services/message.service';
-import { RequestValidationException } from 'src/common/request/exceptions/request.validation.exception';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
+import { IAppException } from '@app/interfaces/app.interface';
+import { FileImportException } from '@common/file/exceptions/file.import.exception';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { MessageService } from '@common/message/services/message.service';
+import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
 import * as Sentry from '@sentry/nestjs';
 
 @Catch()

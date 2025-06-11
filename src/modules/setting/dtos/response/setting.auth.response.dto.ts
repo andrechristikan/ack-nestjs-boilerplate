@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ENUM_SETTING_UNIT } from 'src/modules/setting/enums/setting.enum';
+import { ENUM_SETTING_UNIT } from '@modules/setting/enums/setting.enum';
 
 export class SettingAuthResponseDto {
     @ApiProperty({

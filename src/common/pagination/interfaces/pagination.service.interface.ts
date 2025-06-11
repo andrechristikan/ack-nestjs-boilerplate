@@ -1,5 +1,5 @@
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
-import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { IPaginationOrder } from '@common/pagination/interfaces/pagination.interface';
 
 export interface IPaginationService {
     offset(page: number, perPage: number): number;

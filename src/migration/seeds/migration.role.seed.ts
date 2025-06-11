@@ -4,9 +4,9 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/enums/policy.enum';
-import { RoleService } from 'src/modules/role/services/role.service';
-import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
+} from '@modules/policy/enums/policy.enum';
+import { RoleService } from '@modules/role/services/role.service';
+import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 
 @Injectable()
 export class MigrationRoleSeed {

@@ -2,9 +2,9 @@ import { applyDecorators } from '@nestjs/common';
 import {
     DocAuth,
     DocResponsePaging,
-} from 'src/common/doc/decorators/doc.decorator';
-import { Doc } from 'src/common/doc/decorators/doc.decorator';
-import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
+} from '@common/doc/decorators/doc.decorator';
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { CountryListResponseDto } from '@modules/country/dtos/response/country.list.response.dto';
 
 export function CountrySystemListDoc(): MethodDecorator {
     return applyDecorators(

@@ -5,8 +5,8 @@ import {
     PickType,
 } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
-import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
-import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
+import { UserGetResponseDto } from '@modules/user/dtos/response/user.get.response.dto';
+import { UserShortResponseDto } from '@modules/user/dtos/response/user.short.response.dto';
 
 export class UserCensorResponseDto extends IntersectionType(
     PickType(UserGetResponseDto, ['mobileNumber']),

@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { APP_ENV_META_KEY } from 'src/app/constants/app.constant';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
+import { APP_ENV_META_KEY } from '@app/constants/app.constant';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
 
 @Injectable()
 export class AppEnvGuard implements CanActivate {

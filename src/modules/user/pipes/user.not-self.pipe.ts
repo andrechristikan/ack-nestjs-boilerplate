@@ -6,9 +6,9 @@ import {
     Scope,
 } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
+import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
 
 @Injectable({ scope: Scope.REQUEST })
 export class UserNotSelfPipe implements PipeTransform {

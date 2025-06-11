@@ -1,5 +1,5 @@
 import { DynamicModule, Global, Module } from '@nestjs/common';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
+import { PaginationService } from '@common/pagination/services/pagination.service';
 
 @Global()
 @Module({})

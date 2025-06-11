@@ -4,8 +4,8 @@ import { ApiKeySystemProtected } from 'src/modules/api-key/decorators/api-key.de
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { SettingCoreResponseDto } from 'src/modules/setting/dtos/response/setting.core.response.dto';
-import { SettingService } from 'src/modules/setting/services/setting.service';
 import { SettingSystemCoreDoc } from 'src/modules/setting/docs/setting.system.doc';
+import { SettingService } from '@modules/setting/services/setting.service';
 
 @ApiTags('modules.system.setting')
 @Controller({

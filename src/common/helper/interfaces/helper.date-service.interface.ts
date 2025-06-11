@@ -1,5 +1,5 @@
 import { DateObjectUnits, DateTime, Duration } from 'luxon';
-import { IHelperDateCreateOptions } from 'src/common/helper/interfaces/helper.interface';
+import { IHelperDateCreateOptions } from '@common/helper/interfaces/helper.interface';
 
 export interface IHelperDateService {
     calculateAge(dateOfBirth: Date, fromYear?: number): Duration;

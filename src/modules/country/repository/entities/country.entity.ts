@@ -1,10 +1,10 @@
-import { DatabaseUUIDEntityBase } from 'src/common/database/bases/database.uuid.entity';
+import { DatabaseUUIDEntityBase } from '@common/database/bases/database.uuid.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
-} from 'src/common/database/decorators/database.decorator';
-import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+} from '@common/database/decorators/database.decorator';
+import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
 
 export const CountryTableName = 'Countries';
 

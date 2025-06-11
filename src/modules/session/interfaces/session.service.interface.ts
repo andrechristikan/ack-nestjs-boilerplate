@@ -6,14 +6,14 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
     IDatabaseUpdateManyOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { SessionCreateRequestDto } from 'src/modules/session/dtos/request/session.create.request.dto';
-import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
+} from '@common/database/interfaces/database.interface';
+import { SessionCreateRequestDto } from '@modules/session/dtos/request/session.create.request.dto';
+import { SessionListResponseDto } from '@modules/session/dtos/response/session.list.response.dto';
 import {
     SessionDoc,
     SessionEntity,
-} from 'src/modules/session/repository/entities/session.entity';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+} from '@modules/session/repository/entities/session.entity';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
 
 export interface ISessionService {
     findAll(

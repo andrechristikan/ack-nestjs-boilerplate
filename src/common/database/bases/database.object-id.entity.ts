@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { DatabaseProp } from 'src/common/database/decorators/database.decorator';
+import { DatabaseProp } from '@common/database/decorators/database.decorator';
 
 export class DatabaseObjectIdEntityBase {
     @DatabaseProp({

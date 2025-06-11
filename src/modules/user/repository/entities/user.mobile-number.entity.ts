@@ -2,9 +2,9 @@ import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
-} from 'src/common/database/decorators/database.decorator';
-import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
-import { CountryEntity } from 'src/modules/country/repository/entities/country.entity';
+} from '@common/database/decorators/database.decorator';
+import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
+import { CountryEntity } from '@modules/country/repository/entities/country.entity';
 
 @DatabaseEntity({
     _id: false,

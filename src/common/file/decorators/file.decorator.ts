@@ -9,14 +9,14 @@ import {
     FileInterceptor,
     FilesInterceptor,
 } from '@nestjs/platform-express';
-import { FILE_SIZE_IN_BYTES } from 'src/common/file/constants/file.constant';
+import { FILE_SIZE_IN_BYTES } from '@common/file/constants/file.constant';
 import {
     IFileUploadMultiple,
     IFileUploadMultipleField,
     IFileUploadMultipleFieldOptions,
     IFileUploadSingle,
-} from 'src/common/file/interfaces/file.interface';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+} from '@common/file/interfaces/file.interface';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 
 export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     return applyDecorators(

@@ -12,41 +12,41 @@ import {
     PaginationQueryFilterEqual,
     PaginationQueryFilterIn,
     PaginationQueryFilterInEnum,
-} from 'src/common/pagination/decorators/pagination.decorator';
-import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
+} from '@common/pagination/decorators/pagination.decorator';
+import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
+import { PaginationService } from '@common/pagination/services/pagination.service';
 import {
     Response,
     ResponsePaging,
-} from 'src/common/response/decorators/response.decorator';
+} from '@common/response/decorators/response.decorator';
 import {
     IResponse,
     IResponsePaging,
-} from 'src/common/response/interfaces/response.interface';
-import { ApiKeySystemProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+} from '@common/response/interfaces/response.interface';
+import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_STATUS,
-} from 'src/modules/user/constants/user.list.constant';
+} from '@modules/user/constants/user.list.constant';
 import {
     UserSystemCheckEmailDoc,
     UserSystemCheckMobileNumberDoc,
     UserSystemCheckUsernameDoc,
     UserSystemListDoc,
-} from 'src/modules/user/docs/user.system.doc';
-import { UserCheckMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.check-mobile-number.dto';
+} from '@modules/user/docs/user.system.doc';
+import { UserCheckMobileNumberRequestDto } from '@modules/user/dtos/request/user.check-mobile-number.dto';
 import {
     UserCheckEmailRequestDto,
     UserCheckUsernameRequestDto,
-} from 'src/modules/user/dtos/request/user.check.request.dto';
+} from '@modules/user/dtos/request/user.check.request.dto';
 import {
     UserCheckResponseDto,
     UserCheckUsernameResponseDto,
-} from 'src/modules/user/dtos/response/user.check.response.dto';
-import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
-import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
-import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
-import { UserService } from 'src/modules/user/services/user.service';
+} from '@modules/user/dtos/response/user.check.response.dto';
+import { UserShortResponseDto } from '@modules/user/dtos/response/user.short.response.dto';
+import { ENUM_USER_STATUS } from '@modules/user/enums/user.enum';
+import { IUserEntity } from '@modules/user/interfaces/user.interface';
+import { UserService } from '@modules/user/services/user.service';
 
 @ApiTags('modules.system.user')
 @Controller({

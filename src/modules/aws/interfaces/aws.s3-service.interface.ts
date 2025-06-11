@@ -1,11 +1,11 @@
 import { _Object } from '@aws-sdk/client-s3';
-import { AwsS3MultipartDto } from 'src/modules/aws/dtos/aws.s3-multipart.dto';
-import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
-import { AwsS3MultipartPresignCompletePartRequestDto } from 'src/modules/aws/dtos/request/aws.s3-multipart-presign-complete.request.dto';
-import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
-import { AwsS3PresignMultiPartResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign-multipart.response.dto';
-import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
-import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
+import { AwsS3MultipartDto } from '@modules/aws/dtos/aws.s3-multipart.dto';
+import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
+import { AwsS3MultipartPresignCompletePartRequestDto } from '@modules/aws/dtos/request/aws.s3-multipart-presign-complete.request.dto';
+import { AwsS3PresignRequestDto } from '@modules/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignMultiPartResponseDto } from '@modules/aws/dtos/response/aws.s3-presign-multipart.response.dto';
+import { AwsS3PresignResponseDto } from '@modules/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3ResponseDto } from '@modules/aws/dtos/response/aws.s3-response.dto';
 import {
     IAwsS3ConfigBucket,
     IAwsS3DeleteDirOptions,
@@ -16,7 +16,7 @@ import {
     IAwsS3PresignOptions,
     IAwsS3PutItem,
     IAwsS3PutItemWithAclOptions,
-} from 'src/modules/aws/interfaces/aws.interface';
+} from '@modules/aws/interfaces/aws.interface';
 
 export interface IAwsS3Service {
     getConfig(options?: IAwsS3Options): IAwsS3ConfigBucket;

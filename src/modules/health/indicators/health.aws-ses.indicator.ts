@@ -3,7 +3,7 @@ import {
     HealthIndicatorResult,
     HealthIndicatorService,
 } from '@nestjs/terminus';
-import { AwsSESService } from 'src/modules/aws/services/aws.ses.service';
+import { AwsSESService } from '@modules/aws/services/aws.ses.service';
 
 @Injectable()
 export class HealthAwsSESIndicator {

@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, OmitType } from '@nestjs/swagger';
 import { IsNotEmpty, MaxLength, MinLength } from 'class-validator';
-import { IsPassword } from 'src/common/request/validations/request.is-password.validation';
-import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
+import { IsPassword } from '@common/request/validations/request.is-password.validation';
+import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 
 export class AuthSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     'role',

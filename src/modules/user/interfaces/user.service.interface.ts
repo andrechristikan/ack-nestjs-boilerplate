@@ -1,4 +1,4 @@
-import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
+import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import {
     IDatabaseAggregateOptions,
     IDatabaseCreateOptions,
@@ -11,32 +11,29 @@ import {
     IDatabaseOptions,
     IDatabaseSaveOptions,
     IDatabaseUpdateOptions,
-} from 'src/common/database/interfaces/database.interface';
+} from '@common/database/interfaces/database.interface';
 import {
     UserDoc,
     UserEntity,
-} from 'src/modules/user/repository/entities/user.entity';
-import {
-    IUserDoc,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
-import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
-import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/enums/user.enum';
-import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
-import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
-import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
-import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
-import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
-import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
-import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
-import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
-import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
-import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
-import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
-import { UserUpdateStatusRequestDto } from 'src/modules/user/dtos/request/user.update-status.request.dto';
-import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
-import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
-import { UserCensorResponseDto } from 'src/modules/user/dtos/response/user.censor.response.dto';
+} from '@modules/user/repository/entities/user.entity';
+import { IUserDoc, IUserEntity } from '@modules/user/interfaces/user.interface';
+import { UserUpdatePasswordAttemptRequestDto } from '@modules/user/dtos/request/user.update-password-attempt.request.dto';
+import { ENUM_USER_SIGN_UP_FROM } from '@modules/user/enums/user.enum';
+import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { UserUpdateRequestDto } from '@modules/user/dtos/request/user.update.request.dto';
+import { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
+import { UserShortResponseDto } from '@modules/user/dtos/response/user.short.response.dto';
+import { UserGetResponseDto } from '@modules/user/dtos/response/user.get.response.dto';
+import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
+import { AuthSignUpRequestDto } from '@modules/auth/dtos/request/auth.sign-up.request.dto';
+import { UserUpdateClaimUsernameRequestDto } from '@modules/user/dtos/request/user.update-claim-username.dto';
+import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.dto';
+import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import { CountryDoc } from '@modules/country/repository/entities/country.entity';
+import { UserUploadPhotoRequestDto } from '@modules/user/dtos/request/user.upload-photo.request.dto';
+import { UserCensorResponseDto } from '@modules/user/dtos/response/user.censor.response.dto';
 
 export interface IUserService {
     findAll(

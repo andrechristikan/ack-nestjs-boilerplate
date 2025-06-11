@@ -1,29 +1,29 @@
-import { DatabaseUUIDEntityBase } from 'src/common/database/bases/database.uuid.entity';
+import { DatabaseUUIDEntityBase } from '@common/database/bases/database.uuid.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
-} from 'src/common/database/decorators/database.decorator';
-import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+} from '@common/database/decorators/database.decorator';
+import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
 import {
     AwsS3Entity,
     AwsS3Schema,
-} from 'src/modules/aws/repository/entities/aws.s3.entity';
-import { CountryEntity } from 'src/modules/country/repository/entities/country.entity';
-import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+} from '@modules/aws/repository/entities/aws.s3.entity';
+import { CountryEntity } from '@modules/country/repository/entities/country.entity';
+import { RoleEntity } from '@modules/role/repository/entities/role.entity';
 import {
     ENUM_USER_GENDER,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
-} from 'src/modules/user/enums/user.enum';
+} from '@modules/user/enums/user.enum';
 import {
     UserMobileNumberEntity,
     UserMobileNumberSchema,
-} from 'src/modules/user/repository/entities/user.mobile-number.entity';
+} from '@modules/user/repository/entities/user.mobile-number.entity';
 import {
     UserVerificationEntity,
     UserVerificationSchema,
-} from 'src/modules/user/repository/entities/user.verification.entity';
+} from '@modules/user/repository/entities/user.verification.entity';
 
 export const UserTableName = 'Users';
 

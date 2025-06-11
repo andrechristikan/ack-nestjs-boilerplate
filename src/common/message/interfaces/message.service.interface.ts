@@ -5,7 +5,7 @@ import {
     IMessageValidationError,
     IMessageValidationImportError,
     IMessageValidationImportErrorParam,
-} from 'src/common/message/interfaces/message.interface';
+} from '@common/message/interfaces/message.interface';
 
 export interface IMessageService {
     filterLanguage(customLanguage: string): string[];

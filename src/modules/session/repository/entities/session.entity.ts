@@ -1,12 +1,12 @@
-import { DatabaseUUIDEntityBase } from 'src/common/database/bases/database.uuid.entity';
+import { DatabaseUUIDEntityBase } from '@common/database/bases/database.uuid.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
-} from 'src/common/database/decorators/database.decorator';
-import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
-import { ENUM_SESSION_STATUS } from 'src/modules/session/enums/session.enum';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+} from '@common/database/decorators/database.decorator';
+import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
+import { ENUM_SESSION_STATUS } from '@modules/session/enums/session.enum';
+import { UserEntity } from '@modules/user/repository/entities/user.entity';
 
 export const SessionTableName = 'Sessions';
 

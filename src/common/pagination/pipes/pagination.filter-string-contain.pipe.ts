@@ -1,9 +1,9 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
-import { DatabaseService } from 'src/common/database/services/database.service';
-import { IPaginationFilterOptions } from 'src/common/pagination/interfaces/pagination.interface';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { IPaginationFilterOptions } from '@common/pagination/interfaces/pagination.interface';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 
 export function PaginationFilterStringContainPipe(
     field: string,

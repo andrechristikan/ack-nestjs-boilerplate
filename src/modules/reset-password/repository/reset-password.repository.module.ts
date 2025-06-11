@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
 import {
     ResetPasswordEntity,
     ResetPasswordSchema,
-} from 'src/modules/reset-password/repository/entities/reset-password.entity';
-import { ResetPasswordRepository } from 'src/modules/reset-password/repository/repositories/reset-password.repository';
+} from '@modules/reset-password/repository/entities/reset-password.entity';
+import { ResetPasswordRepository } from '@modules/reset-password/repository/repositories/reset-password.repository';
 
 @Module({
     providers: [ResetPasswordRepository],

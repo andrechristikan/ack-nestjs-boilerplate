@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DatabaseHelperQueryContain } from 'src/common/database/decorators/database.decorator';
+import { DatabaseHelperQueryContain } from '@common/database/decorators/database.decorator';
 import {
     PAGINATION_DEFAULT_AVAILABLE_ORDER_BY,
     PAGINATION_DEFAULT_MAX_PAGE,
@@ -8,9 +8,9 @@ import {
     PAGINATION_DEFAULT_ORDER_DIRECTION,
     PAGINATION_DEFAULT_PAGE,
     PAGINATION_DEFAULT_PER_PAGE,
-} from 'src/common/pagination/constants/pagination.constant';
-import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
-import { IPaginationService } from 'src/common/pagination/interfaces/pagination.service.interface';
+} from '@common/pagination/constants/pagination.constant';
+import { IPaginationOrder } from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationService } from '@common/pagination/interfaces/pagination.service.interface';
 
 @Injectable()
 export class PaginationService implements IPaginationService {

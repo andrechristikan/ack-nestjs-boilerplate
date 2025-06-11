@@ -1,7 +1,7 @@
-import { EmailCreateDto } from 'src/modules/email/dtos/email.create.dto';
-import { EmailResetPasswordDto } from 'src/modules/email/dtos/email.reset-password.dto';
-import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
-import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password.dto';
+import { EmailCreateDto } from '@modules/email/dtos/email.create.dto';
+import { EmailResetPasswordDto } from '@modules/email/dtos/email.reset-password.dto';
+import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
+import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
 
 export interface IEmailProcessor {
     processWelcome(data: EmailSendDto): Promise<boolean>;

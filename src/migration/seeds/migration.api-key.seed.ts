@@ -1,7 +1,7 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { ApiKeyService } from 'src/modules/api-key/services/api-key.service';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
+import { ApiKeyService } from '@modules/api-key/services/api-key.service';
+import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
 
 @Injectable()
 export class MigrationApiKeySeed {

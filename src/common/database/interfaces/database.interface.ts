@@ -1,5 +1,5 @@
 import { ClientSession, HydratedDocument, PopulateOptions } from 'mongoose';
-import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
+import { IPaginationOrder } from '@common/pagination/interfaces/pagination.interface';
 
 export interface IDatabaseQueryContainOptions {
     fullWord: boolean;

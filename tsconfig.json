@@ -22,12 +22,14 @@
         "strictNullChecks": false,
         "noImplicitAny": false,
         "paths": {
-            "@app/*": ["src/*"],
+            "@app/*": ["src/app/*"],
             "@common/*": ["src/common/*"],
-            "@config/*": ["src/config/*"],
+            "@configs/*": ["src/configs/*"],
+            "@config": ["src/configs/index.ts"],
             "@modules/*": ["src/modules/*"],
-            "@router/*": ["src/router/*"],
-            "@worker/*": ["src/worker/*"],
+            "@routes/*": ["src/router/routes/*"],
+            "@router": ["src/router/router.module.ts"],
+            "@workers/*": ["src/worker/*"],
             "@migration/*": ["src/migration/*"],
             "@test/*": ["test/*"]
         }

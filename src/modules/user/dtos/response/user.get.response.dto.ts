@@ -5,11 +5,11 @@ import {
     ENUM_USER_GENDER,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
-} from 'src/modules/user/enums/user.enum';
-import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
-import { DatabaseUUIDDto } from 'src/common/database/dtos/database.uuid.dto';
-import { UserVerificationResponseDto } from 'src/modules/user/dtos/response/user.verification.response.dto';
-import { AwsS3ResponseDto } from 'src/modules/aws/dtos/response/aws.s3-response.dto';
+} from '@modules/user/enums/user.enum';
+import { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { DatabaseUUIDDto } from '@common/database/dtos/database.uuid.dto';
+import { UserVerificationResponseDto } from '@modules/user/dtos/response/user.verification.response.dto';
+import { AwsS3ResponseDto } from '@modules/aws/dtos/response/aws.s3-response.dto';
 
 export class UserGetResponseDto extends DatabaseUUIDDto {
     @ApiProperty({

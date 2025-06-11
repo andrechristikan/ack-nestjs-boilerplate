@@ -12,51 +12,51 @@ import {
     Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { AuthJwtPayload } from 'src/modules/auth/decorators/auth.jwt.decorator';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     AuthSocialAppleProtected,
     AuthSocialGoogleProtected,
-} from 'src/modules/auth/decorators/auth.social.decorator';
-import { AuthService } from 'src/modules/auth/services/auth.service';
-import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
-import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
+} from '@modules/auth/decorators/auth.social.decorator';
+import { AuthService } from '@modules/auth/services/auth.service';
+import { Response } from '@common/response/decorators/response.decorator';
+import { IResponse } from '@common/response/interfaces/response.interface';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
+import { AuthLoginResponseDto } from '@modules/auth/dtos/response/auth.login.response.dto';
 import {
     AuthPublicLoginCredentialDoc,
     AuthPublicLoginSocialAppleDoc,
     AuthPublicLoginSocialGoogleDoc,
     AuthPublicSignUpDoc,
-} from 'src/modules/auth/docs/auth.public.doc';
-import { AuthLoginRequestDto } from 'src/modules/auth/dtos/request/auth.login.request.dto';
-import { UserService } from 'src/modules/user/services/user.service';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
-import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
-import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
-import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
+} from '@modules/auth/docs/auth.public.doc';
+import { AuthLoginRequestDto } from '@modules/auth/dtos/request/auth.login.request.dto';
+import { UserService } from '@modules/user/services/user.service';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
+import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
+import { ENUM_USER_STATUS } from '@modules/user/enums/user.enum';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { AuthSignUpRequestDto } from '@modules/auth/dtos/request/auth.sign-up.request.dto';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
 import { ClientSession } from 'mongoose';
-import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
+import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
+import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 import { Queue } from 'bullmq';
-import { CountryService } from 'src/modules/country/services/country.service';
-import { RoleService } from 'src/modules/role/services/role.service';
-import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
-import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
-import { SessionService } from 'src/modules/session/services/session.service';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ActivityService } from 'src/modules/activity/services/activity.service';
-import { MessageService } from 'src/common/message/services/message.service';
+import { CountryService } from '@modules/country/services/country.service';
+import { RoleService } from '@modules/role/services/role.service';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { ENUM_PASSWORD_HISTORY_TYPE } from '@modules/password-history/enums/password-history.enum';
+import { SessionService } from '@modules/session/services/session.service';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ActivityService } from '@modules/activity/services/activity.service';
+import { MessageService } from '@common/message/services/message.service';
 import { InjectQueue } from '@nestjs/bullmq';
-import { VerificationService } from 'src/modules/verification/services/verification.service';
-import { DatabaseService } from 'src/common/database/services/database.service';
+import { VerificationService } from '@modules/verification/services/verification.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import {
     IAuthSocialApplePayload,
     IAuthSocialGooglePayload,
-} from 'src/modules/auth/interfaces/auth.interface';
+} from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.public.auth')
 @Controller({

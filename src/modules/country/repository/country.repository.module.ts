@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
 import {
     CountryEntity,
     CountrySchema,
-} from 'src/modules/country/repository/entities/country.entity';
-import { CountryRepository } from 'src/modules/country/repository/repositories/country.repository';
+} from '@modules/country/repository/entities/country.entity';
+import { CountryRepository } from '@modules/country/repository/repositories/country.repository';
 
 @Module({
     providers: [CountryRepository],
