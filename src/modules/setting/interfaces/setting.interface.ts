@@ -1,6 +1,6 @@
 export interface SettingJson {
     enabled: boolean;
-    properties: SettingValue;
+    [key: string]: SettingValue;
 }
 
 export type SettingValue =
@@ -8,5 +8,4 @@ export type SettingValue =
     | string
     | number
     | SettingValue[]
-    | SettingJson
-    | { [key: string]: SettingValue };
+    | SettingJson;

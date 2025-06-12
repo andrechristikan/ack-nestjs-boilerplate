@@ -5,10 +5,8 @@ import {
 } from '@common/database/decorators/database.decorator';
 import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
 import { DatabaseUUIDEntityBase } from '@common/database/bases/database.uuid.entity';
-import {
-    SettingFeatureValueEntity,
-    SettingFeatureValueSchema,
-} from '@modules/setting/repository/entities/setting-feature.value.entity';
+import { Schema } from 'mongoose';
+import { SettingJson } from '@modules/setting/interfaces/setting.interface';
 
 export const SettingFeatureTableName = 'SettingFeatures';
 
@@ -23,10 +21,10 @@ export class SettingFeatureEntity extends DatabaseUUIDEntityBase {
     description: string;
 
     @DatabaseProp({
-        type: SettingFeatureValueSchema,
+        type: Schema.Types.Mixed,
         required: true,
     })
-    value: SettingFeatureValueEntity;
+    value: SettingJson;
 }
 
 export const SettingFeatureSchema = DatabaseSchema(SettingFeatureEntity);
