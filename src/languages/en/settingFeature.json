@@ -1,5 +1,6 @@
 {
     "error": {
-        "inactive": "This feature is currently disabled"
+        "inactive": "This feature is currently disabled",
+        "notFound": "Sorry, we couldn't find the setting you requested."
     }
 }

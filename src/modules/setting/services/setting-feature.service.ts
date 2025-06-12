@@ -2,7 +2,9 @@ import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
+    IDatabaseSaveOptions,
 } from '@common/database/interfaces/database.interface';
 import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
@@ -18,6 +20,8 @@ import {
 } from '@modules/setting/repository/entities/setting-feature.entity';
 import { SettingFeatureListResponseDto } from '@modules/setting/dtos/response/setting-feature.list.response.dto';
 import { SettingFeatureGetResponseDto } from '@modules/setting/dtos/response/setting-feature.get.response.dto';
+import { SettingFeatureUpdateRequestDto } from '@modules/setting/dtos/request/setting-feature.update.request.dto';
+import { SettingFeatureCreateRequestDto } from '@modules/setting/dtos/request/setting-feature.create.request.dto';
 
 @Injectable()
 export class SettingFeatureService
@@ -83,6 +87,23 @@ export class SettingFeatureService
         return fallback;
     }
 
+    async update(
+        repository: SettingFeatureDoc,
+        dto: SettingFeatureUpdateRequestDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<SettingFeatureDoc> {
+        repository.value = dto.value;
+        repository.description = dto.description;
+        return this.settingFeatureRepository.save(repository, options);
+    }
+
+    async findOneByKey(
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<SettingFeatureDoc> {
+        return this.settingFeatureRepository.findOne({ key: key }, options);
+    }
+
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
@@ -103,8 +124,15 @@ export class SettingFeatureService
         await this.settingFeatureRepository.createMany(entries);
     }
 
-    async create(entity: SettingFeatureEntity): Promise<SettingFeatureDoc> {
-        return this.settingFeatureRepository.create(entity);
+    async create(
+        dto: SettingFeatureCreateRequestDto
+    ): Promise<SettingFeatureDoc> {
+        const settingFeature = new SettingFeatureEntity();
+        settingFeature.key = dto.key;
+        settingFeature.value = dto.value;
+        settingFeature.description = dto.description;
+
+        return this.settingFeatureRepository.create(settingFeature);
     }
 
     async delete(key: string): Promise<SettingFeatureDoc> {

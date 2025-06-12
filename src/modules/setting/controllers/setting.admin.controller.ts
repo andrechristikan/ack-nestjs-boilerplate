@@ -1,6 +1,17 @@
 import { ApiTags } from '@nestjs/swagger';
-import { Controller, Get, Post } from '@nestjs/common';
-import { IResponsePaging } from '@common/response/interfaces/response.interface';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get, NotFoundException,
+    Param,
+    Post,
+    Put,
+} from '@nestjs/common';
+import {
+    IResponse,
+    IResponsePaging,
+} from '@common/response/interfaces/response.interface';
 
 import {
     Response,
@@ -27,6 +38,10 @@ import {
     SettingAdminCacheReloadDoc,
     SettingAdminListDoc,
 } from '@modules/setting/docs/setting.admin.doc';
+import { SettingFeatureGetResponseDto } from '@modules/setting/dtos/response/setting-feature.get.response.dto';
+import { SettingFeatureCreateRequestDto } from '@modules/setting/dtos/request/setting-feature.create.request.dto';
+import { SettingFeatureUpdateRequestDto } from '@modules/setting/dtos/request/setting-feature.update.request.dto';
+import { ENUM_SETTING_FEATURE_STATUS_CODE_ERROR } from '@modules/setting/enums/setting.enum.status-code';
 
 @ApiTags('common.admin.setting')
 @Controller({
@@ -38,6 +53,81 @@ export class SettingAdminController {
         private readonly settingFeatureService: SettingFeatureService,
         private readonly paginationService: PaginationService
     ) {}
+
+    @Response('setting.create')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.SETTINGS,
+        action: [ENUM_POLICY_ACTION.CREATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/')
+    async create(
+        @Body() dto: SettingFeatureCreateRequestDto
+    ): Promise<IResponse<SettingFeatureGetResponseDto>> {
+        const settingFeature = await this.settingFeatureService.create(dto);
+        return {
+            data: this.settingFeatureService.mapGet(settingFeature)
+        }
+    }
+
+    @Response('setting.update')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.SETTINGS,
+        action: [ENUM_POLICY_ACTION.UPDATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Put('/:key')
+    async update(
+        @Param('key') key: string,
+        @Body() dto: SettingFeatureUpdateRequestDto
+    ): Promise<IResponse<SettingFeatureGetResponseDto>> {
+        const settingFeature =
+            await this.settingFeatureService.findOneByKey(key);
+        if (!settingFeature) {
+            throw new NotFoundException({
+                statusCode: ENUM_SETTING_FEATURE_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'settingFeature.error.notFound',
+            });
+        }
+        const updated = await this.settingFeatureService.update(
+            settingFeature,
+            dto
+        );
+        return {
+            data: this.settingFeatureService.mapGet(updated),
+        };
+    }
+
+    @Response('setting.delete')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.SETTINGS,
+        action: [ENUM_POLICY_ACTION.DELETE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Delete('/:key')
+    async delete(@Param('key') key: string): Promise<IResponse<void>> {
+        const settingFeature =
+            await this.settingFeatureService.findOneByKey(key);
+
+        if (!settingFeature) {
+            throw new NotFoundException({
+                statusCode: ENUM_SETTING_FEATURE_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'settingFeature.error.notFound',
+            });
+        }
+
+        await this.settingFeatureService.delete(settingFeature.key);
+        return;
+    }
 
     @SettingAdminListDoc()
     @ResponsePaging('setting.list')
