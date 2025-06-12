@@ -14,7 +14,7 @@ export class MigrationSettingFeatureSeed {
     async seeds(): Promise<void> {
         try {
             const socialAuthGoogle = new SettingFeatureEntity();
-            socialAuthGoogle.key = 'social.auth.google';
+            socialAuthGoogle.key = 'auth.social.google';
             socialAuthGoogle.description =
                 'Enable or disable authentication via Google account';
             socialAuthGoogle.value = {
@@ -22,7 +22,7 @@ export class MigrationSettingFeatureSeed {
             };
 
             const socialAuthApple = new SettingFeatureEntity();
-            socialAuthApple.key = 'social.auth.apple';
+            socialAuthApple.key = 'auth.social.apple';
             socialAuthApple.description =
                 'Enable or disable authentication via Apple account';
             socialAuthApple.value = {
