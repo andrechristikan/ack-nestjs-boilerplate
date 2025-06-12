@@ -21,6 +21,7 @@ export class SettingFeatureEntity extends DatabaseUUIDEntityBase {
     description: string;
 
     @DatabaseProp({
+        _id: false,
         type: {
             enabled: { type: Boolean, default: false },
             additionalProperties: {
