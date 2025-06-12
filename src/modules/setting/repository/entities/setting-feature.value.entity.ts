@@ -15,10 +15,10 @@ export class SettingFeatureValueEntity {
     })
     enabled: boolean;
     @DatabaseProp({
-        required: true,
+        required: false,
         type: Schema.Types.Mixed,
     })
-    properties: SettingValue;
+    properties?: SettingValue;
 }
 
 export const SettingFeatureValueSchema = DatabaseSchema(
