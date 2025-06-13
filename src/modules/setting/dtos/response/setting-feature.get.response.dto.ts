@@ -19,7 +19,7 @@ export class SettingFeatureGetResponseDto extends DatabaseUUIDDto {
 
     @ApiProperty({
         description: 'Value of the feature configuration',
-        example: 'true',
+        example: { "enabled": true, "config1": "value1", "prop": "config"},
         required: true,
         oneOf: [
             { type: 'string' },

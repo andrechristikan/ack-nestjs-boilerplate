@@ -3,7 +3,8 @@ import {
     Body,
     Controller,
     Delete,
-    Get, NotFoundException,
+    Get,
+    NotFoundException,
     Param,
     Post,
     Put,
@@ -36,7 +37,10 @@ import { SettingFeatureService } from '@modules/setting/services/setting-feature
 import { SettingFeatureListResponseDto } from '@modules/setting/dtos/response/setting-feature.list.response.dto';
 import {
     SettingAdminCacheReloadDoc,
+    SettingAdminCreateDoc,
+    SettingAdminDeleteDoc,
     SettingAdminListDoc,
+    SettingAdminUpdateDoc,
 } from '@modules/setting/docs/setting.admin.doc';
 import { SettingFeatureGetResponseDto } from '@modules/setting/dtos/response/setting-feature.get.response.dto';
 import { SettingFeatureCreateRequestDto } from '@modules/setting/dtos/request/setting-feature.create.request.dto';
@@ -54,6 +58,7 @@ export class SettingAdminController {
         private readonly paginationService: PaginationService
     ) {}
 
+    @SettingAdminCreateDoc()
     @Response('setting.create')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.SETTINGS,
@@ -69,10 +74,11 @@ export class SettingAdminController {
     ): Promise<IResponse<SettingFeatureGetResponseDto>> {
         const settingFeature = await this.settingFeatureService.create(dto);
         return {
-            data: this.settingFeatureService.mapGet(settingFeature)
-        }
+            data: this.settingFeatureService.mapGet(settingFeature),
+        };
     }
 
+    @SettingAdminUpdateDoc()
     @Response('setting.update')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.SETTINGS,
@@ -104,6 +110,7 @@ export class SettingAdminController {
         };
     }
 
+    @SettingAdminDeleteDoc()
     @Response('setting.delete')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.SETTINGS,

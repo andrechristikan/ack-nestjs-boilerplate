@@ -1,4 +1,4 @@
-import { SETTING_FEATURE_META_KEY } from '@modules/setting/constants/settings.constant';
+import { SETTING_FEATURE_META_KEY } from '@modules/setting/constants/setting.constant';
 import { SettingFeatureGuard } from '@modules/setting/guards/setting-feature.advanced.guard';
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
 
