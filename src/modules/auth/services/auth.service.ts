@@ -20,7 +20,7 @@ import { IUserDoc } from '@modules/user/interfaces/user.interface';
 import { AuthLoginResponseDto } from '@modules/auth/dtos/response/auth.login.response.dto';
 import { readFileSync } from 'fs';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { join } from 'path';
+import path from 'path';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -66,7 +66,7 @@ export class AuthService implements IAuthService {
             'auth.jwt.accessToken.kid'
         );
         this.jwtAccessTokenPrivateKey = readFileSync(
-            join(
+            path.resolve(
                 process.cwd(),
                 this.configService.get<string>(
                     'auth.jwt.accessToken.privateKeyPath'
@@ -75,7 +75,7 @@ export class AuthService implements IAuthService {
             'utf8'
         );
         this.jwtAccessTokenPublicKey = readFileSync(
-            join(
+            path.resolve(
                 process.cwd(),
                 this.configService.get<string>(
                     'auth.jwt.accessToken.publicKeyPath'
@@ -91,7 +91,7 @@ export class AuthService implements IAuthService {
             'auth.jwt.refreshToken.kid'
         );
         this.jwtRefreshTokenPrivateKey = readFileSync(
-            join(
+            path.resolve(
                 process.cwd(),
                 this.configService.get<string>(
                     'auth.jwt.refreshToken.privateKeyPath'
@@ -100,7 +100,7 @@ export class AuthService implements IAuthService {
             'utf8'
         );
         this.jwtRefreshTokenPublicKey = readFileSync(
-            join(
+            path.resolve(
                 process.cwd(),
                 this.configService.get<string>(
                     'auth.jwt.refreshToken.publicKeyPath'
