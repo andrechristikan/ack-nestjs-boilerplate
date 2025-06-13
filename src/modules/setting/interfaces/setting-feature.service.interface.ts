@@ -7,10 +7,7 @@ import {
 import { SettingFeatureUpdateRequestDto } from '@modules/setting/dtos/request/setting-feature.update.request.dto';
 import { SettingFeatureGetResponseDto } from '@modules/setting/dtos/response/setting-feature.get.response.dto';
 import { SettingFeatureListResponseDto } from '@modules/setting/dtos/response/setting-feature.list.response.dto';
-import {
-    SettingJson,
-    SettingValue,
-} from '@modules/setting/interfaces/setting.interface';
+import { SettingJson } from '@modules/setting/interfaces/setting.interface';
 import {
     SettingFeatureDoc,
     SettingFeatureEntity,
@@ -18,7 +15,8 @@ import {
 
 export interface ISettingFeatureService {
     flush(): Promise<void>;
-    get(key: string): Promise<SettingJson>;
+    getAndCache(key: string): Promise<SettingJson>;
+    deleteCache(key: string): Promise<void>;
     update(
         repository: SettingFeatureDoc,
         dto: SettingFeatureUpdateRequestDto,

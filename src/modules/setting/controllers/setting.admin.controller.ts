@@ -1,13 +1,5 @@
 import { ApiTags } from '@nestjs/swagger';
-import {
-    Body,
-    Controller,
-    Delete,
-    Get,
-    Param,
-    Post,
-    Put,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Put } from '@nestjs/common';
 import {
     IResponse,
     IResponsePaging,
@@ -132,6 +124,9 @@ export class SettingAdminController {
             settingFeature,
             dto
         );
+
+        await this.settingFeatureService.deleteCache(updated.key);
+
         return {
             data: this.settingFeatureService.mapGet(updated),
         };

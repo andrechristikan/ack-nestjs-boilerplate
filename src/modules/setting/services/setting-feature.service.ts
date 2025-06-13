@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
@@ -24,9 +24,7 @@ import { SettingFeatureUpdateRequestDto } from '@modules/setting/dtos/request/se
 
 @Injectable()
 export class SettingFeatureService implements ISettingFeatureService {
-    private readonly logger = new Logger(SettingFeatureService.name);
     private readonly keyPrefix: string;
-    private readonly ttl: number;
 
     constructor(
         @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
@@ -34,7 +32,6 @@ export class SettingFeatureService implements ISettingFeatureService {
         private readonly configService: ConfigService
     ) {
         this.keyPrefix = this.configService.get<string>('setting.keyPrefix');
-        this.ttl = this.configService.get<number>('setting.ttl');
     }
 
     private serializeValue(value: SettingJson): string {
@@ -54,7 +51,7 @@ export class SettingFeatureService implements ISettingFeatureService {
         await this.cacheManager.mdel(cacheKeys);
     }
 
-    async get(key: string): Promise<SettingJson> {
+    async getAndCache(key: string): Promise<SettingJson> {
         const cacheKey = `${this.keyPrefix}:${key}`;
         const cachedValue = await this.cacheManager.get<string>(cacheKey);
 
@@ -67,8 +64,14 @@ export class SettingFeatureService implements ISettingFeatureService {
         });
 
         const valueToCache = this.serializeValue(setting.value);
-        await this.cacheManager.set(cacheKey, valueToCache, this.ttl);
+        await this.cacheManager.set(cacheKey, valueToCache);
         return setting.value;
+    }
+
+    async deleteCache(key: string): Promise<void> {
+        const cacheKey = `${this.keyPrefix}:${key}`;
+        await this.cacheManager.del(cacheKey);
+        return;
     }
 
     async update(

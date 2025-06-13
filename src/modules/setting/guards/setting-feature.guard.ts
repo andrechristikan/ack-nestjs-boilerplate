@@ -22,7 +22,8 @@ export class SettingFeatureGuard implements CanActivate {
             context.getHandler()
         );
 
-        const settingFeature = await this.settingFeatureService.get(featureKey);
+        const settingFeature =
+            await this.settingFeatureService.getAndCache(featureKey);
 
         if (!settingFeature.enabled) {
             throw new ForbiddenException({
