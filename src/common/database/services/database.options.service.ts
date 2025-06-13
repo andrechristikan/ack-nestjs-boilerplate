@@ -45,8 +45,8 @@ export class DatabaseOptionService implements IDatabaseOptionService {
 
         const mongooseOptions: MongooseModuleOptions = {
             uri: url,
-            autoCreate: env !== ENUM_APP_ENVIRONMENT.MIGRATION,
-            autoIndex: env !== ENUM_APP_ENVIRONMENT.MIGRATION,
+            autoCreate: env === ENUM_APP_ENVIRONMENT.MIGRATION,
+            autoIndex: env === ENUM_APP_ENVIRONMENT.MIGRATION,
             appName: name,
             retryWrites: true,
             retryReads: true,

@@ -1,11 +1,13 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { SettingFeatureRepository } from '@modules/setting/repository/repositories/setting-feature.repository';
 import { SettingFeatureEntity } from '@modules/setting/repository/entities/setting-feature.entity';
+import { SettingFeatureService } from '@modules/setting/services/setting-feature.service';
 
 @Injectable()
 export class MigrationSettingFeatureSeed {
-    constructor(private readonly settingRepository: SettingFeatureRepository) {}
+    constructor(
+        private readonly settingFeatureService: SettingFeatureService
+    ) {}
 
     @Command({
         command: 'seed:settings',
@@ -16,7 +18,7 @@ export class MigrationSettingFeatureSeed {
             const socialAuthGoogle = new SettingFeatureEntity();
             socialAuthGoogle.key = 'auth.social.google';
             socialAuthGoogle.description =
-                'Enable or disable authentication via Google account';
+                'Setting for Google social authentication';
             socialAuthGoogle.value = {
                 enabled: true,
             };
@@ -24,17 +26,16 @@ export class MigrationSettingFeatureSeed {
             const socialAuthApple = new SettingFeatureEntity();
             socialAuthApple.key = 'auth.social.apple';
             socialAuthApple.description =
-                'Enable or disable authentication via Apple account';
+                'Setting for Apple social authentication';
             socialAuthApple.value = {
                 enabled: true,
             };
 
-            const settingFeatures = [socialAuthGoogle, socialAuthApple];
-
             // Create multiple config entities at once
-            await this.settingRepository.createMany(settingFeatures);
-
-            console.log('Feature configs created successfully');
+            await this.settingFeatureService.createMany([
+                socialAuthGoogle,
+                socialAuthApple,
+            ]);
         } catch (err: any) {
             throw new Error(err);
         }
@@ -48,7 +49,7 @@ export class MigrationSettingFeatureSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.settingRepository.deleteMany();
+            await this.settingFeatureService.deleteMany();
         } catch (err: any) {
             throw new Error(err);
         }

@@ -8,4 +8,4 @@ export type SettingValue =
     | string
     | number
     | SettingValue[]
-    | SettingJson;
+    | { [key: string]: SettingValue };

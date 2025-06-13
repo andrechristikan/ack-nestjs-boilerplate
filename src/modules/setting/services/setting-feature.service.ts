@@ -21,14 +21,12 @@ import {
 import { SettingFeatureListResponseDto } from '@modules/setting/dtos/response/setting-feature.list.response.dto';
 import { SettingFeatureGetResponseDto } from '@modules/setting/dtos/response/setting-feature.get.response.dto';
 import { SettingFeatureUpdateRequestDto } from '@modules/setting/dtos/request/setting-feature.update.request.dto';
-import { SettingFeatureCreateRequestDto } from '@modules/setting/dtos/request/setting-feature.create.request.dto';
 
 @Injectable()
-export class SettingFeatureService
-    implements OnModuleInit, ISettingFeatureService
-{
+export class SettingFeatureService implements ISettingFeatureService {
     private readonly logger = new Logger(SettingFeatureService.name);
     private readonly keyPrefix: string;
+    private readonly ttl: number;
 
     constructor(
         @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
@@ -36,10 +34,7 @@ export class SettingFeatureService
         private readonly configService: ConfigService
     ) {
         this.keyPrefix = this.configService.get<string>('setting.keyPrefix');
-    }
-
-    async onModuleInit(): Promise<void> {
-        await this.reloadAllKeys();
+        this.ttl = this.configService.get<number>('setting.ttl');
     }
 
     private serializeValue(value: SettingJson): string {
@@ -50,41 +45,30 @@ export class SettingFeatureService
         return JSON.parse(value);
     }
 
-    async reloadAllKeys(): Promise<void> {
+    async flush(): Promise<void> {
         const settings = await this.settingFeatureRepository.findAll();
         const cacheKeys = settings.map(
             setting => `${this.keyPrefix}:${setting.key}`
         );
 
-        try {
-            await this.cacheManager.mdel(cacheKeys);
-        } catch (err: unknown) {
-            this.logger.error('Cleanup of cacheManager failed', err);
-        }
-
-        for (const setting of settings) {
-            const valueToCache = this.serializeValue(setting.value);
-            await this.cacheManager.set(
-                `${this.keyPrefix}:${setting.key}`,
-                valueToCache
-            );
-        }
-
-        this.logger.log(`Reloaded ${settings.length} settings `);
+        await this.cacheManager.mdel(cacheKeys);
     }
 
-    async get<T = SettingJson>(
-        key: string,
-        fallback?: T
-    ): Promise<T | undefined> {
+    async get(key: string): Promise<SettingJson> {
         const cacheKey = `${this.keyPrefix}:${key}`;
         const cachedValue = await this.cacheManager.get<string>(cacheKey);
 
-        if (cachedValue !== undefined) {
-            return this.deserializeValue(cachedValue) as T;
+        if (cachedValue) {
+            return this.deserializeValue(cachedValue);
         }
 
-        return fallback;
+        const setting = await this.settingFeatureRepository.findOne({
+            key: key,
+        });
+
+        const valueToCache = this.serializeValue(setting.value);
+        await this.cacheManager.set(cacheKey, valueToCache, this.ttl);
+        return setting.value;
     }
 
     async update(
@@ -112,7 +96,7 @@ export class SettingFeatureService
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<void> {
         await this.settingFeatureRepository.deleteMany(find, options);
@@ -122,17 +106,6 @@ export class SettingFeatureService
 
     async createMany(entries: SettingFeatureEntity[]): Promise<void> {
         await this.settingFeatureRepository.createMany(entries);
-    }
-
-    async create(
-        dto: SettingFeatureCreateRequestDto
-    ): Promise<SettingFeatureDoc> {
-        const settingFeature = new SettingFeatureEntity();
-        settingFeature.key = dto.key;
-        settingFeature.value = dto.value;
-        settingFeature.description = dto.description;
-
-        return this.settingFeatureRepository.create(settingFeature);
     }
 
     async delete(key: string): Promise<SettingFeatureDoc> {

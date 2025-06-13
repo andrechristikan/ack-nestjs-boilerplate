@@ -22,17 +22,15 @@ export class SettingFeatureGuard implements CanActivate {
             context.getHandler()
         );
 
-        const advancedSetting = await this.settingFeatureService.get<{
-            enabled: boolean;
-        }>(featureKey, { enabled: false });
+        const settingFeature = await this.settingFeatureService.get(featureKey);
 
-        if (!advancedSetting.enabled) {
+        if (!settingFeature.enabled) {
             throw new ForbiddenException({
                 statusCode: ENUM_SETTING_FEATURE_STATUS_CODE_ERROR.INACTIVE,
                 message: 'settingFeature.error.inactive',
             });
         }
 
-        return advancedSetting.enabled;
+        return settingFeature.enabled;
     }
 }

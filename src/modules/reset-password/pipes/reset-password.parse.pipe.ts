@@ -7,7 +7,7 @@ import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-cod
 export class ResetPasswordParseByTokenPipe implements PipeTransform {
     constructor(private readonly resetPasswordService: ResetPasswordService) {}
 
-    async transform(value: any): Promise<ResetPasswordDoc> {
+    async transform(value: string): Promise<ResetPasswordDoc> {
         const resetPassword: ResetPasswordDoc =
             await this.resetPasswordService.findOneByToken(value);
         if (!resetPassword) {

@@ -4,7 +4,6 @@ import {
     Controller,
     Delete,
     Get,
-    NotFoundException,
     Param,
     Post,
     Put,
@@ -36,16 +35,15 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { SettingFeatureService } from '@modules/setting/services/setting-feature.service';
 import { SettingFeatureListResponseDto } from '@modules/setting/dtos/response/setting-feature.list.response.dto';
 import {
-    SettingAdminCacheReloadDoc,
-    SettingAdminCreateDoc,
-    SettingAdminDeleteDoc,
+    SettingAdminFlushDoc,
     SettingAdminListDoc,
     SettingAdminUpdateDoc,
 } from '@modules/setting/docs/setting.admin.doc';
 import { SettingFeatureGetResponseDto } from '@modules/setting/dtos/response/setting-feature.get.response.dto';
-import { SettingFeatureCreateRequestDto } from '@modules/setting/dtos/request/setting-feature.create.request.dto';
 import { SettingFeatureUpdateRequestDto } from '@modules/setting/dtos/request/setting-feature.update.request.dto';
-import { ENUM_SETTING_FEATURE_STATUS_CODE_ERROR } from '@modules/setting/enums/setting.enum.status-code';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { SettingFeatureParseByKeyPipe } from '@modules/setting/pipes/setting-feature.parse.pipe';
+import { SettingFeatureDoc } from '@modules/setting/repository/entities/setting-feature.entity';
 
 @ApiTags('common.admin.setting')
 @Controller({
@@ -58,84 +56,6 @@ export class SettingAdminController {
         private readonly paginationService: PaginationService
     ) {}
 
-    @SettingAdminCreateDoc()
-    @Response('setting.create')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.SETTINGS,
-        action: [ENUM_POLICY_ACTION.CREATE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Post('/')
-    async create(
-        @Body() dto: SettingFeatureCreateRequestDto
-    ): Promise<IResponse<SettingFeatureGetResponseDto>> {
-        const settingFeature = await this.settingFeatureService.create(dto);
-        return {
-            data: this.settingFeatureService.mapGet(settingFeature),
-        };
-    }
-
-    @SettingAdminUpdateDoc()
-    @Response('setting.update')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.SETTINGS,
-        action: [ENUM_POLICY_ACTION.UPDATE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Put('/:key')
-    async update(
-        @Param('key') key: string,
-        @Body() dto: SettingFeatureUpdateRequestDto
-    ): Promise<IResponse<SettingFeatureGetResponseDto>> {
-        const settingFeature =
-            await this.settingFeatureService.findOneByKey(key);
-        if (!settingFeature) {
-            throw new NotFoundException({
-                statusCode: ENUM_SETTING_FEATURE_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'settingFeature.error.notFound',
-            });
-        }
-        const updated = await this.settingFeatureService.update(
-            settingFeature,
-            dto
-        );
-        return {
-            data: this.settingFeatureService.mapGet(updated),
-        };
-    }
-
-    @SettingAdminDeleteDoc()
-    @Response('setting.delete')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.SETTINGS,
-        action: [ENUM_POLICY_ACTION.DELETE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Delete('/:key')
-    async delete(@Param('key') key: string): Promise<IResponse<void>> {
-        const settingFeature =
-            await this.settingFeatureService.findOneByKey(key);
-
-        if (!settingFeature) {
-            throw new NotFoundException({
-                statusCode: ENUM_SETTING_FEATURE_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'settingFeature.error.notFound',
-            });
-        }
-
-        await this.settingFeatureService.delete(settingFeature.key);
-        return;
-    }
-
     @SettingAdminListDoc()
     @ResponsePaging('setting.list')
     @PolicyAbilityProtected({
@@ -146,7 +66,7 @@ export class SettingAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/')
+    @Get('/list')
     async list(
         @PaginationQuery()
         { _search, _limit, _offset, _order }: PaginationListDto
@@ -175,20 +95,45 @@ export class SettingAdminController {
         };
     }
 
-    @SettingAdminCacheReloadDoc()
-    @Response('setting.reload')
+    @SettingAdminFlushDoc()
+    @Response('setting.flush')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.SETTINGS,
-        action: [ENUM_POLICY_ACTION.UPDATE],
+        action: [ENUM_POLICY_ACTION.DELETE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Post('/reload')
-    async reload(): Promise<void> {
-        await this.settingFeatureService.reloadAllKeys();
+    @Delete('/flush')
+    async flush(): Promise<void> {
+        await this.settingFeatureService.flush();
 
         return;
+    }
+
+    @SettingAdminUpdateDoc()
+    @Response('setting.update')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.SETTINGS,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Put('/update/:key')
+    async update(
+        @Param('key', RequestRequiredPipe, SettingFeatureParseByKeyPipe)
+        settingFeature: SettingFeatureDoc,
+        @Body() dto: SettingFeatureUpdateRequestDto
+    ): Promise<IResponse<SettingFeatureGetResponseDto>> {
+        const updated = await this.settingFeatureService.update(
+            settingFeature,
+            dto
+        );
+        return {
+            data: this.settingFeatureService.mapGet(updated),
+        };
     }
 }
