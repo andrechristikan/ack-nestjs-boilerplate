@@ -10,6 +10,7 @@ import {
     SettingFeatureDoc,
     SettingFeatureEntity,
 } from '@modules/setting/repository/entities/setting-feature.entity';
+import { SettingFeatureCreateRequestDto } from '@modules/setting/dtos/request/setting-feature.create.request.dto';
 
 export interface ISettingFeatureService {
     reloadAllKeys(): Promise<void>;
@@ -23,7 +24,7 @@ export interface ISettingFeatureService {
         options?: IDatabaseDeleteManyOptions
     ): Promise<void>;
     createMany(entries: SettingFeatureEntity[]): Promise<void>;
-    create(entity: SettingFeatureEntity): Promise<SettingFeatureDoc>;
+    create(entity: SettingFeatureCreateRequestDto): Promise<SettingFeatureDoc>;
     delete(key: string): Promise<SettingFeatureDoc>;
     getTotal(
         find?: Record<string, any>,

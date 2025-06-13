@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ENUM_SETTING_FEATURE_STATUS_CODE_ERROR } from '@modules/setting/enums/setting.enum.status-code';
-import { SETTING_FEATURE_META_KEY } from '@modules/setting/constants/settings.constant';
+import { SETTING_FEATURE_META_KEY } from '@modules/setting/constants/setting.constant';
 import { SettingFeatureService } from '@modules/setting/services/setting-feature.service';
 
 @Injectable()
