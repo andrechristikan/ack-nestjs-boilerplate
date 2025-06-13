@@ -14,7 +14,7 @@ export class FileTypePipe implements PipeTransform {
         readonly field?: string
     ) {}
 
-    async transform(value: any): Promise<IFile | IFile[]> {
+    async transform(value: IFile | IFile[]): Promise<IFile | IFile[]> {
         if (!value) {
             return value;
         }

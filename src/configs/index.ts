@@ -14,6 +14,7 @@ import ResetPasswordConfig from '@configs/reset-password.config';
 import VerificationConfig from '@configs/verification.config';
 import HomeConfig from '@configs/home.config';
 import SessionConfig from '@configs/session.config';
+import SettingConfig from '@configs/setting.config';
 
 export default [
     AppConfig,
@@ -32,4 +33,5 @@ export default [
     VerificationConfig,
     HomeConfig,
     SessionConfig,
+    SettingConfig,
 ];

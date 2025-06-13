@@ -7,7 +7,7 @@ import { RoleService } from '@modules/role/services/role.service';
 export class RoleParsePipe implements PipeTransform {
     constructor(private readonly roleService: RoleService) {}
 
-    async transform(value: any): Promise<RoleDoc> {
+    async transform(value: string): Promise<RoleDoc> {
         const role: RoleDoc = await this.roleService.findOneById(value);
         if (!role) {
             throw new NotFoundException({

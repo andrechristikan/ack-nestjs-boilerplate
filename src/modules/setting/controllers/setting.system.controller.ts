@@ -1,11 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { Response } from '@common/response/decorators/response.decorator';
-import { IResponse } from '@common/response/interfaces/response.interface';
-import { SettingCoreResponseDto } from '@modules/setting/dtos/response/setting.core.response.dto';
+import { ApiKeySystemProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+import { Response } from 'src/common/response/decorators/response.decorator';
+import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { SettingCoreResponseDto } from 'src/modules/setting/dtos/response/setting.core.response.dto';
+import { SettingSystemCoreDoc } from 'src/modules/setting/docs/setting.system.doc';
 import { SettingService } from '@modules/setting/services/setting.service';
-import { SettingSystemCoreDoc } from '@modules/setting/docs/setting.system.doc';
 
 @ApiTags('modules.system.setting')
 @Controller({

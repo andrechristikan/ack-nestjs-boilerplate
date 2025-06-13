@@ -19,6 +19,7 @@ import { UserAdminController } from 'src/modules/user/controllers/user.admin.con
 import { UserModule } from 'src/modules/user/user.module';
 import { VerificationModule } from 'src/modules/verification/verification.module';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+import { SettingAdminController } from '@modules/setting/controllers/setting.admin.controller';
 
 @Module({
     controllers: [
@@ -29,6 +30,7 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
         SessionAdminController,
         PasswordHistoryAdminController,
         ActivityAdminController,
+        SettingAdminController
     ],
     providers: [],
     exports: [],
