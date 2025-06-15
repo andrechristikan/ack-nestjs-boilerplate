@@ -12,7 +12,7 @@ import {
     UserDocQueryRole,
     UserDocQueryStatus,
 } from '@modules/user/constants/user.doc.constant';
-import { UserCheckMobileNumberRequestDto } from '@modules/user/dtos/request/user.check-mobile-number.dto';
+import { UserCheckMobileNumberRequestDto } from '@modules/user/dtos/request/user.check-mobile-number.request.dto';
 import {
     UserCheckEmailRequestDto,
     UserCheckUsernameRequestDto,

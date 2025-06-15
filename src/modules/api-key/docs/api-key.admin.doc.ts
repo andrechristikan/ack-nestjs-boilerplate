@@ -20,10 +20,10 @@ import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.s
 import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
-import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.dto';
+import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyGetResponseDto } from '@modules/api-key/dtos/response/api-key.get.response.dto';
 import { ApiKeyListResponseDto } from '@modules/api-key/dtos/response/api-key.list.response.dto';
-import { ApiKeyResetResponseDto } from '@modules/api-key/dtos/response/api-key.reset.dto';
+import { ApiKeyResetResponseDto } from '@modules/api-key/dtos/response/api-key.reset.response.dto';
 import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 
 export function ApiKeyAdminListDoc(): MethodDecorator {

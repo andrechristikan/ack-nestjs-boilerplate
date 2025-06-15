@@ -34,7 +34,7 @@ import {
     UserSystemCheckUsernameDoc,
     UserSystemListDoc,
 } from '@modules/user/docs/user.system.doc';
-import { UserCheckMobileNumberRequestDto } from '@modules/user/dtos/request/user.check-mobile-number.dto';
+import { UserCheckMobileNumberRequestDto } from '@modules/user/dtos/request/user.check-mobile-number.request.dto';
 import {
     UserCheckEmailRequestDto,
     UserCheckUsernameRequestDto,

@@ -39,8 +39,8 @@ import { UserGetResponseDto } from '@modules/user/dtos/response/user.get.respons
 import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { AuthSignUpRequestDto } from '@modules/auth/dtos/request/auth.sign-up.request.dto';
-import { UserUpdateClaimUsernameRequestDto } from '@modules/user/dtos/request/user.update-claim-username.dto';
-import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.dto';
+import { UserUpdateClaimUsernameRequestDto } from '@modules/user/dtos/request/user.update-claim-username.request.dto';
+import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import { CountryDoc } from '@modules/country/repository/entities/country.entity';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { DatabaseHelperQueryContain } from '@common/database/decorators/database.decorator';
