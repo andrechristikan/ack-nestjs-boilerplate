@@ -57,7 +57,7 @@ import {
     IAuthSocialApplePayload,
     IAuthSocialGooglePayload,
 } from '@modules/auth/interfaces/auth.interface';
-import { SettingFeatureEnabled } from '@modules/setting/decorators/setting.decorator';
+import { SettingFeatureFlag } from '@modules/setting/decorators/setting.decorator';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -190,7 +190,7 @@ export class AuthPublicController {
     @AuthPublicLoginSocialGoogleDoc()
     @Response('auth.loginWithSocialGoogle')
     @AuthSocialGoogleProtected()
-    @SettingFeatureEnabled('auth.social.google')
+    @SettingFeatureFlag('auth.social.google')
     @Post('/login/social/google')
     async loginWithGoogle(
         @AuthJwtPayload<IAuthSocialGooglePayload>('email')
@@ -272,7 +272,7 @@ export class AuthPublicController {
     @AuthPublicLoginSocialAppleDoc()
     @Response('user.loginWithSocialApple')
     @AuthSocialAppleProtected()
-    @SettingFeatureEnabled('auth.social.apple')
+    @SettingFeatureFlag('auth.social.apple')
     @Post('/login/social/apple')
     async loginWithApple(
         @AuthJwtPayload<IAuthSocialApplePayload>('email')
