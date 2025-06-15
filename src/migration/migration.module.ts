@@ -16,6 +16,8 @@ import { PasswordHistoryModule } from '@modules/password-history/password-histor
 import { RoleModule } from '@modules/role/role.module';
 import { SessionModule } from '@modules/session/session.module';
 import { UserModule } from '@modules/user/user.module';
+import { MigrationSettingFeatureSeed } from '@migration/seeds/migration.settings.seed';
+import { SettingModule } from '@modules/setting/setting.module';
 
 // TODO: (v8) CHANGE WITH COMMANDER
 @Module({
@@ -33,6 +35,7 @@ import { UserModule } from '@modules/user/user.module';
         SessionModule,
         CountryModule,
         VerificationModule,
+        SettingModule,
     ],
     providers: [
         MigrationApiKeySeed,
@@ -40,6 +43,7 @@ import { UserModule } from '@modules/user/user.module';
         MigrationUserSeed,
         MigrationRoleSeed,
         MigrationTemplateSeed,
+        MigrationSettingFeatureSeed,
     ],
     exports: [],
 })

@@ -7,7 +7,7 @@ import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 export class ApiKeyParsePipe implements PipeTransform {
     constructor(private readonly apiKeyService: ApiKeyService) {}
 
-    async transform(value: any): Promise<ApiKeyDoc> {
+    async transform(value: string): Promise<ApiKeyDoc> {
         const apiKey: ApiKeyDoc = await this.apiKeyService.findOneById(value);
         if (!apiKey) {
             throw new NotFoundException({
