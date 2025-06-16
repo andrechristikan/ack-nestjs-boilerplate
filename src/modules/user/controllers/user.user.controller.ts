@@ -23,7 +23,7 @@ import {
     UserUserUpdateUsernameDoc,
 } from '@modules/user/docs/user.user.doc';
 import { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
-import { UserUpdateClaimUsernameRequestDto } from '@modules/user/dtos/request/user.update-claim-username.dto';
+import { UserUpdateClaimUsernameRequestDto } from '@modules/user/dtos/request/user.update-claim-username.request.dto';
 import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
 import { UserParsePipe } from '@modules/user/pipes/user.parse.pipe';
 import { UserDoc } from '@modules/user/repository/entities/user.entity';

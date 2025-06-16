@@ -28,8 +28,8 @@ import { UserShortResponseDto } from '@modules/user/dtos/response/user.short.res
 import { UserGetResponseDto } from '@modules/user/dtos/response/user.get.response.dto';
 import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
 import { AuthSignUpRequestDto } from '@modules/auth/dtos/request/auth.sign-up.request.dto';
-import { UserUpdateClaimUsernameRequestDto } from '@modules/user/dtos/request/user.update-claim-username.dto';
-import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.dto';
+import { UserUpdateClaimUsernameRequestDto } from '@modules/user/dtos/request/user.update-claim-username.request.dto';
+import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { CountryDoc } from '@modules/country/repository/entities/country.entity';
 import { UserUploadPhotoRequestDto } from '@modules/user/dtos/request/user.upload-photo.request.dto';
