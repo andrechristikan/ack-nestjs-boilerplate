@@ -3,8 +3,8 @@ import {
     Doc,
     DocAuth,
     DocResponsePaging,
-} from 'src/common/doc/decorators/doc.decorator';
-import { PasswordHistoryListResponseDto } from 'src/modules/password-history/dtos/response/password-history.list.response.dto';
+} from '@common/doc/decorators/doc.decorator';
+import { PasswordHistoryListResponseDto } from '@modules/password-history/dtos/response/password-history.list.response.dto';
 
 export function PasswordHistorySharedListDoc(): MethodDecorator {
     return applyDecorators(

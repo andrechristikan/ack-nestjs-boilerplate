@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { UserCensorResponseDto } from 'src/modules/user/dtos/response/user.censor.response.dto';
+import { UserCensorResponseDto } from '@modules/user/dtos/response/user.censor.response.dto';
 
 export class UserCheckResponseDto {
     @ApiProperty({

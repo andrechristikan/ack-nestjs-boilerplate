@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { DatabaseUUIDRepositoryBase } from 'src/common/database/bases/database.uuid.repository';
-import { InjectDatabaseModel } from 'src/common/database/decorators/database.decorator';
+import { DatabaseUUIDRepositoryBase } from '@common/database/bases/database.uuid.repository';
+import { InjectDatabaseModel } from '@common/database/decorators/database.decorator';
 import {
     RoleDoc,
     RoleEntity,
-} from 'src/modules/role/repository/entities/role.entity';
+} from '@modules/role/repository/entities/role.entity';
 
 @Injectable()
 export class RoleRepository extends DatabaseUUIDRepositoryBase<

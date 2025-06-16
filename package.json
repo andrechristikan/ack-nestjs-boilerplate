@@ -1,6 +1,6 @@
 {
     "name": "ack-nestjs-boilerplate",
-    "version": "7.4.1",
+    "version": "7.4.2",
     "description": "Ack NestJs Boilerplate",
     "repository": {
         "type": "git",
@@ -31,8 +31,8 @@
         "package:check": "npx npm-check-updates -i",
         "generate:keys": "npx ts-node scripts/generate-keys.ts",
         "migrate:fresh": "yarn migrate:remove && yarn migrate:seed",
-        "migrate:seed": "nestjs-command seed:country && nestjs-command seed:apikey && nestjs-command seed:role && nestjs-command seed:user",
-        "migrate:remove": "nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apikey  && nestjs-command remove:role",
+        "migrate:seed": "nestjs-command seed:country && nestjs-command seed:apikey && nestjs-command seed:role && nestjs-command seed:user && nestjs-command seed:settings",
+        "migrate:remove": "nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apikey  && nestjs-command remove:role && nestjs-command remove:settings",
         "migrate:template": "nestjs-command migrate:template",
         "rollback:template": "nestjs-command rollback:template"
     },

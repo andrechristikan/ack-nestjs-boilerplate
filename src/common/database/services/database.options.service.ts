@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MongooseModuleOptions } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
-import { IDatabaseOptionService } from 'src/common/database/interfaces/database.option-service.interface';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { IDatabaseOptionService } from '@common/database/interfaces/database.option-service.interface';
 
 @Injectable()
 export class DatabaseOptionService implements IDatabaseOptionService {
@@ -45,8 +45,8 @@ export class DatabaseOptionService implements IDatabaseOptionService {
 
         const mongooseOptions: MongooseModuleOptions = {
             uri: url,
-            autoCreate: env !== ENUM_APP_ENVIRONMENT.MIGRATION,
-            autoIndex: env !== ENUM_APP_ENVIRONMENT.MIGRATION,
+            autoCreate: env === ENUM_APP_ENVIRONMENT.MIGRATION,
+            autoIndex: env === ENUM_APP_ENVIRONMENT.MIGRATION,
             appName: name,
             retryWrites: true,
             retryReads: true,

@@ -6,23 +6,23 @@ import {
     ThrottlerModule,
     ThrottlerModuleOptions,
 } from '@nestjs/throttler';
-import { AppGeneralFilter } from 'src/app/filters/app.general.filter';
-import { AppHttpFilter } from 'src/app/filters/app.http.filter';
-import { AppValidationImportFilter } from 'src/app/filters/app.validation-import.filter';
-import { AppValidationFilter } from 'src/app/filters/app.validation.filter';
+import { AppGeneralFilter } from '@app/filters/app.general.filter';
+import { AppHttpFilter } from '@app/filters/app.http.filter';
+import { AppValidationImportFilter } from '@app/filters/app.validation-import.filter';
+import { AppValidationFilter } from '@app/filters/app.validation.filter';
 import {
     AppJsonBodyParserMiddleware,
     AppRawBodyParserMiddleware,
     AppTextBodyParserMiddleware,
     AppUrlencodedBodyParserMiddleware,
-} from 'src/app/middlewares/app.body-parser.middleware';
-import { AppCorsMiddleware } from 'src/app/middlewares/app.cors.middleware';
-import { AppCustomLanguageMiddleware } from 'src/app/middlewares/app.custom-language.middleware';
-import { AppHelmetMiddleware } from 'src/app/middlewares/app.helmet.middleware';
-import { AppResponseTimeMiddleware } from 'src/app/middlewares/app.response-time.middleware';
-import { AppUrlVersionMiddleware } from 'src/app/middlewares/app.url-version.middleware';
+} from '@app/middlewares/app.body-parser.middleware';
+import { AppCorsMiddleware } from '@app/middlewares/app.cors.middleware';
+import { AppCustomLanguageMiddleware } from '@app/middlewares/app.custom-language.middleware';
+import { AppHelmetMiddleware } from '@app/middlewares/app.helmet.middleware';
+import { AppResponseTimeMiddleware } from '@app/middlewares/app.response-time.middleware';
+import { AppUrlVersionMiddleware } from '@app/middlewares/app.url-version.middleware';
 import { SentryModule } from '@sentry/nestjs/setup';
-import { AppRequestIdMiddleware } from 'src/app/middlewares/app.request-id.middleware';
+import { AppRequestIdMiddleware } from '@app/middlewares/app.request-id.middleware';
 
 @Module({
     controllers: [],

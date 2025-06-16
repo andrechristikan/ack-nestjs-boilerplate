@@ -14,7 +14,7 @@ import {
     IsOptional,
     IsString,
 } from 'class-validator';
-import { IsCustomEmail } from 'src/common/request/validations/request.custom-email.validation';
+import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
 
 export class AwsSESCreateTemplateDto {
     @ApiProperty({

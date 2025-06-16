@@ -23,10 +23,10 @@ import {
     IDatabaseUpdateManyOptions,
     IDatabaseUpdateOptions,
     IDatabaseUpsertOptions,
-} from 'src/common/database/interfaces/database.interface';
+} from '@common/database/interfaces/database.interface';
 import { DeleteResult, InsertManyResult, UpdateResult } from 'mongodb';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
-import { DatabaseUUIDEntityBase } from '@app/common/database/bases/database.uuid.entity';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { DatabaseUUIDEntityBase } from '@common/database/bases/database.uuid.entity';
 
 export class DatabaseUUIDRepositoryBase<
     Entity extends DatabaseUUIDEntityBase,

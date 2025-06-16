@@ -6,10 +6,10 @@ import {
     DocRequest,
     DocResponse,
     DocResponsePaging,
-} from 'src/common/doc/decorators/doc.decorator';
-import { SessionDocParamsId } from 'src/modules/session/constants/session.doc.constant';
-import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
-import { UserDocParamsId } from 'src/modules/user/constants/user.doc.constant';
+} from '@common/doc/decorators/doc.decorator';
+import { SessionDocParamsId } from '@modules/session/constants/session.doc.constant';
+import { SessionListResponseDto } from '@modules/session/dtos/response/session.list.response.dto';
+import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 
 export function SessionAdminListDoc(): MethodDecorator {
     return applyDecorators(

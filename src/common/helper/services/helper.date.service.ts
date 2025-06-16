@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DateObjectUnits, DateTime, Duration, DurationLikeObject } from 'luxon';
-import { ENUM_HELPER_DATE_DAY_OF } from 'src/common/helper/enums/helper.enum';
-import { IHelperDateService } from 'src/common/helper/interfaces/helper.date-service.interface';
-import { IHelperDateCreateOptions } from 'src/common/helper/interfaces/helper.interface';
+import { ENUM_HELPER_DATE_DAY_OF } from '@common/helper/enums/helper.enum';
+import { IHelperDateService } from '@common/helper/interfaces/helper.date-service.interface';
+import { IHelperDateCreateOptions } from '@common/helper/interfaces/helper.interface';
 
 @Injectable()
 export class HelperDateService implements IHelperDateService {

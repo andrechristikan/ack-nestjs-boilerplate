@@ -2,17 +2,17 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
-import { EmailMobileNumberVerifiedDto } from 'src/modules/email/dtos/email.mobile-number-verified.dto';
-import { EmailResetPasswordDto } from 'src/modules/email/dtos/email.reset-password.dto';
-import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
-import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password.dto';
-import { EmailVerificationDto } from 'src/modules/email/dtos/email.verification.dto';
-import { EmailVerifiedDto } from 'src/modules/email/dtos/email.verified.dto';
-import { EmailWorkerDto } from 'src/modules/email/dtos/email.worker.dto';
-import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
-import { IEmailProcessor } from 'src/modules/email/interfaces/email.processor.interface';
-import { EmailService } from 'src/modules/email/services/email.service';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+import { EmailMobileNumberVerifiedDto } from '@modules/email/dtos/email.mobile-number-verified.dto';
+import { EmailResetPasswordDto } from '@modules/email/dtos/email.reset-password.dto';
+import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
+import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
+import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
+import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
+import { EmailWorkerDto } from '@modules/email/dtos/email.worker.dto';
+import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
+import { IEmailProcessor } from '@modules/email/interfaces/email.processor.interface';
+import { EmailService } from '@modules/email/services/email.service';
+import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 
 @Processor(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
 export class EmailProcessor extends WorkerHost implements IEmailProcessor {

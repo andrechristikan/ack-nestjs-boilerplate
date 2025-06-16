@@ -4,15 +4,15 @@ import {
     ForbiddenException,
     Injectable,
 } from '@nestjs/common';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { AuthService } from 'src/modules/auth/services/auth.service';
-import { UserService } from 'src/modules/user/services/user.service';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
-import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { AuthService } from '@modules/auth/services/auth.service';
+import { UserService } from '@modules/user/services/user.service';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { ENUM_USER_STATUS } from '@modules/user/enums/user.enum';
+import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { Reflector } from '@nestjs/core';
-import { USER_GUARD_EMAIL_VERIFIED_META_KEY } from '@app/modules/user/constants/user.constant';
+import { USER_GUARD_EMAIL_VERIFIED_META_KEY } from '@modules/user/constants/user.constant';
 
 @Injectable()
 export class UserGuard implements CanActivate {

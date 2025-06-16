@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { IFileRows } from 'src/common/file/interfaces/file.interface';
-import { IFileService } from 'src/common/file/interfaces/file.service.interface';
-import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/enums/helper.enum';
+import { IFileRows } from '@common/file/interfaces/file.interface';
+import { IFileService } from '@common/file/interfaces/file.service.interface';
+import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
 import { utils, write, read } from 'xlsx';
 
 @Injectable()

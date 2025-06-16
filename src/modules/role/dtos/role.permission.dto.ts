@@ -9,7 +9,7 @@ import {
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/enums/policy.enum';
+} from '@modules/policy/enums/policy.enum';
 
 export class RolePermissionDto {
     @ApiProperty({

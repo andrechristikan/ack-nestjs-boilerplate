@@ -8,8 +8,8 @@ import {
     IsUUID,
     IsEnum,
 } from 'class-validator';
-import { IsCustomEmail } from 'src/common/request/validations/request.custom-email.validation';
-import { ENUM_USER_GENDER } from 'src/modules/user/enums/user.enum';
+import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
+import { ENUM_USER_GENDER } from '@modules/user/enums/user.enum';
 
 export class UserCreateRequestDto {
     @ApiProperty({

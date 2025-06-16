@@ -3,8 +3,8 @@ import {
     Injectable,
     UnprocessableEntityException,
 } from '@nestjs/common';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/enums/file.status-code.enum';
-import { IFile } from 'src/common/file/interfaces/file.interface';
+import { ENUM_FILE_STATUS_CODE_ERROR } from '@common/file/enums/file.status-code.enum';
+import { IFile } from '@common/file/interfaces/file.interface';
 
 @Injectable()
 export class FileRequiredPipe implements PipeTransform {

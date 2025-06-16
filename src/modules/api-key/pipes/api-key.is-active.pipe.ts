@@ -1,6 +1,6 @@
 import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
-import { ApiKeyDoc } from 'src/modules/api-key/repository/entities/api-key.entity';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
+import { ApiKeyDoc } from '@modules/api-key/repository/entities/api-key.entity';
 
 @Injectable()
 export class ApiKeyIsActivePipe implements PipeTransform {

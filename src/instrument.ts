@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import * as Sentry from '@sentry/nestjs';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
-import debugConfigFunction from 'src/configs/debug.config';
-import appConfigFunction from 'src/configs/app.config';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { LOGGER_EXCLUDED_ROUTES } from 'src/common/logger/constants/logger.constant';
+import debugConfigFunction from '@configs/debug.config';
+import appConfigFunction from '@configs/app.config';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { LOGGER_EXCLUDED_ROUTES } from '@common/logger/constants/logger.constant';
 
 const appConfigs = appConfigFunction();
 const debugConfigs = debugConfigFunction();

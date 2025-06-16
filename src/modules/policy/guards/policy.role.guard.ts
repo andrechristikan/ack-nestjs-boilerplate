@@ -5,11 +5,11 @@ import {
     Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { POLICY_ROLE_META_KEY } from 'src/modules/policy/constants/policy.constant';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
-import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/modules/policy/enums/policy.status-code.enum';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/enums/auth.status-code.enum';
+import { POLICY_ROLE_META_KEY } from '@modules/policy/constants/policy.constant';
+import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
 
 @Injectable()
 export class PolicyRoleGuard implements CanActivate {

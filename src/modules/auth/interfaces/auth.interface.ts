@@ -1,5 +1,5 @@
-import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
+import { ENUM_AUTH_LOGIN_FROM } from '@modules/auth/enums/auth.enum';
+import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 
 export interface IAuthPassword {
     salt: string;

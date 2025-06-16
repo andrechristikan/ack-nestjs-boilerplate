@@ -2,9 +2,9 @@ import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
-} from 'src/common/database/decorators/database.decorator';
-import { ENUM_DATABASE_LOCATION_TYPE } from 'src/common/database/enums/database.enum';
-import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+} from '@common/database/decorators/database.decorator';
+import { ENUM_DATABASE_LOCATION_TYPE } from '@common/database/enums/database.enum';
+import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
 
 @DatabaseEntity({
     _id: false,

@@ -1,5 +1,5 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
+import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import {
     Doc,
     DocAuth,
@@ -7,17 +7,17 @@ import {
     DocGuard,
     DocResponse,
     DocResponsePaging,
-} from 'src/common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
+} from '@common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import {
     RoleDocParamsId,
     RoleDocQueryIsActive,
     RoleDocQueryType,
-} from 'src/modules/role/constants/role.doc.constant';
-import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
-import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
-import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';
-import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
+} from '@modules/role/constants/role.doc.constant';
+import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
+import { RoleGetResponseDto } from '@modules/role/dtos/response/role.get.response.dto';
+import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 
 export function RoleAdminListDoc(): MethodDecorator {
     return applyDecorators(

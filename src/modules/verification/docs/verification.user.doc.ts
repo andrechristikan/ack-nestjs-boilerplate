@@ -5,10 +5,10 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-} from 'src/common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
-import { VerificationVerifyRequestDto } from 'src/modules/verification/dtos/request/verification.verify.request.dto';
-import { VerificationResponse } from 'src/modules/verification/dtos/response/verification.response';
+} from '@common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { VerificationVerifyRequestDto } from '@modules/verification/dtos/request/verification.verify.request.dto';
+import { VerificationResponse } from '@modules/verification/dtos/response/verification.response';
 
 export function VerificationUserGetEmailDoc(): MethodDecorator {
     return applyDecorators(

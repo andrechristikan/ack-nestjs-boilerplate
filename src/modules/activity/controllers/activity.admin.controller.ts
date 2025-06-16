@@ -1,29 +1,29 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
-import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
-import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
-import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
-import { ActivityAdminListDoc } from 'src/modules/activity/docs/activity.admin.doc';
-import { ActivityListResponseDto } from 'src/modules/activity/dtos/response/activity.list.response.dto';
-import { IActivityDoc } from 'src/modules/activity/interfaces/activity.interface';
-import { ActivityService } from 'src/modules/activity/services/activity.service';
-import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
+import { PaginationQuery } from '@common/pagination/decorators/pagination.decorator';
+import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
+import { PaginationService } from '@common/pagination/services/pagination.service';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { ResponsePaging } from '@common/response/decorators/response.decorator';
+import { IResponsePaging } from '@common/response/interfaces/response.interface';
+import { ActivityAdminListDoc } from '@modules/activity/docs/activity.admin.doc';
+import { ActivityListResponseDto } from '@modules/activity/dtos/response/activity.list.response.dto';
+import { IActivityDoc } from '@modules/activity/interfaces/activity.interface';
+import { ActivityService } from '@modules/activity/services/activity.service';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
-} from 'src/modules/policy/decorators/policy.decorator';
+} from '@modules/policy/decorators/policy.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/enums/policy.enum';
-import { UserProtected } from 'src/modules/user/decorators/user.decorator';
-import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+} from '@modules/policy/enums/policy.enum';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { UserParsePipe } from '@modules/user/pipes/user.parse.pipe';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
 
 @ApiTags('modules.admin.activity')
 @Controller({

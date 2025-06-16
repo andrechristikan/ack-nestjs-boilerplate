@@ -127,11 +127,11 @@ To implement pagination in a controller endpoint:
 
 1. Import the required decorators and DTOs:
 ```typescript
-import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
-import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
-import { ResponsePaging } from 'src/common/response/decorators/response.decorator';
+import { PaginationQuery } from '@common/pagination/decorators/pagination.decorator';
+import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
+import { PaginationService } from '@common/pagination/services/pagination.service';
+import { IResponsePaging } from '@common/response/interfaces/response.interface';
+import { ResponsePaging } from '@common/response/decorators/response.decorator';
 ```
 
 2. Inject the PaginationService in your controller constructor:

@@ -1,5 +1,5 @@
 import { OmitType } from '@nestjs/swagger';
-import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
 
 export class UserCheckMobileNumberRequestDto extends OmitType(
     UserUpdateMobileNumberRequestDto,

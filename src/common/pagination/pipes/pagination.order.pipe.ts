@@ -6,10 +6,10 @@ import {
     PAGINATION_DEFAULT_AVAILABLE_ORDER_DIRECTION,
     PAGINATION_DEFAULT_ORDER_BY,
     PAGINATION_DEFAULT_ORDER_DIRECTION,
-} from 'src/common/pagination/constants/pagination.constant';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
-import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+} from '@common/pagination/constants/pagination.constant';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { PaginationService } from '@common/pagination/services/pagination.service';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 
 export function PaginationOrderPipe(
     defaultOrderBy: string = PAGINATION_DEFAULT_ORDER_BY,

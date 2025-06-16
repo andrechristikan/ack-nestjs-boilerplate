@@ -1,25 +1,25 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
 import {
     DatabaseModule,
     DatabaseOptionModule,
-} from 'src/common/database/database.module';
-import { MessageModule } from 'src/common/message/message.module';
-import { HelperModule } from 'src/common/helper/helper.module';
-import { RequestModule } from 'src/common/request/request.module';
-import { PolicyModule } from 'src/modules/policy/policy.module';
-import { AuthModule } from 'src/modules/auth/auth.module';
+} from '@common/database/database.module';
+import { MessageModule } from '@common/message/message.module';
+import { HelperModule } from '@common/helper/helper.module';
+import { RequestModule } from '@common/request/request.module';
+import { PolicyModule } from '@modules/policy/policy.module';
+import { AuthModule } from '@modules/auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import configs from 'src/configs';
-import { PaginationModule } from 'src/common/pagination/pagination.module';
-import { FileModule } from 'src/common/file/file.module';
+import configs from '@config';
+import { PaginationModule } from '@common/pagination/pagination.module';
+import { FileModule } from '@common/file/file.module';
 import { BullModule } from '@nestjs/bullmq';
 import { CacheModule, CacheOptions } from '@nestjs/cache-manager';
-import { DatabaseOptionService } from 'src/common/database/services/database.options.service';
+import { DatabaseOptionService } from '@common/database/services/database.options.service';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
-import { LoggerOptionModule } from 'src/common/logger/logger.option.module';
-import { LoggerOptionService } from 'src/common/logger/services/logger.option.service';
+import { LoggerOptionModule } from '@common/logger/logger.option.module';
+import { LoggerOptionService } from '@common/logger/services/logger.option.service';
 import KeyvRedis from '@keyv/redis';
 
 @Module({

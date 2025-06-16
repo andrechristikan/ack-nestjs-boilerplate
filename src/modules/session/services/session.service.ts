@@ -1,9 +1,7 @@
-import { DatabaseService } from '@app/common/database/services/database.service';
-import { InjectQueue } from '@nestjs/bullmq';
+import { DatabaseService } from '@common/database/services/database.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Queue } from 'bullmq';
 import { Cache } from 'cache-manager';
 import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
@@ -17,22 +15,18 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
     IDatabaseUpdateManyOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { SessionCreateRequestDto } from 'src/modules/session/dtos/request/session.create.request.dto';
-import { SessionListResponseDto } from 'src/modules/session/dtos/response/session.list.response.dto';
-import {
-    ENUM_SESSION_PROCESS,
-    ENUM_SESSION_STATUS,
-} from 'src/modules/session/enums/session.enum';
-import { ISessionService } from 'src/modules/session/interfaces/session.service.interface';
+} from '@common/database/interfaces/database.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { SessionCreateRequestDto } from '@modules/session/dtos/request/session.create.request.dto';
+import { SessionListResponseDto } from '@modules/session/dtos/response/session.list.response.dto';
+import { ENUM_SESSION_STATUS } from '@modules/session/enums/session.enum';
+import { ISessionService } from '@modules/session/interfaces/session.service.interface';
 import {
     SessionDoc,
     SessionEntity,
-} from 'src/modules/session/repository/entities/session.entity';
-import { SessionRepository } from 'src/modules/session/repository/repositories/session.repository';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+} from '@modules/session/repository/entities/session.entity';
+import { SessionRepository } from '@modules/session/repository/repositories/session.repository';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class SessionService implements ISessionService {
@@ -42,8 +36,6 @@ export class SessionService implements ISessionService {
     private readonly sessionKeyPrefix: string;
 
     constructor(
-        @InjectQueue(ENUM_WORKER_QUEUES.SESSION_QUEUE)
-        private readonly sessionQueue: Queue,
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
@@ -195,26 +187,12 @@ export class SessionService implements ISessionService {
             this.refreshTokenExpiration
         );
 
-        await this.sessionQueue.add(
-            ENUM_SESSION_PROCESS.REVOKE,
-            {
-                session: session._id,
-            },
-            {
-                jobId: key,
-                timestamp: session.createdAt.valueOf(),
-                delay: this.refreshTokenExpiration * 1000,
-            }
-        );
-
         return;
     }
 
     async deleteLoginSession(_id: string): Promise<void> {
         const key = `${this.appName}:${this.sessionKeyPrefix}:${_id}`;
         await this.cacheManager.del(key);
-
-        await this.sessionQueue.remove(key);
 
         return;
     }

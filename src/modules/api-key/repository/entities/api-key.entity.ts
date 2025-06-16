@@ -2,10 +2,10 @@ import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
-} from 'src/common/database/decorators/database.decorator';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
-import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
-import { DatabaseUUIDEntityBase } from 'src/common/database/bases/database.uuid.entity';
+} from '@common/database/decorators/database.decorator';
+import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
+import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
+import { DatabaseUUIDEntityBase } from '@common/database/bases/database.uuid.entity';
 
 export const ApiKeyTableName = 'ApiKeys';
 

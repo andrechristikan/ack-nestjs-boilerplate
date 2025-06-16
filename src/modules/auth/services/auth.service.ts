@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import verifyAppleToken from 'verify-apple-id-token';
 import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { Algorithm } from 'jsonwebtoken';
-import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { IAuthService } from 'src/modules/auth/interfaces/auth.service.interface';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
 import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
@@ -14,10 +14,10 @@ import {
     IAuthPasswordOptions,
     IAuthSocialApplePayload,
     IAuthSocialGooglePayload,
-} from 'src/modules/auth/interfaces/auth.interface';
-import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
-import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
+} from '@modules/auth/interfaces/auth.interface';
+import { ENUM_AUTH_LOGIN_FROM } from '@modules/auth/enums/auth.enum';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { AuthLoginResponseDto } from '@modules/auth/dtos/response/auth.login.response.dto';
 import { readFileSync } from 'fs';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { join } from 'path';

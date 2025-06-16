@@ -3,7 +3,7 @@ import {
     HealthIndicatorResult,
     HealthIndicatorService,
 } from '@nestjs/terminus';
-import { AwsPinpointService } from 'src/modules/aws/services/aws.pinpoint.service';
+import { AwsPinpointService } from '@modules/aws/services/aws.pinpoint.service';
 
 @Injectable()
 export class HealthAwsPinpointIndicator {

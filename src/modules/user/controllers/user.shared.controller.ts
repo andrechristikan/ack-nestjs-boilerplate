@@ -11,41 +11,41 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ClientSession } from 'mongoose';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { DatabaseService } from 'src/common/database/services/database.service';
-import { MessageService } from 'src/common/message/services/message.service';
-import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { ActivityService } from 'src/modules/activity/services/activity.service';
-import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
+import { DatabaseService } from '@common/database/services/database.service';
+import { MessageService } from '@common/message/services/message.service';
+import { Response } from '@common/response/decorators/response.decorator';
+import { IResponse } from '@common/response/interfaces/response.interface';
+import { ActivityService } from '@modules/activity/services/activity.service';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from 'src/modules/auth/decorators/auth.jwt.decorator';
-import { IAuthJwtAccessTokenPayload } from 'src/modules/auth/interfaces/auth.interface';
-import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
-import { AwsS3PresignRequestDto } from 'src/modules/aws/dtos/request/aws.s3-presign.request.dto';
-import { AwsS3PresignResponseDto } from 'src/modules/aws/dtos/response/aws.s3-presign.response.dto';
-import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
-import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
-import { CountryService } from 'src/modules/country/services/country.service';
-import { UserProtected } from 'src/modules/user/decorators/user.decorator';
+} from '@modules/auth/decorators/auth.jwt.decorator';
+import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
+import { AwsS3PresignRequestDto } from '@modules/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignResponseDto } from '@modules/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3Service } from '@modules/aws/services/aws.s3.service';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
+import { CountryService } from '@modules/country/services/country.service';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     UserSharedProfileDoc,
     UserSharedUpdatePhotoProfileDoc,
     UserSharedUpdateProfileDoc,
     UserSharedUploadPhotoProfileDoc,
-} from 'src/modules/user/docs/user.shared.doc';
-import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
-import { UserUploadPhotoRequestDto } from 'src/modules/user/dtos/request/user.upload-photo.request.dto';
-import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+} from '@modules/user/docs/user.shared.doc';
+import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
+import { UserUploadPhotoRequestDto } from '@modules/user/dtos/request/user.upload-photo.request.dto';
+import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { IUserDoc } from '@modules/user/interfaces/user.interface';
 import {
     UserActiveParsePipe,
     UserParsePipe,
-} from 'src/modules/user/pipes/user.parse.pipe';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserService } from 'src/modules/user/services/user.service';
+} from '@modules/user/pipes/user.parse.pipe';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
+import { UserService } from '@modules/user/services/user.service';
 
 @ApiTags('modules.shared.user')
 @Controller({

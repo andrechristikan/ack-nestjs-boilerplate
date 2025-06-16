@@ -9,8 +9,8 @@ import {
     SchemaOptions,
 } from '@nestjs/mongoose';
 import { SchemaType as MongooseSchema } from 'mongoose';
-import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
-import { IDatabaseQueryContainOptions } from 'src/common/database/interfaces/database.interface';
+import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
+import { IDatabaseQueryContainOptions } from '@common/database/interfaces/database.interface';
 
 export function InjectDatabaseConnection(
     connectionName?: string

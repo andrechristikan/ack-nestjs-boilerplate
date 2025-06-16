@@ -8,35 +8,35 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { Queue } from 'bullmq';
 import { ClientSession } from 'mongoose';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
-import { DatabaseService } from 'src/common/database/services/database.service';
-import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
-import { Response } from 'src/common/response/decorators/response.decorator';
-import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
+import { DatabaseService } from '@common/database/services/database.service';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { Response } from '@common/response/decorators/response.decorator';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
-} from 'src/modules/auth/decorators/auth.jwt.decorator';
-import { AuthAdminUpdatePasswordDoc } from 'src/modules/auth/docs/auth.admin.doc';
-import { AuthService } from 'src/modules/auth/services/auth.service';
-import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
-import { ENUM_PASSWORD_HISTORY_TYPE } from 'src/modules/password-history/enums/password-history.enum';
-import { PasswordHistoryService } from 'src/modules/password-history/services/password-history.service';
+} from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthAdminUpdatePasswordDoc } from '@modules/auth/docs/auth.admin.doc';
+import { AuthService } from '@modules/auth/services/auth.service';
+import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
+import { ENUM_PASSWORD_HISTORY_TYPE } from '@modules/password-history/enums/password-history.enum';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
-} from 'src/modules/policy/decorators/policy.decorator';
+} from '@modules/policy/decorators/policy.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/enums/policy.enum';
-import { UserProtected } from 'src/modules/user/decorators/user.decorator';
-import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
-import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserService } from 'src/modules/user/services/user.service';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+} from '@modules/policy/enums/policy.enum';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { UserNotSelfPipe } from '@modules/user/pipes/user.not-self.pipe';
+import { UserParsePipe } from '@modules/user/pipes/user.parse.pipe';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
+import { UserService } from '@modules/user/services/user.service';
+import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 
 @ApiTags('modules.admin.auth')
 @Controller({

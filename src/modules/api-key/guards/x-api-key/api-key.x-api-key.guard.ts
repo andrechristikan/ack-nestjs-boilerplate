@@ -5,12 +5,12 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ApiKeyService } from 'src/modules/api-key/services/api-key.service';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ApiKeyService } from '@modules/api-key/services/api-key.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ConfigService } from '@nestjs/config';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
-import { ApiKeyEntity } from 'src/modules/api-key/repository/entities/api-key.entity';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
+import { ApiKeyEntity } from '@modules/api-key/repository/entities/api-key.entity';
 
 @Injectable()
 export class ApiKeyXApiKeyGuard implements CanActivate {

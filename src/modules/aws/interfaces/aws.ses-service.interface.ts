@@ -13,7 +13,7 @@ import {
     AwsSESSendBulkDto,
     AwsSESSendDto,
     AwsSESUpdateTemplateDto,
-} from 'src/modules/aws/dtos/aws.ses.dto';
+} from '@modules/aws/dtos/aws.ses.dto';
 
 export interface IAwsSESService {
     checkConnection(): Promise<boolean>;

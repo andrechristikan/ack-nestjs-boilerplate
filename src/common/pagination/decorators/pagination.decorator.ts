@@ -1,19 +1,19 @@
-import { PaginationFilterInPipe } from '@app/common/pagination/pipes/pagination.filter-in.pipe';
+import { PaginationFilterInPipe } from '@common/pagination/pipes/pagination.filter-in.pipe';
 import { Query } from '@nestjs/common';
 import {
     IPaginationFilterDateBetweenOptions,
     IPaginationFilterEqualOptions,
     IPaginationFilterOptions,
     IPaginationQueryOptions,
-} from 'src/common/pagination/interfaces/pagination.interface';
-import { PaginationFilterDateBetweenPipe } from 'src/common/pagination/pipes/pagination.filter-date-between.pipe';
-import { PaginationFilterEqualPipe } from 'src/common/pagination/pipes/pagination.filter-equal.pipe';
-import { PaginationFilterInBooleanPipe } from 'src/common/pagination/pipes/pagination.filter-in-boolean.pipe';
-import { PaginationFilterInEnumPipe } from 'src/common/pagination/pipes/pagination.filter-in-enum.pipe';
-import { PaginationFilterStringContainPipe } from 'src/common/pagination/pipes/pagination.filter-string-contain.pipe';
-import { PaginationOrderPipe } from 'src/common/pagination/pipes/pagination.order.pipe';
-import { PaginationPagingPipe } from 'src/common/pagination/pipes/pagination.paging.pipe';
-import { PaginationSearchPipe } from 'src/common/pagination/pipes/pagination.search.pipe';
+} from '@common/pagination/interfaces/pagination.interface';
+import { PaginationFilterDateBetweenPipe } from '@common/pagination/pipes/pagination.filter-date-between.pipe';
+import { PaginationFilterEqualPipe } from '@common/pagination/pipes/pagination.filter-equal.pipe';
+import { PaginationFilterInBooleanPipe } from '@common/pagination/pipes/pagination.filter-in-boolean.pipe';
+import { PaginationFilterInEnumPipe } from '@common/pagination/pipes/pagination.filter-in-enum.pipe';
+import { PaginationFilterStringContainPipe } from '@common/pagination/pipes/pagination.filter-string-contain.pipe';
+import { PaginationOrderPipe } from '@common/pagination/pipes/pagination.order.pipe';
+import { PaginationPagingPipe } from '@common/pagination/pipes/pagination.paging.pipe';
+import { PaginationSearchPipe } from '@common/pagination/pipes/pagination.search.pipe';
 
 export function PaginationQuery(
     options?: IPaginationQueryOptions

@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
-import { IMessageValidationImportErrorParam } from 'src/common/message/interfaces/message.interface';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/enums/request.status-code.enum';
+import { IMessageValidationImportErrorParam } from '@common/message/interfaces/message.interface';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
 
 export class FileImportException extends Error {
     readonly httpStatus: HttpStatus = HttpStatus.UNPROCESSABLE_ENTITY;

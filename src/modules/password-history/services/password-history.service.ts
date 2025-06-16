@@ -1,4 +1,4 @@
-import { DatabaseService } from '@app/common/database/services/database.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
@@ -10,23 +10,23 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-} from 'src/common/database/interfaces/database.interface';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
-import { PasswordHistoryCreateByAdminRequestDto } from 'src/modules/password-history/dtos/request/password-history.create-by-admin.request.dto';
-import { PasswordHistoryCreateRequestDto } from 'src/modules/password-history/dtos/request/password-history.create.request.dto';
-import { PasswordHistoryListResponseDto } from 'src/modules/password-history/dtos/response/password-history.list.response.dto';
+} from '@common/database/interfaces/database.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { PasswordHistoryCreateByAdminRequestDto } from '@modules/password-history/dtos/request/password-history.create-by-admin.request.dto';
+import { PasswordHistoryCreateRequestDto } from '@modules/password-history/dtos/request/password-history.create.request.dto';
+import { PasswordHistoryListResponseDto } from '@modules/password-history/dtos/response/password-history.list.response.dto';
 import {
     IPasswordHistoryDoc,
     IPasswordHistoryEntity,
-} from 'src/modules/password-history/interfaces/password-history.interface';
-import { IPasswordHistoryService } from 'src/modules/password-history/interfaces/password-history.service.interface';
+} from '@modules/password-history/interfaces/password-history.interface';
+import { IPasswordHistoryService } from '@modules/password-history/interfaces/password-history.service.interface';
 import {
     PasswordHistoryDoc,
     PasswordHistoryEntity,
-} from 'src/modules/password-history/repository/entities/password-history.entity';
-import { PasswordHistoryRepository } from 'src/modules/password-history/repository/repositories/password-history.repository';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+} from '@modules/password-history/repository/entities/password-history.entity';
+import { PasswordHistoryRepository } from '@modules/password-history/repository/repositories/password-history.repository';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
 
 @Injectable()
 export class PasswordHistoryService implements IPasswordHistoryService {

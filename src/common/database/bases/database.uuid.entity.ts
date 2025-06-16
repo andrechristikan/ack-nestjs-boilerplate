@@ -1,4 +1,4 @@
-import { DatabaseProp } from 'src/common/database/decorators/database.decorator';
+import { DatabaseProp } from '@common/database/decorators/database.decorator';
 import { v4 as uuidV4 } from 'uuid';
 
 export class DatabaseUUIDEntityBase {

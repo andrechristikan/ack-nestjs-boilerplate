@@ -1,12 +1,20 @@
 # Overview
 
-This document explains the background processing system in ACK NestJS Boilerplate, which uses BullMQ for job queuing and processing, particularly for SMS and email sending.
+This document explains the background processing system using BullMQ for job queuing and processing, particularly for SMS and email sending
+
+```typescript
+// src/worker/worker.module.ts
+@Module({
+    imports: [EmailModule, SessionModule, SmsModule],
+    providers: [EmailProcessor, SmsProcessor],
+})
+export class WorkerModule {}
+```
 
 This documentation explains the features and usage of:
 - **Worker Module**: Located at `src/worker/worker.module.ts`
 - **SMS Module**: Located at `src/modules/sms`
 - **Email Module**: Located at `src/modules/email`
-- **Session Module**: Located at `src/modules/session`
 
 # Table of Contents
 - [Overview](#overview)
@@ -33,8 +41,6 @@ BullMQ is a Redis-based queue system that allows for reliable background job pro
 The BullMQ configuration is defined in the `CommonModule` through the `BullModule.forRootAsync()` method. This establishes the Redis connection and default job options for all queues.
 
 ```typescript
-// /Users/ack/Development/repos/ack-nestjs-boilerplate/src/common/common.module.ts
-
 @Module({
     // ...existing code...
     imports: [
@@ -131,10 +137,10 @@ To add SMS jobs to the queue, you need to inject the BullMQ Queue into your serv
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { ENUM_WORKER_QUEUES, ENUM_WORKER_PRIORITY } from 'src/worker/enums/worker.enum';
-import { ENUM_SEND_SMS_PROCESS } from 'src/modules/sms/enums/sms.enum';
-import { SmsSendRequestDto } from 'src/modules/sms/dtos/request/sms.send.request.dto';
-import { SmsVerificationRequestDto } from 'src/modules/sms/dtos/request/sms.verification.request.dto';
+import { ENUM_WORKER_QUEUES, ENUM_WORKER_PRIORITY } from '@workers/enums/worker.enum';
+import { ENUM_SEND_SMS_PROCESS } from '@modules/sms/enums/sms.enum';
+import { SmsSendRequestDto } from '@modules/sms/dtos/request/sms.send.request.dto';
+import { SmsVerificationRequestDto } from '@modules/sms/dtos/request/sms.verification.request.dto';
 
 @Injectable()
 export class YourService {
@@ -185,12 +191,12 @@ The `SmsProcessor` class handles SMS jobs from the queue by extending the `Worke
 ```typescript
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { ENUM_SEND_SMS_PROCESS } from 'src/modules/sms/enums/sms.enum';
-import { SmsSendRequestDto } from 'src/modules/sms/dtos/request/sms.send.request.dto';
-import { SmsVerificationRequestDto } from 'src/modules/sms/dtos/request/sms.verification.request.dto';
-import { ISmsProcessor } from 'src/modules/sms/interfaces/sms.processor.interface';
-import { SmsService } from 'src/modules/sms/services/sms.service';
-import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+import { ENUM_SEND_SMS_PROCESS } from '@modules/sms/enums/sms.enum';
+import { SmsSendRequestDto } from '@modules/sms/dtos/request/sms.send.request.dto';
+import { SmsVerificationRequestDto } from '@modules/sms/dtos/request/sms.verification.request.dto';
+import { ISmsProcessor } from '@modules/sms/interfaces/sms.processor.interface';
+import { SmsService } from '@modules/sms/services/sms.service';
+import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 
 @Processor({
     name: ENUM_WORKER_QUEUES.SMS_QUEUE,
@@ -268,10 +274,10 @@ To add email jobs to the queue, inject the BullMQ Queue into your service or con
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { ENUM_WORKER_QUEUES, ENUM_WORKER_PRIORITY } from 'src/worker/enums/worker.enum';
-import { ENUM_SEND_EMAIL_PROCESS } from 'src/modules/email/enums/email.enum';
-import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
-import { EmailVerificationDto } from 'src/modules/email/dtos/email.verification.dto';
+import { ENUM_WORKER_QUEUES, ENUM_WORKER_PRIORITY } from 'senums/worker.enum';
+import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
+import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
+import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
 
 @Injectable()
 export class YourService {

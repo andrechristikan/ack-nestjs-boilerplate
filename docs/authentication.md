@@ -532,21 +532,30 @@ The system provides APIs for managing sessions:
 Sessions are cached in Redis for performance:
 - Session ID is used as the key with a prefix
 - Cache expiration matches refresh token expiration
-- Background job handles session expiration and status updates
+- Session expiration is handled automatically via Redis TTL
 
 ### Session Configuration
 
 Session configuration is derived from JWT settings:
 
 ```typescript
-// Session expiration matches refresh token expiration
+// Session expiration matches refresh token expiration via Redis TTL
 this.refreshTokenExpiration = this.configService.get<number>(
     'auth.jwt.refreshToken.expirationTime'
+);
+
+// This TTL value is passed to Redis cache when setting login session
+await this.cacheManager.set(
+    key,
+    { user: user._id },
+    this.refreshTokenExpiration
 );
 ```
 
 ### Session Usage
 
 The session management system in this boilerplate is designed to work seamlessly with JWT authentication, focusing specifically on refresh token management while allowing access tokens to function independently.
+
+Sessions naturally expire from Redis cache based on the configured TTL (Time To Live) value, which matches the refresh token expiration time. This ensures that session data is automatically cleaned up without requiring background jobs or processors.
 
 > **Important Note**: Since access tokens have a short lifespan (typically 15-30 minutes) while sessions may be revoked at any time, there is an intentional security gap where a recently revoked session's access token might still work until it expires. This is a standard security trade-off that balances security with performance.

@@ -10,8 +10,8 @@ import {
     ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { RolePermissionDto } from 'src/modules/role/dtos/role.permission.dto';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
+import { RolePermissionDto } from '@modules/role/dtos/role.permission.dto';
+import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 
 export class RoleUpdateRequestDto {
     @ApiProperty({
