@@ -169,7 +169,7 @@ Before running with Docker, you need to complete two important steps:
    ```
    
    When editing your `.env` file for Docker usage, ensure that:
-   - Database connections point to the Docker service names (e.g., `mongodb` instead of `localhost`)
+   - Database connections point to the Docker service names (e.g., `mongodb*` instead of `localhost`)
    - Redis connections point to the Docker service name (e.g., `redis` instead of `localhost`)
    - The JWKS URI is configured properly as mentioned above
    - The `kid` (Key ID) values for both access token and refresh token
