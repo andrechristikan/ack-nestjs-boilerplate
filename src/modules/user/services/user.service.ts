@@ -46,7 +46,6 @@ import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.upda
 import { DatabaseHelperQueryContain } from '@common/database/decorators/database.decorator';
 import { UserUploadPhotoRequestDto } from '@modules/user/dtos/request/user.upload-photo.request.dto';
 import { UserCensorResponseDto } from '@modules/user/dtos/response/user.censor.response.dto';
-import { DatabaseService } from '@common/database/services/database.service';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -59,7 +58,6 @@ export class UserService implements IUserService {
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
-        private readonly databaseService: DatabaseService
     ) {
         this.usernamePrefix = this.configService.get<string>(
             'user.usernamePrefix'
@@ -405,12 +403,12 @@ export class UserService implements IUserService {
 
     async increasePasswordAttempt(
         repository: UserDoc,
-        options?: IDatabaseUpdateOptions
+        options?: IDatabaseUpdateOptions,
     ): Promise<UserDoc> {
-        return this.userRepository.updateRaw(
-            { _id: repository._id },
-            this.databaseService.aggregateIncrement('passwordAttempt', 1),
-            options
+        repository.passwordAttempt++
+        return this.userRepository.save(
+            repository,
+            options,
         );
     }
 
