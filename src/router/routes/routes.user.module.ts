@@ -10,9 +10,11 @@ import { UserModule } from '@modules/user/user.module';
 import { VerificationUserController } from '@modules/verification/controllers/verification.user.controller';
 import { VerificationModule } from '@modules/verification/verification.module';
 import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
+import { TermsPolicyModule } from '@modules/terms-policy/terms-policy.module';
+import { TermsPolicyUserController } from '@modules/terms-policy/controllers/terms-policy.user.controller';
 
 @Module({
-    controllers: [UserUserController, VerificationUserController],
+    controllers: [UserUserController, VerificationUserController,TermsPolicyUserController],
     providers: [],
     exports: [],
     imports: [
@@ -23,6 +25,7 @@ import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
         CountryModule,
         ApiKeyModule,
         VerificationModule,
+        TermsPolicyModule,
         BullModule.registerQueueAsync({
             name: ENUM_WORKER_QUEUES.EMAIL_QUEUE,
         }),

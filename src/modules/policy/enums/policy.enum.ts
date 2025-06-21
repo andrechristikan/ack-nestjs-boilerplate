@@ -8,6 +8,7 @@ export enum ENUM_POLICY_ACTION {
 
 export enum ENUM_POLICY_SUBJECT {
     AUTH = 'AUTH',
+    TERM =  'TERM',
     SETTINGS = 'SETTINGS',
     API_KEY = 'API_KEY',
     COUNTRY = 'COUNTRY',
