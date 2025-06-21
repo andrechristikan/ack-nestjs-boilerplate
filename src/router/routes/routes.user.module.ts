@@ -14,7 +14,11 @@ import { TermsPolicyModule } from '@modules/terms-policy/terms-policy.module';
 import { TermsPolicyUserController } from '@modules/terms-policy/controllers/terms-policy.user.controller';
 
 @Module({
-    controllers: [UserUserController, VerificationUserController,TermsPolicyUserController],
+    controllers: [
+        UserUserController,
+        VerificationUserController,
+        TermsPolicyUserController,
+    ],
     providers: [],
     exports: [],
     imports: [
