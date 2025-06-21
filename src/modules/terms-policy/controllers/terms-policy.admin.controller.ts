@@ -182,7 +182,7 @@ export class TermsPolicyAdminController {
             throw new BadRequestException({
                 statusCode:
                     ENUM_TERMS_POLICY_STATUS_CODE_ERROR.UPDATE_FORBIDDEN_STATUS_PUBLISHED,
-                message: 'terms-policy.error.notFound',
+                message: 'terms-policy.error.updateForbiddenStatusPublished',
             });
         }
 
