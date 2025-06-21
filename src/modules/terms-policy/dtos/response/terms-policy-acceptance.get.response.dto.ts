@@ -9,7 +9,6 @@ export class TermsPolicyAcceptanceGetResponseDto extends DatabaseObjectIdDto {
     type: TermsPolicyGetResponseDto,
     oneOf: [{ $ref: getSchemaPath(TermsPolicyGetResponseDto) }],
   })
-  @Expose()
   @Type(() => TermsPolicyGetResponseDto)
   readonly policy: TermsPolicyGetResponseDto;
 
@@ -18,6 +17,5 @@ export class TermsPolicyAcceptanceGetResponseDto extends DatabaseObjectIdDto {
     example: '2023-01-01T00:00:00.000Z',
     required: true,
   })
-  @Expose()
   readonly acceptedAt: Date;
 }
