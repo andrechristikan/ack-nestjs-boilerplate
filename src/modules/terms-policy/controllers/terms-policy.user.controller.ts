@@ -100,9 +100,7 @@ export class TermsPolicyUserController {
         );
 
         return {
-            data: this.termsPolicyAcceptanceService.mapGet(accept, {
-                excludeExtraneousValues: true,
-            }),
+            data: this.termsPolicyAcceptanceService.mapGet(accept),
         };
     }
 
@@ -118,9 +116,7 @@ export class TermsPolicyUserController {
             await this.termsPolicyAcceptanceService.findAll({ user: user });
 
         return {
-            data: this.termsPolicyAcceptanceService.mapList(acceptedPolicies, {
-                excludeExtraneousValues: true,
-            }),
+            data: this.termsPolicyAcceptanceService.mapList(acceptedPolicies),
         };
     }
 
@@ -153,9 +149,7 @@ export class TermsPolicyUserController {
         });
 
         return {
-            data: this.termsPolicyService.mapList(pendingPolicies, {
-                excludeExtraneousValues: true,
-            }),
+            data: this.termsPolicyService.mapList(pendingPolicies),
         };
     }
 }

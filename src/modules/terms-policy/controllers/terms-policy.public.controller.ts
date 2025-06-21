@@ -32,7 +32,7 @@ export class TermsPolicyPublicController {
     const policies = await this.termsPolicyService.findLatestPublishedByLanguage(request.lang);
 
     return {
-      data: this.termsPolicyService.mapList(policies, { excludeExtraneousValues: true }),
+      data: this.termsPolicyService.mapList(policies),
     };
   }
 
@@ -62,7 +62,7 @@ export class TermsPolicyPublicController {
     }
 
     return {
-      data: this.termsPolicyService.mapGet(policy, { excludeExtraneousValues: true }),
+      data: this.termsPolicyService.mapGet(policy),
     };
   }
 }
