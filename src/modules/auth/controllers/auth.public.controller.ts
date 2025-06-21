@@ -436,7 +436,6 @@ export class AuthPublicController {
                 { session }
             );
 
-            /**
             await Promise.all([
                 this.emailQueue.add(
                     ENUM_SEND_EMAIL_PROCESS.WELCOME,
@@ -468,7 +467,6 @@ export class AuthPublicController {
                     }
                 ),
             ]);
-                */
 
             await this.databaseService.commitTransaction(session);
         } catch (err: unknown) {
