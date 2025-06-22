@@ -2,10 +2,10 @@ import {
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
     IDatabaseSaveOptions,
-    IDatabaseUpdateManyOptions,
 } from '@common/database/interfaces/database.interface';
 import {
     ApiKeyCreateRawRequestDto,
@@ -33,10 +33,6 @@ export interface IApiKeyService {
         options?: IDatabaseOptions
     ): Promise<ApiKeyDoc>;
     findOneByKey(key: string, options?: IDatabaseOptions): Promise<ApiKeyDoc>;
-    findOneByActiveKey(
-        key: string,
-        options?: IDatabaseOptions
-    ): Promise<ApiKeyDoc>;
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
@@ -90,9 +86,13 @@ export interface IApiKeyService {
         find?: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
-    inactiveManyByEndDate(
-        options?: IDatabaseUpdateManyOptions
-    ): Promise<boolean>;
     mapList(apiKeys: ApiKeyDoc[] | ApiKeyEntity[]): ApiKeyListResponseDto[];
     mapGet(apiKey: ApiKeyDoc | ApiKeyEntity): ApiKeyGetResponseDto;
+    findOneByKeyAndCache(
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyEntity>;
+    getCache(_id: string): Promise<ApiKeyEntity | null>;
+    setCache(_id: string, apiKey: ApiKeyEntity): Promise<void>;
+    deleteCache(_id: string): Promise<void>;
 }

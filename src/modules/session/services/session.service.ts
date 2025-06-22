@@ -33,7 +33,7 @@ export class SessionService implements ISessionService {
     private readonly refreshTokenExpiration: number;
     private readonly appName: string;
 
-    private readonly sessionKeyPrefix: string;
+    private readonly keyPrefix: string;
 
     constructor(
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
@@ -47,8 +47,7 @@ export class SessionService implements ISessionService {
         )!;
         this.appName = this.configService.get<string>('app.name')!;
 
-        this.sessionKeyPrefix =
-            this.configService.get<string>('session.keyPrefix')!;
+        this.keyPrefix = this.configService.get<string>('session.keyPrefix')!;
     }
 
     async findAll(
@@ -174,12 +173,12 @@ export class SessionService implements ISessionService {
 
     async findLoginSession(_id: string): Promise<string> {
         return (await this.cacheManager.get<string>(
-            `${this.appName}:${this.sessionKeyPrefix}:${_id}`
+            `${this.appName}:${this.keyPrefix}:${_id}`
         ))!;
     }
 
     async setLoginSession(user: IUserDoc, session: SessionDoc): Promise<void> {
-        const key = `${this.appName}:${this.sessionKeyPrefix}:${session._id}`;
+        const key = `${this.appName}:${this.keyPrefix}:${session._id}`;
 
         await this.cacheManager.set(
             key,
@@ -191,7 +190,7 @@ export class SessionService implements ISessionService {
     }
 
     async deleteLoginSession(_id: string): Promise<void> {
-        const key = `${this.appName}:${this.sessionKeyPrefix}:${_id}`;
+        const key = `${this.appName}:${this.keyPrefix}:${_id}`;
         await this.cacheManager.del(key);
 
         return;

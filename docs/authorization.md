@@ -261,7 +261,7 @@ The `@UserProtected()` decorator is typically used together with other security 
 @AuthJwtAccessProtected()
 @Get('/profile')
 async profile(
-    @AuthJwtPayload('user', UserActiveParsePipe) user: IUserDoc
+    @AuthJwtPayload('user') user: IUserDoc
 ): Promise<IResponse<UserProfileResponseDto>> {
     // This endpoint is only accessible by authenticated users with active status
     // ...implementation
@@ -277,7 +277,7 @@ async profile(
 @AuthJwtAccessProtected()
 @Delete('/delete')
 async delete(
-    @AuthJwtPayload('user', UserParsePipe) user: UserDoc
+    @AuthJwtPayload('user') user: IUserDoc
 ): Promise<void> {
     // This endpoint is only accessible by authenticated users with USER role type
     // ...implementation

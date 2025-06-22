@@ -201,6 +201,8 @@ export class DatabaseUUIDRepositoryBase<
     async create<T extends Entity>(...): Promise<EntityDocument> { /* ... */ }
     async save(...): Promise<EntityDocument> { /* ... */ }
     async update(...): Promise<EntityDocument> { /* ... */ }
+    async updateRaw(...): Promise<EntityDocument> { /* ... */ }
+    async upsert(...): Promise<EntityDocument> { /* ... */ }
     async delete(...): Promise<EntityDocument> { /* ... */ }
 
     // 3. Soft Delete - supports data deletion without actually removing it

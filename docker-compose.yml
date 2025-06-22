@@ -20,7 +20,7 @@ services:
             - app-network
         depends_on:
             - redis
-            - mongodb1
+            - mongo
             - jwks-server
         deploy:
             resources:
@@ -104,15 +104,15 @@ services:
                     memory: 128M
 
     # MongoDB Replica Set - Primary Node
-    mongodb1:
+    mongo:
         image: mongo:latest
-        hostname: mongodb1
+        hostname: mongo
         ports:
             - '27017:27017'
         networks:
             - app-network
         volumes:
-            - mongodb1_data:/data/db
+            - mongo_data:/data/db
         command: mongod --bind_ip_all --replSet rs0 --port 27017
         extra_hosts:
             - 'host.docker.internal:host-gateway'
@@ -130,99 +130,35 @@ services:
             retries: 5
             start_period: 20s
 
-    # MongoDB Replica Set - Secondary Node 1
-    mongodb2:
-        image: mongo:latest
-        hostname: mongodb2
-        networks:
-            - app-network
-        ports:
-            - '27018:27017'
-        depends_on:
-            mongodb1:
-                condition: service_started
-        volumes:
-            - mongodb2_data:/data/db
-        command: mongod --bind_ip_all --replSet rs0 --port 27017
-        extra_hosts:
-            - 'host.docker.internal:host-gateway'
-        deploy:
-            resources:
-                limits:
-                    cpus: '1'
-                    memory: 1G
-        healthcheck:
-            test: mongosh --eval "db.adminCommand('ping')" --quiet
-            interval: 10s
-            timeout: 5s
-            retries: 5
-            start_period: 20s
-
-    # MongoDB Replica Set - Secondary Node 2
-    mongodb3:
-        image: mongo:latest
-        hostname: mongodb3
-        networks:
-            - app-network
-        ports:
-            - '27019:27017'
-        depends_on:
-            mongodb1:
-                condition: service_started
-        volumes:
-            - mongodb3_data:/data/db
-        command: mongod --bind_ip_all --replSet rs0 --port 27017
-        extra_hosts:
-            - 'host.docker.internal:host-gateway'
-        deploy:
-            resources:
-                limits:
-                    cpus: '1'
-                    memory: 1G
-        healthcheck:
-            test: mongosh --eval "db.adminCommand('ping')" --quiet
-            interval: 10s
-            timeout: 5s
-            retries: 5
-            start_period: 20s
-
     # MongoDB Replica Set Initialization service
     mongo-init:
         image: mongo:latest
         restart: 'no'
         depends_on:
-            mongodb1:
-                condition: service_healthy
-            mongodb2:
-                condition: service_healthy
-            mongodb3:
+            mongo:
                 condition: service_healthy
         networks:
             - app-network
         command: >
             bash -c "
-            echo 'Waiting for MongoDB instances to be ready...' &&
+            echo 'Waiting for MongoDB instance to be ready...' &&
             mongosh --host host.docker.internal:27017 --eval '
             config = {
                     \"_id\": \"rs0\",
                     \"members\": [
-                    { \"_id\": 0, \"host\": \"host.docker.internal:27017\", \"priority\": 2 },
-                    { \"_id\": 1, \"host\": \"host.docker.internal:27018\", \"priority\": 1 },
-                    { \"_id\": 2, \"host\": \"host.docker.internal:27019\", \"priority\": 1 }
+                    { \"_id\": 0, \"host\": \"host.docker.internal:27017\", \"priority\": 1 }
                 ]
             };
             rs.initiate(config);
             rs.status();'&&
-            echo 'Replica set initialized successfully. Container will exit now.'
+            echo 'Single-node replica set initialized successfully. Container will exit now.'
             "
         deploy:
             restart_policy:
                 condition: none
 
 volumes:
-    mongodb1_data:
-    mongodb2_data:
-    mongodb3_data:
+    mongo_data:
     redis_data:
 
 networks:
