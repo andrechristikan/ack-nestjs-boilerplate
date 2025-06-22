@@ -116,6 +116,7 @@ JWT and authentication related settings:
   },
   xApiKey: {
     header: 'x-api-key',                                            // HTTP header for API key authentication
+    keyPrefix: 'ApiKey'                                             // Key for caching API KEY
   },
 }
 ```

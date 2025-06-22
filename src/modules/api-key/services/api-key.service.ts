@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import {
@@ -8,7 +8,6 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
-    IDatabaseUpdateManyOptions,
 } from '@common/database/interfaces/database.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -32,12 +31,17 @@ import { ApiKeyRepository } from '@modules/api-key/repository/repositories/api-k
 import { Document } from 'mongoose';
 import { ENUM_HELPER_DATE_DAY_OF } from '@common/helper/enums/helper.enum';
 import { DatabaseService } from '@common/database/services/database.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
     private readonly env: string;
 
+    private readonly keyPrefix: string;
+
     constructor(
+        @Inject(CACHE_MANAGER) private cacheManager: Cache,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
         private readonly helperHashService: HelperHashService,
@@ -46,6 +50,10 @@ export class ApiKeyService implements IApiKeyService {
         private readonly databaseService: DatabaseService
     ) {
         this.env = this.configService.get<string>('app.env');
+
+        this.keyPrefix = this.configService.get<string>(
+            'auth.xApiKey.keyPrefix'
+        )!;
     }
 
     async findAll(
@@ -74,19 +82,6 @@ export class ApiKeyService implements IApiKeyService {
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc> {
         return this.apiKeyRepository.findOne<ApiKeyDoc>({ key }, options);
-    }
-
-    async findOneByActiveKey(
-        key: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.findOne<ApiKeyDoc>(
-            {
-                key,
-                isActive: true,
-            },
-            options
-        );
     }
 
     async getTotal(
@@ -167,7 +162,12 @@ export class ApiKeyService implements IApiKeyService {
     ): Promise<ApiKeyDoc> {
         repository.isActive = true;
 
-        return this.apiKeyRepository.save(repository, options);
+        const [updated] = await Promise.all([
+            this.apiKeyRepository.save(repository, options),
+            this.deleteCache(repository._id),
+        ]);
+
+        return updated;
     }
 
     async inactive(
@@ -176,7 +176,12 @@ export class ApiKeyService implements IApiKeyService {
     ): Promise<ApiKeyDoc> {
         repository.isActive = false;
 
-        return this.apiKeyRepository.save(repository, options);
+        const [updated] = await Promise.all([
+            this.apiKeyRepository.save(repository, options),
+            this.deleteCache(repository._id),
+        ]);
+
+        return updated;
     }
 
     async update(
@@ -186,7 +191,12 @@ export class ApiKeyService implements IApiKeyService {
     ): Promise<ApiKeyDoc> {
         repository.name = name;
 
-        return this.apiKeyRepository.save(repository, options);
+        const [updated] = await Promise.all([
+            this.apiKeyRepository.save(repository, options),
+            this.deleteCache(repository._id),
+        ]);
+
+        return updated;
     }
 
     async updateDate(
@@ -201,7 +211,12 @@ export class ApiKeyService implements IApiKeyService {
             dayOf: ENUM_HELPER_DATE_DAY_OF.END,
         });
 
-        return this.apiKeyRepository.save(repository, options);
+        const [updated] = await Promise.all([
+            this.apiKeyRepository.save(repository, options),
+            this.deleteCache(repository._id),
+        ]);
+
+        return updated;
     }
 
     async reset(
@@ -216,7 +231,10 @@ export class ApiKeyService implements IApiKeyService {
 
         repository.hash = hash;
 
-        const updated = await this.apiKeyRepository.save(repository, options);
+        const [updated] = await Promise.all([
+            this.apiKeyRepository.save(repository, options),
+            this.deleteCache(repository._id),
+        ]);
 
         return { _id: updated._id, key: updated.key, secret };
     }
@@ -225,7 +243,12 @@ export class ApiKeyService implements IApiKeyService {
         repository: ApiKeyDoc,
         options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.softDelete(repository, options);
+        const [deleted] = await Promise.all([
+            this.apiKeyRepository.softDelete(repository, options),
+            this.deleteCache(repository._id),
+        ]);
+
+        return deleted;
     }
 
     async validateHashApiKey(
@@ -257,24 +280,6 @@ export class ApiKeyService implements IApiKeyService {
         return true;
     }
 
-    async inactiveManyByEndDate(
-        options?: IDatabaseUpdateManyOptions
-    ): Promise<boolean> {
-        const today = this.helperDateService.create();
-        await this.apiKeyRepository.updateMany(
-            {
-                ...this.databaseService.filterLte('endDate', today),
-                isActive: true,
-            },
-            {
-                isActive: false,
-            },
-            options
-        );
-
-        return true;
-    }
-
     mapList(apiKeys: ApiKeyDoc[] | ApiKeyEntity[]): ApiKeyListResponseDto[] {
         return plainToInstance(
             ApiKeyListResponseDto,
@@ -289,5 +294,45 @@ export class ApiKeyService implements IApiKeyService {
             ApiKeyGetResponseDto,
             apiKey instanceof Document ? apiKey.toObject() : apiKey
         );
+    }
+
+    async findOneByKeyAndCache(
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyEntity> {
+        const cached = await this.getCache(key);
+        if (cached) {
+            return cached;
+        }
+
+        const apiKey = await this.findOneByKey(key, options);
+        const apiKeyEntity = apiKey.toObject() as ApiKeyEntity;
+        if (apiKey) {
+            await this.setCache(apiKey._id, apiKeyEntity);
+        }
+
+        return apiKeyEntity;
+    }
+
+    async getCache(_id: string): Promise<ApiKeyEntity | null> {
+        const cacheKey = `${this.keyPrefix}:${_id}`;
+        const cachedApiKey = await this.cacheManager.get<string>(cacheKey);
+        if (cachedApiKey) {
+            return JSON.parse(cachedApiKey) as ApiKeyEntity;
+        }
+
+        return null;
+    }
+
+    async setCache(_id: string, apiKey: ApiKeyEntity): Promise<void> {
+        const cacheKey = `${this.keyPrefix}:${_id}`;
+        await this.cacheManager.set(cacheKey, JSON.stringify(apiKey));
+        return;
+    }
+
+    async deleteCache(_id: string): Promise<void> {
+        const cacheKey = `${this.keyPrefix}:${_id}`;
+        await this.cacheManager.del(cacheKey);
+        return;
     }
 }

@@ -227,17 +227,20 @@ Key features:
 - Optional time-limited validity
 - Type-based access control
 - Environment-specific keys
+- Redis-based caching for performance
 
 ### API Key Structure
 
 An API key consists of two main components:
 
-1. **Key**: A unique identifier including the environment prefix
+1. **Key**: A unique identifier that includes environment-specific formatting
 2. **Secret**: A randomly generated secure string
 
-These components are combined for authentication and stored in the database as:
+These components are combined for authentication using the format: `{key}:{secret}`
+
+The API key is transmitted via HTTP header and stored in the database as:
 - The key (stored in plain text for lookup)
-- A hash of the key and secret combined (for verification)
+- A hash of the key and secret combined (for secure verification)
 
 Example API key structure in database:
 ```json
@@ -253,6 +256,14 @@ Example API key structure in database:
 }
 ```
 
+**Authentication Flow:**
+1. Client sends API key in `x-api-key` header as `{key}:{secret}`
+2. System extracts key and secret from the header
+3. Key is used to lookup the API key record from cache or database
+4. Secret is hashed with key and compared against stored hash
+5. Additional validations (active status, expiration dates) are performed
+6. API key entity is attached to request for use in controllers
+
 ### API Key Types
 
 The system supports two types of API keys:
@@ -260,10 +271,12 @@ The system supports two types of API keys:
 1. **DEFAULT**: Used for general API access, typically for client applications
    - Suitable for: third-party integrations, client applications, public APIs
    - Limited to standard API endpoints
+   - Protected by `@ApiKeyProtected()` decorator
 
 2. **SYSTEM**: Used for system-level operations, often for service-to-service communication
    - Suitable for: internal services, admin operations, privileged access
    - Can access system-level endpoints and operations
+   - Protected by `@ApiKeySystemProtected()` decorator
 
 ### API Key Configuration
 
@@ -272,12 +285,13 @@ API key configuration is managed in `auth.config.ts`:
 ```typescript
 xApiKey: {
   header: 'x-api-key',  // HTTP header for API key authentication
+  keyPrefix: 'ApiKey',
 }
 ```
 
 ### API Key Management
 
-The system includes a comprehensive API for managing API keys through the `ApiKeyAdminController`:
+The system includes a comprehensive API for managing API keys through the `ApiKeyAdminController`. All admin endpoints require both JWT access token and API key authentication.
 
 **Available Endpoints:**
 
@@ -313,33 +327,32 @@ async yourSystemEndpoint() {
 // Access the API key information in your controller
 async yourSystemEndpoint(
   @ApiKeyPayload()
-  apiKey: ApiKeyPayloadDto
+  apiKey: ApiKeyEntity
 ) {
-  // ...
+  // Access full API key entity
+}
+
+// Access specific API key properties
+async endpoint(
+  @ApiKeyPayload('_id') apiKeyId: string,
+  @ApiKeyPayload('type') apiKeyType: ENUM_API_KEY_TYPE,
+  @ApiKeyPayload('name') apiKeyName: string
+) {
+  // Access individual properties
 }
 ```
 
-Here are examples of actual endpoint implementations:
+**HTTP Request Example:**
+```bash
+# Using DEFAULT API key
+curl -X GET "https://api.example.com/protected-endpoint" \
+  -H "x-api-key: development_a1b2c3d4e5f6g7h8i9j0:randomSecretString123"
 
-```typescript
-
-@Get('someEndpoint')
-@ApiKeyProtected()
-async someEndpoint(
-  @ApiKeyPayload() apiKey: ApiKeyPayloadDto
-) {
-  // Your endpoint code
-}
-
-@Post('someEndpointSystem')
-@ApiKeySystemProtected()
-async someEndpointSystem(
-  @ApiKeyPayload('_id') apiKeyId: string,
-  @ApiKeyPayload('type') apiKeyType: string
-) {
-  // Your endpoint code
-}
-
+# Using SYSTEM API key  
+curl -X POST "https://api.example.com/system-operation" \
+  -H "x-api-key: development_sys_xyz789:systemSecretString456" \
+  -H "Content-Type: application/json" \
+  -d '{"operation": "sync-data"}'
 ```
 
 ## Social Authentication

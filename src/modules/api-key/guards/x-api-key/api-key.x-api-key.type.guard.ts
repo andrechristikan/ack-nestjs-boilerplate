@@ -23,9 +23,9 @@ export class ApiKeyXApiKeyTypeGuard implements CanActivate {
             return true;
         }
 
-        const { apiKey } = context.switchToHttp().getRequest<IRequestApp>();
+        const { __apiKey } = context.switchToHttp().getRequest<IRequestApp>();
 
-        if (!required.includes(apiKey.type)) {
+        if (!required.includes(__apiKey.type)) {
             throw new BadRequestException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
                 message: 'apiKey.error.xApiKey.forbidden',

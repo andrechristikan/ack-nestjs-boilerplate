@@ -374,6 +374,14 @@ export class DatabaseUUIDRepositoryBase<
         options?: IDatabaseUpdateOptions
     ): Promise<EntityDocument> {
         if (
+            !find ||
+            typeof find !== 'object' ||
+            Object.keys(find).length === 0
+        ) {
+            throw new Error('Find criteria must be a non-empty object');
+        }
+
+        if (
             !data ||
             typeof data !== 'object' ||
             Object.keys(data).length === 0
@@ -411,6 +419,14 @@ export class DatabaseUUIDRepositoryBase<
         data: UpdateQuery<Entity>,
         options?: IDatabaseUpdateOptions
     ): Promise<EntityDocument> {
+        if (
+            !find ||
+            typeof find !== 'object' ||
+            Object.keys(find).length === 0
+        ) {
+            throw new Error('Find criteria must be a non-empty object');
+        }
+
         if (Array.isArray(data)) {
             // Validate data structure
             const hasInvalidOperation = data.some(
@@ -423,24 +439,37 @@ export class DatabaseUUIDRepositoryBase<
             if (hasInvalidOperation) {
                 throw new Error('Data contains invalid operations');
             }
-        } else {
-            throw new Error('Data must be an array');
+        } else if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error('Data must be a non-empty object');
         }
 
         const now = new Date();
 
         // Handle array data update
-        const setIndexOf = data.findLastIndex(e => e['$set']);
-        if (setIndexOf > -1) {
-            data[setIndexOf]['$set'].updatedAt = now;
-            data[setIndexOf]['$set'].updatedBy = options?.actionBy;
+        if (Array.isArray(data)) {
+            const setIndexOf = data.findLastIndex(e => e['$set']);
+            if (setIndexOf > -1) {
+                data[setIndexOf]['$set'].updatedAt = now;
+                data[setIndexOf]['$set'].updatedBy = options?.actionBy;
+            } else {
+                data.push({
+                    $set: {
+                        updatedAt: now,
+                        updatedBy: options?.actionBy,
+                    },
+                });
+            }
         } else {
-            data.push({
-                $set: {
-                    updatedAt: now,
-                    updatedBy: options?.actionBy,
-                },
-            });
+            // Handle single object update
+            data['$set'] = {
+                ...data['$set'],
+                updatedAt: now,
+                updatedBy: options?.actionBy,
+            };
         }
 
         return this._repository.findOneAndUpdate(
@@ -703,33 +732,49 @@ export class DatabaseUUIDRepositoryBase<
             throw new Error('Find criteria must be a non-empty object');
         }
 
-        if (!Array.isArray(data)) {
-            throw new Error('Data must be an array');
+        if (Array.isArray(data)) {
+            // Validate data structure
+            const hasInvalidOperation = data.some(
+                operation =>
+                    !operation ||
+                    typeof operation !== 'object' ||
+                    Object.keys(operation).length === 0
+            );
+
+            if (hasInvalidOperation) {
+                throw new Error('Data contains invalid operations');
+            }
+        } else if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error('Data must be a non-empty object');
         }
 
-        // Validate data structure
-        const hasInvalidOperation = data.some(
-            operation =>
-                !operation ||
-                typeof operation !== 'object' ||
-                Object.keys(operation).length === 0
-        );
+        const now = new Date();
 
-        if (hasInvalidOperation) {
-            throw new Error('Data contains invalid operations');
-        }
-
-        const setIndexOf = data.findLastIndex(e => e['$set']);
-        if (setIndexOf > -1) {
-            data[setIndexOf]['$set'].updatedAt = new Date();
-            data[setIndexOf]['$set'].updatedBy = options?.actionBy;
+        // Handle array data update
+        if (Array.isArray(data)) {
+            const setIndexOf = data.findLastIndex(e => e['$set']);
+            if (setIndexOf > -1) {
+                data[setIndexOf]['$set'].updatedAt = now;
+                data[setIndexOf]['$set'].updatedBy = options?.actionBy;
+            } else {
+                data.push({
+                    $set: {
+                        updatedAt: now,
+                        updatedBy: options?.actionBy,
+                    },
+                });
+            }
         } else {
-            data.push({
-                $set: {
-                    updatedAt: new Date(),
-                    updatedBy: options?.actionBy,
-                },
-            });
+            // Handle single object update
+            data['$set'] = {
+                ...data['$set'],
+                updatedAt: now,
+                updatedBy: options?.actionBy,
+            };
         }
 
         return this._repository.updateMany(
