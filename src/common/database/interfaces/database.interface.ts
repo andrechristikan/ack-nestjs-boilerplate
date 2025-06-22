@@ -10,6 +10,7 @@ export type IDatabaseDocument<T> = HydratedDocument<T>;
 // Find
 export interface IDatabaseOptions {
     select?: Record<string, boolean | number> | string;
+    projection?: Record<string, any>;
     join?: boolean | PopulateOptions | PopulateOptions[];
     session?: ClientSession;
     withDeleted?: boolean;

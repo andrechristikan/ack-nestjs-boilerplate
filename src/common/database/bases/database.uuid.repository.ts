@@ -55,6 +55,10 @@ export class DatabaseUUIDRepositoryBase<
             }),
         });
 
+        if (options?.projection) {
+            repository.projection(options.projection);
+        }
+
         if (options?.select) {
             repository.select(options.select);
         }
@@ -103,6 +107,10 @@ export class DatabaseUUIDRepositoryBase<
             }),
         });
 
+        if (options?.projection) {
+            repository.projection(options.projection);
+        }
+
         if (options?.select) {
             repository.select(options.select);
         }
@@ -142,6 +150,10 @@ export class DatabaseUUIDRepositoryBase<
                 deleted: false,
             }),
         });
+
+        if (options?.projection) {
+            repository.projection(options.projection);
+        }
 
         if (options?.select) {
             repository.select(options.select);

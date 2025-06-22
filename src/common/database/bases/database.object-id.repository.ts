@@ -61,6 +61,10 @@ export class DatabaseObjectIdRepositoryBase<
             }),
         });
 
+        if (options?.projection) {
+            repository.projection(options.projection);
+        }
+
         if (options?.select) {
             repository.select(options.select);
         }
@@ -109,6 +113,10 @@ export class DatabaseObjectIdRepositoryBase<
             }),
         });
 
+        if (options?.projection) {
+            repository.projection(options.projection);
+        }
+
         if (options?.select) {
             repository.select(options.select);
         }
@@ -150,6 +158,10 @@ export class DatabaseObjectIdRepositoryBase<
                 deleted: false,
             }),
         } as any);
+
+        if (options?.projection) {
+            repository.projection(options.projection);
+        }
 
         if (options?.select) {
             repository.select(options.select);
