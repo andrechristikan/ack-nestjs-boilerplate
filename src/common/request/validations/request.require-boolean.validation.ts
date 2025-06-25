@@ -14,7 +14,7 @@ export interface RequireBooleanOptions {
 
 @ValidatorConstraint({ async: true })
 @Injectable()
-export class RequireBooleanConstraint implements ValidatorConstraintInterface {
+export class requireBooleanConstraint implements ValidatorConstraintInterface {
     constructor(private readonly messageService: MessageService) {}
 
     validate(value: boolean, args: ValidationArguments): boolean {
@@ -39,7 +39,7 @@ export function RequireBoolean(
             propertyName: propertyName,
             constraints: [{ expectedValue }],
             options: validationOptions,
-            validator: RequireBooleanConstraint,
+            validator: requireBooleanConstraint,
         });
     };
 }
