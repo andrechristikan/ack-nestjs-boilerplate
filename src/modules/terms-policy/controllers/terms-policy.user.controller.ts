@@ -60,18 +60,6 @@ export class TermsPolicyUserController {
             });
         }
 
-        const latestVersion =
-            await this.termsPolicyService.findLatestPublishedByType(
-                policy.type,
-                policy.language
-            );
-        if (policy.id != latestVersion.id) {
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_TERMS_POLICY_STATUS_CODE_ERROR.NOT_LATEST_VERSION,
-                message: 'terms-policy.error.newerVersionExist',
-            });
-        }
         const isPublished =
             !!policy.publishedAt &&
             policy.publishedAt < this.helperDateService.create();
@@ -82,10 +70,12 @@ export class TermsPolicyUserController {
             });
         }
 
-        const isAccepted = await this.termsPolicyAcceptanceService.findOne({
-            policy: policy.id,
-            user: user,
-        });
+        const isAccepted = await this.termsPolicyAcceptanceService.findOneAcceptedByUser(
+            user,
+            policy.type,
+            policy.country
+        );
+
         if (isAccepted) {
             throw new BadRequestException({
                 statusCode:
@@ -93,9 +83,29 @@ export class TermsPolicyUserController {
                 message: 'terms-policy.error.alreadyAccepted',
             });
         }
+
+        const latestVersion = await this.termsPolicyService.findOne({
+            type: policy.type,
+            language: policy.language,
+            country: policy.country,
+            latest: true,
+            published: true,
+        });
+
+        if (policy.id != latestVersion.id) {
+            throw new BadRequestException({
+                statusCode:
+                ENUM_TERMS_POLICY_STATUS_CODE_ERROR.NOT_LATEST_VERSION,
+                message: 'terms-policy.error.newerVersionExist',
+            });
+        }
+
         const accept = await this.termsPolicyAcceptanceService.create(
             user,
-            policy.id,
+            policy.type,
+            policy.country,
+            policy.language,
+            policy.version,
             this.helperDateService.create()
         );
 
@@ -113,7 +123,7 @@ export class TermsPolicyUserController {
         @AuthJwtPayload('user') user: string
     ): Promise<IResponse<TermsPolicyAcceptanceListResponseDto[]>> {
         const acceptedPolicies =
-            await this.termsPolicyAcceptanceService.findAll({ user: user });
+            await this.termsPolicyAcceptanceService.findAllAcceptedPoliciesByUser(user);
 
         return {
             data: this.termsPolicyAcceptanceService.mapList(acceptedPolicies),
@@ -129,7 +139,7 @@ export class TermsPolicyUserController {
         @RequestLanguage() language: ENUM_MESSAGE_LANGUAGE
     ): Promise<IResponse<TermsPolicyListResponseDto[]>> {
         const latestPolicies =
-            await this.termsPolicyService.findLatestByLanguage(language);
+            await this.termsPolicyService.findAllByFilters({latest: true, language: language});
 
         const acceptedPolicies =
             await this.termsPolicyAcceptanceService.findAllAcceptedPoliciesByUser(
@@ -140,9 +150,8 @@ export class TermsPolicyUserController {
         const pendingPolicies = latestPolicies.filter(policy => {
             const acceptedPolicy = acceptedPolicies.find(
                 accepted =>
-                    accepted.policy.type === policy.type &&
-                    // policy is a plain javascript object coming from aggregation, thus does not have .id
-                    accepted.policy.id === policy._id
+                    accepted.type === policy.type &&
+                    accepted.country === policy.country
             );
 
             return !acceptedPolicy;

@@ -9,6 +9,7 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
     user?: T;
 
     __user?: IUserDoc;
+    __country: string;
     __language: string;
     __version: string;
 

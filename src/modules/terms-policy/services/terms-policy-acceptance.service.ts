@@ -20,6 +20,7 @@ import {
     ITermsPolicyAcceptanceEntity,
 } from '@modules/terms-policy/interfaces/terms-policy-acceptance.interface';
 import { ITermsPolicyAcceptanceService } from '@modules/terms-policy/interfaces/terms-policy-acceptance.service.interface';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 @Injectable()
 export class TermsPolicyAcceptanceService
@@ -34,20 +35,29 @@ export class TermsPolicyAcceptanceService
     /**
      * Create a policy acceptance record
      * @param userId User accepting the policy
-     * @param policyId ID of the policy being accepted
+     * @param policyType Type of the policy being accepted
+     * @param policyCountry Country of the policy being accepted
+     * @param policyLanguage Language of the policy being accepted
+     * @param policyVersion Version of the policy being accepted
      * @param acceptedAt Date of acceptance
      * @param options Database options
      * @returns Created acceptance record
      */
     async create(
         userId: string,
-        policyId: string,
+        policyType: ENUM_TERMS_POLICY_TYPE,
+        policyCountry: string,
+        policyLanguage: ENUM_MESSAGE_LANGUAGE,
+        policyVersion: number,
         acceptedAt: Date = new Date(),
         options?: IDatabaseCreateOptions
     ): Promise<TermsPolicyAcceptanceDoc> {
         const acceptance = new TermsPolicyAcceptanceEntity();
         acceptance.user = userId;
-        acceptance.policy = policyId;
+        acceptance.type = policyType;
+        acceptance.country = policyCountry;
+        acceptance.language = policyLanguage;
+        acceptance.version = policyVersion;
         acceptance.acceptedAt = acceptedAt;
 
         return this.termsPolicyAcceptanceRepository.create(acceptance, options);
@@ -56,25 +66,33 @@ export class TermsPolicyAcceptanceService
     /**
      * Create multiple policy acceptance records for a user in a batch
      * @param userId User accepting the policies
-     * @param policyIds Array of policy IDs being accepted
+     * @param policies Array of policy objects with type, country, language and version
      * @param acceptedAt Date of acceptance (same for all records)
      * @param options Database options
      * @returns Boolean indicating success (true) or failure (false)
      */
     async createMany(
         userId: string,
-        policyIds: string[],
+        policies: Array<{
+            type: ENUM_TERMS_POLICY_TYPE;
+            country: string;
+            language: ENUM_MESSAGE_LANGUAGE;
+            version: number;
+        }>,
         acceptedAt: Date = new Date(),
         options?: IDatabaseCreateOptions
     ): Promise<boolean> {
-        if (!policyIds.length) {
+        if (!policies.length) {
             return true; // No policies to create is still a success case
         }
 
-        const acceptanceEntities = policyIds.map(policyId => {
+        const acceptanceEntities = policies.map((policy) => {
             const acceptance = new TermsPolicyAcceptanceEntity();
             acceptance.user = userId;
-            acceptance.policy = policyId;
+            acceptance.type = policy.type;
+            acceptance.country = policy.country;
+            acceptance.language = policy.language;
+            acceptance.version = policy.version;
             acceptance.acceptedAt = acceptedAt;
             return acceptance;
         });
@@ -137,11 +155,11 @@ export class TermsPolicyAcceptanceService
     }
 
     /**
-     * Find all policies accepted by a specific user with populated policy details
+     * Find all policies accepted by a specific user
      * @param userId The user ID to search for
      * @param find Additional find conditions to merge with the user filter
      * @param options Database find options
-     * @returns Array of acceptance records with populated policy details
+     * @returns Array of acceptance records
      */
     async findAllAcceptedPoliciesByUser(
         userId: string,
@@ -153,64 +171,77 @@ export class TermsPolicyAcceptanceService
                 user: userId,
                 ...find,
             },
-            {
-                join: {
-                    path: 'policy',
-                },
-                ...options,
-            }
+            options
         );
     }
 
     /**
-     * Find the user's accepted policy with the highest version for a specific type and language
+     * Check if a user has accepted a specific policy type for a specific country
+     * @param userId The user ID to check
+     * @param policyType The type of policy
+     * @param country The country of the policy
+     * @param options Database find options
+     * @returns The acceptance record or null if not found
+     */
+    async hasUserAccepted(
+        userId: string,
+        policyType: ENUM_TERMS_POLICY_TYPE,
+        country: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ITermsPolicyAcceptanceEntity | null> {
+        try {
+            return await this.termsPolicyAcceptanceRepository.findOne<ITermsPolicyAcceptanceEntity>(
+                {
+                    user: userId,
+                    type: policyType,
+                    country: country,
+                },
+                options
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to check if user ${userId} has accepted policy type ${policyType} for country ${country}`,
+                error
+            );
+            throw error;
+        }
+    }
+
+    /**
+     * Find the user's accepted policy for a specific type and country,
+     * optionally filtering by language
      * @param userId The user ID to search for
      * @param policyType The type of policy (terms, privacy, cookies)
-     * @param language The language of the policy
+     * @param country The country of the policy
+     * @param language Optional language filter
      * @param options Database find options
-     * @returns The acceptance record with the highest version or null if none found
+     * @returns The acceptance record or null if none found
      */
     async findOneAcceptedByUser(
         userId: string,
         policyType: ENUM_TERMS_POLICY_TYPE,
-        language: string,
-        options?: IDatabaseFindAllOptions
+        country: string,
+        language?: ENUM_MESSAGE_LANGUAGE,
+        options?: IDatabaseFindOneOptions
     ): Promise<ITermsPolicyAcceptanceEntity | null> {
         try {
-            // Find all accepted policies of this type and language for the user
-            const acceptances =
-                await this.termsPolicyAcceptanceRepository.findAll<ITermsPolicyAcceptanceEntity>(
-                    {
-                        user: userId,
-                    },
-                    {
-                        join: {
-                            path: 'policy',
-                            match: { type: policyType, language: language },
-                        },
-                        ...options,
-                    }
-                );
+            const query: Record<string, any> = {
+                user: userId,
+                type: policyType,
+                country: country,
+            };
 
-            // Filter out those where the join didn't match (policy is null)
-            const validAcceptances = acceptances.filter(
-                acceptance => acceptance.policy
-            );
-
-            if (validAcceptances.length === 0) {
-                return null;
+            if (language) {
+                query.language = language;
             }
 
-            // Find the one with the highest version
-            return validAcceptances.reduce((highest, current) => {
-                return !highest ||
-                    current.policy.version > highest.policy.version
-                    ? current
-                    : highest;
-            }, null);
+            return await this.termsPolicyAcceptanceRepository.findOne<ITermsPolicyAcceptanceEntity>(
+                query,
+                options
+            );
         } catch (error) {
             this.logger.error(
-                `Failed to find latest accepted policy for user ${userId}, type ${policyType}, language ${language}`,
+                `Failed to find accepted policy for user ${userId}, type ${policyType}, country ${country}${language ? `, language ${language}` : ''}`,
                 error
             );
             throw error;

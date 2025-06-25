@@ -44,6 +44,13 @@ export class TermsPolicyGetResponseDto extends PickType(DatabaseUUIDDto, [
     readonly language: ENUM_MESSAGE_LANGUAGE;
 
     @ApiProperty({
+        description: 'Country for which the terms or policy applies',
+        example: 'UK',
+        required: true,
+    })
+    readonly country: string;
+
+    @ApiProperty({
         description: 'Version of the terms or policy',
         example: 1,
         required: true,

@@ -27,6 +27,14 @@ export class TermsPolicyEntity extends DatabaseUUIDEntityBase {
     title: string;
     @DatabaseProp({ required: true })
     description: string;
+
+    @DatabaseProp({
+        type: String,
+        required: true,
+        index: true,
+    })
+    country: string;
+
     @DatabaseProp({
         enum: ENUM_MESSAGE_LANGUAGE,
         type: String,
@@ -48,5 +56,4 @@ export class TermsPolicyEntity extends DatabaseUUIDEntityBase {
 export const TermsPolicySchema = DatabaseSchema(TermsPolicyEntity);
 export type TermsPolicyDoc = IDatabaseDocument<TermsPolicyEntity>;
 
-// Define a unique index for type, language, and version
-TermsPolicySchema.index({ type: 1, language: 1, version: 1 }, { unique: true });
+TermsPolicySchema.index({ type: 1, language: 1, country: 1, version: 1 }, { unique: true });

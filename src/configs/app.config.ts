@@ -7,6 +7,7 @@ export default registerAs(
         name: process.env.APP_NAME,
         env: process.env.APP_ENV,
         timezone: process.env.APP_TIMEZONE,
+        country: process.env.APP_COUNTRY,
         version,
         globalPrefix: '/api',
 

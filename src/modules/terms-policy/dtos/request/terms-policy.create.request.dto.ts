@@ -41,6 +41,15 @@ export class TermsPolicyCreateRequestDto {
     readonly version: number;
 
     @ApiProperty({
+        description: 'Country for which this legal policy applies to',
+        example: 'UK',
+        required: true,
+    })
+    @IsString()
+    @IsNotEmpty()
+    readonly country: string;
+
+    @ApiProperty({
         description: 'Language of the terms policy',
         example: ENUM_MESSAGE_LANGUAGE.EN,
         enum: ENUM_MESSAGE_LANGUAGE,

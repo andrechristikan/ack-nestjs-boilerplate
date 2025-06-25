@@ -32,7 +32,7 @@ export class TermsPolicyUserService {
 
             // Fetch all required policies in a single database query
             const latestPolicies =
-                await this.termsPolicyService.findLatestPublishedByTypes(
+                await this.termsPolicyService.findAllLatestPublishedByTypes(
                     policyTypes,
                     language
                 );
