@@ -26,7 +26,7 @@ import {
     TermsPolicyAuthAcceptedDoc,
 } from '@modules/terms-policy/docs/terms-policy.auth.doc';
 import { TermsPolicyListResponseDto } from '@modules/terms-policy/dtos/response/terms-policy.list.response.dto';
-import { RequestLanguage } from '@common/request/decorators/request.decorator';
+import { RequestCountry, RequestLanguage } from '@common/request/decorators/request.decorator';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 @ApiTags('modules.user.terms-policy')
@@ -48,10 +48,14 @@ export class TermsPolicyUserController {
     @AuthJwtAccessProtected()
     async accept(
         @AuthJwtPayload('user') user: string,
-        @Body() request: TermsPolicyAcceptRequestDto
+        @Body() request: TermsPolicyAcceptRequestDto,
+        @RequestCountry() country: string,
     ): Promise<IResponse<TermsPolicyAcceptanceGetResponseDto>> {
-        const policy = await this.termsPolicyService.findOneById(
-            request.policy
+        const policy = await this.termsPolicyService.findOne(
+            {
+                _id: request.policy,
+                country: country
+            }
         );
         if (!policy) {
             throw new NotFoundException({
@@ -65,15 +69,16 @@ export class TermsPolicyUserController {
             policy.publishedAt < this.helperDateService.create();
         if (!isPublished) {
             throw new BadRequestException({
-                statusCode: ENUM_TERMS_POLICY_STATUS_CODE_ERROR.NOT_ACTIVE,
+                statusCode: ENUM_TERMS_POLICY_STATUS_CODE_ERROR.NOT_PUBLISHED,
                 message: 'terms-policy.error.inactive',
             });
         }
 
-        const isAccepted = await this.termsPolicyAcceptanceService.findOneAcceptedByUser(
+        const isAccepted = await this.termsPolicyAcceptanceService.findOneByUser(
             user,
             policy.type,
-            policy.country
+            policy.country,
+            policy.language
         );
 
         if (isAccepted) {
@@ -123,7 +128,7 @@ export class TermsPolicyUserController {
         @AuthJwtPayload('user') user: string
     ): Promise<IResponse<TermsPolicyAcceptanceListResponseDto[]>> {
         const acceptedPolicies =
-            await this.termsPolicyAcceptanceService.findAllAcceptedPoliciesByUser(user);
+            await this.termsPolicyAcceptanceService.findAllByUser(user);
 
         return {
             data: this.termsPolicyAcceptanceService.mapList(acceptedPolicies),
@@ -142,9 +147,7 @@ export class TermsPolicyUserController {
             await this.termsPolicyService.findAllByFilters({latest: true, language: language});
 
         const acceptedPolicies =
-            await this.termsPolicyAcceptanceService.findAllAcceptedPoliciesByUser(
-                user
-            );
+            await this.termsPolicyAcceptanceService.findAllByUser(user);
 
         // Filter out policies that the user has already accepted
         const pendingPolicies = latestPolicies.filter(policy => {

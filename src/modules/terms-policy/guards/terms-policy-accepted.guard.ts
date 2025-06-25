@@ -17,6 +17,7 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ENUM_TERMS_POLICY_STATUS_CODE_ERROR } from '@modules/terms-policy/enums/terms-policy.status-code.enum';
 import { TermsPolicyDoc } from '@modules/terms-policy/repository/entities/terms-policy.entity';
 import { TermsPolicyService } from '../services/terms-policy.service';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 @Injectable()
 export class TermsPolicyAcceptedGuard implements CanActivate {
@@ -44,7 +45,7 @@ export class TermsPolicyAcceptedGuard implements CanActivate {
         const request = context.switchToHttp().getRequest<IRequestApp>();
         const user = request.user;
         const language = request.__language;
-        const country = 'UK';
+        const country = request.__country;
 
         try {
             // Include the language when retrieving the latest policy
@@ -63,10 +64,11 @@ export class TermsPolicyAcceptedGuard implements CanActivate {
 
             // Did the user accepted any version of this terms type?
             const userAcceptedPolicy =
-                await this.termsPolicyAcceptanceService.findOneAcceptedByUser(
+                await this.termsPolicyAcceptanceService.findOneByUser(
                     user.sub,
                     latestPolicy.type,
-                    language
+                    country,
+                    ENUM_MESSAGE_LANGUAGE[language]
                 );
 
             if (!userAcceptedPolicy) {

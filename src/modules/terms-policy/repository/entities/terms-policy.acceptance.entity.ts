@@ -61,4 +61,4 @@ export const TermsPolicyAcceptanceSchema = DatabaseSchema(
 );
 
 // Updated index to ensure uniqueness at user+type+country level
-TermsPolicyAcceptanceSchema.index({ user: 1, type: 1, country: 1 }, { unique: true });
+TermsPolicyAcceptanceSchema.index({ user: 1, type: 1, country: 1, version: 1 }, { unique: true });
