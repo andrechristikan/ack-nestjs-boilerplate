@@ -63,6 +63,7 @@ export default registerAs(
         },
         xApiKey: {
             header: 'x-api-key',
+            keyPrefix: 'ApiKey',
         },
     })
 );

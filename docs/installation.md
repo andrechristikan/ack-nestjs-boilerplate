@@ -17,12 +17,10 @@ This guide covers both standard installation and Docker-based setup of the ACK N
     - [Run Project](#run-project)
   - [Installation with Docker](#installation-with-docker)
     - [Prerequisites](#prerequisites-1)
-    - [Setup Steps](#setup-steps)
-    - [Start the Application](#start-the-application)
+    - [Quick Start](#quick-start)
     - [Accessing the Application](#accessing-the-application)
-    - [Database Migration and Seed](#database-migration-and-seed-1)
-    - [Viewing Logs](#viewing-logs)
-    - [Stopping the Application](#stopping-the-application)
+    - [Database Migration and Seeding](#database-migration-and-seeding)
+    - [Managing the Application](#managing-the-application)
 
 ## Standard Installation
 
@@ -33,7 +31,7 @@ I recommend using the LTS versions for all tools and packages.
 
 > Always verify that the tools have been installed successfully.
 
-1. [NodeJs](http://nodejs.org) (v22.13.x or later)
+1. [NodeJs](http://nodejs.org) (v22.16.0 or later)
 2. [MongoDB](https://docs.mongodb.com/) (v8.x)
 3. [Redis](https://redis.io) (v8.x)
 4. [Yarn](https://yarnpkg.com) (v1.22.x)
@@ -49,10 +47,22 @@ git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
 
 ### Install Dependencies
 
-Install all required dependencies:
+Install all required dependencies using Yarn:
 
 ```bash
 yarn install
+```
+
+**Package Management Commands:**
+```bash
+# Check for outdated packages
+yarn package:check
+
+# Upgrade all packages to latest versions
+yarn package:upgrade
+
+# Clean install (removes node_modules and reinstalls)
+yarn clean && yarn install
 ```
 
 ### Generate Keys
@@ -133,26 +143,56 @@ Now you're ready to start the project:
 yarn start:dev
 ```
 
-For production environments:
-
+**Additional Run Commands:**
 ```bash
+# Production mode
 yarn start:prod
+
+# Standard start (without watch mode)
+yarn start
+
+# Build the project
+yarn build
+
+# Development with clean terminal
+yarn start:dev
+```
+
+**Development Tools:**
+```bash
+# Format code
+yarn format
+
+# Lint code
+yarn lint
+
+# Lint and auto-fix issues
+yarn lint:fix
+
+# Run tests
+yarn test
+
+# Check for dead/unused code
+yarn deadcode
+
+# Spell check
+yarn spell
 ```
 
 ## Installation with Docker
 
-Docker provides an easy way to set up the entire application environment with minimal configuration.
+Docker provides a streamlined way to set up the entire application environment with all dependencies pre-configured, including MongoDB replica set, Redis, and JWKS server.
 
 ### Prerequisites
 
 1. [Docker](https://docs.docker.com) (v27.4.x or later)
-2. [Docker-Compose](https://docs.docker.com/compose/) (v2.31.x or later)
+2. [Docker Compose](https://docs.docker.com/compose/) (v2.31.x or later)
 
-### Setup Steps
+### Quick Start
 
-Before running with Docker, you need to complete two important steps:
+The Docker setup has been optimized for simplicity. Follow these steps:
 
-1. Generate JWT keys as described in the [Generate Keys](#generate-keys) section:
+1. **Generate JWT Keys** (Required for authentication):
    ```bash
    yarn generate:keys
    ```
@@ -163,7 +203,7 @@ Before running with Docker, you need to complete two important steps:
    - In your `.env` file, set `AUTH_JWT_JWKS_URI` to `http://jwks-server:3011/.well-known/jwks.json` for internal container communication
    - From outside Docker, the JWKS file will be accessible at `http://localhost:3011/.well-known/jwks.json`
 
-2. Create and configure your environment file:
+2. **Setup Environment**:
    ```bash
    cp .env.example .env
    ```
@@ -174,59 +214,74 @@ Before running with Docker, you need to complete two important steps:
    - The JWKS URI is configured properly as mentioned above
    - The `kid` (Key ID) values for both access token and refresh token
 
-### Start the Application
+3. **Start All Services**:
+   ```bash
+   docker-compose up -d
+   ```
 
-Run the application using Docker Compose:
-
-```bash
-docker-compose up -d
-```
-
-> **Note**: If `host.docker.internal` cannot be resolved, add a line in your `/etc/hosts` file to map `host.docker.internal` to `127.0.0.1`
+> **Note**: If you encounter `host.docker.internal` resolution issues, add `127.0.0.1 host.docker.internal` to your `/etc/hosts` file.
 
 ### Accessing the Application
 
-Once the containers are running, you can access:
-- The main application at `http://localhost:3000`
-- Swagger documentation at `http://localhost:3000/docs`
-- BullMQ board at `http://localhost:3010`
-- JwksServer at `http://localhost:3011`
+Once all containers are healthy and running, you can access:
 
-> **Note**: BullMQ board and JwksServer only available with docker installation
+- **Main Application**: `http://localhost:3000`
+  - API endpoints and main functionality
+- **API Documentation**: `http://localhost:3000/docs` 
+  - Interactive Swagger/OpenAPI documentation
+- **Queue Dashboard**: `http://localhost:3010`
+  - BullMQ board for monitoring background jobs and queues
+  - Default credentials: `admin` / `admin123`
+- **JWKS Endpoint**: `http://localhost:3011/.well-known/jwks.json`
+  - JSON Web Key Set for JWT token validation
 
-### Database Migration and Seed
+The Docker setup includes health checks for all services, ensuring they're fully ready before marking as available.
 
-When using Docker, you can run database migrations and seeds directly from within the app container:
+### Database Migration and Seeding
+
+The Docker setup automatically configures MongoDB with replica set support. To populate the database with initial data:
 
 ```bash
-# Populate with initial data
+# Seed the database with initial data (countries, roles, users, etc.)
 docker-compose exec apis yarn migrate:seed
+```
 
-# For a complete reset and rebuild
+**Additional Migration Commands:**
+
+```bash
+# Reset and rebuild the entire database from scratch
 docker-compose exec apis yarn migrate:fresh
 
-# To roll back migrations
+# Remove all seeded data (rollback migrations)
 docker-compose exec apis yarn migrate:remove
+
+# Migrate AWS SES email templates (optional)
+docker-compose exec apis yarn migrate:template
+
+# Rollback email template migrations
+docker-compose exec apis yarn rollback:template
 ```
 
-### Viewing Logs
+> **Note**: The `migrate:fresh` command will completely reset your database, removing all existing data.
 
-To view logs from the running containers:
+### Managing the Application
 
+**Viewing Logs:**
 ```bash
+# View logs from all services
+docker-compose logs -f
+
+# View logs from specific service
 docker-compose logs -f apis
+docker-compose logs -f mongo
+docker-compose logs -f redis
 ```
 
-### Stopping the Application
-
-To stop all services:
-
+**Stopping Services:**
 ```bash
+# Stop all services (preserves data)
 docker-compose down
-```
 
-To stop and remove all data volumes (this will delete your database data):
-
-```bash
+# Stop and remove all volumes (⚠️ deletes all database data)
 docker-compose down -v
 ```

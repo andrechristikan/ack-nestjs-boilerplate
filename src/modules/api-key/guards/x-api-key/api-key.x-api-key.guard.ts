@@ -48,7 +48,7 @@ export class ApiKeyXApiKeyGuard implements CanActivate {
         const secret = xApiKeyArr[1];
         const today = this.helperDateService.create();
         const apiKey: ApiKeyEntity =
-            await this.apiKeyService.findOneByActiveKey(key);
+            await this.apiKeyService.findOneByKeyAndCache(key);
 
         if (!apiKey) {
             throw new ForbiddenException({
@@ -86,12 +86,7 @@ export class ApiKeyXApiKeyGuard implements CanActivate {
             });
         }
 
-        request.apiKey = {
-            _id: apiKey._id,
-            name: apiKey.name,
-            key: apiKey.key,
-            type: apiKey.type,
-        };
+        request.__apiKey = apiKey;
 
         return true;
     }

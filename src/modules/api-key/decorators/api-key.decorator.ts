@@ -7,17 +7,15 @@ import {
 } from '@nestjs/common';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { API_KEY_X_TYPE_META_KEY } from '@modules/api-key/constants/api-key.constant';
-import { ApiKeyPayloadDto } from '@modules/api-key/dtos/api-key.payload.dto';
 import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
+import { ApiKeyEntity } from '@modules/api-key/repository/entities/api-key.entity';
 
 export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
-    <T = ApiKeyPayloadDto>(data: string, ctx: ExecutionContext): T => {
-        const { apiKey } = ctx
-            .switchToHttp()
-            .getRequest<IRequestApp & { apiKey: ApiKeyPayloadDto }>();
-        return data ? apiKey[data] : (apiKey as T);
+    <T = ApiKeyEntity>(data: string, ctx: ExecutionContext): T => {
+        const { __apiKey } = ctx.switchToHttp().getRequest<IRequestApp>();
+        return data ? __apiKey[data] : (__apiKey as T);
     }
 );
 
