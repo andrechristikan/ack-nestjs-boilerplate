@@ -59,7 +59,7 @@ import {
 } from '@modules/auth/interfaces/auth.interface';
 import { SettingFeatureFlag } from '@modules/setting/decorators/setting.decorator';
 import { TermsPolicyUserService } from '@modules/terms-policy/services/terms-policy-user.service';
-import { RequestLanguage } from '@common/request/decorators/request.decorator';
+import { RequestCountry, RequestLanguage } from '@common/request/decorators/request.decorator';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 @ApiTags('modules.public.auth')
@@ -361,7 +361,8 @@ export class AuthPublicController {
     async signUp(
         @Body()
         { email, name, password: passwordString, country, legal }: AuthSignUpRequestDto,
-        @RequestLanguage() language: ENUM_MESSAGE_LANGUAGE,
+        @RequestLanguage() requestLanguage: ENUM_MESSAGE_LANGUAGE,
+        @RequestCountry() requestCountry: string,
     ): Promise<void> {
         const promises: Promise<any>[] = [
             this.roleService.findOneByName('individual'),
@@ -405,11 +406,11 @@ export class AuthPublicController {
                 { session }
             );
 
-            // Handle terms policy acceptance
             await this.termsPolicyUserService.createAcceptances(
                 user._id,
                 legal.getAcceptedPolicyTypes(),
-                language,
+                requestLanguage,
+                requestCountry,
                 { session }
             );
 

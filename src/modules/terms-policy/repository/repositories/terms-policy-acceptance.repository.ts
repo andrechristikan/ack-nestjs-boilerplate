@@ -25,14 +25,7 @@ export class TermsPolicyAcceptanceRepository extends DatabaseUUIDRepositoryBase<
                 foreignField: '_id',
                 model: UserEntity.name,
                 justOne: true,
-            },
-            {
-                path: 'policy',
-                localField: 'policy',
-                foreignField: '_id',
-                model: TermsPolicyEntity.name,
-                justOne: true,
-            },
+            }
         ]);
     }
 }

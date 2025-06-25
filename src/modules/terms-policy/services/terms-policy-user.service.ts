@@ -6,9 +6,6 @@ import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { IDatabaseCreateOptions } from '@common/database/interfaces/database.interface';
 import { ENUM_TERMS_POLICY_TYPE } from '@modules/terms-policy/enums/terms-policy.enum';
 
-/**
- * Service for handling policy acceptance interactions for users
- */
 @Injectable()
 export class TermsPolicyUserService {
     private readonly logger = new Logger(TermsPolicyUserService.name);
@@ -23,6 +20,7 @@ export class TermsPolicyUserService {
         userId: string,
         policyTypes: ENUM_TERMS_POLICY_TYPE[],
         language: ENUM_MESSAGE_LANGUAGE,
+        country: string,
         options?: IDatabaseCreateOptions
     ): Promise<void> {
         try {
@@ -30,40 +28,40 @@ export class TermsPolicyUserService {
                 return; // No consents to process
             }
 
-            // Fetch all required policies in a single database query
             const latestPolicies =
-                await this.termsPolicyService.findAllLatestPublishedByTypes(
-                    policyTypes,
-                    language
+                await this.termsPolicyService.findAllByFilters({
+                    language,
+                    country,
+                    latest: true,
+                    published: true,
+                    type: { $in: policyTypes },
+                });
+
+            if (latestPolicies.length === 0) {
+                this.logger.warn(
+                    `No policies found for types [${policyTypes.join(
+                        ', '
+                    )}], language ${language}, country ${country}`
                 );
-
-            // Get policy IDs to accept
-            const policyIds = [];
-            for (const policyType of policyTypes) {
-                const policy = latestPolicies.get(policyType);
-
-                if (!policy) {
-                    this.logger.warn(
-                        `No policy found for type ${policyType} and language ${language}`
-                    );
-                    continue;
-                }
-
-                policyIds.push(policy.id);
+                return;
             }
 
-            // Create all acceptance records in one batch operation
-            if (policyIds.length > 0) {
-                const now = this.helperDateService.create();
-                await this.termsPolicyAcceptanceService.createMany(
-                    userId,
-                    policyIds,
-                    now,
-                    options
-                );
-            }
+            const policyData = latestPolicies.map(policy => ({
+                type: policy.type,
+                country: policy.country,
+                language: policy.language,
+                version: policy.version,
+            }));
+
+            const now = this.helperDateService.create();
+            await this.termsPolicyAcceptanceService.createMany(
+                userId,
+                policyData,
+                now,
+                options
+            );
         } catch (error) {
-            this.logger.error('Error processing policy acceptances', { error });
+            this.logger.error('Error processing policy acceptances', error);
             throw error;
         }
     }

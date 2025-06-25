@@ -27,6 +27,7 @@ export class MigrationTermSeed {
                 content:
                     'By accessing or using our website, you agree to comply with these terms and conditions. Please read them carefully before using our services.',
                 version: 1,
+                country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
                 type: ENUM_TERMS_POLICY_TYPE.TERMS,
                 publishedAt: this.helperDateService.backward(
@@ -41,6 +42,7 @@ export class MigrationTermSeed {
                 content:
                     'This updated version includes new clauses regarding user data protection and service limitations. Continued use of our website constitutes acceptance of these changes.',
                 version: 2,
+                country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
                 type: ENUM_TERMS_POLICY_TYPE.TERMS,
                 publishedAt: this.helperDateService.backward(
@@ -55,6 +57,7 @@ export class MigrationTermSeed {
                 content:
                     'We value your privacy. This policy explains what information we collect, how we use it, and your rights regarding your data.',
                 version: 1,
+                country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
                 type: ENUM_TERMS_POLICY_TYPE.PRIVACY,
                 publishedAt: this.helperDateService.backward(
@@ -69,6 +72,7 @@ export class MigrationTermSeed {
                 content:
                     'By agreeing to this policy, you consent to receive marketing emails and updates from us. You can opt out at any time.',
                 version: 1,
+                country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
                 type: ENUM_TERMS_POLICY_TYPE.MARKETING,
                 publishedAt: this.helperDateService.backward(
@@ -83,6 +87,7 @@ export class MigrationTermSeed {
                 content:
                     'This version provides more options for managing your marketing preferences and details how we use your contact information.',
                 version: 2,
+                country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
                 type: ENUM_TERMS_POLICY_TYPE.MARKETING,
                 publishedAt: this.helperDateService.backward(
@@ -97,6 +102,7 @@ export class MigrationTermSeed {
                 content:
                     'Our website uses cookies to enhance your browsing experience. This policy explains what cookies are, which ones we use, and how you can control them.',
                 version: 1,
+                country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
                 type: ENUM_TERMS_POLICY_TYPE.COOKIES,
                 publishedAt: this.helperDateService.backward(
