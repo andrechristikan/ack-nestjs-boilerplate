@@ -8,6 +8,7 @@
     "update": "Update term/policy success.",
     "create": "New term/policy created.",
     "error": {
+        "exist": "A term-policy with this specification already exists.",
         "notFound": "Policy Terms not found.",
         "notAccepted": "You need to accept {property} policy before you can use this feature.",
         "inactive": "The policy is not active, most likely there's a newer version available",

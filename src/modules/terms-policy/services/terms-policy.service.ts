@@ -9,6 +9,7 @@ import {
     IDatabaseCreateManyOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteOptions,
+    IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
@@ -22,7 +23,6 @@ import {
     ITermsPolicyDoc,
     ITermsPolicyEntity,
 } from '@modules/terms-policy/interfaces/terms-policy.interface';
-import { ENUM_TERMS_POLICY_TYPE } from '@modules/terms-policy/enums/terms-policy.enum';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import { TermsPolicyCreateRequestDto } from '@modules/terms-policy/dtos/request/terms-policy.create.request.dto';
 
@@ -37,17 +37,13 @@ export class TermsPolicyService implements ITermsPolicyService {
     }
 
     async findOne(
-        filters: {
-            type?: ENUM_TERMS_POLICY_TYPE;
-            country?: string;
-            language?: string;
+        find?: Record<string, any> & {
             latest?: boolean;
             published?: boolean;
-            [key: string]: any;
-        } = {},
+        },
         databaseOptions?: IDatabaseFindOneOptions
     ): Promise<TermsPolicyDoc> {
-        const { latest, published, ...findQuery } = filters;
+        const { latest, published, ...findQuery } = find;
 
         if (published) {
             findQuery.publishedAt = { $ne: null, $lte: new Date() };
@@ -100,15 +96,15 @@ export class TermsPolicyService implements ITermsPolicyService {
     ): Promise<void> {
         const entities: TermsPolicyEntity[] = data.map(
             ({
-                 type,
-                 language,
-                 description,
-                 version,
-                 content,
-                 title,
-                 publishedAt,
-                 country
-             }): TermsPolicyEntity => {
+                type,
+                language,
+                description,
+                version,
+                content,
+                title,
+                publishedAt,
+                country,
+            }): TermsPolicyEntity => {
                 const entity = new TermsPolicyEntity();
                 entity.type = type;
                 entity.language = language;
@@ -144,15 +140,14 @@ export class TermsPolicyService implements ITermsPolicyService {
     }
 
     async findAllByFilters(
-        filters: {
-            language?: string;
-            country?: string;
+        filters: Record<string, any> & {
             published?: boolean;
             latest?: boolean;
-            [key: string]: any;
-        } = {}
+        },
+        options?: IDatabaseFindAllAggregateOptions
     ): Promise<TermsPolicyDoc[]> {
-        const { language, country, published, latest, ...otherFilters } = filters;
+        const { language, country, published, latest, ...otherFilters } =
+            filters;
 
         const matchStage: Record<string, any> = { ...otherFilters };
 
@@ -175,7 +170,8 @@ export class TermsPolicyService implements ITermsPolicyService {
                     type: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
                     publishedAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
                     version: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
-                }
+                },
+                ...options,
             });
         }
 
@@ -203,7 +199,7 @@ export class TermsPolicyService implements ITermsPolicyService {
         return this.termsPolicyRepository.aggregate<
             TermsPolicyDoc,
             PipelineStage
-        >(pipeline);
+        >(pipeline, options);
     }
 
     async getTotal(

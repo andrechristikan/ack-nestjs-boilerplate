@@ -2,6 +2,7 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     BadRequestException,
     Body,
+    ConflictException,
     Controller,
     Delete,
     Get,
@@ -144,6 +145,18 @@ export class TermsPolicyAdminController {
     async create(
         @Body() dto: TermsPolicyCreateRequestDto
     ): Promise<IResponse<TermsPolicyGetResponseDto>> {
+        const exist = await this.termsPolicyService.findOne({
+            language: dto.language,
+            country: dto.country,
+            version: dto.version,
+            type: dto.type,
+        });
+        if (exist) {
+            throw new ConflictException({
+                statusCode: ENUM_TERMS_POLICY_STATUS_CODE_ERROR.EXIST,
+                message: 'terms-policy.error.exist',
+            });
+        }
         const termsPolicy = await this.termsPolicyService.create(dto);
         const mapped = this.termsPolicyService.mapGet(termsPolicy);
         return {

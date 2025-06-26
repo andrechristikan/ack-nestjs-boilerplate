@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDate, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsDate, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Length } from 'class-validator';
 import { ENUM_TERMS_POLICY_TYPE } from '@modules/terms-policy/enums/terms-policy.enum';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
@@ -47,6 +47,7 @@ export class TermsPolicyCreateRequestDto {
     })
     @IsString()
     @IsNotEmpty()
+    @Length(2,2)
     readonly country: string;
 
     @ApiProperty({
