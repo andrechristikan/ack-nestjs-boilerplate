@@ -18,7 +18,7 @@ import { SessionModule } from '@modules/session/session.module';
 import { UserModule } from '@modules/user/user.module';
 import { MigrationSettingFeatureSeed } from '@migration/seeds/migration.settings.seed';
 import { SettingModule } from '@modules/setting/setting.module';
-import { MigrationTermSeed } from '@migration/seeds/migration.terms.seed';
+import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 
 // TODO: (v8) CHANGE WITH COMMANDER
@@ -47,7 +47,7 @@ import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
         MigrationRoleSeed,
         MigrationTemplateSeed,
         MigrationSettingFeatureSeed,
-        MigrationTermSeed
+        MigrationTermPolicySeed
     ],
     exports: [],
 })

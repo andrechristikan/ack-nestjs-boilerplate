@@ -7,7 +7,7 @@ import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.en
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 
 @Injectable()
-export class MigrationTermSeed {
+export class MigrationTermPolicySeed {
     constructor(
         private readonly helperDateService: HelperDateService,
         private readonly termPolicyService: TermPolicyService
