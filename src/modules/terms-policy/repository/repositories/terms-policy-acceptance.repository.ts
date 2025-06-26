@@ -6,7 +6,6 @@ import {
     TermsPolicyAcceptanceDoc,
     TermsPolicyAcceptanceEntity,
 } from '@modules/terms-policy/repository/entities/terms-policy.acceptance.entity';
-import { TermsPolicyEntity } from '@modules/terms-policy/repository/entities/terms-policy.entity';
 import { DatabaseUUIDRepositoryBase } from '@common/database/bases/database.uuid.repository';
 
 @Injectable()
@@ -25,7 +24,7 @@ export class TermsPolicyAcceptanceRepository extends DatabaseUUIDRepositoryBase<
                 foreignField: '_id',
                 model: UserEntity.name,
                 justOne: true,
-            }
+            },
         ]);
     }
 }

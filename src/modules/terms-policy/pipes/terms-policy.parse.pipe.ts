@@ -3,6 +3,7 @@ import { TermsPolicyService } from '@modules/terms-policy/services/terms-policy.
 import { TermsPolicyDoc } from '@modules/terms-policy/repository/entities/terms-policy.entity';
 import { REQUEST } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ENUM_TERMS_POLICY_STATUS_CODE_ERROR } from '@modules/terms-policy/enums/terms-policy.status-code.enum';
 
 @Injectable({ scope: Scope.REQUEST })
 export class TermsPolicyParsePipe implements PipeTransform {
@@ -16,20 +17,10 @@ export class TermsPolicyParsePipe implements PipeTransform {
     const termsPolicy = await this.termsPolicyService.findOneById(value);
     if (!termsPolicy) {
       throw new NotFoundException({
-        statusCode: 'TERMS_POLICY.NOT_FOUND',
+        statusCode: ENUM_TERMS_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
         message: 'termsPolicy.error.notFound',
       });
     }
-
-    // Check if the policy is published (has publishedAt date and it's in the past)
-    /**
-    if (termsPolicy.group.) {
-      throw new BadRequestException({
-        statusCode: 'TERMS_POLICY.NOT_ACTIVE',
-        message: 'termsPolicy.error.notActive',
-      });
-    }
-      */
     return termsPolicy;
   }
 }

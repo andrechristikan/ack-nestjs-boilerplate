@@ -47,59 +47,40 @@ export class TermsPolicyAcceptedGuard implements CanActivate {
         const language = request.__language;
         const country = request.__country;
 
-        try {
-            // Include the language when retrieving the latest policy
-            const latestPolicy = await this.termsPolicyService.findOne({
-                type: policyType,
-                language: language,
-                country: country,
-            });
+        // Include the language when retrieving the latest policy
+        const latestPolicy = await this.termsPolicyService.findOne({
+            type: policyType,
+            language: language,
+            country: country,
+        });
 
-            if (!latestPolicy) {
-                throw new BadRequestException({
-                    statusCode: ENUM_TERMS_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
-                    message: 'terms-policy.error.notFound',
-                });
-            }
-
-            // Did the user accepted any version of this terms type?
-            const userAcceptedPolicy =
-                await this.termsPolicyAcceptanceService.findOneByUser(
-                    user.sub,
-                    latestPolicy.type,
-                    country,
-                    ENUM_MESSAGE_LANGUAGE[language]
-                );
-
-            if (!userAcceptedPolicy) {
-                return this.handleFailure(options, latestPolicy, policyType);
-            }
-
-            if (options.requireLatestVersion) {
-                const isLatestVersion =
-                    userAcceptedPolicy.policy.version >= latestPolicy.version;
-
-                if (!isLatestVersion) {
-                    return this.handleFailure(
-                        options,
-                        latestPolicy,
-                        policyType
-                    );
-                }
-            }
-        } catch (error) {
-            if (
-                error instanceof BadRequestException ||
-                error instanceof ForbiddenException
-            ) {
-                throw error;
-            }
-
-            // Handle unexpected errors
+        if (!latestPolicy) {
             throw new BadRequestException({
-                statusCode: 'TERMS_POLICY.UNEXPECTED_ERROR',
-                message: 'terms-policy.error.unexpectedError',
+                statusCode: ENUM_TERMS_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'terms-policy.error.notFound',
             });
+        }
+
+        // Did the user accepted any version of this terms type?
+        const userAcceptedPolicy =
+            await this.termsPolicyAcceptanceService.findOneByUser(
+                user.sub,
+                latestPolicy.type,
+                country,
+                ENUM_MESSAGE_LANGUAGE[language]
+            );
+
+        if (!userAcceptedPolicy) {
+            return this.handleFailure(options, latestPolicy);
+        }
+
+        if (options.requireLatestVersion) {
+            const isLatestVersion =
+                userAcceptedPolicy.version >= latestPolicy.version;
+
+            if (!isLatestVersion) {
+                return this.handleFailure(options, latestPolicy);
+            }
         }
 
         return true;
@@ -107,8 +88,7 @@ export class TermsPolicyAcceptedGuard implements CanActivate {
 
     private handleFailure(
         options: ITermsPolicyOptions,
-        policy: TermsPolicyDoc,
-        type: ENUM_TERMS_POLICY_TYPE
+        policy: TermsPolicyDoc
     ): boolean {
         if (options.respondWithPolicyDetails) {
             throw new ForbiddenException({
@@ -117,13 +97,15 @@ export class TermsPolicyAcceptedGuard implements CanActivate {
                 _metadata: {
                     customProperty: {
                         messageProperties: {
-                            property: type,
+                            property: policy.type,
                         },
                     },
                     policyDetails: {
                         id: policy.id,
-                        type: type,
+                        type: policy.type,
                         version: policy.version,
+                        country: policy.country,
+                        language: policy.language
                     },
                 },
             });
