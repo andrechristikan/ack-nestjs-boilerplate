@@ -3,7 +3,7 @@ import { ApiProperty, OmitType } from '@nestjs/swagger';
 import { IsNotEmpty, IsNotEmptyObject, IsObject, MaxLength, MinLength, ValidateNested } from 'class-validator';
 import { IsPassword } from '@common/request/validations/request.is-password.validation';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { TermsPolicySignupRequestDto } from '@modules/terms-policy/dtos/request/terms-policy.signup.request.dto';
+import { TermPolicySignupRequestDto } from '@modules/term-policy/dtos/request/term-policy.signup.request.dto';
 import { Type } from 'class-transformer';
 
 export class AuthSignUpRequestDto extends OmitType(UserCreateRequestDto, [
@@ -28,6 +28,6 @@ export class AuthSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     @IsObject()
     @IsNotEmptyObject()
     @ValidateNested()
-    @Type(() => TermsPolicySignupRequestDto)
-    legal: TermsPolicySignupRequestDto
+    @Type(() => TermPolicySignupRequestDto)
+    legal: TermPolicySignupRequestDto
 }

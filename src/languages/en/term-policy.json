@@ -1,0 +1,19 @@
+{
+    "list": "List term and policies success",
+    "get": "Get term and policy success",
+    "accept": "Term or policy accepted",
+    "accepted": "List of accepted terms and policies.",
+    "pending": "List of pending terms and policies.",
+    "delete": "Term and policy deleted success.",
+    "update": "Update term and policy success.",
+    "create": "New term and policy created.",
+    "error": {
+        "exist": "A term and policy with this specification already exists.",
+        "notFound": "Term and policy not found.",
+        "notAccepted": "You need to accept {property} policy before you can use this feature.",
+        "inactive": "The term and policy is not active, most likely there's a newer version available",
+        "alreadyAccepted": "Term and policy has already been accepted",
+        "newerVersionExist": "Newer version of the term and policy exists.",
+        "updateForbiddenStatusPublished": "You can't update a published term and policy, you need to create a new version."
+    }
+}

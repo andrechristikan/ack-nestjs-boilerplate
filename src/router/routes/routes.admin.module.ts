@@ -20,8 +20,8 @@ import { UserModule } from 'src/modules/user/user.module';
 import { VerificationModule } from 'src/modules/verification/verification.module';
 import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 import { SettingAdminController } from '@modules/setting/controllers/setting.admin.controller';
-import { TermsPolicyAdminController } from '@modules/terms-policy/controllers/terms-policy.admin.controller';
-import { TermsPolicyModule } from '@modules/terms-policy/terms-policy.module';
+import { TermPolicyAdminController } from '@modules/term-policy/controllers/term-policy-admin.controller';
+import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 
 @Module({
     controllers: [
@@ -33,7 +33,7 @@ import { TermsPolicyModule } from '@modules/terms-policy/terms-policy.module';
         PasswordHistoryAdminController,
         ActivityAdminController,
         SettingAdminController,
-        TermsPolicyAdminController
+        TermPolicyAdminController
     ],
     providers: [],
     exports: [],
@@ -49,7 +49,7 @@ import { TermsPolicyModule } from '@modules/terms-policy/terms-policy.module';
         PasswordHistoryModule,
         ActivityModule,
         VerificationModule,
-        TermsPolicyModule,
+        TermPolicyModule,
         BullModule.registerQueueAsync({
             name: ENUM_WORKER_QUEUES.EMAIL_QUEUE,
         }),

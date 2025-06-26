@@ -58,7 +58,7 @@ import {
     IAuthSocialGooglePayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { SettingFeatureFlag } from '@modules/setting/decorators/setting.decorator';
-import { TermsPolicyUserService } from '@modules/terms-policy/services/terms-policy-user.service';
+import { TermPolicyUserService } from '@modules/term-policy/services/term-policy-user.service';
 import { RequestCountry, RequestLanguage } from '@common/request/decorators/request.decorator';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
@@ -81,7 +81,7 @@ export class AuthPublicController {
         private readonly sessionService: SessionService,
         private readonly activityService: ActivityService,
         private readonly messageService: MessageService,
-        private readonly termsPolicyUserService: TermsPolicyUserService
+        private readonly termPolicyUserService: TermPolicyUserService
     ) {}
 
     @AuthPublicLoginCredentialDoc()
@@ -406,7 +406,7 @@ export class AuthPublicController {
                 { session }
             );
 
-            await this.termsPolicyUserService.createAcceptances(
+            await this.termPolicyUserService.createAcceptances(
                 user._id,
                 legal.getAcceptedPolicyTypes(),
                 requestLanguage,

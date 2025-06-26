@@ -19,7 +19,7 @@ import { UserModule } from '@modules/user/user.module';
 import { MigrationSettingFeatureSeed } from '@migration/seeds/migration.settings.seed';
 import { SettingModule } from '@modules/setting/setting.module';
 import { MigrationTermSeed } from '@migration/seeds/migration.terms.seed';
-import { TermsPolicyModule } from '@modules/terms-policy/terms-policy.module';
+import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 
 // TODO: (v8) CHANGE WITH COMMANDER
 @Module({
@@ -38,7 +38,7 @@ import { TermsPolicyModule } from '@modules/terms-policy/terms-policy.module';
         CountryModule,
         VerificationModule,
         SettingModule,
-        TermsPolicyModule,
+        TermPolicyModule,
     ],
     providers: [
         MigrationApiKeySeed,

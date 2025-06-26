@@ -1,16 +1,16 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { TermsPolicyService } from '@modules/terms-policy/services/terms-policy.service';
-import { TermsPolicyCreateRequestDto } from '@modules/terms-policy/dtos/request/terms-policy.create.request.dto';
+import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
+import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
-import { ENUM_TERMS_POLICY_TYPE } from '@modules/terms-policy/enums/terms-policy.enum';
+import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 
 @Injectable()
 export class MigrationTermSeed {
     constructor(
         private readonly helperDateService: HelperDateService,
-        private readonly termPolicyService: TermsPolicyService
+        private readonly termPolicyService: TermPolicyService
     ) {}
 
     @Command({
@@ -19,7 +19,7 @@ export class MigrationTermSeed {
     })
     async seeds(): Promise<void> {
         const now = this.helperDateService.create();
-        const data: TermsPolicyCreateRequestDto[] = [
+        const data: TermPolicyCreateRequestDto[] = [
             {
                 title: 'Website Terms and Conditions v1',
                 description:
@@ -29,7 +29,7 @@ export class MigrationTermSeed {
                 version: 1,
                 country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
-                type: ENUM_TERMS_POLICY_TYPE.TERMS,
+                type: ENUM_TERM_POLICY_TYPE.TERM,
                 publishedAt: this.helperDateService.backward(
                     now,
                     this.helperDateService.createDuration({ days: 2 })
@@ -44,7 +44,7 @@ export class MigrationTermSeed {
                 version: 2,
                 country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
-                type: ENUM_TERMS_POLICY_TYPE.TERMS,
+                type: ENUM_TERM_POLICY_TYPE.TERM,
                 publishedAt: this.helperDateService.backward(
                     now,
                     this.helperDateService.createDuration({ days: 1 })
@@ -59,7 +59,7 @@ export class MigrationTermSeed {
                 version: 1,
                 country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
-                type: ENUM_TERMS_POLICY_TYPE.PRIVACY,
+                type: ENUM_TERM_POLICY_TYPE.PRIVACY,
                 publishedAt: this.helperDateService.backward(
                     now,
                     this.helperDateService.createDuration({ days: 1 })
@@ -74,7 +74,7 @@ export class MigrationTermSeed {
                 version: 1,
                 country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
-                type: ENUM_TERMS_POLICY_TYPE.MARKETING,
+                type: ENUM_TERM_POLICY_TYPE.MARKETING,
                 publishedAt: this.helperDateService.backward(
                     now,
                     this.helperDateService.createDuration({ days: 2 })
@@ -89,7 +89,7 @@ export class MigrationTermSeed {
                 version: 2,
                 country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
-                type: ENUM_TERMS_POLICY_TYPE.MARKETING,
+                type: ENUM_TERM_POLICY_TYPE.MARKETING,
                 publishedAt: this.helperDateService.backward(
                     now,
                     this.helperDateService.createDuration({ days: 1 })
@@ -104,7 +104,7 @@ export class MigrationTermSeed {
                 version: 1,
                 country: 'UK',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
-                type: ENUM_TERMS_POLICY_TYPE.COOKIES,
+                type: ENUM_TERM_POLICY_TYPE.COOKIES,
                 publishedAt: this.helperDateService.backward(
                     now,
                     this.helperDateService.createDuration({ days: 1 })
