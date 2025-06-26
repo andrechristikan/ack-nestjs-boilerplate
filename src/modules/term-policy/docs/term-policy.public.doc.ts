@@ -15,7 +15,7 @@ export function TermPolicyPublicListDoc(): MethodDecorator {
     DocRequest({
       params: [...TermPolicyLanguageDocParam],
     }),
-    DocResponse<TermPolicyListResponseDto>('term-policy.list', {
+    DocResponse<TermPolicyListResponseDto>('termPolicy.list', {
       dto: TermPolicyListResponseDto,
     }),
   );
@@ -32,7 +32,7 @@ export function TermPolicyPublicGetDoc(): MethodDecorator {
         ...TermPolicyTypeDocParam,
       ],
     }),
-    DocResponse<TermPolicyGetResponseDto>('term-policy.get', {
+    DocResponse<TermPolicyGetResponseDto>('termPolicy.get', {
       dto: TermPolicyGetResponseDto,
     }),
   );

@@ -4,7 +4,7 @@ import { RequireTrue } from '@common/request/validations/request.require-boolean
 export function RequireUserAgreement(validationOptions?: ValidationOptions) {
     return RequireTrue({
         //FIXME: The message override specified here, is not currently being picked up by the current AppValidationFilter
-        message: 'legal.error.requireAgreement',
+        message: 'termPolicy.error.requireAgreement',
         ...validationOptions,
     });
 }

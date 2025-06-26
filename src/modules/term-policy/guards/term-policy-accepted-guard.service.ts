@@ -58,7 +58,7 @@ export class TermPolicyAcceptedGuard implements CanActivate {
         if (!latestPolicy) {
             throw new BadRequestException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'term-policy.error.notFound',
+                message: 'termPolicy.error.notFound',
             });
         }
 
@@ -75,7 +75,7 @@ export class TermPolicyAcceptedGuard implements CanActivate {
             // User never accepted this term-policy
             this.throwPolicyError(
                 ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_ACCEPTED,
-                'term-policy.error.notAccepted',
+                'termPolicy.error.notAccepted',
                 options,
                 latestPolicy
             );
@@ -88,7 +88,7 @@ export class TermPolicyAcceptedGuard implements CanActivate {
             // User had accepted a older version of the term-policy
             this.throwPolicyError(
                 ENUM_TERM_POLICY_STATUS_CODE_ERROR.REQUIRE_ACCEPT_NEW_VERSION,
-                'term-policy.error.newerVersionExist',
+                'termPolicy.error.newerVersionExist',
                 options,
                 latestPolicy,
                 userAcceptedPolicy.version

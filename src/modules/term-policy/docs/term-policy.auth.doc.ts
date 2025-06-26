@@ -23,7 +23,7 @@ export function TermPolicyAuthListDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
-        DocResponsePaging<TermPolicyListResponseDto>('term-policy.list', {
+        DocResponsePaging<TermPolicyListResponseDto>('termPolicy.list', {
             dto: TermPolicyListResponseDto,
         })
     );
@@ -42,7 +42,7 @@ export function TermPolicyAuthUpdateDoc(): MethodDecorator {
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
             dto: TermPolicyCreateRequestDto,
         }),
-        DocResponse<TermPolicyGetResponseDto>('term-policy.update', {
+        DocResponse<TermPolicyGetResponseDto>('termPolicy.update', {
             dto: TermPolicyGetResponseDto,
         })
     );
@@ -59,7 +59,7 @@ export function TermPolicyAuthGetDoc(): MethodDecorator {
         DocRequest({
             params: [TermPolicyDocParamsId],
         }),
-        DocResponse<TermPolicyGetResponseDto>('term-policy.get', {
+        DocResponse<TermPolicyGetResponseDto>('termPolicy.get', {
             dto: TermPolicyGetResponseDto,
         })
     );
@@ -78,7 +78,7 @@ export function TermPolicyAuthAcceptDoc(): MethodDecorator {
             dto: TermPolicyAcceptRequestDto,
         }),
         DocResponse<TermPolicyAcceptanceGetResponseDto>(
-            'term-policy.accept',
+            'termPolicy.accept',
             {
                 dto: TermPolicyAcceptanceGetResponseDto,
             }
@@ -95,7 +95,7 @@ export function TermPolicyAuthAcceptedDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocResponse<TermPolicyAcceptanceListResponseDto>(
-            'term-policy.accepted',
+            'termPolicy.accepted',
             {
                 dto: TermPolicyAcceptanceListResponseDto,
             }

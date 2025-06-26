@@ -43,7 +43,7 @@ export class TermPolicyUserController {
 
     @TermPolicyAuthAcceptDoc()
     @Post('/accept')
-    @Response('term-policy.accept')
+    @Response('termPolicy.accept')
     @UserProtected()
     @AuthJwtAccessProtected()
     async accept(
@@ -60,7 +60,7 @@ export class TermPolicyUserController {
         if (!policy) {
             throw new NotFoundException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'term-policy.error.notFound',
+                message: 'termPolicy.error.notFound',
             });
         }
 
@@ -70,7 +70,7 @@ export class TermPolicyUserController {
         if (!isPublished) {
             throw new BadRequestException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_PUBLISHED,
-                message: 'term-policy.error.inactive',
+                message: 'termPolicy.error.inactive',
             });
         }
 
@@ -85,7 +85,7 @@ export class TermPolicyUserController {
             throw new BadRequestException({
                 statusCode:
                     ENUM_TERM_POLICY_STATUS_CODE_ERROR.ALREADY_ACCEPTED,
-                message: 'term-policy.error.alreadyAccepted',
+                message: 'termPolicy.error.alreadyAccepted',
             });
         }
 
@@ -101,7 +101,7 @@ export class TermPolicyUserController {
             throw new BadRequestException({
                 statusCode:
                 ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_LATEST_VERSION,
-                message: 'term-policy.error.newerVersionExist',
+                message: 'termPolicy.error.newerVersionExist',
             });
         }
 
@@ -121,7 +121,7 @@ export class TermPolicyUserController {
 
     @TermPolicyAuthAcceptedDoc()
     @Get('/accepted')
-    @Response('term-policy.accepted')
+    @Response('termPolicy.accepted')
     @UserProtected()
     @AuthJwtAccessProtected()
     async accepted(
@@ -136,7 +136,7 @@ export class TermPolicyUserController {
     }
 
     @Get('/pending')
-    @Response('term-policy.pending')
+    @Response('termPolicy.pending')
     @UserProtected()
     @AuthJwtAccessProtected()
     async pending(

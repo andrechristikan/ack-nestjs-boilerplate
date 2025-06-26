@@ -24,7 +24,7 @@ export class TermPolicyPublicController {
 
     @TermPolicyPublicListDoc()
     @Get('/:lang')
-    @Response('term-policy.list')
+    @Response('termPolicy.list')
     async getList(
         @Param() request: TermPolicyListRequestDto,
         @RequestCountry() country: string
@@ -44,7 +44,7 @@ export class TermPolicyPublicController {
 
     @TermPolicyPublicGetDoc()
     @Get('/:lang/:type')
-    @Response('term-policy.get')
+    @Response('termPolicy.get')
     async getLatest(
         @Param() request: TermPolicyGetRequestDto
     ): Promise<IResponse<TermPolicyGetResponseDto>> {
@@ -58,7 +58,7 @@ export class TermPolicyPublicController {
         if (!policy) {
             throw new NotFoundException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'term-policy.error.notFound',
+                message: 'termPolicy.error.notFound',
             });
         }
 

@@ -18,7 +18,7 @@ export class TermPolicyParsePipe implements PipeTransform {
     if (!termPolicy) {
       throw new NotFoundException({
         statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
-        message: 'term-policy.error.notFound',
+        message: 'termPolicy.error.notFound',
       });
     }
     return termPolicy;

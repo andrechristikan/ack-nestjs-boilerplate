@@ -68,7 +68,7 @@ export class TermPolicyAdminController {
     ) {}
 
     @TermPolicyAuthListDoc()
-    @ResponsePaging('term-policy.list')
+    @ResponsePaging('termPolicy.list')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM,
         action: [ENUM_POLICY_ACTION.READ],
@@ -112,7 +112,7 @@ export class TermPolicyAdminController {
     @TermPolicyAuthGetDoc()
     @UserProtected()
     @AuthJwtAccessProtected()
-    @Response('term-policy.get')
+    @Response('termPolicy.get')
     @Get('/:id')
     async get(
         @Param('id') id: string
@@ -122,7 +122,7 @@ export class TermPolicyAdminController {
         if (!termPolicy) {
             throw new NotFoundException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'term-policy.error.notFound',
+                message: 'termPolicy.error.notFound',
             });
         }
 
@@ -133,7 +133,7 @@ export class TermPolicyAdminController {
     }
 
     @TermPolicyAdminCreateDoc()
-    @Response('term-policy.create')
+    @Response('termPolicy.create')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM,
         action: [ENUM_POLICY_ACTION.CREATE],
@@ -154,7 +154,7 @@ export class TermPolicyAdminController {
         if (exist) {
             throw new ConflictException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.EXIST,
-                message: 'term-policy.error.exist',
+                message: 'termPolicy.error.exist',
             });
         }
         const termPolicy = await this.termPolicyService.create(dto);
@@ -165,7 +165,7 @@ export class TermPolicyAdminController {
     }
 
     @TermPolicyAuthUpdateDoc()
-    @Response('term-policy.update')
+    @Response('termPolicy.update')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM,
         action: [ENUM_POLICY_ACTION.UPDATE],
@@ -184,7 +184,7 @@ export class TermPolicyAdminController {
         if (!termPolicy) {
             throw new NotFoundException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'term-policy.error.notFound',
+                message: 'termPolicy.error.notFound',
             });
         }
 
@@ -195,7 +195,7 @@ export class TermPolicyAdminController {
             throw new BadRequestException({
                 statusCode:
                     ENUM_TERM_POLICY_STATUS_CODE_ERROR.UPDATE_FORBIDDEN_STATUS_PUBLISHED,
-                message: 'term-policy.error.updateForbiddenStatusPublished',
+                message: 'termPolicy.error.updateForbiddenStatusPublished',
             });
         }
 
@@ -213,7 +213,7 @@ export class TermPolicyAdminController {
     }
 
     @TermPolicyAdminDeleteDoc()
-    @Response('term-policy.delete')
+    @Response('termPolicy.delete')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM,
         action: [ENUM_POLICY_ACTION.DELETE],
@@ -229,7 +229,7 @@ export class TermPolicyAdminController {
         if (!termPolicy) {
             throw new NotFoundException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'term-policy.error.notFound',
+                message: 'termPolicy.error.notFound',
             });
         }
 

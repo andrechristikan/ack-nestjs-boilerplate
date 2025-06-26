@@ -23,7 +23,7 @@ export function TermPolicyAdminCreateDoc(): MethodDecorator {
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
             dto: TermPolicyCreateRequestDto,
         }),
-        DocResponse<TermPolicyGetResponseDto>('term-policy.create', {
+        DocResponse<TermPolicyGetResponseDto>('termPolicy.create', {
             dto: TermPolicyGetResponseDto,
         })
     );
@@ -41,6 +41,6 @@ export function TermPolicyAdminDeleteDoc(): MethodDecorator {
         DocRequest({
             params: [TermPolicyDocParamsId],
         }),
-        DocResponse<TermPolicyGetResponseDto>('term-policy.delete')
+        DocResponse<TermPolicyGetResponseDto>('termPolicy.delete')
     );
 }
