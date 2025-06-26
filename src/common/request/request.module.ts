@@ -43,7 +43,7 @@ export class RequestModule {
                     useFactory: () =>
                         new ValidationPipe({
                             transform: true,
-                            skipUndefinedProperties: true,
+                            skipUndefinedProperties: false,
                             forbidUnknownValues: true,
                             errorHttpStatusCode:
                                 HttpStatus.UNPROCESSABLE_ENTITY,

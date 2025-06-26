@@ -1,4 +1,4 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Processor } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
@@ -13,9 +13,10 @@ import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { IEmailProcessor } from '@modules/email/interfaces/email.processor.interface';
 import { EmailService } from '@modules/email/services/email.service';
 import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
+import { WorkerBase } from '@workers/bases/worker.base';
 
 @Processor(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
-export class EmailProcessor extends WorkerHost implements IEmailProcessor {
+export class EmailProcessor extends WorkerBase implements IEmailProcessor {
     private readonly debug: boolean;
     private readonly logger = new Logger(EmailProcessor.name);
 
