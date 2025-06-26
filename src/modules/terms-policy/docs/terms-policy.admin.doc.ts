@@ -8,7 +8,7 @@ import { TermsPolicyGetResponseDto } from '@modules/terms-policy/dtos/response/t
 import { TermsPolicyCreateRequestDto } from '../dtos/request/terms-policy.create.request.dto';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import { applyDecorators } from '@nestjs/common';
-import { TermsPolicyDocParamsId } from '@modules/terms-policy/constants/terms-policy.constant.doc';
+import { TermsPolicyDocParamsId } from '@modules/terms-policy/constants/terms-policy.doc.constant';
 
 export function TermsPolicyAdminCreateDoc(): MethodDecorator {
     return applyDecorators(

@@ -6,11 +6,6 @@ import {
     Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import {
-    ITermsPolicyOptions,
-    TERMS_POLICY_OPTIONS_META_KEY,
-    TERMS_POLICY_TYPE_META_KEY,
-} from '../decorators/terms-policy.decorator';
 import { TermsPolicyAcceptanceService } from '../services/terms-policy-acceptance.service';
 import { ENUM_TERMS_POLICY_TYPE } from '@modules/terms-policy/enums/terms-policy.enum';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
@@ -18,6 +13,11 @@ import { ENUM_TERMS_POLICY_STATUS_CODE_ERROR } from '@modules/terms-policy/enums
 import { TermsPolicyDoc } from '@modules/terms-policy/repository/entities/terms-policy.entity';
 import { TermsPolicyService } from '../services/terms-policy.service';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import {
+    TERMS_POLICY_OPTIONS_META_KEY,
+    TERMS_POLICY_TYPE_META_KEY,
+} from '../constants/terms-policy.constant';
+import { ITermsPolicyOptions } from '../decorators/terms-policy.decorator';
 
 @Injectable()
 export class TermsPolicyAcceptedGuard implements CanActivate {
@@ -47,11 +47,12 @@ export class TermsPolicyAcceptedGuard implements CanActivate {
         const language = request.__language;
         const country = request.__country;
 
-        // Include the language when retrieving the latest policy
         const latestPolicy = await this.termsPolicyService.findOne({
             type: policyType,
             language: language,
             country: country,
+            latest: true,
+            published: true,
         });
 
         if (!latestPolicy) {
@@ -61,7 +62,7 @@ export class TermsPolicyAcceptedGuard implements CanActivate {
             });
         }
 
-        // Did the user accepted any version of this terms type?
+        // Did the user accept any version of this terms type?
         const userAcceptedPolicy =
             await this.termsPolicyAcceptanceService.findOneByUser(
                 user.sub,
@@ -71,49 +72,72 @@ export class TermsPolicyAcceptedGuard implements CanActivate {
             );
 
         if (!userAcceptedPolicy) {
-            return this.handleFailure(options, latestPolicy);
+            // User never accepted this term-policy
+            this.throwPolicyError(
+                ENUM_TERMS_POLICY_STATUS_CODE_ERROR.NOT_ACCEPTED,
+                'terms-policy.error.notAccepted',
+                options,
+                latestPolicy
+            );
         }
 
-        if (options.requireLatestVersion) {
-            const isLatestVersion =
-                userAcceptedPolicy.version >= latestPolicy.version;
-
-            if (!isLatestVersion) {
-                return this.handleFailure(options, latestPolicy);
-            }
+        if (
+            options.requireLatestVersion &&
+            userAcceptedPolicy.version !== latestPolicy.version
+        ) {
+            // User had accepted a older version of the term-policy
+            this.throwPolicyError(
+                ENUM_TERMS_POLICY_STATUS_CODE_ERROR.REQUIRE_ACCEPT_NEW_VERSION,
+                'terms-policy.error.newerVersionExist',
+                options,
+                latestPolicy,
+                userAcceptedPolicy.version
+            );
         }
 
         return true;
     }
 
-    private handleFailure(
+    private throwPolicyError(
+        statusCode: ENUM_TERMS_POLICY_STATUS_CODE_ERROR,
+        message: string,
         options: ITermsPolicyOptions,
-        policy: TermsPolicyDoc
-    ): boolean {
+        policy: TermsPolicyDoc,
+        currentAcceptedVersion?: number
+    ): void {
+        const newerVersionAvailable =
+            statusCode ===
+            ENUM_TERMS_POLICY_STATUS_CODE_ERROR.REQUIRE_ACCEPT_NEW_VERSION;
+
         if (options.respondWithPolicyDetails) {
+            const policyDetails: Record<string, any> = {
+                id: policy.id,
+                type: policy.type,
+                version: policy.version,
+                country: policy.country,
+                language: policy.language,
+            };
+
+            if (newerVersionAvailable && currentAcceptedVersion !== undefined) {
+                policyDetails.currentAcceptedVersion = currentAcceptedVersion;
+            }
+
             throw new ForbiddenException({
-                statusCode: ENUM_TERMS_POLICY_STATUS_CODE_ERROR.NOT_ACCEPTED,
-                message: 'terms-policy.error.notAccepted',
+                statusCode,
+                message,
                 _metadata: {
                     customProperty: {
                         messageProperties: {
                             property: policy.type,
                         },
                     },
-                    policyDetails: {
-                        id: policy.id,
-                        type: policy.type,
-                        version: policy.version,
-                        country: policy.country,
-                        language: policy.language
-                    },
+                    policyDetails,
                 },
             });
         } else {
-            // Generic error without policy details
             throw new ForbiddenException({
-                statusCode: ENUM_TERMS_POLICY_STATUS_CODE_ERROR.NOT_ACCEPTED,
-                message: 'terms-policy.error.notAccepted',
+                statusCode,
+                message,
             });
         }
     }

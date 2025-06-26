@@ -4,7 +4,7 @@ import { TermsPolicyListResponseDto } from '@modules/terms-policy/dtos/response/
 import {
   TermsPolicyLanguageDocParam,
   TermsPolicyTypeDocParam,
-} from '@modules/terms-policy/constants/terms-policy.constant.doc';
+} from '@modules/terms-policy/constants/terms-policy.doc.constant';
 import { TermsPolicyGetResponseDto } from '@modules/terms-policy/dtos/response/terms-policy.get.response.dto';
 
 export function TermsPolicyPublicListDoc(): MethodDecorator {

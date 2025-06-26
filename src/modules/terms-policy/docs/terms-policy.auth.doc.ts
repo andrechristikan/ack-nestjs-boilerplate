@@ -12,7 +12,7 @@ import { TermsPolicyAcceptanceGetResponseDto } from '@modules/terms-policy/dtos/
 import { TermsPolicyAcceptanceListResponseDto } from '@modules/terms-policy/dtos/response/terms-policy-acceptance.list.response.dto';
 import { TermsPolicyCreateRequestDto } from '@modules/terms-policy/dtos/request/terms-policy.create.request.dto';
 import { TermsPolicyGetResponseDto } from '@modules/terms-policy/dtos/response/terms-policy.get.response.dto';
-import { TermsPolicyDocParamsId } from '@modules/terms-policy/constants/terms-policy.constant.doc';
+import { TermsPolicyDocParamsId } from '@modules/terms-policy/constants/terms-policy.doc.constant';
 import { TermsPolicyListResponseDto } from '@modules/terms-policy/dtos/response/terms-policy.list.response.dto';
 
 export function TermsPolicyAuthListDoc(): MethodDecorator {

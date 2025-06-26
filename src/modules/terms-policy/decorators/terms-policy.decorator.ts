@@ -1,22 +1,23 @@
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
-import { TermsPolicyAcceptedGuard } from '../guards/terms-policy-accepted.guard';
 import { ENUM_TERMS_POLICY_TYPE } from '@modules/terms-policy/enums/terms-policy.enum';
-
-export const TERMS_POLICY_TYPE_META_KEY = 'terms_policy_type';
-export const TERMS_POLICY_OPTIONS_META_KEY = 'terms_policy_options';
+import {
+    TERMS_POLICY_OPTIONS_META_KEY,
+    TERMS_POLICY_TYPE_META_KEY,
+} from '@modules/terms-policy/constants/terms-policy.constant';
+import { TermsPolicyAcceptedGuard } from '../guards/terms-policy-accepted.guard';
 
 export interface ITermsPolicyOptions {
-  /**
-   * If true, ensures the user has accepted the latest version of the policy
-   * If false, any accepted version is valid (default: true)
-   */
-  requireLatestVersion?: boolean;
-  
-  /**
-   * If true, throws a specific error with policy details to help frontend redirect
-   * If false, throws a generic forbidden error (default: true)
-   */
-  respondWithPolicyDetails?: boolean;
+    /**
+     * If true, ensures the user has accepted the latest version of the policy
+     * If false, any accepted version is valid (default: true)
+     */
+    requireLatestVersion?: boolean;
+
+    /**
+     * If true, throws a specific error with policy details to help frontend redirect
+     * If false, throws a generic forbidden error (default: true)
+     */
+    respondWithPolicyDetails?: boolean;
 }
 
 /**
@@ -25,19 +26,19 @@ export interface ITermsPolicyOptions {
  * @param options Configuration options for the guard behavior
  */
 export function TermsPolicyAccepted(
-  policyType: ENUM_TERMS_POLICY_TYPE, 
-  options: ITermsPolicyOptions = {}
+    policyType: ENUM_TERMS_POLICY_TYPE,
+    options: ITermsPolicyOptions = {}
 ): MethodDecorator {
-  const defaultOptions: ITermsPolicyOptions = {
-    requireLatestVersion: true,
-    respondWithPolicyDetails: true
-  };
-  
-  const mergedOptions = { ...defaultOptions, ...options };
-  
-  return applyDecorators(
-    UseGuards(TermsPolicyAcceptedGuard),
-    SetMetadata(TERMS_POLICY_TYPE_META_KEY, policyType),
-    SetMetadata(TERMS_POLICY_OPTIONS_META_KEY, mergedOptions),
-  );
+    const defaultOptions: ITermsPolicyOptions = {
+        requireLatestVersion: true,
+        respondWithPolicyDetails: true,
+    };
+
+    const mergedOptions = { ...defaultOptions, ...options };
+
+    return applyDecorators(
+        UseGuards(TermsPolicyAcceptedGuard),
+        SetMetadata(TERMS_POLICY_TYPE_META_KEY, policyType),
+        SetMetadata(TERMS_POLICY_OPTIONS_META_KEY, mergedOptions)
+    );
 }
