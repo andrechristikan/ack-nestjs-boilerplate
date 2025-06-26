@@ -25,9 +25,14 @@ export class AuthSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     @MaxLength(50)
     password: string;
 
+    @ApiProperty({
+        description: 'Term policies agreement for user signup',
+        type: TermPolicySignupRequestDto,
+        required: true,
+    })
     @IsObject()
     @IsNotEmptyObject()
     @ValidateNested()
     @Type(() => TermPolicySignupRequestDto)
-    legal: TermPolicySignupRequestDto
+    termPolicies: TermPolicySignupRequestDto
 }

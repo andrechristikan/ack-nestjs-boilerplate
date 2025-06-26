@@ -3,7 +3,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
 import { RequireUserAgreement } from '@modules/term-policy/validations/require-user-consent.validation';
 
-export class TermPolicySignupRequestDto {
+type TermPolicyProperties = {
+    [K in ENUM_TERM_POLICY_TYPE]: boolean;
+};
+
+export class TermPolicySignupRequestDto implements TermPolicyProperties{
     @ApiProperty({
         description:
             'Indicates whether the user accepted the Terms of Service. Must be true.',
@@ -11,7 +15,7 @@ export class TermPolicySignupRequestDto {
     })
     @RequireUserAgreement()
     @IsBoolean()
-    [ENUM_TERM_POLICY_TYPE.TERM]: boolean;
+    term: boolean;
 
     @ApiProperty({
         description:
@@ -20,7 +24,7 @@ export class TermPolicySignupRequestDto {
     })
     @IsBoolean()
     @RequireUserAgreement()
-    [ENUM_TERM_POLICY_TYPE.PRIVACY]: boolean;
+    privacy: boolean;
 
     @ApiProperty({
         description:
@@ -29,7 +33,7 @@ export class TermPolicySignupRequestDto {
         required: false,
     })
     @IsBoolean()
-    [ENUM_TERM_POLICY_TYPE.MARKETING]: boolean;
+    marketing: boolean;
 
     @ApiProperty({
         description:
@@ -37,7 +41,7 @@ export class TermPolicySignupRequestDto {
         example: true,
     })
     @IsBoolean()
-    [ENUM_TERM_POLICY_TYPE.COOKIES]: boolean;
+    cookies: boolean;
 
     /**
      * Returns a list of policy types that the user has accepted (where value is true)

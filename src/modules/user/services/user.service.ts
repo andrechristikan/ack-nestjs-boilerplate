@@ -294,7 +294,7 @@ export class UserService implements IUserService {
 
     async signUp(
         role: string,
-        { email, name, country }: Omit<AuthSignUpRequestDto, 'legal' | 'password'>,
+        { email, name, country }: Omit<AuthSignUpRequestDto, 'termPolicies' | 'password'>,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {

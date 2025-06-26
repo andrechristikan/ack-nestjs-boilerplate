@@ -360,7 +360,7 @@ export class AuthPublicController {
     @Post('/sign-up')
     async signUp(
         @Body()
-        { email, name, password: passwordString, country, legal }: AuthSignUpRequestDto,
+        { email, name, password: passwordString, country, termPolicies }: AuthSignUpRequestDto,
         @RequestLanguage() requestLanguage: ENUM_MESSAGE_LANGUAGE,
         @RequestCountry() requestCountry: string,
     ): Promise<void> {
@@ -408,7 +408,7 @@ export class AuthPublicController {
 
             await this.termPolicyUserService.createAcceptances(
                 user._id,
-                legal.getAcceptedPolicyTypes(),
+                termPolicies.getAcceptedPolicyTypes(),
                 requestLanguage,
                 requestCountry,
                 { session }
