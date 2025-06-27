@@ -13,7 +13,7 @@ export default registerAs(
         country:{
             available: process.env.APP_COUNTRY,
             default: process.env.APP_COUNTRY,
-            header: "x-custom-lang"
+            header: "x-custom-country"
         },
 
         http: {
