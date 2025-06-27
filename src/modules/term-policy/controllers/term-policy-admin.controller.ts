@@ -4,8 +4,10 @@ import {
     Body,
     ConflictException,
     Controller,
-    Delete,
     Get,
+    HttpCode,
+    HttpStatus,
+    InternalServerErrorException,
     NotFoundException,
     Param,
     Post,
@@ -47,13 +49,21 @@ import {
     TermPolicyAuthListDoc,
     TermPolicyAuthUpdateDoc,
 } from '@modules/term-policy/docs/term-policy.auth.doc';
-import {
-    TermPolicyAdminCreateDoc,
-    TermPolicyAdminDeleteDoc,
-} from '@modules/term-policy/docs/term-policy.admin.doc';
+import { TermPolicyAdminCreateDoc } from '@modules/term-policy/docs/term-policy.admin.doc';
 import { UserParsePipe } from '@modules/user/pipes/user.parse.pipe';
 import { UserDoc } from '@modules/user/repository/entities/user.entity';
 import { TermPolicyUpdateRequestDto } from '@modules/term-policy/dtos/request/term-policy.update.request.dto';
+import { AwsS3PresignResponseDto } from '@modules/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3Service } from '@modules/aws/services/aws.s3.service';
+import { DatabaseService } from '@common/database/services/database.service';
+import { ClientSession } from 'mongoose';
+import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
+import { TermPolicyUploadDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.upload-document.request';
+import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
+import { TermPolicyUpdateDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.update-document.request';
+import { ActivityService } from '@modules/activity/services/activity.service';
+import { MessageService } from '@common/message/services/message.service';
+import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
 
 @ApiTags('modules.admin.term-policy')
 @Controller({
@@ -64,7 +74,11 @@ export class TermPolicyAdminController {
     constructor(
         private readonly termPolicyService: TermPolicyService,
         private readonly helperDateService: HelperDateService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly activityService: ActivityService,
+        private readonly awsS3Service: AwsS3Service,
+        private readonly messageService: MessageService,
+        private readonly databaseService: DatabaseService
     ) {}
 
     @TermPolicyAuthListDoc()
@@ -164,6 +178,81 @@ export class TermPolicyAdminController {
         };
     }
 
+
+    @Response('termPolicy.updateDocument')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.TERM,
+        action: [ENUM_POLICY_ACTION.CREATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @Put('/update-document')
+    async updateDocument(
+        @Body() dto: TermPolicyUpdateDocumentRequestDto,
+        @AuthJwtPayload('user', UserParsePipe) user: UserDoc
+    ): Promise<IResponse<TermPolicyGetResponseDto>> {
+        // Check if term policy already exists
+        const exist = await this.termPolicyService.findOne({
+            type: dto.type,
+            country: dto.country,
+            language: dto.language,
+        });
+
+        if (exist) {
+            throw new NotFoundException({
+                statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.EXIST,
+                message: 'termPolicy.error.exist',
+            });
+        }
+
+        const session: ClientSession =
+            await this.databaseService.createTransaction();
+
+        try {
+            const aws: AwsS3Dto = this.awsS3Service.mapPresign(dto);
+
+            // Create term policy record in MongoDB
+            const termPolicy = await this.termPolicyService.create(
+                {
+                    title: dto.title,
+                    description: dto.description,
+                    documentUrl: aws.completedUrl,
+                    version: dto.version,
+                    country: dto.country,
+                    language: dto.language,
+                    type: dto.type,
+                    publishedAt: dto.publishedAt || new Date(),
+                },
+                { session }
+            );
+            await this.activityService.createByUser(
+                user,
+                {
+                    description:
+                        this.messageService.setMessage('termPolicy.update'),
+                },
+                { session }
+            );
+
+            await this.databaseService.commitTransaction(session);
+
+            const mapped = this.termPolicyService.mapGet(termPolicy);
+
+            return {
+                data: mapped,
+            };
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
     @TermPolicyAuthUpdateDoc()
     @Response('termPolicy.update')
     @PolicyAbilityProtected({
@@ -212,28 +301,49 @@ export class TermPolicyAdminController {
         };
     }
 
-    @TermPolicyAdminDeleteDoc()
-    @Response('termPolicy.delete')
+    @Response('termPolicy.uploadDocument')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM,
-        action: [ENUM_POLICY_ACTION.DELETE],
+        action: [ENUM_POLICY_ACTION.CREATE],
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @UserProtected()
     @AuthJwtAccessProtected()
-    @Delete('/:id')
-    async delete(@Param('id') id: string): Promise<IResponse> {
-        // Check if the entity exists before deleting
-        const termPolicy = await this.termPolicyService.findOneById(id);
-
-        if (!termPolicy) {
-            throw new NotFoundException({
-                statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'termPolicy.error.notFound',
+    @HttpCode(HttpStatus.OK)
+    @Post('/upload-document')
+    async uploadDocument(
+        @Body() dto: TermPolicyUploadDocumentRequestDto
+    ): Promise<IResponse<AwsS3PresignResponseDto>> {
+        // Check if term policy already exists
+        const exist = await this.termPolicyService.findOne({
+            language: dto.language,
+            country: dto.country,
+            version: dto.version,
+            type: dto.type,
+        });
+        if (exist) {
+            throw new ConflictException({
+                statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.EXIST,
+                message: 'termPolicy.error.exist',
             });
         }
 
-        await this.termPolicyService.delete(id);
-        return;
+        const filename = this.termPolicyService.createDocumentFilename(
+            dto.type,
+            dto.country,
+            dto.language,
+            'html'
+        );
+
+        const presignUrl = await this.awsS3Service.presignPutItem(
+            filename,
+            dto.size,
+            { access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE }
+        );
+
+        return {
+            data: presignUrl,
+        };
     }
+
 }

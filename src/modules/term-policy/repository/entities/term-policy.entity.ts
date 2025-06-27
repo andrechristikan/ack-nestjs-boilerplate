@@ -25,8 +25,12 @@ export class TermPolicyEntity extends DatabaseUUIDEntityBase {
 
     @DatabaseProp({ required: true })
     title: string;
+
     @DatabaseProp({ required: true })
     description: string;
+
+    @DatabaseProp({ required: true })
+    documentUrl: string;
 
     @DatabaseProp({
         type: String,
@@ -45,9 +49,6 @@ export class TermPolicyEntity extends DatabaseUUIDEntityBase {
 
     @DatabaseProp({ required: true, index: true })
     version: number;
-
-    @DatabaseProp({ required: true })
-    content: string;
 
     @DatabaseProp({ type: Date })
     publishedAt?: Date;

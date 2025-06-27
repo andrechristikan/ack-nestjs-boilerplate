@@ -8,7 +8,6 @@ import { TermPolicyGetResponseDto } from '@modules/term-policy/dtos/response/ter
 import { TermPolicyCreateRequestDto } from '../dtos/request/term-policy.create.request.dto';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import { applyDecorators } from '@nestjs/common';
-import { TermPolicyDocParamsId } from '@modules/term-policy/constants/term-policy.doc.constant';
 
 export function TermPolicyAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
@@ -26,21 +25,5 @@ export function TermPolicyAdminCreateDoc(): MethodDecorator {
         DocResponse<TermPolicyGetResponseDto>('termPolicy.create', {
             dto: TermPolicyGetResponseDto,
         })
-    );
-}
-
-export function TermPolicyAdminDeleteDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'delete term-policy',
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocRequest({
-            params: [TermPolicyDocParamsId],
-        }),
-        DocResponse<TermPolicyGetResponseDto>('termPolicy.delete')
     );
 }

@@ -1,7 +1,7 @@
 import { IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
-import { RequireUserAgreement } from '@modules/term-policy/validations/require-user-consent.validation';
+import { RequireUserAgreement } from '@modules/term-policy/validations/require-user-agreement.validation';
 
 type TermPolicyProperties = {
     [K in ENUM_TERM_POLICY_TYPE]: boolean;

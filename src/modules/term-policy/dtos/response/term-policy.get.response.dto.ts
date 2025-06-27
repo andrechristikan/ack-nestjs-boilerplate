@@ -29,11 +29,11 @@ export class TermPolicyGetResponseDto extends PickType(DatabaseUUIDDto, [
     readonly description: string;
 
     @ApiProperty({
-        description: 'Full content of the terms or policy',
-        example: 'These Terms of Service govern your use of our platform...',
+        description: 'URL to the document containing the full terms or policy',
+        example: 'https://example.com/documents/privacy-policy-v1.html',
         required: true,
     })
-    readonly content: string;
+    readonly documentUrl: string;
 
     @ApiProperty({
         description: 'Language of the terms or policy',

@@ -84,7 +84,7 @@ export class TermPolicyService implements ITermPolicyService {
         entity.language = dto.language;
         entity.description = dto.description;
         entity.version = dto.version;
-        entity.content = dto.content;
+        entity.documentUrl = dto.documentUrl;
         entity.title = dto.title;
         entity.publishedAt = dto.publishedAt;
         return this.termPolicyRepository.create(entity, options);
@@ -100,7 +100,7 @@ export class TermPolicyService implements ITermPolicyService {
                 language,
                 description,
                 version,
-                content,
+                documentUrl,
                 title,
                 publishedAt,
                 country,
@@ -110,7 +110,7 @@ export class TermPolicyService implements ITermPolicyService {
                 entity.language = language;
                 entity.description = description;
                 entity.version = version;
-                entity.content = content;
+                entity.documentUrl = documentUrl;
                 entity.title = title;
                 entity.publishedAt = publishedAt;
                 entity.country = country;
@@ -231,5 +231,14 @@ export class TermPolicyService implements ITermPolicyService {
             policy instanceof Document ? policy.toObject() : policy,
             options
         );
+    }
+
+    createDocumentFilename(
+        type: string,
+        country: string,
+        language: string,
+        extension: string
+    ): string {
+        return `term-policy/${type}_${country}_${language}.${extension}`;
     }
 }

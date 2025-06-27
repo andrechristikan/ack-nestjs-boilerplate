@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDate, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { IsDate, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, Length } from 'class-validator';
 import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
@@ -23,13 +23,14 @@ export class TermPolicyCreateRequestDto {
     readonly description: string;
 
     @ApiProperty({
-        description: 'Content of the terms policy',
-        example: 'These are the terms and conditions...',
+        description: 'URL to the document containing the full terms policy',
+        example: 'https://example.com/documents/privacy-policy-v1.html',
         required: true,
     })
     @IsString()
     @IsNotEmpty()
-    readonly content: string;
+    @IsUrl()
+    readonly documentUrl: string;
 
     @ApiProperty({
         description: 'Version of the terms policy',

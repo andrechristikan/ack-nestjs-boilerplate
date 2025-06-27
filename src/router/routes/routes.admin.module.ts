@@ -22,6 +22,7 @@ import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
 import { SettingAdminController } from '@modules/setting/controllers/setting.admin.controller';
 import { TermPolicyAdminController } from '@modules/term-policy/controllers/term-policy-admin.controller';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
+import { AwsModule } from '@modules/aws/aws.module';
 
 @Module({
     controllers: [
@@ -48,6 +49,7 @@ import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
         SessionModule,
         PasswordHistoryModule,
         ActivityModule,
+        AwsModule,
         VerificationModule,
         TermPolicyModule,
         BullModule.registerQueueAsync({
