@@ -1,18 +1,11 @@
 import { applyDecorators } from '@nestjs/common';
-import {
-    Doc,
-    DocAuth,
-    DocResponse,
-} from '@common/doc/decorators/doc.decorator';
+import { Doc, DocResponse } from '@common/doc/decorators/doc.decorator';
 import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
 
 export function HelloDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'hello test api',
-        }),
-        DocAuth({
-            xApiKey: true,
         }),
         DocResponse<HelloResponseDto>('app.hello', {
             dto: HelloResponseDto,
