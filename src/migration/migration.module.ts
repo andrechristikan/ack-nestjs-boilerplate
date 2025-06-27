@@ -18,6 +18,8 @@ import { SessionModule } from '@modules/session/session.module';
 import { UserModule } from '@modules/user/user.module';
 import { MigrationSettingFeatureSeed } from '@migration/seeds/migration.settings.seed';
 import { SettingModule } from '@modules/setting/setting.module';
+import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
+import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 
 // TODO: (v8) CHANGE WITH COMMANDER
 @Module({
@@ -36,6 +38,7 @@ import { SettingModule } from '@modules/setting/setting.module';
         CountryModule,
         VerificationModule,
         SettingModule,
+        TermPolicyModule,
     ],
     providers: [
         MigrationApiKeySeed,
@@ -44,6 +47,7 @@ import { SettingModule } from '@modules/setting/setting.module';
         MigrationRoleSeed,
         MigrationTemplateSeed,
         MigrationSettingFeatureSeed,
+        MigrationTermPolicySeed
     ],
     exports: [],
 })

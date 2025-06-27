@@ -37,6 +37,7 @@
     "lessThanEqual": "{property} should be less than or equal to {value}.",
     "greaterThan": "{property} should be greater than {value}.",
     "greaterThanEqual": "{property} should be greater than or equal to {value}.",
+    "requireBooleanConstraint": "Please review the field {property}",
     "email": {
         "invalid": "{property} should be a valid email address.",
         "multipleAtSymbols": "{property} should not contain multiple '@' symbols.",
