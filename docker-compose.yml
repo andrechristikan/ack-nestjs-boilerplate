@@ -26,10 +26,7 @@ services:
             resources:
                 limits:
                     cpus: '1'
-                    memory: 1G
-                reservations:
-                    cpus: '0.5'
-                    memory: 512M
+                    memory: 2G
 
     # JWKS Server for token validation
     jwks-server:
@@ -45,7 +42,7 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: '0.5'
+                    cpus: '0.3'
                     memory: 128M
         healthcheck:
             test:
@@ -120,9 +117,7 @@ services:
             resources:
                 limits:
                     cpus: '1'
-                    memory: 1G
-                reservations:
-                    memory: 512M
+                    memory: 1GB
         healthcheck:
             test: mongosh --eval "db.adminCommand('ping')" --quiet
             interval: 10s

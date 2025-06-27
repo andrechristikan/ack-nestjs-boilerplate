@@ -20,7 +20,7 @@ import { DatabaseOptionService } from '@common/database/services/database.option
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { LoggerOptionModule } from '@common/logger/logger.option.module';
 import { LoggerOptionService } from '@common/logger/services/logger.option.service';
-import { createKeyv } from '@keyv/redis';
+import { createKeyv, RedisClientOptions } from '@keyv/redis';
 
 @Module({
     controllers: [],
@@ -69,31 +69,22 @@ import { createKeyv } from '@keyv/redis';
                 max: configService.get<number>('redis.cached.max'),
                 ttl: configService.get<number>('redis.cached.ttl'),
                 stores: [
-                    createKeyv(
-                        {
-                            socket: {
-                                host: configService.get<string>(
-                                    'redis.cached.host'
-                                ),
-                                port: configService.get<number>(
-                                    'redis.cached.port'
-                                ),
-                                tls: configService.get<boolean>(
-                                    'redis.cached.tls'
-                                ),
-                            },
-                            username: configService.get<string>(
-                                'redis.cached.username'
+                    createKeyv({
+                        socket: {
+                            host: configService.get<string>(
+                                'redis.cached.host'
                             ),
-                            password: configService.get<string>(
-                                'redis.cached.password'
+                            port: configService.get<number>(
+                                'redis.cached.port'
                             ),
                         },
-                        {
-                            namespace: configService.get<string>('app.name'),
-                            keyPrefixSeparator: ':',
-                        }
-                    ),
+                        username: configService.get<string>(
+                            'redis.cached.username'
+                        ),
+                        password: configService.get<string>(
+                            'redis.cached.password'
+                        ),
+                    } as RedisClientOptions).store,
                 ],
             }),
             inject: [ConfigService],

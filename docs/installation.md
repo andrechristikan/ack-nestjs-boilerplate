@@ -200,7 +200,7 @@ The Docker setup has been optimized for simplicity. Follow these steps:
    When using Docker, there's no need to upload the JWKS file to an external server. The Docker setup includes a dedicated NGINX container that serves the JWKS file. After generating the keys, you should:
    
    - Make sure the `jwks.json` file is in the `/keys` directory
-   - In your `.env` file, set `AUTH_JWT_JWKS_URI` to `http://jwks-server:3011/.well-known/jwks.json` for internal container communication
+   - In your `.env` file, set `AUTH_JWT_JWKS_URI` to `http://jwks-server/.well-known/jwks.json` for internal container communication
    - From outside Docker, the JWKS file will be accessible at `http://localhost:3011/.well-known/jwks.json`
 
 2. **Setup Environment**:
@@ -209,7 +209,7 @@ The Docker setup has been optimized for simplicity. Follow these steps:
    ```
    
    When editing your `.env` file for Docker usage, ensure that:
-   - Database connections point to the Docker service names (e.g., `mongodb*` instead of `localhost`)
+   - Database connections point to the Docker service names (e.g., `mongo` instead of `localhost`)
    - Redis connections point to the Docker service name (e.g., `redis` instead of `localhost`)
    - The JWKS URI is configured properly as mentioned above
    - The `kid` (Key ID) values for both access token and refresh token
