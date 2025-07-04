@@ -1,5 +1,3 @@
-import { Injectable } from '@nestjs/common';
-import { VerificationRepository } from '@modules/verification/repository/repositories/verification.repository';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -8,22 +6,24 @@ import {
     IDatabaseSaveOptions,
     IDatabaseUpdateManyOptions,
 } from '@common/database/interfaces/database.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
+import { VerificationResponse } from '@modules/verification/dtos/response/verification.response';
+import { ENUM_VERIFICATION_TYPE } from '@modules/verification/enums/verification.enum.constant';
+import { IVerificationService } from '@modules/verification/interfaces/verification.service.interface';
 import {
     VerificationDoc,
     VerificationEntity,
 } from '@modules/verification/repository/entity/verification.entity';
+import { VerificationRepository } from '@modules/verification/repository/repositories/verification.repository';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { HelperNumberService } from '@common/helper/services/helper.number.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { IVerificationService } from '@modules/verification/interfaces/verification.service.interface';
 import { Duration } from 'luxon';
-import { UserDoc } from '@modules/user/repository/entities/user.entity';
-import { ENUM_VERIFICATION_TYPE } from '@modules/verification/enums/verification.enum.constant';
 import { DeleteResult, UpdateResult } from 'mongoose';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
-import { VerificationResponse } from '@modules/verification/dtos/response/verification.response';
-import { DatabaseService } from '@common/database/services/database.service';
 
 @Injectable()
 export class VerificationService implements IVerificationService {
@@ -150,7 +150,7 @@ export class VerificationService implements IVerificationService {
                 isVerify: false,
                 type: ENUM_VERIFICATION_TYPE.EMAIL,
                 ...this.databaseService.filterGte(
-                    'expired',
+                    'expiredDate',
                     this.helperDateService.create()
                 ),
             },
@@ -172,7 +172,7 @@ export class VerificationService implements IVerificationService {
                 isVerify: false,
                 type: ENUM_VERIFICATION_TYPE.MOBILE_NUMBER,
                 ...this.databaseService.filterGte(
-                    'expired',
+                    'expiredDate',
                     this.helperDateService.create()
                 ),
             },
