@@ -27,7 +27,6 @@ import {
     IResponse,
     IResponsePaging,
 } from '@common/response/interfaces/response.interface';
-import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import { PaginationQuery } from '@common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
 import { TermPolicyGetResponseDto } from '@modules/term-policy/dtos/response/term-policy.get.response.dto';
@@ -49,7 +48,11 @@ import {
     TermPolicyAuthListDoc,
     TermPolicyAuthUpdateDoc,
 } from '@modules/term-policy/docs/term-policy.auth.doc';
-import { TermPolicyAdminCreateDoc } from '@modules/term-policy/docs/term-policy.admin.doc';
+import {
+    TermPolicyAdminCreateDoc,
+    TermPolicyAdminUpdateDocumentDoc,
+    TermPolicyAdminUploadDocumentDoc,
+} from '@modules/term-policy/docs/term-policy.admin.doc';
 import { UserParsePipe } from '@modules/user/pipes/user.parse.pipe';
 import { UserDoc } from '@modules/user/repository/entities/user.entity';
 import { TermPolicyUpdateRequestDto } from '@modules/term-policy/dtos/request/term-policy.update.request.dto';
@@ -157,38 +160,6 @@ export class TermPolicyAdminController {
     @AuthJwtAccessProtected()
     @Post('/')
     async create(
-        @Body() dto: TermPolicyCreateRequestDto
-    ): Promise<IResponse<TermPolicyGetResponseDto>> {
-        const exist = await this.termPolicyService.findOne({
-            language: dto.language,
-            country: dto.country,
-            version: dto.version,
-            type: dto.type,
-        });
-        if (exist) {
-            throw new ConflictException({
-                statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.EXIST,
-                message: 'termPolicy.error.exist',
-            });
-        }
-        const termPolicy = await this.termPolicyService.create(dto);
-        const mapped = this.termPolicyService.mapGet(termPolicy);
-        return {
-            data: mapped,
-        };
-    }
-
-
-    @Response('termPolicy.updateDocument')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.TERM,
-        action: [ENUM_POLICY_ACTION.CREATE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @Put('/update-document')
-    async updateDocument(
         @Body() dto: TermPolicyUpdateDocumentRequestDto,
         @AuthJwtPayload('user', UserParsePipe) user: UserDoc
     ): Promise<IResponse<TermPolicyGetResponseDto>> {
@@ -301,6 +272,7 @@ export class TermPolicyAdminController {
         };
     }
 
+    @TermPolicyAdminUploadDocumentDoc()
     @Response('termPolicy.uploadDocument')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM,
@@ -345,5 +317,4 @@ export class TermPolicyAdminController {
             data: presignUrl,
         };
     }
-
 }
