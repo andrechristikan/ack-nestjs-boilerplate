@@ -23,6 +23,7 @@ import { AppResponseTimeMiddleware } from '@app/middlewares/app.response-time.mi
 import { AppUrlVersionMiddleware } from '@app/middlewares/app.url-version.middleware';
 import { SentryModule } from '@sentry/nestjs/setup';
 import { AppRequestIdMiddleware } from '@app/middlewares/app.request-id.middleware';
+import { AppCustomCountryMiddleware } from '@app/middlewares/app.custom-country.middleware';
 
 @Module({
     controllers: [],
@@ -78,7 +79,8 @@ export class AppMiddlewareModule implements NestModule {
                 AppCorsMiddleware,
                 AppUrlVersionMiddleware,
                 AppResponseTimeMiddleware,
-                AppCustomLanguageMiddleware
+                AppCustomLanguageMiddleware,
+                AppCustomCountryMiddleware
             )
             .forRoutes('{*wildcard}');
     }

@@ -58,6 +58,9 @@ import {
     IAuthSocialGooglePayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { SettingFeatureFlag } from '@modules/setting/decorators/setting.decorator';
+import { TermPolicyUserService } from '@modules/term-policy/services/term-policy-user.service';
+import { RequestCountry, RequestLanguage } from '@common/request/decorators/request.decorator';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -77,7 +80,8 @@ export class AuthPublicController {
         private readonly verificationService: VerificationService,
         private readonly sessionService: SessionService,
         private readonly activityService: ActivityService,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly termPolicyUserService: TermPolicyUserService
     ) {}
 
     @AuthPublicLoginCredentialDoc()
@@ -356,7 +360,9 @@ export class AuthPublicController {
     @Post('/sign-up')
     async signUp(
         @Body()
-        { email, name, password: passwordString, country }: AuthSignUpRequestDto
+        { email, name, password: passwordString, country, termPolicies }: AuthSignUpRequestDto,
+        @RequestLanguage() requestLanguage: ENUM_MESSAGE_LANGUAGE,
+        @RequestCountry() requestCountry: string,
     ): Promise<void> {
         const promises: Promise<any>[] = [
             this.roleService.findOneByName('individual'),
@@ -394,10 +400,17 @@ export class AuthPublicController {
                 {
                     email,
                     name,
-                    password: passwordString,
                     country,
                 },
                 password,
+                { session }
+            );
+
+            await this.termPolicyUserService.createAcceptances(
+                user._id,
+                termPolicies.getAcceptedPolicyTypes(),
+                requestLanguage,
+                requestCountry,
                 { session }
             );
 
