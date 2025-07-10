@@ -188,7 +188,7 @@ export class TermPolicyAdminController {
                 {
                     title: dto.title,
                     description: dto.description,
-                    documentUrl: aws.completedUrl,
+                    url: aws.completedUrl,
                     version: dto.version,
                     country: dto.country,
                     language: dto.language,
