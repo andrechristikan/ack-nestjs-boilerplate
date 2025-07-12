@@ -24,10 +24,10 @@ export class MigrationTermPolicySeed {
                 title: 'Website Terms and Conditions v1',
                 description:
                     'The initial version of our website terms and conditions outlining user responsibilities and acceptable use.',
-                documentUrl:
-                    'By accessing or using our website, you agree to comply with these terms and conditions. Please read them carefully before using our services.',
+                url:
+                    'https://s3.amazonaws.com/website-terms-and-conditions-v1.html',
                 version: 1,
-                country: 'UK',
+                country: 'ID',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
                 type: ENUM_TERM_POLICY_TYPE.TERM,
                 publishedAt: this.helperDateService.backward(
@@ -36,28 +36,13 @@ export class MigrationTermPolicySeed {
                 ),
             },
             {
-                title: 'Website Terms and Conditions v2',
-                description:
-                    'Updated terms and conditions reflecting recent changes in our service offerings and user obligations.',
-                documentUrl:
-                    'This updated version includes new clauses regarding user data protection and service limitations. Continued use of our website constitutes acceptance of these changes.',
-                version: 2,
-                country: 'UK',
-                language: ENUM_MESSAGE_LANGUAGE.EN,
-                type: ENUM_TERM_POLICY_TYPE.TERM,
-                publishedAt: this.helperDateService.backward(
-                    now,
-                    this.helperDateService.createDuration({ days: 1 })
-                ),
-            },
-            {
                 title: 'Privacy Policy',
                 description:
                     'Our policy on how we collect, use, and protect your personal information.',
-                documentUrl:
-                    'We value your privacy. This policy explains what information we collect, how we use it, and your rights regarding your data.',
+                url:
+                    'https://s3.amazonaws.com/privacy-policy.html',
                 version: 1,
-                country: 'UK',
+                country: 'ID',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
                 type: ENUM_TERM_POLICY_TYPE.PRIVACY,
                 publishedAt: this.helperDateService.backward(
@@ -69,10 +54,10 @@ export class MigrationTermPolicySeed {
                 title: 'Marketing Consent Policy v1',
                 description:
                     'Policy regarding user consent for receiving marketing communications.',
-                documentUrl:
-                    'By agreeing to this policy, you consent to receive marketing emails and updates from us. You can opt out at any time.',
+                url:
+                    'https://s3.amazonaws.com/marketing-consent-policy-v1.html',
                 version: 1,
-                country: 'UK',
+                country: 'ID',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
                 type: ENUM_TERM_POLICY_TYPE.MARKETING,
                 publishedAt: this.helperDateService.backward(
@@ -81,28 +66,13 @@ export class MigrationTermPolicySeed {
                 ),
             },
             {
-                title: 'Marketing Consent Policy v2',
-                description:
-                    'Revised marketing policy with additional information on communication preferences.',
-                documentUrl:
-                    'This version provides more options for managing your marketing preferences and details how we use your contact information.',
-                version: 2,
-                country: 'UK',
-                language: ENUM_MESSAGE_LANGUAGE.EN,
-                type: ENUM_TERM_POLICY_TYPE.MARKETING,
-                publishedAt: this.helperDateService.backward(
-                    now,
-                    this.helperDateService.createDuration({ days: 1 })
-                ),
-            },
-            {
                 title: 'Cookie Policy',
                 description:
                     'Information about the cookies we use and how you can manage them.',
-                documentUrl:
-                    'Our website uses cookies to enhance your browsing experience. This policy explains what cookies are, which ones we use, and how you can control them.',
+                url:
+                    'https://s3.amazonaws.com/cookie-policy.html',
                 version: 1,
-                country: 'UK',
+                country: 'ID',
                 language: ENUM_MESSAGE_LANGUAGE.EN,
                 type: ENUM_TERM_POLICY_TYPE.COOKIES,
                 publishedAt: this.helperDateService.backward(

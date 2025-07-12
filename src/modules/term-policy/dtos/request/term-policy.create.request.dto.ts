@@ -30,7 +30,7 @@ export class TermPolicyCreateRequestDto {
     @IsString()
     @IsNotEmpty()
     @IsUrl()
-    readonly documentUrl: string;
+    readonly url: string;
 
     @ApiProperty({
         description: 'Version of the terms policy',

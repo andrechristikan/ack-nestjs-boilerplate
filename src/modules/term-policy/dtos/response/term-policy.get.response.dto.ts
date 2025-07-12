@@ -33,7 +33,7 @@ export class TermPolicyGetResponseDto extends PickType(DatabaseUUIDDto, [
         example: 'https://example.com/documents/privacy-policy-v1.html',
         required: true,
     })
-    readonly documentUrl: string;
+    readonly url: string;
 
     @ApiProperty({
         description: 'Language of the terms or policy',

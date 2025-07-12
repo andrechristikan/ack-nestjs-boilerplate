@@ -30,7 +30,7 @@ export class TermPolicyEntity extends DatabaseUUIDEntityBase {
     description: string;
 
     @DatabaseProp({ required: true })
-    documentUrl: string;
+    url: string;
 
     @DatabaseProp({
         type: String,
