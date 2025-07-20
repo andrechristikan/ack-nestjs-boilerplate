@@ -34,6 +34,7 @@ export class AuthService implements IAuthService {
     private readonly jwtRefreshTokenPrivateKey: string;
     private readonly jwtRefreshTokenPublicKey: string;
     private readonly jwtRefreshTokenExpirationTime: number;
+    private readonly jwtRefreshTokenRotateOnRenewal: boolean;
 
     private readonly jwtPrefix: string;
     private readonly jwtAudience: string;
@@ -110,6 +111,9 @@ export class AuthService implements IAuthService {
         );
         this.jwtRefreshTokenExpirationTime = this.configService.get<number>(
             'auth.jwt.refreshToken.expirationTime'
+        );
+        this.jwtRefreshTokenRotateOnRenewal = this.configService.get<boolean>(
+            'auth.jwt.refreshToken.rotateOnRenewal'
         );
 
         this.jwtPrefix = this.configService.get<string>('auth.jwt.prefix');
@@ -349,12 +353,22 @@ export class AuthService implements IAuthService {
             payloadAccessToken
         );
 
+        let refreshToken: string = refreshTokenFromRequest
+        if (this.jwtRefreshTokenRotateOnRenewal) {
+            const payloadRefreshToken: IAuthJwtRefreshTokenPayload =
+                this.createPayloadRefreshToken(payloadAccessToken);
+            refreshToken = this.createRefreshToken(
+                user._id,
+                payloadRefreshToken
+            );
+        }
+
         return {
             tokenType: this.jwtPrefix,
             roleType,
             expiresIn: this.jwtAccessTokenExpirationTime,
             accessToken,
-            refreshToken: refreshTokenFromRequest,
+            refreshToken,
         };
     }
 
