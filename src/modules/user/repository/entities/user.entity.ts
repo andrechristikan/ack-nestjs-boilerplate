@@ -21,6 +21,10 @@ import {
     UserMobileNumberSchema,
 } from '@modules/user/repository/entities/user.mobile-number.entity';
 import {
+    UserTermPolicyEntity,
+    UserTermPolicySchema,
+} from '@modules/user/repository/entities/user.term-policy.entity';
+import {
     UserVerificationEntity,
     UserVerificationSchema,
 } from '@modules/user/repository/entities/user.verification.entity';
@@ -60,6 +64,12 @@ export class UserEntity extends DatabaseUUIDEntityBase {
         schema: UserVerificationSchema,
     })
     verification: UserVerificationEntity;
+
+    @DatabaseProp({
+        required: true,
+        schema: UserTermPolicySchema,
+    })
+    termPolicy: UserTermPolicyEntity;
 
     @DatabaseProp({
         required: true,

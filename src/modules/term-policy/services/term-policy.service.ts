@@ -2,204 +2,59 @@ import {
     TermPolicyDoc,
     TermPolicyEntity,
 } from '@modules/term-policy/repository/entities/term-policy.entity';
-import { TermPolicyRepository } from '@modules/term-policy/repository/repositories/term-policy-repository.service';
 import { Injectable } from '@nestjs/common';
-import { Document, PipelineStage } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import {
-    IDatabaseCreateManyOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteOptions,
-    IDatabaseFindAllAggregateOptions,
+    IDatabaseExistsOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
 } from '@common/database/interfaces/database.interface';
 import { ClassTransformOptions, plainToInstance } from 'class-transformer';
-import { TermPolicyListResponseDto } from '@modules/term-policy/dtos/response/term-policy.list.response.dto';
-import { TermPolicyGetResponseDto } from '@modules/term-policy/dtos/response/term-policy.get.response.dto';
 import { ITermPolicyService } from '@modules/term-policy/interfaces/term-policy.service.interface';
 import {
     ITermPolicyDoc,
     ITermPolicyEntity,
 } from '@modules/term-policy/interfaces/term-policy.interface';
+import { TermPolicyRepository } from '@modules/term-policy/repository/repositories/term-policy.repository';
+import {
+    ENUM_TERM_POLICY_STATUS,
+    ENUM_TERM_POLICY_TYPE,
+} from '@modules/term-policy/enums/term-policy.enum';
+import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import { ConfigService } from '@nestjs/config';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
-import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
+import { TermPolicyUpdateDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.update-document.request';
+import { TermPolicyDocumentEntity } from '@modules/term-policy/repository/entities/term-policy-document.entity';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 @Injectable()
 export class TermPolicyService implements ITermPolicyService {
+    private readonly uploadPath: string;
+
     constructor(
-        private readonly termPolicyRepository: TermPolicyRepository
-    ) {}
-
-    async findOneById(id: string): Promise<TermPolicyDoc> {
-        return this.termPolicyRepository.findOneById(id);
-    }
-
-    async findOne(
-        find?: Record<string, any> & {
-            latest?: boolean;
-            published?: boolean;
-        },
-        databaseOptions?: IDatabaseFindOneOptions
-    ): Promise<TermPolicyDoc> {
-        const { latest, published, ...findQuery } = find;
-
-        if (published) {
-            findQuery.publishedAt = { $ne: null, $lte: new Date() };
-        }
-
-        let findOptions = { ...databaseOptions };
-        if (latest) {
-            findOptions = {
-                ...findOptions,
-                order: {
-                    ...(findOptions?.order || {}),
-                    publishedAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
-                    version: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
-                },
-            };
-        }
-
-        return this.termPolicyRepository.findOne(findQuery, findOptions);
+        private readonly termPolicyRepository: TermPolicyRepository,
+        private readonly configService: ConfigService,
+        private readonly helperStringService: HelperStringService
+    ) {
+        this.uploadPath = this.configService.get<string>(
+            'termPolicy.uploadPath'
+        );
     }
 
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<TermPolicyDoc[]> {
-        return this.termPolicyRepository.findAll<TermPolicyDoc>(
-            find,
-            options
-        );
-    }
-
-    async create(
-        dto: TermPolicyCreateRequestDto,
-        options?: IDatabaseCreateOptions
-    ): Promise<TermPolicyDoc> {
-        const entity = new TermPolicyEntity();
-        entity.type = dto.type;
-        entity.country = dto.country;
-        entity.language = dto.language;
-        entity.description = dto.description;
-        entity.version = dto.version;
-        entity.documentUrl = dto.documentUrl;
-        entity.title = dto.title;
-        entity.publishedAt = dto.publishedAt;
-        return this.termPolicyRepository.create(entity, options);
-    }
-
-    async createMany(
-        data: TermPolicyCreateRequestDto[],
-        options?: IDatabaseCreateManyOptions
-    ): Promise<void> {
-        const entities: TermPolicyEntity[] = data.map(
-            ({
-                type,
-                language,
-                description,
-                version,
-                documentUrl,
-                title,
-                publishedAt,
-                country,
-            }): TermPolicyEntity => {
-                const entity = new TermPolicyEntity();
-                entity.type = type;
-                entity.language = language;
-                entity.description = description;
-                entity.version = version;
-                entity.documentUrl = documentUrl;
-                entity.title = title;
-                entity.publishedAt = publishedAt;
-                entity.country = country;
-                return entity;
-            }
-        );
-        await this.termPolicyRepository.createMany(entities, options);
-    }
-
-    async update(
-        repository: TermPolicyDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<TermPolicyDoc> {
-        return this.termPolicyRepository.save(repository, options);
-    }
-
-    async delete(
-        id: string,
-        options?: IDatabaseDeleteOptions
-    ): Promise<TermPolicyDoc> {
-        return this.termPolicyRepository.delete({ _id: id }, options);
-    }
-
-    async deleteMany(find?: Record<string, any>): Promise<boolean> {
-        await this.termPolicyRepository.deleteMany(find);
-        return true;
-    }
-
-    async findAllByFilters(
-        filters: Record<string, any> & {
-            published?: boolean;
-            latest?: boolean;
-        },
-        options?: IDatabaseFindAllAggregateOptions
-    ): Promise<TermPolicyDoc[]> {
-        const { language, country, published, latest, ...otherFilters } =
-            filters;
-
-        const matchStage: Record<string, any> = { ...otherFilters };
-
-        if (language) {
-            matchStage.language = language;
-        }
-
-        if (country) {
-            matchStage.country = country;
-        }
-
-        if (published) {
-            matchStage.publishedAt = { $ne: null, $lte: new Date() };
-        }
-
-        // If latest is false or undefined, just do a simple find
-        if (!latest) {
-            return this.termPolicyRepository.findAll(matchStage, {
-                order: {
-                    type: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
-                    publishedAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
-                    version: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
-                },
-                ...options,
-            });
-        }
-
-        // For latest versions, use aggregation pipeline
-        const pipeline: PipelineStage[] = [
-            { $match: matchStage },
-            {
-                $sort: {
-                    type: 1,
-                    publishedAt: -1,
-                    version: -1,
-                },
-            },
-            // Group by type and keep only the first document (latest version)
-            {
-                $group: {
-                    _id: '$type',
-                    doc: { $first: '$$ROOT' },
-                },
-            },
-            // Replace the root with the full document
-            { $replaceRoot: { newRoot: '$doc' } },
-        ];
-
-        return this.termPolicyRepository.aggregate<
-            TermPolicyDoc,
-            PipelineStage
-        >(pipeline, options);
+    ): Promise<ITermPolicyDoc[]> {
+        return this.termPolicyRepository.findAll<ITermPolicyDoc>(find, {
+            ...options,
+            join: true,
+        });
     }
 
     async getTotal(
@@ -209,12 +64,46 @@ export class TermPolicyService implements ITermPolicyService {
         return this.termPolicyRepository.getTotal(find, options);
     }
 
+    async findOnePublished(
+        type: ENUM_TERM_POLICY_TYPE,
+        country: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<TermPolicyDoc> {
+        return this.termPolicyRepository.findOne(
+            {
+                type,
+                country,
+                status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
+            },
+            options
+        );
+    }
+
+    async findOneLatest(
+        type: ENUM_TERM_POLICY_TYPE,
+        country: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<TermPolicyDoc> {
+        return this.termPolicyRepository.findOne(
+            {
+                type,
+                country,
+            },
+            {
+                ...options,
+                order: {
+                    version: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+                },
+            }
+        );
+    }
+
     mapList(
         policies: ITermPolicyDoc[] | ITermPolicyEntity[],
         options?: ClassTransformOptions
-    ): TermPolicyListResponseDto[] {
+    ): TermPolicyResponseDto[] {
         return plainToInstance(
-            TermPolicyListResponseDto,
+            TermPolicyResponseDto,
             policies.map((e: ITermPolicyDoc | ITermPolicyEntity) =>
                 e instanceof Document ? e.toObject() : e
             ),
@@ -222,23 +111,103 @@ export class TermPolicyService implements ITermPolicyService {
         );
     }
 
-    mapGet(
-        policy: ITermPolicyDoc | ITermPolicyEntity,
-        options?: ClassTransformOptions
-    ): TermPolicyGetResponseDto {
-        return plainToInstance(
-            TermPolicyGetResponseDto,
-            policy instanceof Document ? policy.toObject() : policy,
+    async exist(
+        type: ENUM_TERM_POLICY_TYPE,
+        country: string,
+        option?: IDatabaseExistsOptions
+    ): Promise<boolean> {
+        return this.termPolicyRepository.exists(
+            {
+                type,
+                country,
+            },
+            option
+        );
+    }
+
+    async findOneById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<TermPolicyDoc> {
+        return this.termPolicyRepository.findOneById(_id, options);
+    }
+
+    async create(
+        previous: TermPolicyDoc,
+        urls: (AwsS3Dto & TermPolicyUpdateDocumentRequestDto)[],
+        createdBy: string,
+        options?: IDatabaseCreateOptions
+    ): Promise<TermPolicyDoc> {
+        const entity = new TermPolicyEntity();
+        entity.type = previous.type;
+        entity.country = previous.country;
+        entity.version = previous.version + 1;
+        entity.status = ENUM_TERM_POLICY_STATUS.DRAFT;
+        entity.publishedAt = null;
+        entity.createdBy = createdBy;
+        entity.updatedBy = createdBy;
+        entity.urls = urls.map(
+            ({
+                bucket,
+                completedUrl,
+                extension,
+                key,
+                mime,
+                size,
+                language,
+                cdnUrl,
+            }) => {
+                const en = new TermPolicyDocumentEntity();
+                en.bucket = bucket;
+                en.completedUrl = completedUrl;
+                en.extension = extension;
+                en.key = key;
+                en.mime = mime;
+                en.size = new Types.Decimal128(size.toString());
+                en.language = language;
+                en.cdnUrl = cdnUrl;
+                return en;
+            }
+        );
+
+        return this.termPolicyRepository.create(entity, options);
+    }
+
+    async updateDocument(
+        repository: TermPolicyDoc,
+        language: ENUM_MESSAGE_LANGUAGE,
+        { size, ...aws }: AwsS3Dto,
+        options?: IDatabaseSaveOptions
+    ): Promise<TermPolicyDoc> {
+        const index = repository.urls.findIndex(e => e.language === language);
+
+        repository.urls[index] = {
+            ...aws,
+            language,
+            size: new Types.Decimal128(size.toString()),
+        };
+
+        return this.termPolicyRepository.save(repository, options);
+    }
+
+    async delete(
+        repository: TermPolicyDoc,
+        options?: IDatabaseDeleteOptions
+    ): Promise<TermPolicyDoc> {
+        return this.termPolicyRepository.delete(
+            { _id: repository._id },
             options
         );
     }
 
-    createDocumentFilename(
-        type: string,
-        country: string,
-        language: string,
-        extension: string
-    ): string {
-        return `term-policy/${type}_${country}_${language}.${extension}`;
+    createDocumentFilename(mime: string): string {
+        let path: string = `${this.uploadPath}/${this.helperStringService.random(10)}`;
+        const extension = mime.split('/')[1];
+
+        if (path.startsWith('/')) {
+            path = path.replace('/', '');
+        }
+
+        return `${path}.${extension.toLowerCase()}`;
     }
 }

@@ -7,6 +7,7 @@ import {
     TermPolicyAcceptanceEntity,
 } from '@modules/term-policy/repository/entities/term-policy-acceptance.entity';
 import { DatabaseUUIDRepositoryBase } from '@common/database/bases/database.uuid.repository';
+import { TermPolicyEntity } from '@modules/term-policy/repository/entities/term-policy.entity';
 
 @Injectable()
 export class TermPolicyAcceptanceRepository extends DatabaseUUIDRepositoryBase<
@@ -23,6 +24,13 @@ export class TermPolicyAcceptanceRepository extends DatabaseUUIDRepositoryBase<
                 localField: 'user',
                 foreignField: '_id',
                 model: UserEntity.name,
+                justOne: true,
+            },
+            {
+                path: 'termPolicy',
+                localField: 'termPolicy',
+                foreignField: '_id',
+                model: TermPolicyEntity.name,
                 justOne: true,
             },
         ]);

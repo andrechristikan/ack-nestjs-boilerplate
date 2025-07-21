@@ -236,6 +236,16 @@ export class AuthService implements IAuthService {
             role: data.role._id,
             email: data.email,
             session,
+            termPolicy: {
+                term: data.termPolicy.term,
+                privacy: data.termPolicy.privacy,
+                marketing: data.termPolicy.marketing,
+                cookies: data.termPolicy.cookies,
+            },
+            verification: {
+                email: data.verification.email,
+                mobileNumber: data.verification.mobileNumber,
+            },
             loginDate,
             loginFrom,
         };

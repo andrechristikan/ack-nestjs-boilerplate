@@ -11,7 +11,7 @@ import { VerificationUserController } from '@modules/verification/controllers/ve
 import { VerificationModule } from '@modules/verification/verification.module';
 import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
-import { TermPolicyUserController } from '@modules/term-policy/controllers/term-policy-user.controller';
+import { TermPolicyUserController } from '@modules/term-policy/controllers/term-policy.user.controller';
 
 @Module({
     controllers: [

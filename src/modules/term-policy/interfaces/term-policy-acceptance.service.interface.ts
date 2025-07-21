@@ -1,57 +1,51 @@
 import { ClassTransformOptions } from 'class-transformer';
-import { TermPolicyAcceptanceDoc } from '@modules/term-policy/repository/entities/term-policy-acceptance.entity';
 import {
-  TermPolicyAcceptanceGetResponseDto,
-} from '@modules/term-policy/dtos/response/term-policy-acceptance.get.response.dto';
-import {
-  TermPolicyAcceptanceListResponseDto,
-} from '@modules/term-policy/dtos/response/term-policy-acceptance.list.response.dto';
-import { IDatabaseFindAllOptions, IDatabaseFindOneOptions, IDatabaseCreateOptions } from '@common/database/interfaces/database.interface';
+    IDatabaseFindAllOptions,
+    IDatabaseCreateOptions,
+    IDatabaseGetTotalOptions,
+} from '@common/database/interfaces/database.interface';
 import { ITermPolicyAcceptanceDoc } from '@modules/term-policy/interfaces/term-policy-acceptance.interface';
 import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { TermPolicyAcceptanceDoc } from '@modules/term-policy/repository/entities/term-policy-acceptance.entity';
+import { TermPolicyAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy-acceptance.response.dto';
 
 export interface ITermPolicyAcceptanceService {
-  create(
-      userId: string,
-      policyType: ENUM_TERM_POLICY_TYPE,
-      policyCountry: string,
-      policyLanguage: ENUM_MESSAGE_LANGUAGE,
-      policyVersion: number,
-      acceptedAt: Date,
-      options?: IDatabaseCreateOptions
-  ): Promise<TermPolicyAcceptanceDoc>;
-
-  createMany(
-      userId: string,
-      policies: Array<{
-          type: ENUM_TERM_POLICY_TYPE;
-          country: string;
-          language: ENUM_MESSAGE_LANGUAGE;
-          version: number;
-      }>,
-      acceptedAt: Date,
-      options?: IDatabaseCreateOptions
-  ): Promise<boolean>;
-
-  findOne<T>(
-    find: Record<string, any>,
-    options?: IDatabaseFindOneOptions
-  ): Promise<T>;
-
-  mapList(
-    policies: ITermPolicyAcceptanceDoc[],
-    options?: ClassTransformOptions,
-  ): TermPolicyAcceptanceListResponseDto[];
-
-  mapGet(
-    policy: TermPolicyAcceptanceDoc,
-    options?: ClassTransformOptions,
-  ): TermPolicyAcceptanceGetResponseDto;
-
-  findAll(
-    filter?: Record<string, any>,
-    options?: IDatabaseFindAllOptions,
-  ): Promise<ITermPolicyAcceptanceDoc[]>;
+    findAllByUser(
+        user: string,
+        options?: IDatabaseFindAllOptions
+    ): Promise<ITermPolicyAcceptanceDoc[]>;
+    getTotalUser(
+        user: string,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number>;
+    create(
+        user: string,
+        termPolicy: string,
+        options?: IDatabaseCreateOptions
+    ): Promise<TermPolicyAcceptanceDoc>;
+    findAll(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<ITermPolicyAcceptanceDoc[]>;
+    getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number>;
+    mapList(
+        policies: ITermPolicyAcceptanceDoc[],
+        options?: ClassTransformOptions
+    ): TermPolicyAcceptanceResponseDto[];
+    createMany(
+        user: string,
+        termPolicies: Array<string>,
+        options?: IDatabaseCreateOptions
+    ): Promise<boolean>;
+    createAcceptances(
+        user: string,
+        termPolicyTypes: ENUM_TERM_POLICY_TYPE[],
+        language: ENUM_MESSAGE_LANGUAGE,
+        country: string,
+        options?: IDatabaseCreateOptions
+    ): Promise<void>;
 }
-

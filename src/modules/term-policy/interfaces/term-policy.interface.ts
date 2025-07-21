@@ -1,5 +1,16 @@
-import { TermPolicyDoc, TermPolicyEntity } from '@modules/term-policy/repository/entities/term-policy.entity';
+import {
+    CountryDoc,
+    CountryEntity,
+} from '@modules/country/repository/entities/country.entity';
+import {
+    TermPolicyDoc,
+    TermPolicyEntity,
+} from '@modules/term-policy/repository/entities/term-policy.entity';
 
-export type ITermPolicyEntity = TermPolicyEntity
+export interface ITermPolicyEntity extends Omit<TermPolicyEntity, 'country'> {
+    country: CountryEntity;
+}
 
-export type ITermPolicyDoc = TermPolicyDoc
+export interface ITermPolicyDoc extends Omit<TermPolicyDoc, 'country'> {
+    country: CountryDoc;
+}

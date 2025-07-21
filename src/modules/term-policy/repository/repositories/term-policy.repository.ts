@@ -6,6 +6,7 @@ import {
     TermPolicyEntity,
 } from '@modules/term-policy/repository/entities/term-policy.entity';
 import { DatabaseUUIDRepositoryBase } from '@common/database/bases/database.uuid.repository';
+import { CountryEntity } from '@modules/country/repository/entities/country.entity';
 
 @Injectable()
 export class TermPolicyRepository extends DatabaseUUIDRepositoryBase<
@@ -16,6 +17,12 @@ export class TermPolicyRepository extends DatabaseUUIDRepositoryBase<
         @InjectDatabaseModel(TermPolicyEntity.name)
         private readonly termPolicyModel: Model<TermPolicyEntity>
     ) {
-        super(termPolicyModel);
+        super(termPolicyModel, {
+            path: 'country',
+            localField: 'country',
+            foreignField: '_id',
+            model: CountryEntity.name,
+            justOne: true,
+        });
     }
 }

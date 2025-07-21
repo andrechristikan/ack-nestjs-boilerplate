@@ -10,6 +10,7 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
     IDatabaseSoftDeleteOptions,
+    IDatabaseUpdateManyOptions,
     IDatabaseUpdateOptions,
 } from '@common/database/interfaces/database.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -44,9 +45,10 @@ import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.upd
 import { CountryDoc } from '@modules/country/repository/entities/country.entity';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { DatabaseHelperQueryContain } from '@common/database/decorators/database.decorator';
-import { UserUploadPhotoRequestDto } from '@modules/user/dtos/request/user.upload-photo.request.dto';
 import { UserCensorResponseDto } from '@modules/user/dtos/response/user.censor.response.dto';
 import { DatabaseService } from '@common/database/services/database.service';
+import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
+import { UserUploadPhotoProfileRequestDto } from '@modules/user/dtos/request/user.upload-photo-profile.request.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -288,13 +290,24 @@ export class UserService implements IUserService {
             email: false,
             mobileNumber: false,
         };
+        create.termPolicy = {
+            cookies: false,
+            marketing: true,
+            privacy: true,
+            term: true,
+        };
 
         return this.userRepository.create<UserEntity>(create, options);
     }
 
     async signUp(
         role: string,
-        { email, name, country }: Omit<AuthSignUpRequestDto, 'termPolicies' | 'password'>,
+        {
+            email,
+            name,
+            country,
+            cookies,
+        }: Omit<AuthSignUpRequestDto, 'termPolicies' | 'password'>,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
@@ -317,6 +330,12 @@ export class UserService implements IUserService {
         create.verification = {
             email: false,
             mobileNumber: false,
+        };
+        create.termPolicy = {
+            cookies,
+            marketing: true,
+            privacy: true,
+            term: true,
         };
 
         return this.userRepository.create<UserEntity>(create, options);
@@ -536,7 +555,7 @@ export class UserService implements IUserService {
 
     createRandomFilenamePhoto(
         user: string,
-        { mime }: UserUploadPhotoRequestDto
+        { mime }: UserUploadPhotoProfileRequestDto
     ): string {
         let path: string = this.uploadPath.replace('{user}', user);
         const randomPath = this.helperStringService.random(10);
@@ -606,5 +625,30 @@ export class UserService implements IUserService {
 
     checkMobileNumber(mobileNumber: string, country: CountryDoc): boolean {
         return country.phoneCode.some(e => mobileNumber.startsWith(e));
+    }
+
+    async acceptTermPolicy(
+        repository: UserDoc,
+        type: ENUM_TERM_POLICY_TYPE,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.termPolicy[type.toLowerCase()] = true;
+
+        return this.userRepository.save(repository, options);
+    }
+
+    async releaseTermPolicy(
+        type: ENUM_TERM_POLICY_TYPE,
+        options?: IDatabaseUpdateManyOptions
+    ): Promise<void> {
+        await this.userRepository.updateMany(
+            {},
+            {
+                [`termPolicy.${type.toLowerCase()}`]: false,
+            },
+            options
+        );
+
+        return;
     }
 }

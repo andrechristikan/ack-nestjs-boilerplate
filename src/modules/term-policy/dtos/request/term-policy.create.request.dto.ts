@@ -1,46 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDate, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, Length } from 'class-validator';
+import {
+    ArrayNotEmpty,
+    IsEnum,
+    IsNotEmpty,
+    IsNotEmptyObject,
+    IsString,
+    Length,
+} from 'class-validator';
 import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { TermPolicyUpdateDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.update-document.request';
+import { Type } from 'class-transformer';
 
 export class TermPolicyCreateRequestDto {
-    @ApiProperty({
-        description: 'Title of the terms policy',
-        example: 'Privacy Policy',
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    readonly title: string;
-
-    @ApiProperty({
-        description: 'Description of the terms policy',
-        example: 'A brief excerpt of the policy, why is exist and what covers',
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    readonly description: string;
-
-    @ApiProperty({
-        description: 'URL to the document containing the full terms policy',
-        example: 'https://example.com/documents/privacy-policy-v1.html',
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @IsUrl()
-    readonly documentUrl: string;
-
-    @ApiProperty({
-        description: 'Version of the terms policy',
-        example: 1,
-        required: true,
-    })
-    @IsNumber()
-    @IsNotEmpty()
-    readonly version: number;
-
     @ApiProperty({
         description: 'Country for which this legal policy applies to',
         example: 'UK',
@@ -48,18 +19,8 @@ export class TermPolicyCreateRequestDto {
     })
     @IsString()
     @IsNotEmpty()
-    @Length(2,2)
+    @Length(2, 2)
     readonly country: string;
-
-    @ApiProperty({
-        description: 'Language of the terms policy',
-        example: ENUM_MESSAGE_LANGUAGE.EN,
-        enum: ENUM_MESSAGE_LANGUAGE,
-        required: true,
-    })
-    @IsEnum(ENUM_MESSAGE_LANGUAGE)
-    @IsNotEmpty()
-    readonly language: ENUM_MESSAGE_LANGUAGE;
 
     @ApiProperty({
         description: 'Type of the terms policy',
@@ -72,12 +33,14 @@ export class TermPolicyCreateRequestDto {
     readonly type: ENUM_TERM_POLICY_TYPE;
 
     @ApiProperty({
-        description: 'Date of publication',
-        example: new Date(),
-        required: false,
-        default: new Date(),
+        description: 'List of documents associated with the terms policy',
+        type: [TermPolicyUpdateDocumentRequestDto],
+        required: true,
+        isArray: true,
     })
-    @IsDate()
-    @IsOptional()
-    readonly publishedAt?: Date;
+    @IsNotEmpty()
+    @ArrayNotEmpty()
+    @IsNotEmptyObject()
+    @Type(() => TermPolicyUpdateDocumentRequestDto)
+    readonly urls: TermPolicyUpdateDocumentRequestDto[];
 }

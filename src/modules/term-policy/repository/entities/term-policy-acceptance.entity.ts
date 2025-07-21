@@ -6,14 +6,12 @@ import {
 } from '@common/database/decorators/database.decorator';
 import { UserEntity } from '@modules/user/repository/entities/user.entity';
 import { DatabaseUUIDEntityBase } from '@common/database/bases/database.uuid.entity';
-import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { TermPolicyEntity } from '@modules/term-policy/repository/entities/term-policy.entity';
 
-const TermPolicyAcceptanceCollectionName = 'TermPolicyAcceptance';
+const TermPolicyAcceptanceTableName = 'TermPolicyAcceptances';
 
 @DatabaseEntity({
-    collection: TermPolicyAcceptanceCollectionName,
-    timestamps: false,
+    collection: TermPolicyAcceptanceTableName,
 })
 export class TermPolicyAcceptanceEntity extends DatabaseUUIDEntityBase {
     @DatabaseProp({
@@ -25,33 +23,15 @@ export class TermPolicyAcceptanceEntity extends DatabaseUUIDEntityBase {
     user: string;
 
     @DatabaseProp({
-        enum: ENUM_TERM_POLICY_TYPE,
-        required: true,
-        index: true,
         type: String,
-    })
-    type: ENUM_TERM_POLICY_TYPE;
-
-    @DatabaseProp({
-        type: String,
+        ref: TermPolicyEntity.name,
         required: true,
         index: true,
     })
-    country: string;
-
-    @DatabaseProp({
-        enum: ENUM_MESSAGE_LANGUAGE,
-        type: String,
-        required: true,
-        index: true,
-    })
-    language: ENUM_MESSAGE_LANGUAGE;
+    termPolicy: string;
 
     @DatabaseProp({ required: true, type: Date })
     acceptedAt: Date;
-
-    @DatabaseProp({ type: Number, required: true })
-    version: number;
 }
 
 export type TermPolicyAcceptanceDoc =
@@ -60,4 +40,4 @@ export const TermPolicyAcceptanceSchema = DatabaseSchema(
     TermPolicyAcceptanceEntity
 );
 
-TermPolicyAcceptanceSchema.index({ user: 1, type: 1, country: 1, version: 1 }, { unique: true });
+TermPolicyAcceptanceSchema.index({ user: 1, termPolicy: 1 }, { unique: true });

@@ -1,10 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, OmitType } from '@nestjs/swagger';
-import { IsNotEmpty, IsNotEmptyObject, IsObject, MaxLength, MinLength, ValidateNested } from 'class-validator';
+import { IsBoolean, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
 import { IsPassword } from '@common/request/validations/request.is-password.validation';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { TermPolicySignupRequestDto } from '@modules/term-policy/dtos/request/term-policy.signup.request.dto';
-import { Type } from 'class-transformer';
 
 export class AuthSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     'role',
@@ -26,13 +24,11 @@ export class AuthSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     password: string;
 
     @ApiProperty({
-        description: 'Term policies agreement for user signup',
-        type: TermPolicySignupRequestDto,
+        description: 'boolean term',
+        example: true,
         required: true,
     })
-    @IsObject()
-    @IsNotEmptyObject()
-    @ValidateNested()
-    @Type(() => TermPolicySignupRequestDto)
-    termPolicies: TermPolicySignupRequestDto
+    @IsNotEmpty()
+    @IsBoolean()
+    cookies: boolean;
 }

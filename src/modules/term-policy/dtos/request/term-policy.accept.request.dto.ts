@@ -1,11 +1,13 @@
-import { IsUUID } from 'class-validator';
+import { IsEnum, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
 
 export class TermPolicyAcceptRequestDto {
     @ApiProperty({
         required: true,
-        description: 'Policy Id to accept',
+        enum: Object.values(ENUM_TERM_POLICY_TYPE),
     })
-    @IsUUID()
-    policy: string;
+    @IsEnum(ENUM_TERM_POLICY_TYPE)
+    @IsNotEmpty()
+    type: ENUM_TERM_POLICY_TYPE;
 }

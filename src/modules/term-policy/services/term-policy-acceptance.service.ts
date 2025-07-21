@@ -1,80 +1,123 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Document } from 'mongoose';
-import { TermPolicyAcceptanceRepository } from '@modules/term-policy/repository/repositories/term-policy-acceptance-repository.service';
 import {
     TermPolicyAcceptanceDoc,
     TermPolicyAcceptanceEntity,
 } from '@modules/term-policy/repository/entities/term-policy-acceptance.entity';
 import { ClassTransformOptions, plainToInstance } from 'class-transformer';
-import { TermPolicyAcceptanceGetResponseDto } from '@modules/term-policy/dtos/response/term-policy-acceptance.get.response.dto';
-import { TermPolicyAcceptanceListResponseDto } from '@modules/term-policy/dtos/response/term-policy-acceptance.list.response.dto';
-import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import {
+    ENUM_TERM_POLICY_STATUS,
+    ENUM_TERM_POLICY_TYPE,
+} from '@modules/term-policy/enums/term-policy.enum';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
+    IDatabaseGetTotalOptions,
 } from '@common/database/interfaces/database.interface';
-import {
-    ITermPolicyAcceptanceDoc,
-    ITermPolicyAcceptanceEntity,
-} from '@modules/term-policy/interfaces/term-policy-acceptance.interface';
+import { ITermPolicyAcceptanceDoc } from '@modules/term-policy/interfaces/term-policy-acceptance.interface';
 import { ITermPolicyAcceptanceService } from '@modules/term-policy/interfaces/term-policy-acceptance.service.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { DatabaseService } from '@common/database/services/database.service';
+import { TermPolicyEntity } from '@modules/term-policy/repository/entities/term-policy.entity';
+import { TermPolicyRepository } from '@modules/term-policy/repository/repositories/term-policy.repository';
+import { TermPolicyAcceptanceRepository } from '@modules/term-policy/repository/repositories/term-policy-acceptance.repository';
+import { TermPolicyAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy-acceptance.response.dto';
 
 @Injectable()
 export class TermPolicyAcceptanceService
     implements ITermPolicyAcceptanceService
 {
-    private readonly logger = new Logger(TermPolicyAcceptanceService.name);
-
     constructor(
-        private readonly termPolicyAcceptanceRepository: TermPolicyAcceptanceRepository
+        private readonly termPolicyAcceptanceRepository: TermPolicyAcceptanceRepository,
+        private readonly termPolicyRepository: TermPolicyRepository,
+        private readonly helperDateService: HelperDateService,
+        private readonly databaseService: DatabaseService
     ) {}
 
+    async findAllByUser(
+        user: string,
+        options?: IDatabaseFindAllOptions
+    ): Promise<ITermPolicyAcceptanceDoc[]> {
+        const filter: Record<string, any> = {
+            user,
+        };
+
+        return this.termPolicyAcceptanceRepository.findAll(filter, {
+            ...options,
+            join: true,
+        });
+    }
+
+    async getTotalUser(
+        user: string,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number> {
+        return this.termPolicyAcceptanceRepository.getTotal(
+            {
+                user,
+            },
+            options
+        );
+    }
+
     async create(
-        userId: string,
-        policyType: ENUM_TERM_POLICY_TYPE,
-        policyCountry: string,
-        policyLanguage: ENUM_MESSAGE_LANGUAGE,
-        policyVersion: number,
-        acceptedAt: Date = new Date(),
+        user: string,
+        termPolicy: string,
         options?: IDatabaseCreateOptions
     ): Promise<TermPolicyAcceptanceDoc> {
         const acceptance = new TermPolicyAcceptanceEntity();
-        acceptance.user = userId;
-        acceptance.type = policyType;
-        acceptance.country = policyCountry;
-        acceptance.language = policyLanguage;
-        acceptance.version = policyVersion;
-        acceptance.acceptedAt = acceptedAt;
+        acceptance.user = user;
+        acceptance.termPolicy = termPolicy;
+        acceptance.acceptedAt = this.helperDateService.create();
 
         return this.termPolicyAcceptanceRepository.create(acceptance, options);
     }
 
+    async findAll(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<ITermPolicyAcceptanceDoc[]> {
+        return this.termPolicyAcceptanceRepository.findAll(find, options);
+    }
+
+    async getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number> {
+        return this.termPolicyAcceptanceRepository.getTotal(find, options);
+    }
+
+    mapList(
+        policies: ITermPolicyAcceptanceDoc[],
+        options?: ClassTransformOptions
+    ): TermPolicyAcceptanceResponseDto[] {
+        return plainToInstance(
+            TermPolicyAcceptanceResponseDto,
+            policies.map((e: ITermPolicyAcceptanceDoc) =>
+                e instanceof Document ? e.toObject() : e
+            ),
+            options
+        );
+    }
+
     async createMany(
-        userId: string,
-        policies: Array<{
-            type: ENUM_TERM_POLICY_TYPE;
-            country: string;
-            language: ENUM_MESSAGE_LANGUAGE;
-            version: number;
-        }>,
-        acceptedAt: Date = new Date(),
+        user: string,
+        termPolicies: Array<string>,
         options?: IDatabaseCreateOptions
     ): Promise<boolean> {
-        if (!policies.length) {
+        if (!termPolicies.length) {
             return true; // No policies to create is still a success case
         }
 
-        const acceptanceEntities = policies.map(policy => {
+        const acceptedAt = this.helperDateService.create();
+
+        const acceptanceEntities = termPolicies.map(policy => {
             const acceptance = new TermPolicyAcceptanceEntity();
-            acceptance.user = userId;
-            acceptance.type = policy.type;
-            acceptance.country = policy.country;
-            acceptance.language = policy.language;
-            acceptance.version = policy.version;
+            acceptance.user = user;
+            acceptance.termPolicy = policy;
             acceptance.acceptedAt = acceptedAt;
+
             return acceptance;
         });
 
@@ -86,89 +129,34 @@ export class TermPolicyAcceptanceService
         return true;
     }
 
-    async findOne<T>(
-        find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
-    ): Promise<T> {
-        return this.termPolicyAcceptanceRepository.findOne<T>(find, options);
-    }
-
-    async findAll(
-        filter?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<ITermPolicyAcceptanceDoc[]> {
-        return this.termPolicyAcceptanceRepository.findAll(filter, {
-            order: {
-                acceptedAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
-            },
-            ...options,
-        });
-    }
-
-    async findAllByUser(
-        userId: string,
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<ITermPolicyAcceptanceDoc[]> {
-        const filter: Record<string, any> = {
-            user: userId,
-            ...find,
-        };
-
-        return this.termPolicyAcceptanceRepository.findAll(filter, options);
-    }
-
-    async findOneByUser(
-        userId: string,
-        policyType: ENUM_TERM_POLICY_TYPE,
+    async createAcceptances(
+        user: string,
+        termPolicyTypes: ENUM_TERM_POLICY_TYPE[],
+        language: ENUM_MESSAGE_LANGUAGE,
         country: string,
-        language?: ENUM_MESSAGE_LANGUAGE,
-        options?: IDatabaseFindOneOptions
-    ): Promise<ITermPolicyAcceptanceEntity | null> {
-        try {
-            const query: Record<string, any> = {
-                user: userId,
-                type: policyType,
-                country: country,
-            };
-
-            if (language) {
-                query.language = language;
-            }
-
-            return await this.termPolicyAcceptanceRepository.findOne<ITermPolicyAcceptanceEntity>(
-                query,
-                options
-            );
-        } catch (error) {
-            this.logger.error(
-                `Failed to find policy for user ${userId}, type ${policyType}, country ${country}${language ? `, language ${language}` : ''}`,
-                error
-            );
-            throw error;
+        options?: IDatabaseCreateOptions
+    ): Promise<void> {
+        if (termPolicyTypes.length === 0) {
+            return;
         }
-    }
 
-    mapList(
-        policies: ITermPolicyAcceptanceDoc[],
-        options?: ClassTransformOptions
-    ): TermPolicyAcceptanceListResponseDto[] {
-        return plainToInstance(
-            TermPolicyAcceptanceListResponseDto,
-            policies.map((e: ITermPolicyAcceptanceDoc) =>
-                e instanceof Document ? e.toObject() : e
-            ),
-            options
-        );
-    }
+        const latestTermPolicies: TermPolicyEntity[] =
+            await this.termPolicyRepository.findAll([
+                {
+                    language,
+                    country,
+                    status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
+                    ...this.databaseService.filterIn('type', termPolicyTypes),
+                },
+            ]);
 
-    mapGet(
-        policy: TermPolicyAcceptanceDoc,
-        options?: ClassTransformOptions
-    ): TermPolicyAcceptanceGetResponseDto {
-        return plainToInstance(
-            TermPolicyAcceptanceGetResponseDto,
-            policy.toObject(),
+        if (latestTermPolicies.length === 0) {
+            return;
+        }
+
+        await this.createMany(
+            user,
+            latestTermPolicies.map(policy => policy._id),
             options
         );
     }

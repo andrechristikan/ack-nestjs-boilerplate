@@ -10,10 +10,9 @@ export default registerAs(
         version,
         globalPrefix: '/api',
 
-        country:{
-            available: process.env.APP_COUNTRY,
+        country: {
             default: process.env.APP_COUNTRY,
-            header: "x-custom-country"
+            header: 'x-custom-country',
         },
 
         http: {

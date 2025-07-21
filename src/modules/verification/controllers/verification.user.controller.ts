@@ -256,7 +256,7 @@ export class VerificationUserController {
             );
 
             const mapped: VerificationResponse =
-                this.verificationService.map(latestVerification);
+                this.verificationService.map(verification);
 
             return {
                 data: mapped,

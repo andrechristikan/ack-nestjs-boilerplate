@@ -58,9 +58,13 @@ import {
     IAuthSocialGooglePayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { SettingFeatureFlag } from '@modules/setting/decorators/setting.decorator';
-import { TermPolicyUserService } from '@modules/term-policy/services/term-policy-user.service';
-import { RequestCountry, RequestLanguage } from '@common/request/decorators/request.decorator';
+import {
+    RequestCountry,
+    RequestLanguage,
+} from '@common/request/decorators/request.decorator';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy-acceptance.service';
+import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -81,7 +85,7 @@ export class AuthPublicController {
         private readonly sessionService: SessionService,
         private readonly activityService: ActivityService,
         private readonly messageService: MessageService,
-        private readonly termPolicyUserService: TermPolicyUserService
+        private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService
     ) {}
 
     @AuthPublicLoginCredentialDoc()
@@ -360,9 +364,15 @@ export class AuthPublicController {
     @Post('/sign-up')
     async signUp(
         @Body()
-        { email, name, password: passwordString, country, termPolicies }: AuthSignUpRequestDto,
+        {
+            email,
+            name,
+            password: passwordString,
+            country,
+            cookies,
+        }: AuthSignUpRequestDto,
         @RequestLanguage() requestLanguage: ENUM_MESSAGE_LANGUAGE,
-        @RequestCountry() requestCountry: string,
+        @RequestCountry() requestCountry: string
     ): Promise<void> {
         const promises: Promise<any>[] = [
             this.roleService.findOneByName('individual'),
@@ -401,14 +411,15 @@ export class AuthPublicController {
                     email,
                     name,
                     country,
+                    cookies,
                 },
                 password,
                 { session }
             );
 
-            await this.termPolicyUserService.createAcceptances(
+            await this.termPolicyAcceptanceService.createAcceptances(
                 user._id,
-                termPolicies.getAcceptedPolicyTypes(),
+                Object.values(ENUM_TERM_POLICY_TYPE),
                 requestLanguage,
                 requestCountry,
                 { session }
