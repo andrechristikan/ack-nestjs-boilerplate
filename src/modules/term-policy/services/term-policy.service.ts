@@ -124,6 +124,13 @@ export class TermPolicyService implements ITermPolicyService {
         return this.termPolicyRepository.findOneById(_id, options);
     }
 
+    async findOne(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<TermPolicyDoc> {
+        return this.termPolicyRepository.findOne(find, options);
+    }
+
     async create(
         previous: TermPolicyDoc,
         urls: (AwsS3Dto & TermPolicyUpdateDocumentRequestDto)[],
@@ -171,14 +178,24 @@ export class TermPolicyService implements ITermPolicyService {
         { size, ...aws }: AwsS3Dto,
         options?: IDatabaseSaveOptions
     ): Promise<TermPolicyDoc> {
-        const index = repository.urls.findIndex(e => e.language === language);
+        const urls = repository.urls || [];
+        const index = urls.findIndex(e => e.language === language);
 
-        repository.urls[index] = {
-            ...aws,
-            language,
-            size: new Types.Decimal128(size.toString()),
-        };
+        if (index === -1) {
+            urls.push({
+                ...aws,
+                language,
+                size: new Types.Decimal128(size.toString()),
+            });
+        } else {
+            urls[index] = {
+                ...aws,
+                language,
+                size: new Types.Decimal128(size.toString()),
+            };
+        }
 
+        repository.urls = urls;
         return this.termPolicyRepository.save(repository, options);
     }
 

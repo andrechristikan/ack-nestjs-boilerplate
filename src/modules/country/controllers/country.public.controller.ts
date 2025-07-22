@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { PaginationQuery } from '@common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from '@common/pagination/services/pagination.service';
@@ -9,23 +9,23 @@ import { IResponsePaging } from '@common/response/interfaces/response.interface'
 import { COUNTRY_DEFAULT_AVAILABLE_SEARCH } from '@modules/country/constants/country.list.constant';
 import { CountryDoc } from '@modules/country/repository/entities/country.entity';
 import { CountryService } from '@modules/country/services/country.service';
-import { CountrySystemListDoc } from '@modules/country/docs/country.system.doc';
 import { CountryListResponseDto } from '@modules/country/dtos/response/country.list.response.dto';
+import { CountryPublicListDoc } from '@modules/country/docs/country.public.doc';
 
-@ApiTags('modules.system.country')
+@ApiTags('modules.public.country')
 @Controller({
     version: '1',
     path: '/country',
 })
-export class CountrySystemController {
+export class CountryPublicController {
     constructor(
         private readonly countryService: CountryService,
         private readonly paginationService: PaginationService
     ) {}
 
-    @CountrySystemListDoc()
+    @CountryPublicListDoc()
     @ResponsePaging('country.list')
-    @ApiKeySystemProtected()
+    @ApiKeyProtected()
     @Get('/list')
     async list(
         @PaginationQuery({

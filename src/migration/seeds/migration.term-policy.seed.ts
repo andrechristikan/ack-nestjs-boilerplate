@@ -1,15 +1,16 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
-import { ConfigService } from '@nestjs/config';
 import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { Types } from 'mongoose';
+import { CountryDoc } from '@modules/country/repository/entities/country.entity';
+import { CountryService } from '@modules/country/services/country.service';
 
 @Injectable()
 export class MigrationTermPolicySeed {
     constructor(
-        private readonly configService: ConfigService,
+        private readonly countryService: CountryService,
         private readonly termPolicyService: TermPolicyService
     ) {}
 
@@ -18,11 +19,12 @@ export class MigrationTermPolicySeed {
         describe: 'seed terms policy',
     })
     async seeds(): Promise<void> {
-        const country = this.configService.get<string>('app.country.default');
-
         try {
+            const country: CountryDoc =
+                await this.countryService.findOneByAlpha2('ID');
+
             // dummy data for term policies
-            await this.termPolicyService.createMany(country, {
+            await this.termPolicyService.createMany(country._id, {
                 [ENUM_TERM_POLICY_TYPE.TERM]: [
                     {
                         language: ENUM_MESSAGE_LANGUAGE.EN,

@@ -6,6 +6,7 @@ export interface ITermPolicyTemplateService {
         type: ENUM_TERM_POLICY_TYPE,
         country: string,
         language: string,
-        mime: string
+        mime: string,
+        version?: number
     ): string;
 }

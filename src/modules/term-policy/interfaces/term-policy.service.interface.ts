@@ -52,6 +52,10 @@ export interface ITermPolicyService {
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<TermPolicyDoc>;
+    findOne(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<TermPolicyDoc>;
     create(
         previous: TermPolicyDoc,
         urls: (AwsS3Dto & TermPolicyUpdateDocumentRequestDto)[],

@@ -32,9 +32,8 @@ export class TermPolicyEntity extends DatabaseUUIDEntityBase {
 
     @DatabaseProp({
         required: true,
-        type: Array,
         default: [],
-        schema: [TermPolicyDocumentSchema],
+        schema: TermPolicyDocumentSchema,
     })
     urls: TermPolicyDocumentEntity[];
 

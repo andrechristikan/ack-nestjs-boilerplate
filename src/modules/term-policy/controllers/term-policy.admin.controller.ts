@@ -381,6 +381,8 @@ export class TermPolicyAdminController {
                 session,
             });
 
+            // TODO: CONSIDER TO MOVE THE ASSET TO PUBLIC BUCKET
+
             await this.databaseService.commitTransaction(session);
 
             return {

@@ -20,6 +20,7 @@ import { MigrationSettingFeatureSeed } from '@migration/seeds/migration.settings
 import { SettingModule } from '@modules/setting/setting.module';
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
+import { AwsModule } from '@modules/aws/aws.module';
 
 // TODO: (v8) CHANGE WITH COMMANDER
 @Module({
@@ -39,6 +40,7 @@ import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
         VerificationModule,
         SettingModule,
         TermPolicyModule,
+        AwsModule,
     ],
     providers: [
         MigrationApiKeySeed,
@@ -47,7 +49,7 @@ import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
         MigrationRoleSeed,
         MigrationTemplateSeed,
         MigrationSettingFeatureSeed,
-        MigrationTermPolicySeed
+        MigrationTermPolicySeed,
     ],
     exports: [],
 })

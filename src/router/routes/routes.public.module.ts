@@ -18,6 +18,7 @@ import { VerificationModule } from '@modules/verification/verification.module';
 import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { TermPolicyPublicController } from '@modules/term-policy/controllers/term-policy.public.controller';
+import { CountryPublicController } from '@modules/country/controllers/country.public.controller';
 
 @Module({
     controllers: [
@@ -25,6 +26,7 @@ import { TermPolicyPublicController } from '@modules/term-policy/controllers/ter
         AuthPublicController,
         ResetPasswordPublicController,
         TermPolicyPublicController,
+        CountryPublicController,
     ],
     providers: [],
     exports: [],

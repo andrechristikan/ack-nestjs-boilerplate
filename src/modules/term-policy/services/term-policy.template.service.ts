@@ -32,15 +32,16 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         type: ENUM_TERM_POLICY_TYPE,
         country: string,
         language: string,
-        mime: string
+        mime: string,
+        version?: number
     ): string {
-        let path: string = `${this.uploadPath}/${type}-${country}-${language}}`;
+        let path: string = `${this.uploadPath}/${type}_v${version ?? 1}_${country}-${language}`;
         const extension = mime.split('/')[1];
 
         if (path.startsWith('/')) {
             path = path.replace('/', '');
         }
 
-        return `${path}.${extension.toLowerCase()}`;
+        return `${path}.${extension}`.toLowerCase();
     }
 }

@@ -75,7 +75,7 @@ import { AwsS3MultipartPresignCompletePartRequestDto } from '@modules/aws/dtos/r
 @Injectable()
 export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     private readonly presignExpired: number;
-    private config: IAwsS3Config;
+    private readonly config: IAwsS3Config;
 
     constructor(private readonly configService: ConfigService) {
         this.presignExpired = this.configService.get<number>(
@@ -85,21 +85,23 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     }
 
     onModuleInit(): void {
-        this.config.public.client = new S3Client({
+        const publicClient = new S3Client({
             credentials: {
                 accessKeyId: this.config.public.credential.key,
                 secretAccessKey: this.config.public.credential.secret,
             },
             region: this.config.public.region,
         });
-
-        this.config.private.client = new S3Client({
+        const privateClient = new S3Client({
             credentials: {
                 accessKeyId: this.config.private.credential.key,
                 secretAccessKey: this.config.private.credential.secret,
             },
             region: this.config.private.region,
         });
+
+        this.config.public.client = publicClient;
+        this.config.private.client = privateClient;
     }
 
     getConfig(options?: IAwsS3Options): IAwsS3ConfigBucket {
