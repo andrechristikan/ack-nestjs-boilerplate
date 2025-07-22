@@ -31,4 +31,13 @@ export class AuthSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     @IsNotEmpty()
     @IsBoolean()
     cookies: boolean;
+
+    @ApiProperty({
+        description: 'boolean marketing',
+        example: true,
+        required: true,
+    })
+    @IsNotEmpty()
+    @IsBoolean()
+    marketing: boolean;
 }

@@ -13,7 +13,6 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy-acceptance.service';
 import { IResponsePaging } from '@common/response/interfaces/response.interface';
 import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import { ENUM_TERM_POLICY_STATUS_CODE_ERROR } from '@modules/term-policy/enums/term-policy.status-code.enum';
@@ -38,6 +37,7 @@ import { UserService } from '@modules/user/services/user.service';
 import { TERM_POLICY_ACCEPTANCE_DEFAULT_AVAILABLE_ORDER_BY } from '@modules/term-policy/constants/term-policy.list.constant';
 import { DatabaseService } from '@common/database/services/database.service';
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
+import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 
 @ApiTags('modules.user.term-policy')
 @Controller({

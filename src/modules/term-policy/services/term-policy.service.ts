@@ -25,27 +25,19 @@ import {
     ENUM_TERM_POLICY_TYPE,
 } from '@modules/term-policy/enums/term-policy.enum';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { ConfigService } from '@nestjs/config';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
 import { TermPolicyUpdateDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.update-document.request';
 import { TermPolicyDocumentEntity } from '@modules/term-policy/repository/entities/term-policy-document.entity';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 
 @Injectable()
 export class TermPolicyService implements ITermPolicyService {
-    private readonly uploadPath: string;
-
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
-        private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService
-    ) {
-        this.uploadPath = this.configService.get<string>(
-            'termPolicy.uploadPath'
-        );
-    }
+        private readonly helperDateService: HelperDateService
+    ) {}
 
     async findAll(
         find?: Record<string, any>,
@@ -190,6 +182,16 @@ export class TermPolicyService implements ITermPolicyService {
         return this.termPolicyRepository.save(repository, options);
     }
 
+    async publish(
+        repository: TermPolicyDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<TermPolicyDoc> {
+        repository.status = ENUM_TERM_POLICY_STATUS.PUBLISHED;
+        repository.publishedAt = this.helperDateService.create();
+
+        return this.termPolicyRepository.save(repository, options);
+    }
+
     async delete(
         repository: TermPolicyDoc,
         options?: IDatabaseDeleteOptions
@@ -200,14 +202,36 @@ export class TermPolicyService implements ITermPolicyService {
         );
     }
 
-    createDocumentFilename(mime: string): string {
-        let path: string = `${this.uploadPath}/${this.helperStringService.random(10)}`;
-        const extension = mime.split('/')[1];
+    async deleteDocument(
+        repository: TermPolicyDoc,
+        language: ENUM_MESSAGE_LANGUAGE,
+        options?: IDatabaseSaveOptions
+    ): Promise<TermPolicyDoc> {
+        repository.urls = repository.urls.filter(e => e.language !== language);
 
-        if (path.startsWith('/')) {
-            path = path.replace('/', '');
-        }
+        return this.termPolicyRepository.save(repository, options);
+    }
 
-        return `${path}.${extension.toLowerCase()}`;
+    async createMany(
+        country: string,
+        types: Record<ENUM_TERM_POLICY_TYPE, TermPolicyDocumentEntity[]>
+    ): Promise<void> {
+        const typesArray = Object.keys(types) as ENUM_TERM_POLICY_TYPE[];
+        const entities = typesArray.map(type => {
+            const entity = new TermPolicyEntity();
+            entity.type = type;
+            entity.country = country;
+            entity.version = 1;
+            entity.status = ENUM_TERM_POLICY_STATUS.DRAFT;
+            entity.urls = types[type];
+
+            return entity;
+        });
+
+        await this.termPolicyRepository.createMany(entities);
+    }
+
+    async deleteMany(options?: IDatabaseDeleteOptions): Promise<void> {
+        await this.termPolicyRepository.deleteMany({}, options);
     }
 }

@@ -307,6 +307,7 @@ export class UserService implements IUserService {
             name,
             country,
             cookies,
+            marketing,
         }: Omit<AuthSignUpRequestDto, 'termPolicies' | 'password'>,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
@@ -333,7 +334,7 @@ export class UserService implements IUserService {
         };
         create.termPolicy = {
             cookies,
-            marketing: true,
+            marketing,
             privacy: true,
             term: true,
         };

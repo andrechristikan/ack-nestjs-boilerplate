@@ -45,7 +45,9 @@ import {
 import {
     TermPolicyAdminCreateDoc,
     TermPolicyAdminDeleteDoc,
+    TermPolicyAdminDeleteDocumentDoc,
     TermPolicyAdminListDoc,
+    TermPolicyAdminPublishDoc,
     TermPolicyAdminUpdateDocumentDoc,
     TermPolicyAdminUploadDocumentDoc,
 } from '@modules/term-policy/docs/term-policy.admin.doc';
@@ -73,6 +75,9 @@ import { TermPolicyParsePipe } from '@modules/term-policy/pipes/term-policy.pars
 import { TermPolicyDoc } from '@modules/term-policy/repository/entities/term-policy.entity';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { TermPolicyStatusPipe } from '@modules/term-policy/pipes/term-policy.status.pipe';
+import { TermPolicyTemplateService } from '@modules/term-policy/services/term-policy.template.service';
+import { TermPolicyAtLeastOneDocumentPipe } from '@modules/term-policy/pipes/term-policy.at-least-one-document.pipe';
+import { TermPolicyDeleteDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.delete-document.request';
 
 @ApiTags('modules.admin.term-policy')
 @Controller({
@@ -82,6 +87,7 @@ import { TermPolicyStatusPipe } from '@modules/term-policy/pipes/term-policy.sta
 export class TermPolicyAdminController {
     constructor(
         private readonly termPolicyService: TermPolicyService,
+        private readonly termPolicyTemplateService: TermPolicyTemplateService,
         private readonly paginationService: PaginationService,
         private readonly awsS3Service: AwsS3Service,
         private readonly databaseService: DatabaseService,
@@ -158,11 +164,12 @@ export class TermPolicyAdminController {
         @Body()
         { mime, size }: TermPolicyUploadDocumentRequestDto
     ): Promise<IResponse<AwsS3PresignResponseDto>> {
-        const filename = this.termPolicyService.createDocumentFilename(mime);
+        const filename =
+            this.termPolicyTemplateService.createDocumentFilename(mime);
 
         const aws = await this.awsS3Service.presignPutItem(filename, size, {
             access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
-            forceUpdate: true,
+            forceUpdate: false,
         });
 
         return {
@@ -262,11 +269,16 @@ export class TermPolicyAdminController {
             await this.termPolicyService.updateDocument(
                 termPolicy,
                 language,
-                url
+                url,
+                {
+                    session,
+                }
             );
 
             if (termPolicy.status === ENUM_TERM_POLICY_STATUS.PUBLISHED) {
-                await this.userService.releaseTermPolicy(termPolicy.type);
+                await this.userService.releaseTermPolicy(termPolicy.type, {
+                    session,
+                });
             }
 
             await this.databaseService.commitTransaction(session);
@@ -284,7 +296,7 @@ export class TermPolicyAdminController {
     }
 
     @TermPolicyAdminDeleteDoc()
-    @Response('termPolicy.deleteDocument')
+    @Response('termPolicy.delete')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
@@ -306,5 +318,82 @@ export class TermPolicyAdminController {
         await this.termPolicyService.delete(termPolicy);
 
         return;
+    }
+
+    @TermPolicyAdminDeleteDocumentDoc()
+    @Response('termPolicy.deleteDocument')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Delete('/delete/:termPolicy/document')
+    async deleteDocument(
+        @Param(
+            'termPolicy',
+            RequestRequiredPipe,
+            TermPolicyParsePipe,
+            new TermPolicyStatusPipe([ENUM_TERM_POLICY_STATUS.DRAFT])
+        )
+        termPolicy: TermPolicyDoc,
+        @Body() { language }: TermPolicyDeleteDocumentRequestDto
+    ): Promise<void> {
+        await this.termPolicyService.deleteDocument(termPolicy, language);
+
+        return;
+    }
+
+    @TermPolicyAdminPublishDoc()
+    @Response('termPolicy.publish')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/publish/:termPolicy')
+    async publish(
+        @Param(
+            'termPolicy',
+            RequestRequiredPipe,
+            TermPolicyParsePipe,
+            new TermPolicyStatusPipe([ENUM_TERM_POLICY_STATUS.DRAFT]),
+            TermPolicyAtLeastOneDocumentPipe
+        )
+        termPolicy: TermPolicyDoc
+    ) {
+        const session: ClientSession =
+            await this.databaseService.createTransaction();
+
+        try {
+            const publishedTermPolicy = await this.termPolicyService.publish(
+                termPolicy,
+                { session }
+            );
+
+            await this.userService.releaseTermPolicy(publishedTermPolicy.type, {
+                session,
+            });
+
+            await this.databaseService.commitTransaction(session);
+
+            return {
+                data: publishedTermPolicy,
+            };
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 }

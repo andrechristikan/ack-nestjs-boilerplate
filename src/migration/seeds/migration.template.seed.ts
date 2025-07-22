@@ -1,60 +1,73 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { EmailService } from '@modules/email/services/email.service';
+import { EmailTemplateService } from '@modules/email/services/email.template.service';
+import { TermPolicyTemplateService } from '@modules/term-policy/services/term-policy.template.service';
+import { join } from 'path';
+import { readFileSync } from 'fs';
+import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { ConfigService } from '@nestjs/config';
+import { AwsS3Service } from '@modules/aws/services/aws.s3.service';
+import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
 
 @Injectable()
 export class MigrationTemplateSeed {
-    constructor(private readonly emailService: EmailService) {}
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly emailTemplateService: EmailTemplateService,
+        private readonly termPolicyTemplateService: TermPolicyTemplateService,
+        private readonly awsS3Service: AwsS3Service
+    ) {}
 
     @Command({
-        command: 'migrate:template',
-        describe: 'migrate templates',
+        command: 'migrate:emailTemplate',
+        describe: 'migrate email templates',
     })
-    async migrate(): Promise<void> {
+    async migrateEmail(): Promise<void> {
         try {
-            await this.emailService.importWelcome();
+            await this.emailTemplateService.importWelcome();
         } catch (err: any) {
             throw new Error(err);
         }
 
         try {
-            await this.emailService.importCreate();
+            await this.emailTemplateService.importCreate();
         } catch (err: any) {
             throw new Error(err);
         }
 
         try {
-            await this.emailService.importChangePassword();
+            await this.emailTemplateService.importChangePassword();
         } catch (err: any) {
             throw new Error(err);
         }
 
         try {
-            await this.emailService.importTempPassword();
+            await this.emailTemplateService.importTempPassword();
         } catch (err: any) {
             throw new Error(err);
         }
 
         try {
-            await this.emailService.importResetPassword();
+            await this.emailTemplateService.importResetPassword();
         } catch (err: any) {
             throw new Error(err);
         }
 
         try {
-            await this.emailService.importVerification();
+            await this.emailTemplateService.importVerification();
         } catch (err: any) {
             throw new Error(err);
         }
 
         try {
-            await this.emailService.importEmailVerified();
+            await this.emailTemplateService.importEmailVerified();
         } catch (err: any) {
             throw new Error(err);
         }
 
         try {
-            await this.emailService.importMobileNumberVerified();
+            await this.emailTemplateService.importMobileNumberVerified();
         } catch (err: any) {
             throw new Error(err);
         }
@@ -63,58 +76,218 @@ export class MigrationTemplateSeed {
     }
 
     @Command({
-        command: 'rollback:template',
-        describe: 'rollback templates',
+        command: 'migrate:termPolicyTemplate',
+        describe: 'migrate term policy templates',
     })
-    async rollback(): Promise<void> {
+    async migrateTermPolicy(): Promise<void> {
         try {
-            await this.emailService.deleteWelcome();
-        } catch (err: any) {
-            throw new Error(err);
-        }
+            const country = this.configService.get<string>(
+                'app.country.default'
+            );
 
-        try {
-            await this.emailService.deleteCreate();
-        } catch (err: any) {
-            throw new Error(err);
-        }
+            const term =
+                this.termPolicyTemplateService.createDocumentFilenameForMigration(
+                    ENUM_TERM_POLICY_TYPE.TERM,
+                    country,
+                    ENUM_MESSAGE_LANGUAGE.EN,
+                    'application/pdf'
+                );
+            const privacy =
+                this.termPolicyTemplateService.createDocumentFilenameForMigration(
+                    ENUM_TERM_POLICY_TYPE.PRIVACY,
+                    country,
+                    ENUM_MESSAGE_LANGUAGE.EN,
+                    'application/pdf'
+                );
+            const cookies =
+                this.termPolicyTemplateService.createDocumentFilenameForMigration(
+                    ENUM_TERM_POLICY_TYPE.COOKIES,
+                    country,
+                    ENUM_MESSAGE_LANGUAGE.EN,
+                    'application/pdf'
+                );
+            const marketing =
+                this.termPolicyTemplateService.createDocumentFilenameForMigration(
+                    ENUM_TERM_POLICY_TYPE.MARKETING,
+                    country,
+                    ENUM_MESSAGE_LANGUAGE.EN,
+                    'application/pdf'
+                );
 
-        try {
-            await this.emailService.deleteChangePassword();
-        } catch (err: any) {
-            throw new Error(err);
-        }
+            const templateTermFilePath = join(
+                process.cwd(),
+                'src/modules/term-policy/templates/term-policy.en-term.pdf'
+            );
+            const templatePrivacyFilePath = join(
+                process.cwd(),
+                'src/modules/term-policy/templates/term-policy.en-privacy.pdf'
+            );
+            const templateCookiesFilePath = join(
+                process.cwd(),
+                'src/modules/term-policy/templates/term-policy.en-cookies.pdf'
+            );
+            const templateMarketingFilePath = join(
+                process.cwd(),
+                'src/modules/term-policy/templates/term-policy.en-marketing.pdf'
+            );
 
-        try {
-            await this.emailService.deleteTempPassword();
-        } catch (err: any) {
-            throw new Error(err);
-        }
+            const fileTerm = readFileSync(templateTermFilePath);
+            const filePrivacy = readFileSync(templatePrivacyFilePath);
+            const fileCookies = readFileSync(templateCookiesFilePath);
+            const fileMarketing = readFileSync(templateMarketingFilePath);
 
-        try {
-            await this.emailService.deleteResetPassword();
-        } catch (err: any) {
-            throw new Error(err);
-        }
-
-        try {
-            await this.emailService.deleteVerification();
-        } catch (err: any) {
-            throw new Error(err);
-        }
-
-        try {
-            await this.emailService.deleteEmailVerified();
-        } catch (err: any) {
-            throw new Error(err);
-        }
-
-        try {
-            await this.emailService.deleteMobileNumberVerified();
+            await Promise.all([
+                this.awsS3Service.putItem(
+                    {
+                        key: term,
+                        file: fileTerm,
+                        size: fileTerm.length,
+                    },
+                    {
+                        access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
+                    }
+                ),
+                this.awsS3Service.putItem(
+                    {
+                        key: cookies,
+                        file: fileCookies,
+                        size: fileCookies.length,
+                    },
+                    {
+                        access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
+                    }
+                ),
+                this.awsS3Service.putItem(
+                    {
+                        key: privacy,
+                        file: filePrivacy,
+                        size: filePrivacy.length,
+                    },
+                    {
+                        access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
+                    }
+                ),
+                this.awsS3Service.putItem(
+                    {
+                        key: marketing,
+                        file: fileMarketing,
+                        size: fileMarketing.length,
+                    },
+                    {
+                        access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
+                    }
+                ),
+            ]);
         } catch (err: any) {
             throw new Error(err);
         }
 
         return;
+    }
+
+    @Command({
+        command: 'rollback:emailTemplate',
+        describe: 'rollback email templates',
+    })
+    async rollbackEmail(): Promise<void> {
+        try {
+            await this.emailTemplateService.deleteWelcome();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailTemplateService.deleteCreate();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailTemplateService.deleteChangePassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailTemplateService.deleteTempPassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailTemplateService.deleteResetPassword();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailTemplateService.deleteVerification();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailTemplateService.deleteEmailVerified();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        try {
+            await this.emailTemplateService.deleteMobileNumberVerified();
+        } catch (err: any) {
+            throw new Error(err);
+        }
+
+        return;
+    }
+
+    @Command({
+        command: 'rollback:termPolicyTemplate',
+        describe: 'rollback term policy templates',
+    })
+    async rollbackTermPolicy(): Promise<void> {
+        try {
+            const country = this.configService.get<string>(
+                'app.country.default'
+            );
+
+            const term =
+                this.termPolicyTemplateService.createDocumentFilenameForMigration(
+                    ENUM_TERM_POLICY_TYPE.TERM,
+                    country,
+                    ENUM_MESSAGE_LANGUAGE.EN,
+                    'application/pdf'
+                );
+            const privacy =
+                this.termPolicyTemplateService.createDocumentFilenameForMigration(
+                    ENUM_TERM_POLICY_TYPE.PRIVACY,
+                    country,
+                    ENUM_MESSAGE_LANGUAGE.EN,
+                    'application/pdf'
+                );
+            const cookies =
+                this.termPolicyTemplateService.createDocumentFilenameForMigration(
+                    ENUM_TERM_POLICY_TYPE.COOKIES,
+                    country,
+                    ENUM_MESSAGE_LANGUAGE.EN,
+                    'application/pdf'
+                );
+            const marketing =
+                this.termPolicyTemplateService.createDocumentFilenameForMigration(
+                    ENUM_TERM_POLICY_TYPE.MARKETING,
+                    country,
+                    ENUM_MESSAGE_LANGUAGE.EN,
+                    'application/pdf'
+                );
+
+            await this.awsS3Service.deleteItems(
+                [term, privacy, cookies, marketing],
+                {
+                    access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
+                }
+            );
+        } catch (err: any) {
+            throw new Error(err);
+        }
     }
 }

@@ -14,8 +14,6 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
 } from '@common/database/interfaces/database.interface';
-import { ITermPolicyAcceptanceDoc } from '@modules/term-policy/interfaces/term-policy-acceptance.interface';
-import { ITermPolicyAcceptanceService } from '@modules/term-policy/interfaces/term-policy-acceptance.service.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -23,6 +21,8 @@ import { TermPolicyEntity } from '@modules/term-policy/repository/entities/term-
 import { TermPolicyRepository } from '@modules/term-policy/repository/repositories/term-policy.repository';
 import { TermPolicyAcceptanceRepository } from '@modules/term-policy/repository/repositories/term-policy-acceptance.repository';
 import { TermPolicyAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy-acceptance.response.dto';
+import { ITermPolicyAcceptanceService } from '@modules/term-policy/interfaces/term-policy.acceptance-service.interface';
+import { ITermPolicyAcceptanceDoc } from '@modules/term-policy/interfaces/term-policy.acceptance.interface';
 
 @Injectable()
 export class TermPolicyAcceptanceService

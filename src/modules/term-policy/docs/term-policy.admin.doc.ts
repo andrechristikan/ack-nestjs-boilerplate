@@ -124,6 +124,46 @@ export function TermPolicyAdminDeleteDoc(): MethodDecorator {
         DocRequest({
             params: [TermPolicyDocParamsId],
         }),
+        DocResponse('termPolicy.delete')
+    );
+}
+
+export function TermPolicyAdminDeleteDocumentDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'delete document from term-policy',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({
+            policy: true,
+            role: true,
+        }),
+        DocRequest({
+            params: [TermPolicyDocParamsId],
+        }),
         DocResponse('termPolicy.deleteDocument')
+    );
+}
+
+export function TermPolicyAdminPublishDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'publish term-policy',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({
+            policy: true,
+            role: true,
+        }),
+        DocRequest({
+            params: [TermPolicyDocParamsId],
+        }),
+        DocResponse('termPolicy.publish')
     );
 }

@@ -63,8 +63,8 @@ import {
     RequestLanguage,
 } from '@common/request/decorators/request.decorator';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
-import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy-acceptance.service';
 import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
+import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -370,6 +370,7 @@ export class AuthPublicController {
             password: passwordString,
             country,
             cookies,
+            marketing,
         }: AuthSignUpRequestDto,
         @RequestLanguage() requestLanguage: ENUM_MESSAGE_LANGUAGE,
         @RequestCountry() requestCountry: string
@@ -412,14 +413,28 @@ export class AuthPublicController {
                     name,
                     country,
                     cookies,
+                    marketing,
                 },
                 password,
                 { session }
             );
 
+            const termPolicyAcceptance = [
+                ENUM_TERM_POLICY_TYPE.PRIVACY,
+                ENUM_TERM_POLICY_TYPE.TERM,
+            ];
+
+            if (cookies) {
+                termPolicyAcceptance.push(ENUM_TERM_POLICY_TYPE.COOKIES);
+            }
+
+            if (marketing) {
+                termPolicyAcceptance.push(ENUM_TERM_POLICY_TYPE.MARKETING);
+            }
+
             await this.termPolicyAcceptanceService.createAcceptances(
                 user._id,
-                Object.values(ENUM_TERM_POLICY_TYPE),
+                termPolicyAcceptance,
                 requestLanguage,
                 requestCountry,
                 { session }

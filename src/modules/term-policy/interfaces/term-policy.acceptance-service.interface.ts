@@ -4,11 +4,11 @@ import {
     IDatabaseCreateOptions,
     IDatabaseGetTotalOptions,
 } from '@common/database/interfaces/database.interface';
-import { ITermPolicyAcceptanceDoc } from '@modules/term-policy/interfaces/term-policy-acceptance.interface';
 import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { TermPolicyAcceptanceDoc } from '@modules/term-policy/repository/entities/term-policy-acceptance.entity';
 import { TermPolicyAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy-acceptance.response.dto';
+import { ITermPolicyAcceptanceDoc } from '@modules/term-policy/interfaces/term-policy.acceptance.interface';
 
 export interface ITermPolicyAcceptanceService {
     findAllByUser(
