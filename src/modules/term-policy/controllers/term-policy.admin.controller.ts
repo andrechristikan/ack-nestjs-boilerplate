@@ -58,8 +58,12 @@ import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-p
 import {
     TERM_POLICY_DEFAULT_AVAILABLE_ORDER_BY,
     TERM_POLICY_DEFAULT_STATUS,
+    TERM_POLICY_DEFAULT_TYPE,
 } from '@modules/term-policy/constants/term-policy.list.constant';
-import { ENUM_TERM_POLICY_STATUS } from '@modules/term-policy/enums/term-policy.enum';
+import {
+    ENUM_TERM_POLICY_STATUS,
+    ENUM_TERM_POLICY_TYPE,
+} from '@modules/term-policy/enums/term-policy.enum';
 import { AwsS3PresignResponseDto } from '@modules/aws/dtos/response/aws.s3-presign.response.dto';
 import { TermPolicyUploadDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.upload-document.request';
 import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
@@ -114,14 +118,21 @@ export class TermPolicyAdminController {
         country: Record<string, any>,
         @PaginationQueryFilterInEnum(
             'type',
+            TERM_POLICY_DEFAULT_TYPE,
+            ENUM_TERM_POLICY_TYPE
+        )
+        type: Record<string, any>,
+        @PaginationQueryFilterInEnum(
+            'status',
             TERM_POLICY_DEFAULT_STATUS,
             ENUM_TERM_POLICY_STATUS
         )
-        type: Record<string, any>
+        status: Record<string, any>
     ): Promise<IResponsePaging<TermPolicyResponseDto>> {
         const find: Record<string, any> = {
             ...country,
             ...type,
+            ...status,
         };
 
         const [terms, total] = await Promise.all([
@@ -372,16 +383,27 @@ export class TermPolicyAdminController {
             await this.databaseService.createTransaction();
 
         try {
-            const publishedTermPolicy = await this.termPolicyService.publish(
-                termPolicy,
-                { session }
-            );
-
-            await this.userService.releaseTermPolicy(publishedTermPolicy.type, {
+            await this.userService.releaseTermPolicy(termPolicy.type, {
                 session,
             });
 
-            // TODO: CONSIDER TO MOVE THE ASSET TO PUBLIC BUCKET
+            const uploadPath = this.termPolicyTemplateService.getUploadPath();
+            const newAws = await this.awsS3Service.moveItems(
+                termPolicy.urls.map(e => ({
+                    ...e,
+                    size: Number.parseFloat(e.size.toString()),
+                })),
+                uploadPath,
+                {
+                    access: ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
+                }
+            );
+
+            const publishedTermPolicy = await this.termPolicyService.publish(
+                termPolicy,
+                newAws,
+                { session }
+            );
 
             await this.databaseService.commitTransaction(session);
 

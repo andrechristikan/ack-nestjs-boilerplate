@@ -6,6 +6,7 @@ import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { Types } from 'mongoose';
 import { CountryDoc } from '@modules/country/repository/entities/country.entity';
 import { CountryService } from '@modules/country/services/country.service';
+import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
 
 @Injectable()
 export class MigrationTermPolicySeed {
@@ -35,6 +36,7 @@ export class MigrationTermPolicySeed {
                         mime: 'application/pdf',
                         size: new Types.Decimal128('123456'),
                         cdnUrl: 'https://cdn.example.com/terms-en.pdf',
+                        access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
                     },
                 ],
                 [ENUM_TERM_POLICY_TYPE.PRIVACY]: [
@@ -47,6 +49,7 @@ export class MigrationTermPolicySeed {
                         mime: 'application/pdf',
                         size: new Types.Decimal128('123456'),
                         cdnUrl: 'https://cdn.example.com/privacy-en.pdf',
+                        access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
                     },
                 ],
                 [ENUM_TERM_POLICY_TYPE.COOKIES]: [
@@ -59,6 +62,7 @@ export class MigrationTermPolicySeed {
                         size: new Types.Decimal128('123456'),
                         cdnUrl: 'https://cdn.example.com/cookies-en.pdf',
                         language: ENUM_MESSAGE_LANGUAGE.EN,
+                        access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
                     },
                 ],
                 [ENUM_TERM_POLICY_TYPE.MARKETING]: [
@@ -71,6 +75,7 @@ export class MigrationTermPolicySeed {
                         size: new Types.Decimal128('123456'),
                         cdnUrl: 'https://cdn.example.com/marketing-en.pdf',
                         language: ENUM_MESSAGE_LANGUAGE.EN,
+                        access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
                     },
                 ],
             });

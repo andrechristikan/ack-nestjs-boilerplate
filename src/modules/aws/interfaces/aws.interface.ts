@@ -1,4 +1,4 @@
-import { ObjectCannedACL, S3Client } from '@aws-sdk/client-s3';
+import { ObjectCannedACL } from '@aws-sdk/client-s3';
 import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
 
 export interface IAwsS3Options {
@@ -36,17 +36,10 @@ export interface IAwsS3ConfigCredential {
 }
 
 export interface IAwsS3ConfigBucket {
-    credential: IAwsS3ConfigCredential;
     bucket: string;
-    region: string;
     baseUrl: string;
+    access: ENUM_AWS_S3_ACCESSIBILITY;
     cdnUrl?: string;
-    client?: S3Client;
-}
-
-export interface IAwsS3Config {
-    public: IAwsS3ConfigBucket;
-    private: IAwsS3ConfigBucket;
 }
 
 export interface IAwsS3FileInfo {

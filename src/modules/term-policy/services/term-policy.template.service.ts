@@ -17,6 +17,10 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         );
     }
 
+    getUploadPath(): string {
+        return this.uploadPath;
+    }
+
     createDocumentFilename(mime: string): string {
         let path: string = `${this.uploadPath}/${this.helperStringService.randomReference(10)}`;
         const extension = mime.split('/')[1];

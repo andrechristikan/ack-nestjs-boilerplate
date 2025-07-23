@@ -201,10 +201,25 @@ export class TermPolicyService implements ITermPolicyService {
 
     async publish(
         repository: TermPolicyDoc,
+        urls: AwsS3Dto[],
         options?: IDatabaseSaveOptions
     ): Promise<TermPolicyDoc> {
         repository.status = ENUM_TERM_POLICY_STATUS.PUBLISHED;
         repository.publishedAt = this.helperDateService.create();
+        repository.urls = urls.map(
+            ({ bucket, completedUrl, extension, key, mime, size, cdnUrl }) => {
+                const en = new TermPolicyDocumentEntity();
+                en.bucket = bucket;
+                en.completedUrl = completedUrl;
+                en.extension = extension;
+                en.key = key;
+                en.mime = mime;
+                en.size = new Types.Decimal128(size.toString());
+                en.language = repository.urls.find(e => e.key === key).language;
+                en.cdnUrl = cdnUrl;
+                return en;
+            }
+        );
 
         return this.termPolicyRepository.save(repository, options);
     }
