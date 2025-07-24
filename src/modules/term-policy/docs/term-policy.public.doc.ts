@@ -5,8 +5,8 @@ import {
     DocRequest,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
-import { TermPolicyListDocQuery } from '@modules/term-policy/constants/term-policy.doc.constant';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import { TermPolicyListPublicDocQuery } from '@modules/term-policy/constants/term-policy.doc.constant';
 
 export function TermPolicyPublicListDoc(): MethodDecorator {
     return applyDecorators(
@@ -14,7 +14,7 @@ export function TermPolicyPublicListDoc(): MethodDecorator {
             summary: 'Retrieve list of publish terms and policies',
         }),
         DocRequest({
-            queries: TermPolicyListDocQuery,
+            queries: TermPolicyListPublicDocQuery,
         }),
         DocAuth({
             xApiKey: true,

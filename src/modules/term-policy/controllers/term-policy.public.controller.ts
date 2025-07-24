@@ -11,10 +11,13 @@ import {
 } from '@common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { ENUM_TERM_POLICY_STATUS } from '@modules/term-policy/enums/term-policy.enum';
+import {
+    ENUM_TERM_POLICY_STATUS,
+    ENUM_TERM_POLICY_TYPE,
+} from '@modules/term-policy/enums/term-policy.enum';
 import {
     TERM_POLICY_DEFAULT_AVAILABLE_ORDER_BY,
-    TERM_POLICY_DEFAULT_STATUS,
+    TERM_POLICY_DEFAULT_TYPE,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { TermPolicyPublicListDoc } from '@modules/term-policy/docs/term-policy.public.doc';
@@ -43,8 +46,8 @@ export class TermPolicyPublicController {
         country: Record<string, any>,
         @PaginationQueryFilterInEnum(
             'type',
-            TERM_POLICY_DEFAULT_STATUS,
-            ENUM_TERM_POLICY_STATUS
+            TERM_POLICY_DEFAULT_TYPE,
+            ENUM_TERM_POLICY_TYPE
         )
         type: Record<string, any>
     ): Promise<IResponsePaging<TermPolicyResponseDto>> {

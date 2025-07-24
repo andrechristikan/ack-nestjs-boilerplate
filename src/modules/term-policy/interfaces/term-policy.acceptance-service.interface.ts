@@ -1,4 +1,3 @@
-import { ClassTransformOptions } from 'class-transformer';
 import {
     IDatabaseFindAllOptions,
     IDatabaseCreateOptions,
@@ -8,7 +7,10 @@ import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.en
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { TermPolicyAcceptanceDoc } from '@modules/term-policy/repository/entities/term-policy-acceptance.entity';
 import { TermPolicyAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy-acceptance.response.dto';
-import { ITermPolicyAcceptanceDoc } from '@modules/term-policy/interfaces/term-policy.acceptance.interface';
+import {
+    ITermPolicyAcceptanceDoc,
+    ITermPolicyAcceptanceEntity,
+} from '@modules/term-policy/interfaces/term-policy.acceptance.interface';
 
 export interface ITermPolicyAcceptanceService {
     findAllByUser(
@@ -33,8 +35,7 @@ export interface ITermPolicyAcceptanceService {
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     mapList(
-        policies: ITermPolicyAcceptanceDoc[],
-        options?: ClassTransformOptions
+        policies: (ITermPolicyAcceptanceDoc | ITermPolicyAcceptanceEntity)[]
     ): TermPolicyAcceptanceResponseDto[];
     createMany(
         user: string,

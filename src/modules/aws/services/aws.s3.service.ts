@@ -177,9 +177,10 @@ export class AwsS3Service implements IAwsS3Service {
             bucket: config.bucket,
             key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size: item.ContentLength,
             mime,
@@ -217,9 +218,10 @@ export class AwsS3Service implements IAwsS3Service {
                 bucket: config.bucket,
                 key: item.Key,
                 completedUrl: `${config.baseUrl}${pathWithFilename}`,
-                cdnUrl: config.cdnUrl
-                    ? `${config.cdnUrl}${pathWithFilename}`
-                    : undefined,
+                cdnUrl:
+                    config.cdnUrl && config.cdnUrl !== ''
+                        ? `${config.cdnUrl}${pathWithFilename}`
+                        : undefined,
                 baseUrl: config.baseUrl,
                 extension,
                 size: item.Size,
@@ -271,9 +273,10 @@ export class AwsS3Service implements IAwsS3Service {
             bucket: config.bucket,
             key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             data: item.Body,
             size: item.ContentLength,
@@ -313,9 +316,10 @@ export class AwsS3Service implements IAwsS3Service {
             bucket: config.bucket,
             key: file.key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size: file?.size,
             mime,
@@ -355,9 +359,10 @@ export class AwsS3Service implements IAwsS3Service {
             bucket: config.bucket,
             key: file.key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size: file?.size,
             mime,
@@ -510,9 +515,10 @@ export class AwsS3Service implements IAwsS3Service {
             uploadId: response.UploadId,
             key: file.key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size: file?.size,
             lastPartNumber: 0,
@@ -560,9 +566,10 @@ export class AwsS3Service implements IAwsS3Service {
             uploadId: response.UploadId,
             key: file.key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size: file?.size,
             lastPartNumber: 0,
@@ -795,9 +802,10 @@ export class AwsS3Service implements IAwsS3Service {
             bucket: config.bucket,
             key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size,
             mime,
@@ -811,30 +819,34 @@ export class AwsS3Service implements IAwsS3Service {
 
     async moveItem(
         source: AwsS3Dto,
-        destinationKey: string,
+        destination: string,
         options?: IAwsS3Options
     ): Promise<AwsS3Dto> {
         if (source.key.startsWith('/')) {
             throw new Error('Source key should not start with "/"');
         }
-        if (destinationKey.startsWith('/')) {
-            throw new Error('Destination key should not start with "/"');
+
+        if (destination.startsWith('/')) {
+            throw new Error('Destination should not start with "/"');
         }
 
         const config = this.config.get(
             options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
         );
+
+        const destinationKey = `${destination}/${source.key.split('/').pop()}`;
         const copyCommand = new CopyObjectCommand({
             Bucket: config.bucket,
-            CopySource: `${source.bucket}/${source.key}`,
             Key: destinationKey,
+            CopySource: `${source.bucket}/${source.key}`,
+            MetadataDirective: 'COPY',
         });
 
         await this.client.send<CopyObjectCommandInput, CopyObjectCommandOutput>(
             copyCommand
         );
 
-        await this.deleteItem(source.key, options);
+        await this.deleteItem(source.key, { access: source.access });
 
         const { pathWithFilename, extension, mime } =
             this.getFileInfoFromKey(destinationKey);
@@ -843,9 +855,10 @@ export class AwsS3Service implements IAwsS3Service {
             bucket: config.bucket,
             key: destinationKey,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size: source.size,
             mime,
@@ -861,6 +874,7 @@ export class AwsS3Service implements IAwsS3Service {
         if (sources.some(e => e.key.startsWith('/'))) {
             throw new Error('Source keys should not start with "/"');
         }
+
         if (destination.startsWith('/')) {
             throw new Error('Destination should not start with "/"');
         }
@@ -868,8 +882,7 @@ export class AwsS3Service implements IAwsS3Service {
         const promises = [];
 
         for (const source of sources) {
-            const destinationKey = `${destination}/${source.key}`;
-            promises.push(this.moveItem(source, destinationKey, options));
+            promises.push(this.moveItem(source, destination, options));
         }
 
         const movedItems: AwsS3Dto[] = await Promise.all(promises);

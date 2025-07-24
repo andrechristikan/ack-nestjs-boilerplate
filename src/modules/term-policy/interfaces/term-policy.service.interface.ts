@@ -1,5 +1,6 @@
 import { TermPolicyDoc } from '@modules/term-policy/repository/entities/term-policy.entity';
 import {
+    IDatabaseCreateManyOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteOptions,
     IDatabaseExistsOptions,
@@ -8,7 +9,10 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
 } from '@common/database/interfaces/database.interface';
-import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
+import {
+    ENUM_TERM_POLICY_STATUS,
+    ENUM_TERM_POLICY_TYPE,
+} from '@modules/term-policy/enums/term-policy.enum';
 import {
     ITermPolicyDoc,
     ITermPolicyEntity,
@@ -57,9 +61,11 @@ export interface ITermPolicyService {
         options?: IDatabaseFindOneOptions
     ): Promise<TermPolicyDoc>;
     create(
-        previous: TermPolicyDoc,
+        country: string,
+        type: ENUM_TERM_POLICY_TYPE,
         urls: (AwsS3Dto & TermPolicyUpdateDocumentRequestDto)[],
         createdBy: string,
+        version: number,
         options?: IDatabaseCreateOptions
     ): Promise<TermPolicyDoc>;
     updateDocument(
@@ -74,7 +80,9 @@ export interface ITermPolicyService {
     ): Promise<TermPolicyDoc>;
     createMany(
         country: string,
-        types: Record<ENUM_TERM_POLICY_TYPE, TermPolicyDocumentEntity[]>
+        types: Record<ENUM_TERM_POLICY_TYPE, TermPolicyDocumentEntity[]>,
+        status: ENUM_TERM_POLICY_STATUS,
+        options?: IDatabaseCreateManyOptions
     ): Promise<void>;
     deleteMany(options?: IDatabaseDeleteOptions): Promise<void>;
 }

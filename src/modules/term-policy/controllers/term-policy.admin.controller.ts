@@ -8,6 +8,7 @@ import {
     HttpCode,
     HttpStatus,
     InternalServerErrorException,
+    NotFoundException,
     Param,
     Post,
     Put,
@@ -82,6 +83,8 @@ import { TermPolicyStatusPipe } from '@modules/term-policy/pipes/term-policy.sta
 import { TermPolicyTemplateService } from '@modules/term-policy/services/term-policy.template.service';
 import { TermPolicyAtLeastOneDocumentPipe } from '@modules/term-policy/pipes/term-policy.at-least-one-document.pipe';
 import { TermPolicyDeleteDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.delete-document.request';
+import { CountryService } from '@modules/country/services/country.service';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
 
 @ApiTags('modules.admin.term-policy')
 @Controller({
@@ -95,7 +98,8 @@ export class TermPolicyAdminController {
         private readonly paginationService: PaginationService,
         private readonly awsS3Service: AwsS3Service,
         private readonly databaseService: DatabaseService,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly countryService: CountryService
     ) {}
 
     @TermPolicyAdminListDoc()
@@ -212,6 +216,14 @@ export class TermPolicyAdminController {
             });
         }
 
+        const existCountry = await this.countryService.findOneById(country);
+        if (!existCountry) {
+            throw new NotFoundException({
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'country.error.notFound',
+            });
+        }
+
         const session: ClientSession =
             await this.databaseService.createTransaction();
 
@@ -226,14 +238,15 @@ export class TermPolicyAdminController {
                 }));
 
             const termPolicy = await this.termPolicyService.create(
-                exist,
+                country,
+                type,
                 mapUrls,
                 createdBy,
+                exist ? exist.version : 1,
                 {
                     session,
                 }
             );
-            await this.userService.releaseTermPolicy(type, { session });
 
             await this.databaseService.commitTransaction(session);
 
@@ -263,7 +276,12 @@ export class TermPolicyAdminController {
     @ApiKeyProtected()
     @Put('/update/:termPolicy/document')
     async updateDocument(
-        @Param('termPolicy', RequestRequiredPipe, TermPolicyParsePipe)
+        @Param(
+            'termPolicy',
+            RequestRequiredPipe,
+            TermPolicyParsePipe,
+            new TermPolicyStatusPipe([ENUM_TERM_POLICY_STATUS.DRAFT])
+        )
         termPolicy: TermPolicyDoc,
         @Body()
         { key, language, size }: TermPolicyUpdateDocumentRequestDto
@@ -285,12 +303,6 @@ export class TermPolicyAdminController {
                     session,
                 }
             );
-
-            if (termPolicy.status === ENUM_TERM_POLICY_STATUS.PUBLISHED) {
-                await this.userService.releaseTermPolicy(termPolicy.type, {
-                    session,
-                });
-            }
 
             await this.databaseService.commitTransaction(session);
 
@@ -383,11 +395,9 @@ export class TermPolicyAdminController {
             await this.databaseService.createTransaction();
 
         try {
-            await this.userService.releaseTermPolicy(termPolicy.type, {
-                session,
-            });
-
-            const uploadPath = this.termPolicyTemplateService.getUploadPath();
+            const uploadPath = this.termPolicyTemplateService
+                .getUploadPath()
+                .replace('/', '');
             const newAws = await this.awsS3Service.moveItems(
                 termPolicy.urls.map(e => ({
                     ...e,
@@ -404,6 +414,10 @@ export class TermPolicyAdminController {
                 newAws,
                 { session }
             );
+
+            await this.userService.releaseTermPolicy(termPolicy.type, {
+                session,
+            });
 
             await this.databaseService.commitTransaction(session);
 

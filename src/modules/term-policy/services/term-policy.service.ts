@@ -5,6 +5,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { Document, Types } from 'mongoose';
 import {
+    IDatabaseCreateManyOptions,
     IDatabaseCreateOptions,
     IDatabaseDeleteOptions,
     IDatabaseExistsOptions,
@@ -132,15 +133,17 @@ export class TermPolicyService implements ITermPolicyService {
     }
 
     async create(
-        previous: TermPolicyDoc,
+        country: string,
+        type: ENUM_TERM_POLICY_TYPE,
         urls: (AwsS3Dto & TermPolicyUpdateDocumentRequestDto)[],
         createdBy: string,
+        version: number,
         options?: IDatabaseCreateOptions
     ): Promise<TermPolicyDoc> {
         const entity = new TermPolicyEntity();
-        entity.type = previous.type;
-        entity.country = previous.country;
-        entity.version = previous.version + 1;
+        entity.type = type;
+        entity.country = country;
+        entity.version = version;
         entity.status = ENUM_TERM_POLICY_STATUS.DRAFT;
         entity.publishedAt = null;
         entity.createdBy = createdBy;
@@ -206,17 +209,24 @@ export class TermPolicyService implements ITermPolicyService {
     ): Promise<TermPolicyDoc> {
         repository.status = ENUM_TERM_POLICY_STATUS.PUBLISHED;
         repository.publishedAt = this.helperDateService.create();
-        repository.urls = urls.map(
-            ({ bucket, completedUrl, extension, key, mime, size, cdnUrl }) => {
-                const en = new TermPolicyDocumentEntity();
-                en.bucket = bucket;
-                en.completedUrl = completedUrl;
-                en.extension = extension;
-                en.key = key;
-                en.mime = mime;
-                en.size = new Types.Decimal128(size.toString());
-                en.language = repository.urls.find(e => e.key === key).language;
-                en.cdnUrl = cdnUrl;
+        repository.urls = repository.urls.map(
+            ({ key, size, language, ...others }) => {
+                const existingUrl = urls.find(e => e.key === key);
+                if (!existingUrl) {
+                    return {
+                        key,
+                        size,
+                        language,
+                        ...others,
+                    };
+                }
+
+                const en = {
+                    ...existingUrl,
+                    language,
+                    size: new Types.Decimal128(size.toString()),
+                };
+
                 return en;
             }
         );
@@ -246,7 +256,9 @@ export class TermPolicyService implements ITermPolicyService {
 
     async createMany(
         country: string,
-        types: Record<ENUM_TERM_POLICY_TYPE, TermPolicyDocumentEntity[]>
+        types: Record<ENUM_TERM_POLICY_TYPE, TermPolicyDocumentEntity[]>,
+        status: ENUM_TERM_POLICY_STATUS = ENUM_TERM_POLICY_STATUS.DRAFT,
+        options?: IDatabaseCreateManyOptions
     ): Promise<void> {
         const typesArray = Object.keys(types) as ENUM_TERM_POLICY_TYPE[];
         const entities = typesArray.map(type => {
@@ -254,13 +266,13 @@ export class TermPolicyService implements ITermPolicyService {
             entity.type = type;
             entity.country = country;
             entity.version = 1;
-            entity.status = ENUM_TERM_POLICY_STATUS.DRAFT;
+            entity.status = status;
             entity.urls = types[type];
 
             return entity;
         });
 
-        await this.termPolicyRepository.createMany(entities);
+        await this.termPolicyRepository.createMany(entities, options);
     }
 
     async deleteMany(options?: IDatabaseDeleteOptions): Promise<void> {

@@ -10,10 +10,10 @@ export const TermPolicyDocParamsId: ApiParamOptions = {
     allowEmptyValue: false,
     required: true,
     type: 'string',
-    example: faker.string.alphanumeric(),
+    example: faker.string.uuid(),
 };
 
-export const TermPolicyListDocQuery: ApiParamOptions[] = [
+export const TermPolicyListPublicDocQuery: ApiParamOptions[] = [
     {
         name: 'type',
         allowEmptyValue: true,
@@ -24,6 +24,17 @@ export const TermPolicyListDocQuery: ApiParamOptions[] = [
         description: "value with ',' delimiter",
     },
     {
+        name: 'country',
+        allowEmptyValue: true,
+        required: false,
+        type: 'string',
+        example: faker.string.uuid(),
+    },
+];
+
+export const TermPolicyListAdminDocQuery: ApiParamOptions[] = [
+    ...TermPolicyListPublicDocQuery,
+    {
         name: 'status',
         allowEmptyValue: true,
         required: false,
@@ -31,12 +42,5 @@ export const TermPolicyListDocQuery: ApiParamOptions[] = [
         enum: Object.values(ENUM_TERM_POLICY_STATUS),
         example: Object.values(ENUM_TERM_POLICY_STATUS).join(','),
         description: "value with ',' delimiter",
-    },
-    {
-        name: 'country',
-        allowEmptyValue: true,
-        required: false,
-        type: 'string',
-        example: faker.string.uuid(),
     },
 ];

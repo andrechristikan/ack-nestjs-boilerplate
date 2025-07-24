@@ -4,7 +4,7 @@ import {
     TermPolicyAcceptanceDoc,
     TermPolicyAcceptanceEntity,
 } from '@modules/term-policy/repository/entities/term-policy-acceptance.entity';
-import { ClassTransformOptions, plainToInstance } from 'class-transformer';
+import { plainToInstance } from 'class-transformer';
 import {
     ENUM_TERM_POLICY_STATUS,
     ENUM_TERM_POLICY_TYPE,
@@ -22,7 +22,10 @@ import { TermPolicyRepository } from '@modules/term-policy/repository/repositori
 import { TermPolicyAcceptanceRepository } from '@modules/term-policy/repository/repositories/term-policy-acceptance.repository';
 import { TermPolicyAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy-acceptance.response.dto';
 import { ITermPolicyAcceptanceService } from '@modules/term-policy/interfaces/term-policy.acceptance-service.interface';
-import { ITermPolicyAcceptanceDoc } from '@modules/term-policy/interfaces/term-policy.acceptance.interface';
+import {
+    ITermPolicyAcceptanceDoc,
+    ITermPolicyAcceptanceEntity,
+} from '@modules/term-policy/interfaces/term-policy.acceptance.interface';
 
 @Injectable()
 export class TermPolicyAcceptanceService
@@ -89,15 +92,14 @@ export class TermPolicyAcceptanceService
     }
 
     mapList(
-        policies: ITermPolicyAcceptanceDoc[],
-        options?: ClassTransformOptions
+        policies: (ITermPolicyAcceptanceDoc | ITermPolicyAcceptanceEntity)[]
     ): TermPolicyAcceptanceResponseDto[] {
         return plainToInstance(
             TermPolicyAcceptanceResponseDto,
-            policies.map((e: ITermPolicyAcceptanceDoc) =>
-                e instanceof Document ? e.toObject() : e
-            ),
-            options
+            policies.map(
+                (e: ITermPolicyAcceptanceDoc | ITermPolicyAcceptanceEntity) =>
+                    e instanceof Document ? e.toObject() : e
+            )
         );
     }
 

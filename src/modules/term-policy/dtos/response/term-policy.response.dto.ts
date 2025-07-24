@@ -26,7 +26,7 @@ export class TermPolicyResponseDto extends DatabaseUUIDDto {
 
     @ApiProperty({
         required: true,
-        type: [TermDocumentResponseDto],
+        type: TermDocumentResponseDto,
         description: 'List of URLs for the terms or policy documents',
         oneOf: [{ $ref: getSchemaPath(TermDocumentResponseDto) }],
         isArray: true,

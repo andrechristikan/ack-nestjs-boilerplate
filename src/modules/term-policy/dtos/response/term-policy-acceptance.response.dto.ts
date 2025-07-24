@@ -11,7 +11,7 @@ export class TermPolicyAcceptanceResponseDto extends DatabaseUUIDDto {
         oneOf: [{ $ref: getSchemaPath(TermPolicyResponseDto) }],
     })
     @Type(() => TermPolicyResponseDto)
-    readonly policy: TermPolicyResponseDto;
+    readonly termPolicy: TermPolicyResponseDto;
 
     @ApiProperty({
         required: true,

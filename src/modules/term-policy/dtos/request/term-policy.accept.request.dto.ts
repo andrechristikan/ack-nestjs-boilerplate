@@ -1,13 +1,7 @@
-import { IsEnum, IsNotEmpty } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
+import { PickType } from '@nestjs/swagger';
+import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 
-export class TermPolicyAcceptRequestDto {
-    @ApiProperty({
-        required: true,
-        enum: Object.values(ENUM_TERM_POLICY_TYPE),
-    })
-    @IsEnum(ENUM_TERM_POLICY_TYPE)
-    @IsNotEmpty()
-    type: ENUM_TERM_POLICY_TYPE;
-}
+export class TermPolicyAcceptRequestDto extends PickType(
+    TermPolicyCreateRequestDto,
+    ['country', 'type']
+) {}

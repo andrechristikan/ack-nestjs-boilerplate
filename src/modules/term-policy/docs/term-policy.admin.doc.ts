@@ -8,7 +8,7 @@ import {
 import { applyDecorators } from '@nestjs/common';
 import {
     TermPolicyDocParamsId,
-    TermPolicyListDocQuery,
+    TermPolicyListAdminDocQuery,
 } from '@modules/term-policy/constants/term-policy.doc.constant';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
@@ -24,7 +24,7 @@ export function TermPolicyAdminListDoc(): MethodDecorator {
             summary: 'Retrieve list of terms and policies',
         }),
         DocRequest({
-            queries: TermPolicyListDocQuery,
+            queries: TermPolicyListAdminDocQuery,
         }),
         DocAuth({
             xApiKey: true,

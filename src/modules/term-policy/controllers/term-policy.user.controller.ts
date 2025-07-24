@@ -21,7 +21,6 @@ import {
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
-import { RequestCountry } from '@common/request/decorators/request.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { PaginationQuery } from '@common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
@@ -38,6 +37,7 @@ import { TERM_POLICY_ACCEPTANCE_DEFAULT_AVAILABLE_ORDER_BY } from '@modules/term
 import { DatabaseService } from '@common/database/services/database.service';
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
+import { IAuthJwtTermPolicyPayload } from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.user.term-policy')
 @Controller({
@@ -99,12 +99,11 @@ export class TermPolicyUserController {
     @ApiKeyProtected()
     @Post('/accept')
     async accept(
+        @AuthJwtPayload('termPolicy') termPolicy: IAuthJwtTermPolicyPayload,
         @AuthJwtPayload('user') userId: string,
-        @RequestCountry() country: string,
-        @Body() { type }: TermPolicyAcceptRequestDto
+        @Body() { type, country }: TermPolicyAcceptRequestDto
     ): Promise<void> {
-        const user = await this.userService.findOneById(userId);
-        if (user.termPolicy[type.toLowerCase()]) {
+        if (termPolicy[type.toLowerCase()]) {
             throw new BadRequestException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.ALREADY_ACCEPTED,
                 message: 'termPolicy.error.alreadyAccepted',
@@ -125,6 +124,7 @@ export class TermPolicyUserController {
         const session = await this.databaseService.createTransaction();
 
         try {
+            const user = await this.userService.findOneById(userId);
             await this.termPolicyAcceptanceService.create(userId, policy._id, {
                 session,
             });

@@ -643,7 +643,9 @@ export class UserService implements IUserService {
         options?: IDatabaseUpdateManyOptions
     ): Promise<void> {
         await this.userRepository.updateMany(
-            {},
+            {
+                [`termPolicy.${type.toLowerCase()}`]: true,
+            },
             {
                 [`termPolicy.${type.toLowerCase()}`]: false,
             },
