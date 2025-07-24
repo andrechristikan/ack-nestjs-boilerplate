@@ -48,6 +48,8 @@ import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
+import { v4 as uuidV4 } from 'uuid';
+import { SessionJtiProtected } from '@modules/session/decorators/session.jti.decorator';
 
 @ApiTags('modules.shared.auth')
 @Controller({
@@ -69,6 +71,7 @@ export class AuthSharedController {
 
     @AuthSharedRefreshDoc()
     @Response('auth.refresh')
+    @SessionJtiProtected()
     @UserProtected()
     @AuthJwtRefreshProtected()
     @ApiKeyProtected()
@@ -77,9 +80,13 @@ export class AuthSharedController {
     async refresh(
         @AuthJwtToken() refreshToken: string,
         @AuthJwtPayload<IAuthJwtRefreshTokenPayload>()
-        { user: userFromPayload, session }: IAuthJwtRefreshTokenPayload
+        {
+            user: userFromPayload,
+            session: sessionId,
+        }: IAuthJwtRefreshTokenPayload
     ): Promise<IResponse<AuthRefreshResponseDto>> {
-        const checkActive = await this.sessionService.findLoginSession(session);
+        const checkActive =
+            await this.sessionService.findLoginSession(sessionId);
         if (!checkActive) {
             throw new UnauthorizedException({
                 statusCode: ENUM_SESSION_STATUS_CODE_ERROR.NOT_FOUND,
@@ -87,13 +94,43 @@ export class AuthSharedController {
             });
         }
 
-        const user: IUserDoc =
-            await this.userService.findOneActiveById(userFromPayload);
-        const token = this.authService.refreshToken(user, refreshToken);
+        const dbSession: ClientSession =
+            await this.databaseService.createTransaction();
+        try {
+            const activeSession = await this.sessionService.findOneActiveById(
+                sessionId,
+                { session: dbSession }
+            );
+            const session = await this.sessionService.updateJti(
+                activeSession,
+                uuidV4(),
+                { session: dbSession }
+            );
 
-        return {
-            data: token,
-        };
+            const user: IUserDoc = await this.userService.findOneActiveById(
+                userFromPayload,
+                { session: dbSession }
+            );
+            const token = this.authService.refreshToken(
+                user,
+                refreshToken,
+                session.jti
+            );
+
+            await this.databaseService.commitTransaction(dbSession);
+
+            return {
+                data: token,
+            };
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(dbSession);
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
     @AuthSharedChangePasswordDoc()

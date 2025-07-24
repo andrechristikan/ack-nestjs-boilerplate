@@ -21,6 +21,7 @@ import { AuthLoginResponseDto } from '@modules/auth/dtos/response/auth.login.res
 import { readFileSync } from 'fs';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { join } from 'path';
+import { v4 as uuidV4 } from 'uuid';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -153,7 +154,8 @@ export class AuthService implements IAuthService {
 
     createAccessToken(
         subject: string,
-        payload: IAuthJwtAccessTokenPayload
+        payload: IAuthJwtAccessTokenPayload,
+        jwtid: string
     ): string {
         return this.jwtService.sign(payload, {
             privateKey: this.jwtAccessTokenPrivateKey,
@@ -163,6 +165,7 @@ export class AuthService implements IAuthService {
             subject,
             algorithm: this.jwtAlgorithm,
             keyid: this.jwtAccessTokenKid,
+            jwtid: jwtid,
         } as JwtSignOptions);
     }
 
@@ -188,7 +191,8 @@ export class AuthService implements IAuthService {
 
     createRefreshToken(
         subject: string,
-        payload: IAuthJwtRefreshTokenPayload
+        payload: IAuthJwtRefreshTokenPayload,
+        jti: string
     ): string {
         return this.jwtService.sign(payload, {
             privateKey: this.jwtRefreshTokenPrivateKey,
@@ -198,6 +202,7 @@ export class AuthService implements IAuthService {
             subject,
             algorithm: this.jwtAlgorithm,
             keyid: this.jwtRefreshTokenKid,
+            jwtid: jti
         } as JwtSignOptions);
     }
 
@@ -228,7 +233,7 @@ export class AuthService implements IAuthService {
         data: IUserDoc,
         session: string,
         loginDate: Date,
-        loginFrom: ENUM_AUTH_LOGIN_FROM
+        loginFrom: ENUM_AUTH_LOGIN_FROM,
     ): IAuthJwtAccessTokenPayload {
         return {
             user: data._id,
@@ -296,7 +301,11 @@ export class AuthService implements IAuthService {
         return today > passwordExpiredConvert;
     }
 
-    createToken(user: IUserDoc, session: string): AuthLoginResponseDto {
+    createToken(
+        user: IUserDoc,
+        session: string,
+        jti: string
+    ): AuthLoginResponseDto {
         const loginDate = this.helperDateService.create();
         const roleType = user.role.type;
 
@@ -305,18 +314,20 @@ export class AuthService implements IAuthService {
                 user,
                 session,
                 loginDate,
-                ENUM_AUTH_LOGIN_FROM.CREDENTIAL
+                ENUM_AUTH_LOGIN_FROM.CREDENTIAL,
             );
         const accessToken: string = this.createAccessToken(
             user._id,
-            payloadAccessToken
+            payloadAccessToken,
+            jti
         );
 
         const payloadRefreshToken: IAuthJwtRefreshTokenPayload =
             this.createPayloadRefreshToken(payloadAccessToken);
         const refreshToken: string = this.createRefreshToken(
             user._id,
-            payloadRefreshToken
+            payloadRefreshToken,
+            jti
         );
 
         return {
@@ -330,7 +341,8 @@ export class AuthService implements IAuthService {
 
     refreshToken(
         user: IUserDoc,
-        refreshTokenFromRequest: string
+        refreshTokenFromRequest: string,
+        jti: string
     ): AuthLoginResponseDto {
         const roleType = user.role.type;
 
@@ -346,7 +358,8 @@ export class AuthService implements IAuthService {
             );
         const accessToken: string = this.createAccessToken(
             user._id,
-            payloadAccessToken
+            payloadAccessToken,
+            jti
         );
 
         return {

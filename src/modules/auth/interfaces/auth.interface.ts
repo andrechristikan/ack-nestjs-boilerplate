@@ -20,6 +20,7 @@ export interface IAuthJwtAccessTokenPayload {
     session: string;
     role: string;
     type: ENUM_POLICY_ROLE_TYPE;
+    jti?: string;
     iat?: number;
     nbf?: number;
     exp?: number;

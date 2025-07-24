@@ -13,7 +13,7 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseOptions,
+    IDatabaseOptions, IDatabaseSaveOptions,
     IDatabaseUpdateManyOptions,
 } from '@common/database/interfaces/database.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -27,6 +27,9 @@ import {
 } from '@modules/session/repository/entities/session.entity';
 import { SessionRepository } from '@modules/session/repository/repositories/session.repository';
 import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { v4 as uuidV4 } from 'uuid';
+import { UserDoc } from '@modules/user/repository/entities/user.entity';
+import { UserUpdateRequestDto } from '@modules/user/dtos/request/user.update.request.dto';
 
 @Injectable()
 export class SessionService implements ISessionService {
@@ -143,6 +146,7 @@ export class SessionService implements ISessionService {
 
         const create = new SessionEntity();
         create.user = user;
+        create.jti = uuidV4()
         create.hostname = request.hostname;
         create.ip = request.ip ?? '0.0.0.0';
         create.protocol = request.protocol;
@@ -200,6 +204,16 @@ export class SessionService implements ISessionService {
         await this.cacheManager.clear();
 
         return;
+    }
+
+    async updateJti(
+        repository: SessionDoc,
+        jti: string,
+        options?: IDatabaseSaveOptions
+    ): Promise<SessionDoc> {
+        repository.jti = jti
+
+        return this.sessionRepository.save(repository, options);
     }
 
     async updateRevoke(
