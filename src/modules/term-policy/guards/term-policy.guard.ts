@@ -32,15 +32,8 @@ export class TermPolicyGuard implements CanActivate {
             });
         }
 
-        const { termPolicy } = user;
-        if (types.length === 0) {
-            throw new ForbiddenException({
-                statusCode:
-                    ENUM_TERM_POLICY_STATUS_CODE_ERROR.PREDEFINED_REQUIRED_ACCEPTANCE_NOT_FOUND,
-                message:
-                    'termPolicy.error.predefinedRequiredAcceptanceNotFound',
-            });
-        } else if (types.some(type => !termPolicy[type])) {
+        const { termPolicy } = __user;
+        if (!types.every(type => termPolicy[type.toLowerCase()])) {
             throw new ForbiddenException({
                 statusCode:
                     ENUM_TERM_POLICY_STATUS_CODE_ERROR.REQUIRED_ACCEPTANCE,
