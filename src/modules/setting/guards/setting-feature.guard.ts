@@ -25,7 +25,7 @@ export class SettingFeatureGuard implements CanActivate {
         const settingFeature =
             await this.settingFeatureService.getAndCache(featureKey);
 
-        if (!settingFeature.enabled) {
+        if (!settingFeature?.enabled) {
             throw new ForbiddenException({
                 statusCode: ENUM_SETTING_FEATURE_STATUS_CODE_ERROR.INACTIVE,
                 message: 'settingFeature.error.inactive',

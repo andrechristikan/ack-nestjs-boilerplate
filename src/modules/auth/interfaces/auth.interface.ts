@@ -12,6 +12,18 @@ export interface IAuthPasswordOptions {
     temporary: boolean;
 }
 
+export interface IAuthJwtTermPolicyPayload {
+    term: boolean;
+    privacy: boolean;
+    marketing: boolean;
+    cookies: boolean;
+}
+
+export interface IAuthJwtVerificationPayload {
+    email: boolean;
+    mobileNumber: boolean;
+}
+
 export interface IAuthJwtAccessTokenPayload {
     loginDate: Date;
     loginFrom: ENUM_AUTH_LOGIN_FROM;
@@ -19,6 +31,8 @@ export interface IAuthJwtAccessTokenPayload {
     email: string;
     session: string;
     role: string;
+    termPolicy: IAuthJwtTermPolicyPayload;
+    verification: IAuthJwtVerificationPayload;
     type: ENUM_POLICY_ROLE_TYPE;
     iat?: number;
     nbf?: number;
@@ -30,7 +44,7 @@ export interface IAuthJwtAccessTokenPayload {
 
 export type IAuthJwtRefreshTokenPayload = Omit<
     IAuthJwtAccessTokenPayload,
-    'role' | 'type' | 'email'
+    'role' | 'type' | 'email' | 'verification' | 'termPolicy'
 >;
 
 export interface IAuthSocialGooglePayload

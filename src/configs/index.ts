@@ -15,6 +15,7 @@ import VerificationConfig from '@configs/verification.config';
 import HomeConfig from '@configs/home.config';
 import SessionConfig from '@configs/session.config';
 import SettingConfig from '@configs/setting.config';
+import TermPolicyConfig from '@configs/term-policy.config';
 
 export default [
     AppConfig,
@@ -34,4 +35,5 @@ export default [
     HomeConfig,
     SessionConfig,
     SettingConfig,
+    TermPolicyConfig,
 ];

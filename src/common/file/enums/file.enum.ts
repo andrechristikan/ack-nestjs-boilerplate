@@ -13,6 +13,7 @@ export enum ENUM_FILE_MIME_IMAGE {
 
 export enum ENUM_FILE_MIME_DOCUMENT {
     PDF = 'application/pdf',
+    HTML = 'text/html'
 }
 
 export enum ENUM_FILE_MIME_EXCEL {

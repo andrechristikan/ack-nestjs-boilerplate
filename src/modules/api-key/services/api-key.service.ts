@@ -306,6 +306,10 @@ export class ApiKeyService implements IApiKeyService {
         }
 
         const apiKey = await this.findOneByKey(key, options);
+        if (!apiKey) {
+            return null;
+        }
+
         const apiKeyEntity = apiKey.toObject() as ApiKeyEntity;
         if (apiKey) {
             await this.setCache(apiKey._id, apiKeyEntity);

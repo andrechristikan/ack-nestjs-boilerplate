@@ -1,19 +1,3 @@
-import { ENUM_SEND_SMS_PROCESS } from '@modules/sms/enums/sms.enum';
-import { InjectQueue } from '@nestjs/bullmq';
-import {
-    BadRequestException,
-    Body,
-    Controller,
-    Get,
-    HttpCode,
-    HttpStatus,
-    InternalServerErrorException,
-    NotFoundException,
-    Post,
-} from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-import { Queue } from 'bullmq';
-import { ClientSession } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { Response } from '@common/response/decorators/response.decorator';
@@ -27,6 +11,7 @@ import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interf
 import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { PolicyRoleProtected } from '@modules/policy/decorators/policy.decorator';
 import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
+import { ENUM_SEND_SMS_PROCESS } from '@modules/sms/enums/sms.enum';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { UserParsePipe } from '@modules/user/pipes/user.parse.pipe';
 import { UserDoc } from '@modules/user/repository/entities/user.entity';
@@ -48,7 +33,22 @@ import {
 } from '@modules/verification/pipes/verification.user-not-verified-yet.pipe';
 import { VerificationDoc } from '@modules/verification/repository/entity/verification.entity';
 import { VerificationService } from '@modules/verification/services/verification.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import {
+    BadRequestException,
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    InternalServerErrorException,
+    NotFoundException,
+    Post,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
+import { Queue } from 'bullmq';
+import { ClientSession } from 'mongoose';
 
 @ApiTags('modules.user.verification')
 @Controller({
@@ -180,7 +180,7 @@ export class VerificationUserController {
             );
 
             const mapped: VerificationResponse =
-                this.verificationService.map(latestVerification);
+                this.verificationService.map(verification);
 
             return {
                 data: mapped,
@@ -256,7 +256,7 @@ export class VerificationUserController {
             );
 
             const mapped: VerificationResponse =
-                this.verificationService.map(latestVerification);
+                this.verificationService.map(verification);
 
             return {
                 data: mapped,
