@@ -1,4 +1,4 @@
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import {
     IsBoolean,
     IsEnum,
@@ -8,7 +8,6 @@ import {
     IsOptional,
     IsString,
     IsUrl,
-    Length,
     Min,
     MinLength,
 } from 'class-validator';
@@ -31,12 +30,6 @@ export class AppEnvDto {
     @IsNotEmpty()
     @IsEnum(ENUM_MESSAGE_LANGUAGE)
     APP_LANGUAGE: ENUM_MESSAGE_LANGUAGE;
-
-    @IsString()
-    @IsNotEmpty()
-    @Length(2, 2)
-    @Transform(({ value }) => value?.toUpperCase())
-    APP_COUNTRY: string;
 
     @IsString()
     @IsNotEmpty()

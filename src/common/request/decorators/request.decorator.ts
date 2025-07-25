@@ -17,13 +17,6 @@ export const RequestLanguage: () => ParameterDecorator = createParamDecorator(
     }
 );
 
-export const RequestCountry: () => ParameterDecorator = createParamDecorator(
-    (_: unknown, ctx: ExecutionContext): string => {
-        const { __country } = ctx.switchToHttp().getRequest<IRequestApp>();
-        return __country;
-    }
-);
-
 export function RequestTimeout(seconds: string): MethodDecorator {
     return applyDecorators(
         SetMetadata(REQUEST_CUSTOM_TIMEOUT_META_KEY, true),

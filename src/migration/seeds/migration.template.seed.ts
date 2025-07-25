@@ -295,9 +295,7 @@ export class MigrationTemplateSeed {
     })
     async rollbackTermPolicy(): Promise<void> {
         try {
-            const country = this.configService.get<string>(
-                'app.country.default'
-            );
+            const country = 'ID';
 
             const term =
                 this.termPolicyTemplateService.createDocumentFilenameForMigration(

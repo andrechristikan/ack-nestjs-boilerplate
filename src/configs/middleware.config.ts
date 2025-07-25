@@ -50,7 +50,6 @@ export default registerAs(
                 'Host',
                 'X-Requested-With',
                 'x-custom-lang',
-                'x-custom-country',
                 'x-timestamp',
                 'x-api-key',
                 'x-timezone',

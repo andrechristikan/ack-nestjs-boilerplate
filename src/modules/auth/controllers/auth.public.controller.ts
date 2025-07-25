@@ -58,10 +58,7 @@ import {
     IAuthSocialGooglePayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { SettingFeatureFlag } from '@modules/setting/decorators/setting.decorator';
-import {
-    RequestCountry,
-    RequestLanguage,
-} from '@common/request/decorators/request.decorator';
+import { RequestLanguage } from '@common/request/decorators/request.decorator';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
@@ -372,8 +369,7 @@ export class AuthPublicController {
             cookies,
             marketing,
         }: AuthSignUpRequestDto,
-        @RequestLanguage() requestLanguage: ENUM_MESSAGE_LANGUAGE,
-        @RequestCountry() requestCountry: string
+        @RequestLanguage() requestLanguage: ENUM_MESSAGE_LANGUAGE
     ): Promise<void> {
         const promises: Promise<any>[] = [
             this.roleService.findOneByName('individual'),
@@ -436,7 +432,7 @@ export class AuthPublicController {
                 user._id,
                 termPolicyAcceptance,
                 requestLanguage,
-                requestCountry,
+                country,
                 { session }
             );
 

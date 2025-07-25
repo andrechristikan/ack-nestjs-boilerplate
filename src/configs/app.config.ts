@@ -10,11 +10,6 @@ export default registerAs(
         version,
         globalPrefix: '/api',
 
-        country: {
-            default: process.env.APP_COUNTRY,
-            header: 'x-custom-country',
-        },
-
         http: {
             host: process.env.HTTP_HOST,
             port: Number.parseInt(process.env.HTTP_PORT),
