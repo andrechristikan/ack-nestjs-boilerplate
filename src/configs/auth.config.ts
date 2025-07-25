@@ -29,6 +29,7 @@ export default registerAs(
                         process.env
                             .AUTH_JWT_REFRESH_TOKEN_EXPIRED as ms.StringValue
                     ) / 1000,
+                rotateOnRenewal: process.env.AUTH_JWT_REFRESH_TOKEN_ROTATE_ON_RENEWAL === 'true',
             },
 
             algorithm: 'ES512',
