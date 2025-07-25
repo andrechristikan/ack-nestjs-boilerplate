@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { StreamingBlobTypes } from '@smithy/types';
 import { Exclude, Transform, Type } from 'class-transformer';
@@ -36,6 +37,13 @@ export class AwsS3Dto {
         required: true,
     })
     extension: string;
+
+    @ApiProperty({
+        required: false,
+        example: ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
+        enum: ENUM_AWS_S3_ACCESSIBILITY,
+    })
+    access: ENUM_AWS_S3_ACCESSIBILITY;
 
     @Exclude()
     @ApiHideProperty()

@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ApiKeyModule } from '@modules/api-key/api-key.module';
-import { CountrySystemController } from '@modules/country/controllers/country.system.controller';
-import { CountryModule } from '@modules/country/country.module';
 import { HealthSystemController } from '@modules/health/controllers/health.system.controller';
 import { HealthModule } from '@modules/health/health.module';
 import { RoleSystemController } from '@modules/role/controllers/role.system.controller';
@@ -15,7 +13,6 @@ import { UserModule } from '@modules/user/user.module';
     controllers: [
         HealthSystemController,
         SettingSystemController,
-        CountrySystemController,
         RoleSystemController,
         UserSystemController,
     ],
@@ -24,7 +21,6 @@ import { UserModule } from '@modules/user/user.module';
     imports: [
         HealthModule,
         SettingModule,
-        CountryModule,
         UserModule,
         RoleModule,
         HealthModule,

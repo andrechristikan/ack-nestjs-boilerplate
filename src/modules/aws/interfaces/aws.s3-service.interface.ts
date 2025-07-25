@@ -7,7 +7,6 @@ import { AwsS3PresignMultiPartResponseDto } from '@modules/aws/dtos/response/aws
 import { AwsS3PresignResponseDto } from '@modules/aws/dtos/response/aws.s3-presign.response.dto';
 import { AwsS3ResponseDto } from '@modules/aws/dtos/response/aws.s3-response.dto';
 import {
-    IAwsS3ConfigBucket,
     IAwsS3DeleteDirOptions,
     IAwsS3FileInfo,
     IAwsS3GetItemsOptions,
@@ -19,9 +18,8 @@ import {
 } from '@modules/aws/interfaces/aws.interface';
 
 export interface IAwsS3Service {
-    getConfig(options?: IAwsS3Options): IAwsS3ConfigBucket;
-    getFileInfo(key: string): IAwsS3FileInfo;
-    checkConnection(options?: IAwsS3Options): Promise<boolean>;
+    getFileInfoFromKey(key: string): IAwsS3FileInfo;
+    checkConnection(): Promise<boolean>;
     checkBucket(options?: IAwsS3Options): Promise<boolean>;
     checkItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto>;
     getItems(
@@ -83,4 +81,14 @@ export interface IAwsS3Service {
         options?: IAwsS3Options
     ): AwsS3Dto;
     mapResponse(dto: AwsS3Dto): AwsS3ResponseDto;
+    moveItem(
+        source: AwsS3Dto,
+        destinationKey: string,
+        options?: IAwsS3Options
+    ): Promise<AwsS3Dto>;
+    moveItems(
+        sources: AwsS3Dto[],
+        destination: string,
+        options?: IAwsS3Options
+    ): Promise<AwsS3Dto[]>;
 }

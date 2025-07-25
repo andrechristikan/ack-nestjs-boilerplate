@@ -1,0 +1,11 @@
+export enum ENUM_TERM_POLICY_TYPE {
+    TERM = 'TERM',
+    PRIVACY = 'PRIVACY',
+    COOKIES = 'COOKIES',
+    MARKETING = 'MARKETING',
+}
+
+export enum ENUM_TERM_POLICY_STATUS {
+    DRAFT = 'DRAFT',
+    PUBLISHED = 'PUBLISHED',
+}

@@ -63,6 +63,10 @@ export class SettingFeatureService implements ISettingFeatureService {
             key: key,
         });
 
+        if (!setting) {
+            return null;
+        }
+
         const valueToCache = this.serializeValue(setting.value);
         await this.cacheManager.set(cacheKey, valueToCache);
         return setting.value;
