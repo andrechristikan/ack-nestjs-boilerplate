@@ -33,7 +33,7 @@ export class TermPolicyPublicController {
         private readonly paginationService: PaginationService
     ) {}
 
-    @ResponsePaging('termPolicy.accepted')
+    @ResponsePaging('termPolicy.list')
     @TermPolicyPublicListDoc()
     @ApiKeyProtected()
     @Get('/list')

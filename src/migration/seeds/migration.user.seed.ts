@@ -16,6 +16,9 @@ import { MessageService } from '@common/message/services/message.service';
 import { ENUM_PASSWORD_HISTORY_TYPE } from '@modules/password-history/enums/password-history.enum';
 import { SessionService } from '@modules/session/services/session.service';
 import { VerificationService } from '@modules/verification/services/verification.service';
+import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
+import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 @Injectable()
 export class MigrationUserSeed {
@@ -28,7 +31,8 @@ export class MigrationUserSeed {
         private readonly activityService: ActivityService,
         private readonly messageService: MessageService,
         private readonly sessionService: SessionService,
-        private readonly verificationService: VerificationService
+        private readonly verificationService: VerificationService,
+        private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService
     ) {}
 
     @Command({
@@ -129,6 +133,17 @@ export class MigrationUserSeed {
                         type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
                     }),
                     this.verificationService.verify(verification),
+                    this.termPolicyAcceptanceService.createAcceptances(
+                        user._id,
+                        [
+                            ENUM_TERM_POLICY_TYPE.TERM,
+                            ENUM_TERM_POLICY_TYPE.PRIVACY,
+                            ENUM_TERM_POLICY_TYPE.COOKIES,
+                            ENUM_TERM_POLICY_TYPE.MARKETING,
+                        ],
+                        ENUM_MESSAGE_LANGUAGE.EN,
+                        country._id
+                    ),
                 ];
 
                 await Promise.all(promises);
