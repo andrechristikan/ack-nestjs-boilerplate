@@ -39,5 +39,3 @@ export type TermPolicyAcceptanceDoc =
 export const TermPolicyAcceptanceSchema = DatabaseSchema(
     TermPolicyAcceptanceEntity
 );
-
-TermPolicyAcceptanceSchema.index({ user: 1, termPolicy: 1 }, { unique: true });

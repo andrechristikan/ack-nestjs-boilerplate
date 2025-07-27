@@ -10,9 +10,11 @@ import {
     ENUM_TERM_POLICY_TYPE,
 } from '@modules/term-policy/enums/term-policy.enum';
 import {
-    IDatabaseCreateOptions,
+    IDatabaseCreateOptions, IDatabaseDeleteOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
+    IDatabaseSoftDeleteOptions,
 } from '@common/database/interfaces/database.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
@@ -37,6 +39,13 @@ export class TermPolicyAcceptanceService
         private readonly helperDateService: HelperDateService,
         private readonly databaseService: DatabaseService
     ) {}
+
+    async findOne(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions,
+    ): Promise<TermPolicyAcceptanceDoc> {
+        return this.termPolicyAcceptanceRepository.findOne(find, options);
+    }
 
     async findAllByUser(
         user: string,
@@ -161,5 +170,19 @@ export class TermPolicyAcceptanceService
             latestTermPolicies.map(policy => policy._id),
             options
         );
+    }
+
+    async softDelete(
+        repository: TermPolicyAcceptanceDoc,
+        options?: IDatabaseSoftDeleteOptions,
+    ): Promise<TermPolicyAcceptanceDoc> {
+        return this.termPolicyAcceptanceRepository.softDelete(repository, options);
+    }
+
+    async deleteMany(
+        find?: Record<string, any>,
+        options?: IDatabaseDeleteOptions
+    ): Promise<void> {
+        await this.termPolicyAcceptanceRepository.deleteMany(find, options);
     }
 }

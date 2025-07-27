@@ -2,7 +2,7 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     BadRequestException,
     Body,
-    Controller,
+    Controller, Delete,
     Get,
     InternalServerErrorException,
     NotFoundException,
@@ -30,13 +30,14 @@ import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 import { TermPolicyAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy-acceptance.response.dto';
 import {
     TermPolicyUserAcceptDoc,
-    TermPolicyUserAcceptedDoc,
+    TermPolicyUserAcceptedDoc, TermPolicyUserRejectDoc,
 } from '@modules/term-policy/docs/term-policy.user.doc';
 import { UserService } from '@modules/user/services/user.service';
 import { TERM_POLICY_ACCEPTANCE_DEFAULT_AVAILABLE_ORDER_BY } from '@modules/term-policy/constants/term-policy.list.constant';
 import { DatabaseService } from '@common/database/services/database.service';
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
+import { TermPolicyRejectRequestDto } from '@modules/term-policy/dtos/request/term-policy.reject.request.dto';
 
 @ApiTags('modules.user.term-policy')
 @Controller({
@@ -127,6 +128,74 @@ export class TermPolicyUserController {
                 session,
             });
             await this.userService.acceptTermPolicy(user, type, { session });
+
+            await this.databaseService.commitTransaction(session);
+        } catch (err: unknown) {
+            await this.databaseService.abortTransaction(session);
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+
+        return;
+    }
+
+    @TermPolicyUserRejectDoc()
+    @Response('termPolicy.reject')
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Delete('/reject')
+    async reject(
+        @AuthJwtPayload('user') userId: string,
+        @Body() { type, country }: TermPolicyRejectRequestDto
+    ): Promise<void> {
+        const user = await this.userService.findOneById(userId);
+        if (!user.termPolicy[type.toLowerCase()]) {
+            throw new BadRequestException({
+                statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.ALREADY_REJECTED,
+                message: 'termPolicy.error.alreadyRejected',
+            });
+        }
+
+        const policy = await this.termPolicyService.findOnePublished(
+            type,
+            country
+        );
+        if (!policy) {
+            throw new NotFoundException({
+                statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'termPolicy.error.notFound',
+            });
+        }
+
+        const session = await this.databaseService.createTransaction();
+
+        try {
+            const acceptance = await this.termPolicyAcceptanceService.findOne(
+                {
+                    user: userId,
+                    termPolicy: policy._id,
+                },
+                { session }
+            );
+
+            const deleted = await this.termPolicyAcceptanceService.softDelete(
+                acceptance,
+                { session }
+            );
+            if (!deleted) {
+                throw new NotFoundException({
+                    statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
+                    message: 'termPolicy.error.notFound',
+                });
+            }
+
+            await this.userService.rejectTermPolicy(user, type, { session });
 
             await this.databaseService.commitTransaction(session);
         } catch (err: unknown) {

@@ -638,6 +638,16 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
+    async rejectTermPolicy(
+        repository: UserDoc,
+        type: ENUM_TERM_POLICY_TYPE,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.termPolicy[type.toLowerCase()] = false;
+
+        return this.userRepository.save(repository, options);
+    }
+
     async releaseTermPolicy(
         type: ENUM_TERM_POLICY_TYPE,
         options?: IDatabaseUpdateManyOptions
