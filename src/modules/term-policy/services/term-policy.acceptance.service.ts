@@ -143,14 +143,14 @@ export class TermPolicyAcceptanceService
         }
 
         const latestTermPolicies: TermPolicyEntity[] =
-            await this.termPolicyRepository.findAll([
+            await this.termPolicyRepository.findAll(
                 {
-                    language,
+                    'urls.language': language,
                     country,
                     status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
                     ...this.databaseService.filterIn('type', termPolicyTypes),
                 },
-            ]);
+            );
 
         if (latestTermPolicies.length === 0) {
             return;
