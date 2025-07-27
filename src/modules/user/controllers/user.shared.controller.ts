@@ -46,6 +46,7 @@ import {
 } from '@modules/user/pipes/user.parse.pipe';
 import { UserDoc } from '@modules/user/repository/entities/user.entity';
 import { UserService } from '@modules/user/services/user.service';
+import { SessionJtiProtected } from '@modules/session/decorators/session.jti.decorator';
 
 @ApiTags('modules.shared.user')
 @Controller({
@@ -64,6 +65,7 @@ export class UserSharedController {
 
     @UserSharedProfileDoc()
     @Response('user.profile')
+    @SessionJtiProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -79,6 +81,7 @@ export class UserSharedController {
 
     @UserSharedUpdateProfileDoc()
     @Response('user.updateProfile')
+    @SessionJtiProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
