@@ -1,7 +1,8 @@
 import {
-    IDatabaseFindAllOptions,
-    IDatabaseCreateOptions,
+    IDatabaseCreateOptions, IDatabaseDeleteOptions,
+    IDatabaseFindAllOptions, IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
+    IDatabaseSoftDeleteOptions,
 } from '@common/database/interfaces/database.interface';
 import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
@@ -13,40 +14,62 @@ import {
 } from '@modules/term-policy/interfaces/term-policy.acceptance.interface';
 
 export interface ITermPolicyAcceptanceService {
+    findOne(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<TermPolicyAcceptanceDoc>;
+
     findAllByUser(
         user: string,
         options?: IDatabaseFindAllOptions
     ): Promise<ITermPolicyAcceptanceDoc[]>;
+
     getTotalUser(
         user: string,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
+
     create(
         user: string,
         termPolicy: string,
         options?: IDatabaseCreateOptions
     ): Promise<TermPolicyAcceptanceDoc>;
+
     findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<ITermPolicyAcceptanceDoc[]>;
+
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
+
     mapList(
         policies: (ITermPolicyAcceptanceDoc | ITermPolicyAcceptanceEntity)[]
     ): TermPolicyAcceptanceResponseDto[];
+
     createMany(
         user: string,
         termPolicies: Array<string>,
         options?: IDatabaseCreateOptions
     ): Promise<boolean>;
+
     createAcceptances(
         user: string,
         termPolicyTypes: ENUM_TERM_POLICY_TYPE[],
         language: ENUM_MESSAGE_LANGUAGE,
         country: string,
         options?: IDatabaseCreateOptions
+    ): Promise<void>;
+
+    softDelete(
+        repository: TermPolicyAcceptanceDoc,
+        options?: IDatabaseSoftDeleteOptions
+    ): Promise<TermPolicyAcceptanceDoc>;
+
+    deleteMany(
+        find?: Record<string, any>,
+        options?: IDatabaseDeleteOptions
     ): Promise<void>;
 }

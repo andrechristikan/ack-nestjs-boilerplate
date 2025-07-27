@@ -29,37 +29,45 @@ export interface ITermPolicyService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<ITermPolicyDoc[]>;
+
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
+
     findOnePublished(
         type: ENUM_TERM_POLICY_TYPE,
         country: string,
         options?: IDatabaseFindOneOptions
     ): Promise<TermPolicyDoc>;
+
     findOneLatest(
         type: ENUM_TERM_POLICY_TYPE,
         country: string,
         options?: IDatabaseFindOneOptions
     ): Promise<TermPolicyDoc>;
+
     mapList(
         policies: ITermPolicyDoc[] | ITermPolicyEntity[],
         options?: ClassTransformOptions
     ): TermPolicyResponseDto[];
+
     exist(
         type: ENUM_TERM_POLICY_TYPE,
         country: string,
         option?: IDatabaseExistsOptions
     ): Promise<boolean>;
+
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<TermPolicyDoc>;
+
     findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
     ): Promise<TermPolicyDoc>;
+
     create(
         country: string,
         type: ENUM_TERM_POLICY_TYPE,
@@ -68,21 +76,28 @@ export interface ITermPolicyService {
         version: number,
         options?: IDatabaseCreateOptions
     ): Promise<TermPolicyDoc>;
+
     updateDocument(
         repository: TermPolicyDoc,
         language: ENUM_MESSAGE_LANGUAGE,
         { size, ...aws }: AwsS3Dto,
         options?: IDatabaseSaveOptions
     ): Promise<TermPolicyDoc>;
+
     delete(
         repository: TermPolicyDoc,
         options?: IDatabaseDeleteOptions
     ): Promise<TermPolicyDoc>;
+
     createMany(
         country: string,
         types: Record<ENUM_TERM_POLICY_TYPE, TermPolicyDocumentEntity[]>,
         status: ENUM_TERM_POLICY_STATUS,
         options?: IDatabaseCreateManyOptions
     ): Promise<void>;
-    deleteMany(options?: IDatabaseDeleteOptions): Promise<void>;
+
+    deleteMany(
+        find?: Record<string, any>,
+        options?: IDatabaseDeleteOptions
+    ): Promise<void>;
 }

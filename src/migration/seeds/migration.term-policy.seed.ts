@@ -10,12 +10,14 @@ import { Types } from 'mongoose';
 import { CountryDoc } from '@modules/country/repository/entities/country.entity';
 import { CountryService } from '@modules/country/services/country.service';
 import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
+import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 
 @Injectable()
 export class MigrationTermPolicySeed {
     constructor(
         private readonly countryService: CountryService,
-        private readonly termPolicyService: TermPolicyService
+        private readonly termPolicyService: TermPolicyService,
+        private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService
     ) {}
 
     @Command({
@@ -100,6 +102,7 @@ export class MigrationTermPolicySeed {
     async remove(): Promise<void> {
         try {
             await this.termPolicyService.deleteMany();
+            await this.termPolicyAcceptanceService.deleteMany()
         } catch (err: any) {
             throw new Error(err);
         }

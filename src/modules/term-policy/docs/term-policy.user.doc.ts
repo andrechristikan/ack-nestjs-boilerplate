@@ -10,6 +10,7 @@ import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import { TermPolicyAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy-acceptance.response.dto';
 import { applyDecorators } from '@nestjs/common';
+import { TermPolicyRejectRequestDto } from '@modules/term-policy/dtos/request/term-policy.reject.request.dto';
 
 export function TermPolicyUserAcceptedDoc(): MethodDecorator {
     return applyDecorators(
@@ -49,5 +50,25 @@ export function TermPolicyUserAcceptDoc(): MethodDecorator {
             dto: TermPolicyAcceptRequestDto,
         }),
         DocResponse('termPolicy.accept')
+    );
+}
+
+export function TermPolicyUserRejectDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'User rejects term or policy',
+        }),
+        DocAuth({
+            jwtAccessToken: true,
+            xApiKey: true,
+        }),
+        DocGuard({
+            role: true,
+        }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: TermPolicyRejectRequestDto,
+        }),
+        DocResponse('termPolicy.reject')
     );
 }

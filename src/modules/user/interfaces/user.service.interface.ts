@@ -226,6 +226,11 @@ export interface IUserService {
         type: ENUM_TERM_POLICY_TYPE,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
+    rejectTermPolicy(
+        repository: UserDoc,
+        type: ENUM_TERM_POLICY_TYPE,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
     releaseTermPolicy(
         type: ENUM_TERM_POLICY_TYPE,
         options?: IDatabaseUpdateManyOptions

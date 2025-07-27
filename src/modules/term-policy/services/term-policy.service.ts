@@ -275,7 +275,10 @@ export class TermPolicyService implements ITermPolicyService {
         await this.termPolicyRepository.createMany(entities, options);
     }
 
-    async deleteMany(options?: IDatabaseDeleteOptions): Promise<void> {
-        await this.termPolicyRepository.deleteMany({}, options);
+    async deleteMany(
+        find?: Record<string, any>,
+        options?: IDatabaseDeleteOptions
+    ): Promise<void> {
+        await this.termPolicyRepository.deleteMany(find, options);
     }
 }
