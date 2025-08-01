@@ -173,7 +173,8 @@ export class AuthPublicController {
 
             const token = this.authService.createToken(
                 userWithRole,
-                session._id
+                session._id,
+                session.jti
             );
 
             await this.databaseService.commitTransaction(databaseSession);
@@ -257,7 +258,8 @@ export class AuthPublicController {
 
             const token = this.authService.createToken(
                 userWithRole,
-                session._id
+                session._id,
+                session.jti
             );
 
             return {
@@ -338,7 +340,8 @@ export class AuthPublicController {
 
             const token = this.authService.createToken(
                 userWithRole,
-                session._id
+                session._id,
+                session.jti
             );
 
             return {

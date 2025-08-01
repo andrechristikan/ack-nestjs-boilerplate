@@ -4,7 +4,7 @@ import {
     IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseOptions,
+    IDatabaseOptions, IDatabaseSaveOptions,
     IDatabaseUpdateManyOptions,
 } from '@common/database/interfaces/database.interface';
 import { SessionCreateRequestDto } from '@modules/session/dtos/request/session.create.request.dto';
@@ -59,6 +59,11 @@ export interface ISessionService {
     setLoginSession(user: IUserDoc, session: SessionDoc): Promise<void>;
     deleteLoginSession(_id: string): Promise<void>;
     resetLoginSession(): Promise<void>;
+    updateJti(
+        repository: SessionDoc,
+        jti: string,
+        options?: IDatabaseSaveOptions
+    ): Promise<SessionDoc>
     updateRevoke(
         repository: SessionDoc,
         options?: IDatabaseOptions

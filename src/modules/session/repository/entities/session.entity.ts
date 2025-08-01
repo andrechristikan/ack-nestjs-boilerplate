@@ -38,6 +38,14 @@ export class SessionEntity extends DatabaseUUIDEntityBase {
 
     @DatabaseProp({
         required: true,
+        index: true,
+        trim: true,
+        type: String,
+    })
+    jti: string;
+
+    @DatabaseProp({
+        required: true,
         trim: true,
         type: String,
     })

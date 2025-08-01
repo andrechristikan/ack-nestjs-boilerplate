@@ -13,13 +13,15 @@ import { AuthLoginResponseDto } from '@modules/auth/dtos/response/auth.login.res
 export interface IAuthService {
     createAccessToken(
         subject: string,
-        payload: IAuthJwtAccessTokenPayload
+        payload: IAuthJwtAccessTokenPayload,
+        jwtid: string
     ): string;
     validateAccessToken(subject: string, token: string): boolean;
     payload<T = any>(token: string): T;
     createRefreshToken(
         subject: string,
-        payload: IAuthJwtRefreshTokenPayload
+        payload: IAuthJwtRefreshTokenPayload,
+        jti: string
     ): string;
     validateRefreshToken(subject: string, token: string): boolean;
     validateUser(passwordString: string, passwordHash: string): boolean;
@@ -27,7 +29,7 @@ export interface IAuthService {
         data: IUserDoc,
         session: string,
         loginDate: Date,
-        loginFrom: ENUM_AUTH_LOGIN_FROM
+        loginFrom: ENUM_AUTH_LOGIN_FROM,
     ): IAuthJwtAccessTokenPayload;
     createPayloadRefreshToken({
         user,
@@ -42,10 +44,15 @@ export interface IAuthService {
     ): IAuthPassword;
     createPasswordRandom(): string;
     checkPasswordExpired(passwordExpired: Date): boolean;
-    createToken(user: IUserDoc, session: string): AuthLoginResponseDto;
+    createToken(
+        user: IUserDoc,
+        session: string,
+        jti: string
+    ): AuthLoginResponseDto;
     refreshToken(
         user: IUserDoc,
-        refreshTokenFromRequest: string
+        refreshTokenFromRequest: string,
+        jti: string
     ): AuthLoginResponseDto;
     getPasswordAttempt(): boolean;
     getPasswordMaxAttempt(): number;

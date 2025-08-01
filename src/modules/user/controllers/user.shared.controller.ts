@@ -45,6 +45,7 @@ import {
 } from '@modules/user/pipes/user.parse.pipe';
 import { UserDoc } from '@modules/user/repository/entities/user.entity';
 import { UserService } from '@modules/user/services/user.service';
+import { SessionJtiProtected } from '@modules/session/decorators/session.jti.decorator';
 import { UserUploadPhotoProfileRequestDto } from '@modules/user/dtos/request/user.upload-photo-profile.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
@@ -67,6 +68,7 @@ export class UserSharedController {
     @UserSharedProfileDoc()
     @Response('user.profile')
     @TermPolicyAcceptanceProtected(ENUM_TERM_POLICY_TYPE.PRIVACY)
+    @SessionJtiProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -82,6 +84,7 @@ export class UserSharedController {
 
     @UserSharedUpdateProfileDoc()
     @Response('user.updateProfile')
+    @SessionJtiProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

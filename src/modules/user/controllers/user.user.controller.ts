@@ -37,6 +37,7 @@ import { CountryService } from '@modules/country/services/country.service';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { DatabaseService } from '@common/database/services/database.service';
+import { SessionJtiProtected } from '@modules/session/decorators/session.jti.decorator';
 
 @ApiTags('modules.user.user')
 @Controller({
@@ -56,6 +57,7 @@ export class UserUserController {
     @UserUserDeleteDoc()
     @Response('user.delete')
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
+    @SessionJtiProtected()
     @UserProtected([false])
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

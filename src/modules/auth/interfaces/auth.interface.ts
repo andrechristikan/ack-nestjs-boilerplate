@@ -34,6 +34,7 @@ export interface IAuthJwtAccessTokenPayload {
     termPolicy: IAuthJwtTermPolicyPayload;
     verification: IAuthJwtVerificationPayload;
     type: ENUM_POLICY_ROLE_TYPE;
+    jti?: string;
     iat?: number;
     nbf?: number;
     exp?: number;
