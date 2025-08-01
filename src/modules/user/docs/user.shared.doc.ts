@@ -10,6 +10,7 @@ import { AwsS3PresignRequestDto } from '@modules/aws/dtos/request/aws.s3-presign
 import { AwsS3PresignResponseDto } from '@modules/aws/dtos/response/aws.s3-presign.response.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserUploadPhotoProfileRequestDto } from '@modules/user/dtos/request/user.upload-photo-profile.request.dto';
 
 export function UserSharedProfileDoc(): MethodDecorator {
     return applyDecorators(
@@ -51,6 +52,10 @@ export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
+        }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: UserUploadPhotoProfileRequestDto,
         }),
         DocResponse<AwsS3PresignResponseDto>('user.uploadPhotoProfile', {
             dto: AwsS3PresignResponseDto,

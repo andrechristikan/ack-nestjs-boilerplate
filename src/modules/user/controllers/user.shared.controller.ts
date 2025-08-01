@@ -37,7 +37,6 @@ import {
     UserSharedUploadPhotoProfileDoc,
 } from '@modules/user/docs/user.shared.doc';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
-import { UserUploadPhotoRequestDto } from '@modules/user/dtos/request/user.upload-photo.request.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { IUserDoc } from '@modules/user/interfaces/user.interface';
 import {
@@ -47,6 +46,9 @@ import {
 import { UserDoc } from '@modules/user/repository/entities/user.entity';
 import { UserService } from '@modules/user/services/user.service';
 import { SessionJtiProtected } from '@modules/session/decorators/session.jti.decorator';
+import { UserUploadPhotoProfileRequestDto } from '@modules/user/dtos/request/user.upload-photo-profile.request.dto';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
+import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
 
 @ApiTags('modules.shared.user')
 @Controller({
@@ -65,6 +67,7 @@ export class UserSharedController {
 
     @UserSharedProfileDoc()
     @Response('user.profile')
+    @TermPolicyAcceptanceProtected(ENUM_TERM_POLICY_TYPE.PRIVACY)
     @SessionJtiProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -140,11 +143,11 @@ export class UserSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/profile/upload-photo')
+    @Post('/upload/photo-profile')
     async uploadPhotoProfile(
         @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user', UserParsePipe)
         user: UserDoc,
-        @Body() { mime, size }: UserUploadPhotoRequestDto
+        @Body() { mime, size }: UserUploadPhotoProfileRequestDto
     ): Promise<IResponse<AwsS3PresignResponseDto>> {
         const randomFilename: string =
             this.userService.createRandomFilenamePhoto(user._id, {
@@ -153,7 +156,9 @@ export class UserSharedController {
             });
 
         const aws: AwsS3PresignResponseDto =
-            await this.awsS3Service.presignPutItem(randomFilename, size);
+            await this.awsS3Service.presignPutItem(randomFilename, size, {
+                forceUpdate: true,
+            });
 
         return {
             data: aws,
@@ -165,7 +170,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/profile/update-photo')
+    @Put('/update/photo-profile')
     async updatePhotoProfile(
         @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user', UserParsePipe)
         user: UserDoc,

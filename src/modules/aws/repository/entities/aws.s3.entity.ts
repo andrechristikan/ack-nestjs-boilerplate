@@ -4,6 +4,7 @@ import {
     DatabaseProp,
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
+import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
 
 @DatabaseEntity({ timestamps: false, _id: false })
 export class AwsS3Entity {
@@ -48,6 +49,13 @@ export class AwsS3Entity {
         type: Types.Decimal128,
     })
     size: Types.Decimal128;
+
+    @DatabaseProp({
+        required: true,
+        type: String,
+        enum: ENUM_AWS_S3_ACCESSIBILITY,
+    })
+    access: ENUM_AWS_S3_ACCESSIBILITY;
 }
 
 export const AwsS3Schema = DatabaseSchema(AwsS3Entity);

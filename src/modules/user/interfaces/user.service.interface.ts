@@ -10,6 +10,7 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
     IDatabaseSaveOptions,
+    IDatabaseUpdateManyOptions,
     IDatabaseUpdateOptions,
 } from '@common/database/interfaces/database.interface';
 import {
@@ -32,8 +33,9 @@ import { UserUpdateClaimUsernameRequestDto } from '@modules/user/dtos/request/us
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { CountryDoc } from '@modules/country/repository/entities/country.entity';
-import { UserUploadPhotoRequestDto } from '@modules/user/dtos/request/user.upload-photo.request.dto';
 import { UserCensorResponseDto } from '@modules/user/dtos/response/user.censor.response.dto';
+import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
+import { UserUploadPhotoProfileRequestDto } from '@modules/user/dtos/request/user.upload-photo-profile.request.dto';
 
 export interface IUserService {
     findAll(
@@ -112,7 +114,11 @@ export interface IUserService {
     ): Promise<UserDoc>;
     signUp(
         role: string,
-        { email, name, country }: AuthSignUpRequestDto,
+        {
+            email,
+            name,
+            country,
+        }: Omit<AuthSignUpRequestDto, 'termPolicies' | 'password'>,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
@@ -204,7 +210,7 @@ export interface IUserService {
     join(repository: UserDoc): Promise<IUserDoc>;
     createRandomFilenamePhoto(
         user: string,
-        { mime }: UserUploadPhotoRequestDto
+        { mime }: UserUploadPhotoProfileRequestDto
     ): string;
     createRandomUsername(): string;
     checkUsernamePattern(username: string): boolean;
@@ -215,4 +221,13 @@ export interface IUserService {
     mapShort(users: IUserDoc[] | IUserEntity[]): UserShortResponseDto[];
     mapGet(user: IUserDoc | IUserEntity): UserGetResponseDto;
     checkMobileNumber(mobileNumber: string, country: CountryDoc): boolean;
+    acceptTermPolicy(
+        repository: UserDoc,
+        type: ENUM_TERM_POLICY_TYPE,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    releaseTermPolicy(
+        type: ENUM_TERM_POLICY_TYPE,
+        options?: IDatabaseUpdateManyOptions
+    ): Promise<void>;
 }

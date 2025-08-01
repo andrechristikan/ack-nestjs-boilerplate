@@ -5,32 +5,24 @@ export default registerAs(
     (): Record<string, any> => ({
         s3: {
             presignExpired: 30 * 60, // 30 mins
-            config: {
-                public: {
-                    credential: {
-                        key: process.env.AWS_S3_PUBLIC_CREDENTIAL_KEY,
-                        secret: process.env.AWS_S3_PUBLIC_CREDENTIAL_SECRET,
-                    },
-                    bucket: process.env.AWS_S3_PUBLIC_BUCKET ?? 'bucketPublic',
-                    region: process.env.AWS_S3_PUBLIC_REGION,
-                    baseUrl: `https://${process.env.AWS_S3_PUBLIC_BUCKET}.s3.${process.env.AWS_S3_PUBLIC_REGION}.amazonaws.com`,
-                    cdnUrl: process.env.AWS_S3_PUBLIC_CDN
-                        ? `https://${process.env.AWS_S3_PUBLIC_CDN}`
-                        : undefined,
-                },
-                private: {
-                    credential: {
-                        key: process.env.AWS_S3_PRIVATE_CREDENTIAL_KEY,
-                        secret: process.env.AWS_S3_PRIVATE_CREDENTIAL_SECRET,
-                    },
-                    bucket:
-                        process.env.AWS_S3_PRIVATE_BUCKET ?? 'bucketPrivate',
-                    region: process.env.AWS_S3_PRIVATE_REGION,
-                    baseUrl: `https://${process.env.AWS_S3_PRIVATE_BUCKET}.s3.${process.env.AWS_S3_PRIVATE_REGION}.amazonaws.com`,
-                    cdnUrl: process.env.AWS_S3_PRIVATE_REGION
-                        ? `https://${process.env.AWS_S3_PRIVATE_REGION}`
-                        : undefined,
-                },
+            credential: {
+                key: process.env.AWS_S3_CREDENTIAL_KEY,
+                secret: process.env.AWS_S3_CREDENTIAL_SECRET,
+            },
+            region: process.env.AWS_S3_REGION,
+            public: {
+                bucket: process.env.AWS_S3_PUBLIC_BUCKET,
+                baseUrl: `https://${process.env.AWS_S3_PUBLIC_BUCKET}.s3.${process.env.AWS_S3_REGION}.amazonaws.com`,
+                cdnUrl: process.env.AWS_S3_PUBLIC_CDN
+                    ? `https://${process.env.AWS_S3_PUBLIC_CDN}`
+                    : undefined,
+            },
+            private: {
+                bucket: process.env.AWS_S3_PRIVATE_BUCKET ?? 'bucketPrivate',
+                baseUrl: `https://${process.env.AWS_S3_PRIVATE_BUCKET}.s3.${process.env.AWS_S3_REGION}.amazonaws.com`,
+                cdnUrl: process.env.AWS_S3_PRIVATE_CDN
+                    ? `https://${process.env.AWS_S3_PRIVATE_CDN}`
+                    : undefined,
             },
         },
         ses: {

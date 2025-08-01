@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     S3Client,
@@ -42,11 +42,13 @@ import {
     HeadBucketCommandInput,
     ListBucketsCommand,
     NotFound,
+    CopyObjectCommand,
+    CopyObjectCommandInput,
+    CopyObjectCommandOutput,
 } from '@aws-sdk/client-s3';
 import { IAwsS3Service } from '@modules/aws/interfaces/aws.s3-service.interface';
 import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
 import {
-    IAwsS3Config,
     IAwsS3ConfigBucket,
     IAwsS3DeleteDirOptions,
     IAwsS3FileInfo,
@@ -73,42 +75,44 @@ import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
 import { AwsS3MultipartPresignCompletePartRequestDto } from '@modules/aws/dtos/request/aws.s3-multipart-presign-complete.request.dto';
 
 @Injectable()
-export class AwsS3Service implements OnModuleInit, IAwsS3Service {
+export class AwsS3Service implements IAwsS3Service {
     private readonly presignExpired: number;
-    private config: IAwsS3Config;
+    private readonly client: S3Client;
+
+    private readonly config: Map<
+        ENUM_AWS_S3_ACCESSIBILITY,
+        IAwsS3ConfigBucket
+    > = new Map<ENUM_AWS_S3_ACCESSIBILITY, IAwsS3ConfigBucket>();
 
     constructor(private readonly configService: ConfigService) {
         this.presignExpired = this.configService.get<number>(
             'aws.s3.presignExpired'
         );
-        this.config = this.configService.get<IAwsS3Config>('aws.s3.config');
-    }
 
-    onModuleInit(): void {
-        this.config.public.client = new S3Client({
+        this.client = new S3Client({
             credentials: {
-                accessKeyId: this.config.public.credential.key,
-                secretAccessKey: this.config.public.credential.secret,
+                accessKeyId: this.configService.get<string>(
+                    'aws.s3.credential.key'
+                ),
+                secretAccessKey: this.configService.get<string>(
+                    'aws.s3.credential.secret'
+                ),
             },
-            region: this.config.public.region,
+            region: this.configService.get<string>('aws.s3.region'),
         });
 
-        this.config.private.client = new S3Client({
-            credentials: {
-                accessKeyId: this.config.private.credential.key,
-                secretAccessKey: this.config.private.credential.secret,
-            },
-            region: this.config.private.region,
+        this.config.set(ENUM_AWS_S3_ACCESSIBILITY.PUBLIC, {
+            ...this.configService.get<IAwsS3ConfigBucket>('aws.s3.public'),
+            access: ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
+        });
+
+        this.config.set(ENUM_AWS_S3_ACCESSIBILITY.PRIVATE, {
+            ...this.configService.get<IAwsS3ConfigBucket>('aws.s3.private'),
+            access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
         });
     }
 
-    getConfig(options?: IAwsS3Options): IAwsS3ConfigBucket {
-        return options?.access === ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
-            ? this.config.private
-            : this.config.public;
-    }
-
-    getFileInfo(key: string): IAwsS3FileInfo {
+    getFileInfoFromKey(key: string): IAwsS3FileInfo {
         const pathWithFilename: string = `/${key}`;
         const filename: string = key.substring(
             key.lastIndexOf('/') + 1,
@@ -125,10 +129,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         return { pathWithFilename, filename, extension, mime };
     }
 
-    async checkConnection(options?: IAwsS3Options): Promise<boolean> {
-        const config = this.getConfig(options);
+    async checkConnection(): Promise<boolean> {
         try {
-            await config.client.send(new ListBucketsCommand({}));
+            await this.client.send(new ListBucketsCommand({}));
             return true;
         } catch {
             return false;
@@ -136,14 +139,17 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
     }
 
     async checkBucket(options?: IAwsS3Options): Promise<boolean> {
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
+
         const command: HeadBucketCommand = new HeadBucketCommand({
             Bucket: config.bucket,
         });
-        await config.client.send<
-            HeadBucketCommandInput,
-            HeadBucketCommandOutput
-        >(command);
+
+        await this.client.send<HeadBucketCommandInput, HeadBucketCommandOutput>(
+            command
+        );
         return true;
     }
 
@@ -152,27 +158,33 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
+
         const headCommand = new HeadObjectCommand({
             Bucket: config.bucket,
             Key: key,
         });
-        const item = await config.client.send<
+        const item = await this.client.send<
             HeadObjectCommandInput,
             HeadObjectCommandOutput
         >(headCommand);
-        const { pathWithFilename, extension, mime } = this.getFileInfo(key);
+        const { pathWithFilename, extension, mime } =
+            this.getFileInfoFromKey(key);
 
         return {
             bucket: config.bucket,
             key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size: item.ContentLength,
             mime,
+            access: options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
         };
     }
 
@@ -184,7 +196,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             throw new Error('Path should not start with "/"');
         }
 
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
+
         const command: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: config.bucket,
             Prefix: path,
@@ -192,25 +207,26 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             ContinuationToken: options?.continuationToken,
         });
 
-        const listItems: ListObjectsV2Output = await config.client.send<
+        const listItems: ListObjectsV2Output = await this.client.send<
             ListObjectsV2CommandInput,
             ListObjectsV2CommandOutput
         >(command);
         const mapList: AwsS3Dto[] = listItems.Contents.map((item: _Object) => {
-            const { pathWithFilename, extension, mime } = this.getFileInfo(
-                item.Key
-            );
+            const { pathWithFilename, extension, mime } =
+                this.getFileInfoFromKey(item.Key);
             return {
                 bucket: config.bucket,
                 key: item.Key,
                 completedUrl: `${config.baseUrl}${pathWithFilename}`,
-                cdnUrl: config.cdnUrl
-                    ? `${config.cdnUrl}${pathWithFilename}`
-                    : undefined,
+                cdnUrl:
+                    config.cdnUrl && config.cdnUrl !== ''
+                        ? `${config.cdnUrl}${pathWithFilename}`
+                        : undefined,
                 baseUrl: config.baseUrl,
                 extension,
                 size: item.Size,
                 mime,
+                access: options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
             };
         });
 
@@ -239,28 +255,33 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
         const command: GetObjectCommand = new GetObjectCommand({
             Bucket: config.bucket,
             Key: key,
         });
-        const item: GetObjectOutput = await config.client.send<
+        const item: GetObjectOutput = await this.client.send<
             GetObjectCommandInput,
             GetObjectCommandOutput
         >(command);
-        const { pathWithFilename, extension, mime } = this.getFileInfo(key);
+        const { pathWithFilename, extension, mime } =
+            this.getFileInfoFromKey(key);
 
         return {
             bucket: config.bucket,
             key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             data: item.Body,
             size: item.ContentLength,
             mime,
+            access: options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
         };
     }
 
@@ -274,8 +295,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             throw new Error('File is required');
         }
 
-        const config = this.getConfig(options);
-        const { pathWithFilename, extension, mime } = this.getFileInfo(
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
+        const { pathWithFilename, extension, mime } = this.getFileInfoFromKey(
             file.key
         );
         const content: Buffer = file.file;
@@ -285,7 +308,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             Body: content,
         });
 
-        await config.client.send<PutObjectCommandInput, PutObjectCommandOutput>(
+        await this.client.send<PutObjectCommandInput, PutObjectCommandOutput>(
             command
         );
 
@@ -293,12 +316,14 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             bucket: config.bucket,
             key: file.key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size: file?.size,
             mime,
+            access: options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
         };
     }
 
@@ -312,8 +337,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             throw new Error('File is required');
         }
 
-        const config = this.getConfig(options);
-        const { pathWithFilename, extension, mime } = this.getFileInfo(
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
+        const { pathWithFilename, extension, mime } = this.getFileInfoFromKey(
             file.key
         );
         const content: Buffer = file.file;
@@ -324,7 +351,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             ACL: options?.acl ?? ObjectCannedACL.public_read,
         });
 
-        await config.client.send<PutObjectCommandInput, PutObjectCommandOutput>(
+        await this.client.send<PutObjectCommandInput, PutObjectCommandOutput>(
             command
         );
 
@@ -332,12 +359,14 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             bucket: config.bucket,
             key: file.key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size: file?.size,
             mime,
+            access: options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
         };
     }
 
@@ -346,13 +375,15 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
         const command: DeleteObjectCommand = new DeleteObjectCommand({
             Bucket: config.bucket,
             Key: key,
         });
 
-        await config.client.send<
+        await this.client.send<
             DeleteObjectCommandInput,
             DeleteObjectCommandOutput
         >(command);
@@ -363,7 +394,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             throw new Error('Keys should not start with "/"');
         }
 
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
         const obj: ObjectIdentifier[] = keys.map((val: string) => ({
             Key: val,
         }));
@@ -372,7 +405,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             Delete: { Objects: obj },
         });
 
-        await config.client.send<
+        await this.client.send<
             DeleteObjectsCommandInput,
             DeleteObjectsCommandOutput
         >(command);
@@ -386,7 +419,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             throw new Error('Path should not start with "/"');
         }
 
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
         let continuationToken: string | undefined = undefined;
 
         do {
@@ -397,7 +432,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 ContinuationToken: continuationToken,
             });
 
-            const listItems: ListObjectsV2Output = await config.client.send<
+            const listItems: ListObjectsV2Output = await this.client.send<
                 ListObjectsV2CommandInput,
                 ListObjectsV2CommandOutput
             >(listCommand);
@@ -413,7 +448,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                         },
                     });
 
-                await config.client.send<
+                await this.client.send<
                     DeleteObjectsCommandInput,
                     DeleteObjectsCommandOutput
                 >(deleteObjectsCommand);
@@ -436,7 +471,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             );
         }
 
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
 
         const headCommand = new HeadObjectCommand({
             Bucket: config.bucket,
@@ -445,7 +482,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
 
         if (!options?.forceUpdate) {
             try {
-                await config.client.send<
+                await this.client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
                 >(headCommand);
@@ -458,7 +495,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             }
         }
 
-        const { pathWithFilename, extension, mime } = this.getFileInfo(
+        const { pathWithFilename, extension, mime } = this.getFileInfoFromKey(
             file.key
         );
 
@@ -468,7 +505,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 Key: file.key,
             });
 
-        const response = await config.client.send<
+        const response = await this.client.send<
             CreateMultipartUploadCommandInput,
             CreateMultipartUploadCommandOutput
         >(multiPartCommand);
@@ -478,15 +515,17 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             uploadId: response.UploadId,
             key: file.key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size: file?.size,
             lastPartNumber: 0,
             maxPartNumber: maxPartNumber,
             parts: [],
             mime,
+            access: options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
         };
     }
 
@@ -503,8 +542,10 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             );
         }
 
-        const config = this.getConfig(options);
-        const { pathWithFilename, extension, mime } = this.getFileInfo(
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
+        const { pathWithFilename, extension, mime } = this.getFileInfoFromKey(
             file.key
         );
 
@@ -515,7 +556,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 ACL: options?.acl ?? ObjectCannedACL.public_read,
             });
 
-        const response = await config.client.send<
+        const response = await this.client.send<
             CreateMultipartUploadCommandInput,
             CreateMultipartUploadCommandOutput
         >(multiPartCommand);
@@ -525,15 +566,17 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             uploadId: response.UploadId,
             key: file.key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size: file?.size,
             lastPartNumber: 0,
             maxPartNumber: maxPartNumber,
             parts: [],
             mime,
+            access: options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
         };
     }
 
@@ -543,7 +586,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         file: Buffer,
         options?: IAwsS3Options
     ): Promise<AwsS3MultipartDto> {
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
 
         const uploadPartCommand: UploadPartCommand = new UploadPartCommand({
             Bucket: config.bucket,
@@ -553,7 +598,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             UploadId: multipart.uploadId,
         });
 
-        const { ETag } = await config.client.send<
+        const { ETag } = await this.client.send<
             UploadPartCommandInput,
             UploadPartCommandOutput
         >(uploadPartCommand);
@@ -576,7 +621,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         parts: AwsS3MultipartPresignCompletePartRequestDto[],
         options?: IAwsS3Options
     ): Promise<void> {
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
 
         const completeMultipartCommand: CompleteMultipartUploadCommand =
             new CompleteMultipartUploadCommand({
@@ -591,7 +638,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 },
             });
 
-        await config.client.send<
+        await this.client.send<
             CompleteMultipartUploadCommandInput,
             CompleteMultipartUploadCommandOutput
         >(completeMultipartCommand);
@@ -604,7 +651,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         uploadId: string,
         options?: IAwsS3Options
     ): Promise<void> {
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
 
         const abortMultipartCommand: AbortMultipartUploadCommand =
             new AbortMultipartUploadCommand({
@@ -613,7 +662,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
                 UploadId: uploadId,
             });
 
-        await config.client.send<
+        await this.client.send<
             AbortMultipartUploadCommandInput,
             AbortMultipartUploadCommandOutput
         >(abortMultipartCommand);
@@ -630,7 +679,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
 
         if (!options?.forceUpdate) {
             const headCommand = new HeadObjectCommand({
@@ -639,7 +690,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             });
 
             try {
-                await config.client.send<
+                await this.client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
                 >(headCommand);
@@ -652,7 +703,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             }
         }
 
-        const { extension, mime } = this.getFileInfo(key);
+        const { extension, mime } = this.getFileInfoFromKey(key);
         const command = new PutObjectCommand({
             Bucket: config.bucket,
             Key: key,
@@ -662,7 +713,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
         });
         const expiresIn = options?.expired ?? this.presignExpired;
 
-        const presignUrl = await getSignedUrl(config.client, command, {
+        const presignUrl = await getSignedUrl(this.client, command, {
             expiresIn,
         });
 
@@ -685,7 +736,9 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.getConfig(options);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
 
         const headCommand = new HeadObjectCommand({
             Bucket: config.bucket,
@@ -694,7 +747,7 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
 
         if (!options?.forceUpdate) {
             try {
-                await config.client.send<
+                await this.client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
                 >(headCommand);
@@ -714,15 +767,11 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             UploadId: uploadId,
         });
 
-        const { extension, mime } = this.getFileInfo(key);
+        const { extension, mime } = this.getFileInfoFromKey(key);
         const expiresIn = options?.expired ?? this.presignExpired;
-        const presignUrl = await getSignedUrl(
-            config.client,
-            uploadPartCommand,
-            {
-                expiresIn,
-            }
-        );
+        const presignUrl = await getSignedUrl(this.client, uploadPartCommand, {
+            expiresIn,
+        });
 
         return {
             expiredIn: this.presignExpired,
@@ -743,23 +792,100 @@ export class AwsS3Service implements OnModuleInit, IAwsS3Service {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.getConfig(options);
-        const { pathWithFilename, extension, mime } = this.getFileInfo(key);
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
+        const { pathWithFilename, extension, mime } =
+            this.getFileInfoFromKey(key);
 
         return {
             bucket: config.bucket,
             key,
             completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl: config.cdnUrl
-                ? `${config.cdnUrl}${pathWithFilename}`
-                : undefined,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
             extension,
             size,
             mime,
+            access: options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
         };
     }
 
     mapResponse(dto: AwsS3Dto): AwsS3ResponseDto {
         return plainToInstance(AwsS3ResponseDto, dto);
+    }
+
+    async moveItem(
+        source: AwsS3Dto,
+        destination: string,
+        options?: IAwsS3Options
+    ): Promise<AwsS3Dto> {
+        if (source.key.startsWith('/')) {
+            throw new Error('Source key should not start with "/"');
+        }
+
+        if (destination.startsWith('/')) {
+            throw new Error('Destination should not start with "/"');
+        }
+
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+        );
+
+        const destinationKey = `${destination}/${source.key.split('/').pop()}`;
+        const copyCommand = new CopyObjectCommand({
+            Bucket: config.bucket,
+            Key: destinationKey,
+            CopySource: `${source.bucket}/${source.key}`,
+            MetadataDirective: 'COPY',
+        });
+
+        await this.client.send<CopyObjectCommandInput, CopyObjectCommandOutput>(
+            copyCommand
+        );
+
+        await this.deleteItem(source.key, { access: source.access });
+
+        const { pathWithFilename, extension, mime } =
+            this.getFileInfoFromKey(destinationKey);
+
+        return {
+            bucket: config.bucket,
+            key: destinationKey,
+            completedUrl: `${config.baseUrl}${pathWithFilename}`,
+            cdnUrl:
+                config.cdnUrl && config.cdnUrl !== ''
+                    ? `${config.cdnUrl}${pathWithFilename}`
+                    : undefined,
+            extension,
+            size: source.size,
+            mime,
+            access: options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
+        };
+    }
+
+    async moveItems(
+        sources: AwsS3Dto[],
+        destination: string,
+        options?: IAwsS3Options
+    ): Promise<AwsS3Dto[]> {
+        if (sources.some(e => e.key.startsWith('/'))) {
+            throw new Error('Source keys should not start with "/"');
+        }
+
+        if (destination.startsWith('/')) {
+            throw new Error('Destination should not start with "/"');
+        }
+
+        const promises = [];
+
+        for (const source of sources) {
+            promises.push(this.moveItem(source, destination, options));
+        }
+
+        const movedItems: AwsS3Dto[] = await Promise.all(promises);
+        return movedItems;
     }
 }

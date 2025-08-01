@@ -58,6 +58,10 @@ import {
     IAuthSocialGooglePayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { SettingFeatureFlag } from '@modules/setting/decorators/setting.decorator';
+import { RequestLanguage } from '@common/request/decorators/request.decorator';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
+import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -77,7 +81,8 @@ export class AuthPublicController {
         private readonly verificationService: VerificationService,
         private readonly sessionService: SessionService,
         private readonly activityService: ActivityService,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService
     ) {}
 
     @AuthPublicLoginCredentialDoc()
@@ -359,7 +364,15 @@ export class AuthPublicController {
     @Post('/sign-up')
     async signUp(
         @Body()
-        { email, name, password: passwordString, country }: AuthSignUpRequestDto
+        {
+            email,
+            name,
+            password: passwordString,
+            country,
+            cookies,
+            marketing,
+        }: AuthSignUpRequestDto,
+        @RequestLanguage() requestLanguage: ENUM_MESSAGE_LANGUAGE
     ): Promise<void> {
         const promises: Promise<any>[] = [
             this.roleService.findOneByName('individual'),
@@ -397,10 +410,32 @@ export class AuthPublicController {
                 {
                     email,
                     name,
-                    password: passwordString,
                     country,
+                    cookies,
+                    marketing,
                 },
                 password,
+                { session }
+            );
+
+            const termPolicyAcceptance = [
+                ENUM_TERM_POLICY_TYPE.PRIVACY,
+                ENUM_TERM_POLICY_TYPE.TERM,
+            ];
+
+            if (cookies) {
+                termPolicyAcceptance.push(ENUM_TERM_POLICY_TYPE.COOKIES);
+            }
+
+            if (marketing) {
+                termPolicyAcceptance.push(ENUM_TERM_POLICY_TYPE.MARKETING);
+            }
+
+            await this.termPolicyAcceptanceService.createAcceptances(
+                user._id,
+                termPolicyAcceptance,
+                requestLanguage,
+                country,
                 { session }
             );
 
