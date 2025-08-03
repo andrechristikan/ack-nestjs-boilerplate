@@ -9,3 +9,16 @@ export enum ENUM_APP_ENVIRONMENT {
 export enum ENUM_APP_TIMEZONE {
     ASIA_JAKARTA = 'Asia/Jakarta',
 }
+
+export enum ENUM_APP_LANGUAGE {
+    EN = 'en',
+}
+
+export enum ENUM_APP_LOG_LEVEL {
+    ERROR = 'error',
+    WARN = 'warn',
+    INFO = 'info',
+    VERBOSE = 'verbose',
+    DEBUG = 'debug',
+    SILLY = 'silly',
+}

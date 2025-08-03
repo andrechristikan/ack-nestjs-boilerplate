@@ -1,8 +1,8 @@
 import {
+    CallHandler,
+    ExecutionContext,
     Injectable,
     NestInterceptor,
-    ExecutionContext,
-    CallHandler,
     StreamableFile,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
@@ -11,20 +11,18 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { Reflector } from '@nestjs/core';
 import { RESPONSE_FILE_EXCEL_TYPE_META_KEY } from '@common/response/constants/response.constant';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperService } from '@common/helper/services/helper.service';
 import { IResponseFileExcel } from '@common/response/interfaces/response.interface';
 import { FileService } from '@common/file/services/file.service';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
 import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
 
 @Injectable()
-export class ResponseFileExcelInterceptor
-    implements NestInterceptor<Promise<any>>
-{
+export class ResponseFileExcelInterceptor<T> implements NestInterceptor {
     constructor(
         private readonly reflector: Reflector,
         private readonly fileService: FileService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperService: HelperService
     ) {}
 
     intercept(
@@ -33,7 +31,7 @@ export class ResponseFileExcelInterceptor
     ): Observable<Promise<StreamableFile>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<IResponseFileExcel>) => {
+                map(async (res: Promise<Response & IResponseFileExcel<T>>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
 
@@ -44,7 +42,8 @@ export class ResponseFileExcelInterceptor
                         );
 
                     // set default response
-                    const responseData = (await res) as IResponseFileExcel;
+                    const responseData = (await res) as Response &
+                        IResponseFileExcel<T>;
 
                     if (!responseData) {
                         throw new Error(
@@ -57,9 +56,9 @@ export class ResponseFileExcelInterceptor
                         throw new Error('Field data must in array');
                     }
 
-                    const today = this.helperDateService.create();
+                    const today = this.helperService.dateCreate();
                     const timestamp =
-                        this.helperDateService.getTimestamp(today);
+                        this.helperService.dateGetTimestamp(today);
 
                     if (type === ENUM_HELPER_FILE_EXCEL_TYPE.XLSX) {
                         // create file

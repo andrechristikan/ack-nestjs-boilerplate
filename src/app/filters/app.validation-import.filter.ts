@@ -1,27 +1,27 @@
-import { ExceptionFilter, Catch, ArgumentsHost, Logger } from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
-import { IAppImportException } from '@app/interfaces/app.interface';
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
-import {
-    IMessageValidationImportError,
-    IMessageValidationImportErrorParam,
-} from '@common/message/interfaces/message.interface';
+import { HelperService } from '@common/helper/services/helper.service';
+import { IMessageValidationImportError } from '@common/message/interfaces/message.interface';
 import { MessageService } from '@common/message/services/message.service';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
+import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
+import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
 
+/**
+ * AppValidationImportFilter is an exception filter that handles excel file import validation errors
+ * and formats the response according to the application's standards.
+ * It sets the appropriate headers and response body based on the exception details.
+ */
 @Catch(FileImportException)
 export class AppValidationImportFilter implements ExceptionFilter {
-    private readonly logger = new Logger(AppValidationImportFilter.name);
-
     constructor(
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperService: HelperService
     ) {}
 
     async catch(
@@ -33,12 +33,12 @@ export class AppValidationImportFilter implements ExceptionFilter {
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
         // metadata
-        const today = this.helperDateService.create();
+        const today = this.helperService.dateCreate();
         const xLanguage: string =
             request.__language ??
-            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
-        const xTimestamp = this.helperDateService.getTimestamp(today);
-        const xTimezone = this.helperDateService.getZone(today);
+            this.configService.get<ENUM_APP_LANGUAGE>('message.language');
+        const xTimestamp = this.helperService.dateGetTimestamp(today);
+        const xTimezone = this.helperService.dateGetZone(today);
         const xVersion =
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');
@@ -57,18 +57,15 @@ export class AppValidationImportFilter implements ExceptionFilter {
             customLanguage: xLanguage,
         });
         const errors: IMessageValidationImportError[] =
-            this.messageService.setValidationImportMessage(
-                exception.errors as IMessageValidationImportErrorParam[],
-                {
-                    customLanguage: xLanguage,
-                }
-            );
+            this.messageService.setValidationImportMessage(exception.errors, {
+                customLanguage: xLanguage,
+            });
 
-        const responseBody: IAppImportException = {
+        const responseBody: ResponseErrorDto = {
             statusCode: exception.statusCode,
             message,
             errors,
-            _metadata: metadata,
+            metadata,
         };
 
         response

@@ -1,16 +1,21 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Response, NextFunction } from 'express';
-import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { NextFunction, Response } from 'express';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { HelperService } from '@common/helper/services/helper.service';
 
+/**
+ * Middleware to set a custom language for the application.
+ * It checks the request headers for a custom language and sets it if available.
+ * The available languages are configured through the application configuration.
+ */
 @Injectable()
 export class AppCustomLanguageMiddleware implements NestMiddleware {
     private readonly availableLanguage: string[];
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperArrayService: HelperArrayService
+        private readonly helperService: HelperService
     ) {
         this.availableLanguage = this.configService.get<string[]>(
             'message.availableLanguage'
@@ -41,7 +46,7 @@ export class AppCustomLanguageMiddleware implements NestMiddleware {
     }
 
     private filterLanguage(customLanguage: string): string[] {
-        return this.helperArrayService.getIntersection(
+        return this.helperService.arrayIntersection(
             [customLanguage],
             this.availableLanguage
         );

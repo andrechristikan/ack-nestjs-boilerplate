@@ -11,13 +11,13 @@ export interface IDocOptions {
     description?: string;
 }
 
-export interface IDocOfOptions<T = any> {
+export interface IDocOfOptions<T = unknown> {
     statusCode: number;
     messagePath: string;
     dto?: ClassConstructor<T>;
 }
 
-export interface IDocDefaultOptions<T = any> extends IDocOfOptions<T> {
+export interface IDocDefaultOptions<T = unknown> extends IDocOfOptions<T> {
     httpStatus: HttpStatus;
 }
 
@@ -29,21 +29,25 @@ export interface IDocAuthOptions {
     apple?: boolean;
 }
 
-export interface IDocRequestOptions<T = any> {
+export interface IDocRequestOptions<T = unknown> {
     params?: ApiParamOptions[];
     queries?: ApiQueryOptions[];
     bodyType?: ENUM_DOC_REQUEST_BODY_TYPE;
     dto?: ClassConstructor<T>;
 }
 
-export type IDocRequestFileOptions = Omit<IDocRequestOptions, 'bodyType'>;
+export type IDocRequestFileOptions<T = unknown> = Omit<
+    IDocRequestOptions<T>,
+    'bodyType'
+>;
 
 export interface IDocGuardOptions {
     policy?: boolean;
     role?: boolean;
+    twoFactor?: boolean;
 }
 
-export interface IDocResponseOptions<T = any> {
+export interface IDocResponseOptions<T = unknown> {
     statusCode?: number;
     httpStatus?: HttpStatus;
     dto?: ClassConstructor<T>;

@@ -1,6 +1,6 @@
 export type IFile = Express.Multer.File;
 
-export interface IFileRows<T = any> {
+export interface IFileSheet<T> {
     data: T[];
     sheetName?: string;
 }
@@ -20,3 +20,5 @@ export type IFileUploadMultipleFieldOptions = Pick<
     IFileUploadSingle,
     'fileSize'
 >;
+
+export type IFileInput = IFile | IFile[];

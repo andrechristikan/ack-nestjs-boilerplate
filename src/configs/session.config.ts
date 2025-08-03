@@ -1,8 +1,12 @@
 import { registerAs } from '@nestjs/config';
 
+export interface IConfigSession {
+    keyPrefix: string;
+}
+
 export default registerAs(
     'session',
-    (): Record<string, any> => ({
+    (): IConfigSession => ({
         keyPrefix: 'UserLogin',
     })
 );

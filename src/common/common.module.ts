@@ -1,26 +1,19 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
-import {
-    DatabaseModule,
-    DatabaseOptionModule,
-} from '@common/database/database.module';
+import { DatabaseOptionModule } from '@common/database/database.module';
 import { MessageModule } from '@common/message/message.module';
 import { HelperModule } from '@common/helper/helper.module';
 import { RequestModule } from '@common/request/request.module';
-import { PolicyModule } from '@modules/policy/policy.module';
-import { AuthModule } from '@modules/auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import configs from '@config';
-import { PaginationModule } from '@common/pagination/pagination.module';
-import { FileModule } from '@common/file/file.module';
 import { BullModule } from '@nestjs/bullmq';
 import { CacheModule, CacheOptions } from '@nestjs/cache-manager';
 import { DatabaseOptionService } from '@common/database/services/database.options.service';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { LoggerOptionModule } from '@common/logger/logger.option.module';
 import { LoggerOptionService } from '@common/logger/services/logger.option.service';
-import { createKeyv, RedisClientOptions } from '@keyv/redis';
+import { RedisClientOptions, createKeyv } from '@keyv/redis';
 
 @Module({
     controllers: [],
@@ -30,8 +23,9 @@ import { createKeyv, RedisClientOptions } from '@keyv/redis';
             load: configs,
             isGlobal: true,
             cache: true,
-            envFilePath: ['.env'],
+            envFilePath: ['.env', `.env.${process.env.NODE_ENV || 'local'}`],
             expandVariables: false,
+            validationOptions: {},
         }),
         MongooseModule.forRootAsync({
             connectionName: DATABASE_CONNECTION_NAME,
@@ -49,7 +43,6 @@ import { createKeyv, RedisClientOptions } from '@keyv/redis';
                     port: configService.get<number>('redis.queue.port'),
                     username: configService.get<string>('redis.queue.username'),
                     password: configService.get<string>('redis.queue.password'),
-                    tls: configService.get<any>('redis.queue.tls'),
                 },
                 defaultJobOptions: {
                     backoff: {
@@ -99,11 +92,6 @@ import { createKeyv, RedisClientOptions } from '@keyv/redis';
         MessageModule.forRoot(),
         HelperModule.forRoot(),
         RequestModule.forRoot(),
-        PolicyModule.forRoot(),
-        AuthModule.forRoot(),
-        FileModule.forRoot(),
-        DatabaseModule.forRoot(),
-        PaginationModule.forRoot(),
     ],
 })
 export class CommonModule {}

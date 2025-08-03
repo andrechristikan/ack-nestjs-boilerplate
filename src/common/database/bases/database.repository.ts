@@ -1,0 +1,1520 @@
+import {
+    ClientSession,
+    FilterQuery,
+    Model,
+    PipelineStage,
+    PopulateOptions,
+    Types,
+    UpdateQuery,
+} from 'mongoose';
+import { IDatabaseRepository } from '@common/database/interfaces/database.repository.interface';
+import {
+    IDatabaseCount,
+    IDatabaseCreate,
+    IDatabaseCreateMany,
+    IDatabaseDelete,
+    IDatabaseDeleteMany,
+    IDatabaseExist,
+    IDatabaseExistReturn,
+    IDatabaseFilter,
+    IDatabaseFilterOperation,
+    IDatabaseFindMany,
+    IDatabaseFindManyWithPagination,
+    IDatabaseFindOne,
+    IDatabaseFindOneById,
+    IDatabaseJoin,
+    IDatabaseManyReturn,
+    IDatabasePagination,
+    IDatabaseRaw,
+    IDatabaseRestore,
+    IDatabaseRestoreMany,
+    IDatabaseSoftDelete,
+    IDatabaseSoftDeleteMany,
+    IDatabaseUpdate,
+    IDatabaseUpdateAtomic,
+    IDatabaseUpdateMany,
+    IDatabaseUpsert,
+} from '@common/database/interfaces/database.interface';
+import { IDatabaseEntity } from '@common/database/interfaces/database.entity.interface';
+import {
+    DATABASE_ATOMIC_OPERATIONS,
+    DATABASE_FILTER_OPERATIONS,
+} from '@common/database/constants/database.constant';
+
+/**
+ * Abstract base repository class for database operations.
+ *
+ * Provides a comprehensive set of CRUD operations, soft delete functionality,
+ * pagination support, and advanced querying capabilities for MongoDB through Mongoose.
+ * All repository implementations should extend this base class to ensure consistency.
+ *
+ * @template TEntity - The entity type extending IDatabaseEntity
+ * @template TModel - The Mongoose model type for the entity
+ * @template TRaw - The aggregation pipeline type for raw queries
+ * @template TTransaction - The transaction session type for atomic operations
+ */
+export abstract class DatabaseRepositoryBase<
+    TEntity extends IDatabaseEntity,
+    TModel extends Model<TEntity> = Model<TEntity>,
+    TRaw extends PipelineStage[] = PipelineStage[],
+    TTransaction = ClientSession,
+> implements IDatabaseRepository<TEntity, TModel, TRaw, TTransaction>
+{
+    /**
+     * Creates a new instance of the DatabaseRepositoryBase.
+     * @param model - The Mongoose model to use for database operations.
+     */
+    constructor(model: TModel) {
+        this._model = model;
+    }
+
+    /**
+     * The Mongoose model instance used for database operations.
+     * @readonly
+     */
+    readonly _model: TModel;
+
+    /**
+     * Validates that data is a non-empty object.
+     * @private
+     * @param data - The data to validate.
+     * @param paramName - The parameter name for error message.
+     * @throws {Error} When data is not a valid non-empty object.
+     */
+    private _validateNonEmptyObject(data: unknown, paramName = 'Data'): void {
+        if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error(`${paramName} must be a non-empty object`);
+        }
+    }
+
+    /**
+     * Validates that criteria is a non-empty object.
+     * @private
+     * @param criteria - The criteria to validate.
+     * @param paramName - The parameter name for error message.
+     * @throws {Error} When criteria is not a valid non-empty object.
+     */
+    private _validateCriteria(criteria: unknown, paramName = 'Criteria'): void {
+        if (
+            !criteria ||
+            typeof criteria !== 'object' ||
+            Object.keys(criteria).length === 0
+        ) {
+            throw new Error(`${paramName} must be a non-empty object`);
+        }
+    }
+
+    /**
+     * Validates that select is a valid object.
+     * @private
+     * @param select - The select to validate.
+     * @throws {Error} When select is not a valid object.
+     */
+    private _validateSelect(select: unknown): void {
+        if (select && typeof select !== 'object') {
+            throw new Error('Select must be an object');
+        }
+    }
+
+    /**
+     * Validates pagination parameters.
+     * @private
+     * @param limit - The limit to validate.
+     * @param skip - The skip to validate.
+     * @throws {Error} When pagination parameters are invalid.
+     */
+    private _validatePagination(limit: number, skip: number): void {
+        if (limit < 0) {
+            throw new Error('Pagination limit must be a non-negative number');
+        }
+        if (skip < 0) {
+            throw new Error('Pagination skip must be a non-negative number');
+        }
+    }
+
+    /**
+     * Validates that ID is a valid string.
+     * @private
+     * @param id - The ID to validate.
+     * @throws {Error} When ID is not a valid string.
+     */
+    private _validateId(id: unknown): void {
+        if (typeof id !== 'string' || (id as string).trim() === '') {
+            throw new Error('ID must be a non-empty string');
+        }
+    }
+
+    /**
+     * Creates a new MongoDB ObjectId.
+     * @private
+     * @returns A new ObjectId instance.
+     */
+    private _createNewId(): Types.ObjectId {
+        return new Types.ObjectId();
+    }
+
+    /**
+     * Checks if a value is a database filter operation.
+     * @private
+     * @param value - The value to check.
+     * @returns True if the value is a filter operation, false otherwise.
+     */
+    private _isFilterOperation(
+        value: unknown
+    ): value is IDatabaseFilterOperation {
+        if (!value || typeof value !== 'object') {
+            return false;
+        }
+
+        return DATABASE_FILTER_OPERATIONS.some(
+            op => op in (value as Record<string, unknown>)
+        );
+    }
+
+    /**
+     * Maps filter operation to MongoDB operators.
+     * @private
+     */
+    private readonly FILTER_OPERATION_MAP = {
+        gte: '$gte',
+        gt: '$gt',
+        lte: '$lte',
+        lt: '$lt',
+        equal: '$eq',
+        in: '$in',
+        notIn: '$nin',
+        notEqual: '$ne',
+    } as const;
+
+    /**
+     * Processes comparison filter operations.
+     * @private
+     * @param operation - The filter operation.
+     * @param query - The query object to modify.
+     */
+    private _processComparisonOperations(
+        operation: IDatabaseFilterOperation,
+        query: Record<string, unknown>
+    ): Record<string, unknown> {
+        for (const [key, mongoOp] of Object.entries(
+            this.FILTER_OPERATION_MAP
+        )) {
+            if (key in operation && operation[key] !== undefined) {
+                query[mongoOp] = operation[key];
+            }
+        }
+
+        return query;
+    }
+
+    /**
+     * Processes text search filter operations.
+     * @private
+     * @param operation - The filter operation.
+     * @param query - The query object to modify.
+     */
+    private _processTextOperations(
+        operation: IDatabaseFilterOperation,
+        query: Record<string, unknown>
+    ): Record<string, unknown> {
+        if ('contains' in operation && operation.contains !== undefined) {
+            query.$regex = operation.contains;
+            query.$options = 'i';
+        }
+        if ('notContains' in operation && operation.notContains !== undefined) {
+            query.$not = { $regex: operation.notContains, $options: 'i' };
+        }
+        if ('startsWith' in operation && operation.startsWith !== undefined) {
+            query.$regex = `^${operation.startsWith}`;
+            query.$options = 'i';
+        }
+        if ('endsWith' in operation && operation.endsWith !== undefined) {
+            query.$regex = `${operation.endsWith}$`;
+            query.$options = 'i';
+        }
+
+        return query;
+    }
+
+    /**
+     * Processes logical filter operations (or, and).
+     * @private
+     * @param operation - The filter operation.
+     * @param query - The query object to modify.
+     */
+    private _processLogicalOperations(
+        operation: IDatabaseFilterOperation,
+        query: Record<string, unknown>
+    ): Record<string, unknown> {
+        if (
+            'or' in operation &&
+            operation.or !== undefined &&
+            Array.isArray(operation.or)
+        ) {
+            query.$or = operation.or.map(orOperation =>
+                this._resolveFilterOperation(orOperation)
+            );
+        }
+        if (
+            'and' in operation &&
+            operation.and !== undefined &&
+            Array.isArray(operation.and)
+        ) {
+            query.$and = operation.and.map(andOperation =>
+                this._resolveFilterOperation(andOperation)
+            );
+        }
+
+        return query;
+    }
+
+    /**
+     * Resolves filter operation to MongoDB query format.
+     * @private
+     * @param operation - The filter operation to resolve.
+     * @returns The MongoDB query object.
+     */
+    private _resolveFilterOperation(
+        operation: IDatabaseFilterOperation
+    ): Record<string, unknown> {
+        let query: Record<string, unknown> = {};
+
+        query = {
+            ...query,
+            ...this._processComparisonOperations(operation, query),
+        };
+        query = {
+            ...query,
+            ...this._processTextOperations(operation, query),
+        };
+        query = {
+            ...query,
+            ...this._processLogicalOperations(operation, query),
+        };
+
+        return query;
+    }
+
+    /**
+     * Resolves the where criteria by converting string IDs to ObjectIds and handling soft delete filtering.
+     * @private
+     * @param where - The filter criteria to resolve.
+     * @param withDeleted - Whether to include soft-deleted documents in the query.
+     * @returns The resolved where criteria with proper ObjectId conversion and deletion filtering.
+     */
+    private _resolveWhere(
+        where: IDatabaseFilter<TEntity>,
+        withDeleted?: boolean
+    ): FilterQuery<TEntity> {
+        const resolvedWhere: Record<string, unknown> = {};
+
+        if (
+            where.id &&
+            typeof where.id === 'string' &&
+            Types.ObjectId.isValid(where.id)
+        ) {
+            resolvedWhere._id = new Types.ObjectId(where.id);
+        } else if (where.id) {
+            resolvedWhere._id = where.id;
+        }
+
+        for (const key in where) {
+            if (key === 'id') {
+                continue; // Skip id as it is already handled above
+            }
+
+            const value = where[key];
+            if (value !== undefined) {
+                if (this._isFilterOperation(value)) {
+                    resolvedWhere[key] = this._resolveFilterOperation(value);
+                } else {
+                    resolvedWhere[key] = value;
+                }
+            }
+        }
+
+        // Handle soft delete filtering
+        if (withDeleted === true) {
+            resolvedWhere.deleted = true;
+        } else if (withDeleted === false) {
+            resolvedWhere.deleted = false;
+        }
+
+        return resolvedWhere as FilterQuery<TEntity>;
+    }
+
+    /**
+     * Checks if a value is an atomic update operation.
+     * @private
+     * @param value - The value to check.
+     * @returns True if the value is an atomic update operation, false otherwise.
+     */
+    private _isAtomicUpdateOperation(
+        value: unknown
+    ): value is IDatabaseUpdateAtomic {
+        if (!value || typeof value !== 'object') {
+            return false;
+        }
+
+        return DATABASE_ATOMIC_OPERATIONS.some(
+            op => op in (value as Record<string, unknown>)
+        );
+    }
+
+    /**
+     * Resolves atomic update operations to MongoDB update operators.
+     * @private
+     * @param field - The field name to apply the atomic operation to.
+     * @param data - The atomic update operation data.
+     * @returns The resolved MongoDB update query with proper operators.
+     * @throws {Error} When the data is invalid or contains unsupported operations.
+     */
+    private _resolveDataUpdateAtomic(
+        field: string,
+        data: IDatabaseUpdateAtomic
+    ): UpdateQuery<TEntity> {
+        if (!this._isAtomicUpdateOperation(data)) {
+            throw new Error(
+                'Data must contain one of increment, decrement, multiply, or divide'
+            );
+        }
+
+        // Check for increment operation
+        if ('increment' in data && data.increment !== undefined) {
+            if (typeof data.increment !== 'number') {
+                throw new Error('Increment value must be a number');
+            }
+            return {
+                $inc: {
+                    [field]: data.increment,
+                },
+            } as UpdateQuery<TEntity>;
+        }
+
+        // Check for decrement operation
+        if ('decrement' in data && data.decrement !== undefined) {
+            if (typeof data.decrement !== 'number') {
+                throw new Error('Decrement value must be a number');
+            }
+            return {
+                $inc: {
+                    [field]: -data.decrement,
+                },
+            } as UpdateQuery<TEntity>;
+        }
+
+        // Check for multiply operation
+        if ('multiply' in data && data.multiply !== undefined) {
+            if (typeof data.multiply !== 'number') {
+                throw new Error('Multiply value must be a number');
+            }
+            return {
+                $mul: {
+                    [field]: data.multiply,
+                },
+            } as UpdateQuery<TEntity>;
+        }
+
+        // Check for divide operation
+        if ('divide' in data && data.divide !== undefined) {
+            if (typeof data.divide !== 'number') {
+                throw new Error('Divide value must be a number');
+            }
+            if (data.divide === 0) {
+                throw new Error('Cannot divide by zero');
+            }
+            return {
+                $mul: {
+                    [field]: 1 / data.divide,
+                },
+            } as UpdateQuery<TEntity>;
+        }
+
+        throw new Error('Invalid atomic operation data');
+    }
+
+    /**
+     * Processes atomic update operations for a field.
+     * @private
+     * @param key - The field name.
+     * @param value - The atomic operation value.
+     * @param updateData - The update data object to modify.
+     */
+    private _processAtomicOperation(
+        key: string,
+        value: IDatabaseUpdateAtomic,
+        updateData: UpdateQuery<TEntity>
+    ): UpdateQuery<TEntity> {
+        const atomicUpdate = this._resolveDataUpdateAtomic(key, value);
+
+        if (atomicUpdate.$inc) {
+            updateData.$inc = {
+                ...updateData.$inc,
+                ...atomicUpdate.$inc,
+            };
+        } else if (atomicUpdate.$mul) {
+            updateData.$mul = {
+                ...updateData.$mul,
+                ...atomicUpdate.$mul,
+            };
+        }
+
+        return updateData;
+    }
+
+    /**
+     * Processes regular field updates.
+     * @private
+     * @param key - The field name.
+     * @param value - The field value.
+     * @param updateData - The update data object to modify.
+     */
+    private _processRegularUpdate(
+        key: string,
+        value: unknown,
+        updateData: UpdateQuery<TEntity>
+    ): UpdateQuery<TEntity> {
+        return (updateData.$set = {
+            ...updateData.$set,
+            [key]: value,
+        });
+    }
+
+    /**
+     * Adds timestamp and user metadata to update data.
+     * @private
+     * @param updateData - The update data object to modify.
+     * @param entity - The entity containing user metadata.
+     */
+    private _addUpdateMetadata(
+        updateData: UpdateQuery<TEntity>,
+        entity: Partial<TEntity>
+    ): UpdateQuery<TEntity> {
+        const now = Date.now();
+
+        updateData.$set = {
+            ...updateData.$set,
+            updatedAt: now,
+        };
+
+        if (entity.updatedBy !== undefined) {
+            updateData.$set.updatedBy = entity.updatedBy;
+        }
+
+        return updateData;
+    }
+
+    /**
+     * Resolves update data by handling increment/decrement operations and standard field updates.
+     * Automatically sets updatedAt and updatedBy fields.
+     * @private
+     * @param data - The update data which can be either increment/decrement operations or direct field updates.
+     * @returns The resolved MongoDB update query with proper operators and metadata.
+     */
+    private _resolveDataUpdate(
+        data: IDatabaseUpdate<TEntity, TTransaction>['data']
+    ): UpdateQuery<TEntity> {
+        const entity = data as Partial<TEntity>;
+        let updateData: UpdateQuery<TEntity> = {};
+        const keys: string[] = Object.keys(data);
+
+        for (const key of keys) {
+            const value = data[key];
+
+            if (value !== undefined && this._isAtomicUpdateOperation(value)) {
+                updateData = {
+                    ...updateData,
+                    ...this._processAtomicOperation(
+                        key,
+                        value as IDatabaseUpdateAtomic,
+                        updateData
+                    ),
+                };
+            } else {
+                updateData = {
+                    ...updateData,
+                    ...this._processRegularUpdate(key, value, updateData),
+                };
+            }
+        }
+
+        updateData = {
+            ...updateData,
+            ...this._addUpdateMetadata(updateData, entity),
+        };
+        return updateData;
+    }
+
+    /**
+     * Resolves create data by generating ObjectId, setting timestamps, and initializing entity metadata.
+     * Automatically sets createdAt, updatedAt, createdBy, updatedBy, and deleted fields.
+     * @private
+     * @param data - The creation data containing entity fields and optional metadata.
+     * @returns The resolved entity data with MongoDB ObjectId and proper metadata fields.
+     */
+    private _resolveDataCreate(
+        data: IDatabaseCreate<TEntity, TTransaction>['data']
+    ): Partial<TEntity & { _id: Types.ObjectId }> {
+        const now = Date.now();
+        const { id, ...restData } = data;
+
+        return {
+            ...restData,
+            _id: id ? new Types.ObjectId(id) : this._createNewId(),
+            createdAt: restData.createdAt ?? now,
+            updatedAt: restData.createdAt ?? now,
+            createdBy: restData.createdBy ?? null,
+            updatedBy: restData.createdBy ?? null,
+            deleted: false,
+        } as Partial<TEntity & { _id: Types.ObjectId }>;
+    }
+
+    /**
+     * Resolves join configuration to Mongoose PopulateOptions array.
+     * Converts the IDatabaseJoin interface format to PopulateOptions for Mongoose populate.
+     * @private
+     * @param join - The join configuration object.
+     * @returns An array of PopulateOptions or undefined if no join is provided.
+     */
+    private _resolveJoin(join: IDatabaseJoin): PopulateOptions[] | undefined {
+        if (
+            !join ||
+            typeof join !== 'object' ||
+            Object.keys(join).length === 0
+        ) {
+            return undefined;
+        }
+
+        const populateOptions: PopulateOptions[] = [];
+
+        for (const [path, config] of Object.entries(join)) {
+            if (config === true) {
+                populateOptions.push({ path });
+            } else if (config === false) {
+                continue;
+            } else if (typeof config === 'object' && config !== null) {
+                const selectFields = Object.entries(config)
+                    .filter(([, include]) => include === true)
+                    .map(([field]) => field)
+                    .join(' ');
+
+                if (selectFields) {
+                    populateOptions.push({
+                        path,
+                        select: selectFields,
+                    });
+                } else {
+                    populateOptions.push({ path });
+                }
+            }
+        }
+
+        return populateOptions.length > 0 ? populateOptions : undefined;
+    }
+
+    /**
+     * Finds multiple documents based on the provided queries.
+     * @param queries - Optional queries object containing filter criteria, join options, sorting, selection, pagination, and deletion flags.
+     * @param queries.where - The criteria to filter the documents.
+     * @param queries.join - Optional join options to populate related fields.
+     * @param queries.order - Optional sorting order for the results.
+     * @param queries.select - Optional fields to select in the returned documents.
+     * @param queries.limit - Optional maximum number of documents to return.
+     * @param queries.skip - Optional number of documents to skip for pagination.
+     * @param queries.withDeleted - Optional flag to include deleted documents.
+     * @param queries.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to an array of found documents.
+     * @throws {Error} When where criteria or select fields are not valid objects.
+     */
+    async findMany<T = TEntity>(
+        queries?: IDatabaseFindMany<TEntity, TTransaction>
+    ): Promise<T[]> {
+        if (queries === undefined || queries === null) {
+            const items = (await this._model.find().lean()) as (TEntity & {
+                _id: Types.ObjectId;
+            })[];
+            return items as T[];
+        }
+
+        const {
+            where,
+            join,
+            order,
+            select,
+            limit,
+            skip,
+            withDeleted,
+            transaction,
+        } = queries;
+
+        if (where) {
+            this._validateCriteria(where, 'Where criteria');
+        }
+
+        this._validateSelect(select);
+
+        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const findItems = this._model.find(resolvedWhere);
+
+        if (join) {
+            const populateOptions = this._resolveJoin(join);
+            findItems.populate(populateOptions);
+        }
+
+        if (order) {
+            findItems.sort(order);
+        }
+
+        if (select) {
+            findItems.select(select);
+        }
+
+        if (limit !== undefined && limit >= 0) {
+            findItems.limit(limit);
+        }
+
+        if (skip !== undefined && skip >= 0) {
+            findItems.skip(skip);
+        }
+
+        if (transaction) {
+            findItems.session(transaction as ClientSession);
+        }
+
+        const items = (await findItems.lean()) as (TEntity & {
+            _id: Types.ObjectId;
+        })[];
+
+        return items as T[];
+    }
+
+    /**
+     * Finds multiple documents with pagination support.
+     * @param options - The pagination options.
+     * @param options.limit - The maximum number of documents to return.
+     * @param options.skip - The number of documents to skip for pagination.
+     * @param options.where - Optional criteria to filter the documents.
+     * @param options.join - Optional join options to populate related fields.
+     * @param options.order - Optional sorting order for the results.
+     * @param options.select - Optional fields to select in the returned documents.
+     * @param options.withDeleted - Optional flag to include deleted documents.
+     * @param options.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to a paginated result containing the items and metadata.
+     * @throws {Error} When limit or skip are negative numbers, or when where/select criteria are invalid.
+     */
+    async findManyWithPagination<T = TEntity>({
+        limit,
+        skip,
+        where,
+        join,
+        order,
+        select,
+        withDeleted,
+        transaction,
+    }: IDatabaseFindManyWithPagination<TEntity, TTransaction>): Promise<
+        IDatabasePagination<T>
+    > {
+        this._validatePagination(limit, skip);
+        if (where) {
+            this._validateCriteria(where, 'Where criteria');
+        }
+        this._validateSelect(select);
+
+        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const findItems = this._model
+            .find(resolvedWhere)
+            .limit(limit)
+            .skip(skip);
+
+        if (join) {
+            const populateOptions = this._resolveJoin(join);
+            findItems.populate(populateOptions);
+        }
+
+        if (order) {
+            findItems.sort(order);
+        }
+
+        if (select) {
+            findItems.select(select);
+        }
+
+        if (transaction) {
+            findItems.session(transaction as ClientSession);
+        }
+
+        const items = (await findItems.lean()) as (TEntity & {
+            _id: Types.ObjectId;
+        })[];
+        const count = await this._model.countDocuments(resolvedWhere).lean();
+
+        return {
+            items: items as T[],
+            count,
+            page: Math.floor(skip / limit) + 1,
+            totalPage: Math.ceil(count / limit),
+            skip,
+            limit,
+        };
+    }
+
+    /**
+     * Counts the number of documents matching the provided criteria.
+     * @param queries - Optional queries to filter the count.
+     * @param queries.where - The criteria to filter the documents.
+     * @param queries.withDeleted - Optional flag to include deleted documents.
+     * @param queries.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to the count of matching documents.
+     * @throws {Error} When where criteria is not a valid non-empty object.
+     */
+    async count(
+        queries?: IDatabaseCount<TEntity, TTransaction>
+    ): Promise<number> {
+        if (queries === undefined || queries === null) {
+            return this._model.countDocuments().lean();
+        }
+
+        const { where, withDeleted, transaction } = queries;
+        this._validateCriteria(where, 'Where criteria');
+
+        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const countQuery = this._model.countDocuments(resolvedWhere);
+
+        if (transaction) {
+            countQuery.session(transaction as ClientSession);
+        }
+
+        return countQuery.lean();
+    }
+
+    /**
+     * Finds a single document based on the provided criteria.
+     * @param options - The find options.
+     * @param options.where - The criteria to find the document.
+     * @param options.join - Optional join options to populate related fields.
+     * @param options.select - Optional fields to select in the returned document.
+     * @param options.withDeleted - Optional flag to include deleted documents.
+     * @param options.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to the found document or null if not found.
+     * @throws {Error} When find criteria is not provided or select is not a valid object.
+     */
+    async findOne<T = TEntity>({
+        where,
+        join,
+        select,
+        withDeleted,
+        transaction,
+    }: IDatabaseFindOne<TEntity, TTransaction>): Promise<T | null> {
+        this._validateCriteria(where, 'Find criteria');
+        this._validateSelect(select);
+
+        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const findItem = this._model.findOne(resolvedWhere);
+
+        if (join) {
+            const populateOptions = this._resolveJoin(join);
+            findItem.populate(populateOptions);
+        }
+
+        if (select) {
+            findItem.select(select);
+        }
+
+        if (transaction) {
+            findItem.session(transaction as ClientSession);
+        }
+
+        const item = (await findItem.lean()) as
+            | (TEntity & {
+                  _id: Types.ObjectId;
+              })
+            | null;
+
+        return item as T | null;
+    }
+
+    /**
+     * Finds a single document by its ID.
+     * @param options - The find by ID options.
+     * @param options.id - The ID of the document to find.
+     * @param options.join - Optional join options to populate related fields.
+     * @param options.select - Optional fields to select in the returned document.
+     * @param options.withDeleted - Optional flag to include deleted documents.
+     * @param options.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to the found document or null if not found.
+     * @throws {Error} When ID is not a valid non-empty string or select is not a valid object.
+     */
+    async findOneById<T = TEntity>({
+        id,
+        join,
+        select,
+        withDeleted,
+        transaction,
+    }: IDatabaseFindOneById<TTransaction>): Promise<T | null> {
+        this._validateId(id);
+        this._validateSelect(select);
+
+        const resolvedWhere = this._resolveWhere(
+            {
+                id,
+            } as IDatabaseFilter<TEntity>,
+            withDeleted
+        );
+        const findItem = this._model.findOne(resolvedWhere);
+
+        if (join) {
+            const populateOptions = this._resolveJoin(join);
+            findItem.populate(populateOptions);
+        }
+
+        if (select) {
+            findItem.select(select);
+        }
+
+        if (transaction) {
+            findItem.session(transaction as ClientSession);
+        }
+
+        const item = (await findItem.lean()) as
+            | (TEntity & { _id: Types.ObjectId })
+            | null;
+
+        return item as T | null;
+    }
+
+    /**
+     * Creates a new document in the database.
+     * @param options - The creation options.
+     * @param options.data - The data to create the document with.
+     * @param options.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to the created document.
+     * @throws {Error} When the data is not a non-empty object.
+     */
+    async create({
+        data,
+        transaction,
+    }: IDatabaseCreate<TEntity, TTransaction>): Promise<TEntity> {
+        this._validateNonEmptyObject(data, 'Data');
+
+        const resolvedData = this._resolveDataCreate(data);
+        const createItems = await this._model.create([resolvedData], {
+            session: transaction as ClientSession,
+        });
+        const item = createItems[0].toObject() as TEntity & {
+            _id: Types.ObjectId;
+        };
+
+        return item as TEntity;
+    }
+
+    /**
+     * Updates a document based on the provided criteria and data.
+     * @param options - The update options.
+     * @param options.data - The data to update the document with (supports both direct field updates and increment/decrement operations).
+     * @param options.where - The criteria to find the document to update.
+     * @param options.withDeleted - Optional flag to include deleted documents in the search.
+     * @param options.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to the updated document.
+     * @throws {Error} When the data or where criteria are not valid non-empty objects.
+     */
+    async update({
+        data,
+        where,
+        withDeleted,
+        transaction,
+    }: IDatabaseUpdate<TEntity, TTransaction>): Promise<TEntity> {
+        this._validateNonEmptyObject(data, 'Data');
+        this._validateCriteria(where, 'Where criteria');
+
+        const resolvedData = this._resolveDataUpdate(data);
+        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const updateItem = this._model.findOneAndUpdate(
+            resolvedWhere,
+            resolvedData,
+            {
+                new: true,
+            }
+        );
+
+        if (transaction) {
+            updateItem.session(transaction as ClientSession);
+        }
+
+        const updated = (await updateItem.lean()) as TEntity & {
+            _id: Types.ObjectId;
+        };
+        return updated as TEntity;
+    }
+
+    /**
+     * Permanently deletes a document based on the provided criteria.
+     * @param options - The deletion options.
+     * @param options.where - The criteria to find the document to delete.
+     * @param options.withDeleted - Optional flag to include deleted documents in the search.
+     * @param options.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to the deleted document.
+     * @throws {Error} When the where criteria is not a valid non-empty object.
+     */
+    async delete({
+        where,
+        withDeleted,
+        transaction,
+    }: IDatabaseDelete<TEntity, TTransaction>): Promise<TEntity> {
+        if (
+            !where ||
+            typeof where !== 'object' ||
+            Object.keys(where).length === 0
+        ) {
+            throw new Error('Where criteria must be a non-empty object');
+        }
+
+        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const deleteItem = this._model.findOneAndDelete(resolvedWhere, {
+            new: false,
+        });
+
+        if (transaction) {
+            deleteItem.session(transaction as ClientSession);
+        }
+
+        const deleted = (await deleteItem.lean()) as TEntity & {
+            _id: Types.ObjectId;
+        };
+        return deleted as TEntity;
+    }
+
+    /**
+     * Checks if a document exists based on the provided criteria.
+     * @param options - The existence check options.
+     * @param options.where - The criteria to find the document.
+     * @param options.withDeleted - Optional flag to include deleted documents in the search.
+     * @param options.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to an object with the document ID if it exists, or null if it doesn't.
+     * @throws {Error} When the where criteria is not a valid non-empty object.
+     */
+    async exists({
+        where,
+        withDeleted,
+        transaction,
+    }: IDatabaseExist<TEntity, TTransaction>): Promise<IDatabaseExistReturn> {
+        if (
+            !where ||
+            typeof where !== 'object' ||
+            Object.keys(where).length === 0
+        ) {
+            throw new Error('Where criteria must be a non-empty object');
+        }
+
+        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const existsQuery = this._model.exists(resolvedWhere).select('_id');
+
+        if (transaction) {
+            existsQuery.session(transaction as ClientSession);
+        }
+
+        const result = await existsQuery.lean();
+        return result
+            ? { id: (result._id as Types.ObjectId).toString() }
+            : null;
+    }
+
+    /**
+     * Upserts a document by finding it with the provided criteria and updating it with the provided data.
+     * If the document does not exist, it creates a new one with the create data.
+     * @param options - The upsert options.
+     * @param options.create - The data to create the document with if it does not exist.
+     * @param options.update - The data to update the document with if it exists.
+     * @param options.where - The criteria to find the document to update.
+     * @param options.withDeleted - Optional flag to include deleted documents in the search.
+     * @param options.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to the updated or created document.
+     * @throws {Error} When the create data, update data, or where criteria are not valid non-empty objects.
+     */
+    async upsert({
+        create,
+        update,
+        where,
+        withDeleted,
+        transaction,
+    }: IDatabaseUpsert<TEntity, TTransaction>): Promise<Partial<TEntity>> {
+        if (
+            !create ||
+            typeof create !== 'object' ||
+            Object.keys(create).length === 0
+        ) {
+            throw new Error('Create data must be a non-empty object');
+        }
+
+        if (
+            !update ||
+            typeof update !== 'object' ||
+            Object.keys(update).length === 0
+        ) {
+            throw new Error('Update data must be a non-empty object');
+        }
+
+        if (
+            !where ||
+            typeof where !== 'object' ||
+            Object.keys(where).length === 0
+        ) {
+            throw new Error('Where criteria must be a non-empty object');
+        }
+
+        const resolvedUpdateData = this._resolveDataUpdate(update);
+        const resolvedCreateData = this._resolveDataCreate(create);
+        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const upsertItem = this._model.findOneAndUpdate(
+            resolvedWhere,
+            {
+                $setOnInsert: resolvedCreateData,
+                $set: resolvedUpdateData,
+            },
+            {
+                new: true,
+                upsert: true,
+            }
+        );
+
+        if (transaction) {
+            upsertItem.session(transaction as ClientSession);
+        }
+
+        const upsert = (await upsertItem.lean()) as TEntity & {
+            _id: Types.ObjectId;
+        };
+        return upsert as Partial<TEntity>;
+    }
+
+    /**
+     * Executes a raw MongoDB aggregation pipeline query.
+     * @template T - The expected return type of the aggregation result.
+     * @param options - The raw query options.
+     * @param options.raw - The aggregation pipeline stages to execute.
+     * @param options.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to the result of the aggregation query.
+     * @throws {Error} When the raw pipeline is not a valid non-empty object.
+     */
+    async raw<T>({
+        raw,
+        transaction,
+    }: IDatabaseRaw<TRaw, TTransaction>): Promise<T> {
+        if (!raw || typeof raw !== 'object' || Object.keys(raw).length === 0) {
+            throw new Error('Raw must be a non-empty object');
+        }
+
+        const executeRaw = this._model.aggregate(raw);
+
+        if (transaction) {
+            executeRaw.session(transaction as ClientSession);
+        }
+
+        const updated = (await executeRaw) as T;
+        return updated;
+    }
+
+    /**
+     * Creates multiple documents in the database.
+     * @param data - An array of data to create the documents with.
+     * @param transaction - Optional transaction session for atomic operations.
+     * @returns An object containing the count of created documents and their IDs.
+     */
+    async createMany({
+        data,
+        transaction,
+    }: IDatabaseCreateMany<
+        TEntity,
+        TTransaction
+    >): Promise<IDatabaseManyReturn> {
+        if (!data || !Array.isArray(data) || data.length === 0) {
+            throw new Error('Data must be a non-empty array of entities');
+        }
+
+        const entities = data.map(
+            (item: IDatabaseCreate<TEntity, TTransaction>['data']) =>
+                this._resolveDataCreate(item)
+        );
+        const createItems = await this._model.insertMany(entities, {
+            rawResult: true,
+            session: transaction as ClientSession,
+        });
+
+        return {
+            count: createItems.insertedCount,
+            ids: Object.values(createItems.insertedIds).map(
+                (_id: Types.ObjectId) => _id.toString()
+            ),
+        };
+    }
+
+    /**
+     * Updates multiple documents based on the provided data and criteria.
+     * @param data - An array of data to update the documents with.
+     * @param where - The criteria to find the documents to update.
+     * @param withDeleted - Optional flag to include deleted documents.
+     * @param transaction - Optional transaction session for atomic operations.
+     * @returns An object containing the count of updated documents.
+     */
+    async updateMany({
+        data,
+        where,
+        withDeleted,
+        transaction,
+    }: IDatabaseUpdateMany<
+        TEntity,
+        TTransaction
+    >): Promise<IDatabaseManyReturn> {
+        if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error('Data must be a non-empty object');
+        }
+
+        if (
+            !where ||
+            typeof where !== 'object' ||
+            Object.keys(where).length === 0
+        ) {
+            throw new Error('Where criteria must be a non-empty object');
+        }
+
+        const resolvedData = this._resolveDataUpdate(data);
+        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const updateItems = await this._model.updateMany(
+            resolvedWhere,
+            resolvedData,
+            {
+                rawResult: true,
+                session: transaction as ClientSession,
+            }
+        );
+
+        return {
+            count: updateItems.modifiedCount,
+        };
+    }
+
+    /**
+     * Deletes multiple documents based on the provided criteria.
+     * @param where - The criteria to find the documents to delete.
+     * @param withDeleted - Optional flag to include deleted documents.
+     * @param transaction - Optional transaction session for atomic operations.
+     * @returns An object containing the count of deleted documents.
+     */
+    async deleteMany({
+        where,
+        withDeleted,
+        transaction,
+    }: IDatabaseDeleteMany<
+        TEntity,
+        TTransaction
+    >): Promise<IDatabaseManyReturn> {
+        if (
+            !where ||
+            typeof where !== 'object' ||
+            Object.keys(where).length === 0
+        ) {
+            throw new Error('Where criteria must be a non-empty object');
+        }
+
+        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const deleteItems = await this._model.deleteMany(resolvedWhere, {
+            rawResult: true,
+            session: transaction as ClientSession,
+        });
+
+        return {
+            count: deleteItems.deletedCount,
+        };
+    }
+
+    /**
+     * Soft deletes a document based on the provided criteria and data.
+     * @param where - The criteria to find the document to soft delete.
+     * @param data - The data to update the document with, including deletedBy.
+     * @param transaction - Optional transaction session for atomic operations.
+     * @returns The soft-deleted document.
+     */
+    async softDelete({
+        where,
+        data,
+        transaction,
+    }: IDatabaseSoftDelete<TEntity, TTransaction>): Promise<Partial<TEntity>> {
+        if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error('Data must be a non-empty object');
+        }
+
+        if (
+            !where ||
+            typeof where !== 'object' ||
+            Object.keys(where).length === 0
+        ) {
+            throw new Error('Where criteria must be a non-empty object');
+        }
+
+        const now = Date.now();
+        const updateData: UpdateQuery<TEntity> = {
+            $set: {
+                ...data,
+                deleted: true,
+                deletedAt: now,
+                updatedAt: now,
+            },
+        };
+
+        if (data.deletedBy) {
+            updateData.$set.updatedBy = data.deletedBy;
+        }
+
+        const resolvedWhere = this._resolveWhere(where, false);
+        const updateItem = this._model.findOneAndUpdate(
+            resolvedWhere,
+            updateData,
+            {
+                new: true,
+            }
+        );
+
+        if (transaction) {
+            updateItem.session(transaction as ClientSession);
+        }
+
+        const updated = (await updateItem.lean()) as TEntity & {
+            _id: Types.ObjectId;
+        };
+        return updated as Partial<TEntity>;
+    }
+
+    /**
+     * Restores a soft-deleted document based on the provided criteria and data.
+     * @param where - The criteria to find the document to restore.
+     * @param data - The data to update the document with, including deletedBy.
+     * @param transaction - Optional transaction session for atomic operations.
+     * @returns The restored document.
+     */
+    async restore({
+        where,
+        data,
+        transaction,
+    }: IDatabaseRestore<TEntity, TTransaction>): Promise<Partial<TEntity>> {
+        if (
+            !where ||
+            typeof where !== 'object' ||
+            Object.keys(where).length === 0
+        ) {
+            throw new Error('Where criteria must be a non-empty object');
+        }
+
+        if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error('Data must be a non-empty object');
+        }
+
+        const now = Date.now();
+        const resolvedWhere = this._resolveWhere(where, true);
+        const updateData: UpdateQuery<TEntity> = {
+            $set: {
+                deleted: false,
+                updatedAt: now,
+                deletedAt: null,
+                deletedBy: null,
+            },
+        };
+
+        if (data.restoreBy) {
+            updateData.$set.updatedBy = data.restoreBy;
+        }
+
+        const restoreItem = this._model.findOneAndUpdate(
+            resolvedWhere,
+            updateData,
+            { new: true }
+        );
+
+        if (transaction) {
+            restoreItem.session(transaction as ClientSession);
+        }
+
+        const restored = (await restoreItem.lean()) as TEntity & {
+            _id: Types.ObjectId;
+        };
+        return restored as Partial<TEntity>;
+    }
+
+    /**
+     * Soft deletes multiple documents based on the provided criteria and data.
+     * @param where - The criteria to find the documents to soft delete.
+     * @param data - The data to update the documents with, including deletedBy.
+     * @param transaction - Optional transaction session for atomic operations.
+     * @returns An object containing the count of soft-deleted documents.
+     */
+    async softDeleteMany({
+        where,
+        data,
+        transaction,
+    }: IDatabaseSoftDeleteMany<
+        TEntity,
+        TTransaction
+    >): Promise<IDatabaseManyReturn> {
+        if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error('Data must be a non-empty object');
+        }
+
+        if (
+            !where ||
+            typeof where !== 'object' ||
+            Object.keys(where).length === 0
+        ) {
+            throw new Error('Where criteria must be a non-empty object');
+        }
+
+        const now = Date.now();
+        const updateData: UpdateQuery<TEntity> = {
+            $set: {
+                ...data,
+                deleted: true,
+                deletedAt: now,
+                updatedAt: now,
+            },
+        };
+
+        if (data.deletedBy) {
+            updateData.$set.updatedBy = data.deletedBy;
+        }
+
+        const resolvedWhere = this._resolveWhere(where, false);
+        const updateItems = await this._model.updateMany(
+            resolvedWhere,
+            updateData,
+            { rawResult: true, session: transaction as ClientSession }
+        );
+
+        return {
+            count: updateItems.modifiedCount,
+        };
+    }
+
+    /**
+     * Restores multiple soft-deleted documents based on the provided criteria and data.
+     * @param where - The criteria to find the documents to restore.
+     * @param data - The data to update the documents with, including restoreBy.
+     * @param transaction - Optional transaction session for atomic operations.
+     * @returns An object containing the count of restored documents.
+     */
+    async restoreMany({
+        where,
+        data,
+        transaction,
+    }: IDatabaseRestoreMany<
+        TEntity,
+        TTransaction
+    >): Promise<IDatabaseManyReturn> {
+        if (
+            !where ||
+            typeof where !== 'object' ||
+            Object.keys(where).length === 0
+        ) {
+            throw new Error('Where criteria must be a non-empty object');
+        }
+
+        if (
+            !data ||
+            typeof data !== 'object' ||
+            Object.keys(data).length === 0
+        ) {
+            throw new Error('Data must be a non-empty object');
+        }
+
+        const now = Date.now();
+        const resolvedWhere = this._resolveWhere(where, true);
+        const updateData: UpdateQuery<TEntity> = {
+            $set: {
+                deleted: false,
+                updatedAt: now,
+                deletedAt: null,
+                deletedBy: null,
+            },
+        };
+
+        if (data.restoreBy) {
+            updateData.$set.updatedBy = data.restoreBy;
+        }
+
+        const restoreItems = await this._model.updateMany(
+            resolvedWhere,
+            updateData,
+            { rawResult: true, session: transaction as ClientSession }
+        );
+
+        return {
+            count: restoreItems.modifiedCount,
+        };
+    }
+
+    /**
+     * Executes a callback function within a database transaction context.
+     * Automatically handles session creation, transaction management, and cleanup.
+     * @template T - The return type of the callback function.
+     * @param callback - The function to execute within the transaction context.
+     * @returns A promise that resolves to the callback's return value.
+     * @throws Propagates any errors that occur during transaction execution.
+     */
+    async withTransaction<T = void>(
+        callback: (session: TTransaction) => Promise<T>
+    ): Promise<T> {
+        const session = await this._model.startSession();
+
+        try {
+            return session.withTransaction(async () => {
+                return callback(session as TTransaction);
+            }) as Promise<T>;
+        } catch (error) {
+            throw error;
+        } finally {
+            await session.endSession();
+        }
+    }
+
+    /**
+     * Creates a new database transaction session.
+     * @returns A promise that resolves to a new transaction session.
+     */
+    async createTransaction(): Promise<TTransaction> {
+        return this._model.startSession() as Promise<TTransaction>;
+    }
+
+    /**
+     * Commits the specified transaction session.
+     * @param session - The transaction session to commit.
+     * @returns A promise that resolves when the transaction is committed.
+     */
+    async commitTransaction(session: TTransaction): Promise<void> {
+        await (session as ClientSession).commitTransaction();
+    }
+
+    /**
+     * Aborts the specified transaction session and rolls back all changes.
+     * @param session - The transaction session to abort.
+     * @returns A promise that resolves when the transaction is aborted.
+     */
+    async abortTransaction(session: TTransaction): Promise<void> {
+        await (session as ClientSession).abortTransaction();
+    }
+}

@@ -52,4 +52,20 @@ lerna-debug.log*
 config.yaml
 config.yml
 
-swagger.json
+# Runtime generated files
+keys/
+*.pem
+*.pub
+jwks.json
+
+# Temporary and cache files
+.cache/
+.temp/
+.tmp/
+temp/
+tmp/
+
+# Build and development artifacts
+.swc/
+.turbo/
+.parcel-cache/

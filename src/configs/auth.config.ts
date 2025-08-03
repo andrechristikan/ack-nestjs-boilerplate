@@ -1,9 +1,56 @@
 import { registerAs } from '@nestjs/config';
 import ms from 'ms';
 
+export interface IConfigAuth {
+    jwt: {
+        accessToken: {
+            kid: string;
+            privateKeyPath: string;
+            publicKeyPath: string;
+            expirationTime: number; // in seconds
+        };
+        refreshToken: {
+            kid: string;
+            privateKeyPath: string;
+            publicKeyPath: string;
+            expirationTime: number; // in seconds
+        };
+        algorithm: string;
+        jwksUri: string;
+        audience: string;
+        issuer: string;
+        header: string;
+        prefix: string;
+    };
+    password: {
+        attempt: boolean;
+        maxAttempt: number;
+        saltLength: number;
+        expiredIn: number; // in seconds
+        expiredInTemporary: number; // in seconds
+        period: number; // in seconds
+    };
+    apple: {
+        header: string;
+        prefix: string;
+        clientId?: string;
+        signInClientId?: string;
+    };
+    google: {
+        header: string;
+        prefix: string;
+        clientId?: string;
+        clientSecret?: string;
+    };
+    xApiKey: {
+        header: string;
+        keyPrefix: string;
+    };
+}
+
 export default registerAs(
     'auth',
-    (): Record<string, any> => ({
+    (): IConfigAuth => ({
         jwt: {
             accessToken: {
                 kid: process.env.AUTH_JWT_ACCESS_TOKEN_KID,

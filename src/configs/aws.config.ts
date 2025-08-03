@@ -1,8 +1,51 @@
 import { registerAs } from '@nestjs/config';
 
+export interface IConfigAws {
+    s3: {
+        presignExpired: number; // in seconds
+        config: {
+            public: {
+                credential: {
+                    key?: string;
+                    secret?: string;
+                };
+                bucket?: string;
+                region?: string;
+                baseUrl?: string;
+                cdnUrl?: string;
+            };
+            private: {
+                credential: {
+                    key?: string;
+                    secret?: string;
+                };
+                bucket?: string;
+                region?: string;
+                baseUrl?: string;
+                cdnUrl?: string;
+            };
+        };
+    };
+    ses: {
+        credential: {
+            key?: string;
+            secret?: string;
+        };
+        region: string;
+    };
+    pinpoint: {
+        credential: {
+            key?: string;
+            secret?: string;
+        };
+        region?: string;
+        applicationId?: string;
+    };
+}
+
 export default registerAs(
     'aws',
-    (): Record<string, any> => ({
+    (): IConfigAws => ({
         s3: {
             presignExpired: 30 * 60, // 30 mins
             config: {

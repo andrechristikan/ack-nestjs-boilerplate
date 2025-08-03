@@ -1,26 +1,24 @@
+import { HelperService } from '@common/helper/services/helper.service';
 import { Injectable } from '@nestjs/common';
 import {
-    registerDecorator,
     ValidationOptions,
     ValidatorConstraint,
     ValidatorConstraintInterface,
+    registerDecorator,
 } from 'class-validator';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 
 @ValidatorConstraint({ async: true })
 @Injectable()
 export class IsPasswordConstraint implements ValidatorConstraintInterface {
-    constructor(protected readonly helperStringService: HelperStringService) {}
+    constructor(protected readonly helperService: HelperService) {}
 
     validate(value: string): boolean {
-        return value
-            ? this.helperStringService.checkPasswordStrength(value)
-            : false;
+        return value ? this.helperService.checkPasswordStrength(value) : false;
     }
 }
 
 export function IsPassword(validationOptions?: ValidationOptions) {
-    return function (object: Record<string, any>, propertyName: string): void {
+    return function (object: Record<string, void>, propertyName: string): void {
         registerDecorator({
             name: 'IsPassword',
             target: object.constructor,

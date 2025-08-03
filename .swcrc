@@ -25,8 +25,11 @@
         "node_modules",
         "dist",
         "coverage",
-        "templates",
-        "src/metadata.ts",
-        "logs"
+        "logs",
+        "keys",
+        ".warmup",
+        ".nyc_output",
+        "**/**/templates/*",
+        "src/metadata.ts"
     ]
 }

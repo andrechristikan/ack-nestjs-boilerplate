@@ -7,10 +7,24 @@ export class ResponseMetadataDto {
     path: string;
     version: string;
     repoVersion: string;
-    [key: string]: any;
+    [key: string]:
+        | string
+        | number
+        | string[]
+        | number[]
+        | boolean
+        | boolean[]
+        | Record<
+              string,
+              | string
+              | number
+              | boolean
+              | Array<string | number | boolean>
+              | Date
+          >;
 }
 
-export class ResponseDto {
+export class ResponseDto<T> {
     @ApiProperty({
         name: 'statusCode',
         type: 'number',
@@ -30,7 +44,7 @@ export class ResponseDto {
     message: string;
 
     @ApiProperty({
-        name: '_metadata',
+        name: 'metadata',
         required: true,
         description: 'Contain metadata about API',
         type: ResponseMetadataDto,
@@ -43,8 +57,8 @@ export class ResponseDto {
             repoVersion: '1.0.0',
         },
     })
-    _metadata: ResponseMetadataDto;
+    metadata: ResponseMetadataDto;
 
     @ApiHideProperty()
-    data?: Record<string, any>;
+    data?: T;
 }

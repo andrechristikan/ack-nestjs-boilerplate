@@ -1,4 +1,4 @@
-import { applyDecorators, HttpStatus } from '@nestjs/common';
+import { HttpStatus, applyDecorators } from '@nestjs/common';
 import {
     ApiBearerAuth,
     ApiBody,
@@ -25,7 +25,6 @@ import {
     IDocResponseOptions,
 } from '@common/doc/interfaces/doc.interface';
 import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
 import { ResponseDto } from '@common/response/dtos/response.dto';
@@ -35,10 +34,136 @@ import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-cod
 import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
+import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
+import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
 
+/**
+ * Helper function to create a schema object with consistent structure
+ * @private
+ */
+function createSchemaObject(doc: IDocOfOptions): SchemaObject {
+    const schema: SchemaObject = {
+        allOf: [{ $ref: getSchemaPath(ResponseDto) }],
+        properties: {
+            message: {
+                example: doc.messagePath,
+            },
+            statusCode: {
+                type: 'number',
+                example: doc.statusCode ?? HttpStatus.OK,
+            },
+        },
+    };
+
+    if (doc.dto) {
+        schema.properties = {
+            ...schema.properties,
+            data: {
+                $ref: getSchemaPath(doc.dto),
+            },
+        };
+    }
+
+    return schema;
+}
+
+/**
+ * Content type mapping for different request body types
+ * @private
+ */
+const CONTENT_TYPE_MAPPING = {
+    [ENUM_DOC_REQUEST_BODY_TYPE.FORM_DATA]: 'multipart/form-data',
+    [ENUM_DOC_REQUEST_BODY_TYPE.TEXT]: 'text/plain',
+    [ENUM_DOC_REQUEST_BODY_TYPE.JSON]: 'application/json',
+    [ENUM_DOC_REQUEST_BODY_TYPE.FORM_URLENCODED]: 'x-www-form-urlencoded',
+} as const;
+
+/**
+ * Standard error responses that are commonly used
+ * @private
+ */
+const STANDARD_ERROR_RESPONSES = {
+    INTERNAL_SERVER_ERROR: DocDefault({
+        httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+        messagePath: 'http.serverError.internalServerError',
+        statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+    }),
+    REQUEST_TIMEOUT: DocDefault({
+        httpStatus: HttpStatus.REQUEST_TIMEOUT,
+        messagePath: 'http.serverError.requestTimeout',
+        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT,
+    }),
+    VALIDATION_ERROR: DocDefault({
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
+        messagePath: 'request.validation',
+    }),
+} as const;
+
+/**
+ * Standard pagination query parameters
+ * @private
+ */
+const PAGINATION_QUERIES = [
+    {
+        name: 'search',
+        required: false,
+        allowEmptyValue: true,
+        type: 'string',
+        description:
+            'Search will base on availableSearch with rule contains, and case insensitive',
+    },
+    {
+        name: 'perPage',
+        required: false,
+        allowEmptyValue: true,
+        example: 20,
+        type: 'number',
+        description: 'Data per page, max 100',
+    },
+    {
+        name: 'page',
+        required: false,
+        allowEmptyValue: true,
+        example: 1,
+        type: 'number',
+        description: 'page number, max 20',
+    },
+    {
+        name: 'orderBy',
+        required: false,
+        allowEmptyValue: true,
+        example: 'createdAt',
+        type: 'string',
+        description: 'Order by base on metadata.availableOrderBy',
+    },
+    {
+        name: 'orderDirection',
+        required: false,
+        allowEmptyValue: true,
+        example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
+        enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+        type: 'string',
+        description: 'Order direction base on metadata.availableOrderDirection',
+    },
+] as const;
+
+/**
+ * Creates a default API documentation decorator with a standard response schema.
+ * This decorator defines the basic structure for API responses including message, status code, and optional data.
+ *
+ * @template T - The type of the DTO class for the response data
+ * @param options - Configuration options for the default documentation
+ * @param options.httpStatus - The HTTP status code for the response
+ * @param options.messagePath - The message path/key for internationalization
+ * @param options.statusCode - The internal status code for the application
+ * @param options.dto - Optional DTO class to include in the response schema
+ * @returns A method decorator that applies Swagger API documentation
+ */
 export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
     const docs = [];
-    const schema: Record<string, any> = {
+    const schema: SchemaObject = {
         allOf: [{ $ref: getSchemaPath(ResponseDto) }],
         properties: {
             message: {
@@ -52,11 +177,11 @@ export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
     };
 
     if (options.dto) {
-        docs.push(ApiExtraModels(options.dto as any));
+        docs.push(ApiExtraModels(options.dto));
         schema.properties = {
             ...schema.properties,
             data: {
-                $ref: getSchemaPath(options.dto as any),
+                $ref: getSchemaPath(options.dto),
             },
         };
     }
@@ -72,6 +197,14 @@ export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
     );
 }
 
+/**
+ * Creates an API documentation decorator that supports multiple possible response schemas using OpenAPI's `oneOf`.
+ * This is useful when an endpoint can return one of several different response types.
+ *
+ * @param httpStatus - The HTTP status code for the response
+ * @param documents - Variable number of document options, each representing a possible response
+ * @returns A method decorator that applies Swagger API documentation with oneOf schema
+ */
 export function DocOneOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
@@ -80,27 +213,10 @@ export function DocOneOf(
     const oneOf = [];
 
     for (const doc of documents) {
-        const oneOfSchema: Record<string, any> = {
-            allOf: [{ $ref: getSchemaPath(ResponseDto) }],
-            properties: {
-                message: {
-                    example: doc.messagePath,
-                },
-                statusCode: {
-                    type: 'number',
-                    example: doc.statusCode ?? HttpStatus.OK,
-                },
-            },
-        };
+        const oneOfSchema = createSchemaObject(doc);
 
         if (doc.dto) {
             docs.push(ApiExtraModels(doc.dto));
-            oneOfSchema.properties = {
-                ...oneOfSchema.properties,
-                data: {
-                    $ref: getSchemaPath(doc.dto),
-                },
-            };
         }
 
         oneOf.push(oneOfSchema);
@@ -119,6 +235,14 @@ export function DocOneOf(
     );
 }
 
+/**
+ * Creates an API documentation decorator that supports multiple possible response schemas using OpenAPI's `anyOf`.
+ * This allows for responses that can match any combination of the provided schemas.
+ *
+ * @param httpStatus - The HTTP status code for the response
+ * @param documents - Variable number of document options, each representing a possible response schema
+ * @returns A method decorator that applies Swagger API documentation with anyOf schema
+ */
 export function DocAnyOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
@@ -127,27 +251,10 @@ export function DocAnyOf(
     const anyOf = [];
 
     for (const doc of documents) {
-        const anyOfSchema: Record<string, any> = {
-            allOf: [{ $ref: getSchemaPath(ResponseDto) }],
-            properties: {
-                message: {
-                    example: doc.messagePath,
-                },
-                statusCode: {
-                    type: 'number',
-                    example: doc.statusCode ?? HttpStatus.OK,
-                },
-            },
-        };
+        const anyOfSchema = createSchemaObject(doc);
 
         if (doc.dto) {
             docs.push(ApiExtraModels(doc.dto));
-            anyOfSchema.properties = {
-                ...anyOfSchema.properties,
-                data: {
-                    $ref: getSchemaPath(doc.dto),
-                },
-            };
         }
 
         anyOf.push(anyOfSchema);
@@ -166,6 +273,14 @@ export function DocAnyOf(
     );
 }
 
+/**
+ * Creates an API documentation decorator that requires all provided response schemas using OpenAPI's `allOf`.
+ * This means the response must satisfy all the provided schema definitions.
+ *
+ * @param httpStatus - The HTTP status code for the response
+ * @param documents - Variable number of document options, all of which must be satisfied
+ * @returns A method decorator that applies Swagger API documentation with allOf schema
+ */
 export function DocAllOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
@@ -174,27 +289,10 @@ export function DocAllOf(
     const allOf = [];
 
     for (const doc of documents) {
-        const allOfSchema: Record<string, any> = {
-            allOf: [{ $ref: getSchemaPath(ResponseDto) }],
-            properties: {
-                message: {
-                    example: doc.messagePath,
-                },
-                statusCode: {
-                    type: 'number',
-                    example: doc.statusCode ?? HttpStatus.OK,
-                },
-            },
-        };
+        const allOfSchema = createSchemaObject(doc);
 
         if (doc.dto) {
             docs.push(ApiExtraModels(doc.dto));
-            allOfSchema.properties = {
-                ...allOfSchema.properties,
-                data: {
-                    $ref: getSchemaPath(doc.dto),
-                },
-            };
         }
 
         allOf.push(allOfSchema);
@@ -213,6 +311,17 @@ export function DocAllOf(
     );
 }
 
+/**
+ * Creates a basic API documentation decorator that sets up common API operation metadata.
+ * This decorator automatically includes standard error responses and custom language headers.
+ *
+ * @param options - Optional configuration for the API documentation
+ * @param options.summary - Brief summary of the API operation
+ * @param options.description - Detailed description of the API operation
+ * @param options.deprecated - Whether the API operation is deprecated
+ * @param options.operation - Unique operation ID for the API endpoint
+ * @returns A method decorator that applies basic Swagger API documentation
+ */
 export function Doc(options?: IDocOptions): MethodDecorator {
     return applyDecorators(
         ApiOperation({
@@ -227,62 +336,47 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 description: 'Custom language header',
                 required: false,
                 schema: {
-                    default: ENUM_MESSAGE_LANGUAGE.EN,
-                    example: ENUM_MESSAGE_LANGUAGE.EN,
+                    default: ENUM_APP_LANGUAGE.EN,
+                    example: ENUM_APP_LANGUAGE.EN,
                     type: 'string',
                 },
             },
         ]),
-        DocDefault({
-            httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-            messagePath: 'http.serverError.internalServerError',
-            statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
-        }),
-        DocDefault({
-            httpStatus: HttpStatus.REQUEST_TIMEOUT,
-            messagePath: 'http.serverError.requestTimeout',
-            statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT,
-        })
+        STANDARD_ERROR_RESPONSES.INTERNAL_SERVER_ERROR,
+        STANDARD_ERROR_RESPONSES.REQUEST_TIMEOUT
     );
 }
 
-export function DocRequest(options?: IDocRequestOptions) {
+/**
+ * Creates an API documentation decorator for request specifications including body, parameters, and queries.
+ * This decorator handles different content types and automatically adds validation error responses.
+ *
+ * @param options - Optional configuration for request documentation
+ * @param options.bodyType - The type of request body (JSON, form data, text, etc.)
+ * @param options.params - Array of path parameters for the endpoint
+ * @param options.queries - Array of query parameters for the endpoint
+ * @param options.dto - DTO class for request body validation
+ * @returns A method decorator that applies Swagger request documentation
+ */
+export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
 
-    if (options?.bodyType === ENUM_DOC_REQUEST_BODY_TYPE.FORM_DATA) {
-        docs.push(ApiConsumes('multipart/form-data'));
-    } else if (options?.bodyType === ENUM_DOC_REQUEST_BODY_TYPE.TEXT) {
-        docs.push(ApiConsumes('text/plain'));
-    } else if (options?.bodyType === ENUM_DOC_REQUEST_BODY_TYPE.JSON) {
-        docs.push(ApiConsumes('application/json'));
-    } else if (
-        options?.bodyType === ENUM_DOC_REQUEST_BODY_TYPE.FORM_URLENCODED
-    ) {
-        docs.push(ApiConsumes('x-www-form-urlencoded'));
+    if (options?.bodyType && options.bodyType in CONTENT_TYPE_MAPPING) {
+        docs.push(ApiConsumes(CONTENT_TYPE_MAPPING[options.bodyType]));
+    } else {
+        docs.push(ApiConsumes('none'));
     }
 
     if (options?.bodyType) {
-        docs.push(
-            DocDefault({
-                httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
-                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
-                messagePath: 'request.validation',
-            })
-        );
+        docs.push(STANDARD_ERROR_RESPONSES.VALIDATION_ERROR);
     }
 
-    if (options?.params) {
-        const params: MethodDecorator[] = options?.params?.map(param =>
-            ApiParam(param)
-        );
-        docs.push(...params);
+    if (options?.params?.length) {
+        docs.push(...options.params.map(param => ApiParam(param)));
     }
 
-    if (options?.queries) {
-        const queries: MethodDecorator[] = options?.queries?.map(query =>
-            ApiQuery(query)
-        );
-        docs.push(...queries);
+    if (options?.queries?.length) {
+        docs.push(...options.queries.map(query => ApiQuery(query)));
     }
 
     if (options?.dto) {
@@ -292,21 +386,27 @@ export function DocRequest(options?: IDocRequestOptions) {
     return applyDecorators(...docs);
 }
 
-export function DocRequestFile(options?: IDocRequestFileOptions) {
+/**
+ * Creates an API documentation decorator specifically for file upload endpoints.
+ * This decorator automatically sets the content type to multipart/form-data and handles file-related parameters.
+ *
+ * @param options - Optional configuration for file request documentation
+ * @param options.params - Array of path parameters for the endpoint
+ * @param options.queries - Array of query parameters for the endpoint
+ * @param options.dto - DTO class for the file upload request body
+ * @returns A method decorator that applies Swagger file upload documentation
+ */
+export function DocRequestFile(
+    options?: IDocRequestFileOptions
+): MethodDecorator {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
 
-    if (options?.params) {
-        const params: MethodDecorator[] = options?.params.map(param =>
-            ApiParam(param)
-        );
-        docs.push(...params);
+    if (options?.params?.length) {
+        docs.push(...options.params.map(param => ApiParam(param)));
     }
 
-    if (options?.queries) {
-        const queries: MethodDecorator[] = options?.queries?.map(query =>
-            ApiQuery(query)
-        );
-        docs.push(...queries);
+    if (options?.queries?.length) {
+        docs.push(...options.queries.map(query => ApiQuery(query)));
     }
 
     if (options?.dto) {
@@ -316,99 +416,168 @@ export function DocRequestFile(options?: IDocRequestFileOptions) {
     return applyDecorators(ApiConsumes('multipart/form-data'), ...docs);
 }
 
-export function DocGuard(options?: IDocGuardOptions) {
+/**
+ * Creates an API documentation decorator for endpoints that require authorization guards.
+ * This decorator automatically documents forbidden responses based on the guard types used.
+ *
+ * @param options - Optional configuration for guard documentation
+ * @param options.role - Whether role-based authorization is required
+ * @param options.policy - Whether policy-based authorization is required
+ * @param options.twoFactor - Whether two-factor authentication is required
+ * @returns A method decorator that applies Swagger guard documentation
+ */
+export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
     const oneOfForbidden: IDocOfOptions[] = [];
+    const docs: Array<ClassDecorator | MethodDecorator> = [];
 
-    if (options?.role) {
-        oneOfForbidden.push({
-            statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ROLE_FORBIDDEN,
-            messagePath: 'policy.error.roleForbidden',
-        });
-    }
+    const guardErrors = [
+        {
+            condition: options?.role,
+            error: {
+                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ROLE_FORBIDDEN,
+                messagePath: 'policy.error.roleForbidden',
+            },
+        },
+        {
+            condition: options?.policy,
+            error: {
+                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ABILITY_FORBIDDEN,
+                messagePath: 'policy.error.abilityForbidden',
+            },
+        },
+        {
+            condition: options?.twoFactor,
+            error: {
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.TWO_FACTOR_FORBIDDEN,
+                messagePath: 'user.error.twoFactorForbidden',
+            },
+            decorator: ApiBearerAuth('twoFactor'),
+        },
+    ];
 
-    if (options?.policy) {
-        oneOfForbidden.push({
-            statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ABILITY_FORBIDDEN,
-            messagePath: 'policy.error.abilityForbidden',
-        });
-    }
+    guardErrors.forEach(({ condition, error, decorator }) => {
+        if (condition) {
+            oneOfForbidden.push(error);
+            if (decorator) {
+                docs.push(decorator);
+            }
+        }
+    });
 
-    return applyDecorators(DocOneOf(HttpStatus.FORBIDDEN, ...oneOfForbidden));
+    return applyDecorators(
+        ...docs,
+        DocOneOf(HttpStatus.FORBIDDEN, ...oneOfForbidden)
+    );
 }
 
-export function DocAuth(options?: IDocAuthOptions) {
+/**
+ * Creates an API documentation decorator for endpoints that require authentication.
+ * This decorator handles various authentication methods and their corresponding error responses.
+ *
+ * @param options - Optional configuration for authentication documentation
+ * @param options.jwtAccessToken - Whether JWT access token authentication is required
+ * @param options.jwtRefreshToken - Whether JWT refresh token authentication is required
+ * @param options.google - Whether Google OAuth authentication is required
+ * @param options.apple - Whether Apple OAuth authentication is required
+ * @param options.xApiKey - Whether API key authentication is required
+ * @returns A method decorator that applies Swagger authentication documentation
+ */
+export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
     const oneOfUnauthorized: IDocOfOptions[] = [];
 
-    if (options?.jwtRefreshToken) {
-        docs.push(ApiBearerAuth('refreshToken'));
-        oneOfUnauthorized.push({
-            messagePath: 'auth.error.refreshTokenUnauthorized',
-            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN,
-        });
-    }
+    const authConfigs = [
+        {
+            condition: options?.jwtRefreshToken,
+            decorator: ApiBearerAuth('refreshToken'),
+            errors: [
+                {
+                    messagePath: 'auth.error.refreshTokenUnauthorized',
+                    statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN,
+                },
+            ],
+        },
+        {
+            condition: options?.jwtAccessToken,
+            decorator: ApiBearerAuth('accessToken'),
+            errors: [
+                {
+                    messagePath: 'auth.error.accessTokenUnauthorized',
+                    statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                },
+            ],
+        },
+        {
+            condition: options?.google,
+            decorator: ApiBearerAuth('google'),
+            errors: [
+                {
+                    messagePath: 'auth.error.socialGoogleInvalid',
+                    statusCode:
+                        ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_INVALID,
+                },
+                {
+                    messagePath: 'auth.error.socialGoogleRequired',
+                    statusCode:
+                        ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_REQUIRED,
+                },
+            ],
+        },
+        {
+            condition: options?.apple,
+            decorator: ApiBearerAuth('apple'),
+            errors: [
+                {
+                    messagePath: 'auth.error.socialAppleInvalid',
+                    statusCode:
+                        ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE_INVALID,
+                },
+                {
+                    messagePath: 'auth.error.socialAppleRequired',
+                    statusCode:
+                        ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE_REQUIRED,
+                },
+            ],
+        },
+        {
+            condition: options?.xApiKey,
+            decorator: ApiSecurity('xApiKey'),
+            errors: [
+                {
+                    statusCode:
+                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED,
+                    messagePath: 'apiKey.error.xApiKey.required',
+                },
+                {
+                    statusCode:
+                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND,
+                    messagePath: 'apiKey.error.xApiKey.notFound',
+                },
+                {
+                    statusCode:
+                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED,
+                    messagePath: 'apiKey.error.xApiKey.expired',
+                },
+                {
+                    statusCode:
+                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID,
+                    messagePath: 'apiKey.error.xApiKey.invalid',
+                },
+                {
+                    statusCode:
+                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
+                    messagePath: 'apiKey.error.xApiKey.forbidden',
+                },
+            ],
+        },
+    ];
 
-    if (options?.jwtAccessToken) {
-        docs.push(ApiBearerAuth('accessToken'));
-        oneOfUnauthorized.push({
-            messagePath: 'auth.error.accessTokenUnauthorized',
-            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
-        });
-    }
-
-    if (options?.google) {
-        docs.push(ApiBearerAuth('google'));
-        oneOfUnauthorized.push(
-            {
-                messagePath: 'auth.error.socialGoogleInvalid',
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_INVALID,
-            },
-            {
-                messagePath: 'auth.error.socialGoogleRequired',
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_REQUIRED,
-            }
-        );
-    }
-
-    if (options?.apple) {
-        docs.push(ApiBearerAuth('apple'));
-        oneOfUnauthorized.push(
-            {
-                messagePath: 'auth.error.socialAppleInvalid',
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE_INVALID,
-            },
-            {
-                messagePath: 'auth.error.socialAppleRequired',
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE_REQUIRED,
-            }
-        );
-    }
-
-    if (options?.xApiKey) {
-        docs.push(ApiSecurity('xApiKey'));
-        oneOfUnauthorized.push(
-            {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED,
-                messagePath: 'apiKey.error.xApiKey.required',
-            },
-            {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND,
-                messagePath: 'apiKey.error.xApiKey.notFound',
-            },
-            {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED,
-                messagePath: 'apiKey.error.xApiKey.expired',
-            },
-            {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID,
-                messagePath: 'apiKey.error.xApiKey.invalid',
-            },
-            {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
-                messagePath: 'apiKey.error.xApiKey.forbidden',
-            }
-        );
-    }
+    authConfigs.forEach(({ condition, decorator, errors }) => {
+        if (condition) {
+            docs.push(decorator);
+            oneOfUnauthorized.push(...errors);
+        }
+    });
 
     return applyDecorators(
         ...docs,
@@ -416,6 +585,18 @@ export function DocAuth(options?: IDocAuthOptions) {
     );
 }
 
+/**
+ * Creates an API documentation decorator for standard response documentation.
+ * This decorator sets up the response schema with the specified message and optional DTO.
+ *
+ * @template T - The type of the DTO class for the response data
+ * @param messagePath - The message path/key for internationalization
+ * @param options - Optional configuration for response documentation
+ * @param options.httpStatus - The HTTP status code for the response (defaults to 200)
+ * @param options.statusCode - The internal status code (defaults to httpStatus)
+ * @param options.dto - Optional DTO class to include in the response schema
+ * @returns A method decorator that applies Swagger response documentation
+ */
 export function DocResponse<T = void>(
     messagePath: string,
     options?: IDocResponseOptions<T>
@@ -433,10 +614,30 @@ export function DocResponse<T = void>(
     return applyDecorators(ApiProduces('application/json'), DocDefault(docs));
 }
 
-export function DocErrorGroup(docs: MethodDecorator[]) {
+/**
+ * Groups multiple error documentation decorators into a single decorator.
+ * This is useful for combining common error responses that apply to multiple endpoints.
+ *
+ * @param docs - Array of method decorators representing different error scenarios
+ * @returns A method decorator that applies all the provided error documentation
+ */
+export function DocErrorGroup(docs: MethodDecorator[]): MethodDecorator {
     return applyDecorators(...docs);
 }
 
+/**
+ * Creates an API documentation decorator for paginated response endpoints.
+ * This decorator automatically includes pagination query parameters and sets up the response schema
+ * for paginated data with metadata about total count, current page, etc.
+ *
+ * @template T - The type of the DTO class for the individual items in the paginated response
+ * @param messagePath - The message path/key for internationalization
+ * @param options - Configuration for paginated response documentation
+ * @param options.httpStatus - The HTTP status code for the response (defaults to 200)
+ * @param options.statusCode - The internal status code (defaults to httpStatus)
+ * @param options.dto - DTO class for the individual items in the paginated response
+ * @returns A method decorator that applies Swagger paginated response documentation
+ */
 export function DocResponsePaging<T>(
     messagePath: string,
     options: IDocResponseOptions<T>
@@ -453,51 +654,9 @@ export function DocResponsePaging<T>(
 
     return applyDecorators(
         ApiProduces('application/json'),
-        ApiQuery({
-            name: 'search',
-            required: false,
-            allowEmptyValue: true,
-            type: 'string',
-            description:
-                'Search will base on _metadata.pagination._availableSearch with rule contains, and case insensitive',
-        }),
-        ApiQuery({
-            name: 'perPage',
-            required: false,
-            allowEmptyValue: true,
-            example: 20,
-            type: 'number',
-            description: 'Data per page, max 100',
-        }),
-        ApiQuery({
-            name: 'page',
-            required: false,
-            allowEmptyValue: true,
-            example: 1,
-            type: 'number',
-            description: 'page number, max 20',
-        }),
-        ApiQuery({
-            name: 'orderBy',
-            required: false,
-            allowEmptyValue: true,
-            example: 'createdAt',
-            type: 'string',
-            description:
-                'Order by base on _metadata.pagination.availableOrderBy',
-        }),
-        ApiQuery({
-            name: 'orderDirection',
-            required: false,
-            allowEmptyValue: true,
-            example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
-            enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-            type: 'string',
-            description:
-                'Order direction base on _metadata.pagination.availableOrderDirection',
-        }),
+        ...PAGINATION_QUERIES.map(query => ApiQuery(query)),
         ApiExtraModels(ResponsePagingDto),
-        ApiExtraModels(docs.dto as any),
+        ApiExtraModels(docs.dto),
         ApiResponse({
             description: docs.httpStatus.toString(),
             status: docs.httpStatus,
@@ -523,6 +682,15 @@ export function DocResponsePaging<T>(
     );
 }
 
+/**
+ * Creates an API documentation decorator for file download/response endpoints.
+ * This decorator sets up the response to indicate that a file will be returned instead of JSON.
+ *
+ * @param options - Optional configuration for file response documentation
+ * @param options.httpStatus - The HTTP status code for the response (defaults to 200)
+ * @param options.fileType - The MIME type of the file being returned (defaults to CSV)
+ * @returns A method decorator that applies Swagger file response documentation
+ */
 export function DocResponseFile(
     options?: IDocResponseFileOptions
 ): MethodDecorator {

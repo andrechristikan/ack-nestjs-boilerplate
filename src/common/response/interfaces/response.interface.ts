@@ -1,24 +1,19 @@
 import { HttpStatus } from '@nestjs/common';
 import { IFileRows } from '@common/file/interfaces/file.interface';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
-import { IMessageOptionsProperties } from '@common/message/interfaces/message.interface';
-
-export interface IResponseCustomProperty {
-    statusCode?: number;
-    message?: string;
-    httpStatus?: HttpStatus;
-    messageProperties?: IMessageOptionsProperties;
-}
+import { IDatabasePagination } from '@common/database/interfaces/database.repository.interface';
+import { IMessageProperties } from '@common/message/interfaces/message.interface';
 
 // metadata
 export interface IResponseMetadata {
-    customProperty?: IResponseCustomProperty;
-    [key: string]: any;
+    statusCode?: number;
+    httpStatus?: HttpStatus;
+    messagePath?: string;
+    messageProperties?: IMessageProperties;
 }
 
 // decorator options
 export interface IResponseOptions {
-    messageProperties?: IMessageOptionsProperties;
     cached?: IResponseCacheOptions | boolean;
 }
 
@@ -33,19 +28,14 @@ export interface IResponse<T = void> {
 }
 
 // response pagination
-export interface IResponsePagingPagination {
-    totalPage: number;
-    total: number;
-}
-
-export interface IResponsePaging<T> {
+export interface IResponsePaging<T>
+    extends Omit<IDatabasePagination<T>, 'items'> {
     _metadata?: IResponseMetadata;
-    _pagination: IResponsePagingPagination;
     data: T[];
 }
 
-export interface IResponseFileExcel {
-    data: IFileRows[];
+export interface IResponseFileExcel<T> {
+    data: IFileRows<T>[];
 }
 
 // cached

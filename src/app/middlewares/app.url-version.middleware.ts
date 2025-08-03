@@ -1,8 +1,13 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Response, NextFunction } from 'express';
+import { NextFunction, Response } from 'express';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 
+/**
+ * Middleware to handle versioning of API URLs.
+ * It checks if the URL versioning is enabled and extracts the version from the URL.
+ * The version is then attached to the request object for further processing.
+ */
 @Injectable()
 export class AppUrlVersionMiddleware implements NestMiddleware {
     private readonly globalPrefix: string;

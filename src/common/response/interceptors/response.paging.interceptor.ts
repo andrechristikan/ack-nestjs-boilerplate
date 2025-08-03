@@ -1,9 +1,8 @@
 import {
+    CallHandler,
+    ExecutionContext,
     Injectable,
     NestInterceptor,
-    ExecutionContext,
-    CallHandler,
-    HttpStatus,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -13,37 +12,32 @@ import { MessageService } from '@common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { IMessageOptionsProperties } from '@common/message/interfaces/message.interface';
-import {
-    RESPONSE_MESSAGE_PATH_META_KEY,
-    RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-} from '@common/response/constants/response.constant';
+import { RESPONSE_MESSAGE_PATH_META_KEY } from '@common/response/constants/response.constant';
 import { IResponsePaging } from '@common/response/interfaces/response.interface';
 import {
     ResponsePagingDto,
     ResponsePagingMetadataDto,
 } from '@common/response/dtos/response.paging.dto';
 import { ConfigService } from '@nestjs/config';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { HelperService } from '@common/helper/services/helper.service';
+import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
 
 @Injectable()
-export class ResponsePagingInterceptor
-    implements NestInterceptor<Promise<ResponsePagingDto>>
-{
+export class ResponsePagingInterceptor<T> implements NestInterceptor {
     constructor(
         private readonly reflector: Reflector,
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperService: HelperService
     ) {}
 
     intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Observable<Promise<ResponsePagingDto>> {
+    ): Observable<Promise<ResponsePagingDto<T>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<IResponsePaging<any>>) => {
+                map(async (res: Promise<Response & IResponsePaging<T>>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
                     const request: IRequestApp = ctx.getRequest<IRequestApp>();
@@ -52,28 +46,21 @@ export class ResponsePagingInterceptor
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
                     );
-                    let messageProperties: IMessageOptionsProperties =
-                        this.reflector.get<IMessageOptionsProperties>(
-                            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-                            context.getHandler()
-                        );
 
-                    let httpStatus: HttpStatus = response.statusCode;
-                    let statusCode: number = response.statusCode;
-                    let data: Record<string, any>[] = [];
+                    let data: T[] = [];
 
                     // metadata
-                    const today = this.helperDateService.create();
+                    const today = this.helperService.dateCreate();
                     const xPath = request.path;
                     const xPagination = request.__pagination;
                     const xLanguage: string =
                         request.__language ??
-                        this.configService.get<ENUM_MESSAGE_LANGUAGE>(
+                        this.configService.get<ENUM_APP_LANGUAGE>(
                             'message.language'
                         );
                     const xTimestamp =
-                        this.helperDateService.getTimestamp(today);
-                    const xTimezone = this.helperDateService.getZone(today);
+                        this.helperService.dateGetTimestamp(today);
+                    const xTimezone = this.helperService.dateGetZone(today);
                     const xVersion =
                         request.__version ??
                         this.configService.get<string>(
@@ -81,17 +68,10 @@ export class ResponsePagingInterceptor
                         );
                     const xRepoVersion =
                         this.configService.get<string>('app.version');
-                    let metadata: ResponsePagingMetadataDto = {
-                        language: xLanguage,
-                        timestamp: xTimestamp,
-                        timezone: xTimezone,
-                        path: xPath,
-                        version: xVersion,
-                        repoVersion: xRepoVersion,
-                    };
 
                     // response
-                    const responseData = (await res) as IResponsePaging<any>;
+                    const responseData = (await res) as Response &
+                        IResponsePaging<T>;
                     if (!responseData) {
                         throw new Error(
                             'ResponsePaging must instanceof IResponsePaging'
@@ -105,29 +85,43 @@ export class ResponsePagingInterceptor
                         );
                     }
 
-                    const { _metadata } = responseData;
+                    const { _metadata, totalPage, count } = responseData;
 
                     data = responseData.data;
-                    httpStatus =
-                        _metadata?.customProperty?.httpStatus ?? httpStatus;
-                    statusCode =
-                        _metadata?.customProperty?.statusCode ?? statusCode;
-                    messagePath =
-                        _metadata?.customProperty?.message ?? messagePath;
-                    messageProperties =
-                        _metadata?.customProperty?.messageProperties ??
-                        messageProperties;
 
-                    delete _metadata?.customProperty;
+                    messagePath = _metadata?.messagePath ?? messagePath;
+                    const httpStatus =
+                        _metadata?.httpStatus ?? response.statusCode;
+                    const statusCode =
+                        _metadata?.statusCode ?? response.statusCode;
+                    const messageProperties: IMessageOptionsProperties =
+                        _metadata?.messageProperties;
 
-                    // metadata pagination
-                    metadata = {
-                        ...metadata,
+                    delete _metadata?.httpStatus;
+                    delete _metadata?.statusCode;
+                    delete _metadata?.messagePath;
+                    delete _metadata?.messageProperties;
+
+                    const metadata: ResponsePagingMetadataDto = {
+                        language: xLanguage,
+                        timestamp: xTimestamp,
+                        timezone: xTimezone,
+                        path: xPath,
+                        version: xVersion,
+                        repoVersion: xRepoVersion,
+                        totalPage,
+                        count,
+                        search: xPagination.search,
+                        filters: xPagination.filters,
+                        page: xPagination.page,
+                        perPage: xPagination.perPage,
+                        orderBy: xPagination.orderBy,
+                        orderDirection: xPagination.orderDirection,
+                        availableSearch: xPagination.availableSearch,
+                        availableOrderBy: xPagination.availableOrderBy,
+                        availableOrderDirection:
+                            xPagination.availableOrderDirection,
                         ..._metadata,
-                        pagination: {
-                            ...xPagination,
-                            ...responseData._pagination,
-                        },
                     };
 
                     const message: string = this.messageService.setMessage(

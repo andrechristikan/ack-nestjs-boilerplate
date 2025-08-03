@@ -1,7 +1,6 @@
 import AppConfig from '@configs/app.config';
 import AuthConfig from '@configs/auth.config';
 import DatabaseConfig from '@configs/database.config';
-import HelperConfig from '@configs/helper.config';
 import AwsConfig from '@configs/aws.config';
 import UserConfig from '@configs/user.config';
 import MiddlewareConfig from '@configs/middleware.config';
@@ -20,7 +19,6 @@ export default [
     AppConfig,
     AuthConfig,
     DatabaseConfig,
-    HelperConfig,
     AwsConfig,
     UserConfig,
     MiddlewareConfig,

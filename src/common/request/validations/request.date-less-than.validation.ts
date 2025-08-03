@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import {
-    registerDecorator,
     ValidationArguments,
     ValidationOptions,
     ValidatorConstraint,
     ValidatorConstraintInterface,
+    registerDecorator,
 } from 'class-validator';
 
 @ValidatorConstraint({ async: true })
@@ -22,7 +22,7 @@ export function DateLessThanEqual(
     date: Date,
     validationOptions?: ValidationOptions
 ) {
-    return function (object: Record<string, any>, propertyName: string): void {
+    return function (object: Record<string, void>, propertyName: string): void {
         registerDecorator({
             name: 'DateLessThanEqual',
             target: object.constructor,
@@ -47,7 +47,7 @@ export function DateLessThan(
     date: Date,
     validationOptions?: ValidationOptions
 ) {
-    return function (object: Record<string, any>, propertyName: string): void {
+    return function (object: Record<string, void>, propertyName: string): void {
         registerDecorator({
             name: 'DateLessThan',
             target: object.constructor,

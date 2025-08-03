@@ -1,13 +1,13 @@
 import { ValidationError } from '@nestjs/common';
 
-export type IMessageOptionsProperties = Record<string, string | number>;
+export type IMessageProperties = Record<string, string | number>;
 
 export interface IMessageErrorOptions {
     readonly customLanguage?: string;
 }
 
 export interface IMessageSetOptions extends IMessageErrorOptions {
-    readonly properties?: IMessageOptionsProperties;
+    readonly properties?: IMessageProperties;
 }
 
 export interface IMessageValidationError {

@@ -1,15 +1,14 @@
-import { applyDecorators, SetMetadata, UseInterceptors } from '@nestjs/common';
+import { SetMetadata, UseInterceptors, applyDecorators } from '@nestjs/common';
 import {
     RESPONSE_FILE_EXCEL_TYPE_META_KEY,
     RESPONSE_MESSAGE_PATH_META_KEY,
-    RESPONSE_MESSAGE_PROPERTIES_META_KEY,
 } from '@common/response/constants/response.constant';
 import { ResponseInterceptor } from '@common/response/interceptors/response.interceptor';
 import { ResponseFileExcelInterceptor } from '@common/response/interceptors/response.file.interceptor';
 import { ResponsePagingInterceptor } from '@common/response/interceptors/response.paging.interceptor';
 import {
-    IResponseOptions,
     IResponseFileExcelOptions,
+    IResponseOptions,
 } from '@common/response/interfaces/response.interface';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
@@ -18,13 +17,9 @@ export function Response(
     messagePath: string,
     options?: IResponseOptions
 ): MethodDecorator {
-    const decorators: any = [
+    const decorators = [
         UseInterceptors(ResponseInterceptor),
         SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
-        SetMetadata(
-            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-            options?.messageProperties
-        ),
     ];
 
     if (options?.cached) {
@@ -48,13 +43,9 @@ export function ResponsePaging(
     messagePath: string,
     options?: IResponseOptions
 ): MethodDecorator {
-    const decorators: any = [
+    const decorators = [
         UseInterceptors(ResponsePagingInterceptor),
         SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
-        SetMetadata(
-            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-            options?.messageProperties
-        ),
     ];
 
     if (options?.cached) {

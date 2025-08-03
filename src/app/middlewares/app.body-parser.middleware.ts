@@ -1,8 +1,13 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import { ConfigService } from '@nestjs/config';
 
+/**
+ * Middleware to parse URL-encoded bodies.
+ * It uses the body-parser library to handle incoming requests with URL-encoded payloads.
+ * The maximum file size is configurable through the application configuration.
+ */
 @Injectable()
 export class AppUrlencodedBodyParserMiddleware implements NestMiddleware {
     private readonly maxFile: number;
@@ -21,6 +26,11 @@ export class AppUrlencodedBodyParserMiddleware implements NestMiddleware {
     }
 }
 
+/**
+ * Middleware to parse JSON bodies.
+ * It uses the body-parser library to handle incoming requests with JSON payloads.
+ * The maximum file size is configurable through the application configuration.
+ */
 @Injectable()
 export class AppJsonBodyParserMiddleware implements NestMiddleware {
     private readonly maxFile: number;
@@ -38,6 +48,11 @@ export class AppJsonBodyParserMiddleware implements NestMiddleware {
     }
 }
 
+/**
+ * Middleware to parse raw bodies.
+ * It uses the body-parser library to handle incoming requests with raw payloads.
+ * The maximum file size is configurable through the application configuration.
+ */
 @Injectable()
 export class AppRawBodyParserMiddleware implements NestMiddleware {
     private readonly maxFile: number;
@@ -55,6 +70,11 @@ export class AppRawBodyParserMiddleware implements NestMiddleware {
     }
 }
 
+/**
+ * Middleware to parse text bodies.
+ * It uses the body-parser library to handle incoming requests with text payloads.
+ * The maximum file size is configurable through the application configuration.
+ */
 @Injectable()
 export class AppTextBodyParserMiddleware implements NestMiddleware {
     private readonly maxFile: number;

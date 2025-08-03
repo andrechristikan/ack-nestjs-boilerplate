@@ -1,8 +1,24 @@
 import { HttpStatus, Injectable, NestMiddleware } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import cors, { CorsOptions } from 'cors';
 import { ConfigService } from '@nestjs/config';
 
+/**
+ * Cross-Origin Resource Sharing (CORS) middleware.
+ *
+ * Configures CORS policies to control which origins, methods, and headers
+ * are allowed for cross-origin requests. The configuration is loaded from
+ * the application's configuration service and supports both string and
+ * array formats for origins.
+ *
+ * Security Features:
+ * - Configurable allowed origins (supports wildcards and multiple domains)
+ * - Controlled HTTP methods and headers
+ * - Automatic credential handling based on origin configuration
+ * - Preflight request handling with proper status codes
+ *
+ * @see {@link CorsOptions} CORS library options interface
+ */
 @Injectable()
 export class AppCorsMiddleware implements NestMiddleware {
     private readonly allowOrigin: string | boolean | string[];

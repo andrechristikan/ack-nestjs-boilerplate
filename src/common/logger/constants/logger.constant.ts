@@ -54,4 +54,5 @@ export const LOGGER_SENSITIVE_FIELDS: string[] = [
     'coordinates',
     'latitude',
     'longitude',
+    'x-two-factor',
 ];

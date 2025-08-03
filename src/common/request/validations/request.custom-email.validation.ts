@@ -1,20 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import {
-    getMetadataStorage,
-    registerDecorator,
     ValidationArguments,
     ValidationOptions,
     ValidatorConstraint,
     ValidatorConstraintInterface,
+    getMetadataStorage,
+    registerDecorator,
 } from 'class-validator';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MessageService } from '@common/message/services/message.service';
+import { HelperService } from '@common/helper/services/helper.service';
 
 @ValidatorConstraint({ async: true })
 @Injectable()
 export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
     constructor(
-        private readonly helperStringService: HelperStringService,
+        private readonly helperService: HelperService,
         private readonly messageService: MessageService
     ) {}
 
@@ -29,13 +29,13 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
             return true;
         }
 
-        const validated = this.helperStringService.checkCustomEmail(value);
+        const validated = this.helperService.checkEmail(value);
 
         return validated.validated;
     }
 
     defaultMessage(validationArguments?: ValidationArguments): string {
-        const validated = this.helperStringService.checkCustomEmail(
+        const validated = this.helperService.checkEmail(
             validationArguments.value
         );
 
@@ -68,7 +68,7 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsCustomEmail(validationOptions?: ValidationOptions) {
-    return function (object: Record<string, any>, propertyName: string): void {
+    return function (object: Record<string, void>, propertyName: string): void {
         registerDecorator({
             name: 'IsCustomEmail',
             target: object.constructor,

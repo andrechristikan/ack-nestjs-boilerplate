@@ -2,17 +2,23 @@ import { Type } from 'class-transformer';
 import {
     IsBoolean,
     IsEnum,
+    IsIP,
     IsInt,
     IsNotEmpty,
     IsNumber,
-    IsOptional,
     IsString,
     IsUrl,
+    Matches,
     Min,
     MinLength,
+    ValidateIf,
 } from 'class-validator';
-import { ENUM_APP_ENVIRONMENT, ENUM_APP_TIMEZONE } from '@app/enums/app.enum';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import {
+    ENUM_APP_ENVIRONMENT,
+    ENUM_APP_LANGUAGE,
+    ENUM_APP_LOG_LEVEL,
+    ENUM_APP_TIMEZONE,
+} from '@app/enums/app.enum';
 
 export class AppEnvDto {
     @IsString()
@@ -22,14 +28,13 @@ export class AppEnvDto {
 
     @IsString()
     @IsNotEmpty()
-    @MinLength(1)
     @IsEnum(ENUM_APP_ENVIRONMENT)
     APP_ENV: ENUM_APP_ENVIRONMENT;
 
     @IsString()
     @IsNotEmpty()
-    @IsEnum(ENUM_MESSAGE_LANGUAGE)
-    APP_LANGUAGE: ENUM_MESSAGE_LANGUAGE;
+    @IsEnum(ENUM_APP_LANGUAGE)
+    APP_LANGUAGE: ENUM_APP_LANGUAGE;
 
     @IsString()
     @IsNotEmpty()
@@ -38,6 +43,7 @@ export class AppEnvDto {
 
     @IsNotEmpty()
     @IsString()
+    @MinLength(1)
     HOME_NAME: string;
 
     @IsNotEmpty()
@@ -47,7 +53,7 @@ export class AppEnvDto {
 
     @IsNotEmpty()
     @IsString()
-    @MinLength(1)
+    @IsIP('4')
     HTTP_HOST: string;
 
     @IsNumber({
@@ -56,7 +62,6 @@ export class AppEnvDto {
         maxDecimalPlaces: 0,
     })
     @IsInt()
-    @Min(1)
     @IsNotEmpty()
     @Type(() => Number)
     HTTP_PORT: number;
@@ -68,7 +73,7 @@ export class AppEnvDto {
 
     @IsString()
     @IsNotEmpty()
-    @MinLength(1)
+    @IsEnum(ENUM_APP_LOG_LEVEL)
     DEBUG_LEVEL: string;
 
     @IsBoolean()
@@ -104,7 +109,6 @@ export class AppEnvDto {
 
     @IsNotEmpty()
     @IsString()
-    @MinLength(1)
     DATABASE_URL: string;
 
     @IsBoolean()
@@ -124,7 +128,7 @@ export class AppEnvDto {
 
     @IsString()
     @IsNotEmpty()
-    @MinLength(1)
+    @IsUrl()
     AUTH_JWT_JWKS_URI: string;
 
     @IsString()
@@ -134,17 +138,32 @@ export class AppEnvDto {
 
     @IsString()
     @IsNotEmpty()
-    @MinLength(1)
+    @Matches(
+        /^([a-zA-Z]:)?[\/\\]?([^<>:"|?*\r\n]+[\/\\])*[^<>:"|?*\r\n]*\.(pem|key|crt|pub)$/,
+        {
+            message:
+                'Must be a valid file path with .pem, .key, .crt, or .pub extension',
+        }
+    )
     AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY_PATH: string;
 
     @IsString()
     @IsNotEmpty()
-    @MinLength(1)
+    @Matches(
+        /^([a-zA-Z]:)?[\/\\]?([^<>:"|?*\r\n]+[\/\\])*[^<>:"|?*\r\n]*\.(pem|key|crt|pub)$/,
+        {
+            message:
+                'Must be a valid file path with .pem, .key, .crt, or .pub extension',
+        }
+    )
     AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY_PATH: string;
 
     @IsNotEmpty()
     @IsString()
     @MinLength(1)
+    @Matches(/^\d+[smhd]$/, {
+        message: 'Must be a valid duration (e.g., 15m, 1h, 1d)',
+    })
     AUTH_JWT_ACCESS_TOKEN_EXPIRED: string;
 
     @IsString()
@@ -154,80 +173,118 @@ export class AppEnvDto {
 
     @IsString()
     @IsNotEmpty()
-    @MinLength(1)
+    @Matches(
+        /^([a-zA-Z]:)?[\/\\]?([^<>:"|?*\r\n]+[\/\\])*[^<>:"|?*\r\n]*\.(pem|key|crt|pub)$/,
+        {
+            message:
+                'Must be a valid file path with .pem, .key, .crt, or .pub extension',
+        }
+    )
     AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY_PATH: string;
 
     @IsString()
     @IsNotEmpty()
-    @MinLength(1)
+    @Matches(
+        /^([a-zA-Z]:)?[\/\\]?([^<>:"|?*\r\n]+[\/\\])*[^<>:"|?*\r\n]*\.(pem|key|crt|pub)$/,
+        {
+            message:
+                'Must be a valid file path with .pem, .key, .crt, or .pub extension',
+        }
+    )
     AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY_PATH: string;
 
     @IsNotEmpty()
     @IsString()
-    @MinLength(1)
+    @Matches(/^\d+[smhd]$/, {
+        message: 'Must be a valid duration (e.g., 15m, 1h, 1d)',
+    })
     AUTH_JWT_REFRESH_TOKEN_EXPIRED: string;
 
-    @IsOptional()
+    @IsNotEmpty()
     @IsString()
-    AWS_S3_PUBLIC_CREDENTIAL_KEY?: string;
+    AWS_S3_CREDENTIAL_KEY: string;
 
-    @IsOptional()
+    @IsNotEmpty()
     @IsString()
-    AWS_S3_PUBLIC_CREDENTIAL_SECRET?: string;
+    AWS_S3_CREDENTIAL_SECRET: string;
 
-    @IsOptional()
+    @IsNotEmpty()
     @IsString()
-    AWS_S3_PUBLIC_REGION?: string;
+    AWS_S3_REGION: string;
 
-    @IsOptional()
+    @IsNotEmpty()
     @IsString()
-    AWS_S3_PUBLIC_BUCKET?: string;
+    AWS_S3_PUBLIC_BUCKET: string;
 
-    @IsOptional()
+    @ValidateIf(
+        o =>
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== undefined &&
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== ''
+    )
+    @IsNotEmpty()
     @IsString()
+    @IsUrl()
     AWS_S3_PUBLIC_CDN?: string;
 
-    @IsOptional()
+    @IsNotEmpty()
     @IsString()
-    AWS_S3_PRIVATE_CREDENTIAL_KEY?: string;
+    AWS_S3_PRIVATE_BUCKET: string;
 
-    @IsOptional()
+    @ValidateIf(
+        o =>
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== undefined &&
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== ''
+    )
+    @IsNotEmpty()
     @IsString()
-    AWS_S3_PRIVATE_CREDENTIAL_SECRET?: string;
+    @IsUrl()
+    AWS_S3_PRIVATE_CDN?: string;
 
-    @IsOptional()
+    @IsNotEmpty()
     @IsString()
-    AWS_S3_PRIVATE_REGION?: string;
+    AWS_SES_CREDENTIAL_KEY: string;
 
-    @IsOptional()
+    @IsNotEmpty()
     @IsString()
-    AWS_S3_PRIVATE_BUCKET?: string;
+    AWS_SES_CREDENTIAL_SECRET: string;
 
-    @IsOptional()
+    @IsNotEmpty()
     @IsString()
-    AWS_SES_CREDENTIAL_KEY?: string;
+    AWS_SES_REGION: string;
 
-    @IsOptional()
-    @IsString()
-    AWS_SES_CREDENTIAL_SECRET?: string;
-
-    @IsOptional()
-    @IsString()
-    AWS_SES_REGION?: string;
-
-    @IsOptional()
+    @ValidateIf(
+        o =>
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== undefined &&
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== ''
+    )
+    @IsNotEmpty()
     @IsString()
     AUTH_SOCIAL_GOOGLE_CLIENT_ID?: string;
 
-    @IsOptional()
+    @ValidateIf(
+        o =>
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== undefined &&
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== ''
+    )
+    @IsNotEmpty()
     @IsString()
     AUTH_SOCIAL_GOOGLE_CLIENT_SECRET?: string;
 
-    @IsOptional()
+    @ValidateIf(
+        o =>
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== undefined &&
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== ''
+    )
+    @IsNotEmpty()
     @IsString()
     AUTH_SOCIAL_APPLE_CLIENT_ID?: string;
 
-    @IsOptional()
+    @ValidateIf(
+        o =>
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== undefined &&
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== ''
+    )
+    @IsNotEmpty()
     @IsString()
     AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID?: string;
 
@@ -241,20 +298,35 @@ export class AppEnvDto {
         maxDecimalPlaces: 0,
     })
     @IsInt()
-    @Min(1)
     @IsNotEmpty()
     @Type(() => Number)
     REDIS_PORT: number;
 
-    @IsOptional()
+    @ValidateIf(
+        o =>
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== undefined &&
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== ''
+    )
+    @IsNotEmpty()
     @IsString()
     REDIS_USERNAME?: string;
 
-    @IsOptional()
+    @ValidateIf(
+        o =>
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== undefined &&
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== ''
+    )
+    @IsNotEmpty()
     @IsString()
     REDIS_PASSWORD?: string;
 
-    @IsOptional()
+    @ValidateIf(
+        o =>
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== undefined &&
+            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== ''
+    )
+    @IsNotEmpty()
     @IsString()
+    @IsUrl()
     SENTRY_DSN?: string;
 }

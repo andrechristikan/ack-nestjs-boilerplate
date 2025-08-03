@@ -46,5 +46,8 @@
         "localPartDot": "{property} local part should not start or end with a dot.",
         "consecutiveDots": "{property} local part should not contain consecutive dots.",
         "invalidChars": "{property} local part should not contain invalid characters."
+    },
+    "error": {
+        "paramRequired": "Required parameter is missing."
     }
 }

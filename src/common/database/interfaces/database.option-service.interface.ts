@@ -1,5 +1,5 @@
 import { MongooseModuleOptions } from '@nestjs/mongoose';
 
 export interface IDatabaseOptionService {
-    createOptions(): MongooseModuleOptions;
+    createOptions(): Promise<MongooseModuleOptions>;
 }

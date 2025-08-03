@@ -1,23 +1,22 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, PickType } from '@nestjs/swagger';
-import { PAGINATION_DEFAULT_AVAILABLE_ORDER_DIRECTION } from '@common/pagination/constants/pagination.constant';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import {
     ResponseDto,
     ResponseMetadataDto,
 } from '@common/response/dtos/response.dto';
 
-export class ResponsePagingMetadataPaginationRequestDto {
+export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
-        required: true,
+        required: false,
         example: faker.person.fullName(),
     })
-    search: string;
+    search?: string;
 
     @ApiProperty({
-        required: true,
+        required: false,
     })
-    filters: Record<
+    filters?: Record<
         string,
         string | number | boolean | Array<string | number | boolean> | Date
     >;
@@ -69,30 +68,22 @@ export class ResponsePagingMetadataPaginationRequestDto {
     availableOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE[];
 
     @ApiProperty({
-        required: false,
+        required: true,
     })
-    total?: number;
+    count: number;
 
     @ApiProperty({
-        required: false,
+        required: true,
     })
-    totalPage?: number;
+    totalPage: number;
 }
 
-export class ResponsePagingMetadataDto extends ResponseMetadataDto {
-    @ApiProperty({
-        required: false,
-        type: ResponsePagingMetadataPaginationRequestDto,
-    })
-    pagination?: ResponsePagingMetadataPaginationRequestDto;
-}
-
-export class ResponsePagingDto extends PickType(ResponseDto, [
+export class ResponsePagingDto<T> extends PickType(ResponseDto, [
     'statusCode',
     'message',
 ] as const) {
     @ApiProperty({
-        name: '_metadata',
+        name: 'metadata',
         required: true,
         description: 'Contain metadata about API',
         type: ResponsePagingMetadataDto,
@@ -105,25 +96,31 @@ export class ResponsePagingDto extends PickType(ResponseDto, [
             repoVersion: '1.0.0',
             pagination: {
                 search: faker.person.fullName(),
-                filters: {},
+                filters: {
+                    status: 'active',
+                    category: ['electronics', 'furniture'],
+                },
                 page: 1,
                 perPage: 20,
                 orderBy: 'createdAt',
                 orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
                 availableSearch: ['name'],
-                availableOrderBy: ['createdAt'],
-                availableOrderDirection:
-                    PAGINATION_DEFAULT_AVAILABLE_ORDER_DIRECTION,
+                availableOrderBy: {
+                    createdAt: [
+                        ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
+                        ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+                    ],
+                },
                 total: 100,
                 totalPage: 5,
             },
         },
     })
-    _metadata: ResponsePagingMetadataDto;
+    metadata: ResponsePagingMetadataDto;
 
     @ApiProperty({
         required: true,
         isArray: true,
     })
-    data: Record<string, any>[];
+    data: T[];
 }

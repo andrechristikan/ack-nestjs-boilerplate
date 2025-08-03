@@ -1,6 +1,6 @@
 import { ENUM_HELPER_DATE_DAY_OF } from '@common/helper/enums/helper.enum';
 
-export interface IHelperStringPasswordOptions {
+export interface IHelperPasswordOptions {
     length: number;
 }
 

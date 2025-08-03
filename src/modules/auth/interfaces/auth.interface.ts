@@ -16,8 +16,8 @@ export interface IAuthJwtAccessTokenPayload {
     loginDate: Date;
     loginFrom: ENUM_AUTH_LOGIN_FROM;
     user: string;
-    email: string;
     session: string;
+    email: string;
     role: string;
     type: ENUM_POLICY_ROLE_TYPE;
     iat?: number;

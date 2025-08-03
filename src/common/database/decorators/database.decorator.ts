@@ -8,23 +8,47 @@ import {
     SchemaFactory,
     SchemaOptions,
 } from '@nestjs/mongoose';
-import { SchemaType as MongooseSchema } from 'mongoose';
+import { SchemaType as MongooseSchema, Types } from 'mongoose';
 import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
-import { IDatabaseQueryContainOptions } from '@common/database/interfaces/database.interface';
 
+/**
+ * Decorator to inject a MongoDB database connection into a class constructor parameter.
+ * Uses the default database connection name if none is specified.
+ *
+ * @param connectionName - Optional name of the database connection to inject.
+ *                        If not provided, uses the default DATABASE_CONNECTION_NAME.
+ * @returns A parameter decorator that injects the database connection.
+ */
 export function InjectDatabaseConnection(
     connectionName?: string
 ): ParameterDecorator {
     return InjectConnection(connectionName ?? DATABASE_CONNECTION_NAME);
 }
 
+/**
+ * Decorator to inject a Mongoose model into a class constructor parameter.
+ * Uses the default database connection name if none is specified.
+ *
+ * @param entity - The name of the entity/model to inject.
+ * @param connectionName - Optional name of the database connection.
+ *                        If not provided, uses the default DATABASE_CONNECTION_NAME.
+ * @returns A parameter decorator that injects the Mongoose model.
+ */
 export function InjectDatabaseModel(
-    entity: any,
+    entity: string,
     connectionName?: string
 ): ParameterDecorator {
     return InjectModel(entity, connectionName ?? DATABASE_CONNECTION_NAME);
 }
 
+/**
+ * Class decorator that defines a Mongoose schema with automatic timestamp fields.
+ * Automatically adds `createdAt` and `updatedAt` timestamp fields to the schema.
+ *
+ * @param options - Optional schema configuration options that will be merged
+ *                 with the default timestamp configuration.
+ * @returns A class decorator that applies the schema definition.
+ */
 export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {
     return Schema({
         ...options,
@@ -35,34 +59,27 @@ export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {
     });
 }
 
+/**
+ * Property decorator that defines a Mongoose schema property.
+ * This is a wrapper around the standard Mongoose @Prop decorator.
+ *
+ * @param options - Optional property configuration options such as type,
+ *                 required, default, index, etc.
+ * @returns A property decorator that defines the schema property.
+ */
 export function DatabaseProp(options?: PropOptions): PropertyDecorator {
     return Prop(options);
 }
 
-export function DatabaseSchema<T = any, N = MongooseSchema<T>>(
-    entity: Type<T>
-): N {
+/**
+ * Creates a Mongoose schema from a class definition.
+ * This function takes an entity class and generates the corresponding Mongoose schema.
+ *
+ * @template T - The type of the entity class.
+ * @template N - The type of the resulting schema (defaults to MongooseSchema<T>).
+ * @param entity - The entity class to create a schema from.
+ * @returns The generated Mongoose schema.
+ */
+export function DatabaseSchema<T, N = MongooseSchema<T>>(entity: Type<T>): N {
     return SchemaFactory.createForClass<T>(entity) as N;
-}
-
-export function DatabaseHelperQueryContain(
-    field: string,
-    value: string,
-    options?: IDatabaseQueryContainOptions
-) {
-    if (options?.fullWord) {
-        return {
-            [field]: {
-                $regex: new RegExp(`\\b${value}\\b`),
-                $options: 'i',
-            },
-        };
-    }
-
-    return {
-        [field]: {
-            $regex: new RegExp(value),
-            $options: 'i',
-        },
-    };
 }

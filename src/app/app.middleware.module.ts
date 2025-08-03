@@ -24,6 +24,35 @@ import { AppUrlVersionMiddleware } from '@app/middlewares/app.url-version.middle
 import { SentryModule } from '@sentry/nestjs/setup';
 import { AppRequestIdMiddleware } from '@app/middlewares/app.request-id.middleware';
 
+/**
+ * Application middleware configuration module.
+ *
+ * This module is responsible for setting up all application-level middleware,
+ * global guards, filters, and third-party integrations that process HTTP requests.
+ *
+ * @module AppMiddlewareModule
+ *
+ * Features:
+ * - **Rate Limiting**: Configurable throttling to prevent abuse
+ * - **Error Tracking**: Sentry integration for monitoring and debugging
+ * - **Global Filters**: Exception handling and validation error processing
+ * - **Security Middleware**: Helmet, CORS, and request sanitization
+ * - **Request Processing**: Body parsing, response timing, and ID generation
+ *
+ * Middleware Pipeline (applied in order):
+ * 1. Request ID generation
+ * 2. Security headers (Helmet)
+ * 3. Body parsing (JSON, Text, Raw, URL-encoded)
+ * 4. CORS configuration
+ * 5. URL versioning
+ * 6. Response time measurement
+ * 7. Custom language detection
+ *
+ * @see {@link AppRequestIdMiddleware} Request ID generation
+ * @see {@link AppHelmetMiddleware} Security headers
+ * @see {@link AppCorsMiddleware} CORS configuration
+ * @see {@link ThrottlerGuard} Rate limiting
+ */
 @Module({
     controllers: [],
     exports: [],

@@ -1,9 +1,9 @@
 import {
+    CallHandler,
+    ExecutionContext,
+    HttpStatus,
     Injectable,
     NestInterceptor,
-    ExecutionContext,
-    CallHandler,
-    HttpStatus,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -13,37 +13,32 @@ import { MessageService } from '@common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { IMessageOptionsProperties } from '@common/message/interfaces/message.interface';
-import {
-    RESPONSE_MESSAGE_PATH_META_KEY,
-    RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-} from '@common/response/constants/response.constant';
+import { RESPONSE_MESSAGE_PATH_META_KEY } from '@common/response/constants/response.constant';
 import { IResponse } from '@common/response/interfaces/response.interface';
 import {
     ResponseDto,
     ResponseMetadataDto,
 } from '@common/response/dtos/response.dto';
 import { ConfigService } from '@nestjs/config';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { HelperService } from '@common/helper/services/helper.service';
+import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
 
 @Injectable()
-export class ResponseInterceptor
-    implements NestInterceptor<Promise<ResponseDto>>
-{
+export class ResponseInterceptor<T> implements NestInterceptor {
     constructor(
         private readonly reflector: Reflector,
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperService: HelperService
     ) {}
 
     intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Observable<Promise<ResponseDto>> {
+    ): Observable<Promise<ResponseDto<T> | undefined>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<any>) => {
+                map(async (res: Promise<Response>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
                     const request: IRequestApp = ctx.getRequest<IRequestApp>();
@@ -52,28 +47,24 @@ export class ResponseInterceptor
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
                     );
-                    let messageProperties: IMessageOptionsProperties =
-                        this.reflector.get<IMessageOptionsProperties>(
-                            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-                            context.getHandler()
-                        );
+                    let messageProperties: IMessageOptionsProperties;
 
                     // set default response
                     let httpStatus: HttpStatus = response.statusCode;
                     let statusCode: number = response.statusCode;
-                    let data: Record<string, any> = undefined;
+                    let data: T = undefined;
 
                     // metadata
-                    const today = this.helperDateService.create();
+                    const today = this.helperService.dateCreate();
                     const xPath = request.path;
                     const xLanguage: string =
                         request.__language ??
-                        this.configService.get<ENUM_MESSAGE_LANGUAGE>(
+                        this.configService.get<ENUM_APP_LANGUAGE>(
                             'message.language'
                         );
                     const xTimestamp =
-                        this.helperDateService.getTimestamp(today);
-                    const xTimezone = this.helperDateService.getZone(today);
+                        this.helperService.dateGetTimestamp(today);
+                    const xTimezone = this.helperService.dateGetZone(today);
                     const xVersion =
                         request.__version ??
                         this.configService.get<string>(
@@ -81,7 +72,7 @@ export class ResponseInterceptor
                         );
                     const xRepoVersion =
                         this.configService.get<string>('app.version');
-                    let metadata: ResponseMetadataDto = {
+                    const metadata: ResponseMetadataDto = {
                         language: xLanguage,
                         timestamp: xTimestamp,
                         timezone: xTimezone,
@@ -91,28 +82,16 @@ export class ResponseInterceptor
                     };
 
                     // response
-                    const responseData = (await res) as IResponse<any>;
+                    const responseData = (await res) as IResponse<T>;
 
                     if (responseData) {
                         const { _metadata } = responseData;
 
                         data = responseData.data;
-                        httpStatus =
-                            _metadata?.customProperty?.httpStatus ?? httpStatus;
-                        statusCode =
-                            _metadata?.customProperty?.statusCode ?? statusCode;
-                        messagePath =
-                            _metadata?.customProperty?.message ?? messagePath;
-                        messageProperties =
-                            _metadata?.customProperty?.messageProperties ??
-                            messageProperties;
-
-                        delete _metadata?.customProperty;
-
-                        metadata = {
-                            ...metadata,
-                            ..._metadata,
-                        };
+                        httpStatus = _metadata?.httpStatus ?? httpStatus;
+                        statusCode = _metadata?.statusCode ?? statusCode;
+                        messagePath = _metadata?.messagePath ?? messagePath;
+                        messageProperties = _metadata?.messageProperties;
                     }
 
                     const message: string = this.messageService.setMessage(

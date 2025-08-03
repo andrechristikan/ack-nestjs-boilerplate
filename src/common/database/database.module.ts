@@ -1,7 +1,12 @@
-import { DynamicModule, Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { DatabaseOptionService } from '@common/database/services/database.options.service';
-import { DatabaseService } from '@common/database/services/database.service';
 
+/**
+ * Database options module for providing database configuration services.
+ *
+ * Exports DatabaseOptionService for database connection configuration
+ * and settings management across the application.
+ */
 @Module({
     providers: [DatabaseOptionService],
     exports: [DatabaseOptionService],
@@ -9,17 +14,3 @@ import { DatabaseService } from '@common/database/services/database.service';
     controllers: [],
 })
 export class DatabaseOptionModule {}
-
-@Global()
-@Module({})
-export class DatabaseModule {
-    static forRoot(): DynamicModule {
-        return {
-            module: DatabaseModule,
-            providers: [DatabaseService],
-            exports: [DatabaseService],
-            imports: [],
-            controllers: [],
-        };
-    }
-}

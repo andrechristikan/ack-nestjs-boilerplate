@@ -3,9 +3,9 @@ import * as Sentry from '@sentry/nestjs';
 import { Job } from 'bullmq';
 import { WorkerException } from 'src/worker/exceptions/worker.exception';
 
-export abstract class WorkerBase extends WorkerHost {
+export abstract class WorkerBase<T> extends WorkerHost {
     @OnWorkerEvent('failed')
-    onFailed(job: Job<any, null, string> | undefined, error: Error) {
+    onFailed(job: Job<T, null, string> | undefined, error: Error): void {
         const maxAttempts = job.opts.attempts || 1;
         const isLastAttempt = job.attemptsMade >= maxAttempts - 1;
 

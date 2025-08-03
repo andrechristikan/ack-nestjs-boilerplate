@@ -1,13 +1,13 @@
 import {
+    CallHandler,
+    ExecutionContext,
     Injectable,
     NestInterceptor,
-    ExecutionContext,
-    CallHandler,
     RequestTimeoutException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { Observable, throwError, TimeoutError } from 'rxjs';
+import { Observable, TimeoutError, throwError } from 'rxjs';
 import { catchError, timeout } from 'rxjs/operators';
 import ms from 'ms';
 import {
@@ -17,9 +17,7 @@ import {
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
 
 @Injectable()
-export class RequestTimeoutInterceptor
-    implements NestInterceptor<Promise<any>>
-{
+export class RequestTimeoutInterceptor implements NestInterceptor {
     private readonly maxTimeoutInSecond: number;
 
     constructor(

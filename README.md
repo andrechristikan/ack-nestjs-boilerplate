@@ -60,7 +60,7 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
 ## TODO
 
 - [ ] Improve eslint rule for better code quality (high priority, in v8)
-- [ ] Move some function in service layer into repository module, because a bit wrong implementation (high priority, in v8
+- [ ] Move some function in service layer into repository module, because a bit wrong implementation (high priority, in v8)
 - [ ] 2FA Feats (high priority, in v8)
 - [ ] Reset password (medium priority, in v8)
 - [ ] Export Module in Background using bullmq (medium priority, in v8)

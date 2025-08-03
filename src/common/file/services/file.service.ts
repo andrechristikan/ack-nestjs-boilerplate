@@ -1,15 +1,27 @@
 import { Injectable } from '@nestjs/common';
-import { IFileRows } from '@common/file/interfaces/file.interface';
 import { IFileService } from '@common/file/interfaces/file.service.interface';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
-import { utils, write, read } from 'xlsx';
+import { read, utils, write } from 'xlsx';
+import { IFileSheet } from '@common/file/interfaces/file.interface';
 
+/**
+ * Service for handling file operations including CSV and Excel file creation and reading.
+ * Provides methods to write and read files in various formats with support for generic data types.
+ */
 @Injectable()
 export class FileService implements IFileService {
+    /**
+     * Writes data to CSV format using semicolon as field separator.
+     * Converts JSON data to CSV buffer for download or storage.
+     *
+     * @template T - The type of data records (defaults to Record<string, string | number | Date>)
+     * @param sheet - File sheet object containing data and optional sheet name
+     * @returns Buffer containing the CSV data
+     */
     writeCsv<T = Record<string, string | number | Date>>(
-        rows: IFileRows<T>
+        sheet: IFileSheet<T>
     ): Buffer {
-        const worksheet = utils.json_to_sheet(rows.data);
+        const worksheet = utils.json_to_sheet(sheet.data);
         const csv = utils.sheet_to_csv(worksheet, { FS: ';' });
 
         // create buffer
@@ -18,10 +30,18 @@ export class FileService implements IFileService {
         return buff;
     }
 
+    /**
+     * Writes array data to CSV format using semicolon as field separator.
+     * Converts 2D array data to CSV buffer for download or storage.
+     *
+     * @template T - The type of data records (defaults to Record<string, string | number | Date>)
+     * @param sheets - 2D array of data where each sub-array represents a row
+     * @returns Buffer containing the CSV data
+     */
     writeCsvFromArray<T = Record<string, string | number | Date>>(
-        rows: T[][]
+        sheets: T[][]
     ): Buffer {
-        const worksheet = utils.aoa_to_sheet(rows);
+        const worksheet = utils.aoa_to_sheet(sheets);
         const csv = utils.sheet_to_csv(worksheet, { FS: ';' });
 
         // create buffer
@@ -30,19 +50,27 @@ export class FileService implements IFileService {
         return buff;
     }
 
+    /**
+     * Writes data to Excel (XLSX) format with support for multiple sheets.
+     * Creates a workbook with multiple worksheets from the provided data.
+     *
+     * @template T - The type of data records (defaults to Record<string, string | number | Date>)
+     * @param sheets - Array of file sheet objects, each representing a sheet with data and optional sheet name
+     * @returns Buffer containing the Excel data
+     */
     writeExcel<T = Record<string, string | number | Date>>(
-        rows: IFileRows<T>[]
+        sheets: IFileSheet<T>[]
     ): Buffer {
         // workbook
         const workbook = utils.book_new();
 
-        for (const [index, row] of rows.entries()) {
+        for (const [index, sheet] of sheets.entries()) {
             // worksheet
-            const worksheet = utils.json_to_sheet(row.data);
+            const worksheet = utils.json_to_sheet(sheet.data);
             utils.book_append_sheet(
                 workbook,
                 worksheet,
-                row.sheetName ?? `Sheet${index + 1}`
+                sheet.sheetName ?? `Sheet${index + 1}`
             );
         }
 
@@ -55,14 +83,22 @@ export class FileService implements IFileService {
         return buff;
     }
 
+    /**
+     * Writes 2D array data to Excel (XLSX) format as a single sheet.
+     * Creates a workbook with one worksheet from the provided array data.
+     *
+     * @template T - The type of data records (defaults to Record<string, string | number | Date>)
+     * @param sheets - 2D array of data where each sub-array represents a row
+     * @returns Buffer containing the Excel data
+     */
     writeExcelFromArray<T = Record<string, string | number | Date>>(
-        rows: T[][]
+        sheets: T[][]
     ): Buffer {
         // workbook
         const workbook = utils.book_new();
 
         // worksheet
-        const worksheet = utils.aoa_to_sheet(rows);
+        const worksheet = utils.aoa_to_sheet(sheets);
         utils.book_append_sheet(workbook, worksheet, `Sheet1`);
 
         // create buffer
@@ -74,9 +110,17 @@ export class FileService implements IFileService {
         return buff;
     }
 
+    /**
+     * Reads CSV data from a buffer and converts it to JSON format.
+     * Parses the first sheet of the CSV file and returns the data with sheet information.
+     *
+     * @template T - The type of data records (defaults to Record<string, string | number | Date>)
+     * @param file - Buffer containing the CSV file data
+     * @returns IFileSheet object containing the parsed data and sheet name
+     */
     readCsv<T = Record<string, string | number | Date>>(
         file: Buffer
-    ): IFileRows<T> {
+    ): IFileSheet<T> {
         // workbook
         const workbook = read(file, {
             type: 'buffer',
@@ -93,9 +137,17 @@ export class FileService implements IFileService {
         };
     }
 
+    /**
+     * Reads CSV data from a string and converts it to JSON format.
+     * Parses the first sheet of the CSV string and returns the data with sheet information.
+     *
+     * @template T - The type of data records (defaults to Record<string, string | number | Date>)
+     * @param file - String containing the CSV file data
+     * @returns IFileSheet object containing the parsed data and sheet name
+     */
     readCsvFromString<T = Record<string, string | number | Date>>(
         file: string
-    ): IFileRows<T> {
+    ): IFileSheet<T> {
         // workbook
         const workbook = read(file, {
             type: 'string',
@@ -112,9 +164,18 @@ export class FileService implements IFileService {
         };
     }
 
+    /**
+     * Reads Excel (XLSX) data from a buffer and converts all sheets to JSON format.
+     * Parses all worksheets in the Excel file and returns an array of sheet data objects,
+     * each containing the parsed data and corresponding sheet name.
+     *
+     * @template T - The type of data records (defaults to Record<string, string | number | Date>)
+     * @param file - Buffer containing the Excel file data
+     * @returns Array of IFileSheet objects, each containing data and sheet name for every worksheet
+     */
     readExcel<T = Record<string, string | number | Date>>(
         file: Buffer
-    ): IFileRows<T>[] {
+    ): IFileSheet<T>[] {
         // workbook
         const workbook = read(file, {
             type: 'buffer',
@@ -122,7 +183,7 @@ export class FileService implements IFileService {
 
         // worksheet
         const worksheetsName: string[] = workbook.SheetNames;
-        const sheets: IFileRows[] = [];
+        const sheets: IFileSheet<T>[] = [];
 
         for (let i = 0; i < worksheetsName.length; i++) {
             const worksheet = workbook.Sheets[worksheetsName[i]];

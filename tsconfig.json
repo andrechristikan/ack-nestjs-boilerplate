@@ -40,7 +40,11 @@
         "dist",
         "coverage",
         "logs",
-        "data",
-        "src/metadata.ts"
+        "keys",
+        ".warmup",
+        ".nyc_output",
+        "src/metadata.ts",
+        "swagger.json",
+        "**/**/templates/*"
     ]
 }

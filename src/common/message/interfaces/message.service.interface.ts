@@ -8,7 +8,7 @@ import {
 } from '@common/message/interfaces/message.interface';
 
 export interface IMessageService {
-    filterLanguage(customLanguage: string): string[];
+    filterLanguage(customLanguage: string): string;
     setMessage(path: string, options?: IMessageSetOptions): string;
     setValidationMessage(
         errors: ValidationError[],

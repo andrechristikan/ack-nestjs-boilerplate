@@ -11,16 +11,14 @@ import { AppEnvDto } from '@app/dtos/app.env.dto';
 import { MessageService } from '@common/message/services/message.service';
 import compression from 'compression';
 import { Logger as PinoLogger } from 'nestjs-pino';
-import { NextFunction, Request } from 'express';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
     const app: NestApplication = await NestFactory.create(AppModule, {
         abortOnError: true,
         bufferLogs: false,
     });
 
     const configService = app.get(ConfigService);
-    const databaseUri: string = configService.get<string>('database.url');
     const env: string = configService.get<string>('app.env');
     const timezone: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
@@ -68,6 +66,11 @@ async function bootstrap() {
         const messageService = app.get(MessageService);
         const errorsMessage = messageService.setValidationMessage(errors);
 
+        logger.error(
+            `Env Variable Invalid: ${JSON.stringify(errorsMessage)}`,
+            'NestApplication'
+        );
+
         throw new Error('Env Variable Invalid', {
             cause: errorsMessage,
         });
@@ -75,16 +78,6 @@ async function bootstrap() {
 
     // Swagger
     await swaggerInit(app);
-
-    // set response for log
-    app.use(function (_: Request, res: any, next: NextFunction) {
-        const send = res.send;
-        res.send = function (body: any) {
-            res.body = body;
-            send.call(this, body);
-        };
-        next();
-    });
 
     // Listen
     await app.listen(port, host);
@@ -95,7 +88,6 @@ async function bootstrap() {
         `Http Server running on ${await app.getUrl()}`,
         'NestApplication'
     );
-    logger.log(`Database uri ${databaseUri}`);
 
     return;
 }

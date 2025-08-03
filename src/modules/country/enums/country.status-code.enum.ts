@@ -1,6 +1,0 @@
-export enum ENUM_COUNTRY_STATUS_CODE_ERROR {
-    NOT_FOUND = 5140,
-    IS_ACTIVE = 5141,
-    INACTIVE = 5142,
-    EXIST = 5143,
-}

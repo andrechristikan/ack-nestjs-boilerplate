@@ -4,8 +4,15 @@ import {
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
 import { ENUM_DATABASE_LOCATION_TYPE } from '@common/database/enums/database.enum';
-import { IDatabaseDocument } from '@common/database/interfaces/database.interface';
 
+/**
+ * Database entity for storing geographical location data.
+ *
+ * Represents location information using GeoJSON format for MongoDB geospatial queries.
+ * This entity is designed to be embedded within other documents to provide location context.
+ *
+ * @class DatabaseLocationEntity
+ */
 @DatabaseEntity({
     _id: false,
     timestamps: false,
@@ -26,5 +33,8 @@ export class DatabaseLocationEntity {
     coordinates: number[];
 }
 
+/**
+ * Mongoose schema for the DatabaseLocationEntity.
+ * Used for embedding location data in other schemas.
+ */
 export const DatabaseLocationSchema = DatabaseSchema(DatabaseLocationEntity);
-export type DatabaseLocationDoc = IDatabaseDocument<DatabaseLocationEntity>;

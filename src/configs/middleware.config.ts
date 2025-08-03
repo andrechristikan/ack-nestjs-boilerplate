@@ -2,9 +2,28 @@ import { registerAs } from '@nestjs/config';
 import bytes from 'bytes';
 import ms from 'ms';
 
+export interface IConfigMiddleware {
+    body: {
+        json: { maxFileSize: number };
+        raw: { maxFileSize: number };
+        text: { maxFileSize: number };
+        urlencoded: { maxFileSize: number };
+    };
+    timeout: number;
+    cors: {
+        allowMethod: string[];
+        allowOrigin: string[];
+        allowHeader: string[];
+    };
+    throttle: {
+        ttl: number;
+        limit: number;
+    };
+}
+
 export default registerAs(
     'middleware',
-    (): Record<string, any> => ({
+    (): IConfigMiddleware => ({
         body: {
             json: {
                 maxFileSize: bytes('100kb'), // 100kb

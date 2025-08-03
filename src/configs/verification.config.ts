@@ -1,8 +1,17 @@
 import { registerAs } from '@nestjs/config';
 
+export interface IConfigVerification {
+    expiredInMinutes: number;
+    otpLength: number;
+    reference: {
+        prefix: string;
+        length: number;
+    };
+}
+
 export default registerAs(
     'verification',
-    (): Record<string, any> => ({
+    (): IConfigVerification => ({
         expiredInMinutes: 5,
         otpLength: 6,
         reference: {

@@ -1,16 +1,15 @@
 import { Request } from 'express';
-import { ResponsePagingMetadataPaginationRequestDto } from '@common/response/dtos/response.paging.dto';
-import { IUserEntity } from '@modules/user/interfaces/user.interface';
+import { IPagination } from '@common/pagination/interfaces/pagination.interface';
 import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { ApiKeyEntity } from '@modules/api-key/repository/entities/api-key.entity';
 
 export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
     user?: T;
 
     __apiKey?: ApiKeyEntity;
-    __user?: IUserEntity;
+    // TODO: CHECK
+    __user?: any;
     __language: string;
     __version: string;
 
-    __pagination?: ResponsePagingMetadataPaginationRequestDto;
+    __pagination?: IPagination;
 }

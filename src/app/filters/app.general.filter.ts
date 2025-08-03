@@ -1,7 +1,7 @@
 import {
-    ExceptionFilter,
-    Catch,
     ArgumentsHost,
+    Catch,
+    ExceptionFilter,
     HttpException,
     HttpStatus,
     InternalServerErrorException,
@@ -11,16 +11,25 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost } from '@nestjs/core';
 import { Response } from 'express';
-import { IAppException } from '@app/interfaces/app.interface';
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { HelperService } from '@common/helper/services/helper.service';
 import { MessageService } from '@common/message/services/message.service';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
 import * as Sentry from '@sentry/nestjs';
+import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
+import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
 
+/**
+ * Global exception filter for handling errors in the application.
+ * It catches exceptions thrown during request processing and formats the response.
+ * If the exception is an instance of HttpException, it will pass the response to the HTTP filter.
+ * It also sets appropriate HTTP status codes and response headers.
+ * The response includes metadata such as language, timestamp, timezone, path, version, and repository version.
+ *
+ * The filter sends error details to Sentry for tracking if the exception is internal server error or a validation error or unhandled error.
+ */
 @Catch()
 export class AppGeneralFilter implements ExceptionFilter {
     private readonly logger = new Logger(AppGeneralFilter.name);
@@ -29,7 +38,7 @@ export class AppGeneralFilter implements ExceptionFilter {
         private readonly httpAdapterHost: HttpAdapterHost,
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperService: HelperService
     ) {}
 
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
@@ -58,12 +67,12 @@ export class AppGeneralFilter implements ExceptionFilter {
         const statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
 
         // metadata
-        const today = this.helperDateService.create();
+        const today = this.helperService.dateCreate();
         const xLanguage: string =
             request.__language ??
-            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
-        const xTimestamp = this.helperDateService.getTimestamp(today);
-        const xTimezone = this.helperDateService.getZone(today);
+            this.configService.get<ENUM_APP_LANGUAGE>('message.language');
+        const xTimestamp = this.helperService.dateGetTimestamp(today);
+        const xTimezone = this.helperService.dateGetZone(today);
         const xVersion =
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');
@@ -81,10 +90,10 @@ export class AppGeneralFilter implements ExceptionFilter {
             customLanguage: xLanguage,
         });
 
-        const responseBody: IAppException = {
+        const responseBody: ResponseErrorDto = {
             statusCode,
             message,
-            _metadata: metadata,
+            metadata,
         };
 
         response
@@ -111,9 +120,7 @@ export class AppGeneralFilter implements ExceptionFilter {
 
         try {
             Sentry.captureException(exception);
-        } catch (err: unknown) {
-            this.logger.error(err);
-        }
+        } catch (_) {}
 
         return;
     }

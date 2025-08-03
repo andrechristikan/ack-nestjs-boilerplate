@@ -4,12 +4,12 @@ import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import debugConfigFunction from '@configs/debug.config';
 import appConfigFunction from '@configs/app.config';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { LOGGER_EXCLUDED_ROUTES } from '@common/logger/constants/logger.constant';
+import { HelperService } from '@common/helper/services/helper.service';
 
 const appConfigs = appConfigFunction();
 const debugConfigs = debugConfigFunction();
-const helperStringService = new HelperStringService();
+const helperService = new HelperService();
 
 if (debugConfigs.sentry.dsn) {
     Sentry.init({
@@ -46,7 +46,7 @@ if (debugConfigs.sentry.dsn) {
                 const url = event.request.url;
 
                 if (
-                    helperStringService.checkWildcardUrl(
+                    helperService.checkUrlContainWildcard(
                         url,
                         LOGGER_EXCLUDED_ROUTES
                     )
