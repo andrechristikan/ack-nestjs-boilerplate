@@ -9,14 +9,7 @@ import { ValidationError } from 'class-validator';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { RequestTimeoutInterceptor } from '@common/request/interceptors/request.timeout.interceptor';
 import { IsCustomEmailConstraint } from '@common/request/validations/request.custom-email.validation';
-import {
-    DateGreaterThanConstraint,
-    DateGreaterThanEqualConstraint,
-} from '@common/request/validations/request.date-greater-than.validation';
-import {
-    DateLessThanConstraint,
-    DateLessThanEqualConstraint,
-} from '@common/request/validations/request.date-less-than.validation';
+import { IsAfterNowConstraint } from '@common/request/validations/request.is-after-now.validation';
 import {
     GreaterThanEqualOtherPropertyConstraint,
     GreaterThanOtherPropertyConstraint,
@@ -52,12 +45,9 @@ export class RequestModule {
                             ) => new RequestValidationException(errors),
                         }),
                 },
-                DateGreaterThanEqualConstraint,
-                DateGreaterThanConstraint,
-                DateLessThanEqualConstraint,
-                DateLessThanConstraint,
                 GreaterThanEqualOtherPropertyConstraint,
                 GreaterThanOtherPropertyConstraint,
+                IsAfterNowConstraint,
                 IsPasswordConstraint,
                 IsCustomEmailConstraint,
                 LessThanEqualOtherPropertyConstraint,

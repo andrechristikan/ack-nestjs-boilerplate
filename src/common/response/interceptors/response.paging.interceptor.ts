@@ -11,9 +11,7 @@ import { Response } from 'express';
 import { MessageService } from '@common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { IMessageOptionsProperties } from '@common/message/interfaces/message.interface';
 import { RESPONSE_MESSAGE_PATH_META_KEY } from '@common/response/constants/response.constant';
-import { IResponsePaging } from '@common/response/interfaces/response.interface';
 import {
     ResponsePagingDto,
     ResponsePagingMetadataDto,
@@ -21,7 +19,20 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { HelperService } from '@common/helper/services/helper.service';
 import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { IMessageProperties } from '@common/message/interfaces/message.interface';
 
+/**
+ * Global pagination response interceptor that standardizes paginated HTTP response format
+ * across the entire application.
+ *
+ * This interceptor transforms all paginated HTTP responses into a consistent format
+ * with metadata, pagination information, status codes, messages, and standardized headers.
+ * It handles pagination data validation, response data transformation, message localization,
+ * and adds custom headers for client-side processing.
+ *
+ * @template T - The type of the paginated response data items
+ */
 @Injectable()
 export class ResponsePagingInterceptor<T> implements NestInterceptor {
     constructor(
@@ -31,17 +42,31 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         private readonly helperService: HelperService
     ) {}
 
+    /**
+     * Intercepts HTTP requests and transforms paginated responses into standardized format.
+     *
+     * This method only processes HTTP contexts, ignoring other types like WebSocket
+     * or RPC contexts. It validates pagination data, extracts response metadata,
+     * applies localization, sets custom headers, and returns a consistent paginated
+     * response structure with pagination information.
+     *
+     * @param context - The execution context containing request/response information
+     * @param next - The next handler in the chain
+     * @returns Observable of the transformed paginated response promise
+     * @throws Error when response data is not properly formatted for pagination
+     */
     intercept(
         context: ExecutionContext,
         next: CallHandler
     ): Observable<Promise<ResponsePagingDto<T>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<Response & IResponsePaging<T>>) => {
+                map(async (res: Promise<Response>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
                     const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
+                    // Extract message path from decorator metadata
                     let messagePath: string = this.reflector.get<string>(
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
@@ -49,100 +74,72 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
 
                     let data: T[] = [];
 
-                    // metadata
-                    const today = this.helperService.dateCreate();
-                    const xPath = request.path;
-                    const xPagination = request.__pagination;
-                    const xLanguage: string =
-                        request.__language ??
-                        this.configService.get<ENUM_APP_LANGUAGE>(
-                            'message.language'
-                        );
-                    const xTimestamp =
-                        this.helperService.dateGetTimestamp(today);
-                    const xTimezone = this.helperService.dateGetZone(today);
-                    const xVersion =
-                        request.__version ??
-                        this.configService.get<string>(
-                            'app.urlVersion.version'
-                        );
-                    const xRepoVersion =
-                        this.configService.get<string>('app.version');
+                    // Create standardized metadata
+                    const metadata: ResponsePagingMetadataDto =
+                        this.createPagingResponseMetadata(request);
 
-                    // response
-                    const responseData = (await res) as Response &
-                        IResponsePaging<T>;
-                    if (!responseData) {
-                        throw new Error(
-                            'ResponsePaging must instanceof IResponsePaging'
-                        );
-                    } else if (
-                        !responseData.data ||
-                        !Array.isArray(responseData.data)
-                    ) {
-                        throw new Error(
-                            'Field data must in array and can not be empty'
-                        );
+                    // Process and validate pagination response data
+                    const responseData =
+                        (await res) as unknown as IResponsePagingReturn<T>;
+                    this.validatePaginationResponse(responseData);
+
+                    const {
+                        metadata: rMetadata,
+                        data: rData,
+                        count,
+                        totalPage,
+                    } = responseData;
+
+                    data = rData;
+                    messagePath = rMetadata?.messagePath ?? messagePath;
+
+                    const httpStatus =
+                        rMetadata?.httpStatus ?? response.statusCode;
+                    const statusCode =
+                        rMetadata?.statusCode ?? response.statusCode;
+                    const messageProperties: IMessageProperties =
+                        rMetadata?.messageProperties;
+
+                    // Clean response metadata
+                    if (rMetadata) {
+                        delete rMetadata.httpStatus;
+                        delete rMetadata.statusCode;
+                        delete rMetadata.messagePath;
+                        delete rMetadata.messageProperties;
                     }
 
-                    const { _metadata, totalPage, count } = responseData;
-
-                    data = responseData.data;
-
-                    messagePath = _metadata?.messagePath ?? messagePath;
-                    const httpStatus =
-                        _metadata?.httpStatus ?? response.statusCode;
-                    const statusCode =
-                        _metadata?.statusCode ?? response.statusCode;
-                    const messageProperties: IMessageOptionsProperties =
-                        _metadata?.messageProperties;
-
-                    delete _metadata?.httpStatus;
-                    delete _metadata?.statusCode;
-                    delete _metadata?.messagePath;
-                    delete _metadata?.messageProperties;
-
-                    const metadata: ResponsePagingMetadataDto = {
-                        language: xLanguage,
-                        timestamp: xTimestamp,
-                        timezone: xTimezone,
-                        path: xPath,
-                        version: xVersion,
-                        repoVersion: xRepoVersion,
+                    // Update metadata with pagination info
+                    const finalMetadata: ResponsePagingMetadataDto = {
+                        ...metadata,
                         totalPage,
                         count,
-                        search: xPagination.search,
-                        filters: xPagination.filters,
-                        page: xPagination.page,
-                        perPage: xPagination.perPage,
-                        orderBy: xPagination.orderBy,
-                        orderDirection: xPagination.orderDirection,
-                        availableSearch: xPagination.availableSearch,
-                        availableOrderBy: xPagination.availableOrderBy,
-                        availableOrderDirection:
-                            xPagination.availableOrderDirection,
-                        ..._metadata,
+                        search: request.__pagination.search,
+                        filters: request.__pagination.filters,
+                        page: request.__pagination.page,
+                        perPage: request.__pagination.perPage,
+                        orderBy: request.__pagination.orderBy,
+                        orderDirection: request.__pagination.orderDirection,
+                        availableSearch: request.__pagination.availableSearch,
+                        availableOrderBy: request.__pagination.availableOrderBy,
                     };
 
+                    // Generate localized message
                     const message: string = this.messageService.setMessage(
                         messagePath,
                         {
-                            customLanguage: xLanguage,
+                            customLanguage: metadata.language,
                             properties: messageProperties,
                         }
                     );
 
-                    response.setHeader('x-custom-lang', xLanguage);
-                    response.setHeader('x-timestamp', xTimestamp);
-                    response.setHeader('x-timezone', xTimezone);
-                    response.setHeader('x-version', xVersion);
-                    response.setHeader('x-repo-version', xRepoVersion);
+                    // Set custom response headers
+                    this.setResponseHeaders(response, metadata);
                     response.status(httpStatus);
 
                     return {
                         statusCode,
                         message,
-                        _metadata: metadata,
+                        metadata: finalMetadata,
                         data,
                     };
                 })
@@ -150,5 +147,84 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         }
 
         return next.handle();
+    }
+
+    /**
+     * Creates standardized pagination response metadata from request information.
+     *
+     * @param request - The incoming HTTP request
+     * @returns ResponsePagingMetadataDto containing base metadata for the response
+     */
+    private createPagingResponseMetadata(
+        request: IRequestApp
+    ): ResponsePagingMetadataDto {
+        const today = this.helperService.dateCreate();
+        const xLanguage: string =
+            request.__language ??
+            this.configService.get<ENUM_APP_LANGUAGE>('message.language');
+        const xVersion =
+            request.__version ??
+            this.configService.get<string>('app.urlVersion.version');
+
+        return {
+            language: xLanguage,
+            timestamp: this.helperService.dateGetTimestamp(today),
+            timezone: this.helperService.dateGetZone(today),
+            path: request.path,
+            version: xVersion,
+            repoVersion: this.configService.get<string>('app.version'),
+            requestId: String(request.id),
+            // Pagination fields will be set later
+            totalPage: 0,
+            count: 0,
+            search: undefined,
+            filters: undefined,
+            page: 0,
+            perPage: 0,
+            orderBy: undefined,
+            orderDirection: undefined,
+            availableSearch: undefined,
+            availableOrderBy: undefined,
+        };
+    }
+
+    /**
+     * Validates the pagination response data structure.
+     *
+     * @param responseData - The response data to validate
+     * @throws Error when response data is not properly formatted for pagination
+     */
+    private validatePaginationResponse(
+        responseData: IResponsePagingReturn<T>
+    ): void {
+        if (!responseData) {
+            throw new Error('ResponsePaging must instanceof IResponsePaging');
+        }
+
+        if (!responseData.data || !Array.isArray(responseData.data)) {
+            throw new Error('Field data must in array and can not be empty');
+        }
+    }
+
+    /**
+     * Sets custom headers on the HTTP response.
+     *
+     * Adds standardized headers including language, timestamp, timezone,
+     * version information, and request ID for client-side processing
+     * and request correlation.
+     *
+     * @param response - The HTTP response object
+     * @param metadata - Response metadata containing header values
+     */
+    private setResponseHeaders(
+        response: Response,
+        metadata: ResponsePagingMetadataDto
+    ): void {
+        response.setHeader('x-custom-lang', metadata.language);
+        response.setHeader('x-timestamp', metadata.timestamp);
+        response.setHeader('x-timezone', metadata.timezone);
+        response.setHeader('x-version', metadata.version);
+        response.setHeader('x-repo-version', metadata.repoVersion);
+        response.setHeader('x-request-id', String(metadata.requestId));
     }
 }

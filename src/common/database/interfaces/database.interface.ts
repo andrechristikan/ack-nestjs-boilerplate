@@ -70,8 +70,6 @@ export interface IDatabasePagination<TEntity> {
     count: number;
     page: number;
     totalPage: number;
-    limit: number;
-    skip: number;
 }
 
 export interface IDatabaseBaseEntity {

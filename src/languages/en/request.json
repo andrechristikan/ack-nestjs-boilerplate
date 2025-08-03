@@ -37,6 +37,8 @@
     "lessThanEqual": "{property} should be less than or equal to {value}.",
     "greaterThan": "{property} should be greater than {value}.",
     "greaterThanEqual": "{property} should be greater than or equal to {value}.",
+    "greaterThanOtherProperty": "{property} must be greater than the related property.",
+    "lessThanOtherProperty": "{property} must be less than the related property.",
     "email": {
         "invalid": "{property} should be a valid email address.",
         "multipleAtSymbols": "{property} should not contain multiple '@' symbols.",

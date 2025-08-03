@@ -5,6 +5,7 @@ import {
     ResponseDto,
     ResponseMetadataDto,
 } from '@common/response/dtos/response.dto';
+import { IPaginationQueryAvailableOrderBy } from '@common/pagination/interfaces/pagination.interface';
 
 export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
@@ -41,6 +42,7 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
 
     @ApiProperty({
         required: true,
+        type: String,
         enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
         example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
     })
@@ -54,18 +56,14 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
 
     @ApiProperty({
         required: true,
-        isArray: true,
-        example: ['name', 'createdAt'],
+        example: {
+            createdAt: [
+                ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
+                ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+            ],
+        },
     })
-    availableOrderBy: string[];
-
-    @ApiProperty({
-        required: true,
-        enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-        isArray: true,
-        example: Object.values(ENUM_PAGINATION_ORDER_DIRECTION_TYPE),
-    })
-    availableOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE[];
+    availableOrderBy: IPaginationQueryAvailableOrderBy;
 
     @ApiProperty({
         required: true,
@@ -94,26 +92,24 @@ export class ResponsePagingDto<T> extends PickType(ResponseDto, [
             path: '/api/v1/test/hello',
             version: '1',
             repoVersion: '1.0.0',
-            pagination: {
-                search: faker.person.fullName(),
-                filters: {
-                    status: 'active',
-                    category: ['electronics', 'furniture'],
-                },
-                page: 1,
-                perPage: 20,
-                orderBy: 'createdAt',
-                orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
-                availableSearch: ['name'],
-                availableOrderBy: {
-                    createdAt: [
-                        ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
-                        ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
-                    ],
-                },
-                total: 100,
-                totalPage: 5,
+            search: faker.person.fullName(),
+            filters: {
+                status: 'active',
+                category: ['electronics', 'furniture'],
             },
+            page: 1,
+            perPage: 20,
+            orderBy: 'createdAt',
+            orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
+            availableSearch: ['name'],
+            availableOrderBy: {
+                createdAt: [
+                    ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
+                    ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+                ],
+            },
+            count: 100,
+            totalPage: 5,
         },
     })
     metadata: ResponsePagingMetadataDto;

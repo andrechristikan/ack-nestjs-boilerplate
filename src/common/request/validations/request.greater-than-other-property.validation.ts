@@ -7,23 +7,129 @@ import {
     registerDecorator,
 } from 'class-validator';
 
-@ValidatorConstraint({ async: true })
+/**
+ * Validator constraint that checks if a value is greater than or equal to another property's value.
+ *
+ * This validator performs comparison validation between two properties of the same object,
+ * ensuring the current property value is greater than or equal to the specified related property.
+ * Supports numbers and dates only for comparison.
+ */
+@ValidatorConstraint({ async: false })
 @Injectable()
 export class GreaterThanEqualOtherPropertyConstraint
     implements ValidatorConstraintInterface
 {
-    validate(value: string, args: ValidationArguments): boolean {
+    /**
+     * Validates that the current value is greater than or equal to the related property value.
+     *
+     * @param value - The value to validate (supports numbers and dates only)
+     * @param args - Validation arguments containing constraints and object context
+     * @returns True if value is greater than or equal to the related property, false otherwise
+     */
+    validate(value: unknown, args: ValidationArguments): boolean {
+        if (value === null || value === undefined) {
+            return false;
+        }
+
         const [property] = args.constraints;
-        const relatedValue = args.object[property];
-        return value >= relatedValue;
+        if (!property || !args.object) {
+            return false;
+        }
+
+        const relatedValue = (args.object as Record<string, unknown>)[property];
+
+        if (relatedValue === null || relatedValue === undefined) {
+            return false;
+        }
+
+        const dateValue = this.convertToDate(value);
+        const dateRelatedValue = this.convertToDate(relatedValue);
+
+        if (dateValue !== null && dateRelatedValue !== null) {
+            return dateValue.getTime() >= dateRelatedValue.getTime();
+        }
+
+        const numValue = this.convertToNumber(value);
+        const numRelatedValue = this.convertToNumber(relatedValue);
+
+        if (numValue !== null && numRelatedValue !== null) {
+            return numValue >= numRelatedValue;
+        }
+
+        return false;
+    }
+
+    /**
+     * Generates a default error message for validation failures.
+     *
+     * @param args - Validation arguments containing property information
+     * @returns Error message string
+     */
+    defaultMessage(args: ValidationArguments): string {
+        const [property] = args.constraints;
+        return `${args.property} must be greater than or equal to ${property}`;
+    }
+
+    /**
+     * Converts a value to number if possible, returns null if conversion fails.
+     *
+     * @param value - Value to convert
+     * @returns Converted number or null if conversion fails
+     */
+    private convertToNumber(value: unknown): number | null {
+        if (typeof value === 'number' && !isNaN(value)) {
+            return value;
+        }
+
+        if (typeof value === 'string') {
+            const converted = Number(value);
+            return !isNaN(converted) ? converted : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Converts a value to Date if possible, returns null if conversion fails.
+     *
+     * @param value - Value to convert (Date object, ISO string, timestamp)
+     * @returns Converted Date or null if conversion fails
+     */
+    private convertToDate(value: unknown): Date | null {
+        if (value instanceof Date && !isNaN(value.getTime())) {
+            return value;
+        }
+
+        if (typeof value === 'string') {
+            const date = new Date(value);
+            return !isNaN(date.getTime()) ? date : null;
+        }
+
+        if (typeof value === 'number') {
+            const date = new Date(value);
+            return !isNaN(date.getTime()) ? date : null;
+        }
+
+        return null;
     }
 }
 
-export function GreaterThanEqualOtherProperty<T>(
+/**
+ * Decorator that validates a property is greater than or equal to another property's value.
+ * Supports comparison of numbers and dates only.
+ *
+ * @param property - The name of the property to compare against
+ * @param validationOptions - Standard class-validator validation options
+ * @returns Property decorator function
+ */
+export function GreaterThanEqualOtherProperty(
     property: string,
     validationOptions?: ValidationOptions
 ) {
-    return function (object: T, propertyName: string): void {
+    return function (
+        object: Record<string, unknown>,
+        propertyName: string
+    ): void {
         registerDecorator({
             name: 'GreaterThanEqualOtherProperty',
             target: object.constructor,
@@ -35,23 +141,127 @@ export function GreaterThanEqualOtherProperty<T>(
     };
 }
 
-@ValidatorConstraint({ async: true })
+/**
+ * Validator constraint that checks if a value is strictly greater than another property's value.
+ *
+ * This validator performs comparison validation between two properties of the same object,
+ * ensuring the current property value is strictly greater than the specified related property.
+ * Supports numbers and dates only for comparison.
+ */
+@ValidatorConstraint({ async: false })
 @Injectable()
 export class GreaterThanOtherPropertyConstraint
     implements ValidatorConstraintInterface
 {
-    validate(value: string, args: ValidationArguments): boolean {
+    /**
+     * Validates that the current value is strictly greater than the related property value.
+     *
+     * @param value - The value to validate (supports numbers and dates only)
+     * @param args - Validation arguments containing constraints and object context
+     * @returns True if value is greater than the related property, false otherwise
+     */
+    validate(value: unknown, args: ValidationArguments): boolean {
+        if (value === null || value === undefined) {
+            return false;
+        }
+
         const [property] = args.constraints;
-        const relatedValue = args.object[property];
-        return value > relatedValue;
+        if (!property || !args.object) {
+            return false;
+        }
+
+        const relatedValue = (args.object as Record<string, unknown>)[property];
+
+        if (relatedValue === null || relatedValue === undefined) {
+            return false;
+        }
+
+        const dateValue = this.convertToDate(value);
+        const dateRelatedValue = this.convertToDate(relatedValue);
+
+        if (dateValue !== null && dateRelatedValue !== null) {
+            return dateValue.getTime() > dateRelatedValue.getTime();
+        }
+
+        const numValue = this.convertToNumber(value);
+        const numRelatedValue = this.convertToNumber(relatedValue);
+
+        if (numValue !== null && numRelatedValue !== null) {
+            return numValue > numRelatedValue;
+        }
+
+        return false;
+    }
+
+    /**
+     * Generates a default error message for validation failures.
+     *
+     * @returns Error message string
+     */
+    defaultMessage(): string {
+        return `request.greaterThanOtherProperty`;
+    }
+
+    /**
+     * Converts a value to number if possible, returns null if conversion fails.
+     *
+     * @param value - Value to convert
+     * @returns Converted number or null if conversion fails
+     */
+    private convertToNumber(value: unknown): number | null {
+        if (typeof value === 'number' && !isNaN(value)) {
+            return value;
+        }
+
+        if (typeof value === 'string') {
+            const converted = Number(value);
+            return !isNaN(converted) ? converted : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Converts a value to Date if possible, returns null if conversion fails.
+     *
+     * @param value - Value to convert (Date object, ISO string, timestamp)
+     * @returns Converted Date or null if conversion fails
+     */
+    private convertToDate(value: unknown): Date | null {
+        if (value instanceof Date && !isNaN(value.getTime())) {
+            return value;
+        }
+
+        if (typeof value === 'string') {
+            const date = new Date(value);
+            return !isNaN(date.getTime()) ? date : null;
+        }
+
+        if (typeof value === 'number') {
+            const date = new Date(value);
+            return !isNaN(date.getTime()) ? date : null;
+        }
+
+        return null;
     }
 }
 
+/**
+ * Decorator that validates a property is strictly greater than another property's value.
+ * Supports comparison of numbers and dates only.
+ *
+ * @param property - The name of the property to compare against
+ * @param validationOptions - Standard class-validator validation options
+ * @returns Property decorator function
+ */
 export function GreaterThanOtherProperty(
     property: string,
     validationOptions?: ValidationOptions
 ) {
-    return function (object: Record<string, void>, propertyName: string): void {
+    return function (
+        object: Record<string, unknown>,
+        propertyName: string
+    ): void {
         registerDecorator({
             name: 'GreaterThanOtherProperty',
             target: object.constructor,

@@ -757,8 +757,6 @@ export abstract class DatabaseRepositoryBase<
             count,
             page: Math.floor(skip / limit) + 1,
             totalPage: Math.ceil(count / limit),
-            skip,
-            limit,
         };
     }
 

@@ -9,88 +9,68 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
-import { Reflector } from '@nestjs/core';
-import { RESPONSE_FILE_EXCEL_TYPE_META_KEY } from '@common/response/constants/response.constant';
 import { HelperService } from '@common/helper/services/helper.service';
-import { IResponseFileExcel } from '@common/response/interfaces/response.interface';
 import { FileService } from '@common/file/services/file.service';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
 import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
+import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ConfigService } from '@nestjs/config';
+import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
 
+/**
+ * Global file response interceptor that handles file download responses
+ * across the entire application.
+ *
+ * This interceptor transforms file response data into streamable files
+ * with proper headers for file downloads. It handles CSV file generation,
+ * sets appropriate content headers, and adds request correlation headers
+ * for tracking file download requests.
+ *
+ * @template T - The type of the file response data
+ */
 @Injectable()
-export class ResponseFileExcelInterceptor<T> implements NestInterceptor {
+export class ResponseFileInterceptor<T> implements NestInterceptor {
     constructor(
-        private readonly reflector: Reflector,
         private readonly fileService: FileService,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly configService: ConfigService
     ) {}
 
+    /**
+     * Intercepts HTTP requests and transforms file responses into streamable files.
+     *
+     * This method only processes HTTP contexts, ignoring other types like WebSocket
+     * or RPC contexts. It validates file response data, generates CSV files,
+     * sets appropriate download headers, and returns a StreamableFile for download.
+     *
+     * @param context - The execution context containing request/response information
+     * @param next - The next handler in the chain
+     * @returns Observable of the StreamableFile promise for file download
+     * @throws Error when response data is not properly formatted for file generation
+     */
     intercept(
         context: ExecutionContext,
         next: CallHandler
     ): Observable<Promise<StreamableFile>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<Response & IResponseFileExcel<T>>) => {
+                map(async (res: Promise<Response>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
+                    const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-                    const type: ENUM_HELPER_FILE_EXCEL_TYPE =
-                        this.reflector.get<ENUM_HELPER_FILE_EXCEL_TYPE>(
-                            RESPONSE_FILE_EXCEL_TYPE_META_KEY,
-                            context.getHandler()
-                        );
+                    const responseData =
+                        (await res) as unknown as IResponseFileReturn<T>;
+                    this.validateFileResponse(responseData);
 
-                    // set default response
-                    const responseData = (await res) as Response &
-                        IResponseFileExcel<T>;
-
-                    if (!responseData) {
-                        throw new Error(
-                            'ResponseFileExcel must instanceof IResponseFileExcel'
-                        );
-                    } else if (
-                        !responseData.data ||
-                        !Array.isArray(responseData.data)
-                    ) {
-                        throw new Error('Field data must in array');
-                    }
-
-                    const today = this.helperService.dateCreate();
-                    const timestamp =
-                        this.helperService.dateGetTimestamp(today);
-
-                    if (type === ENUM_HELPER_FILE_EXCEL_TYPE.XLSX) {
-                        // create file
-                        const file: Buffer = this.fileService.writeExcel(
-                            responseData.data
-                        );
-
-                        // set headers
-                        response
-                            .setHeader('Content-Type', ENUM_FILE_MIME.XLSX)
-                            .setHeader(
-                                'Content-Disposition',
-                                `attachment; filename=export-${timestamp}.${type.toLowerCase()}`
-                            )
-                            .setHeader('Content-Length', file.length);
-
-                        return new StreamableFile(file);
-                    }
-
-                    // create file
                     const file: Buffer = this.fileService.writeCsv(
                         responseData.data[0]
                     );
+                    const timestamp = this.createTimestamp();
 
-                    // set headers
-                    response
-                        .setHeader('Content-Type', ENUM_FILE_MIME.CSV)
-                        .setHeader(
-                            'Content-Disposition',
-                            `attachment; filename=export-${timestamp}.${type.toLowerCase()}`
-                        )
-                        .setHeader('Content-Length', file.length);
+                    this.setFileHeaders(response, file, timestamp);
+                    this.setStandardHeaders(response, request);
 
                     return new StreamableFile(file);
                 })
@@ -98,5 +78,84 @@ export class ResponseFileExcelInterceptor<T> implements NestInterceptor {
         }
 
         return next.handle();
+    }
+
+    /**
+     * Validates the file response data structure.
+     *
+     * @param responseData - The response data to validate
+     * @throws Error when response data is not properly formatted for file generation
+     */
+    private validateFileResponse(responseData: IResponseFileReturn<T>): void {
+        if (!responseData) {
+            throw new Error(
+                'ResponseFileExcel must instanceof IResponseFileExcel'
+            );
+        }
+
+        if (!responseData.data || !Array.isArray(responseData.data)) {
+            throw new Error('Field data must in array');
+        }
+    }
+
+    /**
+     * Creates a timestamp for file naming.
+     *
+     * @returns Timestamp number for unique file naming
+     */
+    private createTimestamp(): number {
+        const today = this.helperService.dateCreate();
+        return this.helperService.dateGetTimestamp(today);
+    }
+
+    /**
+     * Sets file download headers on the HTTP response.
+     *
+     * @param response - The HTTP response object
+     * @param file - The file buffer
+     * @param timestamp - Timestamp for file naming
+     */
+    private setFileHeaders(
+        response: Response,
+        file: Buffer,
+        timestamp: number
+    ): void {
+        response
+            .setHeader('Content-Type', ENUM_FILE_MIME.CSV)
+            .setHeader(
+                'Content-Disposition',
+                `attachment; filename=export-${timestamp}.${ENUM_HELPER_FILE_EXCEL_TYPE.CSV.toLowerCase()}`
+            )
+            .setHeader('Content-Length', file.length);
+    }
+
+    /**
+     * Sets standard headers for request correlation and client information.
+     *
+     * Adds standardized headers including language, timestamp, timezone,
+     * version information, and request ID for client-side processing
+     * and request correlation.
+     *
+     * @param response - The HTTP response object
+     * @param request - The HTTP request object
+     */
+    private setStandardHeaders(response: Response, request: IRequestApp): void {
+        const today = this.helperService.dateCreate();
+        const xLanguage: string =
+            request.__language ??
+            this.configService.get<ENUM_APP_LANGUAGE>('message.language');
+        const xTimestamp = this.helperService.dateGetTimestamp(today);
+        const xTimezone = this.helperService.dateGetZone(today);
+        const xVersion =
+            request.__version ??
+            this.configService.get<string>('app.urlVersion.version');
+        const xRepoVersion = this.configService.get<string>('app.version');
+
+        response.setHeader('x-custom-lang', xLanguage);
+        response.setHeader('x-timestamp', xTimestamp);
+        response.setHeader('x-timezone', xTimezone);
+        response.setHeader('x-version', xVersion);
+        response.setHeader('x-repo-version', xRepoVersion);
+        response.setHeader('x-request-id', String(request.id));
     }
 }

@@ -6,10 +6,12 @@ import appConfigFunction from '@configs/app.config';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { LOGGER_EXCLUDED_ROUTES } from '@common/logger/constants/logger.constant';
 import { HelperService } from '@common/helper/services/helper.service';
+import { ConfigService } from '@nestjs/config';
 
 const appConfigs = appConfigFunction();
 const debugConfigs = debugConfigFunction();
-const helperService = new HelperService();
+const configService = new ConfigService();
+const helperService = new HelperService(configService);
 
 if (debugConfigs.sentry.dsn) {
     Sentry.init({

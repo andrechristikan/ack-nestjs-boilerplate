@@ -1,17 +1,11 @@
 import { SetMetadata, UseInterceptors, applyDecorators } from '@nestjs/common';
-import {
-    RESPONSE_FILE_EXCEL_TYPE_META_KEY,
-    RESPONSE_MESSAGE_PATH_META_KEY,
-} from '@common/response/constants/response.constant';
+import { RESPONSE_MESSAGE_PATH_META_KEY } from '@common/response/constants/response.constant';
 import { ResponseInterceptor } from '@common/response/interceptors/response.interceptor';
-import { ResponseFileExcelInterceptor } from '@common/response/interceptors/response.file.interceptor';
 import { ResponsePagingInterceptor } from '@common/response/interceptors/response.paging.interceptor';
-import {
-    IResponseFileExcelOptions,
-    IResponseOptions,
-} from '@common/response/interfaces/response.interface';
+import { IResponseOptions } from '@common/response/interfaces/response.interface';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { ResponseFileInterceptor } from '@common/response/interceptors/response.file.interceptor';
 
 export function Response(
     messagePath: string,
@@ -65,14 +59,6 @@ export function ResponsePaging(
     return applyDecorators(...decorators);
 }
 
-export function ResponseFileExcel(
-    options?: IResponseFileExcelOptions
-): MethodDecorator {
-    return applyDecorators(
-        UseInterceptors(ResponseFileExcelInterceptor),
-        SetMetadata(
-            RESPONSE_FILE_EXCEL_TYPE_META_KEY,
-            options?.type ?? ENUM_HELPER_FILE_EXCEL_TYPE.CSV
-        )
-    );
+export function ResponseFile(): MethodDecorator {
+    return applyDecorators(UseInterceptors(ResponseFileInterceptor));
 }

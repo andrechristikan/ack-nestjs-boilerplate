@@ -11,6 +11,7 @@ export class AuthLoginResponseDto {
     @ApiProperty({
         example: ENUM_POLICY_ROLE_TYPE.USER,
         enum: ENUM_POLICY_ROLE_TYPE,
+        type: String,
         required: true,
     })
     roleType: ENUM_POLICY_ROLE_TYPE;
