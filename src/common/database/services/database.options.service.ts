@@ -48,7 +48,6 @@ export class DatabaseOptionService implements IDatabaseOptionService {
             };
         }
 
-        await this.setProfiler();
         this.setDebugMode();
 
         this.logger.log(
@@ -92,32 +91,5 @@ export class DatabaseOptionService implements IDatabaseOptionService {
                 JSON.stringify(methodArgs)
             );
         });
-    }
-
-    private async setProfiler(): Promise<void> {
-        const slowQueryThreshold = this.configService.get<number>(
-            'database.slowQueryThreshold'
-        );
-        const sampleRate = this.configService.get<number>(
-            'database.sampleRate'
-        );
-
-        if (slowQueryThreshold > 0) {
-            const command = {
-                profile: 1,
-                slowms: slowQueryThreshold,
-                sampleRate: sampleRate,
-            };
-
-            await mongoose.connection.db.command(command);
-
-            this.logger.log(
-                `Profiler set with slowQueryThreshold: ${slowQueryThreshold}ms and sampleRate: ${sampleRate}`
-            );
-        } else {
-            this.logger.warn(
-                'Profiler not set due to slowQueryThreshold being 0 or less.'
-            );
-        }
     }
 }

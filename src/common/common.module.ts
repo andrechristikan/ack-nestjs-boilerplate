@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
-import { DatabaseOptionModule } from '@common/database/database.module';
+import {
+    DatabaseModule,
+    DatabaseOptionModule,
+} from '@common/database/database.module';
 import { MessageModule } from '@common/message/message.module';
 import { HelperModule } from '@common/helper/helper.module';
 import { RequestModule } from '@common/request/request.module';
@@ -92,6 +95,7 @@ import { RedisClientOptions, createKeyv } from '@keyv/redis';
         MessageModule.forRoot(),
         HelperModule.forRoot(),
         RequestModule.forRoot(),
+        DatabaseModule.forRoot(),
     ],
 })
 export class CommonModule {}
