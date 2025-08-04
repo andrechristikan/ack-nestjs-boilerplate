@@ -8,7 +8,7 @@ import {
     SchemaFactory,
     SchemaOptions,
 } from '@nestjs/mongoose';
-import { SchemaType as MongooseSchema, Types } from 'mongoose';
+import { SchemaType as MongooseSchema } from 'mongoose';
 import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
 
 /**

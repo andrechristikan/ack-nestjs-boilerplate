@@ -81,7 +81,7 @@ export function IsPassword(
     minLength?: number,
     validationOptions?: ValidationOptions
 ) {
-    return function (object: Record<string, void>, propertyName: string): void {
+    return function (object: unknown, propertyName: string): void {
         registerDecorator({
             name: 'IsPassword',
             target: object.constructor,

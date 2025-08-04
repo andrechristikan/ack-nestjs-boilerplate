@@ -5,9 +5,8 @@ import { IPaginationQuery } from '@common/pagination/interfaces/pagination.inter
 export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
     user?: T;
 
-    __apiKey?: any;
-    // TODO: CHECK
-    __user?: any;
+    __apiKey?: any; // TODO: CHANGE WITH API KEY DOC INTERFACE
+    __user?: any; // TODO: CHANGE WITH USER DOC INTERFACE
     __language: string;
     __version: string;
 

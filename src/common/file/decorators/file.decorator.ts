@@ -1,9 +1,4 @@
-import {
-    ExecutionContext,
-    UseInterceptors,
-    applyDecorators,
-    createParamDecorator,
-} from '@nestjs/common';
+import { UseInterceptors, applyDecorators } from '@nestjs/common';
 import {
     FileFieldsInterceptor,
     FileInterceptor,
@@ -16,7 +11,6 @@ import {
     IFileUploadMultipleFieldOptions,
     IFileUploadSingle,
 } from '@common/file/interfaces/file.interface';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 
 /**
  * Creates a decorator for handling single file upload.

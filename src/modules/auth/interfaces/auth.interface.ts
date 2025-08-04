@@ -12,14 +12,29 @@ export interface IAuthPasswordOptions {
     temporary: boolean;
 }
 
+export interface IAuthJwtTermPolicyPayload {
+    term: boolean;
+    privacy: boolean;
+    marketing: boolean;
+    cookies: boolean;
+}
+
+export interface IAuthJwtVerificationPayload {
+    email: boolean;
+    mobileNumber: boolean;
+}
+
 export interface IAuthJwtAccessTokenPayload {
     loginDate: Date;
     loginFrom: ENUM_AUTH_LOGIN_FROM;
-    user: string;
-    session: string;
     email: string;
-    role: string;
+    username: string;
+    userId: string;
+    sessionId: string;
+    roleId: string;
     type: ENUM_POLICY_ROLE_TYPE;
+    termPolicy: IAuthJwtTermPolicyPayload;
+    verification: IAuthJwtVerificationPayload;
     iat?: number;
     nbf?: number;
     exp?: number;
@@ -30,17 +45,10 @@ export interface IAuthJwtAccessTokenPayload {
 
 export type IAuthJwtRefreshTokenPayload = Omit<
     IAuthJwtAccessTokenPayload,
-    'role' | 'type' | 'email'
+    'type' | 'roleId' | 'username' | 'email' | 'termPolicy' | 'verification'
 >;
 
-export interface IAuthSocialGooglePayload
+export interface IAuthSocialPayload
     extends Pick<IAuthJwtAccessTokenPayload, 'email'> {
-    name: string;
-    photo: string;
     emailVerified: boolean;
 }
-
-export type IAuthSocialApplePayload = Pick<
-    IAuthSocialGooglePayload,
-    'email' | 'emailVerified'
->;

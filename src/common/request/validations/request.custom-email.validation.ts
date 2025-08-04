@@ -7,7 +7,6 @@ import {
     getMetadataStorage,
     registerDecorator,
 } from 'class-validator';
-import { MessageService } from '@common/message/services/message.service';
 import { HelperService } from '@common/helper/services/helper.service';
 
 /**
@@ -124,10 +123,7 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
  * @returns Property decorator function
  */
 export function IsCustomEmail(validationOptions?: ValidationOptions) {
-    return function (
-        object: Record<string, unknown>,
-        propertyName: string
-    ): void {
+    return function (object: unknown, propertyName: string): void {
         registerDecorator({
             name: 'IsCustomEmail',
             target: object.constructor,

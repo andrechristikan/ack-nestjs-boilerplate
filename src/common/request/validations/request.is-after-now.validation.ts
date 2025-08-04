@@ -81,10 +81,7 @@ export class IsAfterNowConstraint implements ValidatorConstraintInterface {
  * ```
  */
 export function IsAfterNow(validationOptions?: ValidationOptions) {
-    return function (
-        object: Record<string, unknown>,
-        propertyName: string
-    ): void {
+    return function (object: unknown, propertyName: string): void {
         registerDecorator({
             name: 'IsAfterNow',
             target: object.constructor,

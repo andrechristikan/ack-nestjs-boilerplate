@@ -124,10 +124,7 @@ export function LessThanEqualOtherProperty(
     property: string,
     validationOptions?: ValidationOptions
 ) {
-    return function (
-        object: Record<string, unknown>,
-        propertyName: string
-    ): void {
+    return function (object: unknown, propertyName: string): void {
         registerDecorator({
             name: 'LessThanEqualOtherProperty',
             target: object.constructor,
@@ -256,10 +253,7 @@ export function LessThanOtherProperty(
     property: string,
     validationOptions?: ValidationOptions
 ) {
-    return function (
-        object: Record<string, unknown>,
-        propertyName: string
-    ): void {
+    return function (object: unknown, propertyName: string): void {
         registerDecorator({
             name: 'LessThanOtherProperty',
             target: object.constructor,
