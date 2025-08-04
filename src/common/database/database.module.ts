@@ -1,6 +1,5 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { DatabaseOptionService } from '@common/database/services/database.options.service';
-import { DatabaseService } from '@common/database/services/database.service';
 
 /**
  * Database options module for providing database configuration services.
@@ -15,20 +14,3 @@ import { DatabaseService } from '@common/database/services/database.service';
     controllers: [],
 })
 export class DatabaseOptionModule {}
-
-@Module({
-    providers: [],
-    exports: [],
-    imports: [],
-    controllers: [],
-})
-export class DatabaseModule {
-    static forRoot(): DynamicModule {
-        return {
-            module: DatabaseModule,
-            controllers: [],
-            providers: [DatabaseService],
-            imports: [],
-        };
-    }
-}

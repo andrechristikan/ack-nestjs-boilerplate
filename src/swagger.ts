@@ -7,13 +7,15 @@ import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 
 export default async function (app: NestApplication): Promise<void> {
     const configService = app.get(ConfigService);
-    const env: string = configService.get<string>('app.env')!;
-    const logger = new Logger('NestJs-Swagger');
 
+    const env: string = configService.get<string>('app.env')!;
+    const appName: string = configService.get<string>('app.name');
     const docName: string = configService.get<string>('doc.name')!;
     const docDesc: string = configService.get<string>('doc.description')!;
     const docVersion: string = configService.get<string>('app.version')!;
     const docPrefix: string = configService.get<string>('doc.prefix')!;
+
+    const logger = new Logger(`${appName}-Doc`);
 
     if (env !== ENUM_APP_ENVIRONMENT.PRODUCTION) {
         const documentBuild = new DocumentBuilder()

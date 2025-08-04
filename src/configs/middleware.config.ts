@@ -1,13 +1,18 @@
+import {
+    FILE_MAX_MULTIPLE,
+    FILE_SIZE_IN_BYTES,
+} from '@common/file/constants/file.constant';
 import { registerAs } from '@nestjs/config';
 import bytes from 'bytes';
 import ms from 'ms';
 
 export interface IConfigMiddleware {
     body: {
-        json: { maxFileSize: number };
-        raw: { maxFileSize: number };
-        text: { maxFileSize: number };
-        urlencoded: { maxFileSize: number };
+        json: { limit: number };
+        raw: { limit: number };
+        text: { limit: number };
+        urlencoded: { limit: number };
+        applicationOctetStream: { limit: number };
     };
     timeout: number;
     cors: {
@@ -26,16 +31,19 @@ export default registerAs(
     (): IConfigMiddleware => ({
         body: {
             json: {
-                maxFileSize: bytes('100kb'), // 100kb
+                limit: bytes('500kb'),
             },
             raw: {
-                maxFileSize: bytes('100kb'), // 100kb
+                limit: FILE_SIZE_IN_BYTES * FILE_MAX_MULTIPLE + bytes('500kb'),
             },
             text: {
-                maxFileSize: bytes('100kb'), // 100kb
+                limit: bytes('1mb'),
             },
             urlencoded: {
-                maxFileSize: bytes('100kb'), // 100kb
+                limit: bytes('1mb'),
+            },
+            applicationOctetStream: {
+                limit: FILE_SIZE_IN_BYTES,
             },
         },
         timeout: ms('30s'), // 30s based on ms module
@@ -77,6 +85,7 @@ export default registerAs(
                 'x-repo-version',
                 'X-Response-Time',
                 'user-agent',
+                'x-two-fa-token',
             ],
         },
         throttle: {

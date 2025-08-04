@@ -9,7 +9,6 @@ import swaggerInit from 'src/swagger';
 import { plainToInstance } from 'class-transformer';
 import { AppEnvDto } from '@app/dtos/app.env.dto';
 import { MessageService } from '@common/message/services/message.service';
-import compression from 'compression';
 import { Logger as PinoLogger } from 'nestjs-pino';
 
 async function bootstrap(): Promise<void> {
@@ -28,26 +27,21 @@ async function bootstrap(): Promise<void> {
         'app.urlVersion.prefix'
     );
     const version: string = configService.get<string>('app.urlVersion.version');
+    const appName: string = configService.get<string>('app.name');
 
     // enable
     const versionEnable: string = configService.get<string>(
         'app.urlVersion.enable'
     );
 
-    const logger = new Logger('NestJs-Main');
     process.env.NODE_ENV = env;
     process.env.TZ = timezone;
 
     // logger
+    const logger = new Logger(`${appName}-Main`);
+
     app.useLogger(app.get(PinoLogger));
-
-    // Compression
-    app.use(compression());
-
-    // Global
     app.setGlobalPrefix(globalPrefix);
-
-    // For Custom Validation
     useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
     // Versioning

@@ -16,7 +16,15 @@ import { IDatabaseOptionService } from '@common/database/interfaces/database.opt
 export class DatabaseOptionService implements IDatabaseOptionService {
     private readonly logger = new Logger(DatabaseOptionService.name);
 
-    constructor(private readonly configService: ConfigService) {}
+    private readonly slowQueryThreshold: number;
+    private readonly sampleRate: number;
+
+    constructor(private readonly configService: ConfigService) {
+        this.slowQueryThreshold = this.configService.get<number>(
+            'database.slowQueryThreshold'
+        );
+        this.sampleRate = this.configService.get<number>('database.sampleRate');
+    }
 
     async createOptions(): Promise<MongooseModuleOptions> {
         const env = this.configService.get<string>('app.env');
@@ -49,6 +57,7 @@ export class DatabaseOptionService implements IDatabaseOptionService {
         }
 
         this.setDebugMode();
+        this.setup();
 
         this.logger.log(
             `Database connection options for environment "${env}": ${JSON.stringify(
@@ -91,5 +100,29 @@ export class DatabaseOptionService implements IDatabaseOptionService {
                 JSON.stringify(methodArgs)
             );
         });
+    }
+
+    private setup(): void {
+        mongoose.connection.on('connected', () => {
+            this.setupProfiler();
+        });
+    }
+
+    private async setupProfiler(): Promise<void> {
+        this.logger.log(
+            `Setting up MongoDB profiler with slowQueryThreshold: ${this.slowQueryThreshold}ms and sampleRate: ${this.sampleRate}`
+        );
+
+        const command = {
+            profile: 1,
+            slowms: this.slowQueryThreshold,
+            sampleRate: this.sampleRate,
+        };
+
+        await mongoose.connection.db.command(command);
+
+        this.logger.log(
+            `Profiler setup complete with command: ${JSON.stringify(command)}`
+        );
     }
 }

@@ -16,7 +16,7 @@ export default registerAs(
     (): IConfigResetPassword => ({
         expiredInMinutes: 5,
         otpLength: 6,
-        tokenLength: 20,
+        tokenLength: 50,
         prefixUrl: 'reset-password',
         reference: {
             prefix: 'RES',

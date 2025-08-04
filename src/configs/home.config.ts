@@ -8,7 +8,7 @@ export interface IConfigHome {
 export default registerAs(
     'home',
     (): IConfigHome => ({
-        name: process.env.HOME_NAME ?? 'NestJs Boilerplate',
+        name: process.env.HOME_NAME ?? 'NestJs ACK Boilerplate',
         url: process.env.HOME_URL ?? 'https://example.com',
     })
 );

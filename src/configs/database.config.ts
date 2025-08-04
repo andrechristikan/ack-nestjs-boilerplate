@@ -24,7 +24,6 @@ export default registerAs(
         url:
             process.env?.DATABASE_URL ??
             'mongodb://localhost:27017,localhost:27018,localhost:27019',
-
         debug: process.env.DATABASE_DEBUG === 'true',
         slowQueryThreshold: 500, // Default 0.5 seconds
         sampleRate: 0.1, // 10% of operations

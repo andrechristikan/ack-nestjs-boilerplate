@@ -3,24 +3,19 @@ import { registerAs } from '@nestjs/config';
 export interface IConfigAws {
     s3: {
         presignExpired: number; // in seconds
+        region?: string;
+        credential: {
+            key?: string;
+            secret?: string;
+        };
         config: {
             public: {
-                credential: {
-                    key?: string;
-                    secret?: string;
-                };
                 bucket?: string;
-                region?: string;
                 baseUrl?: string;
                 cdnUrl?: string;
             };
             private: {
-                credential: {
-                    key?: string;
-                    secret?: string;
-                };
                 bucket?: string;
-                region?: string;
                 baseUrl?: string;
                 cdnUrl?: string;
             };
@@ -33,14 +28,6 @@ export interface IConfigAws {
         };
         region: string;
     };
-    pinpoint: {
-        credential: {
-            key?: string;
-            secret?: string;
-        };
-        region?: string;
-        applicationId?: string;
-    };
 }
 
 export default registerAs(
@@ -48,27 +35,22 @@ export default registerAs(
     (): IConfigAws => ({
         s3: {
             presignExpired: 30 * 60, // 30 mins
+            region: process.env.AWS_S3_PUBLIC_REGION,
+            credential: {
+                key: process.env.AWS_S3_PUBLIC_CREDENTIAL_KEY,
+                secret: process.env.AWS_S3_PUBLIC_CREDENTIAL_SECRET,
+            },
             config: {
                 public: {
-                    credential: {
-                        key: process.env.AWS_S3_PUBLIC_CREDENTIAL_KEY,
-                        secret: process.env.AWS_S3_PUBLIC_CREDENTIAL_SECRET,
-                    },
                     bucket: process.env.AWS_S3_PUBLIC_BUCKET ?? 'bucketPublic',
-                    region: process.env.AWS_S3_PUBLIC_REGION,
                     baseUrl: `https://${process.env.AWS_S3_PUBLIC_BUCKET}.s3.${process.env.AWS_S3_PUBLIC_REGION}.amazonaws.com`,
                     cdnUrl: process.env.AWS_S3_PUBLIC_CDN
                         ? `https://${process.env.AWS_S3_PUBLIC_CDN}`
                         : undefined,
                 },
                 private: {
-                    credential: {
-                        key: process.env.AWS_S3_PRIVATE_CREDENTIAL_KEY,
-                        secret: process.env.AWS_S3_PRIVATE_CREDENTIAL_SECRET,
-                    },
                     bucket:
                         process.env.AWS_S3_PRIVATE_BUCKET ?? 'bucketPrivate',
-                    region: process.env.AWS_S3_PRIVATE_REGION,
                     baseUrl: `https://${process.env.AWS_S3_PRIVATE_BUCKET}.s3.${process.env.AWS_S3_PRIVATE_REGION}.amazonaws.com`,
                     cdnUrl: process.env.AWS_S3_PRIVATE_REGION
                         ? `https://${process.env.AWS_S3_PRIVATE_REGION}`
@@ -82,14 +64,6 @@ export default registerAs(
                 secret: process.env.AWS_SES_CREDENTIAL_SECRET,
             },
             region: process.env.AWS_SES_REGION,
-        },
-        pinpoint: {
-            credential: {
-                key: process.env.AWS_PINPOINT_CREDENTIAL_KEY,
-                secret: process.env.AWS_PINPOINT_CREDENTIAL_SECRET,
-            },
-            region: process.env.AWS_PINPOINT_REGION,
-            applicationId: process.env.AWS_PINPOINT_APPLICATION_ID,
         },
     })
 );

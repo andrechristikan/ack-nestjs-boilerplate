@@ -12,7 +12,6 @@ import DebugConfig from '@configs/debug.config';
 import ResetPasswordConfig from '@configs/reset-password.config';
 import VerificationConfig from '@configs/verification.config';
 import HomeConfig from '@configs/home.config';
-import SessionConfig from '@configs/session.config';
 import SettingConfig from '@configs/setting.config';
 
 export default [
@@ -30,6 +29,5 @@ export default [
     ResetPasswordConfig,
     VerificationConfig,
     HomeConfig,
-    SessionConfig,
     SettingConfig,
 ];

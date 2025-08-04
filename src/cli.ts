@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { CommandModule, CommandService } from 'nestjs-command';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { MigrationModule } from '@migration/migration.module';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap(): Promise<void> {
     process.env.APP_ENV = ENUM_APP_ENVIRONMENT.MIGRATION;
@@ -13,7 +14,10 @@ async function bootstrap(): Promise<void> {
         bufferLogs: false,
     });
 
-    const logger = new Logger('NestJs-Seed');
+    const configService = app.get(ConfigService);
+    const appName: string = configService.get<string>('app.name');
+
+    const logger = new Logger(`${appName}-Migration`);
 
     try {
         await app.select(CommandModule).get(CommandService).exec();
