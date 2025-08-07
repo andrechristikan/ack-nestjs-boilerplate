@@ -71,11 +71,16 @@ export type IDatabaseSelect<TEntity> = Partial<Record<keyof TEntity, boolean>>;
 export interface IDatabaseJoinDetail {
     select?: IDatabaseSelect<unknown>;
     where?: IDatabaseFilter<unknown>;
-    as?: string;
-    on: string;
+    on?: {
+        localField: string;
+        foreignField: string;
+    };
     from: string;
-    limit?: number;
-    skip?: number;
+    multiple?: {
+        enabled: boolean;
+        limit?: number;
+        skip?: number;
+    };
     join?: IDatabaseJoin;
 }
 

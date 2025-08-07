@@ -4,6 +4,7 @@ import {
     Model,
     PipelineStage,
     PopulateOptions,
+    QueryOptions,
     Types,
     UpdateQuery,
 } from 'mongoose';
@@ -622,14 +623,52 @@ export abstract class DatabaseRepositoryBase<
     }
 
     /**
-     * Resolves join configuration to Mongoose PopulateOptions array.
-     * Converts the IDatabaseJoin interface format to PopulateOptions for Mongoose populate.
+     * Gets all registered Mongoose model names
      * @private
-     * @param join - The join configuration object.
-     * @returns An array of PopulateOptions or undefined if no join is provided.
+     * @returns Array of available model names
+     */
+    private _getAvailableModels(): string[] {
+        return this._model.db.modelNames();
+    }
+
+    /**
+     * Validates that the model exists in the registered models
+     * @private
+     * @param modelName - The model name to validate
+     * @throws {Error} When model is not registered
+     */
+    private _validateModel(modelName: string): void {
+        const availableModels = this._getAvailableModels();
+        if (!availableModels.includes(modelName)) {
+            throw new Error(
+                `Model '${modelName}' is not registered. Available models: ${availableModels.join(', ')}`
+            );
+        }
+    }
+
+    /**
+     * Resolves join configuration to Mongoose PopulateOptions array.
+     *
+     * Converts the IDatabaseJoin interface format to PopulateOptions for Mongoose populate.
+     * This method transforms the custom join configuration into the format expected by Mongoose's
+     * populate method, supporting nested joins, field selection, filtering, and pagination.
+     *
+     * Each join can specify:
+     * - Path relationship mapping with custom local/foreign field configuration
+     * - Field selection for populated documents
+     * - Filtering conditions on populated documents
+     * - Pagination (limit/skip) for populated arrays
+     * - Nested population for related documents
+     *
+     * @private
+     * @param join - The join configuration object where keys represent the populate path
+     *               and values contain the join details including model, filters, and options.
+     * @returns An array of PopulateOptions configured for Mongoose populate, or undefined if no join is provided.
      */
     private _resolveJoin(join: IDatabaseJoin): PopulateOptions[] | undefined {
-        // TODO: Need optimize, nested join
+        // TODO: COBA CHECK APAKAH JOIN BISA MENGGUNAKAN SCHEMA SECARA LANGSUNG
+        // TODO: CHECK JOIN INTERFACE APAKAH BISA INHERIT DARI SCHEMA SECARA LANGSUNG DAN DETECTLY MENGGUNAKAN MODEL MENGGUNAKAN REF
+
         if (
             !join ||
             typeof join !== 'object' ||
@@ -640,24 +679,76 @@ export abstract class DatabaseRepositoryBase<
 
         const populateOptions: PopulateOptions[] = [];
 
-        for (const [path, config] of Object.entries(join)) {
-            if (typeof config === 'object' && config !== null) {
-                const populateOption: PopulateOptions = { path };
+        for (const [path, joinDetail] of Object.entries(join)) {
+            if (!joinDetail || typeof joinDetail !== 'object') {
+                continue;
+            }
 
-                // Handle select field if present
-                if (config.select && typeof config.select === 'object') {
-                    const selectFields = Object.entries(config.select)
-                        .filter(([, include]) => include === true)
-                        .map(([field]) => field)
-                        .join(' ');
+            // Validate that the model exists
+            // TODO: VALIDATE MODEL DARI SCHEMA SECARA LANGSUNG
+            this._validateModel(joinDetail.from);
 
-                    if (selectFields) {
-                        populateOption.select = selectFields;
-                    }
+            const populateOption: PopulateOptions = {
+                path,
+                localField: path,
+                foreignField: '_id',
+                model: joinDetail.from,
+                justOne: true, // TODO: CHECK DARI SCHEMA JIKA JOIN MULTIPLE ATAU TIDAK
+                strictPopulate: true,
+                ordered: true, // SAFETY RACK
+                forceRepopulate: true, // SAFETY RACK
+            };
+
+            // Handle custom field mapping (localField/foreignField)
+            // TODO: CHECK JIKA JOIN DETAIL BISA MENGGUNAKAN SCHEMA SECARA LANGSUNG
+            if (joinDetail.on) {
+                populateOption.localField = joinDetail.on.localField;
+                populateOption.foreignField = joinDetail.on.foreignField;
+            }
+
+            // Handle field selection
+            if (joinDetail.select) {
+                populateOption.select = joinDetail.select;
+            }
+
+            // Handle filtering conditions
+            if (joinDetail.where) {
+                populateOption.match = this._resolveWhere(
+                    joinDetail.where as IDatabaseFilter<TEntity>
+                );
+            }
+
+            const options: QueryOptions = {
+                lean: true,
+                strict: true,
+                ordered: true,
+            };
+            if (joinDetail.multiple && joinDetail.multiple.enabled) {
+                // TODO: CHECK DARI SCHEMA JIKA JOIN MULTIPLE ATAU TIDAK
+                populateOption.justOne = false;
+
+                if (joinDetail.multiple.limit !== undefined) {
+                    options.limit = joinDetail.multiple.limit;
                 }
 
-                populateOptions.push(populateOption);
+                if (joinDetail.multiple.skip !== undefined) {
+                    options.skip = joinDetail.multiple.skip;
+                }
             }
+
+            if (Object.keys(options).length > 0) {
+                populateOption.options = options;
+            }
+
+            // Handle nested joins recursively
+            if (joinDetail.join) {
+                const nestedPopulate = this._resolveJoin(joinDetail.join);
+                if (nestedPopulate && nestedPopulate.length > 0) {
+                    populateOption.populate = nestedPopulate;
+                }
+            }
+
+            populateOptions.push(populateOption);
         }
 
         return populateOptions.length > 0 ? populateOptions : undefined;
