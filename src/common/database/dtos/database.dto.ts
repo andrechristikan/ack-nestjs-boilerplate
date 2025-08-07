@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
+import { Types } from 'mongoose';
 
 /**
  * Base database DTO class for API responses.
@@ -10,11 +11,11 @@ import { ApiProperty } from '@nestjs/swagger';
  */
 export class DatabaseDto {
     @ApiProperty({
-        description: 'Alias id of api key',
-        example: faker.string.uuid(),
+        description: 'Database document identifier',
+        example: faker.database.mongodbObjectId(),
         required: true,
     })
-    id: string;
+    _id: Types.ObjectId;
 
     @ApiProperty({
         description: 'Date created at',

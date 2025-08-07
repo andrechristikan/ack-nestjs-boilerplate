@@ -1,4 +1,7 @@
-import { IDatabaseOrder } from '@common/database/interfaces/database.interface';
+import {
+    IDatabaseOrder,
+    IDatabaseOrderDetail,
+} from '@common/database/interfaces/database.interface';
 import { ENUM_HELPER_DATE_DAY_OF } from '@common/helper/enums/helper.enum';
 import {
     ENUM_PAGINATION_FILTER_DATE_BETWEEN_TYPE,
@@ -34,8 +37,8 @@ export interface IPaginationQueryOptions {
 }
 
 export interface IPaginationQueryReturn {
-    search?: { or: Record<string, { contains: string }> };
-    order?: IDatabaseOrder;
+    search?: { or: Record<string, { contains: string }>[] };
+    order?: IDatabaseOrderDetail<unknown>;
     limit: number;
     skip: number;
 }

@@ -26,14 +26,19 @@ import {
     UpdateTemplateCommandOutput,
 } from '@aws-sdk/client-ses';
 import {
-    AwsSESCreateTemplateDto,
     AwsSESGetTemplateDto,
     AwsSESSendBulkDto,
     AwsSESSendDto,
-    AwsSESUpdateTemplateDto,
+    AwsSESTemplateDto,
 } from '@modules/aws/dtos/aws.ses.dto';
 import { IAwsSESService } from '@modules/aws/interfaces/aws.ses-service.interface';
 
+/**
+ * AWS SES (Simple Email Service) service for managing email operations.
+ * Provides functionality for creating, updating, and deleting email templates,
+ * as well as sending single emails and bulk emails using AWS SES templated
+ * email functionality.
+ */
 @Injectable()
 export class AwsSESService implements IAwsSESService {
     private readonly sesClient: SESClient;
@@ -52,6 +57,10 @@ export class AwsSESService implements IAwsSESService {
         });
     }
 
+    /**
+     * Checks the connection to AWS SES by sending a get quota command.
+     * @returns Promise that resolves to true if connection is successful, false otherwise
+     */
     async checkConnection(): Promise<boolean> {
         try {
             await this.sesClient.send<
@@ -65,6 +74,11 @@ export class AwsSESService implements IAwsSESService {
         }
     }
 
+    /**
+     * Retrieves a list of email templates from AWS SES.
+     * @param nextToken Optional pagination token to get the next set of results
+     * @returns Promise that resolves to a list of templates with pagination information
+     */
     async listTemplates(
         nextToken?: string
     ): Promise<ListTemplatesCommandOutput> {
@@ -81,6 +95,11 @@ export class AwsSESService implements IAwsSESService {
         return listTemplate;
     }
 
+    /**
+     * Retrieves a specific email template from AWS SES by name.
+     * @param templateDto Object containing the template name to retrieve
+     * @returns Promise that resolves to the template information including subject and body
+     */
     async getTemplate({
         name,
     }: AwsSESGetTemplateDto): Promise<GetTemplateCommandOutput> {
@@ -96,12 +115,18 @@ export class AwsSESService implements IAwsSESService {
         return getTemplate;
     }
 
+    /**
+     * Creates a new email template in AWS SES.
+     * @param templateDto Object containing template name, subject, and body content
+     * @returns Promise that resolves to the creation result
+     * @throws Error if both htmlBody and plainTextBody are null
+     */
     async createTemplate({
         name,
         subject,
         htmlBody,
         plainTextBody,
-    }: AwsSESCreateTemplateDto): Promise<CreateTemplateCommandOutput> {
+    }: AwsSESTemplateDto): Promise<CreateTemplateCommandOutput> {
         if (!htmlBody && !plainTextBody) {
             throw new Error('body is null');
         }
@@ -123,12 +148,18 @@ export class AwsSESService implements IAwsSESService {
         return create;
     }
 
+    /**
+     * Updates an existing email template in AWS SES.
+     * @param templateDto Object containing template name, subject, and updated body content
+     * @returns Promise that resolves to the update result
+     * @throws Error if both htmlBody and plainTextBody are null
+     */
     async updateTemplate({
         name,
         subject,
         htmlBody,
         plainTextBody,
-    }: AwsSESUpdateTemplateDto): Promise<UpdateTemplateCommandOutput> {
+    }: AwsSESTemplateDto): Promise<UpdateTemplateCommandOutput> {
         if (!htmlBody && !plainTextBody) {
             throw new Error('body is null');
         }
@@ -150,6 +181,11 @@ export class AwsSESService implements IAwsSESService {
         return update;
     }
 
+    /**
+     * Deletes an email template from AWS SES.
+     * @param templateDto Object containing the template name to delete
+     * @returns Promise that resolves to the deletion result
+     */
     async deleteTemplate({
         name,
     }: AwsSESGetTemplateDto): Promise<DeleteTemplateCommandOutput> {
@@ -165,6 +201,11 @@ export class AwsSESService implements IAwsSESService {
         return del;
     }
 
+    /**
+     * Sends a templated email to a single recipient or multiple recipients using AWS SES.
+     * @param emailDto Object containing recipients, sender, template name, and template data
+     * @returns Promise that resolves to the send result with message ID
+     */
     async send<T>({
         recipients,
         sender,
@@ -196,6 +237,11 @@ export class AwsSESService implements IAwsSESService {
         return sendWithTemplate;
     }
 
+    /**
+     * Sends templated emails to multiple recipients in bulk using AWS SES.
+     * @param emailDto Object containing recipients with individual template data, sender, and template name
+     * @returns Promise that resolves to the bulk send result with message IDs and status
+     */
     async sendBulk({
         recipients,
         sender,

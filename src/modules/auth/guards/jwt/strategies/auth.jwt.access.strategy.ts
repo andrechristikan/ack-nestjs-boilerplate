@@ -7,6 +7,11 @@ import { Algorithm } from 'jsonwebtoken';
 import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtAccessGuardKey } from '@modules/auth/constants/auth.contant';
 
+/**
+ * JWT Access Token Strategy for authentication using Passport.js
+ * This strategy validates JWT access tokens using JWKS (JSON Web Key Set) endpoint
+ * and extracts the JWT token from the Authorization header with a configurable prefix.
+ */
 @Injectable()
 export class AuthJwtAccessStrategy extends PassportStrategy(
     Strategy,
@@ -33,6 +38,14 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
         });
     }
 
+    /**
+     * Validates the JWT token payload after successful verification
+     * This method is called by Passport after the JWT token has been verified
+     * against the JWKS endpoint and its signature is valid.
+     *
+     * @param data - The decoded JWT payload containing user information
+     * @returns The validated JWT payload that will be attached to the request object
+     */
     async validate(
         data: IAuthJwtAccessTokenPayload
     ): Promise<IAuthJwtAccessTokenPayload> {

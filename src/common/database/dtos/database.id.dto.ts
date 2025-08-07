@@ -8,5 +8,5 @@ import { PickType } from '@nestjs/swagger';
  * Commonly used for create/update operations where only the ID needs to be returned.
  */
 export class DatabaseIdResponseDto extends PickType(DatabaseDto, [
-    'id',
+    '_id',
 ] as const) {}

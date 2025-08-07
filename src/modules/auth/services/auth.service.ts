@@ -18,6 +18,12 @@ import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
 import { HelperService } from '@common/helper/services/helper.service';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 
+/**
+ * Authentication service providing JWT token management, password operations,
+ * and social authentication integration. Handles access and refresh token
+ * generation, validation, and payload management for user authentication
+ * across the application.
+ */
 @Injectable()
 export class AuthService implements IAuthService {
     // jwt
@@ -145,6 +151,12 @@ export class AuthService implements IAuthService {
         );
     }
 
+    /**
+     * Creates a JWT access token for the given subject and payload.
+     * @param subject The subject identifier for the token
+     * @param payload The payload data to include in the token
+     * @returns The signed JWT access token string
+     */
     createAccessToken(
         subject: string,
         payload: IAuthJwtAccessTokenPayload
@@ -160,6 +172,12 @@ export class AuthService implements IAuthService {
         } as JwtSignOptions);
     }
 
+    /**
+     * Creates a JWT refresh token for the given subject and payload.
+     * @param subject The subject identifier for the token
+     * @param payload The payload data to include in the token
+     * @returns The signed JWT refresh token string
+     */
     createRefreshToken(
         subject: string,
         payload: IAuthJwtRefreshTokenPayload
@@ -175,6 +193,12 @@ export class AuthService implements IAuthService {
         } as JwtSignOptions);
     }
 
+    /**
+     * Validates an access token for the given subject.
+     * @param subject The subject identifier to validate against
+     * @param token The access token to validate
+     * @returns True if the token is valid, false otherwise
+     */
     validateAccessToken(subject: string, token: string): boolean {
         try {
             this.jwtService.verify(token, {
@@ -191,6 +215,12 @@ export class AuthService implements IAuthService {
         }
     }
 
+    /**
+     * Validates a refresh token for the given subject.
+     * @param subject The subject identifier to validate against
+     * @param token The refresh token to validate
+     * @returns True if the token is valid, false otherwise
+     */
     validateRefreshToken(subject: string, token: string): boolean {
         try {
             this.jwtService.verify(token, {
@@ -207,10 +237,23 @@ export class AuthService implements IAuthService {
         }
     }
 
+    /**
+     * Decodes and returns the payload from a JWT token.
+     * @param token The JWT token to decode
+     * @returns The decoded payload of type T
+     */
     payloadToken<T>(token: string): T {
         return this.jwtService.decode<T>(token);
     }
 
+    /**
+     * Creates the payload for an access token from user data and login information.
+     * @param data The user data containing profile and role information
+     * @param sessionId The unique session identifier
+     * @param loginDate The date and time of login
+     * @param loginFrom The source of the login (credential, social, etc.)
+     * @returns The formatted access token payload
+     */
     createPayloadAccessToken(
         data: any, // TODO: CHANGE WITH USER DOC INTERFACE
         sessionId: string,
@@ -218,9 +261,9 @@ export class AuthService implements IAuthService {
         loginFrom: ENUM_AUTH_LOGIN_FROM
     ): IAuthJwtAccessTokenPayload {
         return {
-            userId: data.id,
+            userId: data._id.toString(),
             type: data.role.type,
-            roleId: data.role.id,
+            roleId: data.role._id.toString(),
             username: data.username,
             email: data.email,
             sessionId,
@@ -239,6 +282,11 @@ export class AuthService implements IAuthService {
         };
     }
 
+    /**
+     * Creates a refresh token payload from an access token payload.
+     * @param payload The access token payload containing session and user information
+     * @returns The formatted refresh token payload
+     */
     createPayloadRefreshToken({
         sessionId,
         userId,
@@ -253,10 +301,21 @@ export class AuthService implements IAuthService {
         };
     }
 
+    /**
+     * Validates a password by comparing it with the stored hash.
+     * @param passwordString The plain text password to validate
+     * @param passwordHash The hashed password to compare against
+     * @returns True if the password matches, false otherwise
+     */
     validatePassword(passwordString: string, passwordHash: string): boolean {
         return this.helperService.bcryptCompare(passwordString, passwordHash);
     }
 
+    /**
+     * Checks if a user has exceeded the maximum password attempt limit.
+     * @param user The user object containing password attempt information
+     * @returns True if password attempts exceeded limit, false otherwise
+     */
     checkPasswordAttempt(
         user: any // TODO: CHANGE WITH USER DOC INTERFACE
     ): boolean {
@@ -265,6 +324,12 @@ export class AuthService implements IAuthService {
             : false;
     }
 
+    /**
+     * Creates a new password hash with salt and expiration information.
+     * @param password The plain text password to hash
+     * @param options Optional settings for password creation (e.g., temporary password)
+     * @returns Object containing password hash, salt, creation date, and expiration date
+     */
     createPassword(
         password: string,
         options?: IAuthPasswordOptions
@@ -291,15 +356,30 @@ export class AuthService implements IAuthService {
         };
     }
 
+    /**
+     * Generates a random password string.
+     * @returns A randomly generated 10-character password
+     */
     createPasswordRandom(): string {
         return this.helperService.randomString(10);
     }
 
+    /**
+     * Checks if a password has expired based on its expiration date.
+     * @param passwordExpired The date when the password expires
+     * @returns True if the password has expired, false otherwise
+     */
     checkPasswordExpired(passwordExpired: Date): boolean {
         const today: Date = this.helperService.dateCreate();
         return today > passwordExpired;
     }
 
+    /**
+     * Creates both access and refresh tokens for a user session.
+     * @param user The user object containing profile and role information
+     * @param sessionId The unique session identifier
+     * @returns Token response object containing access token, refresh token, and metadata
+     */
     createTokens(
         user: any, // TODO: CHANGE WITH USER DOC INTERFACE
         sessionId: string
@@ -315,14 +395,14 @@ export class AuthService implements IAuthService {
                 ENUM_AUTH_LOGIN_FROM.CREDENTIAL
             );
         const accessToken: string = this.createAccessToken(
-            user.id,
+            user._id.toString(),
             payloadAccessToken
         );
 
         const payloadRefreshToken: IAuthJwtRefreshTokenPayload =
             this.createPayloadRefreshToken(payloadAccessToken);
         const refreshToken: string = this.createRefreshToken(
-            user.id,
+            user._id.toString(),
             payloadRefreshToken
         );
 
@@ -335,6 +415,12 @@ export class AuthService implements IAuthService {
         };
     }
 
+    /**
+     * Refreshes an access token using a valid refresh token.
+     * @param user The user object containing profile and role information
+     * @param refreshTokenFromRequest The refresh token to validate and use for refresh
+     * @returns Token response object containing new access token and existing refresh token
+     */
     refreshToken(
         user: any, // TODO: CHANGE WITH USER DOC INTERFACE
         refreshTokenFromRequest: string
@@ -367,6 +453,11 @@ export class AuthService implements IAuthService {
         };
     }
 
+    /**
+     * Verifies and extracts information from an Apple ID token.
+     * @param token The Apple ID token to verify
+     * @returns Promise containing the verified token payload with email and verification status
+     */
     async appleGetTokenInfo(token: string): Promise<IAuthSocialPayload> {
         const payload = await verifyAppleToken({
             idToken: token,
@@ -376,6 +467,11 @@ export class AuthService implements IAuthService {
         return { email: payload.email, emailVerified: payload.email_verified };
     }
 
+    /**
+     * Verifies and extracts information from a Google ID token.
+     * @param idToken The Google ID token to verify
+     * @returns Promise containing the verified token payload with email and verification status
+     */
     async googleGetTokenInfo(idToken: string): Promise<IAuthSocialPayload> {
         const login: LoginTicket = await this.googleClient.verifyIdToken({
             idToken: idToken,

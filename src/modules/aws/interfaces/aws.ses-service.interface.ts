@@ -8,11 +8,10 @@ import {
     UpdateTemplateCommandOutput,
 } from '@aws-sdk/client-ses';
 import {
-    AwsSESCreateTemplateDto,
     AwsSESGetTemplateDto,
     AwsSESSendBulkDto,
     AwsSESSendDto,
-    AwsSESUpdateTemplateDto,
+    AwsSESTemplateDto,
 } from '@modules/aws/dtos/aws.ses.dto';
 
 export interface IAwsSESService {
@@ -26,13 +25,13 @@ export interface IAwsSESService {
         subject,
         htmlBody,
         plainTextBody,
-    }: AwsSESCreateTemplateDto): Promise<CreateTemplateCommandOutput>;
+    }: AwsSESTemplateDto): Promise<CreateTemplateCommandOutput>;
     updateTemplate({
         name,
         subject,
         htmlBody,
         plainTextBody,
-    }: AwsSESUpdateTemplateDto): Promise<UpdateTemplateCommandOutput>;
+    }: AwsSESTemplateDto): Promise<UpdateTemplateCommandOutput>;
     deleteTemplate({
         name,
     }: AwsSESGetTemplateDto): Promise<DeleteTemplateCommandOutput>;

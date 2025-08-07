@@ -16,7 +16,6 @@ export class DatabaseEntityBase {
         index: 'desc',
     })
     _id: Types.ObjectId;
-    id: string;
 
     @DatabaseProp({
         required: false,

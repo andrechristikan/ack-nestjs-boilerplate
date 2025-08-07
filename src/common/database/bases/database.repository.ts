@@ -24,7 +24,8 @@ import {
     IDatabaseFindOneById,
     IDatabaseJoin,
     IDatabaseManyReturn,
-    IDatabasePagination,
+    IDatabaseOrder,
+    IDatabasePaginationReturn,
     IDatabaseRaw,
     IDatabaseRestore,
     IDatabaseRestoreMany,
@@ -256,7 +257,7 @@ export abstract class DatabaseRepositoryBase<
             Array.isArray(operation.or)
         ) {
             query.$or = operation.or.map(orOperation =>
-                this._resolveFilterOperation(orOperation)
+                this._resolveWhere(orOperation as IDatabaseFilter<TEntity>)
             );
         }
         if (
@@ -265,7 +266,7 @@ export abstract class DatabaseRepositoryBase<
             Array.isArray(operation.and)
         ) {
             query.$and = operation.and.map(andOperation =>
-                this._resolveFilterOperation(andOperation)
+                this._resolveWhere(andOperation as IDatabaseFilter<TEntity>)
             );
         }
 
@@ -300,11 +301,11 @@ export abstract class DatabaseRepositoryBase<
     }
 
     /**
-     * Resolves the where criteria by converting string IDs to ObjectIds and handling soft delete filtering.
+     * Resolves the where criteria by handling filter operations and soft delete filtering.
      * @private
      * @param where - The filter criteria to resolve.
      * @param withDeleted - Whether to include soft-deleted documents in the query.
-     * @returns The resolved where criteria with proper ObjectId conversion and deletion filtering.
+     * @returns The resolved where criteria with proper filter operations and deletion filtering.
      */
     private _resolveWhere(
         where: IDatabaseFilter<TEntity>,
@@ -312,19 +313,28 @@ export abstract class DatabaseRepositoryBase<
     ): FilterQuery<TEntity> {
         const resolvedWhere: Record<string, unknown> = {};
 
-        if (
-            where.id &&
-            typeof where.id === 'string' &&
-            Types.ObjectId.isValid(where.id)
-        ) {
-            resolvedWhere._id = new Types.ObjectId(where.id);
-        } else if (where.id) {
-            resolvedWhere._id = where.id;
+        // Handle logical operations at the top level
+        if (where.or && Array.isArray(where.or)) {
+            resolvedWhere.$or = where.or.map(orCondition =>
+                this._resolveWhere(
+                    orCondition as IDatabaseFilter<TEntity>,
+                    withDeleted
+                )
+            );
+        }
+
+        if (where.and && Array.isArray(where.and)) {
+            resolvedWhere.$and = where.and.map(andCondition =>
+                this._resolveWhere(
+                    andCondition as IDatabaseFilter<TEntity>,
+                    withDeleted
+                )
+            );
         }
 
         for (const key in where) {
-            if (key === 'id') {
-                continue; // Skip id as it is already handled above
+            if (key === 'or' || key === 'and') {
+                continue; // Skip or and and as they are already handled above
             }
 
             const value = where[key];
@@ -516,7 +526,7 @@ export abstract class DatabaseRepositoryBase<
      * @returns The resolved MongoDB update query with proper operators and metadata.
      */
     private _resolveDataUpdate(
-        data: IDatabaseUpdate<TEntity, TTransaction>['data']
+        data: IDatabaseUpdate<Omit<TEntity, 'id'>, TTransaction>['data']
     ): UpdateQuery<TEntity> {
         const entity = data as Partial<TEntity>;
         let updateData: UpdateQuery<TEntity> = {};
@@ -558,19 +568,57 @@ export abstract class DatabaseRepositoryBase<
      */
     private _resolveDataCreate(
         data: IDatabaseCreate<TEntity, TTransaction>['data']
-    ): Partial<TEntity & { _id: Types.ObjectId }> {
+    ): Partial<TEntity> {
         const now = Date.now();
-        const { id, ...restData } = data;
+        const { _id, ...restData } = data;
 
         return {
             ...restData,
-            _id: id ? new Types.ObjectId(id) : this._createNewId(),
+            _id: _id ? new Types.ObjectId(_id) : this._createNewId(),
             createdAt: restData.createdAt ?? now,
             updatedAt: restData.createdAt ?? now,
             createdBy: restData.createdBy ?? null,
             updatedBy: restData.createdBy ?? null,
             deleted: false,
-        } as Partial<TEntity & { _id: Types.ObjectId }>;
+        } as unknown as Partial<TEntity>;
+    }
+
+    /**
+     * Resolves order configuration to Mongoose sort format.
+     * Converts the IDatabaseOrder format (single object or array) to the format expected by Mongoose.
+     * @private
+     * @param order - The order configuration (single object or array).
+     * @returns The resolved sort object for Mongoose or undefined if no order is provided.
+     */
+    private _resolveOrder<T = TEntity>(
+        order: IDatabaseOrder<T>
+    ): Record<string, 1 | -1> | undefined {
+        if (!order) {
+            return undefined;
+        }
+
+        const sortObject: Record<string, 1 | -1> = {};
+
+        // Handle both single object and array of objects
+        const orderItems = Array.isArray(order) ? order : [order];
+
+        if (orderItems.length === 0) {
+            return undefined;
+        }
+
+        for (const orderItem of orderItems) {
+            if (!orderItem || typeof orderItem !== 'object') {
+                continue;
+            }
+
+            for (const [field, direction] of Object.entries(orderItem)) {
+                if (direction !== undefined) {
+                    sortObject[field] = direction === 'asc' ? 1 : -1;
+                }
+            }
+        }
+
+        return Object.keys(sortObject).length > 0 ? sortObject : undefined;
     }
 
     /**
@@ -581,6 +629,7 @@ export abstract class DatabaseRepositoryBase<
      * @returns An array of PopulateOptions or undefined if no join is provided.
      */
     private _resolveJoin(join: IDatabaseJoin): PopulateOptions[] | undefined {
+        // TODO: Need optimize, nested join
         if (
             !join ||
             typeof join !== 'object' ||
@@ -592,24 +641,22 @@ export abstract class DatabaseRepositoryBase<
         const populateOptions: PopulateOptions[] = [];
 
         for (const [path, config] of Object.entries(join)) {
-            if (config === true) {
-                populateOptions.push({ path });
-            } else if (config === false) {
-                continue;
-            } else if (typeof config === 'object' && config !== null) {
-                const selectFields = Object.entries(config)
-                    .filter(([, include]) => include === true)
-                    .map(([field]) => field)
-                    .join(' ');
+            if (typeof config === 'object' && config !== null) {
+                const populateOption: PopulateOptions = { path };
 
-                if (selectFields) {
-                    populateOptions.push({
-                        path,
-                        select: selectFields,
-                    });
-                } else {
-                    populateOptions.push({ path });
+                // Handle select field if present
+                if (config.select && typeof config.select === 'object') {
+                    const selectFields = Object.entries(config.select)
+                        .filter(([, include]) => include === true)
+                        .map(([field]) => field)
+                        .join(' ');
+
+                    if (selectFields) {
+                        populateOption.select = selectFields;
+                    }
                 }
+
+                populateOptions.push(populateOption);
             }
         }
 
@@ -634,10 +681,8 @@ export abstract class DatabaseRepositoryBase<
         queries?: IDatabaseFindMany<TEntity, TTransaction>
     ): Promise<T[]> {
         if (queries === undefined || queries === null) {
-            const items = (await this._model.find().lean()) as (TEntity & {
-                _id: Types.ObjectId;
-            })[];
-            return items as T[];
+            const items = (await this._model.find().lean()) as T[];
+            return items;
         }
 
         const {
@@ -654,10 +699,12 @@ export abstract class DatabaseRepositoryBase<
         if (where) {
             this._validateCriteria(where, 'Where criteria');
         }
-
         this._validateSelect(select);
 
-        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const resolvedWhere = this._resolveWhere(
+            where as IDatabaseFilter<TEntity>,
+            withDeleted
+        );
         const findItems = this._model.find(resolvedWhere);
 
         if (join) {
@@ -666,7 +713,10 @@ export abstract class DatabaseRepositoryBase<
         }
 
         if (order) {
-            findItems.sort(order);
+            const resolvedOrder = this._resolveOrder(order);
+            if (resolvedOrder) {
+                findItems.sort(resolvedOrder);
+            }
         }
 
         if (select) {
@@ -685,10 +735,7 @@ export abstract class DatabaseRepositoryBase<
             findItems.session(transaction as ClientSession);
         }
 
-        const items = (await findItems.lean()) as (TEntity & {
-            _id: Types.ObjectId;
-        })[];
-
+        const items = await findItems.lean();
         return items as T[];
     }
 
@@ -716,15 +763,18 @@ export abstract class DatabaseRepositoryBase<
         withDeleted,
         transaction,
     }: IDatabaseFindManyWithPagination<TEntity, TTransaction>): Promise<
-        IDatabasePagination<T>
+        IDatabasePaginationReturn<T>
     > {
-        this._validatePagination(limit, skip);
         if (where) {
             this._validateCriteria(where, 'Where criteria');
         }
+        this._validatePagination(limit, skip);
         this._validateSelect(select);
 
-        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        const resolvedWhere = this._resolveWhere(
+            where as IDatabaseFilter<TEntity>,
+            withDeleted
+        );
         const findItems = this._model
             .find(resolvedWhere)
             .limit(limit)
@@ -736,7 +786,10 @@ export abstract class DatabaseRepositoryBase<
         }
 
         if (order) {
-            findItems.sort(order);
+            const resolvedOrder = this._resolveOrder(order);
+            if (resolvedOrder) {
+                findItems.sort(resolvedOrder);
+            }
         }
 
         if (select) {
@@ -747,9 +800,7 @@ export abstract class DatabaseRepositoryBase<
             findItems.session(transaction as ClientSession);
         }
 
-        const items = (await findItems.lean()) as (TEntity & {
-            _id: Types.ObjectId;
-        })[];
+        const items = await findItems.lean();
         const count = await this._model.countDocuments(resolvedWhere).lean();
 
         return {
@@ -777,9 +828,15 @@ export abstract class DatabaseRepositoryBase<
         }
 
         const { where, withDeleted, transaction } = queries;
-        this._validateCriteria(where, 'Where criteria');
 
-        const resolvedWhere = this._resolveWhere(where, withDeleted);
+        if (where) {
+            this._validateCriteria(where, 'Where criteria');
+        }
+
+        const resolvedWhere = this._resolveWhere(
+            where as IDatabaseFilter<TEntity>,
+            withDeleted
+        );
         const countQuery = this._model.countDocuments(resolvedWhere);
 
         if (transaction) {
@@ -807,59 +864,11 @@ export abstract class DatabaseRepositoryBase<
         withDeleted,
         transaction,
     }: IDatabaseFindOne<TEntity, TTransaction>): Promise<T | null> {
-        this._validateCriteria(where, 'Find criteria');
-        this._validateSelect(select);
-
-        const resolvedWhere = this._resolveWhere(where, withDeleted);
-        const findItem = this._model.findOne(resolvedWhere);
-
-        if (join) {
-            const populateOptions = this._resolveJoin(join);
-            findItem.populate(populateOptions);
-        }
-
-        if (select) {
-            findItem.select(select);
-        }
-
-        if (transaction) {
-            findItem.session(transaction as ClientSession);
-        }
-
-        const item = (await findItem.lean()) as
-            | (TEntity & {
-                  _id: Types.ObjectId;
-              })
-            | null;
-
-        return item as T | null;
-    }
-
-    /**
-     * Finds a single document by its ID.
-     * @param options - The find by ID options.
-     * @param options.id - The ID of the document to find.
-     * @param options.join - Optional join options to populate related fields.
-     * @param options.select - Optional fields to select in the returned document.
-     * @param options.withDeleted - Optional flag to include deleted documents.
-     * @param options.transaction - Optional transaction session for atomic operations.
-     * @returns A promise that resolves to the found document or null if not found.
-     * @throws {Error} When ID is not a valid non-empty string or select is not a valid object.
-     */
-    async findOneById<T = TEntity>({
-        id,
-        join,
-        select,
-        withDeleted,
-        transaction,
-    }: IDatabaseFindOneById<TTransaction>): Promise<T | null> {
-        this._validateId(id);
+        this._validateCriteria(where, 'Where criteria');
         this._validateSelect(select);
 
         const resolvedWhere = this._resolveWhere(
-            {
-                id,
-            } as IDatabaseFilter<TEntity>,
+            where as IDatabaseFilter<TEntity>,
             withDeleted
         );
         const findItem = this._model.findOne(resolvedWhere);
@@ -877,10 +886,52 @@ export abstract class DatabaseRepositoryBase<
             findItem.session(transaction as ClientSession);
         }
 
-        const item = (await findItem.lean()) as
-            | (TEntity & { _id: Types.ObjectId })
-            | null;
+        const item = await findItem.lean();
+        return item as T | null;
+    }
 
+    /**
+     * Finds a single document by its ID.
+     * @param options - The find by ID options.
+     * @param options._id - The ID of the document to find.
+     * @param options.join - Optional join options to populate related fields.
+     * @param options.select - Optional fields to select in the returned document.
+     * @param options.withDeleted - Optional flag to include deleted documents.
+     * @param options.transaction - Optional transaction session for atomic operations.
+     * @returns A promise that resolves to the found document or null if not found.
+     * @throws {Error} When ID is not a valid non-empty string or select is not a valid object.
+     */
+    async findOneById<T = TEntity>({
+        where,
+        join,
+        select,
+        withDeleted,
+        transaction,
+    }: IDatabaseFindOneById<TTransaction>): Promise<T | null> {
+        this._validateCriteria(where, 'Where criteria');
+        this._validateId(where._id);
+        this._validateSelect(select);
+
+        const resolvedWhere = this._resolveWhere(
+            where as IDatabaseFilter<TEntity>,
+            withDeleted
+        );
+        const findItem = this._model.findOne(resolvedWhere);
+
+        if (join) {
+            const populateOptions = this._resolveJoin(join);
+            findItem.populate(populateOptions);
+        }
+
+        if (select) {
+            findItem.select(select);
+        }
+
+        if (transaction) {
+            findItem.session(transaction as ClientSession);
+        }
+
+        const item = await findItem.lean();
         return item as T | null;
     }
 
@@ -889,7 +940,7 @@ export abstract class DatabaseRepositoryBase<
      * @param options - The creation options.
      * @param options.data - The data to create the document with.
      * @param options.transaction - Optional transaction session for atomic operations.
-     * @returns A promise that resolves to the created document.
+     * @returns A promise that resolves to the database return object containing the created document data.
      * @throws {Error} When the data is not a non-empty object.
      */
     async create({
@@ -902,10 +953,7 @@ export abstract class DatabaseRepositoryBase<
         const createItems = await this._model.create([resolvedData], {
             session: transaction as ClientSession,
         });
-        const item = createItems[0].toObject() as TEntity & {
-            _id: Types.ObjectId;
-        };
-
+        const item = createItems[0].toObject();
         return item as TEntity;
     }
 
@@ -925,8 +973,8 @@ export abstract class DatabaseRepositoryBase<
         withDeleted,
         transaction,
     }: IDatabaseUpdate<TEntity, TTransaction>): Promise<TEntity> {
-        this._validateNonEmptyObject(data, 'Data');
         this._validateCriteria(where, 'Where criteria');
+        this._validateNonEmptyObject(data, 'Data');
 
         const resolvedData = this._resolveDataUpdate(data);
         const resolvedWhere = this._resolveWhere(where, withDeleted);
@@ -942,9 +990,7 @@ export abstract class DatabaseRepositoryBase<
             updateItem.session(transaction as ClientSession);
         }
 
-        const updated = (await updateItem.lean()) as TEntity & {
-            _id: Types.ObjectId;
-        };
+        const updated = await updateItem.lean();
         return updated as TEntity;
     }
 
@@ -962,13 +1008,7 @@ export abstract class DatabaseRepositoryBase<
         withDeleted,
         transaction,
     }: IDatabaseDelete<TEntity, TTransaction>): Promise<TEntity> {
-        if (
-            !where ||
-            typeof where !== 'object' ||
-            Object.keys(where).length === 0
-        ) {
-            throw new Error('Where criteria must be a non-empty object');
-        }
+        this._validateCriteria(where, 'Where criteria');
 
         const resolvedWhere = this._resolveWhere(where, withDeleted);
         const deleteItem = this._model.findOneAndDelete(resolvedWhere, {
@@ -979,9 +1019,7 @@ export abstract class DatabaseRepositoryBase<
             deleteItem.session(transaction as ClientSession);
         }
 
-        const deleted = (await deleteItem.lean()) as TEntity & {
-            _id: Types.ObjectId;
-        };
+        const deleted = await deleteItem.lean();
         return deleted as TEntity;
     }
 
@@ -998,14 +1036,11 @@ export abstract class DatabaseRepositoryBase<
         where,
         withDeleted,
         transaction,
-    }: IDatabaseExist<TEntity, TTransaction>): Promise<IDatabaseExistReturn> {
-        if (
-            !where ||
-            typeof where !== 'object' ||
-            Object.keys(where).length === 0
-        ) {
-            throw new Error('Where criteria must be a non-empty object');
-        }
+    }: IDatabaseExist<
+        TEntity,
+        TTransaction
+    >): Promise<IDatabaseExistReturn | null> {
+        this._validateCriteria(where, 'Where criteria');
 
         const resolvedWhere = this._resolveWhere(where, withDeleted);
         const existsQuery = this._model.exists(resolvedWhere).select('_id');
@@ -1015,9 +1050,7 @@ export abstract class DatabaseRepositoryBase<
         }
 
         const result = await existsQuery.lean();
-        return result
-            ? { id: (result._id as Types.ObjectId).toString() }
-            : null;
+        return result ? { _id: result._id } : null;
     }
 
     /**
@@ -1038,30 +1071,10 @@ export abstract class DatabaseRepositoryBase<
         where,
         withDeleted,
         transaction,
-    }: IDatabaseUpsert<TEntity, TTransaction>): Promise<Partial<TEntity>> {
-        if (
-            !create ||
-            typeof create !== 'object' ||
-            Object.keys(create).length === 0
-        ) {
-            throw new Error('Create data must be a non-empty object');
-        }
-
-        if (
-            !update ||
-            typeof update !== 'object' ||
-            Object.keys(update).length === 0
-        ) {
-            throw new Error('Update data must be a non-empty object');
-        }
-
-        if (
-            !where ||
-            typeof where !== 'object' ||
-            Object.keys(where).length === 0
-        ) {
-            throw new Error('Where criteria must be a non-empty object');
-        }
+    }: IDatabaseUpsert<TEntity, TTransaction>): Promise<TEntity> {
+        this._validateCriteria(where, 'Where criteria');
+        this._validateNonEmptyObject(create, 'Create data');
+        this._validateNonEmptyObject(update, 'Update data');
 
         const resolvedUpdateData = this._resolveDataUpdate(update);
         const resolvedCreateData = this._resolveDataCreate(create);
@@ -1082,27 +1095,30 @@ export abstract class DatabaseRepositoryBase<
             upsertItem.session(transaction as ClientSession);
         }
 
-        const upsert = (await upsertItem.lean()) as TEntity & {
-            _id: Types.ObjectId;
-        };
-        return upsert as Partial<TEntity>;
+        const upsert = await upsertItem.lean();
+        return upsert as TEntity;
     }
 
     /**
      * Executes a raw MongoDB aggregation pipeline query.
+     *
+     * This method allows executing complex MongoDB aggregation pipelines directly,
+     * providing full access to MongoDB's aggregation framework capabilities.
+     * The aggregation pipeline is executed using the model's aggregate method.
+     *
      * @template T - The expected return type of the aggregation result.
-     * @param options - The raw query options.
-     * @param options.raw - The aggregation pipeline stages to execute.
-     * @param options.transaction - Optional transaction session for atomic operations.
-     * @returns A promise that resolves to the result of the aggregation query.
-     * @throws {Error} When the raw pipeline is not a valid non-empty object.
+     * @param options - The raw query options containing the aggregation pipeline and optional transaction.
+     * @param options.raw - The MongoDB aggregation pipeline stages array to execute. Must be a non-empty array of pipeline stages.
+     * @param options.transaction - Optional transaction session for atomic operations. If provided, the aggregation will be executed within this session.
+     * @returns A promise that resolves to the result of the aggregation query as type T.
+     * @throws {Error} When the raw pipeline is falsy (null, undefined, empty array, etc.).
      */
     async raw<T>({
         raw,
         transaction,
     }: IDatabaseRaw<TRaw, TTransaction>): Promise<T> {
-        if (!raw || typeof raw !== 'object' || Object.keys(raw).length === 0) {
-            throw new Error('Raw must be a non-empty object');
+        if (!raw) {
+            throw new Error('Raw must be a non-empty');
         }
 
         const executeRaw = this._model.aggregate(raw);
@@ -1128,9 +1144,7 @@ export abstract class DatabaseRepositoryBase<
         TEntity,
         TTransaction
     >): Promise<IDatabaseManyReturn> {
-        if (!data || !Array.isArray(data) || data.length === 0) {
-            throw new Error('Data must be a non-empty array of entities');
-        }
+        this._validateNonEmptyObject(data, 'Data');
 
         const entities = data.map(
             (item: IDatabaseCreate<TEntity, TTransaction>['data']) =>
@@ -1144,7 +1158,7 @@ export abstract class DatabaseRepositoryBase<
         return {
             count: createItems.insertedCount,
             ids: Object.values(createItems.insertedIds).map(
-                (_id: Types.ObjectId) => _id.toString()
+                (_id: Types.ObjectId) => _id
             ),
         };
     }
@@ -1166,21 +1180,8 @@ export abstract class DatabaseRepositoryBase<
         TEntity,
         TTransaction
     >): Promise<IDatabaseManyReturn> {
-        if (
-            !data ||
-            typeof data !== 'object' ||
-            Object.keys(data).length === 0
-        ) {
-            throw new Error('Data must be a non-empty object');
-        }
-
-        if (
-            !where ||
-            typeof where !== 'object' ||
-            Object.keys(where).length === 0
-        ) {
-            throw new Error('Where criteria must be a non-empty object');
-        }
+        this._validateCriteria(where, 'Where criteria');
+        this._validateNonEmptyObject(data, 'Data');
 
         const resolvedData = this._resolveDataUpdate(data);
         const resolvedWhere = this._resolveWhere(where, withDeleted);
@@ -1213,13 +1214,7 @@ export abstract class DatabaseRepositoryBase<
         TEntity,
         TTransaction
     >): Promise<IDatabaseManyReturn> {
-        if (
-            !where ||
-            typeof where !== 'object' ||
-            Object.keys(where).length === 0
-        ) {
-            throw new Error('Where criteria must be a non-empty object');
-        }
+        this._validateCriteria(where, 'Where criteria');
 
         const resolvedWhere = this._resolveWhere(where, withDeleted);
         const deleteItems = await this._model.deleteMany(resolvedWhere, {
@@ -1243,34 +1238,23 @@ export abstract class DatabaseRepositoryBase<
         where,
         data,
         transaction,
-    }: IDatabaseSoftDelete<TEntity, TTransaction>): Promise<Partial<TEntity>> {
-        if (
-            !data ||
-            typeof data !== 'object' ||
-            Object.keys(data).length === 0
-        ) {
-            throw new Error('Data must be a non-empty object');
-        }
-
-        if (
-            !where ||
-            typeof where !== 'object' ||
-            Object.keys(where).length === 0
-        ) {
-            throw new Error('Where criteria must be a non-empty object');
+    }: IDatabaseSoftDelete<TEntity, TTransaction>): Promise<TEntity> {
+        this._validateCriteria(where, 'Where criteria');
+        if (data) {
+            this._validateNonEmptyObject(data, 'Data');
         }
 
         const now = Date.now();
         const updateData: UpdateQuery<TEntity> = {
             $set: {
-                ...data,
+                ...(data || {}),
                 deleted: true,
                 deletedAt: now,
                 updatedAt: now,
             },
         };
 
-        if (data.deletedBy) {
+        if (data?.deletedBy) {
             updateData.$set.updatedBy = data.deletedBy;
         }
 
@@ -1287,10 +1271,8 @@ export abstract class DatabaseRepositoryBase<
             updateItem.session(transaction as ClientSession);
         }
 
-        const updated = (await updateItem.lean()) as TEntity & {
-            _id: Types.ObjectId;
-        };
-        return updated as Partial<TEntity>;
+        const updated = await updateItem.lean();
+        return updated as TEntity;
     }
 
     /**
@@ -1304,21 +1286,10 @@ export abstract class DatabaseRepositoryBase<
         where,
         data,
         transaction,
-    }: IDatabaseRestore<TEntity, TTransaction>): Promise<Partial<TEntity>> {
-        if (
-            !where ||
-            typeof where !== 'object' ||
-            Object.keys(where).length === 0
-        ) {
-            throw new Error('Where criteria must be a non-empty object');
-        }
-
-        if (
-            !data ||
-            typeof data !== 'object' ||
-            Object.keys(data).length === 0
-        ) {
-            throw new Error('Data must be a non-empty object');
+    }: IDatabaseRestore<TEntity, TTransaction>): Promise<TEntity> {
+        this._validateCriteria(where, 'Where criteria');
+        if (data) {
+            this._validateNonEmptyObject(data, 'Data');
         }
 
         const now = Date.now();
@@ -1332,7 +1303,7 @@ export abstract class DatabaseRepositoryBase<
             },
         };
 
-        if (data.restoreBy) {
+        if (data?.restoreBy) {
             updateData.$set.updatedBy = data.restoreBy;
         }
 
@@ -1346,10 +1317,8 @@ export abstract class DatabaseRepositoryBase<
             restoreItem.session(transaction as ClientSession);
         }
 
-        const restored = (await restoreItem.lean()) as TEntity & {
-            _id: Types.ObjectId;
-        };
-        return restored as Partial<TEntity>;
+        const restored = await restoreItem.lean();
+        return restored as TEntity;
     }
 
     /**
@@ -1367,33 +1336,22 @@ export abstract class DatabaseRepositoryBase<
         TEntity,
         TTransaction
     >): Promise<IDatabaseManyReturn> {
-        if (
-            !data ||
-            typeof data !== 'object' ||
-            Object.keys(data).length === 0
-        ) {
-            throw new Error('Data must be a non-empty object');
-        }
-
-        if (
-            !where ||
-            typeof where !== 'object' ||
-            Object.keys(where).length === 0
-        ) {
-            throw new Error('Where criteria must be a non-empty object');
+        this._validateCriteria(where, 'Where criteria');
+        if (data) {
+            this._validateNonEmptyObject(data, 'Data');
         }
 
         const now = Date.now();
         const updateData: UpdateQuery<TEntity> = {
             $set: {
-                ...data,
+                ...(data || {}),
                 deleted: true,
                 deletedAt: now,
                 updatedAt: now,
             },
         };
 
-        if (data.deletedBy) {
+        if (data?.deletedBy) {
             updateData.$set.updatedBy = data.deletedBy;
         }
 
@@ -1424,20 +1382,9 @@ export abstract class DatabaseRepositoryBase<
         TEntity,
         TTransaction
     >): Promise<IDatabaseManyReturn> {
-        if (
-            !where ||
-            typeof where !== 'object' ||
-            Object.keys(where).length === 0
-        ) {
-            throw new Error('Where criteria must be a non-empty object');
-        }
-
-        if (
-            !data ||
-            typeof data !== 'object' ||
-            Object.keys(data).length === 0
-        ) {
-            throw new Error('Data must be a non-empty object');
+        this._validateCriteria(where, 'Where criteria');
+        if (data) {
+            this._validateNonEmptyObject(data, 'Data');
         }
 
         const now = Date.now();
@@ -1451,7 +1398,7 @@ export abstract class DatabaseRepositoryBase<
             },
         };
 
-        if (data.restoreBy) {
+        if (data?.restoreBy) {
             updateData.$set.updatedBy = data.restoreBy;
         }
 

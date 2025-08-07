@@ -53,22 +53,16 @@ export function PaginationSearchPipe(
          *
          * @param search - The search term to match against
          * @param availableSearch - Array of field names to search in
-         * @returns Object with OR conditions for database query
+         * @returns Array of object with OR conditions for database query
          */
         buildSearchObject(
             search: string,
             availableSearch: string[]
-        ): { or: Record<string, { contains: string }> } {
+        ): { or: Record<string, { contains: string }>[] } {
             return {
-                or: availableSearch.reduce(
-                    (acc, field) => ({
-                        ...acc,
-                        [field]: {
-                            contains: search,
-                        },
-                    }),
-                    {}
-                ),
+                or: availableSearch.map(field => ({
+                    [field]: { contains: search },
+                })),
             };
         }
 

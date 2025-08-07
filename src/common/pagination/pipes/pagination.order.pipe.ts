@@ -14,7 +14,7 @@ import {
     IPaginationQueryReturn,
 } from '@common/pagination/interfaces/pagination.interface';
 import { ENUM_PAGINATION_STATUS_CODE_ERROR } from '@common/pagination/enums/pagination.status-code.enum';
-import { IDatabaseOrder } from '@common/database/interfaces/database.interface';
+import { IDatabaseOrderDetail } from '@common/database/interfaces/database.interface';
 
 /**
  * Creates a pagination order pipe that validates and transforms ordering parameters.
@@ -92,7 +92,7 @@ export function PaginationOrderPipe(
         /**
          * Builds a database order object from field name and direction.
          * Creates a simple key-value object for database ordering operations.
-         * 
+         *
          * @param field - Field name to order by
          * @param orderDirection - Direction of ordering (ASC or DESC)
          * @returns Database order object with field and direction
@@ -100,7 +100,7 @@ export function PaginationOrderPipe(
         buildOrderObject(
             field: string,
             orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE
-        ): IDatabaseOrder {
+        ): IDatabaseOrderDetail<unknown> {
             return {
                 [field]: orderDirection,
             };

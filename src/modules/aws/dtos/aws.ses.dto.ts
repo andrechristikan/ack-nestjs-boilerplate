@@ -16,7 +16,7 @@ import {
     IsString,
 } from 'class-validator';
 
-export class AwsSESCreateTemplateDto {
+export class AwsSESTemplateDto {
     @ApiProperty({
         required: true,
     })
@@ -46,16 +46,9 @@ export class AwsSESCreateTemplateDto {
     plainTextBody?: string;
 }
 
-export class AwsSESUpdateTemplateDto extends AwsSESCreateTemplateDto {}
-
-export class AwsSESGetTemplateDto {
-    @ApiProperty({
-        required: true,
-    })
-    @IsNotEmpty()
-    @IsString()
-    name: string;
-}
+export class AwsSESGetTemplateDto extends PickType(AwsSESTemplateDto, [
+    'name',
+] as const) {}
 
 export class AwsSESSendDto<T> {
     @ApiProperty({

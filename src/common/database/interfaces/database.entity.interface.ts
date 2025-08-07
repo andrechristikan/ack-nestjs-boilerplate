@@ -1,3 +1,5 @@
+import { Types } from 'mongoose';
+
 /**
  * Base interface for all database entities.
  *
@@ -5,7 +7,7 @@
  * including audit trail fields and soft delete functionality.
  */
 export interface IDatabaseEntity {
-    id: string;
+    _id: Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
     createdBy?: string;

@@ -10,6 +10,10 @@ import { AuthService } from '@modules/auth/services/auth.service';
 import { ConfigService } from '@nestjs/config';
 import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 
+/**
+ * Guard for validating Apple social authentication tokens.
+ * Implements CanActivate interface to protect routes that require Apple authentication.
+ */
 @Injectable()
 export class AuthSocialAppleGuard implements CanActivate {
     private readonly header: string;
@@ -23,6 +27,12 @@ export class AuthSocialAppleGuard implements CanActivate {
         this.prefix = this.configService.get<string>('auth.apple.prefix');
     }
 
+    /**
+     * Validates Apple authentication token and attaches user payload to request.
+     * @param context - The execution context containing the HTTP request
+     * @returns Promise<boolean> - True if authentication is successful
+     * @throws UnauthorizedException - When token is missing, malformed, or invalid
+     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context
             .switchToHttp()

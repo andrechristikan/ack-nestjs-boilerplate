@@ -11,7 +11,7 @@ import {
     IDatabaseFindOne,
     IDatabaseFindOneById,
     IDatabaseManyReturn,
-    IDatabasePagination,
+    IDatabasePaginationReturn,
     IDatabaseRaw,
     IDatabaseRestore,
     IDatabaseRestoreMany,
@@ -25,38 +25,27 @@ import {
 export interface IDatabaseRepository<TEntity, TModel, TRaw, TTransaction> {
     _model: TModel;
 
-    findMany(
+    findMany<T = TEntity>(
         queries?: IDatabaseFindMany<TEntity, TTransaction>
-    ): Promise<Partial<TEntity>[]>;
-    findManyWithPagination(
+    ): Promise<T[]>;
+    findManyWithPagination<T = TEntity>(
         queries: IDatabaseFindManyWithPagination<TEntity, TTransaction>
-    ): Promise<IDatabasePagination<Partial<TEntity>>>;
-    findOne(
+    ): Promise<IDatabasePaginationReturn<T>>;
+    findOne<T = TEntity>(
         queries: IDatabaseFindOne<TEntity, TTransaction>
-    ): Promise<Partial<TEntity> | null>;
-    findOneById(
+    ): Promise<T | null>;
+    findOneById<T = TEntity>(
         queries: IDatabaseFindOneById<TTransaction>
-    ): Promise<Partial<TEntity> | null>;
+    ): Promise<T | null>;
     count(queries?: IDatabaseCount<TEntity, TTransaction>): Promise<number>;
-    create(
-        queries: IDatabaseCreate<TEntity, TTransaction>
-    ): Promise<Partial<TEntity>>;
-    update(
-        queries: IDatabaseUpdate<TEntity, TTransaction>
-    ): Promise<Partial<TEntity>>;
-    delete(
-        queries: IDatabaseDelete<TEntity, TTransaction>
-    ): Promise<Partial<TEntity>>;
+    create(queries: IDatabaseCreate<TEntity, TTransaction>): Promise<TEntity>;
+    update(queries: IDatabaseUpdate<TEntity, TTransaction>): Promise<TEntity>;
+    delete(queries: IDatabaseDelete<TEntity, TTransaction>): Promise<TEntity>;
     exists(
         queries: IDatabaseExist<TEntity, TTransaction>
-    ): Promise<IDatabaseExistReturn>;
-    upsert(
-        queries: IDatabaseUpsert<TEntity, TTransaction>
-    ): Promise<Partial<TEntity>>;
-    raw({
-        raw,
-        transaction,
-    }: IDatabaseRaw<TRaw, TTransaction>): Promise<Partial<TEntity>>;
+    ): Promise<IDatabaseExistReturn | null>;
+    upsert(queries: IDatabaseUpsert<TEntity, TTransaction>): Promise<TEntity>;
+    raw<T>({ raw, transaction }: IDatabaseRaw<TRaw, TTransaction>): Promise<T>;
     createMany(
         queries: IDatabaseCreateMany<TEntity, TTransaction>
     ): Promise<IDatabaseManyReturn>;
@@ -68,10 +57,8 @@ export interface IDatabaseRepository<TEntity, TModel, TRaw, TTransaction> {
     ): Promise<IDatabaseManyReturn>;
     softDelete(
         queries: IDatabaseSoftDelete<TEntity, TTransaction>
-    ): Promise<Partial<TEntity>>;
-    restore(
-        queries: IDatabaseRestore<TEntity, TTransaction>
-    ): Promise<Partial<TEntity>>;
+    ): Promise<TEntity>;
+    restore(queries: IDatabaseRestore<TEntity, TTransaction>): Promise<TEntity>;
     softDeleteMany(
         queries: IDatabaseSoftDeleteMany<TEntity, TTransaction>
     ): Promise<IDatabaseManyReturn>;

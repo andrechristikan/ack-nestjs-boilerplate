@@ -8,8 +8,25 @@ import {
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtRefreshGuardKey } from '@modules/auth/constants/auth.contant';
 
+/**
+ * JWT Refresh Token Guard for protecting routes that require refresh token authentication
+ * This guard extends the NestJS AuthGuard and validates JWT refresh tokens,
+ * ensuring that the token contains a valid UUID subject (sub) claim.
+ * Used specifically for token refresh endpoints in the authentication flow.
+ */
 @Injectable()
 export class AuthJwtRefreshGuard extends AuthGuard(AuthJwtRefreshGuardKey) {
+    /**
+     * Handles the request validation after JWT refresh token strategy processing
+     * Validates that the user exists, has a valid subject (sub) claim,
+     * and that the subject is a valid UUID format for refresh token operations.
+     *
+     * @param err - Any error that occurred during authentication
+     * @param user - The authenticated user payload from JWT refresh token
+     * @param info - Additional information about the authentication process
+     * @returns The validated user payload
+     * @throws UnauthorizedException when authentication fails or user data is invalid
+     */
     handleRequest<T = IAuthJwtRefreshTokenPayload>(
         err: Error,
         user: T,

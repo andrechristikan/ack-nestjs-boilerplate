@@ -1,13 +1,13 @@
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import { Types } from 'mongoose';
 
-export interface IDatabaseJoin {
-    [key: string]: boolean | Record<string, boolean>;
-}
+export type IDatabaseOrderDetail<TEntity> = Partial<
+    Record<keyof TEntity, ENUM_PAGINATION_ORDER_DIRECTION_TYPE>
+>;
 
-export interface IDatabaseOrder {
-    [key: string]: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
-}
+export type IDatabaseOrder<TEntity> =
+    | IDatabaseOrderDetail<TEntity>
+    | IDatabaseOrderDetail<TEntity>[];
 
 export interface IDatabaseFilterOperationComparison {
     gte?: number | string | Date;
@@ -27,29 +27,30 @@ export interface IDatabaseFilterOperationString {
     endsWith?: string;
 }
 
-export interface IDatabaseFilterOperationLogical {
-    or?: (IDatabaseFilterOperationComparison &
-        IDatabaseFilterOperationString)[];
-    and?: (IDatabaseFilterOperationComparison &
-        IDatabaseFilterOperationString)[];
-}
-
 export type IDatabaseFilterOperation = IDatabaseFilterOperationComparison &
-    IDatabaseFilterOperationString &
-    IDatabaseFilterOperationLogical;
+    IDatabaseFilterOperationString;
 
-export type IDatabaseFilter<TEntity> = Partial<
+export type IDatabaseFilterValue<TEntity> = Partial<
     Record<
-        keyof TEntity,
+        keyof Omit<TEntity, 'deleted'>,
         | IDatabaseFilterOperation
         | string
         | number
         | Date
         | boolean
+        | Types.ObjectId
         | null
         | undefined
-    > & { id?: string }
+    >
 >;
+
+export interface IDatabaseFilterOperationLogical<TEntity> {
+    or?: IDatabaseFilterValue<TEntity>[];
+    and?: IDatabaseFilterValue<TEntity>[];
+}
+
+export type IDatabaseFilter<TEntity> = IDatabaseFilterValue<TEntity> &
+    IDatabaseFilterOperationLogical<TEntity>;
 
 export type IDatabaseUpdateAtomic =
     | {
@@ -65,40 +66,42 @@ export type IDatabaseUpdateAtomic =
           divide?: number;
       };
 
-export interface IDatabasePagination<TEntity> {
+export type IDatabaseSelect<TEntity> = Partial<Record<keyof TEntity, boolean>>;
+
+export interface IDatabaseJoinDetail {
+    select?: IDatabaseSelect<unknown>;
+    where?: IDatabaseFilter<unknown>;
+    as?: string;
+    on: string;
+    from: string;
+    limit?: number;
+    skip?: number;
+    join?: IDatabaseJoin;
+}
+
+export type IDatabaseJoin = Record<string, IDatabaseJoinDetail>;
+
+export interface IDatabasePaginationReturn<TEntity> {
     items: Partial<TEntity>[];
     count: number;
     page: number;
     totalPage: number;
 }
-
-export interface IDatabaseBaseEntity {
-    id: string;
-    _id: Types.ObjectId;
-    createdAt: Date;
-    updatedAt: Date;
-    createdBy?: string;
-    updatedBy?: string;
-    deleted: boolean;
-    deletedAt?: Date;
-    deletedBy?: string;
-}
-
 export interface IDatabaseManyReturn {
     count: number;
-    ids?: string[];
+    ids?: Types.ObjectId[];
 }
 
 export interface IDatabaseExistReturn {
-    id: string;
+    _id: Types.ObjectId;
 }
 
 export interface IDatabaseFindManyWithPagination<TEntity, TTransaction> {
     limit: number;
     skip: number;
-    where?: IDatabaseFilter<TEntity>;
-    select?: Record<string, boolean>;
-    order?: IDatabaseOrder;
+    where?: IDatabaseFilter<Omit<TEntity, 'deleted'>>;
+    select?: IDatabaseSelect<TEntity>;
+    order?: IDatabaseOrder<TEntity>;
     join?: IDatabaseJoin;
     withDeleted?: boolean;
     transaction?: TTransaction;
@@ -118,7 +121,7 @@ export interface IDatabaseFindOne<TEntity, TTransaction>
         IDatabaseFindMany<TEntity, TTransaction>,
         'select' | 'join' | 'withDeleted' | 'transaction'
     > {
-    where: IDatabaseFilter<TEntity>;
+    where: IDatabaseFilter<Omit<TEntity, 'deleted'>>;
 }
 
 export interface IDatabaseFindOneById<TTransaction>
@@ -126,16 +129,24 @@ export interface IDatabaseFindOneById<TTransaction>
         IDatabaseFindMany<unknown, TTransaction>,
         'select' | 'join' | 'withDeleted' | 'transaction'
     > {
-    id: string;
+    where: { _id: Types.ObjectId };
 }
 
 export interface IDatabaseCreate<TEntity, TTransaction>
     extends Pick<IDatabaseFindMany<TEntity, TTransaction>, 'transaction'> {
     data: Omit<
         TEntity,
-        'id' | 'updatedAt' | 'updatedBy' | 'deletedAt' | 'deletedBy' | 'deleted'
+        | '_id'
+        | 'createdAt'
+        | 'createdBy'
+        | 'updatedAt'
+        | 'updatedBy'
+        | 'deletedAt'
+        | 'deletedBy'
+        | 'deleted'
+        | '__v'
     > & {
-        id?: string;
+        _id?: Types.ObjectId;
         createdAt?: Date;
         createdBy?: string;
     };
@@ -151,7 +162,7 @@ export interface IDatabaseUpdate<TEntity, TTransaction>
         | Partial<
               Omit<
                   TEntity,
-                  | 'id'
+                  | '_id'
                   | 'createdAt'
                   | 'createdBy'
                   | 'deletedAt'
@@ -213,7 +224,7 @@ export interface IDatabaseDeleteMany<TEntity, TTransaction>
 
 export interface IDatabaseSoftDelete<TEntity, TTransaction>
     extends Omit<IDatabaseDelete<TEntity, TTransaction>, 'withDeleted'> {
-    data: {
+    data?: {
         deletedAt?: Date;
         deletedBy?: string;
     };
@@ -221,7 +232,7 @@ export interface IDatabaseSoftDelete<TEntity, TTransaction>
 
 export interface IDatabaseRestore<TEntity, TTransaction>
     extends Omit<IDatabaseSoftDelete<TEntity, TTransaction>, 'data'> {
-    data: {
+    data?: {
         restoreBy?: string;
     };
 }

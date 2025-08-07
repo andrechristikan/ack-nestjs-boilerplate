@@ -14,7 +14,6 @@ import {
 } from '@modules/aws/dtos/request/aws.s3-presign.request.dto';
 import {
     IAwsS3DeleteDirOptions,
-    IAwsS3FileInfo,
     IAwsS3GetItemsOptions,
     IAwsS3MultipartOptions,
     IAwsS3Options,
@@ -24,7 +23,6 @@ import {
 } from '@modules/aws/interfaces/aws.interface';
 
 export interface IAwsS3Service {
-    getFileInfoFromKey(key: string): IAwsS3FileInfo;
     checkConnection(): Promise<boolean>;
     checkBucket(options?: IAwsS3Options): Promise<boolean>;
     checkItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto>;

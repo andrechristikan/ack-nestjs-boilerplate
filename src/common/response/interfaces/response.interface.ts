@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
-import { IDatabasePagination } from '@common/database/interfaces/database.interface';
 import { IFileSheet } from '@common/file/interfaces/file.interface';
+import { IDatabasePaginationReturn } from '@common/database/interfaces/database.interface';
 
 export interface IResponseMetadata {
     statusCode?: number;
@@ -25,7 +25,7 @@ export interface IResponseReturn<T = unknown> {
 }
 
 export interface IResponsePagingReturn<T>
-    extends Omit<IDatabasePagination<T>, 'items'> {
+    extends Omit<IDatabasePaginationReturn<T>, 'items'> {
     metadata?: IResponseMetadata;
     data: T[];
 }
