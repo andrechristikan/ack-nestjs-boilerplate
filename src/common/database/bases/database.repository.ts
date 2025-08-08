@@ -4,7 +4,6 @@ import {
     Model,
     PipelineStage,
     PopulateOptions,
-    QueryOptions,
     Types,
     UpdateQuery,
 } from 'mongoose';
@@ -666,6 +665,7 @@ export abstract class DatabaseRepositoryBase<
      * @returns An array of PopulateOptions configured for Mongoose populate, or undefined if no join is provided.
      */
     private _resolveJoin(join: IDatabaseJoin): PopulateOptions[] | undefined {
+        console.log('Resolving join configuration:', join);
         // TODO: COBA CHECK APAKAH JOIN BISA MENGGUNAKAN SCHEMA SECARA LANGSUNG
         // TODO: CHECK JOIN INTERFACE APAKAH BISA INHERIT DARI SCHEMA SECARA LANGSUNG DAN DETECTLY MENGGUNAKAN MODEL MENGGUNAKAN REF
 
@@ -677,79 +677,83 @@ export abstract class DatabaseRepositoryBase<
             return undefined;
         }
 
+        const availableModels = this._getAvailableModels();
+        console.log('model', this._model);
+        console.log('schema', this._model.schema);
+        console.log('availableModels', availableModels);
         const populateOptions: PopulateOptions[] = [];
 
-        for (const [path, joinDetail] of Object.entries(join)) {
-            if (!joinDetail || typeof joinDetail !== 'object') {
-                continue;
-            }
+        // for (const [path, joinDetail] of Object.entries(join)) {
+        //     if (!joinDetail || typeof joinDetail !== 'object') {
+        //         continue;
+        //     }
 
-            // Validate that the model exists
-            // TODO: VALIDATE MODEL DARI SCHEMA SECARA LANGSUNG
-            this._validateModel(joinDetail.from);
+        //     // Validate that the model exists
+        //     // TODO: VALIDATE MODEL DARI SCHEMA SECARA LANGSUNG
+        //     this._validateModel(joinDetail.from);
 
-            const populateOption: PopulateOptions = {
-                path,
-                localField: path,
-                foreignField: '_id',
-                model: joinDetail.from,
-                justOne: true, // TODO: CHECK DARI SCHEMA JIKA JOIN MULTIPLE ATAU TIDAK
-                strictPopulate: true,
-                ordered: true, // SAFETY RACK
-                forceRepopulate: true, // SAFETY RACK
-            };
+        //     const populateOption: PopulateOptions = {
+        //         path,
+        //         localField: path,
+        //         foreignField: '_id',
+        //         model: joinDetail.from,
+        //         justOne: true, // TODO: CHECK DARI SCHEMA JIKA JOIN MULTIPLE ATAU TIDAK
+        //         strictPopulate: true,
+        //         ordered: true, // SAFETY RACK
+        //         forceRepopulate: true, // SAFETY RACK
+        //     };
 
-            // Handle custom field mapping (localField/foreignField)
-            // TODO: CHECK JIKA JOIN DETAIL BISA MENGGUNAKAN SCHEMA SECARA LANGSUNG
-            if (joinDetail.on) {
-                populateOption.localField = joinDetail.on.localField;
-                populateOption.foreignField = joinDetail.on.foreignField;
-            }
+        //     // Handle custom field mapping (localField/foreignField)
+        //     // TODO: CHECK JIKA JOIN DETAIL BISA MENGGUNAKAN SCHEMA SECARA LANGSUNG
+        //     if (joinDetail.on) {
+        //         populateOption.localField = joinDetail.on.localField;
+        //         populateOption.foreignField = joinDetail.on.foreignField;
+        //     }
 
-            // Handle field selection
-            if (joinDetail.select) {
-                populateOption.select = joinDetail.select;
-            }
+        //     // Handle field selection
+        //     if (joinDetail.select) {
+        //         populateOption.select = joinDetail.select;
+        //     }
 
-            // Handle filtering conditions
-            if (joinDetail.where) {
-                populateOption.match = this._resolveWhere(
-                    joinDetail.where as IDatabaseFilter<TEntity>
-                );
-            }
+        //     // Handle filtering conditions
+        //     if (joinDetail.where) {
+        //         populateOption.match = this._resolveWhere(
+        //             joinDetail.where as IDatabaseFilter<TEntity>
+        //         );
+        //     }
 
-            const options: QueryOptions = {
-                lean: true,
-                strict: true,
-                ordered: true,
-            };
-            if (joinDetail.multiple && joinDetail.multiple.enabled) {
-                // TODO: CHECK DARI SCHEMA JIKA JOIN MULTIPLE ATAU TIDAK
-                populateOption.justOne = false;
+        //     const options: QueryOptions = {
+        //         lean: true,
+        //         strict: true,
+        //         ordered: true,
+        //     };
+        //     if (joinDetail.multiple && joinDetail.multiple.enabled) {
+        //         // TODO: CHECK DARI SCHEMA JIKA JOIN MULTIPLE ATAU TIDAK
+        //         populateOption.justOne = false;
 
-                if (joinDetail.multiple.limit !== undefined) {
-                    options.limit = joinDetail.multiple.limit;
-                }
+        //         if (joinDetail.multiple.limit !== undefined) {
+        //             options.limit = joinDetail.multiple.limit;
+        //         }
 
-                if (joinDetail.multiple.skip !== undefined) {
-                    options.skip = joinDetail.multiple.skip;
-                }
-            }
+        //         if (joinDetail.multiple.skip !== undefined) {
+        //             options.skip = joinDetail.multiple.skip;
+        //         }
+        //     }
 
-            if (Object.keys(options).length > 0) {
-                populateOption.options = options;
-            }
+        //     if (Object.keys(options).length > 0) {
+        //         populateOption.options = options;
+        //     }
 
-            // Handle nested joins recursively
-            if (joinDetail.join) {
-                const nestedPopulate = this._resolveJoin(joinDetail.join);
-                if (nestedPopulate && nestedPopulate.length > 0) {
-                    populateOption.populate = nestedPopulate;
-                }
-            }
+        //     // Handle nested joins recursively
+        //     if (joinDetail.join) {
+        //         const nestedPopulate = this._resolveJoin(joinDetail.join);
+        //         if (nestedPopulate && nestedPopulate.length > 0) {
+        //             populateOption.populate = nestedPopulate;
+        //         }
+        //     }
 
-            populateOptions.push(populateOption);
-        }
+        //     populateOptions.push(populateOption);
+        // }
 
         return populateOptions.length > 0 ? populateOptions : undefined;
     }

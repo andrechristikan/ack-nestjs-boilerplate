@@ -51,6 +51,8 @@ export interface IDocResponseOptions<T = unknown> {
     statusCode?: number;
     httpStatus?: HttpStatus;
     dto?: ClassConstructor<T>;
+    availableSearch?: string[];
+    availableOrder?: string[];
 }
 
 export interface IDocResponseFileOptions

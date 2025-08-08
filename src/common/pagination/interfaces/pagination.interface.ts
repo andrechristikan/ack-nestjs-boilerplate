@@ -1,7 +1,4 @@
-import {
-    IDatabaseOrder,
-    IDatabaseOrderDetail,
-} from '@common/database/interfaces/database.interface';
+import { IDatabaseOrderDetail } from '@common/database/interfaces/database.interface';
 import { ENUM_HELPER_DATE_DAY_OF } from '@common/helper/enums/helper.enum';
 import {
     ENUM_PAGINATION_FILTER_DATE_BETWEEN_TYPE,
@@ -22,18 +19,13 @@ export interface IPaginationQuery {
     orderBy: string;
     orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
     availableSearch: string[];
-    availableOrderBy: IPaginationQueryAvailableOrderBy;
+    availableOrderBy: string[];
 }
-
-export type IPaginationQueryAvailableOrderBy = Record<
-    string,
-    ENUM_PAGINATION_ORDER_DIRECTION_TYPE[]
->;
 
 export interface IPaginationQueryOptions {
     availableSearch?: string[];
     defaultPerPage?: number;
-    availableOrderBy?: IPaginationQueryAvailableOrderBy;
+    availableOrderBy?: string[];
 }
 
 export interface IPaginationQueryReturn {

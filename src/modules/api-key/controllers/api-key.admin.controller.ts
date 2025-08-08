@@ -24,7 +24,6 @@ import {
     API_KEY_DEFAULT_AVAILABLE_SEARCH,
     API_KEY_DEFAULT_TYPE,
 } from '@modules/api-key/constants/api-key.list.constant';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
@@ -44,7 +43,6 @@ import {
     ApiKeyAdminUpdateDateDoc,
     ApiKeyAdminUpdateDoc,
 } from '@modules/api-key/docs/api-key.admin.doc';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination.interface';
 import { IDatabaseFilterOperation } from '@common/database/interfaces/database.interface';
 import {
@@ -70,8 +68,8 @@ export class ApiKeyAdminController {
     // })
     // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     // @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
+    // @AuthJwtAccessProtected()
+    // @ApiKeyProtected()
     @Get('/list')
     async list(
         @PaginationQuery({
@@ -104,8 +102,8 @@ export class ApiKeyAdminController {
     // })
     // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     // @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
+    // @AuthJwtAccessProtected()
+    // @ApiKeyProtected()
     @Post('/create')
     async create(
         @Body() body: ApiKeyCreateRequestDto
@@ -126,8 +124,8 @@ export class ApiKeyAdminController {
     // })
     // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     // @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
+    // @AuthJwtAccessProtected()
+    // @ApiKeyProtected()
     @Patch('/update/:apiKey/reset')
     async reset(
         @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
@@ -149,8 +147,8 @@ export class ApiKeyAdminController {
     // })
     // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     // @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
+    // @AuthJwtAccessProtected()
+    // @ApiKeyProtected()
     @Put('/update/:apiKey')
     async update(
         @Body() body: ApiKeyUpdateRequestDto,
@@ -172,8 +170,8 @@ export class ApiKeyAdminController {
     // })
     // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     // @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
+    // @AuthJwtAccessProtected()
+    // @ApiKeyProtected()
     @Put('/update/:apiKey/date')
     async updateDate(
         @Body() body: ApiKeyUpdateDateRequestDto,
@@ -195,8 +193,8 @@ export class ApiKeyAdminController {
     // })
     // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     // @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
+    // @AuthJwtAccessProtected()
+    // @ApiKeyProtected()
     @Patch('/update/:apiKey/inactive')
     async inactive(
         @Param(
@@ -223,8 +221,8 @@ export class ApiKeyAdminController {
     // })
     // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     // @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
+    // @AuthJwtAccessProtected()
+    // @ApiKeyProtected()
     @Patch('/update/:apiKey/active')
     async active(
         @Param(
@@ -251,8 +249,8 @@ export class ApiKeyAdminController {
     // })
     // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     // @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
+    // @AuthJwtAccessProtected()
+    // @ApiKeyProtected()
     @Delete('/delete/:apiKey')
     async delete(
         @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)

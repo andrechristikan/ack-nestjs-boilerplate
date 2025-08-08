@@ -33,8 +33,8 @@ export class ApiKeyEntity extends DatabaseEntityBase {
         unique: true,
         index: true,
         trim: true,
-        maxlength: 50,
-        minlength: 50,
+        maxlength: 25,
+        minlength: 25,
     })
     key: string;
 

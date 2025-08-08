@@ -107,14 +107,6 @@ const STANDARD_ERROR_RESPONSES = {
  */
 const PAGINATION_QUERIES = [
     {
-        name: 'search',
-        required: false,
-        allowEmptyValue: true,
-        type: 'string',
-        description:
-            'Search will base on availableSearch with rule contains, and case insensitive',
-    },
-    {
         name: 'perPage',
         required: false,
         allowEmptyValue: true,
@@ -129,23 +121,6 @@ const PAGINATION_QUERIES = [
         example: 1,
         type: 'number',
         description: 'page number, max 20',
-    },
-    {
-        name: 'orderBy',
-        required: false,
-        allowEmptyValue: true,
-        example: 'createdAt',
-        type: 'string',
-        description: 'Order by base on metadata.availableOrderBy',
-    },
-    {
-        name: 'orderDirection',
-        required: false,
-        allowEmptyValue: true,
-        example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
-        enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-        type: 'string',
-        description: 'Order direction base on metadata.availableOrderDirection',
     },
 ] as const;
 
@@ -629,6 +604,7 @@ export function DocErrorGroup(docs: MethodDecorator[]): MethodDecorator {
  * Creates an API documentation decorator for paginated response endpoints.
  * This decorator automatically includes pagination query parameters and sets up the response schema
  * for paginated data with metadata about total count, current page, etc.
+ * It also supports optional search and ordering functionality.
  *
  * @template T - The type of the DTO class for the individual items in the paginated response
  * @param messagePath - The message path/key for internationalization
@@ -636,30 +612,23 @@ export function DocErrorGroup(docs: MethodDecorator[]): MethodDecorator {
  * @param options.httpStatus - The HTTP status code for the response (defaults to 200)
  * @param options.statusCode - The internal status code (defaults to httpStatus)
  * @param options.dto - DTO class for the individual items in the paginated response
+ * @param options.availableSearch - Optional array of field names that can be used for searching
+ * @param options.availableOrder - Optional array of field names that can be used for ordering
  * @returns A method decorator that applies Swagger paginated response documentation
  */
 export function DocResponsePaging<T>(
     messagePath: string,
     options: IDocResponseOptions<T>
 ): MethodDecorator {
-    const docs: IDocDefaultOptions = {
-        httpStatus: options?.httpStatus ?? HttpStatus.OK,
-        messagePath,
-        statusCode: options?.statusCode ?? options?.httpStatus ?? HttpStatus.OK,
-    };
-
-    if (options?.dto) {
-        docs.dto = options?.dto;
-    }
-
-    return applyDecorators(
+    const docs = [
         ApiProduces('application/json'),
         ...PAGINATION_QUERIES.map(query => ApiQuery(query)),
         ApiExtraModels(ResponsePagingDto),
-        ApiExtraModels(docs.dto),
+        ApiExtraModels(options.dto),
         ApiResponse({
-            description: docs.httpStatus.toString(),
-            status: docs.httpStatus,
+            description:
+                options.httpStatus?.toString() ?? HttpStatus.OK.toString(),
+            status: options.httpStatus ?? HttpStatus.OK,
             schema: {
                 allOf: [{ $ref: getSchemaPath(ResponsePagingDto) }],
                 properties: {
@@ -668,18 +637,60 @@ export function DocResponsePaging<T>(
                     },
                     statusCode: {
                         type: 'number',
-                        example: docs.statusCode,
+                        example:
+                            options.statusCode ??
+                            options.httpStatus ??
+                            HttpStatus.OK,
                     },
                     data: {
                         type: 'array',
                         items: {
-                            $ref: getSchemaPath(docs.dto),
+                            $ref: getSchemaPath(options.dto),
                         },
                     },
                 },
             },
-        })
-    );
+        }),
+    ];
+
+    if (options.availableSearch) {
+        docs.push(
+            ApiQuery({
+                name: 'search',
+                required: false,
+                allowEmptyValue: true,
+                type: 'string',
+                enum: options.availableSearch,
+                example: options.availableSearch[0],
+                description: `Search query, available fields: ${options.availableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
+            })
+        );
+    }
+
+    if (options.availableOrder) {
+        docs.push(
+            ApiQuery({
+                name: 'orderBy',
+                required: false,
+                allowEmptyValue: true,
+                example: options.availableOrder[0],
+                enum: options.availableOrder,
+                type: 'string',
+                description: `Order by field, available fields: ${options.availableOrder.join(', ')}.`,
+            }),
+            ApiQuery({
+                name: 'orderDirection',
+                required: false,
+                allowEmptyValue: true,
+                example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
+                enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+                type: 'string',
+                description: `Order direction, available values: ${Object.values(ENUM_PAGINATION_ORDER_DIRECTION_TYPE).join(', ')}.`,
+            })
+        );
+    }
+
+    return applyDecorators();
 }
 
 /**

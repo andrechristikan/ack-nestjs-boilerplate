@@ -16,7 +16,7 @@ export const ApiKeyDocQueryList = [
         required: false,
         type: 'string',
         example: Object.values(ENUM_API_KEY_TYPE).join(','),
-        description: "boolean value with ',' delimiter",
+        description: `enum value with ',' delimiter. Available values: ${Object.values(ENUM_API_KEY_TYPE).join(', ')}`,
     },
 ];
 

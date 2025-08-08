@@ -301,7 +301,7 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     createSecret(): string {
-        return this.helperService.randomString(35);
+        return this.helperService.randomString(50);
     }
     createHashApiKey(key: string, secret: string): string {
         return this.helperService.sha256Hash(`${key}:${secret}`);

@@ -9,22 +9,20 @@ import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import {
-    IPaginationQueryAvailableOrderBy,
-    IPaginationQueryReturn,
-} from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination.interface';
 import { ENUM_PAGINATION_STATUS_CODE_ERROR } from '@common/pagination/enums/pagination.status-code.enum';
 import { IDatabaseOrderDetail } from '@common/database/interfaces/database.interface';
 
 /**
  * Creates a pagination order pipe that validates and transforms ordering parameters.
- * This pipe validates orderBy fields against allowed fields and directions, throwing errors for invalid combinations.
+ * This pipe validates orderBy fields against allowed fields and ensures proper order direction.
+ * Throws errors for invalid field names or configurations.
  *
- * @param defaultAvailableOrder - Object defining allowed order fields and their permitted directions
+ * @param defaultAvailableOrder - Array of allowed field names that can be used for ordering
  * @returns A dynamically created pipe class that implements PipeTransform
  */
 export function PaginationOrderPipe(
-    defaultAvailableOrder?: IPaginationQueryAvailableOrderBy
+    defaultAvailableOrder?: string[]
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationOrderPipe implements PipeTransform {
@@ -32,12 +30,12 @@ export function PaginationOrderPipe(
 
         /**
          * Transforms and validates ordering parameters (orderBy and orderDirection).
-         * Validates that the orderBy field is allowed and the direction is permitted for that field.
-         * Throws UnprocessableEntityException if validation fails.
+         * Validates that the orderBy field is in the allowed list of fields.
+         * Returns pagination query object with or without order configuration based on validation.
          *
          * @param value - Input object containing orderBy, orderDirection and other pagination parameters
-         * @returns Promise resolving to pagination query object with order configuration
-         * @throws UnprocessableEntityException when orderBy field or direction is not allowed
+         * @returns Promise resolving to pagination query object with order configuration if valid
+         * @throws UnprocessableEntityException when orderBy field is not in the allowed list
          */
         async transform(
             value: {
@@ -48,7 +46,8 @@ export function PaginationOrderPipe(
             if (
                 !value.orderBy ||
                 !value.orderDirection ||
-                !defaultAvailableOrder
+                !defaultAvailableOrder ||
+                defaultAvailableOrder.length === 0
             ) {
                 return {
                     limit: value.limit,
@@ -62,12 +61,7 @@ export function PaginationOrderPipe(
                 value.orderDirection.trim() as ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
 
             // Validate if the orderBy is allowed
-            const orderByDirection = defaultAvailableOrder[finalOrderBy];
-            if (
-                !orderByDirection ||
-                orderByDirection.length === 0 ||
-                !orderByDirection.includes(finalOrderDirection)
-            ) {
+            if (!defaultAvailableOrder.includes(finalOrderBy)) {
                 throw new UnprocessableEntityException({
                     statusCode:
                         ENUM_PAGINATION_STATUS_CODE_ERROR.ORDER_BY_NOT_ALLOWED,
@@ -108,16 +102,16 @@ export function PaginationOrderPipe(
 
         /**
          * Adds ordering information to the request instance for later access.
-         * Stores the orderBy field, direction, and available ordering configuration in the request pagination metadata.
+         * Stores the orderBy field, direction, and available ordering fields in the request pagination metadata.
          *
          * @param orderBy - Field name to order by
          * @param orderDirection - Direction of ordering (ASC or DESC)
-         * @param availableOrderBy - Configuration object of allowed order fields and directions
+         * @param availableOrderBy - Array of allowed field names for ordering
          */
         addToRequestInstance(
             orderBy: string,
             orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-            availableOrderBy: IPaginationQueryAvailableOrderBy
+            availableOrderBy: string[]
         ): void {
             this.request.__pagination = {
                 ...this.request.__pagination,
