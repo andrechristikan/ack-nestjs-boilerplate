@@ -8,7 +8,8 @@ export const ApiKeyDocQueryList = [
         required: false,
         type: 'string',
         example: 'true,false',
-        description: "boolean value with ',' delimiter",
+        description:
+            "boolean value with ',' delimiter. Available values: true, false.",
     },
     {
         name: 'type',

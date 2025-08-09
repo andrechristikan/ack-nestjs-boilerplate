@@ -1,5 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty, IntersectionType, PartialType } from '@nestjs/swagger';
+import {
+    ApiProperty,
+    IntersectionType,
+    OmitType,
+    PartialType,
+} from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
@@ -20,7 +25,10 @@ export class ApiKeyCreateRequestDto extends IntersectionType(
     type: ENUM_API_KEY_TYPE;
 }
 
-export class ApiKeyCreateRawRequestDto extends ApiKeyCreateRequestDto {
+export class ApiKeyCreateRawRequestDto extends OmitType(
+    ApiKeyCreateRequestDto,
+    ['startDate', 'endDate'] as const
+) {
     @ApiProperty({
         name: 'key',
         example: faker.string.alphanumeric(10),

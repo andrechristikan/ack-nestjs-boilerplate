@@ -4,6 +4,7 @@ import { ApiKeyEntity } from '@modules/api-key/repository/entities/api-key.entit
 
 @Injectable()
 export class ApiKeyParsePipe implements PipeTransform {
+    // TODO: CHANGE THIS WITH USE CASES
     constructor(private readonly apiKeyService: ApiKeyService) {}
 
     async transform(value: string): Promise<ApiKeyEntity> {

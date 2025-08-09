@@ -6,6 +6,7 @@ import { ApiKeyEntity } from '@modules/api-key/repository/entities/api-key.entit
 export class ApiKeyIsActivePipe implements PipeTransform {
     private readonly isActive: boolean[];
 
+    // TODO: CHANGE THIS WITH USE CASES
     constructor(isActive: boolean[]) {
         this.isActive = isActive;
     }

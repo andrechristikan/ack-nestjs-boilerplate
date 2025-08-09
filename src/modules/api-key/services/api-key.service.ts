@@ -28,6 +28,7 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 import { Types } from 'mongoose';
 
+// TODO: MOVE SOME LOGIC TO USE CASES
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
     private readonly env: string;
@@ -70,11 +71,11 @@ export class ApiKeyService implements IApiKeyService {
         };
     }
 
-    mapList(apiKeys: Partial<ApiKeyEntity>[]): ApiKeyResponseDto[] {
+    mapList(apiKeys: ApiKeyEntity[]): ApiKeyResponseDto[] {
         return plainToInstance(ApiKeyResponseDto, apiKeys);
     }
 
-    mapOne(apiKey: Partial<ApiKeyEntity>): ApiKeyResponseDto {
+    mapOne(apiKey: ApiKeyEntity): ApiKeyResponseDto {
         return plainToInstance(ApiKeyResponseDto, apiKey);
     }
 
@@ -250,8 +251,8 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async reset(apiKey: ApiKeyEntity): Promise<ApiKeyCreateResponseDto> {
-        const secret: string = await this.createSecret();
-        const hash: string = await this.createHashApiKey(apiKey.key, secret);
+        const secret: string = this.createSecret();
+        const hash: string = this.createHashApiKey(apiKey.key, secret);
 
         const [updated] = await Promise.all([
             this.apiKeyRepository.update({

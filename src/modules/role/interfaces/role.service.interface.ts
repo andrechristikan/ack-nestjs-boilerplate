@@ -1,0 +1,19 @@
+import {
+    IDatabaseFilterOperation,
+    IDatabaseFilterOperationComparison,
+} from '@common/database/interfaces/database.interface';
+import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
+import { RoleEntity } from '@modules/role/repository/entities/role.entity';
+
+export interface IRoleService {
+    findAllWithPagination(
+        { search, limit, skip, order }: IPaginationQueryReturn,
+        isActive?: Record<string, IDatabaseFilterOperationComparison>,
+        type?: Record<string, IDatabaseFilterOperation>
+    ): Promise<IResponsePagingReturn<RoleListResponseDto>>;
+    mapList(roles: RoleEntity[]): RoleListResponseDto[];
+    mapOne(role: RoleEntity): RoleResponseDto;
+}

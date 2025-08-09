@@ -87,7 +87,7 @@ export interface IDatabaseJoinDetail {
 export type IDatabaseJoin = Record<string, IDatabaseJoinDetail>;
 
 export interface IDatabasePaginationReturn<TEntity> {
-    items: Partial<TEntity>[];
+    items: TEntity[];
     count: number;
     page: number;
     totalPage: number;

@@ -23,6 +23,7 @@ import {
     IDocRequestOptions,
     IDocResponseFileOptions,
     IDocResponseOptions,
+    IDocResponsePagingOptions,
 } from '@common/doc/interfaces/doc.interface';
 import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
@@ -618,7 +619,7 @@ export function DocErrorGroup(docs: MethodDecorator[]): MethodDecorator {
  */
 export function DocResponsePaging<T>(
     messagePath: string,
-    options: IDocResponseOptions<T>
+    options: IDocResponsePagingOptions<T>
 ): MethodDecorator {
     const docs = [
         ApiProduces('application/json'),

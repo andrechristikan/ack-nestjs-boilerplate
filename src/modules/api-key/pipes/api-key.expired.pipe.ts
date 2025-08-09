@@ -5,6 +5,7 @@ import { ApiKeyEntity } from '@modules/api-key/repository/entities/api-key.entit
 
 @Injectable()
 export class ApiKeyNotExpiredPipe implements PipeTransform {
+    // TODO: CHANGE THIS WITH USE CASES
     constructor(private readonly helperService: HelperService) {}
 
     async transform(value: ApiKeyEntity): Promise<ApiKeyEntity> {

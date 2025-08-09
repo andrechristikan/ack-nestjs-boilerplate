@@ -17,8 +17,8 @@ export interface IApiKeyService {
         isActive?: Record<string, IDatabaseFilterOperationComparison>,
         type?: Record<string, IDatabaseFilterOperation>
     ): Promise<IResponsePagingReturn<ApiKeyResponseDto>>;
-    mapList(apiKeys: Partial<ApiKeyEntity>[]): ApiKeyResponseDto[];
-    mapOne(apiKey: Partial<ApiKeyEntity>): ApiKeyResponseDto;
+    mapList(apiKeys: ApiKeyEntity[]): ApiKeyResponseDto[];
+    mapOne(apiKey: ApiKeyEntity): ApiKeyResponseDto;
     findOneByIdAndCache(id: string): Promise<ApiKeyEntity | undefined>;
     findOneActiveByKeyAndCache(key: string): Promise<ApiKeyEntity | undefined>;
     create({

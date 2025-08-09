@@ -249,7 +249,7 @@ export class LoggerOptionService {
         response: Response
     ) => Record<string, unknown> {
         return (response: Response) => {
-            // TODO: Add response body: statusCode, message, and errors. except data.
+            // TODO: Consider to add response body: statusCode, message, and errors. except data.
             return {
                 httpCode: response.statusCode,
                 headers: response.getHeaders(),

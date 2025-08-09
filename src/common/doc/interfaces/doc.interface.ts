@@ -51,6 +51,10 @@ export interface IDocResponseOptions<T = unknown> {
     statusCode?: number;
     httpStatus?: HttpStatus;
     dto?: ClassConstructor<T>;
+}
+
+export interface IDocResponsePagingOptions<T = unknown>
+    extends IDocResponseOptions<T> {
     availableSearch?: string[];
     availableOrder?: string[];
 }
