@@ -11,6 +11,7 @@ export interface IMessageSetOptions extends IMessageErrorOptions {
 }
 
 export interface IMessageValidationError {
+    key: string;
     property: string;
     message: string;
 }

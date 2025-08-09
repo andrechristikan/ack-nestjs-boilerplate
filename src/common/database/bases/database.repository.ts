@@ -138,18 +138,6 @@ export abstract class DatabaseRepositoryBase<
     }
 
     /**
-     * Validates that ID is a valid string.
-     * @private
-     * @param id - The ID to validate.
-     * @throws {Error} When ID is not a valid string.
-     */
-    private _validateId(id: unknown): void {
-        if (typeof id !== 'string' || (id as string).trim() === '') {
-            throw new Error('ID must be a non-empty string');
-        }
-    }
-
-    /**
      * Creates a new MongoDB ObjectId.
      * @private
      * @returns A new ObjectId instance.
@@ -348,9 +336,9 @@ export abstract class DatabaseRepositoryBase<
         }
 
         // Handle soft delete filtering
-        if (withDeleted === true) {
-            resolvedWhere.deleted = true;
-        } else if (withDeleted === false) {
+        if (withDeleted !== undefined || withDeleted === null) {
+            resolvedWhere.deleted = withDeleted;
+        } else {
             resolvedWhere.deleted = false;
         }
 
@@ -1004,7 +992,6 @@ export abstract class DatabaseRepositoryBase<
         transaction,
     }: IDatabaseFindOneById<TTransaction>): Promise<T | null> {
         this._validateCriteria(where, 'Where criteria');
-        this._validateId(where._id);
         this._validateSelect(select);
 
         const resolvedWhere = this._resolveWhere(

@@ -61,11 +61,4 @@ export class DatabaseDto {
         required: false,
     })
     deletedBy?: string;
-
-    @ApiProperty({
-        description: 'Version of the document',
-        example: 1,
-        required: true,
-    })
-    __v: string;
 }

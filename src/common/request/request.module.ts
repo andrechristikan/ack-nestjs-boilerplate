@@ -36,8 +36,19 @@ export class RequestModule {
                     useFactory: () =>
                         new ValidationPipe({
                             transform: true,
+                            skipMissingProperties: false,
+                            skipNullProperties: false,
                             skipUndefinedProperties: false,
-                            forbidUnknownValues: true,
+                            forbidUnknownValues: false,
+                            whitelist: true,
+                            forbidNonWhitelisted: true,
+                            transformOptions: {
+                                excludeExtraneousValues: false,
+                            },
+                            validationError: {
+                                target: false,
+                                value: true,
+                            },
                             errorHttpStatusCode:
                                 HttpStatus.UNPROCESSABLE_ENTITY,
                             exceptionFactory: async (

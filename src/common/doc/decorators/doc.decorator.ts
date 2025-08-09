@@ -97,7 +97,7 @@ const STANDARD_ERROR_RESPONSES = {
     VALIDATION_ERROR: DocDefault({
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
         statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
-        messagePath: 'request.validation',
+        messagePath: 'request.error.validation',
     }),
 } as const;
 
@@ -690,7 +690,7 @@ export function DocResponsePaging<T>(
         );
     }
 
-    return applyDecorators();
+    return applyDecorators(...docs);
 }
 
 /**

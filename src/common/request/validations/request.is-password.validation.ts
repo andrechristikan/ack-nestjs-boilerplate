@@ -58,12 +58,12 @@ export class IsPasswordConstraint implements ValidatorConstraintInterface {
      */
     defaultMessage(validationArguments?: ValidationArguments): string {
         if (!validationArguments?.value) {
-            return 'request.required';
+            return 'request.error.required';
         }
 
         // Return a generic password strength message
         // The actual strength level could be determined by additional logic if needed
-        return 'request.isPasswordStrong';
+        return 'request.error.isPasswordStrong';
     }
 }
 

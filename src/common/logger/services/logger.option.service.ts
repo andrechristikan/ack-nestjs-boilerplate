@@ -60,18 +60,18 @@ export class LoggerOptionService {
 
         return {
             pinoHttp: {
-                level: this.debugEnable ? this.debugLevel : 'silent',
                 formatters: {
                     log: this.createLogFormatter(),
                 },
                 messageKey: 'msg',
                 timestamp: false,
                 base: null,
+                transport:
+                    transports.length > 0 ? { targets: transports } : undefined,
+                level: this.debugEnable ? this.debugLevel : 'silent',
                 stream: this.createFileStream(rfs),
                 redact: this.createRedactionConfig(),
                 serializers: this.createSerializers(),
-                transport:
-                    transports.length > 0 ? { targets: transports } : undefined,
                 autoLogging: this.createAutoLoggingConfig(),
             },
         };
@@ -115,9 +115,11 @@ export class LoggerOptionService {
     /**
      * Creates a log formatter function that adds timestamp and application metadata.
      *
-     * @returns Log formatter function
+     * @returns Function that formats log objects with timestamp and application labels
      */
-    private createLogFormatter() {
+    private createLogFormatter(): (
+        object: Record<string, unknown>
+    ) => Record<string, unknown> {
         return (object: Record<string, unknown>) => {
             const today = this.helperService.dateCreate();
 
@@ -137,8 +139,8 @@ export class LoggerOptionService {
     /**
      * Creates a rotating file stream for log files if file logging is enabled.
      *
-     * @param rfs - The rotating-file-stream module
-     * @returns File stream or undefined if file logging is disabled
+     * @param rfs The rotating-file-stream module imported dynamically
+     * @returns RotatingFileStream instance if file logging is enabled, undefined otherwise
      */
     private createFileStream(
         rfs: typeof import('rotating-file-stream')
@@ -177,8 +179,8 @@ export class LoggerOptionService {
     /**
      * Maps sensitive fields to their full paths for redaction.
      *
-     * @param basePath - The base path (e.g., 'req.body', 'req.headers')
-     * @returns Array of full paths for sensitive fields
+     * @param basePath The base path for the sensitive fields (e.g., 'req.body', 'req.headers')
+     * @returns Array of complete paths for sensitive fields with proper bracket notation for fields containing hyphens
      */
     private mapSensitiveFieldPaths(basePath: string): string[] {
         return LOGGER_SENSITIVE_FIELDS.map(field =>
@@ -191,7 +193,7 @@ export class LoggerOptionService {
     /**
      * Creates custom serializers for request, response, and error objects.
      *
-     * @returns Object containing serializer functions
+     * @returns Object containing serializer functions for req, res, and err properties
      */
     private createSerializers(): {
         req: (request: IRequestApp) => Record<string, unknown>;
@@ -210,19 +212,12 @@ export class LoggerOptionService {
     /**
      * Creates a serializer function for HTTP request objects.
      *
-     * @returns Request serializer function
+     * @returns Function that serializes request objects with relevant HTTP and user information
      */
-    private createRequestSerializer() {
+    private createRequestSerializer(): (
+        request: IRequestApp
+    ) => Record<string, unknown> {
         return (request: IRequestApp) => {
-            const rawReq = Object.getOwnPropertySymbols(request).find(
-                sym => String(sym) === 'Symbol(pino-raw-req-ref)'
-            );
-
-            let body = {};
-            if (rawReq) {
-                body = request[rawReq].body;
-            }
-
             return {
                 id: request.id,
                 method: request.method,
@@ -232,7 +227,7 @@ export class LoggerOptionService {
                 parameters: request.params,
                 query: request.query,
                 headers: request.headers,
-                body,
+                body: request.body,
                 ip: request.ip,
                 user: (request.user as unknown as { userId: string })?.userId,
                 userAgent: request.headers['user-agent'],
@@ -248,38 +243,16 @@ export class LoggerOptionService {
     /**
      * Creates a serializer function for HTTP response objects.
      *
-     * @returns Response serializer function
+     * @returns Function that serializes response objects with status code and headers
      */
-    private createResponseSerializer() {
-        return (response: Response & { headers: Record<string, string> }) => {
-            let headers = {};
-
-            if (typeof response.getHeaders === 'function') {
-                // Express/Fastify Response object
-                headers = { ...response.getHeaders() };
-            } else if (response.headers) {
-                headers = { ...response.headers };
-            }
-
-            const rawRes = Object.getOwnPropertySymbols(response).find(
-                sym => String(sym) === 'Symbol(pino-raw-res-ref)'
-            );
-
-            let body: { data?: unknown } = {};
-            if (rawRes) {
-                try {
-                    body = JSON.parse(response[rawRes].body);
-                    // Delete body.data for privacy reasons
-                    delete body.data;
-                } catch {
-                    // Ignore parsing errors
-                }
-            }
-
+    private createResponseSerializer(): (
+        response: Response
+    ) => Record<string, unknown> {
+        return (response: Response) => {
+            // TODO: Add response body: statusCode, message, and errors. except data.
             return {
                 httpCode: response.statusCode,
-                headers,
-                body,
+                headers: response.getHeaders(),
             };
         };
     }
@@ -287,9 +260,9 @@ export class LoggerOptionService {
     /**
      * Creates a serializer function for error objects.
      *
-     * @returns Error serializer function
+     * @returns Function that serializes error objects with type, message, code, and stack trace
      */
-    private createErrorSerializer() {
+    private createErrorSerializer(): (error: Error) => Record<string, unknown> {
         return (error: Error) => ({
             type: error.name,
             message: error.message,
@@ -301,12 +274,12 @@ export class LoggerOptionService {
     /**
      * Creates auto-logging configuration based on application settings.
      *
-     * @returns Auto-logging configuration or boolean value
+     * @returns Auto-logging configuration object with ignore function if enabled, otherwise returns the autoLogger boolean value
      */
     private createAutoLoggingConfig():
         | { ignore: (req: IRequestApp) => boolean }
         | boolean {
-        return this.autoLogger
+        return this.autoLogger === true
             ? {
                   ignore: (req: IRequestApp) =>
                       this.helperService.checkUrlContainWildcard(
@@ -314,6 +287,6 @@ export class LoggerOptionService {
                           LOGGER_EXCLUDED_ROUTES
                       ),
               }
-            : this.autoLogger;
+            : false;
     }
 }

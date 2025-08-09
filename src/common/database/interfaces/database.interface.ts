@@ -149,7 +149,6 @@ export interface IDatabaseCreate<TEntity, TTransaction>
         | 'deletedAt'
         | 'deletedBy'
         | 'deleted'
-        | '__v'
     > & {
         _id?: Types.ObjectId;
         createdAt?: Date;

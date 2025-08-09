@@ -89,6 +89,8 @@ export class ApiKeyService implements IApiKeyService {
             });
         }
 
+        await this.setCacheByKey(apiKey.key, apiKey);
+
         return apiKey;
     }
 

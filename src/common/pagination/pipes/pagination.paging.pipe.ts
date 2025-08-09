@@ -11,10 +11,19 @@ import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination
 
 /**
  * Creates a pagination paging pipe that validates and transforms page and perPage parameters.
- * This pipe enforces pagination limits and calculates skip values for database queries.
  *
- * @param defaultPerPage - Default number of items per page when not specified
- * @returns A dynamically created pipe class that implements PipeTransform
+ * This factory function creates a dynamically scoped pipe that validates and enforces
+ * pagination limits for page numbers and items per page. It automatically calculates
+ * the skip value needed for database queries and stores pagination metadata in the request context.
+ * The pipe ensures that pagination parameters are within acceptable bounds and provides
+ * fallback values when parameters are invalid or missing.
+ *
+ * @param defaultPerPage - Default number of items per page when perPage is not specified
+ *                        or is invalid. Defaults to PAGINATION_DEFAULT_PER_PAGE constant.
+ *                        Must be a positive number within the allowed limits.
+ *
+ * @returns A dynamically created pipe class that implements PipeTransform interface.
+ *         The returned class is request-scoped and has access to the current request context.
  */
 export function PaginationPagingPipe(
     defaultPerPage: number = PAGINATION_DEFAULT_PER_PAGE
@@ -24,11 +33,24 @@ export function PaginationPagingPipe(
         constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
         /**
-         * Transforms and validates pagination parameters (page and perPage).
-         * Enforces minimum and maximum limits, calculates skip value for database queries.
+         * Transforms and validates pagination parameters from the query string.
          *
-         * @param value - Input object containing page, perPage and other pagination parameters
-         * @returns Promise resolving to pagination query object with validated parameters
+         * This method processes page and perPage parameters, enforcing minimum and maximum
+         * limits defined by the pagination constants. It ensures that page numbers are
+         * within valid bounds and perPage values don't exceed system limits. The method
+         * calculates the skip value needed for database offset operations and stores
+         * all pagination metadata in the request context for later access.
+         *
+         * @param value - Input object containing pagination parameters including:
+         *               - page: Optional page number (1-based). Can be number or string.
+         *               - perPage: Optional items per page count. Can be number or string.
+         *               - Other pagination parameters that will be passed through.
+         *
+         * @returns Promise resolving to pagination query object with validated and transformed
+         *         parameters. The returned object includes:
+         *         - limit: Validated perPage value for database queries
+         *         - skip: Calculated offset value for database pagination
+         *         - All original parameters from the input value
          */
         async transform(
             value: {
@@ -55,20 +77,29 @@ export function PaginationPagingPipe(
             this.addToRequestInstance(finalPage, finalPerPage, skip);
 
             return {
-                limit: finalPage,
+                ...value,
+                limit: finalPerPage,
                 skip: skip,
-                search: value.search,
-                order: value.order,
             };
         }
 
         /**
          * Adds pagination information to the request instance for later access.
-         * Stores the page number, items per page, and skip value in the request pagination metadata.
          *
-         * @param page - Current page number
-         * @param perPage - Number of items per page
-         * @param skip - Number of items to skip for database query
+         * Stores the validated pagination parameters in the request's pagination metadata
+         * object (__pagination). This allows other parts of the application to access
+         * the pagination information without having to re-validate or re-calculate the values.
+         * The information is stored in the request scope and is available throughout
+         * the request lifecycle for logging, response headers, or other processing needs.
+         *
+         * @param page - The validated and bounded page number (1-based indexing).
+         *              This value has been enforced to be within PAGINATION_DEFAULT_MAX_PAGE limits.
+         * @param perPage - The validated number of items per page.
+         *                 This value has been enforced to be within PAGINATION_DEFAULT_MAX_PER_PAGE limits.
+         * @param skip - The calculated number of items to skip for database offset queries.
+         *              Computed as (page - 1) * perPage for proper database pagination.
+         *
+         * @returns void - This method modifies the request object in place.
          */
         addToRequestInstance(
             page: number,

@@ -95,9 +95,8 @@ export class DatabaseOptionService implements IDatabaseOptionService {
                 return;
             }
 
-            this.logger.log(
-                `${collectionName}.${method}`,
-                JSON.stringify(methodArgs)
+            this.logger.debug(
+                `${collectionName}.${method} - ${JSON.stringify(methodArgs)}`
             );
         });
     }

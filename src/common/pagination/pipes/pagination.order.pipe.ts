@@ -15,11 +15,17 @@ import { IDatabaseOrderDetail } from '@common/database/interfaces/database.inter
 
 /**
  * Creates a pagination order pipe that validates and transforms ordering parameters.
- * This pipe validates orderBy fields against allowed fields and ensures proper order direction.
- * Throws errors for invalid field names or configurations.
  *
- * @param defaultAvailableOrder - Array of allowed field names that can be used for ordering
- * @returns A dynamically created pipe class that implements PipeTransform
+ * This factory function creates a dynamically scoped pipe that validates orderBy fields
+ * against a predefined list of allowed fields and ensures proper order direction.
+ * The pipe integrates with the request context to store ordering metadata for later access.
+ *
+ * @param defaultAvailableOrder - Array of allowed field names that can be used for ordering.
+ *                               If not provided or empty, the pipe will skip validation
+ *                               and return the original value without order configuration.
+ *
+ * @returns A dynamically created pipe class that implements PipeTransform interface.
+ *         The returned class is request-scoped and has access to the current request context.
  */
 export function PaginationOrderPipe(
     defaultAvailableOrder?: string[]
@@ -29,13 +35,26 @@ export function PaginationOrderPipe(
         constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
         /**
-         * Transforms and validates ordering parameters (orderBy and orderDirection).
-         * Validates that the orderBy field is in the allowed list of fields.
-         * Returns pagination query object with or without order configuration based on validation.
+         * Transforms and validates ordering parameters from the query string.
          *
-         * @param value - Input object containing orderBy, orderDirection and other pagination parameters
-         * @returns Promise resolving to pagination query object with order configuration if valid
-         * @throws UnprocessableEntityException when orderBy field is not in the allowed list
+         * This method validates that the orderBy field is included in the allowed list of fields
+         * and processes the orderDirection parameter. If validation passes, it adds the ordering
+         * information to the request context and returns an enhanced query object with order configuration.
+         *
+         * @param value - Input object containing pagination parameters including:
+         *               - orderBy: Optional field name to order by
+         *               - orderDirection: Optional direction (ASC or DESC)
+         *               - Other pagination parameters (limit, offset, etc.)
+         *
+         * @returns Promise resolving to pagination query object. If orderBy validation passes,
+         *         the returned object includes an 'order' property with database ordering configuration.
+         *         If orderBy is not provided, not allowed, or defaultAvailableOrder is empty,
+         *         returns the original value without order configuration.
+         *
+         * @throws UnprocessableEntityException when orderBy field is provided but not included
+         *        in the defaultAvailableOrder array. The exception includes:
+         *        - statusCode: ENUM_PAGINATION_STATUS_CODE_ERROR.ORDER_BY_NOT_ALLOWED
+         *        - message: 'pagination.error.orderByNotAllowed'
          */
         async transform(
             value: {
@@ -49,11 +68,7 @@ export function PaginationOrderPipe(
                 !defaultAvailableOrder ||
                 defaultAvailableOrder.length === 0
             ) {
-                return {
-                    limit: value.limit,
-                    skip: value.skip,
-                    search: value.search,
-                };
+                return value;
             }
 
             const finalOrderBy = value.orderBy.trim();
@@ -76,20 +91,25 @@ export function PaginationOrderPipe(
             );
 
             return {
+                ...value,
                 order: this.buildOrderObject(finalOrderBy, finalOrderDirection),
-                limit: value.limit,
-                skip: value.skip,
-                search: value.search,
             };
         }
 
         /**
          * Builds a database order object from field name and direction.
-         * Creates a simple key-value object for database ordering operations.
          *
-         * @param field - Field name to order by
-         * @param orderDirection - Direction of ordering (ASC or DESC)
-         * @returns Database order object with field and direction
+         * Creates a simple key-value object that can be used directly with database
+         * query builders for ordering operations. The resulting object follows the
+         * standard database ordering format where the key is the field name and
+         * the value is the direction.
+         *
+         * @param field - The database field name to order by. Should be a valid column name.
+         * @param orderDirection - Direction of ordering, either 'ASC' for ascending
+         *                        or 'DESC' for descending order.
+         *
+         * @returns Database order object with the field as key and direction as value.
+         *         The object implements IDatabaseOrderDetail interface.
          */
         buildOrderObject(
             field: string,
@@ -102,11 +122,22 @@ export function PaginationOrderPipe(
 
         /**
          * Adds ordering information to the request instance for later access.
-         * Stores the orderBy field, direction, and available ordering fields in the request pagination metadata.
          *
-         * @param orderBy - Field name to order by
-         * @param orderDirection - Direction of ordering (ASC or DESC)
-         * @param availableOrderBy - Array of allowed field names for ordering
+         * Stores the validated ordering parameters in the request's pagination metadata
+         * object (__pagination). This allows other parts of the application to access
+         * the ordering information without having to re-validate or re-parse the parameters.
+         * The information is stored in the request scope and is available throughout
+         * the request lifecycle.
+         *
+         * @param orderBy - The validated field name that will be used for ordering.
+         *                 This field has already been validated against availableOrderBy.
+         * @param orderDirection - The direction of ordering ('ASC' or 'DESC').
+         *                        This value has been trimmed and validated.
+         * @param availableOrderBy - Array of all allowed field names for ordering.
+         *                          This provides context about what fields are valid
+         *                          for the current endpoint.
+         *
+         * @returns void - This method modifies the request object in place.
          */
         addToRequestInstance(
             orderBy: string,

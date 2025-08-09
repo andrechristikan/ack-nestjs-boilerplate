@@ -52,6 +52,7 @@ export function InjectDatabaseModel(
 export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {
     return Schema({
         ...options,
+        versionKey: false,
         timestamps: {
             createdAt: 'createdAt',
             updatedAt: 'updatedAt',

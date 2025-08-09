@@ -169,7 +169,7 @@ export class HelperService implements IHelperService {
         if (!valid) {
             return {
                 validated: false,
-                messagePath: 'request.email.invalid',
+                messagePath: 'request.error.email.invalid',
             };
         }
 
@@ -177,7 +177,7 @@ export class HelperService implements IHelperService {
         if (atSymbolCount !== 1) {
             return {
                 validated: false,
-                messagePath: 'request.email.multipleAtSymbols',
+                messagePath: 'request.error.email.multipleAtSymbols',
             };
         }
 
@@ -187,22 +187,22 @@ export class HelperService implements IHelperService {
         if (!domain || domain.length > 63) {
             return {
                 validated: false,
-                messagePath: 'request.email.domainLength',
+                messagePath: 'request.error.email.domainLength',
             };
         } else if (domain.startsWith('-') || domain.endsWith('-')) {
             return {
                 validated: false,
-                messagePath: 'request.email.domainDash',
+                messagePath: 'request.error.email.domainDash',
             };
         } else if (domain.startsWith('.') || domain.endsWith('.')) {
             return {
                 validated: false,
-                messagePath: 'request.email.domainDot',
+                messagePath: 'request.error.email.domainDot',
             };
         } else if (domain.includes('..')) {
             return {
                 validated: false,
-                messagePath: 'request.email.domainConsecutiveDots',
+                messagePath: 'request.error.email.domainConsecutiveDots',
             };
         }
 
@@ -210,7 +210,7 @@ export class HelperService implements IHelperService {
         if (domainLabels.length < 2) {
             return {
                 validated: false,
-                messagePath: 'request.email.domainFormat',
+                messagePath: 'request.error.email.domainFormat',
             };
         }
 
@@ -218,17 +218,17 @@ export class HelperService implements IHelperService {
             if (label.length === 0) {
                 return {
                     validated: false,
-                    messagePath: 'request.email.domainEmptyLabel',
+                    messagePath: 'request.error.email.domainEmptyLabel',
                 };
             } else if (label.length > 63) {
                 return {
                     validated: false,
-                    messagePath: 'request.email.domainLabelLength',
+                    messagePath: 'request.error.email.domainLabelLength',
                 };
             } else if (label.startsWith('-') || label.endsWith('-')) {
                 return {
                     validated: false,
-                    messagePath: 'request.email.domainLabelDash',
+                    messagePath: 'request.error.email.domainLabelDash',
                 };
             }
 
@@ -236,7 +236,7 @@ export class HelperService implements IHelperService {
             if (!validLabelChars.test(label)) {
                 return {
                     validated: false,
-                    messagePath: 'request.email.domainInvalidChars',
+                    messagePath: 'request.error.email.domainInvalidChars',
                 };
             }
         }
@@ -246,7 +246,7 @@ export class HelperService implements IHelperService {
         if (!validTLD.test(tld)) {
             return {
                 validated: false,
-                messagePath: 'request.email.invalidTLD',
+                messagePath: 'request.error.email.invalidTLD',
             };
         }
 
@@ -254,22 +254,22 @@ export class HelperService implements IHelperService {
         if (!localPart || localPart.length === 0) {
             return {
                 validated: false,
-                messagePath: 'request.email.localPartNotEmpty',
+                messagePath: 'request.error.email.localPartNotEmpty',
             };
         } else if (localPart.length > 64) {
             return {
                 validated: false,
-                messagePath: 'request.email.localPartMaxLength',
+                messagePath: 'request.error.email.localPartMaxLength',
             };
         } else if (localPart.startsWith('.') || localPart.endsWith('.')) {
             return {
                 validated: false,
-                messagePath: 'request.email.localPartDot',
+                messagePath: 'request.error.email.localPartDot',
             };
         } else if (localPart.includes('..')) {
             return {
                 validated: false,
-                messagePath: 'request.email.consecutiveDots',
+                messagePath: 'request.error.email.consecutiveDots',
             };
         }
 
@@ -277,7 +277,7 @@ export class HelperService implements IHelperService {
         if (!allowedLocalPartChars.test(localPart)) {
             return {
                 validated: false,
-                messagePath: 'request.email.invalidChars',
+                messagePath: 'request.error.email.invalidChars',
             };
         }
 

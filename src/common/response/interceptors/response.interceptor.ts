@@ -86,7 +86,7 @@ export class ResponseInterceptor<T> implements NestInterceptor {
                     if (responseData) {
                         const { metadata: responseMetadata } = responseData;
 
-                        data = responseData.data;
+                        data = responseData.data ?? undefined;
                         httpStatus = responseMetadata?.httpStatus ?? httpStatus;
                         statusCode = responseMetadata?.statusCode ?? statusCode;
                         messagePath =

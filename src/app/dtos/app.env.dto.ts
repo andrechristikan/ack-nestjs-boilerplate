@@ -84,6 +84,11 @@ export class AppEnvDto {
     @IsBoolean()
     @IsNotEmpty()
     @Type(() => Boolean)
+    DEBUG_AUTO_LOGGER: boolean;
+
+    @IsBoolean()
+    @IsNotEmpty()
+    @Type(() => Boolean)
     DEBUG_PRETTIER: boolean;
 
     @IsString()

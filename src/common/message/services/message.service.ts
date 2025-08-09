@@ -92,16 +92,14 @@ export class MessageService implements IMessageService {
             }
 
             for (const constraint of constraints) {
-                const message = this.createValidationMessage(
-                    constraint,
-                    property,
-                    error.value,
-                    options
+                messages.push(
+                    this.createValidationMessage(
+                        constraint,
+                        error.value,
+                        property,
+                        options
+                    )
                 );
-                messages.push({
-                    property,
-                    message,
-                });
             }
         }
 
@@ -165,26 +163,36 @@ export class MessageService implements IMessageService {
     }
 
     /**
-     * Creates a localized validation message for a specific constraint.
+     * Creates a localized validation message object for a specific validation constraint.
+     * This method constructs a complete validation error message by combining the constraint name,
+     * failed value, property path, and localized message text from the i18n system.
      *
-     * @param constraint - The validation constraint name
-     * @param property - The property path that failed validation
-     * @param value - The value that failed validation
-     * @param options - Optional configuration including custom language preference
-     * @returns The formatted localized validation message
+     * @param constraint - The validation constraint identifier (e.g., 'isNotEmpty', 'isEmail', 'minLength')
+     * @param value - The actual value that failed validation, can be of any type
+     * @param property - The full property path that failed validation (e.g., 'user.email', 'profile.name').
+     *                   If nested, only the last segment will be used in the message properties
+     * @param options - Optional configuration object containing custom language preferences
+     * @param options.customLanguage - Custom language code to override the default language
+     * @returns A structured validation error object containing the constraint key, property path, and localized message
      */
     private createValidationMessage(
         constraint: string,
-        property: string,
         value: unknown,
+        property?: string,
         options?: IMessageErrorOptions
-    ): string {
-        return this.setMessage(`request.${constraint}`, {
+    ): IMessageValidationError {
+        const message = this.setMessage(`request.error.${constraint}`, {
             customLanguage: options?.customLanguage,
             properties: {
-                property: property.split('.').pop(),
+                property: property?.split('.').pop(),
                 value: value as string | number,
             },
         });
+
+        return {
+            key: constraint,
+            property: property ?? 'Unknown',
+            message,
+        };
     }
 }

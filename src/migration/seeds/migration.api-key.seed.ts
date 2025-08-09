@@ -3,11 +3,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
 import { ApiKeyRepository } from '@modules/api-key/repository/repositories/api-key.repository';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class MigrationApiKeySeed {
     private readonly logger = new Logger(MigrationApiKeySeed.name);
 
+    private readonly env: ENUM_APP_ENVIRONMENT;
     private readonly apiKeyDefaultKey: string = 'fyFGb7ywyM37TqDY8nuhAmGW5';
     private readonly apiKeyDefaultSecret: string =
         'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP';
@@ -17,8 +20,11 @@ export class MigrationApiKeySeed {
 
     constructor(
         private readonly apiKeyRepository: ApiKeyRepository,
-        private readonly apiKeyService: ApiKeyService
-    ) {}
+        private readonly apiKeyService: ApiKeyService,
+        private readonly configService: ConfigService
+    ) {
+        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+    }
 
     @Command({
         command: 'seed:apikey',
@@ -27,10 +33,12 @@ export class MigrationApiKeySeed {
     async seeds(): Promise<void> {
         this.logger.log('Seeding Api Keys...');
 
+        const apiKeyDefault = `${this.env}_${this.apiKeyDefaultKey}`;
+        const apiKeySystem = `${this.env}_${this.apiKeySystemKey}`;
         const existingApiKeys = await this.apiKeyRepository.findMany({
             where: {
                 key: {
-                    in: [this.apiKeyDefaultKey, this.apiKeySystemKey],
+                    in: [apiKeyDefault, apiKeySystem],
                 },
             },
             select: {
@@ -44,11 +52,11 @@ export class MigrationApiKeySeed {
 
         const [apiKeyDefaultHash, apiKeySystemHash] = await Promise.all([
             this.apiKeyService.createHashApiKey(
-                this.apiKeyDefaultKey,
+                apiKeyDefault,
                 this.apiKeyDefaultSecret
             ),
             this.apiKeyService.createHashApiKey(
-                this.apiKeySystemKey,
+                apiKeySystem,
                 this.apiKeySystemSecret
             ),
         ]);
@@ -58,14 +66,14 @@ export class MigrationApiKeySeed {
                 {
                     description: 'Api Key Default Migration',
                     type: ENUM_API_KEY_TYPE.DEFAULT,
-                    key: this.apiKeyDefaultKey,
+                    key: apiKeyDefault,
                     hash: apiKeyDefaultHash,
                     isActive: true,
                 },
                 {
                     description: 'Api Key System Migration',
                     type: ENUM_API_KEY_TYPE.SYSTEM,
-                    key: this.apiKeySystemKey,
+                    key: apiKeySystem,
                     hash: apiKeySystemHash,
                     isActive: true,
                 },
@@ -82,12 +90,18 @@ export class MigrationApiKeySeed {
         describe: 'remove apikeys',
     })
     async remove(): Promise<void> {
+        const apiKeyDefault = `${this.env}_${this.apiKeyDefaultKey}`;
+        const apiKeySystem = `${this.env}_${this.apiKeySystemKey}`;
+
+        await this.apiKeyService.deleteCacheByKey(apiKeyDefault);
+        await this.apiKeyService.deleteCacheByKey(apiKeySystem);
         await this.apiKeyRepository.deleteMany({
             where: {
                 key: {
-                    in: [this.apiKeyDefaultKey, this.apiKeySystemKey],
+                    in: [apiKeyDefault, apiKeySystem],
                 },
             },
+            withDeleted: true,
         });
 
         return;

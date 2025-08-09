@@ -60,13 +60,13 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
      */
     defaultMessage(validationArguments?: ValidationArguments): string {
         if (!validationArguments?.value) {
-            return 'request.email.required';
+            return 'request.error.email.required';
         }
 
         const validationResult = this.helperService.checkEmail(
             validationArguments.value
         );
-        return validationResult.messagePath || 'request.email.invalid';
+        return validationResult.messagePath || 'request.error.email.invalid';
     }
 
     /**

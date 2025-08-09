@@ -21,7 +21,7 @@ export default registerAs(
         level: process.env.DEBUG_LEVEL ?? 'debug',
         intoFile: process.env.DEBUG_INTO_FILE === 'true',
         filePath: '/logs',
-        autoLogger: false,
+        autoLogger: process.env.DEBUG_AUTO_LOGGER === 'true',
         prettier: process.env.DEBUG_PRETTIER === 'true',
         sentry: {
             dsn: process.env.SENTRY_DSN,

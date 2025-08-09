@@ -8,7 +8,7 @@ export class RequestValidationException extends Error {
     readonly errors: ValidationError[];
 
     constructor(errors: ValidationError[]) {
-        super('request.validation');
+        super('request.error.validation');
 
         this.errors = errors;
     }
