@@ -13,6 +13,7 @@ import {
 } from '@modules/role/constants/role.doc.constant';
 import { ROLE_DEFAULT_AVAILABLE_SEARCH } from '@modules/role/constants/role.list.constant';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
@@ -77,60 +78,64 @@ export function RoleAdminCreateDoc(): MethodDecorator {
     );
 }
 
-// export function RoleAdminActiveDoc(): MethodDecorator {
-//     return applyDecorators(
-//         Doc({
-//             summary: 'make role be active',
-//         }),
-//         DocRequest({
-//             params: RoleDocParamsId,
-//         }),
-//         DocAuth({
-//             xApiKey: true,
-//             jwtAccessToken: true,
-//         }),
-//         DocGuard({ role: true, policy: true }),
-//         DocResponse('role.active')
-//     );
-// }
+export function RoleAdminUpdateDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'update data a role',
+        }),
+        DocRequest({
+            params: RoleDocParamsId,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: RoleUpdateRequestDto,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse<RoleResponseDto>('role.update', {
+            dto: RoleResponseDto,
+        })
+    );
+}
 
-// export function RoleAdminInactiveDoc(): MethodDecorator {
-//     return applyDecorators(
-//         Doc({
-//             summary: 'make role be inactive',
-//         }),
-//         DocRequest({
-//             params: RoleDocParamsId,
-//         }),
-//         DocAuth({
-//             xApiKey: true,
-//             jwtAccessToken: true,
-//         }),
-//         DocGuard({ role: true, policy: true }),
-//         DocResponse('role.inactive')
-//     );
-// }
+export function RoleAdminActiveDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'make role be active',
+        }),
+        DocRequest({
+            params: RoleDocParamsId,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('role.active', {
+            dto: RoleResponseDto,
+        })
+    );
+}
 
-// export function RoleAdminUpdateDoc(): MethodDecorator {
-//     return applyDecorators(
-//         Doc({
-//             summary: 'update data a role',
-//         }),
-//         DocRequest({
-//             params: RoleDocParamsId,
-//             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-//             dto: RoleUpdateRequestDto,
-//         }),
-//         DocAuth({
-//             xApiKey: true,
-//             jwtAccessToken: true,
-//         }),
-//         DocGuard({ role: true, policy: true }),
-//         DocResponse<DatabaseIdResponseDto>('role.update', {
-//             dto: DatabaseIdResponseDto,
-//         })
-//     );
-// }
+export function RoleAdminInactiveDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'make role be inactive',
+        }),
+        DocRequest({
+            params: RoleDocParamsId,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('role.inactive', {
+            dto: RoleResponseDto,
+        })
+    );
+}
 
 // export function RoleAdminDeleteDoc(): MethodDecorator {
 //     return applyDecorators(

@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 
-export const RoleDocQueryList = [
+export const RoleDocQueryActiveList = [
     {
         name: 'isActive',
         allowEmptyValue: true,
@@ -11,6 +11,10 @@ export const RoleDocQueryList = [
         description:
             "boolean value with ',' delimiter. Available values: true, false.",
     },
+];
+
+export const RoleDocQueryList = [
+    ...RoleDocQueryActiveList,
     {
         name: 'type',
         allowEmptyValue: true,

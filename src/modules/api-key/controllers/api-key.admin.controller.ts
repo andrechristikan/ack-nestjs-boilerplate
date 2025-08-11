@@ -94,11 +94,7 @@ export class ApiKeyAdminController {
         type?: Record<string, IDatabaseFilterOperation>
     ): Promise<IResponsePagingReturn<ApiKeyResponseDto>> {
         const results: IResponsePagingReturn<ApiKeyResponseDto> =
-            await this.apiKeyService.findAllWithPagination(
-                pagination,
-                isActive,
-                type
-            );
+            await this.apiKeyService.getList(pagination, isActive, type);
 
         return results;
     }

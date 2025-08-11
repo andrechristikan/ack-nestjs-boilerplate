@@ -48,7 +48,7 @@ export class ApiKeyService implements IApiKeyService {
         )!;
     }
 
-    async findAllWithPagination(
+    async getList(
         { search, limit, skip, order }: IPaginationQueryReturn,
         isActive?: Record<string, IDatabaseFilterOperationComparison>,
         type?: Record<string, IDatabaseFilterOperation>
@@ -82,9 +82,7 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async findOneByIdAndCache(_id: string): Promise<ApiKeyEntity> {
-        const apiKey = await this.apiKeyRepository.findOneById({
-            where: { _id: new Types.ObjectId(_id) },
-        });
+        const apiKey = await this.apiKeyRepository.findOneByObjectId(_id);
         if (!apiKey) {
             throw new NotFoundException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
@@ -93,7 +91,6 @@ export class ApiKeyService implements IApiKeyService {
         }
 
         await this.setCacheByKey(apiKey.key, apiKey);
-
         return apiKey;
     }
 
@@ -105,11 +102,7 @@ export class ApiKeyService implements IApiKeyService {
             return cached;
         }
 
-        const apiKey = await this.apiKeyRepository.findOne({
-            where: {
-                key,
-            },
-        });
+        const apiKey = await this.apiKeyRepository.findOneByKey(key);
         if (apiKey) {
             await this.setCacheByKey(key, apiKey);
         }
@@ -150,13 +143,10 @@ export class ApiKeyService implements IApiKeyService {
         return { _id: created._id, key: created.key, secret };
     }
 
-    async active(apiKeyId: string): Promise<ApiKeyResponseDto> {
+    async active(_id: string): Promise<ApiKeyResponseDto> {
         const today = this.helperService.dateCreate();
-        const apiKey: ApiKeyEntity = await this.apiKeyRepository.findOneById({
-            where: {
-                _id: new Types.ObjectId(apiKeyId),
-            },
-        });
+        const apiKey: ApiKeyEntity =
+            await this.apiKeyRepository.findOneByObjectId(_id);
         if (!apiKey) {
             throw new NotFoundException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
@@ -194,12 +184,9 @@ export class ApiKeyService implements IApiKeyService {
         return this.mapOne(updated);
     }
 
-    async inactive(apiKeyId: string): Promise<ApiKeyResponseDto> {
-        const apiKey: ApiKeyEntity = await this.apiKeyRepository.findOneById({
-            where: {
-                _id: new Types.ObjectId(apiKeyId),
-            },
-        });
+    async inactive(_id: string): Promise<ApiKeyResponseDto> {
+        const apiKey: ApiKeyEntity =
+            await this.apiKeyRepository.findOneByObjectId(_id);
         if (!apiKey) {
             throw new NotFoundException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
@@ -228,14 +215,11 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async update(
-        apiKeyId: string,
+        _id: string,
         { description }: ApiKeyUpdateRequestDto
     ): Promise<ApiKeyResponseDto> {
-        const apiKey: ApiKeyEntity = await this.apiKeyRepository.findOneById({
-            where: {
-                _id: new Types.ObjectId(apiKeyId),
-            },
-        });
+        const apiKey: ApiKeyEntity =
+            await this.apiKeyRepository.findOneByObjectId(_id);
         if (!apiKey) {
             throw new NotFoundException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
@@ -264,14 +248,11 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async updateDate(
-        apiKeyId: string,
+        _id: string,
         { startDate, endDate }: ApiKeyUpdateDateRequestDto
     ): Promise<ApiKeyResponseDto> {
-        const apiKey: ApiKeyEntity = await this.apiKeyRepository.findOneById({
-            where: {
-                _id: new Types.ObjectId(apiKeyId),
-            },
-        });
+        const apiKey: ApiKeyEntity =
+            await this.apiKeyRepository.findOneByObjectId(_id);
         if (!apiKey) {
             throw new NotFoundException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
@@ -304,12 +285,9 @@ export class ApiKeyService implements IApiKeyService {
         return this.mapOne(updated);
     }
 
-    async reset(apiKeyId: string): Promise<ApiKeyCreateResponseDto> {
-        const apiKey: ApiKeyEntity = await this.apiKeyRepository.findOneById({
-            where: {
-                _id: new Types.ObjectId(apiKeyId),
-            },
-        });
+    async reset(_id: string): Promise<ApiKeyCreateResponseDto> {
+        const apiKey: ApiKeyEntity =
+            await this.apiKeyRepository.findOneByObjectId(_id);
         if (!apiKey) {
             throw new NotFoundException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
@@ -340,12 +318,9 @@ export class ApiKeyService implements IApiKeyService {
         return { _id: updated._id, key: updated.key, secret };
     }
 
-    async delete(apiKeyId: string): Promise<ApiKeyResponseDto> {
-        const apiKey: ApiKeyEntity = await this.apiKeyRepository.findOneById({
-            where: {
-                _id: new Types.ObjectId(apiKeyId),
-            },
-        });
+    async delete(_id: string): Promise<ApiKeyResponseDto> {
+        const apiKey: ApiKeyEntity =
+            await this.apiKeyRepository.findOneByObjectId(_id);
         if (!apiKey) {
             throw new NotFoundException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,

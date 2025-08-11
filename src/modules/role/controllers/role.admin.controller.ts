@@ -36,17 +36,15 @@ import {
     ROLE_DEFAULT_IS_ACTIVE,
     ROLE_DEFAULT_ROLE_TYPE,
 } from '@modules/role/constants/role.list.constant';
-import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleIsActivePipe } from '@modules/role/pipes/role.is-active.pipe';
-import { RoleParsePipe } from '@modules/role/pipes/role.parse.pipe';
 import { RoleService } from '@modules/role/services/role.service';
-import { RoleIsUsedPipe } from '@modules/role/pipes/role.is-used.pipe';
 import {
+    RoleAdminActiveDoc,
     RoleAdminCreateDoc,
     RoleAdminGetDoc,
+    RoleAdminInactiveDoc,
     RoleAdminListDoc,
+    RoleAdminUpdateDoc,
 } from '@modules/role/docs/role.admin.doc';
 import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination.interface';
 import { IDatabaseFilterOperation } from '@common/database/interfaces/database.interface';
@@ -56,6 +54,9 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { RoleEntity } from '@modules/role/repository/entities/role.entity';
 import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
+import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { RequestObjectIdPipe } from '@common/request/pipes/requiest.object-id.pipe';
+import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 
 @ApiTags('modules.admin.role')
 @Controller({
@@ -90,11 +91,7 @@ export class RoleAdminController {
         type?: Record<string, IDatabaseFilterOperation>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
         const results: IResponsePagingReturn<RoleListResponseDto> =
-            await this.roleService.findAllWithPagination(
-                pagination,
-                isActive,
-                type
-            );
+            await this.roleService.getList(pagination, isActive, type);
 
         return results;
     }
@@ -111,12 +108,12 @@ export class RoleAdminController {
     @ApiKeyProtected()
     @Get('/get/:role')
     async get(
-        @Param('role', RequestRequiredPipe, RoleParsePipe)
-        role: RoleEntity
+        @Param('role', RequestRequiredPipe, RequestObjectIdPipe)
+        roleId: string
     ): Promise<IResponseReturn<RoleResponseDto>> {
-        const mapRole: RoleResponseDto = this.roleService.mapOne(role);
+        const role: RoleResponseDto = await this.roleService.getOne(roleId);
 
-        return { data: mapRole };
+        return { data: role };
     }
 
     @RoleAdminCreateDoc()
@@ -132,101 +129,79 @@ export class RoleAdminController {
     @Post('/create')
     async create(
         @Body()
-        { name, description, type, permissions }: RoleCreateRequestDto
+        body: RoleCreateRequestDto
     ): Promise<IResponseReturn<RoleResponseDto>> {
-        const exist: boolean = await this.roleService.existByName(name);
-        if (exist) {
-            throw new ConflictException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.EXIST,
-                message: 'role.error.exist',
-            });
-        }
-
-        const create = await this.roleService.create({
-            name,
-            description,
-            type,
-            permissions,
-        });
+        const data = await this.roleService.create(body);
 
         return {
-            data: { _id: create._id },
+            data,
         };
     }
 
-    // @RoleAdminUpdateDoc()
-    // @Response('role.update')
-    // @PolicyAbilityProtected({
-    //     subject: ENUM_POLICY_SUBJECT.ROLE,
-    //     action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    // })
-    // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected()
-    // @AuthJwtAccessProtected()
-    // @ApiKeyProtected()
-    // @Put('/update/:role')
-    // async update(
-    //     @Param('role', RequestRequiredPipe, RoleParsePipe) role: RoleDoc,
-    //     @Body()
-    //     { description, permissions, type }: RoleUpdateRequestDto
-    // ): Promise<IResponse<DatabaseIdResponseDto>> {
-    //     await this.roleService.update(role, { description, permissions, type });
+    @RoleAdminUpdateDoc()
+    @Response('role.update')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    // @UserProtected(). // TODO: Resolve this
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Put('/update/:role')
+    async update(
+        @Param('role', RequestRequiredPipe, RequestObjectIdPipe) roleId: string,
+        @Body()
+        body: RoleUpdateRequestDto
+    ): Promise<IResponseReturn<RoleResponseDto>> {
+        const data = await this.roleService.update(roleId, body);
 
-    //     return {
-    //         data: { _id: role._id },
-    //     };
-    // }
+        return {
+            data,
+        };
+    }
 
-    // @RoleAdminInactiveDoc()
-    // @Response('role.inactive')
-    // @PolicyAbilityProtected({
-    //     subject: ENUM_POLICY_SUBJECT.ROLE,
-    //     action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    // })
-    // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected()
-    // @AuthJwtAccessProtected()
-    // @ApiKeyProtected()
-    // @Patch('/update/:role/inactive')
-    // async inactive(
-    //     @Param(
-    //         'role',
-    //         RequestRequiredPipe,
-    //         RoleParsePipe,
-    //         new RoleIsActivePipe([true])
-    //     )
-    //     role: RoleDoc
-    // ): Promise<void> {
-    //     await this.roleService.inactive(role);
+    @RoleAdminActiveDoc()
+    @Response('role.active')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    // @UserProtected(). // TODO: Resolve this
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/update/:role/active')
+    async active(
+        @Param('role', RequestRequiredPipe, RequestObjectIdPipe)
+        roleId: string
+    ): Promise<IResponseReturn<RoleResponseDto>> {
+        await this.roleService.active(roleId);
 
-    //     return;
-    // }
+        return;
+    }
 
-    // @RoleAdminActiveDoc()
-    // @Response('role.active')
-    // @PolicyAbilityProtected({
-    //     subject: ENUM_POLICY_SUBJECT.ROLE,
-    //     action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    // })
-    // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected()
-    // @AuthJwtAccessProtected()
-    // @ApiKeyProtected()
-    // @Patch('/update/:role/active')
-    // async active(
-    //     @Param(
-    //         'role',
-    //         RequestRequiredPipe,
-    //         RoleParsePipe,
-    //         new RoleIsActivePipe([false])
-    //     )
-    //     role: RoleDoc
-    // ): Promise<void> {
-    //     await this.roleService.active(role);
+    @RoleAdminInactiveDoc()
+    @Response('role.inactive')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    // @UserProtected(). // TODO: Resolve this
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/update/:role/inactive')
+    async inactive(
+        @Param('role', RequestRequiredPipe, RequestObjectIdPipe)
+        roleId: string
+    ): Promise<IResponseReturn<RoleResponseDto>> {
+        await this.roleService.inactive(roleId);
 
-    //     return;
-    // }
+        return;
+    }
 
+    // TODO: RESOLVE THIS AFTER USER MODULE IS READY
     // @RoleAdminDeleteDoc()
     // @Response('role.delete')
     // @PolicyAbilityProtected({

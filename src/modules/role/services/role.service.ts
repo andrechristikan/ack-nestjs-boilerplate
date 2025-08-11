@@ -4,19 +4,27 @@ import {
 } from '@common/database/interfaces/database.interface';
 import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { IRoleService } from '@modules/role/interfaces/role.service.interface';
 import { RoleEntity } from '@modules/role/repository/entities/role.entity';
 import { RoleRepository } from '@modules/role/repository/repositories/role.repository';
-import { Injectable } from '@nestjs/common';
+import {
+    BadRequestException,
+    ConflictException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class RoleService implements IRoleService {
     constructor(private readonly roleRepository: RoleRepository) {}
 
-    async findAllWithPagination(
+    async getList(
         { search, limit, skip, order }: IPaginationQueryReturn,
         isActive?: Record<string, IDatabaseFilterOperationComparison>,
         type?: Record<string, IDatabaseFilterOperation>
@@ -41,6 +49,30 @@ export class RoleService implements IRoleService {
         };
     }
 
+    async getActiveList(
+        { search, limit, skip, order }: IPaginationQueryReturn,
+        type?: Record<string, IDatabaseFilterOperation>
+    ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
+        const { items, ...others } =
+            await this.roleRepository.findManyWithPagination({
+                where: {
+                    ...search,
+                    ...type,
+                    isActive: true,
+                },
+                limit: limit,
+                skip: skip,
+                order: order,
+            });
+
+        const roles: RoleListResponseDto[] = this.mapList(items);
+
+        return {
+            data: roles,
+            ...others,
+        };
+    }
+
     mapList(roles: RoleEntity[]): RoleListResponseDto[] {
         return plainToInstance(RoleListResponseDto, roles);
     }
@@ -49,207 +81,102 @@ export class RoleService implements IRoleService {
         return plainToInstance(RoleResponseDto, role);
     }
 
-    // TODO: RESOLVE THIS
-    // async findAll(
-    //     find?: Record<string, any>,
-    //     options?: IDatabaseFindAllOptions
-    // ): Promise<RoleDoc[]> {
-    //     return this.roleRepository.findAll(find, options);
-    // }
+    async getOne(_id: string): Promise<RoleResponseDto> {
+        const role: RoleEntity =
+            await this.roleRepository.findOneByObjectId(_id);
+        if (!role) {
+            throw new ConflictException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'role.error.notFound',
+            });
+        }
 
-    // async getTotal(
-    //     find?: Record<string, any>,
-    //     options?: IDatabaseGetTotalOptions
-    // ): Promise<number> {
-    //     return this.roleRepository.getTotal(find, options);
-    // }
+        return this.mapOne(role);
+    }
 
-    // async findAllActive(
-    //     find?: Record<string, any>,
-    //     options?: IDatabaseFindAllOptions
-    // ): Promise<RoleDoc[]> {
-    //     return this.roleRepository.findAll(
-    //         { ...find, isActive: true },
-    //         options
-    //     );
-    // }
+    async create({
+        name,
+        permissions,
+        type,
+        description,
+    }: RoleCreateRequestDto): Promise<RoleResponseDto> {
+        const exist = await this.roleRepository.existByName(name);
+        if (exist) {
+            throw new ConflictException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.EXIST,
+                message: 'role.error.exist',
+            });
+        }
 
-    // async getTotalActive(
-    //     find?: Record<string, any>,
-    //     options?: IDatabaseGetTotalOptions
-    // ): Promise<number> {
-    //     return this.roleRepository.getTotal(
-    //         { ...find, isActive: true },
-    //         options
-    //     );
-    // }
+        const create = await this.roleRepository.create({
+            data: { name, description, type, permissions, isActive: true },
+        });
 
-    // async findAllActiveByType(
-    //     type: ENUM_POLICY_ROLE_TYPE,
-    //     options?: IDatabaseFindAllOptions
-    // ): Promise<RoleDoc[]> {
-    //     return this.roleRepository.findAll({ type, isActive: true }, options);
-    // }
+        const mapRole: RoleResponseDto = this.mapOne(create);
+        return mapRole;
+    }
 
-    // async findAllByTypes(
-    //     types: ENUM_POLICY_ROLE_TYPE[],
-    //     options?: IDatabaseFindAllOptions
-    // ): Promise<RoleDoc[]> {
-    //     return this.roleRepository.findAll(
-    //         this.databaseService.filterIn('type', types),
-    //         options
-    //     );
-    // }
+    async update(
+        _id: string,
+        { permissions, type, description }: RoleUpdateRequestDto
+    ): Promise<RoleResponseDto> {
+        const role = await this.roleRepository.findOneByObjectId(_id);
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'role.error.notFound',
+            });
+        }
 
-    // async findOneById(
-    //     _id: string,
-    //     options?: IDatabaseFindOneOptions
-    // ): Promise<RoleDoc> {
-    //     return this.roleRepository.findOneById(_id, options);
-    // }
+        const update = await this.roleRepository.update({
+            where: { _id: role._id },
+            data: { permissions, type, description },
+        });
 
-    // async findOne(
-    //     find: Record<string, any>,
-    //     options?: IDatabaseFindOneOptions
-    // ): Promise<RoleDoc> {
-    //     return this.roleRepository.findOne(find, options);
-    // }
+        return this.mapOne(update);
+    }
 
-    // async findOneByName(
-    //     name: string,
-    //     options?: IDatabaseFindOneOptions
-    // ): Promise<RoleDoc> {
-    //     return this.roleRepository.findOne(
-    //         DatabaseHelperQueryContain('name', name, { fullWord: true }),
-    //         options
-    //     );
-    // }
+    async active(_id: string): Promise<RoleResponseDto> {
+        const role = await this.roleRepository.findOneByObjectId(_id);
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'role.error.notFound',
+            });
+        } else if (role.isActive) {
+            throw new BadRequestException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ACTIVE_ALREADY,
+                message: 'role.error.activeAlready',
+            });
+        }
 
-    // async findOneActiveById(
-    //     _id: string,
-    //     options?: IDatabaseFindOneOptions
-    // ): Promise<RoleDoc> {
-    //     return this.roleRepository.findOne({ _id, isActive: true }, options);
-    // }
+        const updated = await this.roleRepository.update({
+            where: { _id: role._id },
+            data: { isActive: true },
+        });
 
-    // async existByName(
-    //     name: string,
-    //     options?: IDatabaseExistsOptions
-    // ): Promise<boolean> {
-    //     return this.roleRepository.exists(
-    //         DatabaseHelperQueryContain('name', name, { fullWord: true }),
-    //         options
-    //     );
-    // }
+        return this.mapOne(updated);
+    }
 
-    // async create(
-    //     { name, description, type, permissions }: RoleCreateRequestDto,
-    //     options?: IDatabaseCreateOptions
-    // ): Promise<RoleDoc> {
-    //     const create: RoleEntity = new RoleEntity();
-    //     create.name = name;
-    //     create.description = description;
-    //     create.type = type;
-    //     create.permissions = permissions;
-    //     create.isActive = true;
+    async inactive(_id: string): Promise<RoleResponseDto> {
+        const role = await this.roleRepository.findOneByObjectId(_id);
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'role.error.notFound',
+            });
+        } else if (!role.isActive) {
+            throw new BadRequestException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_ALREADY,
+                message: 'role.error.inactiveAlready',
+            });
+        }
 
-    //     return this.roleRepository.create<RoleEntity>(create, options);
-    // }
+        const updated = await this.roleRepository.update({
+            where: { _id: role._id },
+            data: { isActive: false },
+        });
 
-    // async update(
-    //     repository: RoleDoc,
-    //     { permissions, type, description }: RoleUpdateRequestDto,
-    //     options?: IDatabaseSaveOptions
-    // ): Promise<RoleDoc> {
-    //     repository.description = description;
-    //     repository.type = type;
-    //     repository.permissions = permissions;
-
-    //     return this.roleRepository.save(repository, options);
-    // }
-
-    // async active(
-    //     repository: RoleDoc,
-    //     options?: IDatabaseSaveOptions
-    // ): Promise<RoleDoc> {
-    //     repository.isActive = true;
-
-    //     return this.roleRepository.save(repository, options);
-    // }
-
-    // async inactive(
-    //     repository: RoleDoc,
-    //     options?: IDatabaseSaveOptions
-    // ): Promise<RoleDoc> {
-    //     repository.isActive = false;
-
-    //     return this.roleRepository.save(repository, options);
-    // }
-
-    // async delete(
-    //     repository: RoleDoc,
-    //     options?: IDatabaseDeleteOptions
-    // ): Promise<boolean> {
-    //     await this.roleRepository.delete(
-    //         {
-    //             _id: repository._id,
-    //         },
-    //         options
-    //     );
-
-    //     return true;
-    // }
-
-    // async deleteMany(
-    //     find?: Record<string, any>,
-    //     options?: IDatabaseDeleteManyOptions
-    // ): Promise<boolean> {
-    //     await this.roleRepository.deleteMany(find, options);
-
-    //     return true;
-    // }
-
-    // async createMany(
-    //     data: RoleCreateRequestDto[],
-    //     options?: IDatabaseCreateManyOptions
-    // ): Promise<boolean> {
-    //     const create: RoleEntity[] = data.map(({ type, name, permissions }) => {
-    //         const entity: RoleEntity = new RoleEntity();
-    //         entity.type = type;
-    //         entity.isActive = true;
-    //         entity.name = name;
-    //         entity.permissions = permissions;
-
-    //         return entity;
-    //     }) as RoleEntity[];
-
-    //     await this.roleRepository.createMany<RoleEntity>(create, options);
-
-    //     return true;
-    // }
-
-    // mapList(roles: RoleDoc[] | RoleEntity[]): RoleListResponseDto[] {
-    //     return plainToInstance(
-    //         RoleListResponseDto,
-    //         roles.map((e: RoleDoc | RoleEntity) =>
-    //             e instanceof Document ? e.toObject() : e
-    //         )
-    //     );
-    // }
-
-    // mapGet(role: RoleDoc | RoleEntity): RoleGetResponseDto {
-    //     return plainToInstance(
-    //         RoleGetResponseDto,
-    //         role instanceof Document ? role.toObject() : role
-    //     );
-    // }
-
-    // mapShort(roles: RoleDoc[] | RoleEntity[]): RoleShortResponseDto[] {
-    //     return plainToInstance(
-    //         RoleShortResponseDto,
-    //         roles.map((e: RoleDoc | RoleEntity) =>
-    //             e instanceof Document ? e.toObject() : e
-    //         )
-    //     );
-    // }
+        return this.mapOne(updated);
+    }
 }

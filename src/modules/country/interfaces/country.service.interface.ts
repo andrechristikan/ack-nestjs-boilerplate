@@ -13,4 +13,6 @@ export interface ICountryService {
         IResponsePagingReturn<CountryResponseDto>
     >;
     mapList(countries: CountryEntity[]): CountryResponseDto[];
+    mapOne(country: CountryEntity): CountryResponseDto;
+    findByAlpha2Code(alpha2Code: string): Promise<CountryEntity>;
 }

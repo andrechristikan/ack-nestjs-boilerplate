@@ -12,4 +12,12 @@ export class CountryRepository extends DatabaseRepositoryBase<CountryEntity> {
     ) {
         super(countryModel);
     }
+
+    async findOneByAlpha2Code(
+        alpha2Code: string
+    ): Promise<CountryEntity | null> {
+        return this.findOne({
+            where: { alpha2Code },
+        });
+    }
 }

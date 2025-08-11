@@ -48,8 +48,13 @@ export class RoleEntity extends DatabaseEntityBase {
     })
     type: ENUM_POLICY_ROLE_TYPE;
 
-    @DatabaseProp([RolePermissionSchema])
+    @DatabaseProp({
+        schema: [RolePermissionSchema],
+    })
     permissions: RolePermissionEntity[];
+
+    // TODO: ADD USERS
+    // users: any
 }
 
 export const RoleSchema = DatabaseSchema(RoleEntity);

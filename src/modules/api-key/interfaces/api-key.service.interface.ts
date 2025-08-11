@@ -14,7 +14,7 @@ import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
 import { ApiKeyEntity } from '@modules/api-key/repository/entities/api-key.entity';
 
 export interface IApiKeyService {
-    findAllWithPagination(
+    getList(
         { search, limit, skip, order }: IPaginationQueryReturn,
         isActive?: Record<string, IDatabaseFilterOperationComparison>,
         type?: Record<string, IDatabaseFilterOperation>
