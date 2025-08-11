@@ -19,9 +19,9 @@ import {
 } from '@common/response/dtos/response.dto';
 import { ConfigService } from '@nestjs/config';
 import { HelperService } from '@common/helper/services/helper.service';
-import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 /**
  * Global response interceptor that standardizes HTTP response format
@@ -130,7 +130,7 @@ export class ResponseInterceptor<T> implements NestInterceptor {
         const today = this.helperService.dateCreate();
         const xLanguage: string =
             request.__language ??
-            this.configService.get<ENUM_APP_LANGUAGE>('message.language');
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
         const xVersion =
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');

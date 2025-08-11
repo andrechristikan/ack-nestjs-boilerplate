@@ -4,22 +4,30 @@ import bodyParser from 'body-parser';
 import { ConfigService } from '@nestjs/config';
 
 /**
- * Unified body parser middleware that handles all body types.
+ * Unified body parser middleware that handles multiple content types with intelligent parsing.
  *
- * @description It intelligently detects the content-type and applies the appropriate parser.
- * This prevents conflicts and improves performance by only parsing the relevant content-type.
- * The maximum file sizes are configurable through the application configuration.
+ * This middleware automatically detects the incoming request's content-type header and applies
+ * the appropriate body parser from the body-parser library. It supports JSON, URL-encoded forms,
+ * text content, multipart data, and binary streams with configurable size limits for each type.
+ * The middleware prevents parsing conflicts by only processing relevant content types and
+ * gracefully handles requests with unknown or missing content-type headers.
  *
- * Behavior:
- * - `application/json` → JSON parser
- * - `application/x-www-form-urlencoded` → URL-encoded parser
- * - `text/*` → Text parser
- * - `application/octet-stream`, `multipart/*` → Raw parser
- * - No content-type or empty content-type → Skip parsing (pass through)
- * - Unknown content-types → Skip parsing (pass through)
+ * Supported content types and their corresponding parsers:
+ * - `application/json` → JSON parser with configurable size limit
+ * - `application/x-www-form-urlencoded` → URL-encoded parser for form submissions
+ * - `text/*` → Text parser for plain text content
+ * - `multipart/*` → Raw parser for multipart form data and file uploads
+ * - `application/octet-stream` → Raw parser for binary data streams
+ * - Unknown or missing content-type → Passes through without parsing
+ *
+ * All size limits are configurable through the application's middleware configuration
+ * and help prevent memory exhaustion from oversized request payloads.
+ *
+ * @implements {NestMiddleware} - NestJS middleware interface for request processing
+ * @see {@link https://www.npmjs.com/package/body-parser} - Body-parser library documentation
  */
 @Injectable()
-export class AppBodyParserMiddleware implements NestMiddleware {
+export class RequestBodyParserMiddleware implements NestMiddleware {
     private readonly jsonLimit: number;
     private readonly textLimit: number;
     private readonly rawLimit: number;
@@ -28,19 +36,19 @@ export class AppBodyParserMiddleware implements NestMiddleware {
 
     constructor(private readonly configService: ConfigService) {
         this.jsonLimit = this.configService.get<number>(
-            'middleware.body.json.limit'
+            'request.middleware.body.json.limit'
         );
         this.textLimit = this.configService.get<number>(
-            'middleware.body.text.limit'
+            'request.middleware.body.text.limit'
         );
         this.rawLimit = this.configService.get<number>(
-            'middleware.body.raw.limit'
+            'request.middleware.body.raw.limit'
         );
         this.urlencodedLimit = this.configService.get<number>(
-            'middleware.body.urlencoded.limit'
+            'request.middleware.body.urlencoded.limit'
         );
         this.applicationOctetStreamLimit = this.configService.get<number>(
-            'middleware.body.applicationOctetStream.limit'
+            'request.middleware.body.applicationOctetStream.limit'
         );
     }
 

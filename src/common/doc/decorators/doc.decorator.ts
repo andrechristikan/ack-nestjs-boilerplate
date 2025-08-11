@@ -36,8 +36,8 @@ import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.stat
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
-import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
 import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 /**
  * Helper function to create a schema object with consistent structure
@@ -312,8 +312,8 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 description: 'Custom language header',
                 required: false,
                 schema: {
-                    default: ENUM_APP_LANGUAGE.EN,
-                    example: ENUM_APP_LANGUAGE.EN,
+                    default: ENUM_MESSAGE_LANGUAGE.EN,
+                    example: ENUM_MESSAGE_LANGUAGE.EN,
                     type: 'string',
                 },
             },

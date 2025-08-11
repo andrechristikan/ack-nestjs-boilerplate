@@ -1,14 +1,4 @@
-import {
-    Body,
-    ConflictException,
-    Controller,
-    Delete,
-    Get,
-    Param,
-    Patch,
-    Post,
-    Put,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
     PaginationQuery,
@@ -33,7 +23,6 @@ import {
 } from '@modules/policy/decorators/policy.decorator';
 import {
     ROLE_DEFAULT_AVAILABLE_SEARCH,
-    ROLE_DEFAULT_IS_ACTIVE,
     ROLE_DEFAULT_ROLE_TYPE,
 } from '@modules/role/constants/role.list.constant';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
@@ -52,7 +41,6 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { RoleEntity } from '@modules/role/repository/entities/role.entity';
 import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RequestObjectIdPipe } from '@common/request/pipes/requiest.object-id.pipe';

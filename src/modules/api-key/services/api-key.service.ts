@@ -27,7 +27,6 @@ import {
 } from '@common/database/interfaces/database.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
-import { Types } from 'mongoose';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';

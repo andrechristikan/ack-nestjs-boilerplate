@@ -46,7 +46,6 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { ApiKeyEntity } from '@modules/api-key/repository/entities/api-key.entity';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     ENUM_POLICY_ACTION,

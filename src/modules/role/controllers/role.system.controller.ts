@@ -1,7 +1,6 @@
 import { IDatabaseFilterOperation } from '@common/database/interfaces/database.interface';
 import {
     PaginationQuery,
-    PaginationQueryFilterInBoolean,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination.interface';

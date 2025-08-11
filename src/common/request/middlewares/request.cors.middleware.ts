@@ -20,20 +20,20 @@ import { ConfigService } from '@nestjs/config';
  * @see {@link CorsOptions} CORS library options interface
  */
 @Injectable()
-export class AppCorsMiddleware implements NestMiddleware {
+export class RequestCorsMiddleware implements NestMiddleware {
     private readonly allowOrigin: string | boolean | string[];
     private readonly allowMethod: string[];
     private readonly allowHeader: string[];
 
     constructor(private readonly configService: ConfigService) {
         this.allowOrigin = this.configService.get<string | boolean | string[]>(
-            'middleware.cors.allowOrigin'
+            'request.middleware.cors.allowOrigin'
         );
         this.allowMethod = this.configService.get<string[]>(
-            'middleware.cors.allowMethod'
+            'request.middleware.cors.allowMethod'
         );
         this.allowHeader = this.configService.get<string[]>(
-            'middleware.cors.allowHeader'
+            'request.middleware.cors.allowHeader'
         );
     }
 

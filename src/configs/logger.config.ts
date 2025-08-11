@@ -6,7 +6,7 @@ export interface IConfigDebug {
     level: string;
     intoFile: boolean;
     filePath: string;
-    autoLogger: boolean;
+    auto: boolean;
     prettier: boolean;
     sentry: {
         dsn?: string;
@@ -15,14 +15,14 @@ export interface IConfigDebug {
 }
 
 export default registerAs(
-    'debug',
+    'logger',
     (): IConfigDebug => ({
-        enable: process.env.DEBUG_ENABLE === 'true',
-        level: process.env.DEBUG_LEVEL ?? 'debug',
-        intoFile: process.env.DEBUG_INTO_FILE === 'true',
+        enable: process.env.LOGGER_ENABLE === 'true',
+        level: process.env.LOGGER_LEVEL ?? 'debug',
+        intoFile: process.env.LOGGER_INTO_FILE === 'true',
         filePath: '/logs',
-        autoLogger: process.env.DEBUG_AUTO_LOGGER === 'true',
-        prettier: process.env.DEBUG_PRETTIER === 'true',
+        auto: process.env.LOGGER_AUTO === 'true',
+        prettier: process.env.LOGGER_PRETTIER === 'true',
         sentry: {
             dsn: process.env.SENTRY_DSN,
             timeout: ms('10s'),

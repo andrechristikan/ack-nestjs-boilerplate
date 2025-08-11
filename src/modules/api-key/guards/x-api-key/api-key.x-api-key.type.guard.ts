@@ -1,13 +1,7 @@
-import {
-    BadRequestException,
-    CanActivate,
-    ExecutionContext,
-    Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { API_KEY_X_TYPE_META_KEY } from '@modules/api-key/constants/api-key.constant';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
 import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 

@@ -9,7 +9,7 @@ import { MessageService } from '@common/message/services/message.service';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
 import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
-import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 /**
  * AppValidationImportFilter is an exception filter that handles excel file import validation errors
@@ -36,7 +36,7 @@ export class AppValidationImportFilter implements ExceptionFilter {
         const today = this.helperService.dateCreate();
         const xLanguage: string =
             request.__language ??
-            this.configService.get<ENUM_APP_LANGUAGE>('message.language');
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
         const xTimestamp = this.helperService.dateGetTimestamp(today);
         const xTimezone = this.helperService.dateGetZone(today);
         const xVersion =

@@ -10,7 +10,7 @@ import {
     IMessageValidationImportErrorParam,
 } from '@common/message/interfaces/message.interface';
 import { IMessageService } from '@common/message/interfaces/message.service.interface';
-import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 /**
  * Service responsible for handling internationalization and message formatting.
@@ -19,20 +19,18 @@ import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
  */
 @Injectable()
 export class MessageService implements IMessageService {
-    private readonly defaultLanguage: ENUM_APP_LANGUAGE;
-    private readonly availableLanguage: ENUM_APP_LANGUAGE[];
-    private readonly debug: boolean;
+    private readonly defaultLanguage: ENUM_MESSAGE_LANGUAGE;
+    private readonly availableLanguage: ENUM_MESSAGE_LANGUAGE[];
 
     constructor(
         private readonly i18n: I18nService,
         private readonly configService: ConfigService
     ) {
         this.defaultLanguage =
-            this.configService.get<ENUM_APP_LANGUAGE>('message.language');
-        this.availableLanguage = this.configService.get<ENUM_APP_LANGUAGE[]>(
-            'message.availableLanguage'
-        );
-        this.debug = this.configService.get<boolean>('debug.enable');
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
+        this.availableLanguage = this.configService.get<
+            ENUM_MESSAGE_LANGUAGE[]
+        >('message.availableLanguage');
     }
 
     /**
@@ -62,7 +60,6 @@ export class MessageService implements IMessageService {
         return this.i18n.translate(path, {
             lang: language,
             args: options?.properties,
-            debug: this.debug,
         });
     }
 

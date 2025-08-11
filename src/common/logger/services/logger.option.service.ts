@@ -23,11 +23,11 @@ export class LoggerOptionService {
 
     private readonly autoLogger: boolean;
 
-    private readonly debugEnable: boolean;
-    private readonly debugLevel: string;
-    private readonly debugIntoFile: boolean;
-    private readonly debugFilePath: string;
-    private readonly debugPrettier: boolean;
+    private readonly enable: boolean;
+    private readonly level: string;
+    private readonly intoFile: boolean;
+    private readonly filePath: string;
+    private readonly prettier: boolean;
 
     constructor(
         private readonly configService: ConfigService,
@@ -37,13 +37,13 @@ export class LoggerOptionService {
         this.name = this.configService.get<string>('app.name');
         this.version = this.configService.get<string>('app.version');
 
-        this.autoLogger = this.configService.get<boolean>('debug.autoLogger');
+        this.autoLogger = this.configService.get<boolean>('logger.auto');
 
-        this.debugEnable = this.configService.get<boolean>('debug.enable');
-        this.debugLevel = this.configService.get<string>('debug.level');
-        this.debugIntoFile = this.configService.get<boolean>('debug.intoFile');
-        this.debugFilePath = this.configService.get<string>('debug.filePath');
-        this.debugPrettier = this.configService.get<boolean>('debug.prettier');
+        this.enable = this.configService.get<boolean>('logger.enable');
+        this.level = this.configService.get<string>('logger.level');
+        this.intoFile = this.configService.get<boolean>('logger.intoFile');
+        this.filePath = this.configService.get<string>('logger.filePath');
+        this.prettier = this.configService.get<boolean>('logger.prettier');
     }
 
     /**
@@ -68,7 +68,7 @@ export class LoggerOptionService {
                 base: null,
                 transport:
                     transports.length > 0 ? { targets: transports } : undefined,
-                level: this.debugEnable ? this.debugLevel : 'silent',
+                level: this.enable ? this.level : 'silent',
                 stream: this.createFileStream(rfs),
                 redact: this.createRedactionConfig(),
                 serializers: this.createSerializers(),
@@ -78,9 +78,11 @@ export class LoggerOptionService {
     }
 
     /**
-     * Builds transport configurations for console and file logging.
+     * Builds transport configurations for console and file logging based on application settings.
+     * Creates pino-pretty transport for formatted console output when prettier is enabled,
+     * and pino/file transport for file logging when intoFile is enabled.
      *
-     * @returns Array of transport configurations
+     * @returns Array of transport configurations with target module names and their respective options
      */
     private buildTransports(): Array<{
         target: string;
@@ -88,7 +90,7 @@ export class LoggerOptionService {
     }> {
         const transports = [];
 
-        if (this.debugPrettier) {
+        if (this.prettier) {
             transports.push({
                 target: 'pino-pretty',
                 options: {
@@ -99,11 +101,11 @@ export class LoggerOptionService {
             });
         }
 
-        if (this.debugIntoFile) {
+        if (this.intoFile) {
             transports.push({
                 target: 'pino/file',
                 options: {
-                    destination: `.${this.debugFilePath}/api.log`,
+                    destination: `.${this.filePath}/api.log`,
                     mkdir: true,
                 },
             });
@@ -145,12 +147,12 @@ export class LoggerOptionService {
     private createFileStream(
         rfs: typeof import('rotating-file-stream')
     ): import('rotating-file-stream').RotatingFileStream | undefined {
-        return this.debugIntoFile
+        return this.intoFile
             ? rfs.createStream('api.log', {
                   size: '10M',
                   interval: '1d',
                   compress: 'gzip',
-                  path: `.${this.debugFilePath}`,
+                  path: `.${this.filePath}`,
                   maxFiles: 10,
                   rotate: 7,
               })

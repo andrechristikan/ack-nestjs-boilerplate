@@ -15,7 +15,7 @@ import { v7 as uuid } from 'uuid';
  * @see {@link uuid} UUID v7 generation library
  */
 @Injectable()
-export class AppRequestIdMiddleware implements NestMiddleware {
+export class RequestRequestIdMiddleware implements NestMiddleware {
     use(req: Request, _res: Response, next: NextFunction): void {
         req.id = uuid();
 

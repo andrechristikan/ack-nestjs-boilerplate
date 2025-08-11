@@ -33,9 +33,9 @@ async function bootstrap(): Promise<void> {
     const appName: string = configService.get<string>('app.name');
     const databaseUrl = configService.get<string>('database.url');
     const databaseDebug = configService.get<boolean>('database.debug');
-    const loggerAuto = configService.get<boolean>('debug.autoLogger');
-    const loggerDebugEnable = configService.get<boolean>('debug.enable');
-    const loggerDebugLevel = configService.get<string>('debug.level');
+    const loggerAuto = configService.get<boolean>('logger.auto');
+    const loggerDebugEnable = configService.get<boolean>('logger.enable');
+    const loggerDebugLevel = configService.get<string>('logger.level');
 
     // enable
     const versionEnable: string = configService.get<string>(

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { CommonModule } from '@common/common.module';
-import { AppMiddlewareModule } from '@app/app.middleware.module';
 import { WorkerModule } from '@workers/worker.module';
 import { RouterModule } from '@router';
 
@@ -15,7 +14,6 @@ import { RouterModule } from '@router';
  *
  * Architecture:
  * - **CommonModule**: Provides shared utilities, database, logging, and core services
- * - **AppMiddlewareModule**: Configures security, CORS, rate limiting, and request processing
  * - **RouterModule**: Handles API routing and endpoint definitions
  * - **WorkerModule**: Manages background jobs and asynchronous processing
  */
@@ -25,7 +23,6 @@ import { RouterModule } from '@router';
     imports: [
         // Common
         CommonModule,
-        AppMiddlewareModule,
 
         // Routes
         RouterModule,

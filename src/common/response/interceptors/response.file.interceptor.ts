@@ -16,7 +16,7 @@ import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
 import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ConfigService } from '@nestjs/config';
-import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 /**
  * Global file response interceptor that handles file download responses
@@ -143,7 +143,7 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
         const today = this.helperService.dateCreate();
         const xLanguage: string =
             request.__language ??
-            this.configService.get<ENUM_APP_LANGUAGE>('message.language');
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
         const xTimestamp = this.helperService.dateGetTimestamp(today);
         const xTimezone = this.helperService.dateGetZone(today);
         const xVersion =

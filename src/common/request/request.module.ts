@@ -19,6 +19,7 @@ import {
     LessThanEqualOtherPropertyConstraint,
     LessThanOtherPropertyConstraint,
 } from '@common/request/validations/request.less-than-other-property.validation';
+import { RequestMiddlewareModule } from '@common/request/request.middleware.module';
 
 @Module({})
 export class RequestModule {
@@ -64,7 +65,7 @@ export class RequestModule {
                 LessThanEqualOtherPropertyConstraint,
                 LessThanOtherPropertyConstraint,
             ],
-            imports: [],
+            imports: [RequestMiddlewareModule],
         };
     }
 }

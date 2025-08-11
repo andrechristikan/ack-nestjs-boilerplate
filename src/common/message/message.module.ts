@@ -3,7 +3,7 @@ import * as path from 'path';
 import { HeaderResolver, I18nJsonLoader, I18nModule } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
 import { MessageService } from '@common/message/services/message.service';
-import { ENUM_APP_LANGUAGE } from '@app/enums/app.enum';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 @Global()
 @Module({})
@@ -22,7 +22,7 @@ export class MessageModule {
                         fallbackLanguage: configService
                             .get<string[]>('message.availableLanguage')
                             .join(','),
-                        fallbacks: Object.values(ENUM_APP_LANGUAGE).reduce(
+                        fallbacks: Object.values(ENUM_MESSAGE_LANGUAGE).reduce(
                             (a, v) => ({ ...a, [`${v}-*`]: v }),
                             {}
                         ),

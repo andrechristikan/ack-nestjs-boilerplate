@@ -1,5 +1,4 @@
 import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination.interface';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';

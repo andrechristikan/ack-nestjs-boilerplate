@@ -1,12 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-    ArrayNotEmpty,
-    IsArray,
-    IsEnum,
-    IsNotEmpty,
-    IsString,
-} from 'class-validator';
-import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
 } from '@modules/policy/enums/policy.enum';
