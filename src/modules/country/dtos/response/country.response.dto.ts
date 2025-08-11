@@ -68,11 +68,5 @@ export class CountryResponseDto extends DatabaseDto {
         required: true,
         example: faker.location.timeZone(),
     })
-    timeZone: string;
-
-    @ApiProperty({
-        required: true,
-        example: faker.finance.currencyCode(),
-    })
-    currency: string;
+    timezone: string;
 }

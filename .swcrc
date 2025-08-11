@@ -4,6 +4,7 @@
     "module": {
         "type": "commonjs"
     },
+    "exclude": ["src/metadata.ts"],
     "jsc": {
         "baseUrl": "./",
         "paths": {

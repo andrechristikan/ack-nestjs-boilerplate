@@ -9,7 +9,7 @@
             }
         },
         "sourceMap": true,
-        "typeCheck": false,
+        "typeCheck": true,
         "plugins": [
             {
                 "name": "@nestjs/swagger",

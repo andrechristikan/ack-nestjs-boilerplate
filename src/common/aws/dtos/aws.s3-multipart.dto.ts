@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, PickType, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
+import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 
 /**
  * DTO representing a single part in AWS S3 multipart upload

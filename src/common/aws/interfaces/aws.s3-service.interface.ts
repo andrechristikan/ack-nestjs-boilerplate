@@ -2,16 +2,16 @@ import { _Object } from '@aws-sdk/client-s3';
 import {
     AwsS3MultipartDto,
     AwsS3MultipartPartDto,
-} from '@modules/aws/dtos/aws.s3-multipart.dto';
-import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
+} from '@common/aws/dtos/aws.s3-multipart.dto';
+import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import {
     AwsS3PresignDto,
     AwsS3PresignPartDto,
-} from '@modules/aws/dtos/aws.s3-presign.dto';
+} from '@common/aws/dtos/aws.s3-presign.dto';
 import {
     AwsS3PresignPartRequestDto,
     AwsS3PresignRequestDto,
-} from '@modules/aws/dtos/request/aws.s3-presign.request.dto';
+} from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import {
     IAwsS3DeleteDirOptions,
     IAwsS3GetItemsOptions,
@@ -20,7 +20,7 @@ import {
     IAwsS3PresignOptions,
     IAwsS3PutItem,
     IAwsS3PutItemWithAclOptions,
-} from '@modules/aws/interfaces/aws.interface';
+} from '@common/aws/interfaces/aws.interface';
 
 export interface IAwsS3Service {
     checkConnection(): Promise<boolean>;

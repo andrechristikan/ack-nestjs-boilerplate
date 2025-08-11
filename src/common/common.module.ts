@@ -14,6 +14,9 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { LoggerOptionModule } from '@common/logger/logger.option.module';
 import { LoggerOptionService } from '@common/logger/services/logger.option.service';
 import { RedisClientOptions, createKeyv } from '@keyv/redis';
+import { PolicyModule } from '@modules/policy/policy.module';
+import { FileModule } from '@common/file/file.module';
+import { AuthModule } from '@modules/auth/auth.module';
 
 @Module({
     controllers: [],
@@ -91,6 +94,9 @@ import { RedisClientOptions, createKeyv } from '@keyv/redis';
         MessageModule.forRoot(),
         HelperModule.forRoot(),
         RequestModule.forRoot(),
+        FileModule.forRoot(),
+        AuthModule.forRoot(),
+        PolicyModule.forRoot(),
     ],
 })
 export class CommonModule {}

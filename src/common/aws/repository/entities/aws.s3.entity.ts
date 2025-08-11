@@ -3,7 +3,7 @@ import {
     DatabaseProp,
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
-import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
+import { ENUM_AWS_S3_ACCESSIBILITY } from '@common/aws/enums/aws.enum';
 
 @DatabaseEntity({ timestamps: false, _id: false })
 export class AwsS3Entity {

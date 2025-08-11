@@ -2,6 +2,9 @@ import { DynamicModule, Module } from '@nestjs/common';
 import { AuthJwtAccessStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.access.strategy';
 import { AuthJwtRefreshStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.refresh.strategy';
 import { AuthService } from '@modules/auth/services/auth.service';
+import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Algorithm } from 'jsonwebtoken';
 
 @Module({
     providers: [AuthService],
@@ -16,7 +19,27 @@ export class AuthModule {
             providers: [AuthJwtAccessStrategy, AuthJwtRefreshStrategy],
             exports: [],
             controllers: [],
-            imports: [],
+            imports: [
+                JwtModule.registerAsync({
+                    inject: [ConfigService],
+                    imports: [ConfigModule],
+                    useFactory: (
+                        configService: ConfigService
+                    ): JwtModuleOptions => ({
+                        signOptions: {
+                            audience:
+                                configService.get<string>('auth.jwt.audience'),
+                            issuer: configService.get<string>(
+                                'auth.jwt.issuer'
+                            ),
+                            algorithm:
+                                configService.get<Algorithm>(
+                                    'auth.jwt.algorithm'
+                                ),
+                        },
+                    }),
+                }),
+            ],
         };
     }
 }

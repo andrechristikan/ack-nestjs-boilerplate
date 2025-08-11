@@ -32,7 +32,7 @@ export type IDatabaseFilterOperation = IDatabaseFilterOperationComparison &
 
 export type IDatabaseFilterValue<TEntity> = Partial<
     Record<
-        keyof Omit<TEntity, 'deleted'>,
+        keyof TEntity,
         | IDatabaseFilterOperation
         | string
         | number
@@ -104,7 +104,7 @@ export interface IDatabaseExistReturn {
 export interface IDatabaseFindManyWithPagination<TEntity, TTransaction> {
     limit: number;
     skip: number;
-    where?: IDatabaseFilter<Omit<TEntity, 'deleted'>>;
+    where?: IDatabaseFilter<TEntity>;
     select?: IDatabaseSelect<TEntity>;
     order?: IDatabaseOrder<TEntity>;
     join?: IDatabaseJoin;
@@ -126,7 +126,7 @@ export interface IDatabaseFindOne<TEntity, TTransaction>
         IDatabaseFindMany<TEntity, TTransaction>,
         'select' | 'join' | 'withDeleted' | 'transaction'
     > {
-    where: IDatabaseFilter<Omit<TEntity, 'deleted'>>;
+    where: IDatabaseFilter<TEntity>;
 }
 
 export interface IDatabaseFindOneById<TTransaction>

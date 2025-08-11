@@ -74,12 +74,7 @@ export class CountryEntity extends DatabaseEntityBase {
     @DatabaseProp({
         required: true,
     })
-    timeZone: string;
-
-    @DatabaseProp({
-        required: true,
-    })
-    currency: string;
+    timezone: string;
 }
 
 export const CountrySchema = DatabaseSchema(CountryEntity);

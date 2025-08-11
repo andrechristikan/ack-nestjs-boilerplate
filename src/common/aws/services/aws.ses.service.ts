@@ -25,13 +25,13 @@ import {
     UpdateTemplateCommandInput,
     UpdateTemplateCommandOutput,
 } from '@aws-sdk/client-ses';
+import { IAwsSESService } from '@common/aws/interfaces/aws.ses-service.interface';
 import {
     AwsSESGetTemplateDto,
     AwsSESSendBulkDto,
     AwsSESSendDto,
     AwsSESTemplateDto,
-} from '@modules/aws/dtos/aws.ses.dto';
-import { IAwsSESService } from '@modules/aws/interfaces/aws.ses-service.interface';
+} from '@common/aws/dtos/aws.ses.dto';
 
 /**
  * AWS SES (Simple Email Service) service for managing email operations.

@@ -18,29 +18,35 @@ export class DatabaseOptionService implements IDatabaseOptionService {
 
     private readonly slowQueryThreshold: number;
     private readonly sampleRate: number;
+    private readonly env: string;
+    private readonly name: string;
+    private readonly url: string;
+    private readonly timeoutOptions: Record<string, number>;
+    private readonly poolOptions: Record<string, number>;
+    private readonly debug: boolean;
 
     constructor(private readonly configService: ConfigService) {
         this.slowQueryThreshold = this.configService.get<number>(
             'database.slowQueryThreshold'
         );
         this.sampleRate = this.configService.get<number>('database.sampleRate');
+        this.env = this.configService.get<string>('app.env');
+        this.name = this.configService.get<string>('app.name');
+        this.url = this.configService.get<string>('database.url');
+        this.timeoutOptions = this.configService.get<Record<string, number>>(
+            'database.timeoutOptions'
+        );
+        this.poolOptions = this.configService.get<Record<string, number>>(
+            'database.poolOptions'
+        );
+        this.debug = this.configService.get<boolean>('database.debug');
     }
 
     async createOptions(): Promise<MongooseModuleOptions> {
-        const env = this.configService.get<string>('app.env');
-        const name = this.configService.get<string>('app.name');
+        let timeoutOptions = this.timeoutOptions;
+        let poolOptions = this.poolOptions;
 
-        const url = this.configService.get<string>('database.url');
-
-        let timeoutOptions = this.configService.get<Record<string, number>>(
-            'database.timeoutOptions'
-        );
-
-        let poolOptions = this.configService.get<Record<string, number>>(
-            'database.poolOptions'
-        );
-
-        if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
+        if (this.env === ENUM_APP_ENVIRONMENT.MIGRATION) {
             // make timeout and pool options 2 times longer
             timeoutOptions = {
                 serverSelectionTimeoutMS: 60 * 1000, // 60 secs
@@ -60,9 +66,9 @@ export class DatabaseOptionService implements IDatabaseOptionService {
         this.setup();
 
         this.logger.log(
-            `Database connection options for environment "${env}": ${JSON.stringify(
+            `Database connection options for environment "${this.env}": ${JSON.stringify(
                 {
-                    url,
+                    url: this.url,
                     timeoutOptions,
                     poolOptions,
                 }
@@ -70,10 +76,10 @@ export class DatabaseOptionService implements IDatabaseOptionService {
         );
 
         const mongooseOptions: MongooseModuleOptions = {
-            uri: url,
-            autoCreate: env === ENUM_APP_ENVIRONMENT.MIGRATION,
-            autoIndex: env === ENUM_APP_ENVIRONMENT.MIGRATION,
-            appName: name,
+            uri: this.url,
+            autoCreate: this.env === ENUM_APP_ENVIRONMENT.MIGRATION,
+            autoIndex: this.env === ENUM_APP_ENVIRONMENT.MIGRATION,
+            appName: this.name,
             retryWrites: true,
             retryReads: true,
             ...timeoutOptions,
@@ -84,14 +90,12 @@ export class DatabaseOptionService implements IDatabaseOptionService {
     }
 
     private setDebugMode(): void {
-        const debug = this.configService.get<boolean>('database.debug');
-
         this.logger.log(
-            `Setting Database debug mode to ${debug ? 'enabled' : 'disabled'}`
+            `Setting Database debug mode to ${this.debug ? 'enabled' : 'disabled'}`
         );
 
         mongoose.set('debug', (collectionName, method, ...methodArgs) => {
-            if (!debug) {
+            if (!this.debug) {
                 return;
             }
 

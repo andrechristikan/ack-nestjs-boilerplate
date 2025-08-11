@@ -4,6 +4,7 @@ import { CommandModule, CommandService } from 'nestjs-command';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { MigrationModule } from '@migration/migration.module';
 import { ConfigService } from '@nestjs/config';
+import { Logger as PinoLogger } from 'nestjs-pino';
 
 async function bootstrap(): Promise<void> {
     process.env.APP_ENV = ENUM_APP_ENVIRONMENT.MIGRATION;
@@ -13,6 +14,8 @@ async function bootstrap(): Promise<void> {
         abortOnError: true,
         bufferLogs: false,
     });
+
+    app.useLogger(app.get(PinoLogger));
 
     const configService = app.get(ConfigService);
     const appName: string = configService.get<string>('app.name');

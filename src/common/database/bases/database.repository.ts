@@ -230,14 +230,24 @@ export abstract class DatabaseRepositoryBase<
     }
 
     /**
-     * Processes logical filter operations (or, and).
+     * Processes logical filter operations ($or, $and) by recursively resolving nested filter conditions.
+     * 
+     * This method handles the logical operators in database filter operations by:
+     * - Converting 'or' operations to MongoDB $or queries with recursive resolution
+     * - Converting 'and' operations to MongoDB $and queries with recursive resolution
+     * - Maintaining proper soft delete filtering context through recursive calls
+     * - Supporting nested logical operations of arbitrary depth
+     * 
      * @private
-     * @param operation - The filter operation.
-     * @param query - The query object to modify.
+     * @param operation - The filter operation containing logical operators (or/and).
+     * @param query - The MongoDB query object to modify with logical operations.
+     * @param withDeleted - Optional flag to include soft-deleted documents in nested queries.
+     * @returns The modified query object with resolved logical operations.
      */
     private _processLogicalOperations(
         operation: IDatabaseFilterOperation,
-        query: Record<string, unknown>
+        query: Record<string, unknown>,
+        withDeleted?: boolean
     ): Record<string, unknown> {
         if (
             'or' in operation &&
@@ -245,7 +255,10 @@ export abstract class DatabaseRepositoryBase<
             Array.isArray(operation.or)
         ) {
             query.$or = operation.or.map(orOperation =>
-                this._resolveWhere(orOperation as IDatabaseFilter<TEntity>)
+                this._resolveWhere(
+                    orOperation as IDatabaseFilter<TEntity>,
+                    withDeleted
+                )
             );
         }
         if (
@@ -254,7 +267,10 @@ export abstract class DatabaseRepositoryBase<
             Array.isArray(operation.and)
         ) {
             query.$and = operation.and.map(andOperation =>
-                this._resolveWhere(andOperation as IDatabaseFilter<TEntity>)
+                this._resolveWhere(
+                    andOperation as IDatabaseFilter<TEntity>,
+                    withDeleted
+                )
             );
         }
 
@@ -262,13 +278,27 @@ export abstract class DatabaseRepositoryBase<
     }
 
     /**
-     * Resolves filter operation to MongoDB query format.
+     * Resolves complex filter operations into MongoDB-compatible query format.
+     * 
+     * This method serves as the central processor for all database filter operations by:
+     * - Processing comparison operations (gte, gt, lte, lt, equal, in, notIn, notEqual)
+     * - Processing text search operations (contains, notContains, startsWith, endsWith)
+     * - Processing logical operations (or, and) with recursive resolution
+     * - Maintaining filter operation precedence and combining multiple operation types
+     * - Preserving soft delete filtering context for nested operations
+     * 
+     * The method orchestrates the transformation of high-level filter operations
+     * into low-level MongoDB query operators, ensuring proper query structure
+     * and maintaining query performance optimization.
+     * 
      * @private
-     * @param operation - The filter operation to resolve.
-     * @returns The MongoDB query object.
+     * @param operation - The filter operation object containing one or more operation types.
+     * @param withDeleted - Optional flag to include soft-deleted documents in logical operations.
+     * @returns The complete MongoDB query object with all resolved filter operations.
      */
     private _resolveFilterOperation(
-        operation: IDatabaseFilterOperation
+        operation: IDatabaseFilterOperation,
+        withDeleted?: boolean
     ): Record<string, unknown> {
         let query: Record<string, unknown> = {};
 
@@ -282,18 +312,45 @@ export abstract class DatabaseRepositoryBase<
         };
         query = {
             ...query,
-            ...this._processLogicalOperations(operation, query),
+            ...this._processLogicalOperations(operation, query, withDeleted),
         };
 
         return query;
     }
 
     /**
-     * Resolves the where criteria by handling filter operations and soft delete filtering.
+     * Resolves database filter criteria into MongoDB-compatible query format with comprehensive operation support.
+     * 
+     * This method is the primary entry point for transforming high-level database filter criteria
+     * into optimized MongoDB queries. It performs the following key operations:
+     * 
+     * **Logical Operations Processing:**
+     * - Handles top-level $or operations by recursively resolving each condition
+     * - Handles top-level $and operations by recursively resolving each condition
+     * - Supports nested logical operations of arbitrary depth and complexity
+     * 
+     * **Field-Level Filter Resolution:**
+     * - Processes individual field filters through _resolveFilterOperation
+     * - Supports complex filter operations (comparison, text search, logical)
+     * - Maintains type safety and proper value assignment for direct field matches
+     * 
+     * **Soft Delete Management:**
+     * - Automatically applies soft delete filtering based on withDeleted flag
+     * - Allows explicit deletion state overrides through where.deleted property
+     * - Ensures consistent soft delete behavior across all query operations
+     * 
+     * **Query Optimization:**
+     * - Combines multiple filter conditions efficiently
+     * - Maintains MongoDB query structure for optimal performance
+     * - Preserves filter operation precedence and logical grouping
+     * 
      * @private
-     * @param where - The filter criteria to resolve.
-     * @param withDeleted - Whether to include soft-deleted documents in the query.
-     * @returns The resolved where criteria with proper filter operations and deletion filtering.
+     * @param where - The high-level filter criteria object containing field filters and logical operations.
+     * @param withDeleted - Optional flag controlling soft-deleted document inclusion:
+     *                     - true: includes both deleted and non-deleted documents
+     *                     - false/undefined: excludes soft-deleted documents (default behavior)
+     * @returns A fully resolved MongoDB FilterQuery compatible with Mongoose operations,
+     *          including proper soft delete filtering and optimized query structure.
      */
     private _resolveWhere(
         where: IDatabaseFilter<TEntity>,
@@ -328,7 +385,10 @@ export abstract class DatabaseRepositoryBase<
             const value = where[key];
             if (value !== undefined) {
                 if (this._isFilterOperation(value)) {
-                    resolvedWhere[key] = this._resolveFilterOperation(value);
+                    resolvedWhere[key] = this._resolveFilterOperation(
+                        value,
+                        withDeleted
+                    );
                 } else {
                     resolvedWhere[key] = value;
                 }
@@ -336,10 +396,17 @@ export abstract class DatabaseRepositoryBase<
         }
 
         // Handle soft delete filtering
-        if (withDeleted !== undefined || withDeleted === null) {
-            resolvedWhere.deleted = withDeleted;
+        if (withDeleted === true) {
+            resolvedWhere.deleted = {
+                $in: [false, true],
+            };
         } else {
             resolvedWhere.deleted = false;
+        }
+
+        // If the deleted field is explicitly set to true or false, include it in the query
+        if (where.deleted === true || where.deleted === false) {
+            resolvedWhere.deleted = where.deleted;
         }
 
         return resolvedWhere as FilterQuery<TEntity>;
@@ -616,21 +683,6 @@ export abstract class DatabaseRepositoryBase<
      */
     private _getAvailableModels(): string[] {
         return this._model.db.modelNames();
-    }
-
-    /**
-     * Validates that the model exists in the registered models
-     * @private
-     * @param modelName - The model name to validate
-     * @throws {Error} When model is not registered
-     */
-    private _validateModel(modelName: string): void {
-        const availableModels = this._getAvailableModels();
-        if (!availableModels.includes(modelName)) {
-            throw new Error(
-                `Model '${modelName}' is not registered. Available models: ${availableModels.join(', ')}`
-            );
-        }
     }
 
     /**

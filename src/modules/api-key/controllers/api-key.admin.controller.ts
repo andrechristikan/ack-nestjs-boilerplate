@@ -28,11 +28,8 @@ import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.cr
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
-import { ApiKeyParsePipe } from '@modules/api-key/pipes/api-key.parse.pipe';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
-import { ApiKeyIsActivePipe } from '@modules/api-key/pipes/api-key.is-active.pipe';
-import { ApiKeyNotExpiredPipe } from '@modules/api-key/pipes/api-key.expired.pipe';
 import {
     ApiKeyAdminActiveDoc,
     ApiKeyAdminCreateDoc,
@@ -61,6 +58,7 @@ import {
     PolicyRoleProtected,
 } from '@modules/policy/decorators/policy.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import { RequestObjectIdPipe } from '@common/request/pipes/requiest.object-id.pipe';
 
 @ApiTags('modules.admin.apiKey')
 @Controller({
@@ -139,8 +137,8 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Patch('/update/:apiKey/reset')
     async reset(
-        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
-        apiKey: ApiKeyEntity
+        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
+        apiKey: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         const updated: ApiKeyCreateResponseDto =
             await this.apiKeyService.reset(apiKey);
@@ -163,8 +161,8 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey')
     async update(
         @Body() body: ApiKeyUpdateRequestDto,
-        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
-        apiKey: ApiKeyEntity
+        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
+        apiKey: string
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         const updated = await this.apiKeyService.update(apiKey, body);
 
@@ -186,8 +184,8 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey/date')
     async updateDate(
         @Body() body: ApiKeyUpdateDateRequestDto,
-        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
-        apiKey: ApiKeyEntity
+        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
+        apiKey: string
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         const updated = await this.apiKeyService.updateDate(apiKey, body);
 
@@ -208,14 +206,8 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Patch('/update/:apiKey/inactive')
     async inactive(
-        @Param(
-            'apiKey',
-            RequestRequiredPipe,
-            ApiKeyParsePipe,
-            new ApiKeyIsActivePipe([true]),
-            ApiKeyNotExpiredPipe
-        )
-        apiKey: ApiKeyEntity
+        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
+        apiKey: string
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         const updated = await this.apiKeyService.inactive(apiKey);
 
@@ -236,14 +228,8 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Patch('/update/:apiKey/active')
     async active(
-        @Param(
-            'apiKey',
-            RequestRequiredPipe,
-            ApiKeyParsePipe,
-            new ApiKeyIsActivePipe([false]),
-            ApiKeyNotExpiredPipe
-        )
-        apiKey: ApiKeyEntity
+        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
+        apiKey: string
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         const updated = await this.apiKeyService.active(apiKey);
 
@@ -264,8 +250,8 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Delete('/delete/:apiKey')
     async delete(
-        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
-        apiKey: ApiKeyEntity
+        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
+        apiKey: string
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         const deleted = await this.apiKeyService.delete(apiKey);
 

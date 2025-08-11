@@ -9,10 +9,14 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { API_KEY_X_TYPE_META_KEY } from '@modules/api-key/constants/api-key.constant';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
 import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
+import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 
 @Injectable()
 export class ApiKeyXApiKeyTypeGuard implements CanActivate {
-    constructor(private reflector: Reflector) {}
+    constructor(
+        private readonly reflector: Reflector,
+        private readonly apiKeyService: ApiKeyService
+    ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const required: ENUM_API_KEY_TYPE[] = this.reflector.getAllAndOverride<
@@ -23,14 +27,9 @@ export class ApiKeyXApiKeyTypeGuard implements CanActivate {
             return true;
         }
 
-        const { __apiKey } = context.switchToHttp().getRequest<IRequestApp>();
+        const request = context.switchToHttp().getRequest<IRequestApp>();
+        this.apiKeyService.validateXApiKeyType(request, required);
 
-        if (!__apiKey || !required.includes(__apiKey.type)) {
-            throw new BadRequestException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
-                message: 'apiKey.error.xApiKey.forbidden',
-            });
-        }
         return true;
     }
 }

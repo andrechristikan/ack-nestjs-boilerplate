@@ -6,14 +6,16 @@ import {
     DocResponse,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import {
     RoleDocParamsId,
     RoleDocQueryList,
 } from '@modules/role/constants/role.doc.constant';
 import { ROLE_DEFAULT_AVAILABLE_SEARCH } from '@modules/role/constants/role.list.constant';
+import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
-import { applyDecorators } from '@nestjs/common';
+import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function RoleAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -54,27 +56,26 @@ export function RoleAdminGetDoc(): MethodDecorator {
     );
 }
 
-// TODO: RESOLVE THIS
-// export function RoleAdminCreateDoc(): MethodDecorator {
-//     return applyDecorators(
-//         Doc({
-//             summary: 'create a role',
-//         }),
-//         DocAuth({
-//             xApiKey: true,
-//             jwtAccessToken: true,
-//         }),
-//         DocRequest({
-//             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-//             dto: RoleCreateRequestDto,
-//         }),
-//         DocGuard({ role: true, policy: true }),
-//         DocResponse<DatabaseIdResponseDto>('role.create', {
-//             httpStatus: HttpStatus.CREATED,
-//             dto: DatabaseIdResponseDto,
-//         })
-//     );
-// }
+export function RoleAdminCreateDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'create a role',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: RoleCreateRequestDto,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse<RoleResponseDto>('role.create', {
+            httpStatus: HttpStatus.CREATED,
+            dto: RoleResponseDto,
+        })
+    );
+}
 
 // export function RoleAdminActiveDoc(): MethodDecorator {
 //     return applyDecorators(

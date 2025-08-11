@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
+import { ENUM_AWS_S3_ACCESSIBILITY } from '@common/aws/enums/aws.enum';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { StreamingBlobTypes } from '@smithy/types';
 import { Exclude } from 'class-transformer';

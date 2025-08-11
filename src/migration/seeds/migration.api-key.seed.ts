@@ -6,6 +6,7 @@ import { ApiKeyRepository } from '@modules/api-key/repository/repositories/api-k
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { ConfigService } from '@nestjs/config';
 import { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 
 @Injectable()
 export class MigrationApiKeySeed {
@@ -29,6 +30,7 @@ export class MigrationApiKeySeed {
 
     constructor(
         private readonly apiKeyRepository: ApiKeyRepository,
+        private readonly apiKeyUtil: ApiKeyUtil,
         private readonly apiKeyService: ApiKeyService,
         private readonly configService: ConfigService
     ) {
@@ -36,7 +38,7 @@ export class MigrationApiKeySeed {
     }
 
     @Command({
-        command: 'seed:apikey',
+        command: 'seed:apiKey',
         describe: 'seeds apikeys',
     })
     async seeds(): Promise<void> {
@@ -51,6 +53,7 @@ export class MigrationApiKeySeed {
             select: {
                 _id: true,
             },
+            withDeleted: true,
         });
         if (existingApiKeys.length > 0) {
             this.logger.log('Api Keys already exist, skipping seed.');
@@ -59,14 +62,12 @@ export class MigrationApiKeySeed {
 
         await this.apiKeyRepository.createMany({
             data: this.apiKeys.map(apiKey => {
-                const hashed = this.apiKeyService.createHashApiKey(
-                    `${this.env}_${apiKey.key}`,
-                    apiKey.secret
-                );
+                const key = this.apiKeyUtil.createKey(apiKey.key);
+                const hashed = this.apiKeyUtil.createHash(key, apiKey.secret);
 
                 return {
                     hash: hashed,
-                    key: `${this.env}_${apiKey.key}`,
+                    key: key,
                     type: apiKey.type,
                     description: apiKey.description,
                     isActive: true,
@@ -80,7 +81,7 @@ export class MigrationApiKeySeed {
     }
 
     @Command({
-        command: 'remove:apikey',
+        command: 'remove:apiKey',
         describe: 'remove apikeys',
     })
     async remove(): Promise<void> {
@@ -91,7 +92,7 @@ export class MigrationApiKeySeed {
                 .map(apiKey => {
                     return [
                         this.apiKeyService.deleteCacheByKey(
-                            `${this.env}_${apiKey.key}`
+                            this.apiKeyUtil.createKey(apiKey.key)
                         ),
                     ];
                 })
@@ -99,8 +100,8 @@ export class MigrationApiKeySeed {
             this.apiKeyRepository.deleteMany({
                 where: {
                     key: {
-                        in: this.apiKeys.map(
-                            apiKey => `${this.env}_${apiKey.key}`
+                        in: this.apiKeys.map(apiKey =>
+                            this.apiKeyUtil.createKey(apiKey.key)
                         ),
                     },
                 },

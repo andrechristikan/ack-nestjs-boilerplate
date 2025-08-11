@@ -16,8 +16,7 @@ export class MigrationCountrySeed {
             numericCode: '360',
             phoneCode: ['62'],
             continent: 'Asia',
-            timeZone: 'Asia/Jakarta',
-            currency: 'IDR',
+            timezone: 'Asia/Jakarta',
         },
     ];
 
@@ -39,6 +38,7 @@ export class MigrationCountrySeed {
             select: {
                 _id: true,
             },
+            withDeleted: true,
         });
         if (existingCountries.length > 0) {
             this.logger.log('Countries already exist, skipping seed.');
@@ -67,6 +67,7 @@ export class MigrationCountrySeed {
                     in: this.countries.map(country => country.alpha2Code),
                 },
             },
+            withDeleted: true,
         });
 
         this.logger.log('Countries removed successfully.');

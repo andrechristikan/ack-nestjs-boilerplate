@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { AwsS3MultipartPartDto } from '@modules/aws/dtos/aws.s3-multipart.dto';
-import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
+import { AwsS3MultipartPartDto } from '@common/aws/dtos/aws.s3-multipart.dto';
+import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { ApiProperty, IntersectionType, PickType } from '@nestjs/swagger';
 
 /**

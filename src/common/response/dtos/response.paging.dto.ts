@@ -5,7 +5,6 @@ import {
     ResponseDto,
     ResponseMetadataDto,
 } from '@common/response/dtos/response.dto';
-import { IPaginationQueryAvailableOrderBy } from '@common/pagination/interfaces/pagination.interface';
 
 export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
@@ -56,14 +55,9 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
 
     @ApiProperty({
         required: true,
-        example: {
-            createdAt: [
-                ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
-                ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
-            ],
-        },
+        example: ['createdAt', 'updatedAt'],
     })
-    availableOrderBy: IPaginationQueryAvailableOrderBy;
+    availableOrderBy: string[];
 
     @ApiProperty({
         required: true,

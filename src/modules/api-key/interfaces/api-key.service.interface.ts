@@ -3,12 +3,14 @@ import {
     IDatabaseFilterOperationComparison,
 } from '@common/database/interfaces/database.interface';
 import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination.interface';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
+import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
 import { ApiKeyEntity } from '@modules/api-key/repository/entities/api-key.entity';
 
 export interface IApiKeyService {
@@ -19,7 +21,7 @@ export interface IApiKeyService {
     ): Promise<IResponsePagingReturn<ApiKeyResponseDto>>;
     mapList(apiKeys: ApiKeyEntity[]): ApiKeyResponseDto[];
     mapOne(apiKey: ApiKeyEntity): ApiKeyResponseDto;
-    findOneByIdAndCache(id: string): Promise<ApiKeyEntity | undefined>;
+    findOneByIdAndCache(_id: string): Promise<ApiKeyEntity>;
     findOneActiveByKeyAndCache(key: string): Promise<ApiKeyEntity | undefined>;
     create({
         description,
@@ -27,23 +29,24 @@ export interface IApiKeyService {
         startDate,
         endDate,
     }: ApiKeyCreateRequestDto): Promise<ApiKeyCreateResponseDto>;
-    active(apiKey: ApiKeyEntity): Promise<ApiKeyResponseDto>;
-    inactive(apiKey: ApiKeyEntity): Promise<ApiKeyResponseDto>;
+    active(apiKeyId: string): Promise<ApiKeyResponseDto>;
+    inactive(apiKeyId: string): Promise<ApiKeyResponseDto>;
     update(
-        apiKey: ApiKeyEntity,
+        apiKeyId: string,
         { description }: ApiKeyUpdateRequestDto
     ): Promise<ApiKeyResponseDto>;
     updateDate(
-        apiKey: ApiKeyEntity,
+        apiKeyId: string,
         { startDate, endDate }: ApiKeyUpdateDateRequestDto
     ): Promise<ApiKeyResponseDto>;
-    reset(apiKey: ApiKeyEntity): Promise<ApiKeyCreateResponseDto>;
-    delete(apiKey: ApiKeyEntity): Promise<ApiKeyResponseDto>;
-    validateApiKey(key: string, secret: string, apiKey: ApiKeyEntity): boolean;
-    createKey(): string;
-    createSecret(): string;
-    createHashApiKey(key: string, secret: string): string;
+    reset(apiKeyId: string): Promise<ApiKeyCreateResponseDto>;
+    delete(apiKeyId: string): Promise<ApiKeyResponseDto>;
     getCacheByKey(key: string): Promise<ApiKeyEntity | null | undefined>;
     setCacheByKey(key: string, apiKey: ApiKeyEntity): Promise<void>;
     deleteCacheByKey(key: string): Promise<void>;
+    validateXApiKey(request: IRequestApp): Promise<ApiKeyEntity>;
+    validateXApiKeyType(
+        request: IRequestApp,
+        allowed: ENUM_API_KEY_TYPE[]
+    ): ApiKeyEntity;
 }

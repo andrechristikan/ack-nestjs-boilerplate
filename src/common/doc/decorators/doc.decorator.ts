@@ -531,11 +531,6 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
                 },
                 {
                     statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED,
-                    messagePath: 'apiKey.error.xApiKey.expired',
-                },
-                {
-                    statusCode:
                         ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID,
                     messagePath: 'apiKey.error.xApiKey.invalid',
                 },
@@ -661,8 +656,6 @@ export function DocResponsePaging<T>(
                 required: false,
                 allowEmptyValue: true,
                 type: 'string',
-                enum: options.availableSearch,
-                example: options.availableSearch[0],
                 description: `Search query, available fields: ${options.availableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
             })
         );

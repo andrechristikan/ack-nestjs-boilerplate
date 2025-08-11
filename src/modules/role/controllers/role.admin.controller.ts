@@ -44,6 +44,7 @@ import { RoleParsePipe } from '@modules/role/pipes/role.parse.pipe';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleIsUsedPipe } from '@modules/role/pipes/role.is-used.pipe';
 import {
+    RoleAdminCreateDoc,
     RoleAdminGetDoc,
     RoleAdminListDoc,
 } from '@modules/role/docs/role.admin.doc';
@@ -118,41 +119,40 @@ export class RoleAdminController {
         return { data: mapRole };
     }
 
-    // TODO: RESOLVE THIS
-    // @RoleAdminCreateDoc()
-    // @Response('role.create')
-    // @PolicyAbilityProtected({
-    //     subject: ENUM_POLICY_SUBJECT.ROLE,
-    //     action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
-    // })
-    // @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected()
-    // @AuthJwtAccessProtected()
-    // @ApiKeyProtected()
-    // @Post('/create')
-    // async create(
-    //     @Body()
-    //     { name, description, type, permissions }: RoleCreateRequestDto
-    // ): Promise<IResponse<DatabaseIdResponseDto>> {
-    //     const exist: boolean = await this.roleService.existByName(name);
-    //     if (exist) {
-    //         throw new ConflictException({
-    //             statusCode: ENUM_ROLE_STATUS_CODE_ERROR.EXIST,
-    //             message: 'role.error.exist',
-    //         });
-    //     }
+    @RoleAdminCreateDoc()
+    @Response('role.create')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    // @UserProtected(). // TODO: Resolve this
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/create')
+    async create(
+        @Body()
+        { name, description, type, permissions }: RoleCreateRequestDto
+    ): Promise<IResponseReturn<RoleResponseDto>> {
+        const exist: boolean = await this.roleService.existByName(name);
+        if (exist) {
+            throw new ConflictException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.EXIST,
+                message: 'role.error.exist',
+            });
+        }
 
-    //     const create = await this.roleService.create({
-    //         name,
-    //         description,
-    //         type,
-    //         permissions,
-    //     });
+        const create = await this.roleService.create({
+            name,
+            description,
+            type,
+            permissions,
+        });
 
-    //     return {
-    //         data: { _id: create._id },
-    //     };
-    // }
+        return {
+            data: { _id: create._id },
+        };
+    }
 
     // @RoleAdminUpdateDoc()
     // @Response('role.update')

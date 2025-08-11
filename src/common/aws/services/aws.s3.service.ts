@@ -46,8 +46,8 @@ import {
     UploadPartCommandOutput,
     _Object,
 } from '@aws-sdk/client-s3';
-import { IAwsS3Service } from '@modules/aws/interfaces/aws.s3-service.interface';
-import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
+import { IAwsS3Service } from '@common/aws/interfaces/aws.s3-service.interface';
+import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import {
     IAwsS3ConfigBucket,
     IAwsS3DeleteDirOptions,
@@ -58,23 +58,23 @@ import {
     IAwsS3PresignOptions,
     IAwsS3PutItem,
     IAwsS3PutItemWithAclOptions,
-} from '@modules/aws/interfaces/aws.interface';
+} from '@common/aws/interfaces/aws.interface';
 import {
     AwsS3MultipartDto,
     AwsS3MultipartPartDto,
-} from '@modules/aws/dtos/aws.s3-multipart.dto';
-import { AWS_S3_MAX_PART_NUMBER } from '@modules/aws/constants/aws.constant';
+} from '@common/aws/dtos/aws.s3-multipart.dto';
+import { AWS_S3_MAX_PART_NUMBER } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
+import { ENUM_AWS_S3_ACCESSIBILITY } from '@common/aws/enums/aws.enum';
 import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
 import {
     AwsS3PresignDto,
     AwsS3PresignPartDto,
-} from '@modules/aws/dtos/aws.s3-presign.dto';
+} from '@common/aws/dtos/aws.s3-presign.dto';
 import {
     AwsS3PresignPartRequestDto,
     AwsS3PresignRequestDto,
-} from '@modules/aws/dtos/request/aws.s3-presign.request.dto';
+} from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 
 /**
  * AWS S3 service for managing file operations in Amazon S3 buckets.

@@ -106,13 +106,5 @@ export class CountryRequestDto {
     })
     @IsNotEmpty()
     @IsString()
-    timeZone: string;
-
-    @ApiProperty({
-        required: true,
-        example: faker.finance.currency(),
-    })
-    @IsNotEmpty()
-    @IsString()
-    currency: string;
+    timezone: string;
 }
