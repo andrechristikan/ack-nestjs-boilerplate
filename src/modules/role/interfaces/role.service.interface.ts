@@ -16,10 +16,6 @@ export interface IRoleService {
         isActive?: Record<string, IDatabaseFilterOperationComparison>,
         type?: Record<string, IDatabaseFilterOperation>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>>;
-    getActiveList(
-        { search, limit, skip, order }: IPaginationQueryReturn,
-        type?: Record<string, IDatabaseFilterOperation>
-    ): Promise<IResponsePagingReturn<RoleListResponseDto>>;
     mapList(roles: RoleEntity[]): RoleListResponseDto[];
     mapOne(role: RoleEntity): RoleResponseDto;
     getOne(_id: string): Promise<RoleResponseDto>;
@@ -33,6 +29,4 @@ export interface IRoleService {
         _id: string,
         { permissions, type, description }: RoleUpdateRequestDto
     ): Promise<RoleResponseDto>;
-    active(_id: string): Promise<RoleResponseDto>;
-    inactive(_id: string): Promise<RoleResponseDto>;
 }

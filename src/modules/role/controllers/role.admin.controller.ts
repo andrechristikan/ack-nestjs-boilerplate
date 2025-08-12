@@ -2,7 +2,6 @@ import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
     PaginationQuery,
-    PaginationQueryFilterInBoolean,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
@@ -28,10 +27,8 @@ import {
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleService } from '@modules/role/services/role.service';
 import {
-    RoleAdminActiveDoc,
     RoleAdminCreateDoc,
     RoleAdminGetDoc,
-    RoleAdminInactiveDoc,
     RoleAdminListDoc,
     RoleAdminUpdateDoc,
 } from '@modules/role/docs/role.admin.doc';
@@ -70,8 +67,6 @@ export class RoleAdminController {
             availableSearch: ROLE_DEFAULT_AVAILABLE_SEARCH,
         })
         pagination: IPaginationQueryReturn,
-        @PaginationQueryFilterInBoolean('isActive')
-        isActive?: Record<string, IDatabaseFilterOperation>,
         @PaginationQueryFilterInEnum<ENUM_POLICY_ROLE_TYPE>(
             'type',
             ROLE_DEFAULT_ROLE_TYPE
@@ -79,7 +74,7 @@ export class RoleAdminController {
         type?: Record<string, IDatabaseFilterOperation>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
         const results: IResponsePagingReturn<RoleListResponseDto> =
-            await this.roleService.getList(pagination, isActive, type);
+            await this.roleService.getList(pagination, type);
 
         return results;
     }
@@ -147,46 +142,6 @@ export class RoleAdminController {
         return {
             data,
         };
-    }
-
-    @RoleAdminActiveDoc()
-    @Response('role.active')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.ROLE,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected(). // TODO: Resolve this
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Patch('/update/:role/active')
-    async active(
-        @Param('role', RequestRequiredPipe, RequestObjectIdPipe)
-        roleId: string
-    ): Promise<IResponseReturn<RoleResponseDto>> {
-        await this.roleService.active(roleId);
-
-        return;
-    }
-
-    @RoleAdminInactiveDoc()
-    @Response('role.inactive')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.ROLE,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected(). // TODO: Resolve this
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Patch('/update/:role/inactive')
-    async inactive(
-        @Param('role', RequestRequiredPipe, RequestObjectIdPipe)
-        roleId: string
-    ): Promise<IResponseReturn<RoleResponseDto>> {
-        await this.roleService.inactive(roleId);
-
-        return;
     }
 
     // TODO: RESOLVE THIS AFTER USER MODULE IS READY

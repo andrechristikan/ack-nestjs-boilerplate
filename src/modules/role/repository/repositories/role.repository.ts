@@ -27,4 +27,10 @@ export class RoleRepository extends DatabaseRepositoryBase<RoleEntity> {
             where: { name },
         });
     }
+
+    async findOneByName(name: string): Promise<RoleEntity | null> {
+        return this.findOne({
+            where: { name },
+        });
+    }
 }

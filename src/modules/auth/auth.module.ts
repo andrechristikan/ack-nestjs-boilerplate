@@ -10,7 +10,20 @@ import { Algorithm } from 'jsonwebtoken';
     providers: [AuthService],
     exports: [AuthService],
     controllers: [],
-    imports: [],
+    imports: [
+        JwtModule.registerAsync({
+            inject: [ConfigService],
+            imports: [ConfigModule],
+            useFactory: (configService: ConfigService): JwtModuleOptions => ({
+                signOptions: {
+                    audience: configService.get<string>('auth.jwt.audience'),
+                    issuer: configService.get<string>('auth.jwt.issuer'),
+                    algorithm:
+                        configService.get<Algorithm>('auth.jwt.algorithm'),
+                },
+            }),
+        }),
+    ],
 })
 export class AuthModule {
     static forRoot(): DynamicModule {
@@ -19,27 +32,7 @@ export class AuthModule {
             providers: [AuthJwtAccessStrategy, AuthJwtRefreshStrategy],
             exports: [],
             controllers: [],
-            imports: [
-                JwtModule.registerAsync({
-                    inject: [ConfigService],
-                    imports: [ConfigModule],
-                    useFactory: (
-                        configService: ConfigService
-                    ): JwtModuleOptions => ({
-                        signOptions: {
-                            audience:
-                                configService.get<string>('auth.jwt.audience'),
-                            issuer: configService.get<string>(
-                                'auth.jwt.issuer'
-                            ),
-                            algorithm:
-                                configService.get<Algorithm>(
-                                    'auth.jwt.algorithm'
-                                ),
-                        },
-                    }),
-                }),
-            ],
+            imports: [],
         };
     }
 }

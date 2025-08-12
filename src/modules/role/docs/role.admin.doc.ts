@@ -99,44 +99,6 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
     );
 }
 
-export function RoleAdminActiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'make role be active',
-        }),
-        DocRequest({
-            params: RoleDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('role.active', {
-            dto: RoleResponseDto,
-        })
-    );
-}
-
-export function RoleAdminInactiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'make role be inactive',
-        }),
-        DocRequest({
-            params: RoleDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('role.inactive', {
-            dto: RoleResponseDto,
-        })
-    );
-}
-
 // export function RoleAdminDeleteDoc(): MethodDecorator {
 //     return applyDecorators(
 //         Doc({

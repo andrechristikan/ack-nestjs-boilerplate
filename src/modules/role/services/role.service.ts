@@ -26,31 +26,6 @@ export class RoleService implements IRoleService {
 
     async getList(
         { search, limit, skip, order }: IPaginationQueryReturn,
-        isActive?: Record<string, IDatabaseFilterOperationComparison>,
-        type?: Record<string, IDatabaseFilterOperation>
-    ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        const { items, ...others } =
-            await this.roleRepository.findManyWithPagination({
-                where: {
-                    ...search,
-                    ...isActive,
-                    ...type,
-                },
-                limit: limit,
-                skip: skip,
-                order: order,
-            });
-
-        const roles: RoleListResponseDto[] = this.mapList(items);
-
-        return {
-            data: roles,
-            ...others,
-        };
-    }
-
-    async getActiveList(
-        { search, limit, skip, order }: IPaginationQueryReturn,
         type?: Record<string, IDatabaseFilterOperation>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
         const { items, ...others } =
@@ -58,7 +33,6 @@ export class RoleService implements IRoleService {
                 where: {
                     ...search,
                     ...type,
-                    isActive: true,
                 },
                 limit: limit,
                 skip: skip,
@@ -96,9 +70,7 @@ export class RoleService implements IRoleService {
 
     async create({
         name,
-        permissions,
-        type,
-        description,
+        ...others
     }: RoleCreateRequestDto): Promise<RoleResponseDto> {
         const exist = await this.roleRepository.existByName(name);
         if (exist) {
@@ -109,7 +81,10 @@ export class RoleService implements IRoleService {
         }
 
         const create = await this.roleRepository.create({
-            data: { name, description, type, permissions, isActive: true },
+            data: {
+                name: name.toLowerCase(),
+                ...others,
+            },
         });
 
         const mapRole: RoleResponseDto = this.mapOne(create);
@@ -134,49 +109,5 @@ export class RoleService implements IRoleService {
         });
 
         return this.mapOne(update);
-    }
-
-    async active(_id: string): Promise<RoleResponseDto> {
-        const role = await this.roleRepository.findOneByObjectId(_id);
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'role.error.notFound',
-            });
-        } else if (role.isActive) {
-            throw new BadRequestException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ACTIVE_ALREADY,
-                message: 'role.error.activeAlready',
-            });
-        }
-
-        const updated = await this.roleRepository.update({
-            where: { _id: role._id },
-            data: { isActive: true },
-        });
-
-        return this.mapOne(updated);
-    }
-
-    async inactive(_id: string): Promise<RoleResponseDto> {
-        const role = await this.roleRepository.findOneByObjectId(_id);
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'role.error.notFound',
-            });
-        } else if (!role.isActive) {
-            throw new BadRequestException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_ALREADY,
-                message: 'role.error.inactiveAlready',
-            });
-        }
-
-        const updated = await this.roleRepository.update({
-            where: { _id: role._id },
-            data: { isActive: false },
-        });
-
-        return this.mapOne(updated);
     }
 }

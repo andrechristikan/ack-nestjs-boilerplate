@@ -49,4 +49,18 @@ export interface IApiKeyService {
         request: IRequestApp,
         allowed: ENUM_API_KEY_TYPE[]
     ): ApiKeyEntity;
+    createKey(key?: string): string;
+    createHash(key: string, secret: string): string;
+    createSecret(): string;
+    validateCredential(
+        key: string,
+        secret: string,
+        apiKey: ApiKeyEntity
+    ): boolean;
+    isExpired(apiKey: ApiKeyEntity, currentDate: Date): boolean;
+    isNotYetActive(apiKey: ApiKeyEntity, currentDate: Date): boolean;
+    isActive(apiKey: ApiKeyEntity): boolean;
+    isValid(apiKey: ApiKeyEntity, currentDate: Date): boolean;
+    extractKeyFromRequest(request: IRequestApp): string | undefined;
+    validateType(apiKey: ApiKeyEntity, allowed: ENUM_API_KEY_TYPE[]): boolean;
 }

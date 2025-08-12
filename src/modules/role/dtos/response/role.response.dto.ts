@@ -22,13 +22,6 @@ export class RoleResponseDto extends DatabaseDto {
     description?: string;
 
     @ApiProperty({
-        description: 'Active flag of role',
-        example: true,
-        required: true,
-    })
-    isActive: boolean;
-
-    @ApiProperty({
         description: 'Representative for role type',
         example: ENUM_POLICY_ROLE_TYPE.ADMIN,
         required: true,

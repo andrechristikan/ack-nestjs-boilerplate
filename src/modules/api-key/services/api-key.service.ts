@@ -27,24 +27,27 @@ import {
 } from '@common/database/interfaces/database.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
-import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
     private readonly keyPrefix: string;
+    private readonly env: ENUM_APP_ENVIRONMENT;
+    private readonly header: string;
 
     constructor(
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
         private readonly configService: ConfigService,
         private readonly helperService: HelperService,
-        private readonly apiKeyRepository: ApiKeyRepository,
-        private readonly apiKeyUtil: ApiKeyUtil
+        private readonly apiKeyRepository: ApiKeyRepository
     ) {
         this.keyPrefix = this.configService.get<string>(
             'auth.xApiKey.keyPrefix'
-        )!;
+        );
+        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.header = this.configService.get<string>('auth.xApiKey.header');
     }
 
     async getList(
@@ -115,9 +118,9 @@ export class ApiKeyService implements IApiKeyService {
         startDate,
         endDate,
     }: ApiKeyCreateRequestDto): Promise<ApiKeyCreateResponseDto> {
-        const key = this.apiKeyUtil.createKey();
-        const secret = this.apiKeyUtil.createSecret();
-        const hash: string = this.apiKeyUtil.createHash(key, secret);
+        const key = this.createKey();
+        const secret = this.createSecret();
+        const hash: string = this.createHash(key, secret);
 
         const data: ApiKeyEntity = new ApiKeyEntity();
         data.description = description;
@@ -151,17 +154,17 @@ export class ApiKeyService implements IApiKeyService {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'apiKey.error.notFound',
             });
-        } else if (this.apiKeyUtil.isActive(apiKey)) {
+        } else if (this.isActive(apiKey)) {
             throw new BadRequestException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.ACTIVE_ALREADY,
                 message: 'apiKey.error.activeAlready',
             });
-        } else if (this.apiKeyUtil.isExpired(apiKey, today)) {
+        } else if (this.isExpired(apiKey, today)) {
             throw new BadRequestException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED,
                 message: 'apiKey.error.expired',
             });
-        } else if (this.apiKeyUtil.isNotYetActive(apiKey, today)) {
+        } else if (this.isNotYetActive(apiKey, today)) {
             throw new BadRequestException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_YET_ACTIVE,
                 message: 'apiKey.error.notYetActive',
@@ -191,7 +194,7 @@ export class ApiKeyService implements IApiKeyService {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'apiKey.error.notFound',
             });
-        } else if (!this.apiKeyUtil.isActive(apiKey)) {
+        } else if (!this.isActive(apiKey)) {
             throw new BadRequestException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.INACTIVE_ALREADY,
                 message: 'apiKey.error.inactiveAlready',
@@ -224,7 +227,7 @@ export class ApiKeyService implements IApiKeyService {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'apiKey.error.notFound',
             });
-        } else if (!this.apiKeyUtil.isActive(apiKey)) {
+        } else if (!this.isActive(apiKey)) {
             throw new BadRequestException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.INACTIVE,
                 message: 'apiKey.error.inactive',
@@ -257,7 +260,7 @@ export class ApiKeyService implements IApiKeyService {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'apiKey.error.notFound',
             });
-        } else if (!this.apiKeyUtil.isActive(apiKey)) {
+        } else if (!this.isActive(apiKey)) {
             throw new BadRequestException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.INACTIVE,
                 message: 'apiKey.error.inactive',
@@ -292,15 +295,15 @@ export class ApiKeyService implements IApiKeyService {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'apiKey.error.notFound',
             });
-        } else if (!this.apiKeyUtil.isActive(apiKey)) {
+        } else if (!this.isActive(apiKey)) {
             throw new BadRequestException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.INACTIVE,
                 message: 'apiKey.error.inactive',
             });
         }
 
-        const secret: string = this.apiKeyUtil.createSecret();
-        const hash: string = this.apiKeyUtil.createHash(apiKey.key, secret);
+        const secret: string = this.createSecret();
+        const hash: string = this.createHash(apiKey.key, secret);
 
         const [updated] = await Promise.all([
             this.apiKeyRepository.update({
@@ -364,9 +367,8 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async validateXApiKey(request: IRequestApp): Promise<ApiKeyEntity> {
-        const xApiKey: string[] = this.apiKeyUtil
-            .extractKeyFromRequest(request)
-            .split(':');
+        const xApiKey: string[] =
+            this.extractKeyFromRequest(request)?.split(':') ?? [];
         if (!xApiKey || xApiKey.length === 0) {
             throw new UnauthorizedException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED,
@@ -389,8 +391,8 @@ export class ApiKeyService implements IApiKeyService {
                 message: 'apiKey.error.xApiKey.notFound',
             });
         } else if (
-            !this.apiKeyUtil.validateCredential(key, secret, apiKey) ||
-            !this.apiKeyUtil.isValid(apiKey, today)
+            !this.validateCredential(key, secret, apiKey) ||
+            !this.isValid(apiKey, today)
         ) {
             throw new UnauthorizedException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID,
@@ -406,7 +408,7 @@ export class ApiKeyService implements IApiKeyService {
         allowed: ENUM_API_KEY_TYPE[]
     ): ApiKeyEntity {
         const { __apiKey } = request;
-        if (this.apiKeyUtil.validateType(__apiKey, allowed)) {
+        if (this.validateType(__apiKey, allowed)) {
             throw new ForbiddenException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
                 message: 'apiKey.error.xApiKey.forbidden',
@@ -414,5 +416,72 @@ export class ApiKeyService implements IApiKeyService {
         }
 
         return __apiKey;
+    }
+
+    createKey(key?: string): string {
+        const random: string = this.helperService.randomString(25);
+        return `${this.env}_${key ?? random}`;
+    }
+
+    createHash(key: string, secret: string): string {
+        return this.helperService.sha256Hash(`${key}:${secret}`);
+    }
+
+    createSecret(): string {
+        return this.helperService.randomString(50);
+    }
+
+    validateCredential(
+        key: string,
+        secret: string,
+        apiKey: ApiKeyEntity
+    ): boolean {
+        if (!apiKey) {
+            return false;
+        }
+
+        const expectedHash = this.createHash(key, secret);
+        return this.helperService.sha256Compare(expectedHash, apiKey.hash);
+    }
+
+    isExpired(apiKey: ApiKeyEntity, currentDate: Date): boolean {
+        if (apiKey.endDate && apiKey.endDate) {
+            return currentDate > apiKey.endDate;
+        }
+
+        return false;
+    }
+
+    isNotYetActive(apiKey: ApiKeyEntity, currentDate: Date): boolean {
+        if (apiKey.startDate && apiKey.endDate) {
+            return currentDate < apiKey.startDate;
+        }
+
+        return false;
+    }
+
+    isActive(apiKey: ApiKeyEntity): boolean {
+        return apiKey.isActive;
+    }
+
+    isValid(apiKey: ApiKeyEntity, currentDate: Date): boolean {
+        return (
+            apiKey &&
+            apiKey.isActive &&
+            !this.isExpired(apiKey, currentDate) &&
+            !this.isNotYetActive(apiKey, currentDate)
+        );
+    }
+
+    extractKeyFromRequest(request: IRequestApp): string | undefined {
+        const xApiKey: string = request.headers[
+            `${this.header.toLowerCase()}`
+        ] as string;
+
+        return xApiKey;
+    }
+
+    validateType(apiKey: ApiKeyEntity, allowed: ENUM_API_KEY_TYPE[]): boolean {
+        return !apiKey || !allowed.includes(apiKey.type);
     }
 }

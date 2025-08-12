@@ -42,7 +42,7 @@ export class RoleSystemController {
         type?: Record<string, IDatabaseFilterOperation>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
         const results: IResponsePagingReturn<RoleListResponseDto> =
-            await this.roleService.getActiveList(pagination, type);
+            await this.roleService.getList(pagination, type);
 
         return results;
     }

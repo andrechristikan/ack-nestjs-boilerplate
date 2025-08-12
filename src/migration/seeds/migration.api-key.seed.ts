@@ -6,7 +6,6 @@ import { ApiKeyRepository } from '@modules/api-key/repository/repositories/api-k
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { ConfigService } from '@nestjs/config';
 import { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
-import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 
 @Injectable()
 export class MigrationApiKeySeed {
@@ -30,7 +29,6 @@ export class MigrationApiKeySeed {
 
     constructor(
         private readonly apiKeyRepository: ApiKeyRepository,
-        private readonly apiKeyUtil: ApiKeyUtil,
         private readonly apiKeyService: ApiKeyService,
         private readonly configService: ConfigService
     ) {
@@ -62,8 +60,11 @@ export class MigrationApiKeySeed {
 
         await this.apiKeyRepository.createMany({
             data: this.apiKeys.map(apiKey => {
-                const key = this.apiKeyUtil.createKey(apiKey.key);
-                const hashed = this.apiKeyUtil.createHash(key, apiKey.secret);
+                const key = this.apiKeyService.createKey(apiKey.key);
+                const hashed = this.apiKeyService.createHash(
+                    key,
+                    apiKey.secret
+                );
 
                 return {
                     hash: hashed,
@@ -92,7 +93,7 @@ export class MigrationApiKeySeed {
                 .map(apiKey => {
                     return [
                         this.apiKeyService.deleteCacheByKey(
-                            this.apiKeyUtil.createKey(apiKey.key)
+                            this.apiKeyService.createKey(apiKey.key)
                         ),
                     ];
                 })
@@ -101,7 +102,7 @@ export class MigrationApiKeySeed {
                 where: {
                     key: {
                         in: this.apiKeys.map(apiKey =>
-                            this.apiKeyUtil.createKey(apiKey.key)
+                            this.apiKeyService.createKey(apiKey.key)
                         ),
                     },
                 },

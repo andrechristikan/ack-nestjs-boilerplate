@@ -34,14 +34,6 @@ export class RoleEntity extends DatabaseEntityBase {
 
     @DatabaseProp({
         required: true,
-        default: true,
-        index: true,
-        type: Boolean,
-    })
-    isActive: boolean;
-
-    @DatabaseProp({
-        required: true,
         enum: ENUM_POLICY_ROLE_TYPE,
         index: true,
         type: String,

@@ -1,0 +1,11 @@
+export enum ENUM_USER_SIGN_UP_FROM {
+    ADMIN = 'ADMIN',
+    PUBLIC = 'PUBLIC',
+    MIGRATION = 'MIGRATION',
+}
+
+export enum ENUM_USER_STATUS {
+    ACTIVE = 'ACTIVE',
+    INACTIVE = 'INACTIVE',
+    BLOCKED = 'BLOCKED',
+}
