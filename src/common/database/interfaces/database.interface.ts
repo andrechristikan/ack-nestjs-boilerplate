@@ -147,6 +147,34 @@ export type IDatabaseExtractJoinedEntity<T> = T extends
       ? U
       : never;
 
+export type IDatabaseJoinDetailSingle<TFromEntity = unknown> =
+    IDatabaseExtractJoinedFields<TFromEntity> extends never
+        ? {
+              select?: IDatabaseSelect<TFromEntity>;
+              where?: IDatabaseFilter<TFromEntity>;
+          }
+        : {
+              select?: IDatabaseSelect<TFromEntity>;
+              where?: IDatabaseFilter<TFromEntity>;
+              join?: IDatabaseJoin<TFromEntity>;
+          };
+
+export type IDatabaseJoinDetailArray<TFromEntity = unknown> =
+    IDatabaseExtractJoinedFields<TFromEntity> extends never
+        ? {
+              select?: IDatabaseSelect<TFromEntity>;
+              where?: IDatabaseFilter<TFromEntity>;
+              limit?: number;
+              skip?: number;
+          }
+        : {
+              select?: IDatabaseSelect<TFromEntity>;
+              where?: IDatabaseFilter<TFromEntity>;
+              limit?: number;
+              skip?: number;
+              join?: IDatabaseJoin<TFromEntity>;
+          };
+
 export type IDatabaseJoinDetail<TFromEntity = unknown> =
     IDatabaseExtractJoinedFields<TFromEntity> extends never
         ? {
@@ -163,16 +191,20 @@ export type IDatabaseJoinDetail<TFromEntity = unknown> =
               join?: IDatabaseJoin<TFromEntity>;
           };
 
-export type IDatabaseJoinConfig<TFromEntity = unknown> =
-    | IDatabaseJoinDetail<TFromEntity>
-    | boolean;
+export type IDatabaseJoinConfig<_TEntity, TField> =
+    TField extends IDatabaseJoinField<infer U>[]
+        ? IDatabaseJoinDetailArray<U> | boolean
+        : TField extends IDatabaseJoinField<infer U> | undefined
+          ? IDatabaseJoinDetailSingle<U> | boolean
+          : never;
 
 export type IDatabaseJoin<TEntity = unknown> =
     IDatabaseExtractJoinedFields<TEntity> extends never
         ? Record<string, never>
         : {
               [K in IDatabaseExtractJoinedFields<TEntity>]?: IDatabaseJoinConfig<
-                  IDatabaseExtractJoinedEntity<TEntity[K]>
+                  TEntity,
+                  TEntity[K]
               >;
           };
 
