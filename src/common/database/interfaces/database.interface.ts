@@ -2,23 +2,40 @@ import { ENUM_DATABASE_FILTER_OPERATION_STRING_MODE } from '@common/database/con
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import { Types } from 'mongoose';
 
-export type IDatabaseJoinField<TEntity> = TEntity & {
-    isJoined: true;
-};
+// ============================================
+// 1. BASE TYPES & COMMON INTERFACES
+// ============================================
 
-export interface IDatabaseJoinProps {
-    fromEntity: string;
-    localField: string;
-    fromField?: string;
+export interface IDatabaseTimestamps {
+    createdAt?: Date;
+    updatedAt?: Date;
+    deletedAt?: Date;
 }
 
-export type IDatabaseOrderDetail<TEntity> = Partial<
-    Record<keyof TEntity, ENUM_PAGINATION_ORDER_DIRECTION_TYPE>
->;
+export interface IDatabaseAudit {
+    createdBy?: string;
+    updatedBy?: string;
+    deletedBy?: string;
+    deleted?: boolean;
+}
 
-export type IDatabaseOrder<TEntity> =
-    | IDatabaseOrderDetail<TEntity>
-    | IDatabaseOrderDetail<TEntity>[];
+export interface IDatabaseBaseEntity
+    extends IDatabaseTimestamps,
+        IDatabaseAudit {
+    _id?: Types.ObjectId;
+}
+
+export interface IDatabaseTransaction<TTransaction = unknown> {
+    transaction?: TTransaction;
+}
+
+export interface IDatabaseWithDeleted {
+    withDeleted?: boolean;
+}
+
+// ============================================
+// 2. FILTER & QUERY INTERFACES
+// ============================================
 
 export interface IDatabaseFilterOperationComparison {
     gte?: number | string | Date;
@@ -65,39 +82,163 @@ export interface IDatabaseFilterOperationLogical<TEntity> {
 export type IDatabaseFilter<TEntity> = IDatabaseFilterValue<TEntity> &
     IDatabaseFilterOperationLogical<TEntity>;
 
-export type IDatabaseUpdateAtomic =
-    | {
-          increment?: number;
-      }
-    | {
-          decrement?: number;
-      }
-    | {
-          multiply?: number;
-      }
-    | {
-          divide?: number;
-      };
+// ============================================
+// 3. SELECT & ORDER INTERFACES
+// ============================================
 
-export type IDatabaseSelect<TEntity> = Partial<Record<keyof TEntity, boolean>>;
+export type IDatabaseSelectableFields<TEntity> = {
+    [K in keyof TEntity]: TEntity[K] extends
+        | IDatabaseJoinField<infer _U>
+        | undefined
+        ? never
+        : TEntity[K] extends IDatabaseJoinField<infer _U>[]
+          ? never
+          : K;
+}[keyof TEntity];
 
-export interface IDatabaseJoinDetail {
-    select?: IDatabaseSelect<unknown>;
-    where?: IDatabaseFilter<unknown>;
-    on?: {
-        localField: string;
-        foreignField: string;
-    };
-    from: string;
-    multiple?: {
-        enabled: boolean;
-        limit?: number;
-        skip?: number;
-    };
-    join?: IDatabaseJoin;
+export type IDatabaseSelect<TEntity> = Partial<
+    Record<IDatabaseSelectableFields<TEntity>, boolean>
+>;
+
+export type IDatabaseOrderDetail<TEntity> = Partial<
+    Record<keyof TEntity, ENUM_PAGINATION_ORDER_DIRECTION_TYPE>
+>;
+
+export type IDatabaseOrder<TEntity> =
+    | IDatabaseOrderDetail<TEntity>
+    | IDatabaseOrderDetail<TEntity>[];
+
+// ============================================
+// 4. JOIN INTERFACES
+// ============================================
+
+export interface IDatabaseJoinProps {
+    fromEntity: string;
+    localField: string;
+    fromField?: string;
 }
 
-export type IDatabaseJoin = Record<string, IDatabaseJoinDetail>;
+export interface IDatabaseJoinOn {
+    localField: string;
+    foreignField: string;
+}
+
+export type IDatabaseJoinField<T> = T & { isJoined: true };
+
+export type IDatabaseExtractJoinedFields<TEntity> = {
+    [K in keyof TEntity]: TEntity[K] extends
+        | IDatabaseJoinField<infer U>
+        | undefined
+        ? U extends object
+            ? K
+            : never
+        : TEntity[K] extends IDatabaseJoinField<infer U>[]
+          ? U extends object
+              ? K
+              : never
+          : never;
+}[keyof TEntity];
+
+export type IDatabaseExtractJoinedEntity<T> = T extends
+    | IDatabaseJoinField<infer U>
+    | undefined
+    ? U
+    : T extends IDatabaseJoinField<infer U>[]
+      ? U
+      : never;
+
+export type IDatabaseJoinDetail<TFromEntity = unknown> =
+    IDatabaseExtractJoinedFields<TFromEntity> extends never
+        ? {
+              select?: IDatabaseSelect<TFromEntity>;
+              where?: IDatabaseFilter<TFromEntity>;
+              limit?: number;
+              skip?: number;
+          }
+        : {
+              select?: IDatabaseSelect<TFromEntity>;
+              where?: IDatabaseFilter<TFromEntity>;
+              limit?: number;
+              skip?: number;
+              join?: IDatabaseJoin<TFromEntity>;
+          };
+
+export type IDatabaseJoinConfig<TFromEntity = unknown> =
+    | IDatabaseJoinDetail<TFromEntity>
+    | boolean;
+
+export type IDatabaseJoin<TEntity = unknown> =
+    IDatabaseExtractJoinedFields<TEntity> extends never
+        ? Record<string, never>
+        : {
+              [K in IDatabaseExtractJoinedFields<TEntity>]?: IDatabaseJoinConfig<
+                  IDatabaseExtractJoinedEntity<TEntity[K]>
+              >;
+          };
+
+export type IDatabaseResolveJoinedEntity<
+    TEntity,
+    TJoin extends IDatabaseJoin | undefined,
+> = TJoin extends undefined
+    ? TEntity
+    : {
+          [K in keyof TEntity]: K extends keyof TJoin
+              ? TEntity[K] extends IDatabaseJoinField<infer U> | undefined
+                  ? TJoin[K] extends true
+                      ? U
+                      : TJoin[K] extends IDatabaseJoinDetail
+                        ? TJoin[K] extends { limit: number }
+                            ? TJoin[K] extends { join: IDatabaseJoin }
+                                ? IDatabaseExtractJoinedFields<U> extends never
+                                    ? U[]
+                                    : IDatabaseResolveJoinedEntity<
+                                          U,
+                                          TJoin[K]['join']
+                                      >[]
+                                : U[]
+                            : TJoin[K] extends { join: IDatabaseJoin }
+                              ? IDatabaseExtractJoinedFields<U> extends never
+                                  ? U
+                                  : IDatabaseResolveJoinedEntity<
+                                        U,
+                                        TJoin[K]['join']
+                                    >
+                              : U
+                        : TEntity[K]
+                  : TEntity[K] extends IDatabaseJoinField<infer U>[]
+                    ? TJoin[K] extends true
+                        ? U[]
+                        : TJoin[K] extends IDatabaseJoinDetail
+                          ? TJoin[K] extends { limit: number }
+                              ? TJoin[K] extends { join: IDatabaseJoin }
+                                  ? IDatabaseExtractJoinedFields<U> extends never
+                                      ? U[]
+                                      : IDatabaseResolveJoinedEntity<
+                                            U,
+                                            TJoin[K]['join']
+                                        >[]
+                                  : U[]
+                              : TJoin[K] extends { join: IDatabaseJoin }
+                                ? IDatabaseExtractJoinedFields<U> extends never
+                                    ? U[]
+                                    : IDatabaseResolveJoinedEntity<
+                                          U,
+                                          TJoin[K]['join']
+                                      >[]
+                                : U[]
+                          : TEntity[K]
+                    : TEntity[K]
+              : TEntity[K];
+      };
+
+// ============================================
+// 5. PAGINATION INTERFACES
+// ============================================
+
+export interface IDatabasePaginationOptions {
+    limit: number;
+    skip: number;
+}
 
 export interface IDatabasePaginationReturn<TEntity> {
     items: TEntity[];
@@ -105,38 +246,32 @@ export interface IDatabasePaginationReturn<TEntity> {
     page: number;
     totalPage: number;
 }
-export interface IDatabaseManyReturn {
-    count: number;
-    ids?: Types.ObjectId[];
-}
 
-export interface IDatabaseExistReturn {
-    _id: Types.ObjectId;
-}
+// ============================================
+// 6. QUERY OPERATION INTERFACES
+// ============================================
 
-export interface IDatabaseFindManyWithPagination<TEntity, TTransaction> {
-    limit: number;
-    skip: number;
+export interface IDatabaseQueryOptions<TEntity, TTransaction>
+    extends IDatabaseTransaction<TTransaction>,
+        IDatabaseWithDeleted {
     where?: IDatabaseFilter<TEntity>;
     select?: IDatabaseSelect<TEntity>;
     order?: IDatabaseOrder<TEntity>;
-    join?: IDatabaseJoin;
-    withDeleted?: boolean;
+    join?: IDatabaseJoin<TEntity>;
     transaction?: TTransaction;
 }
+
+export interface IDatabaseFindManyWithPagination<TEntity, TTransaction>
+    extends IDatabaseQueryOptions<TEntity, TTransaction>,
+        IDatabasePaginationOptions {}
 
 export type IDatabaseFindMany<TEntity, TTransaction> = Partial<
     IDatabaseFindManyWithPagination<TEntity, TTransaction>
 >;
 
-export type IDatabaseCount<TEntity, TTransaction> = Pick<
-    IDatabaseFindMany<TEntity, TTransaction>,
-    'where' | 'withDeleted' | 'transaction'
->;
-
 export interface IDatabaseFindOne<TEntity, TTransaction>
     extends Pick<
-        IDatabaseFindMany<TEntity, TTransaction>,
+        IDatabaseQueryOptions<TEntity, TTransaction>,
         'select' | 'join' | 'withDeleted' | 'transaction'
     > {
     where: IDatabaseFilter<TEntity>;
@@ -144,14 +279,34 @@ export interface IDatabaseFindOne<TEntity, TTransaction>
 
 export interface IDatabaseFindOneById<TTransaction>
     extends Pick<
-        IDatabaseFindMany<unknown, TTransaction>,
+        IDatabaseQueryOptions<unknown, TTransaction>,
         'select' | 'join' | 'withDeleted' | 'transaction'
     > {
     where: { _id: Types.ObjectId };
 }
 
+export type IDatabaseCount<TEntity, TTransaction> = Pick<
+    IDatabaseQueryOptions<TEntity, TTransaction>,
+    'where' | 'withDeleted' | 'transaction'
+>;
+
+export type IDatabaseExist<TEntity, TTransaction> = IDatabaseCount<
+    TEntity,
+    TTransaction
+>;
+
+// ============================================
+// 7. MUTATION OPERATION INTERFACES
+// ============================================
+
+export type IDatabaseUpdateAtomic =
+    | { increment?: number }
+    | { decrement?: number }
+    | { multiply?: number }
+    | { divide?: number };
+
 export interface IDatabaseCreate<TEntity, TTransaction>
-    extends Pick<IDatabaseFindMany<TEntity, TTransaction>, 'transaction'> {
+    extends Pick<IDatabaseQueryOptions<TEntity, TTransaction>, 'transaction'> {
     data: Omit<
         TEntity,
         | '_id'
@@ -169,9 +324,14 @@ export interface IDatabaseCreate<TEntity, TTransaction>
     };
 }
 
+export interface IDatabaseCreateMany<TEntity, TTransaction>
+    extends Pick<IDatabaseQueryOptions<TEntity, TTransaction>, 'transaction'> {
+    data: IDatabaseCreate<TEntity, TTransaction>['data'][];
+}
+
 export interface IDatabaseUpdate<TEntity, TTransaction>
     extends Pick<
-        IDatabaseFindMany<TEntity, TTransaction>,
+        IDatabaseQueryOptions<TEntity, TTransaction>,
         'withDeleted' | 'transaction'
     > {
     where: IDatabaseFilter<TEntity>;
@@ -190,9 +350,13 @@ export interface IDatabaseUpdate<TEntity, TTransaction>
         | Record<keyof TEntity, IDatabaseUpdateAtomic>;
 }
 
-export interface IDatabaseRaw<TRaw, TTransaction>
-    extends Pick<IDatabaseFindMany<unknown, TTransaction>, 'transaction'> {
-    raw: TRaw;
+export interface IDatabaseUpdateMany<TEntity, TTransaction>
+    extends Pick<
+        IDatabaseQueryOptions<TEntity, TTransaction>,
+        'withDeleted' | 'transaction'
+    > {
+    where: IDatabaseFilter<TEntity>;
+    data: IDatabaseUpdate<TEntity, TTransaction>['data'];
 }
 
 export interface IDatabaseUpsert<TEntity, TTransaction>
@@ -201,43 +365,22 @@ export interface IDatabaseUpsert<TEntity, TTransaction>
     create: IDatabaseCreate<TEntity, TTransaction>['data'];
 }
 
+// ============================================
+// 8. DELETE OPERATION INTERFACES
+// ============================================
+
 export interface IDatabaseDelete<TEntity, TTransaction>
     extends Pick<
-        IDatabaseFindMany<TEntity, TTransaction>,
+        IDatabaseQueryOptions<TEntity, TTransaction>,
         'withDeleted' | 'transaction'
     > {
     where: IDatabaseFilter<TEntity>;
 }
 
-export interface IDatabaseExist<TEntity, TTransaction>
-    extends Pick<
-        IDatabaseFindMany<TEntity, TTransaction>,
-        'withDeleted' | 'transaction'
-    > {
-    where: IDatabaseFilter<TEntity>;
-}
-
-export interface IDatabaseCreateMany<TEntity, TTransaction>
-    extends Pick<IDatabaseFindMany<TEntity, TTransaction>, 'transaction'> {
-    data: IDatabaseCreate<TEntity, TTransaction>['data'][];
-}
-
-export interface IDatabaseUpdateMany<TEntity, TTransaction>
-    extends Pick<
-        IDatabaseFindMany<TEntity, TTransaction>,
-        'withDeleted' | 'transaction'
-    > {
-    where: IDatabaseFilter<TEntity>;
-    data: IDatabaseUpdate<TEntity, TTransaction>['data'];
-}
-
-export interface IDatabaseDeleteMany<TEntity, TTransaction>
-    extends Pick<
-        IDatabaseFindMany<TEntity, TTransaction>,
-        'withDeleted' | 'transaction'
-    > {
-    where: IDatabaseFilter<TEntity>;
-}
+export type IDatabaseDeleteMany<TEntity, TTransaction> = IDatabaseDelete<
+    TEntity,
+    TTransaction
+>;
 
 export interface IDatabaseSoftDelete<TEntity, TTransaction>
     extends Omit<IDatabaseDelete<TEntity, TTransaction>, 'withDeleted'> {
@@ -247,6 +390,9 @@ export interface IDatabaseSoftDelete<TEntity, TTransaction>
     };
 }
 
+export type IDatabaseSoftDeleteMany<TEntity, TTransaction> =
+    IDatabaseSoftDelete<TEntity, TTransaction>;
+
 export interface IDatabaseRestore<TEntity, TTransaction>
     extends Omit<IDatabaseSoftDelete<TEntity, TTransaction>, 'data'> {
     data?: {
@@ -254,10 +400,25 @@ export interface IDatabaseRestore<TEntity, TTransaction>
     };
 }
 
-export type IDatabaseSoftDeleteMany<TEntity, TTransaction> =
-    IDatabaseSoftDelete<TEntity, TTransaction>;
-
 export type IDatabaseRestoreMany<TEntity, TTransaction> = IDatabaseRestore<
     TEntity,
     TTransaction
 >;
+
+// ============================================
+// 9. RAW QUERY & RETURN INTERFACES
+// ============================================
+
+export interface IDatabaseRaw<TRaw, TTransaction>
+    extends Pick<IDatabaseQueryOptions<unknown, TTransaction>, 'transaction'> {
+    raw: TRaw;
+}
+
+export interface IDatabaseManyReturn {
+    count: number;
+    ids?: Types.ObjectId[];
+}
+
+export interface IDatabaseExistReturn {
+    _id: Types.ObjectId;
+}

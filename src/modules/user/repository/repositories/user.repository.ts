@@ -42,15 +42,31 @@ export class UserRepository extends DatabaseRepositoryBase<UserEntity> {
             },
             select: {
                 _id: true,
-            },join: {
+                name: true,
+                email: true,
+            },
+            join: {
                 country: {
-                    select: {
-
-                    }
-                }
-            }
+                    select: { alpha2Code: true, name: true },
+                },
+                role: {
+                    select: { _id: true, name: true, type: true },
+                    join: {
+                        users: {
+                            join: {
+                                country: {
+                                    select: {
+                                        alpha2Code: true,
+                                        name: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         });
 
-        return user.;
+        return user;
     }
 }
