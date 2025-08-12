@@ -5,8 +5,6 @@ import { UserEntity } from '@modules/user/repository/entities/user.entity';
 import { DatabaseRepositoryBase } from '@common/database/bases/database.repository';
 import { IDatabaseExistReturn } from '@common/database/interfaces/database.interface';
 import { ENUM_USER_STATUS } from '@modules/user/enums/user.enum';
-import { RoleTableName } from '@modules/role/repository/entities/role.entity';
-import { CountryTableName } from '@modules/country/repository/entities/country.entity';
 
 @Injectable()
 export class UserRepository extends DatabaseRepositoryBase<UserEntity> {
@@ -35,23 +33,24 @@ export class UserRepository extends DatabaseRepositoryBase<UserEntity> {
         });
     }
 
+    // TODO: TEST JOINED QUERY
     async findOneActiveByEmail(email: string): Promise<UserEntity | null> {
-        return this.findOne({
+        const user = await this.findOne({
             where: {
                 email: email.toLowerCase(),
                 status: ENUM_USER_STATUS.ACTIVE,
             },
-            join: {
-                role: {
-                    from: RoleTableName,
-                },
+            select: {
+                _id: true,
+            },join: {
                 country: {
-                    from: CountryTableName,
-                },
-                'mobileNumber.country': {
-                    from: CountryTableName,
-                },
-            },
+                    select: {
+
+                    }
+                }
+            }
         });
+
+        return user.;
     }
 }

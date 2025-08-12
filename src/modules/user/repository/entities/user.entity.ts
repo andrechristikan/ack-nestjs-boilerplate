@@ -6,8 +6,10 @@ import { DatabaseEntityBase } from '@common/database/bases/database.entity';
 import {
     DatabaseEntity,
     DatabaseProp,
+    DatabasePropJoin,
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
+import { IDatabaseJoinField } from '@common/database/interfaces/database.interface';
 import { CountryEntity } from '@modules/country/repository/entities/country.entity';
 import { RoleEntity } from '@modules/role/repository/entities/role.entity';
 import {
@@ -88,11 +90,11 @@ export class UserEntity extends DatabaseEntityBase {
     })
     roleId: Types.ObjectId;
 
-    @DatabaseProp({
-        required: false,
-        ref: RoleEntity.name,
+    @DatabasePropJoin({
+        fromEntity: RoleEntity.name,
+        localField: 'roleId',
     })
-    role?: RoleEntity;
+    role?: IDatabaseJoinField<RoleEntity>;
 
     @DatabaseProp({
         required: true,
@@ -163,11 +165,11 @@ export class UserEntity extends DatabaseEntityBase {
     })
     countryId: Types.ObjectId;
 
-    @DatabaseProp({
-        required: false,
-        ref: CountryEntity.name,
+    @DatabasePropJoin({
+        fromEntity: CountryEntity.name,
+        localField: 'countryId',
     })
-    country?: RoleEntity;
+    country?: IDatabaseJoinField<CountryEntity>;
 }
 
 export const UserSchema = DatabaseSchema(UserEntity);

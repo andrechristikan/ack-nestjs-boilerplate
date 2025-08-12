@@ -1,6 +1,7 @@
 import {
     DatabaseEntity,
     DatabaseProp,
+    DatabasePropJoin,
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
 import { CountryEntity } from '@modules/country/repository/entities/country.entity';
@@ -18,9 +19,9 @@ export class UserMobileNumberEntity {
     })
     countryId: Types.ObjectId;
 
-    @DatabaseProp({
-        required: false,
-        ref: CountryEntity.name,
+    @DatabasePropJoin({
+        fromEntity: CountryEntity.name,
+        localField: 'countryId',
     })
     country?: CountryEntity;
 

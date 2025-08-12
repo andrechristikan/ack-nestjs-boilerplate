@@ -1,3 +1,3 @@
 **/**/templates/*
 swagger.json
-metadata.ts
+src/metadata.ts

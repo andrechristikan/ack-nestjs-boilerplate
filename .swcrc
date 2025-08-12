@@ -4,7 +4,17 @@
     "module": {
         "type": "commonjs"
     },
-    "exclude": ["src/metadata.ts"],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "coverage",
+        "logs",
+        "keys",
+        ".warmup",
+        ".nyc_output",
+        "src/metadata.ts",
+        "swagger.json"
+    ],
     "jsc": {
         "baseUrl": "./",
         "paths": {

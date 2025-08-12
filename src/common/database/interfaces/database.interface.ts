@@ -1,5 +1,16 @@
+import { ENUM_DATABASE_FILTER_OPERATION_STRING_MODE } from '@common/database/constants/database.constant';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import { Types } from 'mongoose';
+
+export type IDatabaseJoinField<TEntity> = TEntity & {
+    isJoined: true;
+};
+
+export interface IDatabaseJoinProps {
+    fromEntity: string;
+    localField: string;
+    fromField?: string;
+}
 
 export type IDatabaseOrderDetail<TEntity> = Partial<
     Record<keyof TEntity, ENUM_PAGINATION_ORDER_DIRECTION_TYPE>
@@ -17,7 +28,7 @@ export interface IDatabaseFilterOperationComparison {
     equal?: number | string | Date | boolean;
     in?: (number | string | Date | boolean)[];
     notIn?: (number | string | Date | boolean)[];
-    notEqual?: number | string | Date | boolean;
+    not?: number | string | Date | boolean;
 }
 
 export interface IDatabaseFilterOperationString {
@@ -25,6 +36,8 @@ export interface IDatabaseFilterOperationString {
     notContains?: string;
     startsWith?: string;
     endsWith?: string;
+    regex?: string | RegExp;
+    mode?: ENUM_DATABASE_FILTER_OPERATION_STRING_MODE;
 }
 
 export type IDatabaseFilterOperation = IDatabaseFilterOperationComparison &

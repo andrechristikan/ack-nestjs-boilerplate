@@ -35,3 +35,8 @@ export const DATABASE_FILTER_OPERATIONS = [
     'or',
     'and',
 ] as const;
+
+export enum ENUM_DATABASE_FILTER_OPERATION_STRING_MODE {
+    DEFAULT = 'DEFAULT',
+    INSENSITIVE = 'INSENSITIVE',
+}

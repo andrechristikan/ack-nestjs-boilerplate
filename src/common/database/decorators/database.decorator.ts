@@ -10,6 +10,7 @@ import {
 } from '@nestjs/mongoose';
 import { SchemaType as MongooseSchema } from 'mongoose';
 import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
+import { IDatabaseJoinProps } from '@common/database/interfaces/database.interface';
 
 /**
  * Decorator to inject a MongoDB database connection into a class constructor parameter.
@@ -70,6 +71,33 @@ export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {
  */
 export function DatabaseProp(options?: PropOptions): PropertyDecorator {
     return Prop(options);
+}
+
+/**
+ * Property decorator that defines a Mongoose schema property for joining/referencing another entity.
+ * Creates a reference field that can be populated with related document data using explicit foreign key mapping.
+ *
+ * This decorator is designed for populate/virtual fields that reference other entities.
+ * The actual foreign key value should be stored in a separate field using @DatabaseProp.
+ *
+ * @param joinProps - Configuration object defining the join relationship
+ * @param joinProps.fromEntity - The name of the entity/model to reference (should be Entity.name)
+ * @param joinProps.localField - The field name in the current entity that stores the foreign key value
+ * @param joinProps.fromField - The field name in the referenced entity to join on (defaults to '_id')
+ * @returns A property decorator that defines the schema reference property for population.
+ */
+export function DatabasePropJoin(
+    joinProps: IDatabaseJoinProps
+): PropertyDecorator {
+    const foreignField = joinProps?.fromField || '_id';
+
+    return Prop({
+        required: false,
+        ref: joinProps.fromEntity,
+        localField: joinProps.localField,
+        foreignField,
+        isJoin: true,
+    });
 }
 
 /**
