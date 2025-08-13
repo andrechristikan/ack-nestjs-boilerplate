@@ -15,6 +15,8 @@ import {
     IDatabaseRaw,
     IDatabaseRestore,
     IDatabaseRestoreMany,
+    IDatabaseReturn,
+    IDatabaseSelect,
     IDatabaseSoftDelete,
     IDatabaseSoftDeleteMany,
     IDatabaseUpdate,
@@ -25,50 +27,66 @@ import {
 export interface IDatabaseRepository<TEntity, TModel, TRaw, TTransaction> {
     _model: TModel;
 
-    findMany<T = TEntity>(
+    findMany<TSelect extends IDatabaseSelect<TEntity> | undefined = undefined>(
         queries?: IDatabaseFindMany<TEntity, TTransaction>
-    ): Promise<T[]>;
-    findManyWithPagination<T = TEntity>(
+    ): Promise<IDatabaseReturn<TEntity, TSelect>[]>;
+    findManyWithPagination<
+        TSelect extends IDatabaseSelect<TEntity> | undefined = undefined,
+    >(
         queries: IDatabaseFindManyWithPagination<TEntity, TTransaction>
-    ): Promise<IDatabasePaginationReturn<T>>;
-    findOne<T = TEntity>(
-        queries: IDatabaseFindOne<TEntity, TTransaction>
-    ): Promise<T | null>;
-    findOneById<T = TEntity>(
-        queries: IDatabaseFindOneById<TTransaction>
-    ): Promise<T | null>;
-    count(queries?: IDatabaseCount<TEntity, TTransaction>): Promise<number>;
-    create(queries: IDatabaseCreate<TEntity, TTransaction>): Promise<TEntity>;
-    update(queries: IDatabaseUpdate<TEntity, TTransaction>): Promise<TEntity>;
-    delete(queries: IDatabaseDelete<TEntity, TTransaction>): Promise<TEntity>;
-    exists(
-        queries: IDatabaseExist<TEntity, TTransaction>
-    ): Promise<IDatabaseExistReturn | null>;
-    upsert(queries: IDatabaseUpsert<TEntity, TTransaction>): Promise<TEntity>;
-    raw<T>({ raw, transaction }: IDatabaseRaw<TRaw, TTransaction>): Promise<T>;
-    createMany(
-        queries: IDatabaseCreateMany<TEntity, TTransaction>
-    ): Promise<IDatabaseManyReturn>;
-    updateMany(
-        queries: IDatabaseUpdateMany<TEntity, TTransaction>
-    ): Promise<IDatabaseManyReturn>;
-    deleteMany(
-        queries: IDatabaseDeleteMany<TEntity, TTransaction>
-    ): Promise<IDatabaseManyReturn>;
-    softDelete(
-        queries: IDatabaseSoftDelete<TEntity, TTransaction>
-    ): Promise<TEntity>;
-    restore(queries: IDatabaseRestore<TEntity, TTransaction>): Promise<TEntity>;
-    softDeleteMany(
-        queries: IDatabaseSoftDeleteMany<TEntity, TTransaction>
-    ): Promise<IDatabaseManyReturn>;
-    restoreMany(
-        queries: IDatabaseRestoreMany<TEntity, TTransaction>
-    ): Promise<IDatabaseManyReturn>;
-    withTransaction<T = void>(
-        callback: (session: TTransaction) => Promise<T>
-    ): Promise<T>;
+    ): Promise<IDatabasePaginationReturn<IDatabaseReturn<TEntity, TSelect>>>;
+    findOne<TSelect extends IDatabaseSelect<TEntity> | undefined = undefined>(
+        queries: IDatabaseFindOne<TEntity, TTransaction> & { select?: TSelect }
+    ): Promise<IDatabaseReturn<TEntity, TSelect> | null>;
+    findOneById<
+        TSelect extends IDatabaseSelect<TEntity> | undefined = undefined,
+    >(params: {
+        queries: IDatabaseFindOneById<TTransaction>;
+    }): Promise<IDatabaseReturn<TEntity, TSelect> | null>;
+    count(params?: {
+        queries?: IDatabaseCount<TEntity, TTransaction>;
+    }): Promise<number>;
+    create(params: {
+        queries: IDatabaseCreate<TEntity, TTransaction>;
+    }): Promise<TEntity>;
+    update(params: {
+        queries: IDatabaseUpdate<TEntity, TTransaction>;
+    }): Promise<TEntity>;
+    delete(params: {
+        queries: IDatabaseDelete<TEntity, TTransaction>;
+    }): Promise<TEntity>;
+    exists(params: {
+        queries: IDatabaseExist<TEntity, TTransaction>;
+    }): Promise<IDatabaseExistReturn | null>;
+    upsert(params: {
+        queries: IDatabaseUpsert<TEntity, TTransaction>;
+    }): Promise<TEntity>;
+    raw<T>(params: IDatabaseRaw<TRaw, TTransaction>): Promise<T>;
+    createMany(params: {
+        queries: IDatabaseCreateMany<TEntity, TTransaction>;
+    }): Promise<IDatabaseManyReturn>;
+    updateMany(params: {
+        queries: IDatabaseUpdateMany<TEntity, TTransaction>;
+    }): Promise<IDatabaseManyReturn>;
+    deleteMany(params: {
+        queries: IDatabaseDeleteMany<TEntity, TTransaction>;
+    }): Promise<IDatabaseManyReturn>;
+    softDelete(params: {
+        queries: IDatabaseSoftDelete<TEntity, TTransaction>;
+    }): Promise<TEntity>;
+    restore(params: {
+        queries: IDatabaseRestore<TEntity, TTransaction>;
+    }): Promise<TEntity>;
+    softDeleteMany(params: {
+        queries: IDatabaseSoftDeleteMany<TEntity, TTransaction>;
+    }): Promise<IDatabaseManyReturn>;
+    restoreMany(params: {
+        queries: IDatabaseRestoreMany<TEntity, TTransaction>;
+    }): Promise<IDatabaseManyReturn>;
+    withTransaction<T = void>(params: {
+        callback: (session: TTransaction) => Promise<T>;
+    }): Promise<T>;
     createTransaction(): Promise<TTransaction>;
-    commitTransaction(session: TTransaction): Promise<void>;
-    abortTransaction(session: TTransaction): Promise<void>;
+    commitTransaction(params: { session: TTransaction }): Promise<void>;
+    abortTransaction(params: { session: TTransaction }): Promise<void>;
 }

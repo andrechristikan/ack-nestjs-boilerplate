@@ -449,7 +449,7 @@ export function PaginationQueryFilterNotEqualPipe(
             const customField = options?.customField ?? metadata.data;
             return {
                 [customField]: {
-                    notEqual: finalValue,
+                    not: finalValue,
                 },
             };
         }

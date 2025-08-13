@@ -13,6 +13,7 @@ import {
     ENUM_USER_STATUS,
 } from '@modules/user/enums/user.enum';
 import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
+import { UserEntity } from '@modules/user/repository/entities/user.entity';
 import { UserRepository } from '@modules/user/repository/repositories/user.repository';
 import {
     ConflictException,

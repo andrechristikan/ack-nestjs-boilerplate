@@ -86,19 +86,17 @@ export type IDatabaseFilter<TEntity> = IDatabaseFilterValue<TEntity> &
 // 3. SELECT & ORDER INTERFACES
 // ============================================
 
-export type IDatabaseSelectableFields<TEntity> = {
-    [K in keyof TEntity]: TEntity[K] extends
-        | IDatabaseJoinField<infer _U>
+type IDatabaseSelectNested<TEntity> = {
+    [K in keyof TEntity]?: TEntity[K] extends
+        | IDatabaseJoinField<infer U>
         | undefined
-        ? never
-        : TEntity[K] extends IDatabaseJoinField<infer _U>[]
-          ? never
-          : K;
-}[keyof TEntity];
+        ? IDatabaseSelectNested<U> | boolean
+        : TEntity[K] extends IDatabaseJoinField<infer U>[]
+          ? IDatabaseSelectNested<U> | boolean
+          : boolean;
+};
 
-export type IDatabaseSelect<TEntity> = Partial<
-    Record<IDatabaseSelectableFields<TEntity>, boolean>
->;
+export type IDatabaseSelect<TEntity> = IDatabaseSelectNested<TEntity>;
 
 export type IDatabaseOrderDetail<TEntity> = Partial<
     Record<keyof TEntity, ENUM_PAGINATION_ORDER_DIRECTION_TYPE>
@@ -107,6 +105,51 @@ export type IDatabaseOrderDetail<TEntity> = Partial<
 export type IDatabaseOrder<TEntity> =
     | IDatabaseOrderDetail<TEntity>
     | IDatabaseOrderDetail<TEntity>[];
+
+// ============================================
+// 3.1. SELECT RESULT INTERFACES
+// ============================================
+type IDatabaseReturnIsSelected<T> = T extends true
+    ? true
+    : T extends Record<string, unknown>
+      ? true
+      : false;
+
+type IDatabaseReturnSelectedKeys<TSelect> = {
+    [K in keyof TSelect]: IDatabaseReturnIsSelected<TSelect[K]> extends true
+        ? K
+        : never;
+}[keyof TSelect];
+
+export type IDatabaseReturnSelectedFields<TEntity, TSelect> =
+    TSelect extends Record<string, unknown>
+        ? {
+              [K in IDatabaseReturnSelectedKeys<TSelect> &
+                  keyof TEntity]: K extends keyof TSelect
+                  ? TSelect[K] extends true
+                      ? TEntity[K]
+                      : TSelect[K] extends Record<string, unknown>
+                        ? TEntity[K] extends
+                              | IDatabaseJoinField<infer U>
+                              | undefined
+                            ?
+                                  | IDatabaseReturnSelectedFields<U, TSelect[K]>
+                                  | undefined
+                            : TEntity[K] extends IDatabaseJoinField<infer U>[]
+                              ? IDatabaseReturnSelectedFields<U, TSelect[K]>[]
+                              : TEntity[K]
+                        : TEntity[K]
+                  : never;
+          }
+        : TEntity;
+
+export type IDatabaseReturn<TEntity, TSelect = undefined> = TSelect extends
+    | undefined
+    | null
+    ? TEntity
+    : TSelect extends Record<string, unknown>
+      ? IDatabaseReturnSelectedFields<TEntity, TSelect>
+      : TEntity;
 
 // ============================================
 // 4. JOIN INTERFACES
@@ -150,11 +193,9 @@ export type IDatabaseExtractJoinedEntity<T> = T extends
 export type IDatabaseJoinDetailSingle<TFromEntity = unknown> =
     IDatabaseExtractJoinedFields<TFromEntity> extends never
         ? {
-              select?: IDatabaseSelect<TFromEntity>;
               where?: IDatabaseFilter<TFromEntity>;
           }
         : {
-              select?: IDatabaseSelect<TFromEntity>;
               where?: IDatabaseFilter<TFromEntity>;
               join?: IDatabaseJoin<TFromEntity>;
           };
@@ -162,13 +203,11 @@ export type IDatabaseJoinDetailSingle<TFromEntity = unknown> =
 export type IDatabaseJoinDetailArray<TFromEntity = unknown> =
     IDatabaseExtractJoinedFields<TFromEntity> extends never
         ? {
-              select?: IDatabaseSelect<TFromEntity>;
               where?: IDatabaseFilter<TFromEntity>;
               limit?: number;
               skip?: number;
           }
         : {
-              select?: IDatabaseSelect<TFromEntity>;
               where?: IDatabaseFilter<TFromEntity>;
               limit?: number;
               skip?: number;
@@ -178,13 +217,11 @@ export type IDatabaseJoinDetailArray<TFromEntity = unknown> =
 export type IDatabaseJoinDetail<TFromEntity = unknown> =
     IDatabaseExtractJoinedFields<TFromEntity> extends never
         ? {
-              select?: IDatabaseSelect<TFromEntity>;
               where?: IDatabaseFilter<TFromEntity>;
               limit?: number;
               skip?: number;
           }
         : {
-              select?: IDatabaseSelect<TFromEntity>;
               where?: IDatabaseFilter<TFromEntity>;
               limit?: number;
               skip?: number;
@@ -208,61 +245,6 @@ export type IDatabaseJoin<TEntity = unknown> =
               >;
           };
 
-export type IDatabaseResolveJoinedEntity<
-    TEntity,
-    TJoin extends IDatabaseJoin | undefined,
-> = TJoin extends undefined
-    ? TEntity
-    : {
-          [K in keyof TEntity]: K extends keyof TJoin
-              ? TEntity[K] extends IDatabaseJoinField<infer U> | undefined
-                  ? TJoin[K] extends true
-                      ? U
-                      : TJoin[K] extends IDatabaseJoinDetail
-                        ? TJoin[K] extends { limit: number }
-                            ? TJoin[K] extends { join: IDatabaseJoin }
-                                ? IDatabaseExtractJoinedFields<U> extends never
-                                    ? U[]
-                                    : IDatabaseResolveJoinedEntity<
-                                          U,
-                                          TJoin[K]['join']
-                                      >[]
-                                : U[]
-                            : TJoin[K] extends { join: IDatabaseJoin }
-                              ? IDatabaseExtractJoinedFields<U> extends never
-                                  ? U
-                                  : IDatabaseResolveJoinedEntity<
-                                        U,
-                                        TJoin[K]['join']
-                                    >
-                              : U
-                        : TEntity[K]
-                  : TEntity[K] extends IDatabaseJoinField<infer U>[]
-                    ? TJoin[K] extends true
-                        ? U[]
-                        : TJoin[K] extends IDatabaseJoinDetail
-                          ? TJoin[K] extends { limit: number }
-                              ? TJoin[K] extends { join: IDatabaseJoin }
-                                  ? IDatabaseExtractJoinedFields<U> extends never
-                                      ? U[]
-                                      : IDatabaseResolveJoinedEntity<
-                                            U,
-                                            TJoin[K]['join']
-                                        >[]
-                                  : U[]
-                              : TJoin[K] extends { join: IDatabaseJoin }
-                                ? IDatabaseExtractJoinedFields<U> extends never
-                                    ? U[]
-                                    : IDatabaseResolveJoinedEntity<
-                                          U,
-                                          TJoin[K]['join']
-                                      >[]
-                                : U[]
-                          : TEntity[K]
-                    : TEntity[K]
-              : TEntity[K];
-      };
-
 // ============================================
 // 5. PAGINATION INTERFACES
 // ============================================
@@ -272,8 +254,8 @@ export interface IDatabasePaginationOptions {
     skip: number;
 }
 
-export interface IDatabasePaginationReturn<TEntity> {
-    items: TEntity[];
+export interface IDatabasePaginationReturn<TEntity, TSelect = undefined> {
+    items: IDatabaseReturnSelectedFields<TEntity, TSelect>[];
     count: number;
     page: number;
     totalPage: number;

@@ -5,7 +5,6 @@ import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
 } from '@modules/user/enums/user.enum';
-import { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { UserVerificationResponseDto } from '@modules/user/dtos/response/user.verification.response.dto';
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
@@ -27,13 +26,13 @@ export class UserGetResponseDto extends DatabaseDto {
     })
     username: string;
 
-    @ApiProperty({
-        required: false,
-        type: UserUpdateMobileNumberRequestDto,
-        oneOf: [{ $ref: getSchemaPath(UserUpdateMobileNumberRequestDto) }],
-    })
-    @Type(() => UserUpdateMobileNumberRequestDto)
-    mobileNumber?: UserUpdateMobileNumberRequestDto;
+    // @ApiProperty({
+    //     required: false,
+    //     type: UserUpdateMobileNumberRequestDto,
+    //     oneOf: [{ $ref: getSchemaPath(UserUpdateMobileNumberRequestDto) }],
+    // })
+    // @Type(() => UserUpdateMobileNumberRequestDto)
+    // mobileNumber?: UserUpdateMobileNumberRequestDto;
 
     @ApiProperty({
         required: true,

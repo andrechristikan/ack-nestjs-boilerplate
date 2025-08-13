@@ -40,30 +40,9 @@ export class UserRepository extends DatabaseRepositoryBase<UserEntity> {
                 email: email.toLowerCase(),
                 status: ENUM_USER_STATUS.ACTIVE,
             },
-            select: {
-                _id: true,
-                name: true,
-                email: true,
-            },
             join: {
-                country: {
-                    select: { alpha2Code: true, name: true },
-                },
-                role: {
-                    select: { _id: true, name: true, type: true },
-                    join: {
-                        users: {
-                            join: {
-                                country: {
-                                    select: {
-                                        alpha2Code: true,
-                                        name: true,
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
+                country: {},
+                role: {},
             },
         });
 

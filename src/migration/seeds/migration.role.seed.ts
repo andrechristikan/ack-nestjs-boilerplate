@@ -62,10 +62,7 @@ export class MigrationRoleSeed {
         }
 
         await this.roleRepository.createMany({
-            data: this.roles.map(role => ({
-                ...role,
-                isActive: true,
-            })),
+            data: this.roles,
         });
 
         this.logger.log('Roles seeded successfully.');

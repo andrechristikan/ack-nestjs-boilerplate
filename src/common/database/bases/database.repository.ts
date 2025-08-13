@@ -22,13 +22,15 @@ import {
     IDatabaseFindManyWithPagination,
     IDatabaseFindOne,
     IDatabaseFindOneById,
-    IDatabaseJoin,
     IDatabaseManyReturn,
     IDatabaseOrder,
     IDatabasePaginationReturn,
     IDatabaseRaw,
     IDatabaseRestore,
     IDatabaseRestoreMany,
+    IDatabaseResult,
+    IDatabaseReturn,
+    IDatabaseSelect,
     IDatabaseSoftDelete,
     IDatabaseSoftDeleteMany,
     IDatabaseUpdate,
@@ -231,13 +233,13 @@ export abstract class DatabaseRepositoryBase<
 
     /**
      * Processes logical filter operations ($or, $and) by recursively resolving nested filter conditions.
-     * 
+     *
      * This method handles the logical operators in database filter operations by:
      * - Converting 'or' operations to MongoDB $or queries with recursive resolution
      * - Converting 'and' operations to MongoDB $and queries with recursive resolution
      * - Maintaining proper soft delete filtering context through recursive calls
      * - Supporting nested logical operations of arbitrary depth
-     * 
+     *
      * @private
      * @param operation - The filter operation containing logical operators (or/and).
      * @param query - The MongoDB query object to modify with logical operations.
@@ -279,18 +281,18 @@ export abstract class DatabaseRepositoryBase<
 
     /**
      * Resolves complex filter operations into MongoDB-compatible query format.
-     * 
+     *
      * This method serves as the central processor for all database filter operations by:
      * - Processing comparison operations (gte, gt, lte, lt, equal, in, notIn, notEqual)
      * - Processing text search operations (contains, notContains, startsWith, endsWith)
      * - Processing logical operations (or, and) with recursive resolution
      * - Maintaining filter operation precedence and combining multiple operation types
      * - Preserving soft delete filtering context for nested operations
-     * 
+     *
      * The method orchestrates the transformation of high-level filter operations
      * into low-level MongoDB query operators, ensuring proper query structure
      * and maintaining query performance optimization.
-     * 
+     *
      * @private
      * @param operation - The filter operation object containing one or more operation types.
      * @param withDeleted - Optional flag to include soft-deleted documents in logical operations.
@@ -320,30 +322,30 @@ export abstract class DatabaseRepositoryBase<
 
     /**
      * Resolves database filter criteria into MongoDB-compatible query format with comprehensive operation support.
-     * 
+     *
      * This method is the primary entry point for transforming high-level database filter criteria
      * into optimized MongoDB queries. It performs the following key operations:
-     * 
+     *
      * **Logical Operations Processing:**
      * - Handles top-level $or operations by recursively resolving each condition
      * - Handles top-level $and operations by recursively resolving each condition
      * - Supports nested logical operations of arbitrary depth and complexity
-     * 
+     *
      * **Field-Level Filter Resolution:**
      * - Processes individual field filters through _resolveFilterOperation
      * - Supports complex filter operations (comparison, text search, logical)
      * - Maintains type safety and proper value assignment for direct field matches
-     * 
+     *
      * **Soft Delete Management:**
      * - Automatically applies soft delete filtering based on withDeleted flag
      * - Allows explicit deletion state overrides through where.deleted property
      * - Ensures consistent soft delete behavior across all query operations
-     * 
+     *
      * **Query Optimization:**
      * - Combines multiple filter conditions efficiently
      * - Maintains MongoDB query structure for optimal performance
      * - Preserves filter operation precedence and logical grouping
-     * 
+     *
      * @private
      * @param where - The high-level filter criteria object containing field filters and logical operations.
      * @param withDeleted - Optional flag controlling soft-deleted document inclusion:
@@ -704,7 +706,7 @@ export abstract class DatabaseRepositoryBase<
      *               and values contain the join details including model, filters, and options.
      * @returns An array of PopulateOptions configured for Mongoose populate, or undefined if no join is provided.
      */
-    private _resolveJoin(join: IDatabaseJoin): PopulateOptions[] | undefined {
+    private _resolveJoin(join: any): PopulateOptions[] | undefined {
         console.log('Resolving join configuration:', join);
         // TODO: COBA CHECK APAKAH JOIN BISA MENGGUNAKAN SCHEMA SECARA LANGSUNG
         // TODO: CHECK JOIN INTERFACE APAKAH BISA INHERIT DARI SCHEMA SECARA LANGSUNG DAN DETECTLY MENGGUNAKAN MODEL MENGGUNAKAN REF
@@ -992,13 +994,17 @@ export abstract class DatabaseRepositoryBase<
      * @returns A promise that resolves to the found document or null if not found.
      * @throws {Error} When find criteria is not provided or select is not a valid object.
      */
-    async findOne<T = TEntity>({
+    async findOne<
+        TSelect extends IDatabaseSelect<TEntity> | undefined = undefined,
+    >({
         where,
         join,
         select,
         withDeleted,
         transaction,
-    }: IDatabaseFindOne<TEntity, TTransaction>): Promise<T | null> {
+    }: IDatabaseFindOne<TEntity, TTransaction> & {
+        select?: TSelect;
+    }): Promise<IDatabaseReturn<TEntity, TSelect> | null> {
         this._validateCriteria(where, 'Where criteria');
         this._validateSelect(select);
 
@@ -1022,7 +1028,7 @@ export abstract class DatabaseRepositoryBase<
         }
 
         const item = await findItem.lean();
-        return item as T | null;
+        return item as unknown as IDatabaseResult<TEntity, TSelect> | null;
     }
 
     /**

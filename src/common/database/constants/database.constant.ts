@@ -36,6 +36,12 @@ export const DATABASE_FILTER_OPERATIONS = [
     'and',
 ] as const;
 
+/**
+ * String comparison modes for database filter operations.
+ *
+ * Defines how string-based filter operations should handle case sensitivity
+ * when performing comparisons in database queries.
+ */
 export enum ENUM_DATABASE_FILTER_OPERATION_STRING_MODE {
     DEFAULT = 'DEFAULT',
     INSENSITIVE = 'INSENSITIVE',

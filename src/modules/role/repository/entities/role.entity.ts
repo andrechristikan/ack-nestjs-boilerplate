@@ -3,6 +3,7 @@ import {
     DatabaseEntity,
     DatabaseProp,
     DatabasePropJoin,
+    DatabasePropJoinMultiple,
     DatabaseSchema,
 } from '@common/database/decorators/database.decorator';
 import { IDatabaseJoinField } from '@common/database/interfaces/database.interface';
@@ -48,12 +49,12 @@ export class RoleEntity extends DatabaseEntityBase {
     })
     permissions: RolePermissionEntity[];
 
-    @DatabasePropJoin({
-        fromEntity: UserEntity.name,
-        localField: '_id',
-        fromField: 'roleId',
-    })
-    users: IDatabaseJoinField<UserEntity>[];
+    // @DatabasePropJoinMultiple({
+    //     fromEntity: UserEntity.name,
+    //     localField: '_id',
+    //     fromField: 'roleId',
+    // })
+    // users?: IDatabaseJoinField<UserEntity>[];
 }
 
 export const RoleSchema = DatabaseSchema(RoleEntity);

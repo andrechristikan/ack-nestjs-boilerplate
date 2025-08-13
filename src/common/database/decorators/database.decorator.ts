@@ -13,12 +13,14 @@ import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.co
 import { IDatabaseJoinProps } from '@common/database/interfaces/database.interface';
 
 /**
- * Decorator to inject a MongoDB database connection into a class constructor parameter.
- * Uses the default database connection name if none is specified.
+ * Parameter decorator that injects a MongoDB database connection into a class constructor parameter.
  *
- * @param connectionName - Optional name of the database connection to inject.
- *                        If not provided, uses the default DATABASE_CONNECTION_NAME.
- * @returns A parameter decorator that injects the database connection.
+ * Uses the default database connection name if none is specified. This decorator is typically
+ * used in service constructors to inject the MongoDB connection for direct database operations.
+ *
+ * @param connectionName Optional name of the database connection to inject.
+ *                       If not provided, uses the default DATABASE_CONNECTION_NAME.
+ * @returns A parameter decorator that injects the specified database connection.
  */
 export function InjectDatabaseConnection(
     connectionName?: string
@@ -27,13 +29,15 @@ export function InjectDatabaseConnection(
 }
 
 /**
- * Decorator to inject a Mongoose model into a class constructor parameter.
- * Uses the default database connection name if none is specified.
+ * Parameter decorator that injects a Mongoose model into a class constructor parameter.
  *
- * @param entity - The name of the entity/model to inject.
- * @param connectionName - Optional name of the database connection.
- *                        If not provided, uses the default DATABASE_CONNECTION_NAME.
- * @returns A parameter decorator that injects the Mongoose model.
+ * Uses the default database connection name if none is specified. This decorator is commonly
+ * used in repository or service classes to inject specific Mongoose models for data operations.
+ *
+ * @param entity The name of the entity/model to inject.
+ * @param connectionName Optional name of the database connection.
+ *                       If not provided, uses the default DATABASE_CONNECTION_NAME.
+ * @returns A parameter decorator that injects the specified Mongoose model.
  */
 export function InjectDatabaseModel(
     entity: string,
@@ -44,11 +48,14 @@ export function InjectDatabaseModel(
 
 /**
  * Class decorator that defines a Mongoose schema with automatic timestamp fields.
- * Automatically adds `createdAt` and `updatedAt` timestamp fields to the schema.
  *
- * @param options - Optional schema configuration options that will be merged
- *                 with the default timestamp configuration.
- * @returns A class decorator that applies the schema definition.
+ * Automatically adds `createdAt` and `updatedAt` timestamp fields to the schema and
+ * disables the version key (`__v`) field. This decorator should be applied to entity
+ * classes that represent MongoDB documents.
+ *
+ * @param options Optional schema configuration options that will be merged
+ *                with the default timestamp and version key configuration.
+ * @returns A class decorator that applies the schema definition with timestamps.
  */
 export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {
     return Schema({
@@ -63,29 +70,19 @@ export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {
 
 /**
  * Property decorator that defines a Mongoose schema property.
- * This is a wrapper around the standard Mongoose @Prop decorator.
  *
- * @param options - Optional property configuration options such as type,
- *                 required, default, index, etc.
- * @returns A property decorator that defines the schema property.
+ * This is a wrapper around the standard Mongoose @Prop decorator, providing
+ * a consistent interface for defining database schema properties. Use this
+ * decorator on entity class properties to define their database schema behavior.
+ *
+ * @param options Optional property configuration options such as type,
+ *                required, default, index, unique, etc.
+ * @returns A property decorator that defines the schema property configuration.
  */
 export function DatabaseProp(options?: PropOptions): PropertyDecorator {
     return Prop(options);
 }
 
-/**
- * Property decorator that defines a Mongoose schema property for joining/referencing another entity.
- * Creates a reference field that can be populated with related document data using explicit foreign key mapping.
- *
- * This decorator is designed for populate/virtual fields that reference other entities.
- * The actual foreign key value should be stored in a separate field using @DatabaseProp.
- *
- * @param joinProps - Configuration object defining the join relationship
- * @param joinProps.fromEntity - The name of the entity/model to reference (should be Entity.name)
- * @param joinProps.localField - The field name in the current entity that stores the foreign key value
- * @param joinProps.fromField - The field name in the referenced entity to join on (defaults to '_id')
- * @returns A property decorator that defines the schema reference property for population.
- */
 export function DatabasePropJoin(
     joinProps: IDatabaseJoinProps
 ): PropertyDecorator {
@@ -96,18 +93,35 @@ export function DatabasePropJoin(
         ref: joinProps.fromEntity,
         localField: joinProps.localField,
         foreignField,
-        isJoin: true,
+        type: Object,
+    });
+}
+
+export function DatabasePropJoinMultiple(
+    joinProps: IDatabaseJoinProps
+): PropertyDecorator {
+    const foreignField = joinProps?.fromField || '_id';
+
+    return Prop({
+        required: false,
+        ref: joinProps.fromEntity,
+        localField: joinProps.localField,
+        foreignField,
+        type: [Object],
     });
 }
 
 /**
  * Creates a Mongoose schema from a class definition.
- * This function takes an entity class and generates the corresponding Mongoose schema.
  *
- * @template T - The type of the entity class.
- * @template N - The type of the resulting schema (defaults to MongooseSchema<T>).
- * @param entity - The entity class to create a schema from.
- * @returns The generated Mongoose schema.
+ * This function takes an entity class and generates the corresponding Mongoose schema
+ * using the SchemaFactory. The generated schema includes all properties decorated
+ * with @DatabaseProp and other database decorators.
+ *
+ * @template T The type of the entity class.
+ * @template N The type of the resulting schema (defaults to MongooseSchema<T>).
+ * @param entity The entity class to create a schema from.
+ * @returns The generated Mongoose schema instance.
  */
 export function DatabaseSchema<T, N = MongooseSchema<T>>(entity: Type<T>): N {
     return SchemaFactory.createForClass<T>(entity) as N;
