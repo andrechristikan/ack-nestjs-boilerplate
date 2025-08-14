@@ -192,11 +192,8 @@ export type IDatabaseExtractJoinedEntity<T> = T extends
 
 export type IDatabaseJoinDetailSingle<TFromEntity = unknown> =
     IDatabaseExtractJoinedFields<TFromEntity> extends never
-        ? {
-              where?: IDatabaseFilter<TFromEntity>;
-          }
+        ? boolean
         : {
-              where?: IDatabaseFilter<TFromEntity>;
               join?: IDatabaseJoin<TFromEntity>;
           };
 
@@ -254,8 +251,11 @@ export interface IDatabasePaginationOptions {
     skip: number;
 }
 
-export interface IDatabasePaginationReturn<TEntity, TSelect = undefined> {
-    items: IDatabaseReturnSelectedFields<TEntity, TSelect>[];
+export interface IDatabasePaginationReturn<
+    TEntity,
+    TSelect = IDatabaseSelect<TEntity>,
+> {
+    items: IDatabaseReturn<TEntity, TSelect>[];
     count: number;
     page: number;
     totalPage: number;
@@ -275,28 +275,60 @@ export interface IDatabaseQueryOptions<TEntity, TTransaction>
     transaction?: TTransaction;
 }
 
-export interface IDatabaseFindManyWithPagination<TEntity, TTransaction>
-    extends IDatabaseQueryOptions<TEntity, TTransaction>,
-        IDatabasePaginationOptions {}
-
-export type IDatabaseFindMany<TEntity, TTransaction> = Partial<
-    IDatabaseFindManyWithPagination<TEntity, TTransaction>
->;
-
-export interface IDatabaseFindOne<TEntity, TTransaction>
-    extends Pick<
-        IDatabaseQueryOptions<TEntity, TTransaction>,
-        'select' | 'join' | 'withDeleted' | 'transaction'
-    > {
-    where: IDatabaseFilter<TEntity>;
+export interface IDatabaseFindManyWithPagination<
+    TEntity,
+    TSelect extends
+        | IDatabaseSelect<TEntity>
+        | undefined = IDatabaseSelect<TEntity>,
+    TTransaction = unknown,
+> extends IDatabasePaginationOptions {
+    where?: IDatabaseFilter<TEntity>;
+    select?: TSelect;
+    order?: IDatabaseOrder<TEntity>;
+    join?: IDatabaseJoin<TEntity>;
+    withDeleted?: boolean;
+    transaction?: TTransaction;
 }
 
-export interface IDatabaseFindOneById<TTransaction>
-    extends Pick<
-        IDatabaseQueryOptions<unknown, TTransaction>,
-        'select' | 'join' | 'withDeleted' | 'transaction'
-    > {
+export type IDatabaseFindMany<
+    TEntity,
+    TSelect extends
+        | IDatabaseSelect<TEntity>
+        | undefined = IDatabaseSelect<TEntity>,
+    TTransaction = unknown,
+> = Partial<
+    Omit<
+        IDatabaseFindManyWithPagination<TEntity, TSelect, TTransaction>,
+        'limit' | 'skip'
+    >
+>;
+
+export interface IDatabaseFindOne<
+    TEntity,
+    TSelect extends
+        | IDatabaseSelect<TEntity>
+        | undefined = IDatabaseSelect<TEntity>,
+    TTransaction = unknown,
+> {
+    where: IDatabaseFilter<TEntity>;
+    select?: TSelect;
+    join?: IDatabaseJoin<TEntity>;
+    withDeleted?: boolean;
+    transaction?: TTransaction;
+}
+
+export interface IDatabaseFindOneById<
+    TEntity,
+    TSelect extends
+        | IDatabaseSelect<TEntity>
+        | undefined = IDatabaseSelect<TEntity>,
+    TTransaction = unknown,
+> {
     where: { _id: Types.ObjectId };
+    select?: TSelect;
+    join?: IDatabaseJoin<TEntity>;
+    withDeleted?: boolean;
+    transaction?: TTransaction;
 }
 
 export type IDatabaseCount<TEntity, TTransaction> = Pick<

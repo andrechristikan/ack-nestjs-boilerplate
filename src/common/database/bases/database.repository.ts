@@ -28,7 +28,6 @@ import {
     IDatabaseRaw,
     IDatabaseRestore,
     IDatabaseRestoreMany,
-    IDatabaseResult,
     IDatabaseReturn,
     IDatabaseSelect,
     IDatabaseSoftDelete,
@@ -1002,9 +1001,11 @@ export abstract class DatabaseRepositoryBase<
         select,
         withDeleted,
         transaction,
-    }: IDatabaseFindOne<TEntity, TTransaction> & {
-        select?: TSelect;
-    }): Promise<IDatabaseReturn<TEntity, TSelect> | null> {
+    }: IDatabaseFindOne<
+        TEntity,
+        TSelect,
+        TTransaction
+    >): Promise<IDatabaseReturn<TEntity, TSelect> | null> {
         this._validateCriteria(where, 'Where criteria');
         this._validateSelect(select);
 
