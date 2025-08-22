@@ -12,22 +12,7 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.st
 
 /**
  * Environment-based access control guard for route protection.
- *
- * This guard enforces environment restrictions on route handlers by comparing
- * the current application environment against the allowed environments specified
- * in the route metadata. It prevents access to endpoints that should not be
- * available in certain environments (e.g., debug endpoints in production).
- *
- * The guard retrieves the required environments from metadata set by the
- * RequestEnvProtected decorator and validates them against the current
- * application environment configured in the system.
- *
- * @throws {ForbiddenException} When the current environment is not in the list
- *                              of allowed environments or when no environments are specified
- *
- * @see {@link REQUEST_ENV_META_KEY} - Metadata key used to retrieve environment requirements
- * @see {@link ENUM_APP_ENVIRONMENT} - Available application environment types
- * @see {@link ENUM_REQUEST_STATUS_CODE_ERROR.ENV_FORBIDDEN} - Status code used in forbidden responses
+ * Enforces environment restrictions by comparing current environment against allowed environments.
  */
 @Injectable()
 export class RequestEnvGuard implements CanActivate {
@@ -40,6 +25,13 @@ export class RequestEnvGuard implements CanActivate {
         this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
     }
 
+    /**
+     * Validates if current environment is allowed to access the route.
+     *
+     * @param context - Execution context containing route metadata
+     * @returns Promise resolving to true if access is allowed
+     * @throws {ForbiddenException} When environment access is not permitted
+     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const required: ENUM_APP_ENVIRONMENT[] =
             this.reflector.getAllAndOverride<ENUM_APP_ENVIRONMENT[]>(

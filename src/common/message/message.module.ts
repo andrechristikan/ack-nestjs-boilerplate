@@ -5,9 +5,18 @@ import { ConfigService } from '@nestjs/config';
 import { MessageService } from '@common/message/services/message.service';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
+/**
+ * Global dynamic module providing internationalization services.
+ * Configures I18n module with JSON loader, header resolver, and exports MessageService globally.
+ */
 @Global()
 @Module({})
 export class MessageModule {
+    /**
+     * Creates a dynamic module configuration for internationalization services.
+     * Sets up I18n module with language fallbacks and file watching capabilities.
+     * @returns Dynamic module configuration with MessageService and I18n providers
+     */
     static forRoot(): DynamicModule {
         return {
             module: MessageModule,

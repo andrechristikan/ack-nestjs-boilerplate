@@ -1,12 +1,59 @@
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
+/**
+ * Response metadata DTO containing API request information
+ */
 export class ResponseMetadataDto {
-    language: string;
+    @ApiProperty({
+        required: true,
+        description: 'Language of the response message',
+        example: ENUM_MESSAGE_LANGUAGE.EN,
+        type: String,
+    })
+    language: ENUM_MESSAGE_LANGUAGE;
+
+    @ApiProperty({
+        required: true,
+        description: 'Timestamp of the response',
+        example: 1660190937231,
+        type: Number,
+    })
     timestamp: number;
+
+    @ApiProperty({
+        required: true,
+        description: 'Timezone of the response',
+        example: 'Asia/Jakarta',
+        type: String,
+    })
     timezone: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'API path of the request',
+        example: '/api/v1/test/hello',
+        type: String,
+    })
     path: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Version of the API',
+        example: '1',
+        type: String,
+    })
     version: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Repository version of the application',
+        example: '1.0.0',
+        type: String,
+    })
     repoVersion: string;
+
     [key: string]:
         | string
         | number
@@ -24,6 +71,10 @@ export class ResponseMetadataDto {
           >;
 }
 
+/**
+ * Generic response DTO wrapper for API responses
+ * @template T - Type of the response data
+ */
 export class ResponseDto<T> {
     @ApiProperty({
         name: 'statusCode',
@@ -48,6 +99,7 @@ export class ResponseDto<T> {
         required: true,
         description: 'Contain metadata about API',
         type: ResponseMetadataDto,
+        additionalProperties: true,
         example: {
             language: 'en',
             timestamp: 1660190937231,
@@ -57,6 +109,7 @@ export class ResponseDto<T> {
             repoVersion: '1.0.0',
         },
     })
+    @Type(() => ResponseMetadataDto)
     metadata: ResponseMetadataDto;
 
     @ApiHideProperty()

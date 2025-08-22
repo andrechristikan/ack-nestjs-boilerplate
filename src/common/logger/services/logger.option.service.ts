@@ -50,7 +50,6 @@ export class LoggerOptionService {
      * Creates and configures Pino logger options based on application configuration.
      * Sets up transports for console and file logging, configures serializers for
      * request/response objects, and implements sensitive data redaction.
-     *
      * @returns Promise resolving to configured Pino logger parameters
      */
     async createOptions(): Promise<Params> {
@@ -81,7 +80,6 @@ export class LoggerOptionService {
      * Builds transport configurations for console and file logging based on application settings.
      * Creates pino-pretty transport for formatted console output when prettier is enabled,
      * and pino/file transport for file logging when intoFile is enabled.
-     *
      * @returns Array of transport configurations with target module names and their respective options
      */
     private buildTransports(): Array<{
@@ -116,7 +114,6 @@ export class LoggerOptionService {
 
     /**
      * Creates a log formatter function that adds timestamp and application metadata.
-     *
      * @returns Function that formats log objects with timestamp and application labels
      */
     private createLogFormatter(): (
@@ -140,8 +137,7 @@ export class LoggerOptionService {
 
     /**
      * Creates a rotating file stream for log files if file logging is enabled.
-     *
-     * @param rfs The rotating-file-stream module imported dynamically
+     * @param rfs - The rotating-file-stream module imported dynamically
      * @returns RotatingFileStream instance if file logging is enabled, undefined otherwise
      */
     private createFileStream(
@@ -161,7 +157,6 @@ export class LoggerOptionService {
 
     /**
      * Creates redaction configuration to hide sensitive data in logs.
-     *
      * @returns Redaction configuration object
      */
     private createRedactionConfig(): { paths: string[]; censor: string } {
@@ -180,8 +175,7 @@ export class LoggerOptionService {
 
     /**
      * Maps sensitive fields to their full paths for redaction.
-     *
-     * @param basePath The base path for the sensitive fields (e.g., 'req.body', 'req.headers')
+     * @param basePath - The base path for the sensitive fields (e.g., 'req.body', 'req.headers')
      * @returns Array of complete paths for sensitive fields with proper bracket notation for fields containing hyphens
      */
     private mapSensitiveFieldPaths(basePath: string): string[] {
@@ -194,7 +188,6 @@ export class LoggerOptionService {
 
     /**
      * Creates custom serializers for request, response, and error objects.
-     *
      * @returns Object containing serializer functions for req, res, and err properties
      */
     private createSerializers(): {
@@ -213,7 +206,6 @@ export class LoggerOptionService {
 
     /**
      * Creates a serializer function for HTTP request objects.
-     *
      * @returns Function that serializes request objects with relevant HTTP and user information
      */
     private createRequestSerializer(): (
@@ -244,7 +236,6 @@ export class LoggerOptionService {
 
     /**
      * Creates a serializer function for HTTP response objects.
-     *
      * @returns Function that serializes response objects with status code and headers
      */
     private createResponseSerializer(): (
@@ -261,7 +252,6 @@ export class LoggerOptionService {
 
     /**
      * Creates a serializer function for error objects.
-     *
      * @returns Function that serializes error objects with type, message, code, and stack trace
      */
     private createErrorSerializer(): (error: Error) => Record<string, unknown> {
@@ -275,7 +265,6 @@ export class LoggerOptionService {
 
     /**
      * Creates auto-logging configuration based on application settings.
-     *
      * @returns Auto-logging configuration object with ignore function if enabled, otherwise returns the autoLogger boolean value
      */
     private createAutoLoggingConfig():

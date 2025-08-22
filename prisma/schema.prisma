@@ -1,0 +1,56 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ApiKey {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  type        ENUM_API_KEY_TYPE @default(DEFAULT)
+  description String?
+  key         String
+  hash        String
+  isActive    Boolean           @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+
+  // timestamps fields
+  createdAt DateTime? @default(now())
+  createdBy String?
+  updatedAt DateTime? @updatedAt
+  updatedBy String?
+
+  @@unique([key])
+  @@index([type, key ])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("ApiKeys")
+}
+
+model Role {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  name String @unique
+  description String?
+  type  ENUM_ROLE_TYPE @default(USER) 
+  permissions Json[] @default([])
+
+  // timestamps fields
+  createdAt DateTime? @default(now())
+  createdBy String?
+  updatedAt DateTime? @updatedAt
+  updatedBy String?
+}
+
+enum ENUM_ROLE_TYPE {
+  SUPER_ADMIN     @map("SUPER_ADMIN")
+  ADMIN     @map("ADMIN")
+  USER      @map("USER")
+}
+
+enum ENUM_API_KEY_TYPE {
+  SYSTEM  @map("SYSTEM")
+  DEFAULT @map("DEFAULT")
+}

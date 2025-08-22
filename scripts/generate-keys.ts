@@ -2,6 +2,10 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path, { join } from 'path';
 
+/**
+ * Utility class for generating and managing JWT ES512 key pairs and JWKS.
+ * Handles creation, rollback, and environment configuration updates for JWT authentication keys.
+ */
 class JwtKeysGenerator {
     private readonly keyDir: string;
     private readonly jwksOutputPath: string;
@@ -31,12 +35,21 @@ class JwtKeysGenerator {
         this.jwksOutputPath = path.join(this.keyDir, 'jwks.json');
     }
 
+    /**
+     * Creates directory if it doesn't exist.
+     * @param dir - Directory path to create
+     */
     ensureDir(dir: string): void {
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
     }
 
+    /**
+     * Generates ES512 elliptic curve key pair and saves to specified paths.
+     * @param privateKeyPath - Path to save private key
+     * @param publicKeyPath - Path to save public key
+     */
     generateES512KeyPair(privateKeyPath: string, publicKeyPath: string): void {
         const keyPair = crypto.generateKeyPairSync('ec', {
             namedCurve: 'secp521r1',
@@ -60,6 +73,11 @@ class JwtKeysGenerator {
         }
     }
 
+    /**
+     * Extracts elliptic curve parameters from public key for JWK creation.
+     * @param publicKeyPath - Path to public key file
+     * @returns Object containing x, y coordinates and curve type
+     */
     extractECParams(publicKeyPath: string): {
         x?: string;
         y?: string;
@@ -87,6 +105,12 @@ class JwtKeysGenerator {
         }
     }
 
+    /**
+     * Creates JSON Web Key (JWK) object from elliptic curve parameters.
+     * @param params - EC parameters (x, y, crv)
+     * @param kid - Key identifier
+     * @returns JWK object for ES512 algorithm
+     */
     createJwk(
         params: {
             x?: string;
@@ -114,6 +138,12 @@ class JwtKeysGenerator {
         };
     }
 
+    /**
+     * Creates JSON Web Key Set (JWKS) from access and refresh token public keys.
+     * @param accessKeyPath - Path to access token public key
+     * @param refreshKeyPath - Path to refresh token public key
+     * @param outputPath - Path to save JWKS file
+     */
     createJwks(
         accessKeyPath: string,
         refreshKeyPath: string,
@@ -144,6 +174,10 @@ class JwtKeysGenerator {
         }
     }
 
+    /**
+     * Main method to generate all JWT keys and JWKS file.
+     * Creates access token keys, refresh token keys, and JWKS configuration.
+     */
     generateKeys(): void {
         try {
             this.ensureDir(this.keyDir);
@@ -177,6 +211,10 @@ class JwtKeysGenerator {
         }
     }
 
+    /**
+     * Removes all generated JWT keys and JWKS files.
+     * Used for cleanup or regeneration scenarios.
+     */
     rollbackKeys(): void {
         try {
             if (fs.existsSync(this.accessTokenPrivateKeyPath)) {
@@ -206,6 +244,10 @@ class JwtKeysGenerator {
         }
     }
 
+    /**
+     * Updates .env file with new key identifiers from generated JWKS.
+     * Synchronizes environment configuration with generated keys.
+     */
     updateEnv(): void {
         const envPath = path.join(process.cwd(), '.env');
         const envExamplePath = path.join(process.cwd(), '.env.example');
@@ -296,4 +338,8 @@ Arguments:
     }
 }
 
+/**
+ * CLI entry point that processes command line arguments and executes appropriate operations.
+ * Supports generate and rollback commands with configurable key directory.
+ */
 main();

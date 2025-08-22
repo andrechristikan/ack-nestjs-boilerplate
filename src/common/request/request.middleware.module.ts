@@ -22,30 +22,7 @@ import { SentryModule } from '@sentry/nestjs/setup';
 
 /**
  * Central middleware configuration module for HTTP request/response processing.
- *
- * Configures the complete middleware stack including security, performance optimization,
- * monitoring, and error handling for all HTTP requests in the application.
- *
- * @module RequestMiddlewareModule
- *
- * ## Features
- * - **Security**: Rate limiting, security headers (Helmet), CORS configuration
- * - **Performance**: Response compression, body parsing, response time tracking
- * - **Monitoring**: Request tracing (UUID), error tracking (Sentry), analytics
- * - **Application**: API versioning, internationalization, content negotiation
- *
- * ## Middleware Pipeline
- * 1. Request ID → 2. Security Headers → 3. Body Parsing → 4. CORS
- * 5. URL Versioning → 6. Response Time → 7. Language Detection → 8. Compression
- *
- * ## Global Components
- * - **Guards**: ThrottlerGuard (rate limiting)
- * - **Filters**: General, Validation, ValidationImport, HTTP error handling
- * - **Integrations**: Sentry error tracking, Throttler rate limiting
- *
- * @see {@link RequestRequestIdMiddleware} Request identification
- * @see {@link RequestHelmetMiddleware} Security headers
- * @see {@link ThrottlerGuard} Rate limiting
+ * Configures security, performance optimization, monitoring, and error handling.
  */
 @Module({
     controllers: [],
@@ -61,15 +38,15 @@ import { SentryModule } from '@sentry/nestjs/setup';
         },
         {
             provide: APP_FILTER,
+            useClass: AppHttpFilter,
+        },
+        {
+            provide: APP_FILTER,
             useClass: AppValidationFilter,
         },
         {
             provide: APP_FILTER,
             useClass: AppValidationImportFilter,
-        },
-        {
-            provide: APP_FILTER,
-            useClass: AppHttpFilter,
         },
     ],
     imports: [
@@ -95,9 +72,6 @@ import { SentryModule } from '@sentry/nestjs/setup';
 export class RequestMiddlewareModule implements NestModule {
     /**
      * Configures the middleware processing pipeline for all HTTP requests.
-     *
-     * Applies middleware in a specific sequence for proper request handling,
-     * security enforcement, and performance optimization.
      *
      * @param consumer - NestJS middleware consumer for applying middleware to routes
      */

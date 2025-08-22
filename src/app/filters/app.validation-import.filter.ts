@@ -12,9 +12,8 @@ import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 /**
- * AppValidationImportFilter is an exception filter that handles excel file import validation errors
- * and formats the response according to the application's standards.
- * It sets the appropriate headers and response body based on the exception details.
+ * Exception filter specifically for handling file import validation errors.
+ * Formats FileImportException into standardized error responses with validation error details.
  */
 @Catch(FileImportException)
 export class AppValidationImportFilter implements ExceptionFilter {
@@ -24,6 +23,12 @@ export class AppValidationImportFilter implements ExceptionFilter {
         private readonly helperService: HelperService
     ) {}
 
+    /**
+     * Handles FileImportException and formats file import validation errors into standardized responses.
+     * Processes import-specific validation messages with metadata and localization support.
+     * @param exception - The file import exception to handle
+     * @param host - Arguments host containing request/response context
+     */
     async catch(
         exception: FileImportException,
         host: ArgumentsHost
@@ -32,10 +37,9 @@ export class AppValidationImportFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-        // metadata
         const today = this.helperService.dateCreate();
-        const xLanguage: string =
-            request.__language ??
+        const xLanguage: ENUM_MESSAGE_LANGUAGE =
+            (request.__language as ENUM_MESSAGE_LANGUAGE) ??
             this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
         const xTimestamp = this.helperService.dateGetTimestamp(today);
         const xTimezone = this.helperService.dateGetZone(today);
@@ -52,7 +56,6 @@ export class AppValidationImportFilter implements ExceptionFilter {
             repoVersion: xRepoVersion,
         };
 
-        // set response
         const message = this.messageService.setMessage(exception.message, {
             customLanguage: xLanguage,
         });

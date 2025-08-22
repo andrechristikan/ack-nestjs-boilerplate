@@ -76,7 +76,7 @@ export class AwsSESService implements IAwsSESService {
 
     /**
      * Retrieves a list of email templates from AWS SES.
-     * @param nextToken Optional pagination token to get the next set of results
+     * @param nextToken - Optional pagination token to get the next set of results
      * @returns Promise that resolves to a list of templates with pagination information
      */
     async listTemplates(
@@ -97,7 +97,7 @@ export class AwsSESService implements IAwsSESService {
 
     /**
      * Retrieves a specific email template from AWS SES by name.
-     * @param templateDto Object containing the template name to retrieve
+     * @param templateDto - Object containing the template name to retrieve
      * @returns Promise that resolves to the template information including subject and body
      */
     async getTemplate({
@@ -117,9 +117,8 @@ export class AwsSESService implements IAwsSESService {
 
     /**
      * Creates a new email template in AWS SES.
-     * @param templateDto Object containing template name, subject, and body content
+     * @param templateDto - Object containing template name, subject, and body content
      * @returns Promise that resolves to the creation result
-     * @throws Error if both htmlBody and plainTextBody are null
      */
     async createTemplate({
         name,
@@ -150,9 +149,8 @@ export class AwsSESService implements IAwsSESService {
 
     /**
      * Updates an existing email template in AWS SES.
-     * @param templateDto Object containing template name, subject, and updated body content
+     * @param templateDto - Object containing template name, subject, and updated body content
      * @returns Promise that resolves to the update result
-     * @throws Error if both htmlBody and plainTextBody are null
      */
     async updateTemplate({
         name,
@@ -183,7 +181,7 @@ export class AwsSESService implements IAwsSESService {
 
     /**
      * Deletes an email template from AWS SES.
-     * @param templateDto Object containing the template name to delete
+     * @param templateDto - Object containing the template name to delete
      * @returns Promise that resolves to the deletion result
      */
     async deleteTemplate({
@@ -203,7 +201,7 @@ export class AwsSESService implements IAwsSESService {
 
     /**
      * Sends a templated email to a single recipient or multiple recipients using AWS SES.
-     * @param emailDto Object containing recipients, sender, template name, and template data
+     * @param emailDto - Object containing recipients, sender, template name, and template data
      * @returns Promise that resolves to the send result with message ID
      */
     async send<T>({
@@ -239,7 +237,7 @@ export class AwsSESService implements IAwsSESService {
 
     /**
      * Sends templated emails to multiple recipients in bulk using AWS SES.
-     * @param emailDto Object containing recipients with individual template data, sender, and template name
+     * @param emailDto - Object containing recipients with individual template data, sender, and template name
      * @returns Promise that resolves to the bulk send result with message IDs and status
      */
     async sendBulk({

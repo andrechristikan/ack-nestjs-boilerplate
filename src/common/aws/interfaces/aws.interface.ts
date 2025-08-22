@@ -47,3 +47,27 @@ export interface IAwsS3FileInfo {
     extension: string;
     mime: string;
 }
+
+export interface IAwsS3MultipartPart {
+    eTag: string;
+    partNumber: number;
+    size: number;
+}
+
+export class IAwsS3 {
+    bucket: string;
+    key: string;
+    completedUrl: string;
+    cdnUrl?: string;
+    mime: string;
+    extension: string;
+    size: number;
+    access: ENUM_AWS_S3_ACCESSIBILITY;
+}
+
+export interface IAwsS3Multipart extends IAwsS3 {
+    uploadId: string;
+    lastPartNumber: number;
+    maxPartNumber: number;
+    parts: IAwsS3MultipartPart[];
+}

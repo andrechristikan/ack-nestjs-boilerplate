@@ -1,3 +1,7 @@
+/**
+ * Array of route patterns excluded from logging.
+ * Contains health checks, metrics, documentation, and static asset routes.
+ */
 export const LOGGER_EXCLUDED_ROUTES: string[] = [
     '/api/health*',
     '/metrics*',
@@ -6,6 +10,10 @@ export const LOGGER_EXCLUDED_ROUTES: string[] = [
     '/',
 ] as const;
 
+/**
+ * Array of field names containing sensitive data that should be masked in logs.
+ * Includes authentication tokens, personal identification, financial data, and biometric information.
+ */
 export const LOGGER_SENSITIVE_FIELDS: string[] = [
     'password',
     'newPassword',

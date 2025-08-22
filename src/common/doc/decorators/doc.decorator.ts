@@ -26,7 +26,6 @@ import {
     IDocResponsePagingOptions,
 } from '@common/doc/interfaces/doc.interface';
 import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
 import { ResponseDto } from '@common/response/dtos/response.dto';
 import { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
@@ -36,12 +35,13 @@ import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.stat
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
-import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 
 /**
- * Helper function to create a schema object with consistent structure
- * @private
+ * Helper function to create a schema object with consistent structure.
+ * @param doc - Document options containing DTO and status information
+ * @returns Schema object for OpenAPI specification
  */
 function createSchemaObject(doc: IDocOfOptions): SchemaObject {
     const schema: SchemaObject = {
@@ -69,10 +69,6 @@ function createSchemaObject(doc: IDocOfOptions): SchemaObject {
     return schema;
 }
 
-/**
- * Content type mapping for different request body types
- * @private
- */
 const CONTENT_TYPE_MAPPING = {
     [ENUM_DOC_REQUEST_BODY_TYPE.FORM_DATA]: 'multipart/form-data',
     [ENUM_DOC_REQUEST_BODY_TYPE.TEXT]: 'text/plain',
@@ -80,10 +76,6 @@ const CONTENT_TYPE_MAPPING = {
     [ENUM_DOC_REQUEST_BODY_TYPE.FORM_URLENCODED]: 'x-www-form-urlencoded',
 } as const;
 
-/**
- * Standard error responses that are commonly used
- * @private
- */
 const STANDARD_ERROR_RESPONSES = {
     INTERNAL_SERVER_ERROR: DocDefault({
         httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -102,10 +94,6 @@ const STANDARD_ERROR_RESPONSES = {
     }),
 } as const;
 
-/**
- * Standard pagination query parameters
- * @private
- */
 const PAGINATION_QUERIES = [
     {
         name: 'perPage',
@@ -128,13 +116,7 @@ const PAGINATION_QUERIES = [
 /**
  * Creates a default API documentation decorator with a standard response schema.
  * This decorator defines the basic structure for API responses including message, status code, and optional data.
- *
- * @template T - The type of the DTO class for the response data
  * @param options - Configuration options for the default documentation
- * @param options.httpStatus - The HTTP status code for the response
- * @param options.messagePath - The message path/key for internationalization
- * @param options.statusCode - The internal status code for the application
- * @param options.dto - Optional DTO class to include in the response schema
  * @returns A method decorator that applies Swagger API documentation
  */
 export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
@@ -176,7 +158,6 @@ export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
 /**
  * Creates an API documentation decorator that supports multiple possible response schemas using OpenAPI's `oneOf`.
  * This is useful when an endpoint can return one of several different response types.
- *
  * @param httpStatus - The HTTP status code for the response
  * @param documents - Variable number of document options, each representing a possible response
  * @returns A method decorator that applies Swagger API documentation with oneOf schema
@@ -214,7 +195,6 @@ export function DocOneOf(
 /**
  * Creates an API documentation decorator that supports multiple possible response schemas using OpenAPI's `anyOf`.
  * This allows for responses that can match any combination of the provided schemas.
- *
  * @param httpStatus - The HTTP status code for the response
  * @param documents - Variable number of document options, each representing a possible response schema
  * @returns A method decorator that applies Swagger API documentation with anyOf schema
@@ -252,7 +232,6 @@ export function DocAnyOf(
 /**
  * Creates an API documentation decorator that requires all provided response schemas using OpenAPI's `allOf`.
  * This means the response must satisfy all the provided schema definitions.
- *
  * @param httpStatus - The HTTP status code for the response
  * @param documents - Variable number of document options, all of which must be satisfied
  * @returns A method decorator that applies Swagger API documentation with allOf schema
@@ -290,12 +269,7 @@ export function DocAllOf(
 /**
  * Creates a basic API documentation decorator that sets up common API operation metadata.
  * This decorator automatically includes standard error responses and custom language headers.
- *
  * @param options - Optional configuration for the API documentation
- * @param options.summary - Brief summary of the API operation
- * @param options.description - Detailed description of the API operation
- * @param options.deprecated - Whether the API operation is deprecated
- * @param options.operation - Unique operation ID for the API endpoint
  * @returns A method decorator that applies basic Swagger API documentation
  */
 export function Doc(options?: IDocOptions): MethodDecorator {
@@ -326,12 +300,7 @@ export function Doc(options?: IDocOptions): MethodDecorator {
 /**
  * Creates an API documentation decorator for request specifications including body, parameters, and queries.
  * This decorator handles different content types and automatically adds validation error responses.
- *
  * @param options - Optional configuration for request documentation
- * @param options.bodyType - The type of request body (JSON, form data, text, etc.)
- * @param options.params - Array of path parameters for the endpoint
- * @param options.queries - Array of query parameters for the endpoint
- * @param options.dto - DTO class for request body validation
  * @returns A method decorator that applies Swagger request documentation
  */
 export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
@@ -365,11 +334,7 @@ export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
 /**
  * Creates an API documentation decorator specifically for file upload endpoints.
  * This decorator automatically sets the content type to multipart/form-data and handles file-related parameters.
- *
  * @param options - Optional configuration for file request documentation
- * @param options.params - Array of path parameters for the endpoint
- * @param options.queries - Array of query parameters for the endpoint
- * @param options.dto - DTO class for the file upload request body
  * @returns A method decorator that applies Swagger file upload documentation
  */
 export function DocRequestFile(
@@ -395,11 +360,7 @@ export function DocRequestFile(
 /**
  * Creates an API documentation decorator for endpoints that require authorization guards.
  * This decorator automatically documents forbidden responses based on the guard types used.
- *
  * @param options - Optional configuration for guard documentation
- * @param options.role - Whether role-based authorization is required
- * @param options.policy - Whether policy-based authorization is required
- * @param options.twoFactor - Whether two-factor authentication is required
  * @returns A method decorator that applies Swagger guard documentation
  */
 export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
@@ -424,8 +385,8 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
         {
             condition: options?.twoFactor,
             error: {
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.TWO_FACTOR_FORBIDDEN,
-                messagePath: 'user.error.twoFactorForbidden',
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.TWO_FACTOR_FORBIDDEN,
+                messagePath: 'auth.error.twoFactorForbidden',
             },
             decorator: ApiBearerAuth('twoFactor'),
         },
@@ -449,13 +410,7 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
 /**
  * Creates an API documentation decorator for endpoints that require authentication.
  * This decorator handles various authentication methods and their corresponding error responses.
- *
  * @param options - Optional configuration for authentication documentation
- * @param options.jwtAccessToken - Whether JWT access token authentication is required
- * @param options.jwtRefreshToken - Whether JWT refresh token authentication is required
- * @param options.google - Whether Google OAuth authentication is required
- * @param options.apple - Whether Apple OAuth authentication is required
- * @param options.xApiKey - Whether API key authentication is required
  * @returns A method decorator that applies Swagger authentication documentation
  */
 export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
@@ -559,13 +514,8 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
 /**
  * Creates an API documentation decorator for standard response documentation.
  * This decorator sets up the response schema with the specified message and optional DTO.
- *
- * @template T - The type of the DTO class for the response data
  * @param messagePath - The message path/key for internationalization
  * @param options - Optional configuration for response documentation
- * @param options.httpStatus - The HTTP status code for the response (defaults to 200)
- * @param options.statusCode - The internal status code (defaults to httpStatus)
- * @param options.dto - Optional DTO class to include in the response schema
  * @returns A method decorator that applies Swagger response documentation
  */
 export function DocResponse<T = void>(
@@ -588,7 +538,6 @@ export function DocResponse<T = void>(
 /**
  * Groups multiple error documentation decorators into a single decorator.
  * This is useful for combining common error responses that apply to multiple endpoints.
- *
  * @param docs - Array of method decorators representing different error scenarios
  * @returns A method decorator that applies all the provided error documentation
  */
@@ -601,15 +550,8 @@ export function DocErrorGroup(docs: MethodDecorator[]): MethodDecorator {
  * This decorator automatically includes pagination query parameters and sets up the response schema
  * for paginated data with metadata about total count, current page, etc.
  * It also supports optional search and ordering functionality.
- *
- * @template T - The type of the DTO class for the individual items in the paginated response
  * @param messagePath - The message path/key for internationalization
  * @param options - Configuration for paginated response documentation
- * @param options.httpStatus - The HTTP status code for the response (defaults to 200)
- * @param options.statusCode - The internal status code (defaults to httpStatus)
- * @param options.dto - DTO class for the individual items in the paginated response
- * @param options.availableSearch - Optional array of field names that can be used for searching
- * @param options.availableOrder - Optional array of field names that can be used for ordering
  * @returns A method decorator that applies Swagger paginated response documentation
  */
 export function DocResponsePaging<T>(
@@ -690,10 +632,7 @@ export function DocResponsePaging<T>(
 /**
  * Creates an API documentation decorator for file download/response endpoints.
  * This decorator sets up the response to indicate that a file will be returned instead of JSON.
- *
  * @param options - Optional configuration for file response documentation
- * @param options.httpStatus - The HTTP status code for the response (defaults to 200)
- * @param options.fileType - The MIME type of the file being returned (defaults to CSV)
  * @returns A method decorator that applies Swagger file response documentation
  */
 export function DocResponseFile(

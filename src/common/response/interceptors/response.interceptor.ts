@@ -65,23 +65,19 @@ export class ResponseInterceptor<T> implements NestInterceptor {
                     const response: Response = ctx.getResponse();
                     const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-                    // Extract message path from decorator metadata
                     let messagePath: string = this.reflector.get<string>(
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
                     );
                     let messageProperties: IMessageProperties;
 
-                    // Initialize default response values
                     let httpStatus: HttpStatus = response.statusCode;
                     let statusCode: number = response.statusCode;
                     let data: T = undefined;
 
-                    // Create standardized metadata
                     const metadata: ResponseMetadataDto =
                         this.createResponseMetadata(request);
 
-                    // Process response data if available
                     const responseData = (await res) as IResponseReturn<T>;
                     if (responseData) {
                         const { metadata: responseMetadata } = responseData;
@@ -94,7 +90,6 @@ export class ResponseInterceptor<T> implements NestInterceptor {
                         messageProperties = responseMetadata?.messageProperties;
                     }
 
-                    // Generate localized message
                     const message: string = this.messageService.setMessage(
                         messagePath,
                         {
@@ -103,7 +98,6 @@ export class ResponseInterceptor<T> implements NestInterceptor {
                         }
                     );
 
-                    // Set custom response headers
                     this.setResponseHeaders(response, metadata);
                     response.status(httpStatus);
 
@@ -128,8 +122,8 @@ export class ResponseInterceptor<T> implements NestInterceptor {
      */
     private createResponseMetadata(request: IRequestApp): ResponseMetadataDto {
         const today = this.helperService.dateCreate();
-        const xLanguage: string =
-            request.__language ??
+        const xLanguage: ENUM_MESSAGE_LANGUAGE =
+            (request.__language as ENUM_MESSAGE_LANGUAGE) ??
             this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
         const xVersion =
             request.__version ??

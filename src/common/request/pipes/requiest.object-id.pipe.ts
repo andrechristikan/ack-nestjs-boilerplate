@@ -8,29 +8,18 @@ import { PipeTransform } from '@nestjs/common';
 import { Types } from 'mongoose';
 
 /**
- * A NestJS pipe that validates if a string value is a valid MongoDB ObjectId.
- *
- * This pipe transforms and validates incoming request parameters, ensuring they
- * conform to MongoDB's ObjectId format. If the validation fails, it throws a
- * BadRequestException with detailed error information.
- *
- * @implements {PipeTransform}
+ * Validation pipe that ensures string values are valid MongoDB ObjectIds.
+ * Throws BadRequestException for invalid ObjectId formats.
  */
 @Injectable()
 export class RequestObjectIdPipe implements PipeTransform {
     /**
-     * Transforms and validates a string value to ensure it's a valid MongoDB ObjectId.
+     * Validates that the input value is a valid MongoDB ObjectId format.
      *
-     * This method checks if the provided value is a valid ObjectId format using
-     * Mongoose's Types.ObjectId.isValid() method. If the validation fails, it throws
-     * a BadRequestException with standardized error information including the field
-     * name that failed validation.
-     *
-     * @param {string} value - The string value to validate as an ObjectId
-     * @param {ArgumentMetadata} metadata - Metadata about the argument being validated,
-     *                                      including the parameter name for error reporting
-     * @returns {Promise<string>} The validated ObjectId string if valid
-     * @throws {BadRequestException} When the value is null, undefined, or not a valid ObjectId format
+     * @param value - The string value to validate as an ObjectId
+     * @param metadata - Argument metadata containing parameter information
+     * @returns The validated ObjectId string if valid
+     * @throws {BadRequestException} When value is invalid ObjectId format
      */
     async transform(
         value: string,

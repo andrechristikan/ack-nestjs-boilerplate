@@ -9,12 +9,8 @@ import { IFile, IFileInput } from '@common/file/interfaces/file.interface';
 
 /**
  * A NestJS pipe that validates file MIME types against a list of allowed types.
- *
  * This pipe can validate single files, arrays of files, or files within nested objects.
  * It throws an UnsupportedMediaTypeException if any file has an invalid MIME type.
- *
- * @param allowedTypes - Array of allowed MIME types from ENUM_FILE_MIME
- *
  */
 @Injectable()
 export class FileTypePipe implements PipeTransform {
@@ -28,10 +24,8 @@ export class FileTypePipe implements PipeTransform {
 
     /**
      * Transforms and validates the input value against allowed MIME types.
-     *
      * @param value - Single file, array of files, or object containing files
      * @returns The original value if validation passes
-     * @throws UnsupportedMediaTypeException if any file has invalid MIME type
      */
     async transform(value: IFileInput): Promise<IFileInput> {
         if (!value) {
@@ -55,7 +49,6 @@ export class FileTypePipe implements PipeTransform {
 
     /**
      * Extracts files to validate based on target field configuration.
-     *
      * @param value - Input value that may contain files
      * @returns Files to validate or null if none found
      */
@@ -69,7 +62,6 @@ export class FileTypePipe implements PipeTransform {
 
     /**
      * Checks if a value is empty (null, undefined, empty object, or empty array).
-     *
      * @param value - Value to check
      * @returns True if value is empty, false otherwise
      */
@@ -85,9 +77,7 @@ export class FileTypePipe implements PipeTransform {
 
     /**
      * Validates an array of files.
-     *
      * @param files - Array of files to validate
-     * @throws UnsupportedMediaTypeException if any file has invalid MIME type
      */
     private validateFileArray(files: IFile[]): void {
         for (const file of files) {
@@ -99,9 +89,7 @@ export class FileTypePipe implements PipeTransform {
 
     /**
      * Validates a single file.
-     *
      * @param file - File to validate
-     * @throws UnsupportedMediaTypeException if file has invalid MIME type
      */
     private validateSingleFile(file: IFile): void {
         if (file?.mimetype) {
@@ -111,9 +99,7 @@ export class FileTypePipe implements PipeTransform {
 
     /**
      * Validates a MIME type against the allowed types.
-     *
      * @param mimetype - MIME type string to validate
-     * @throws UnsupportedMediaTypeException if MIME type is not allowed
      */
     private validateMimeType(mimetype: string): void {
         const normalizedMimeType = mimetype.toLowerCase().trim();

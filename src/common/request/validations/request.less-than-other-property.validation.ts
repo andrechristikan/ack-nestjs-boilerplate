@@ -9,10 +9,7 @@ import {
 
 /**
  * Validator constraint that checks if a value is less than or equal to another property's value.
- *
- * This validator performs comparison validation between two properties of the same object,
- * ensuring the current property value is less than or equal to the specified related property.
- * Supports numbers and dates only for comparison.
+ * Supports numbers and dates comparison.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
@@ -22,9 +19,9 @@ export class LessThanEqualOtherPropertyConstraint
     /**
      * Validates that the current value is less than or equal to the related property value.
      *
-     * @param value - The value to validate (supports numbers and dates only)
+     * @param value - The value to validate (numbers and dates only)
      * @param args - Validation arguments containing constraints and object context
-     * @returns True if value is less than or equal to the related property, false otherwise
+     * @returns True if value is less than or equal to the related property
      */
     validate(value: unknown, args: ValidationArguments): boolean {
         if (value === null || value === undefined) {
@@ -114,7 +111,6 @@ export class LessThanEqualOtherPropertyConstraint
 
 /**
  * Decorator that validates a property is less than or equal to another property's value.
- * Supports comparison of numbers and dates only.
  *
  * @param property - The name of the property to compare against
  * @param validationOptions - Standard class-validator validation options
@@ -138,10 +134,7 @@ export function LessThanEqualOtherProperty(
 
 /**
  * Validator constraint that checks if a value is strictly less than another property's value.
- *
- * This validator performs comparison validation between two properties of the same object,
- * ensuring the current property value is strictly less than the specified related property.
- * Supports numbers and dates only for comparison.
+ * Supports numbers and dates comparison.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
@@ -151,9 +144,9 @@ export class LessThanOtherPropertyConstraint
     /**
      * Validates that the current value is strictly less than the related property value.
      *
-     * @param value - The value to validate (supports numbers and dates only)
+     * @param value - The value to validate (numbers and dates only)
      * @param args - Validation arguments containing constraints and object context
-     * @returns True if value is less than the related property, false otherwise
+     * @returns True if value is less than the related property
      */
     validate(value: unknown, args: ValidationArguments): boolean {
         if (value === null || value === undefined) {
@@ -243,7 +236,6 @@ export class LessThanOtherPropertyConstraint
 
 /**
  * Decorator that validates a property is strictly less than another property's value.
- * Supports comparison of numbers and dates only.
  *
  * @param property - The name of the property to compare against
  * @param validationOptions - Standard class-validator validation options

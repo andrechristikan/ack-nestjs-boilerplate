@@ -4,6 +4,7 @@ import {
     ExceptionFilter,
     HttpException,
     HttpStatus,
+    Logger,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
@@ -16,14 +17,16 @@ import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
 import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import * as Sentry from '@sentry/nestjs';
 
 /**
- * AppHttpFilter is an exception filter that handles HTTP exceptions
- * and formats the response according to the application's standards.
- * It sets the appropriate headers and response body based on the exception details.
+ * HTTP exception filter that handles HttpException instances.
+ * Validates request paths, redirects invalid requests, and formats error responses with metadata.
  */
 @Catch(HttpException)
 export class AppHttpFilter implements ExceptionFilter {
+    private readonly logger = new Logger(AppHttpFilter.name);
+
     private readonly globalPrefix: string;
     private readonly docPrefix: string;
 
@@ -36,6 +39,12 @@ export class AppHttpFilter implements ExceptionFilter {
         this.docPrefix = this.configService.get<string>('doc.prefix');
     }
 
+    /**
+     * Handles HTTP exceptions with path validation and response formatting.
+     * Redirects invalid paths and creates standardized error responses.
+     * @param exception - The HTTP exception to handle
+     * @param host - Arguments host containing request/response context
+     */
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
@@ -53,17 +62,17 @@ export class AppHttpFilter implements ExceptionFilter {
             return;
         }
 
-        // set default
+        this.sendToSentry(exception);
+
         let statusHttp: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
         let messagePath = `http.${statusHttp}`;
         let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
         let messageProperties: IMessageProperties;
         let data: unknown;
 
-        // metadata
         const today = this.helperService.dateCreate();
-        const xLanguage: string =
-            request.__language ??
+        const xLanguage: ENUM_MESSAGE_LANGUAGE =
+            (request.__language as ENUM_MESSAGE_LANGUAGE) ??
             this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
         const xTimestamp = this.helperService.dateGetTimestamp(today);
         const xTimezone = this.helperService.dateGetZone(today);
@@ -80,7 +89,6 @@ export class AppHttpFilter implements ExceptionFilter {
             repoVersion: xRepoVersion,
         };
 
-        // Restructure
         const responseException = exception.getResponse();
         statusHttp = exception.getStatus();
         statusCode = exception.getStatus();
@@ -122,9 +130,34 @@ export class AppHttpFilter implements ExceptionFilter {
         return;
     }
 
+    /**
+     * Type guard to check if exception response implements IAppException interface.
+     * Validates object has required statusCode and message properties.
+     * @param obj - The object to check
+     * @returns True if object has statusCode and message properties
+     */
     isErrorException(obj: unknown): obj is IAppException<unknown> {
         return typeof obj === 'object'
             ? 'statusCode' in obj && 'message' in obj
             : false;
+    }
+
+    /**
+     * Sends exceptions with status >= 500 to Sentry for monitoring
+     * @param exception - The HTTP exception to send to Sentry
+     */
+    sendToSentry(exception: HttpException): void {
+        if (exception.getStatus() < 500) {
+            return;
+        }
+
+        try {
+            this.logger.error(exception);
+            Sentry.captureException(exception);
+        } catch (error: unknown) {
+            this.logger.error('Failed to send exception to Sentry', error);
+        }
+
+        return;
     }
 }

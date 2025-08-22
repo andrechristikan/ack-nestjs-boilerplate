@@ -16,6 +16,10 @@ import {
     IsString,
 } from 'class-validator';
 
+/**
+ * DTO for AWS SES email template configuration.
+ * Contains template name, subject, and body content for email templates.
+ */
 export class AwsSESTemplateDto {
     @ApiProperty({
         required: true,
@@ -46,10 +50,17 @@ export class AwsSESTemplateDto {
     plainTextBody?: string;
 }
 
+/**
+ * DTO for retrieving AWS SES email template by name.
+ */
 export class AwsSESGetTemplateDto extends PickType(AwsSESTemplateDto, [
     'name',
 ] as const) {}
 
+/**
+ * DTO for sending emails through AWS SES using templates.
+ * Supports single email sending with recipients, CC, BCC, and template data.
+ */
 export class AwsSESSendDto<T> {
     @ApiProperty({
         required: true,
@@ -111,6 +122,10 @@ export class AwsSESSendDto<T> {
     bcc?: string[];
 }
 
+/**
+ * DTO representing individual recipient data for bulk email sending.
+ * Contains recipient email and optional template data specific to that recipient.
+ */
 export class AwsSESSendBulkRecipientsDto extends PickType(AwsSESSendDto, [
     'templateData',
 ] as const) {
@@ -123,6 +138,10 @@ export class AwsSESSendBulkRecipientsDto extends PickType(AwsSESSendDto, [
     recipient: string;
 }
 
+/**
+ * DTO for sending bulk emails through AWS SES.
+ * Allows sending to multiple recipients with individual template data for each recipient.
+ */
 export class AwsSESSendBulkDto extends OmitType(AwsSESSendDto, [
     'recipients',
     'templateData',

@@ -18,8 +18,7 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.st
 
 /**
  * Interceptor that handles request timeouts for HTTP requests.
- * Applies either a global timeout from configuration or a custom timeout
- * specified via decorators on individual route handlers.
+ * Applies either global timeout or custom timeout from route decorators.
  */
 @Injectable()
 export class RequestTimeoutInterceptor implements NestInterceptor {
@@ -34,6 +33,13 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
         );
     }
 
+    /**
+     * Intercepts HTTP requests and applies timeout handling.
+     *
+     * @param context - Execution context containing route metadata
+     * @param next - Call handler for the next interceptor or route handler
+     * @returns Observable with timeout applied
+     */
     intercept(
         context: ExecutionContext,
         next: CallHandler
@@ -63,6 +69,9 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
         return next.handle();
     }
 
+    /**
+     * Handles timeout logic and converts TimeoutError to RequestTimeoutException.
+     */
     private handleTimeoutRequest(
         next: CallHandler,
         timeoutMs: number

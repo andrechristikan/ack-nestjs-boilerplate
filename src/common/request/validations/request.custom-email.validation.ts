@@ -10,15 +10,8 @@ import {
 import { HelperService } from '@common/helper/services/helper.service';
 
 /**
- * Custom email validation constraint that provides enhanced email validation
- * with detailed error messaging and support for optional fields.
- *
- * This validator performs comprehensive email validation including:
- * - Basic email format validation
- * - Domain validation (length, format, TLD requirements)
- * - Local part validation (length, character restrictions)
- * - Support for optional email fields
- * - Localized error messages
+ * Custom email validation constraint with enhanced validation and detailed error messaging.
+ * Supports optional fields and provides localized error messages.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
@@ -30,7 +23,7 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
      *
      * @param value - The email string to validate
      * @param validationArguments - Optional validation arguments containing context
-     * @returns True if the email is valid or if the field is optional and empty, false otherwise
+     * @returns True if email is valid or field is optional and empty
      */
     validate(
         value: string,
@@ -43,7 +36,6 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
             return true;
         }
 
-        // Validate non-empty values
         if (this.isEmptyValue(value)) {
             return false;
         }
@@ -53,7 +45,7 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
     }
 
     /**
-     * Generates a localized error message for invalid email values.
+     * Generates localized error message for invalid email values.
      *
      * @param validationArguments - Validation arguments containing the invalid value
      * @returns Localized error message string
@@ -114,10 +106,7 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
 }
 
 /**
- * Custom email validation decorator that provides enhanced email validation.
- *
- * This decorator applies comprehensive email validation using the IsCustomEmailConstraint.
- * It supports all standard ValidationOptions and provides detailed, localized error messages.
+ * Custom email validation decorator with enhanced validation.
  *
  * @param validationOptions - Standard class-validator validation options
  * @returns Property decorator function

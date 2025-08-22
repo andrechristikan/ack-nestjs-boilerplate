@@ -18,6 +18,11 @@ import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { ENUM_REQUEST_TIMEZONE } from '@common/request/enums/request.enum';
 import { ENUM_LOGGER_LEVEL } from '@common/logger/enums/logger.enum';
 
+/**
+ * Data Transfer Object for application environment configuration.
+ *
+ * Provides validation structure for all main environment variables required by the application.
+ */
 export class AppEnvDto {
     /**
      * The name of the application

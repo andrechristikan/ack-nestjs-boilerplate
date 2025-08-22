@@ -66,7 +66,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                     const response: Response = ctx.getResponse();
                     const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-                    // Extract message path from decorator metadata
                     let messagePath: string = this.reflector.get<string>(
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
@@ -74,11 +73,9 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
 
                     let data: T[] = [];
 
-                    // Create standardized metadata
                     const metadata: ResponsePagingMetadataDto =
                         this.createPagingResponseMetadata(request);
 
-                    // Process and validate pagination response data
                     const responseData =
                         (await res) as unknown as IResponsePagingReturn<T>;
                     this.validatePaginationResponse(responseData);
@@ -100,7 +97,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                     const messageProperties: IMessageProperties =
                         rMetadata?.messageProperties;
 
-                    // Clean response metadata
                     if (rMetadata) {
                         delete rMetadata.httpStatus;
                         delete rMetadata.statusCode;
@@ -108,7 +104,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         delete rMetadata.messageProperties;
                     }
 
-                    // Update metadata with pagination info
                     const finalMetadata: ResponsePagingMetadataDto = {
                         ...metadata,
                         totalPage,
@@ -123,7 +118,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         availableOrderBy: request.__pagination.availableOrderBy,
                     };
 
-                    // Generate localized message
                     const message: string = this.messageService.setMessage(
                         messagePath,
                         {
@@ -132,7 +126,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         }
                     );
 
-                    // Set custom response headers
                     this.setResponseHeaders(response, metadata);
                     response.status(httpStatus);
 
@@ -159,8 +152,8 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         request: IRequestApp
     ): ResponsePagingMetadataDto {
         const today = this.helperService.dateCreate();
-        const xLanguage: string =
-            request.__language ??
+        const xLanguage: ENUM_MESSAGE_LANGUAGE =
+            (request.__language as ENUM_MESSAGE_LANGUAGE) ??
             this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
         const xVersion =
             request.__version ??
@@ -174,7 +167,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
             version: xVersion,
             repoVersion: this.configService.get<string>('app.version'),
             requestId: String(request.id),
-            // Pagination fields will be set later
+
             totalPage: 0,
             count: 0,
             search: undefined,

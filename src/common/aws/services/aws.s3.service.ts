@@ -123,7 +123,7 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Extracts file information from an S3 object key.
-     * @param key The S3 object key to parse
+     * @param key - The S3 object key to parse
      * @returns Object containing path, filename, extension, and MIME type information
      */
     private getFileInfoFromKey(key: string): IAwsS3FileInfo {
@@ -158,7 +158,7 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Checks if the specified S3 bucket exists and is accessible.
-     * @param options Optional configuration for bucket access level
+     * @param options - Optional configuration for bucket access level
      * @returns Promise that resolves to true if bucket exists and is accessible
      */
     async checkBucket(options?: IAwsS3Options): Promise<boolean> {
@@ -178,10 +178,9 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Checks if an item exists in S3 and retrieves its metadata.
-     * @param key The S3 object key to check
-     * @param options Optional configuration for bucket access level
+     * @param key - The S3 object key to check
+     * @param options - Optional configuration for bucket access level
      * @returns Promise that resolves to an AwsS3Dto with item information
-     * @throws Error if key starts with "/"
      */
     async checkItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto> {
         if (key.startsWith('/')) {
@@ -220,10 +219,9 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Retrieves a list of items from S3 with a specified path prefix.
-     * @param path The path prefix to search for items
-     * @param options Optional configuration including access level and continuation token
+     * @param path - The path prefix to search for items
+     * @param options - Optional configuration including access level and continuation token
      * @returns Promise that resolves to an array of AwsS3Dto objects
-     * @throws Error if path starts with "/"
      */
     async getItems(
         path: string,
@@ -289,10 +287,9 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Retrieves a single item from S3 including its content data.
-     * @param key The S3 object key to retrieve
-     * @param options Optional configuration for bucket access level
+     * @param key - The S3 object key to retrieve
+     * @param options - Optional configuration for bucket access level
      * @returns Promise that resolves to an AwsS3Dto with item data
-     * @throws Error if key starts with "/"
      */
     async getItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto> {
         if (key.startsWith('/')) {
@@ -331,10 +328,9 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Uploads a file to S3 using a simple PUT operation.
-     * @param file The file object containing key, file data, and optional size
-     * @param options Optional configuration for bucket access level
+     * @param file - The file object containing key, file data, and optional size
+     * @param options - Optional configuration for bucket access level
      * @returns Promise that resolves to an AwsS3Dto with upload information
-     * @throws Error if key starts with "/" or file is not provided
      */
     async putItem(
         file: IAwsS3PutItem,
@@ -380,10 +376,9 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Uploads a file to S3 with specified Access Control List (ACL) permissions.
-     * @param file The file object containing key, file data, and optional size
-     * @param options Optional configuration including ACL settings and access level
+     * @param file - The file object containing key, file data, and optional size
+     * @param options - Optional configuration including ACL settings and access level
      * @returns Promise that resolves to an AwsS3Dto with upload information
-     * @throws Error if key starts with "/" or file is not provided
      */
     async putItemWithAcl(
         file: IAwsS3PutItem,
@@ -430,10 +425,8 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Deletes a single item from S3.
-     * @param key The S3 object key to delete
-     * @param options Optional configuration for bucket access level
-     * @returns Promise that resolves when deletion is complete
-     * @throws Error if key starts with "/"
+     * @param key - The S3 object key to delete
+     * @param options - Optional configuration for bucket access level
      */
     async deleteItem(key: string, options?: IAwsS3Options): Promise<void> {
         if (key.startsWith('/')) {
@@ -456,10 +449,8 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Deletes multiple items from S3 in a batch operation.
-     * @param keys Array of S3 object keys to delete
-     * @param options Optional configuration for bucket access level
-     * @returns Promise that resolves when all deletions are complete
-     * @throws Error if any key starts with "/"
+     * @param keys - Array of S3 object keys to delete
+     * @param options - Optional configuration for bucket access level
      */
     async deleteItems(keys: string[], options?: IAwsS3Options): Promise<void> {
         if (keys.some(e => e.startsWith('/'))) {
@@ -485,10 +476,8 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Deletes all items in a directory (path prefix) from S3.
-     * @param path The directory path prefix to delete
-     * @param options Optional configuration for bucket access level
-     * @returns Promise that resolves when directory deletion is complete
-     * @throws Error if path starts with "/"
+     * @param path - The directory path prefix to delete
+     * @param options - Optional configuration for bucket access level
      */
     async deleteDir(
         path: string,
@@ -539,11 +528,10 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Initiates a multipart upload for large files in S3.
-     * @param file The file object containing key, file data, and optional size
-     * @param maxPartNumber The maximum number of parts for the multipart upload
-     * @param options Optional configuration including force update and access level
+     * @param file - The file object containing key, file data, and optional size
+     * @param maxPartNumber - The maximum number of parts for the multipart upload
+     * @param options - Optional configuration including force update and access level
      * @returns Promise that resolves to an AwsS3MultipartDto with upload information
-     * @throws Error if key starts with "/", maxPartNumber exceeds limit, or key already exists
      */
     async createMultiPart(
         file: IAwsS3PutItem,
@@ -618,11 +606,10 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Initiates a multipart upload with Access Control List (ACL) permissions for large files in S3.
-     * @param file The file object containing key, file data, and optional size
-     * @param maxPartNumber The maximum number of parts for the multipart upload
-     * @param options Optional configuration including ACL settings, force update, and access level
+     * @param file - The file object containing key, file data, and optional size
+     * @param maxPartNumber - The maximum number of parts for the multipart upload
+     * @param options - Optional configuration including ACL settings, force update, and access level
      * @returns Promise that resolves to an AwsS3MultipartDto with upload information
-     * @throws Error if key starts with "/" or maxPartNumber exceeds limit
      */
     async createMultiPartWithAcl(
         file: IAwsS3PutItem,
@@ -677,10 +664,10 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Uploads a single part of a multipart upload to S3.
-     * @param multipart The multipart upload object containing upload metadata
-     * @param partNumber The part number for this upload (1-based)
-     * @param file The file buffer data for this part
-     * @param options Optional configuration for bucket access level
+     * @param multipart - The multipart upload object containing upload metadata
+     * @param partNumber - The part number for this upload (1-based)
+     * @param file - The file buffer data for this part
+     * @param options - Optional configuration for bucket access level
      * @returns Promise that resolves to the updated multipart object with the new part information
      */
     async putItemMultiPart(
@@ -720,11 +707,10 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Completes a multipart upload by combining all uploaded parts into a single object.
-     * @param key The S3 object key for the multipart upload
-     * @param uploadId The unique upload ID for the multipart upload
-     * @param parts Array of part information including part numbers and ETags
-     * @param options Optional configuration for bucket access level
-     * @returns Promise that resolves when the multipart upload is completed
+     * @param key - The S3 object key for the multipart upload
+     * @param uploadId - The unique upload ID for the multipart upload
+     * @param parts - Array of part information including part numbers and ETags
+     * @param options - Optional configuration for bucket access level
      */
     async completeMultipart(
         key: string,
@@ -759,10 +745,9 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Aborts a multipart upload and removes all uploaded parts.
-     * @param key The S3 object key for the multipart upload
-     * @param uploadId The unique upload ID for the multipart upload to abort
-     * @param options Optional configuration for bucket access level
-     * @returns Promise that resolves when the multipart upload is aborted
+     * @param key - The S3 object key for the multipart upload
+     * @param uploadId - The unique upload ID for the multipart upload to abort
+     * @param options - Optional configuration for bucket access level
      */
     async abortMultipart(
         key: string,
@@ -790,10 +775,9 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Generates a presigned URL for uploading an object to S3.
-     * @param request Object containing key and size information for the upload
-     * @param options Optional configuration including expiration time, force update, and access level
+     * @param request - Object containing key and size information for the upload
+     * @param options - Optional configuration including expiration time, force update, and access level
      * @returns Promise that resolves to a presigned URL and metadata
-     * @throws Error if key starts with "/" or key already exists (unless force update is enabled)
      */
     async presignPutItem(
         { key, size }: AwsS3PresignRequestDto,
@@ -852,10 +836,9 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Generates a presigned URL for uploading a part of a multipart upload to S3.
-     * @param request Object containing key, size, uploadId, and partNumber information
-     * @param options Optional configuration including expiration time, force update, and access level
+     * @param request - Object containing key, size, uploadId, and partNumber information
+     * @param options - Optional configuration including expiration time, force update, and access level
      * @returns Promise that resolves to a presigned URL and part metadata
-     * @throws Error if key starts with "/" or key already exists (unless force update is enabled)
      */
     async presignPutItemPart(
         { key, size, uploadId, partNumber }: AwsS3PresignPartRequestDto,
@@ -915,10 +898,9 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Maps presign request data to an AwsS3Dto object without actually creating a presigned URL.
-     * @param request Object containing key and size information
-     * @param options Optional configuration for bucket access level
+     * @param request - Object containing key and size information
+     * @param options - Optional configuration for bucket access level
      * @returns AwsS3Dto object with file information and URLs
-     * @throws Error if key starts with "/"
      */
     mapPresign(
         { key, size }: AwsS3PresignRequestDto,
@@ -951,11 +933,10 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Moves an S3 object from its current location to a new destination path.
-     * @param source The source AwsS3Dto object containing the current file information
-     * @param destination The destination path where the file should be moved
-     * @param options Optional configuration for bucket access level
+     * @param source - The source AwsS3Dto object containing the current file information
+     * @param destination - The destination path where the file should be moved
+     * @param options - Optional configuration for bucket access level
      * @returns Promise that resolves to an AwsS3Dto with the new file location
-     * @throws Error if source key or destination starts with "/"
      */
     async moveItem(
         source: AwsS3Dto,
@@ -1008,11 +989,10 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Moves multiple S3 objects from their current locations to a new destination path.
-     * @param sources Array of source AwsS3Dto objects containing the current file information
-     * @param destination The destination path where the files should be moved
-     * @param options Optional configuration for bucket access level
+     * @param sources - Array of source AwsS3Dto objects containing the current file information
+     * @param destination - The destination path where the files should be moved
+     * @param options - Optional configuration for bucket access level
      * @returns Promise that resolves to an array of AwsS3Dto objects with the new file locations
-     * @throws Error if any source key or destination starts with "/"
      */
     async moveItems(
         sources: AwsS3Dto[],

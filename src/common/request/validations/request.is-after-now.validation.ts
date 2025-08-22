@@ -8,9 +8,7 @@ import {
 
 /**
  * Validator constraint that checks if a date value is after the current date and time.
- *
- * This validator ensures that the provided date value is in the future compared to
- * the current timestamp. Only supports date values (Date objects, ISO strings, timestamps).
+ * Supports Date objects, ISO strings, and timestamps.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
@@ -18,8 +16,8 @@ export class IsAfterNowConstraint implements ValidatorConstraintInterface {
     /**
      * Validates that the current value is after the current date and time.
      *
-     * @param value - The value to validate (supports Date objects, ISO strings, timestamps)
-     * @returns True if value is after current date and time, false otherwise
+     * @param value - The value to validate (Date objects, ISO strings, timestamps)
+     * @returns True if value is after current date and time
      */
     validate(value: unknown): boolean {
         if (value === null || value === undefined) {
@@ -74,11 +72,9 @@ export class IsAfterNowConstraint implements ValidatorConstraintInterface {
 
 /**
  * Decorator that validates a property is a date after the current date and time.
- * Only supports date values (Date objects, ISO strings, timestamps).
  *
  * @param validationOptions - Standard class-validator validation options
  * @returns Property decorator function
- * ```
  */
 export function IsAfterNow(validationOptions?: ValidationOptions) {
     return function (object: unknown, propertyName: string): void {

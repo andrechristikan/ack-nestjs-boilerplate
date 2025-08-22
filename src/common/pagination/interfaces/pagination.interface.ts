@@ -1,4 +1,3 @@
-import { IDatabaseOrderDetail } from '@common/database/interfaces/database.interface';
 import { ENUM_HELPER_DATE_DAY_OF } from '@common/helper/enums/helper.enum';
 import {
     ENUM_PAGINATION_FILTER_DATE_BETWEEN_TYPE,
@@ -28,9 +27,14 @@ export interface IPaginationQueryOptions {
     availableOrderBy?: string[];
 }
 
+export type IPaginationOrder = Record<
+    string,
+    ENUM_PAGINATION_ORDER_DIRECTION_TYPE
+>;
+
 export interface IPaginationQueryReturn {
     search?: { or: Record<string, { contains: string }>[] };
-    order?: IDatabaseOrderDetail<unknown>;
+    order?: IPaginationOrder;
     limit: number;
     skip: number;
 }
@@ -39,16 +43,47 @@ export interface IPaginationQueryFilterOptions {
     customField?: string;
 }
 
-export interface IPaginationQueryFilterEnumOptions
+export type IPaginationQueryFilterEnumOptions = IPaginationQueryFilterOptions;
+
+export interface IPaginationQueryFilterNumberOptions
     extends IPaginationQueryFilterOptions {
-    isNumber?: boolean;
+    isNumber: true;
+}
+
+export interface IPaginationQueryFilterBooleanOptions
+    extends IPaginationQueryFilterOptions {
+    isBoolean: true;
 }
 
 export type IPaginationQueryFilterEqualOptions =
-    IPaginationQueryFilterEnumOptions;
+    | IPaginationQueryFilterOptions
+    | IPaginationQueryFilterBooleanOptions
+    | IPaginationQueryFilterNumberOptions;
 
 export interface IPaginationQueryFilterDateOptions
     extends IPaginationQueryFilterOptions {
     dayOf?: ENUM_HELPER_DATE_DAY_OF;
     type?: ENUM_PAGINATION_FILTER_DATE_BETWEEN_TYPE;
+}
+
+export interface IPaginationIn {
+    in: string[];
+}
+
+export interface IPaginationNin {
+    notIn: string[];
+}
+
+export interface IPaginationEqual {
+    equals: string | number | boolean;
+}
+
+export interface IPaginationNotEqual {
+    not: string | number | boolean;
+}
+
+export interface IPaginationDate {
+    gte?: Date;
+    lte?: Date;
+    equals?: Date;
 }

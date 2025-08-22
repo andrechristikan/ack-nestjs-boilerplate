@@ -4,18 +4,17 @@ import { v7 as uuid } from 'uuid';
 
 /**
  * Request ID generation middleware.
- *
  * Automatically generates and attaches a unique UUID to each incoming HTTP request.
- * This request ID is essential for distributed tracing, correlation of logs across
- * different services, and debugging request flows.
- *
- * The generated ID is attached to the Express Request object and can be accessed
- * throughout the request lifecycle by controllers, services, and other middleware.
- *
- * @see {@link uuid} UUID v7 generation library
  */
 @Injectable()
 export class RequestRequestIdMiddleware implements NestMiddleware {
+    /**
+     * Generates unique request ID and attaches to request object.
+     *
+     * @param req - The Express request object
+     * @param _res - The Express response object
+     * @param next - The next middleware function
+     */
     use(req: Request, _res: Response, next: NextFunction): void {
         req.id = uuid();
 

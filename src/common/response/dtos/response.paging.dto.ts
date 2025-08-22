@@ -1,11 +1,14 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, PickType } from '@nestjs/swagger';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import {
     ResponseDto,
     ResponseMetadataDto,
 } from '@common/response/dtos/response.dto';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 
+/**
+ * Pagination metadata DTO extending base response metadata with pagination info
+ */
 export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
         required: false,
@@ -70,6 +73,10 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     totalPage: number;
 }
 
+/**
+ * Paginated response DTO for API responses with data arrays
+ * @template T - Type of the individual data items
+ */
 export class ResponsePagingDto<T> extends PickType(ResponseDto, [
     'statusCode',
     'message',

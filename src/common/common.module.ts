@@ -1,7 +1,4 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { DATABASE_CONNECTION_NAME } from '@common/database/constants/database.constant';
-import { DatabaseOptionModule } from '@common/database/database.module';
 import { MessageModule } from '@common/message/message.module';
 import { HelperModule } from '@common/helper/helper.module';
 import { RequestModule } from '@common/request/request.module';
@@ -9,7 +6,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import configs from '@config';
 import { BullModule } from '@nestjs/bullmq';
 import { CacheModule, CacheOptions } from '@nestjs/cache-manager';
-import { DatabaseOptionService } from '@common/database/services/database.options.service';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { LoggerOptionModule } from '@common/logger/logger.option.module';
 import { LoggerOptionService } from '@common/logger/services/logger.option.service';
@@ -17,6 +13,11 @@ import { RedisClientOptions, createKeyv } from '@keyv/redis';
 import { PolicyModule } from '@modules/policy/policy.module';
 import { FileModule } from '@common/file/file.module';
 import { AuthModule } from '@modules/auth/auth.module';
+import { DatabaseModule } from '@common/database/database.module';
+
+/**
+ * Common module that provides shared functionality across the application
+ */
 
 @Module({
     controllers: [],
@@ -28,13 +29,6 @@ import { AuthModule } from '@modules/auth/auth.module';
             cache: true,
             envFilePath: ['.env', `.env.${process.env.NODE_ENV || 'local'}`],
             expandVariables: false,
-        }),
-        MongooseModule.forRootAsync({
-            connectionName: DATABASE_CONNECTION_NAME,
-            imports: [DatabaseOptionModule],
-            inject: [DatabaseOptionService],
-            useFactory: (databaseService: DatabaseOptionService) =>
-                databaseService.createOptions(),
         }),
         BullModule.forRootAsync({
             imports: [ConfigModule],
@@ -91,6 +85,7 @@ import { AuthModule } from '@modules/auth/auth.module';
                 return loggerOptionService.createOptions();
             },
         }),
+        DatabaseModule.forRoot(),
         MessageModule.forRoot(),
         HelperModule.forRoot(),
         RequestModule.forRoot(),

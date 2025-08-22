@@ -4,27 +4,8 @@ import bodyParser from 'body-parser';
 import { ConfigService } from '@nestjs/config';
 
 /**
- * Unified body parser middleware that handles multiple content types with intelligent parsing.
- *
- * This middleware automatically detects the incoming request's content-type header and applies
- * the appropriate body parser from the body-parser library. It supports JSON, URL-encoded forms,
- * text content, multipart data, and binary streams with configurable size limits for each type.
- * The middleware prevents parsing conflicts by only processing relevant content types and
- * gracefully handles requests with unknown or missing content-type headers.
- *
- * Supported content types and their corresponding parsers:
- * - `application/json` → JSON parser with configurable size limit
- * - `application/x-www-form-urlencoded` → URL-encoded parser for form submissions
- * - `text/*` → Text parser for plain text content
- * - `multipart/*` → Raw parser for multipart form data and file uploads
- * - `application/octet-stream` → Raw parser for binary data streams
- * - Unknown or missing content-type → Passes through without parsing
- *
- * All size limits are configurable through the application's middleware configuration
- * and help prevent memory exhaustion from oversized request payloads.
- *
- * @implements {NestMiddleware} - NestJS middleware interface for request processing
- * @see {@link https://www.npmjs.com/package/body-parser} - Body-parser library documentation
+ * Unified body parser middleware that handles multiple content types.
+ * Automatically detects content-type and applies appropriate body parser with configurable size limits.
  */
 @Injectable()
 export class RequestBodyParserMiddleware implements NestMiddleware {
@@ -53,20 +34,11 @@ export class RequestBodyParserMiddleware implements NestMiddleware {
     }
 
     /**
-     * Middleware function that processes HTTP request bodies based on content-type.
+     * Processes HTTP request bodies based on content-type header.
      *
-     * @description Analyzes the request's content-type header and applies the appropriate
-     * body parser. If no content-type is specified or an unknown type is encountered,
-     * the request passes through without body parsing.
-     *
-     * @param {Request} req - The Express request object
-     * @param {Response} res - The Express response object
-     * @param {NextFunction} next - The next middleware function in the stack
-     *
-     * @returns {void}
-     *
-     * @throws {PayloadTooLargeError} When request body exceeds configured size limits
-     * @throws {SyntaxError} When JSON parsing fails for malformed JSON payloads
+     * @param req - The Express request object
+     * @param res - The Express response object
+     * @param next - The next middleware function
      */
     use(req: Request, res: Response, next: NextFunction): void {
         const contentType = req.get('content-type') || '';

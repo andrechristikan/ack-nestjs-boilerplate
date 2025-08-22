@@ -36,7 +36,6 @@ export class MessageService implements IMessageService {
     /**
      * Filters and validates if a custom language is supported by the application.
      * Returns the language if it's available, otherwise returns undefined.
-     *
      * @param customLanguage - The language code to validate
      * @returns The validated language code or undefined if not supported
      */
@@ -47,7 +46,6 @@ export class MessageService implements IMessageService {
     /**
      * Retrieves and formats a localized message from the i18n system.
      * Uses custom language if provided and valid, otherwise falls back to default language.
-     *
      * @param path - The i18n message key path (e.g., 'error.validation.required')
      * @param options - Optional configuration including custom language and message properties
      * @returns The formatted localized message string
@@ -66,7 +64,6 @@ export class MessageService implements IMessageService {
     /**
      * Converts class-validator ValidationError objects into localized message objects.
      * Handles nested validation errors and provides detailed property path information.
-     *
      * @param errors - Array of ValidationError objects from class-validator
      * @param options - Optional configuration including custom language preference
      * @returns Array of formatted validation error messages with property paths
@@ -106,7 +103,6 @@ export class MessageService implements IMessageService {
     /**
      * Formats validation import errors with localized messages for bulk operations.
      * Maps each import error to include row, sheet information, and localized error messages.
-     *
      * @param errors - Array of validation import error parameters
      * @param options - Optional configuration including custom language preference
      * @returns Array of formatted validation import errors with localized messages
@@ -124,7 +120,6 @@ export class MessageService implements IMessageService {
 
     /**
      * Extracts constraint keys from a ValidationError object.
-     *
      * @param error - The ValidationError object
      * @returns Array of constraint keys
      */
@@ -134,7 +129,6 @@ export class MessageService implements IMessageService {
 
     /**
      * Processes nested validation errors by traversing child errors.
-     *
      * @param error - The ValidationError object with potential children
      * @returns Object containing the full property path and constraint keys
      */
@@ -163,13 +157,10 @@ export class MessageService implements IMessageService {
      * Creates a localized validation message object for a specific validation constraint.
      * This method constructs a complete validation error message by combining the constraint name,
      * failed value, property path, and localized message text from the i18n system.
-     *
      * @param constraint - The validation constraint identifier (e.g., 'isNotEmpty', 'isEmail', 'minLength')
      * @param value - The actual value that failed validation, can be of any type
-     * @param property - The full property path that failed validation (e.g., 'user.email', 'profile.name').
-     *                   If nested, only the last segment will be used in the message properties
+     * @param property - The full property path that failed validation (e.g., 'user.email', 'profile.name')
      * @param options - Optional configuration object containing custom language preferences
-     * @param options.customLanguage - Custom language code to override the default language
      * @returns A structured validation error object containing the constraint key, property path, and localized message
      */
     private createValidationMessage(

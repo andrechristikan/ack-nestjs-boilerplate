@@ -21,8 +21,17 @@ import {
 } from '@common/request/validations/request.less-than-other-property.validation';
 import { RequestMiddlewareModule } from '@common/request/request.middleware.module';
 
+/**
+ * Core request module providing validation, interceptors, and middleware configuration.
+ * Configures global validation pipes, timeout handling, and custom validators.
+ */
 @Module({})
 export class RequestModule {
+    /**
+     * Creates and configures the request module with all necessary providers.
+     *
+     * @returns Dynamic module configuration with validation and interceptor setup
+     */
     static forRoot(): DynamicModule {
         return {
             module: RequestModule,

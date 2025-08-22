@@ -1,21 +1,13 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Types } from 'mongoose';
 
-/**
- * Base database DTO class for API responses.
- *
- * Provides standardized fields for all database entities exposed through APIs.
- * Includes audit trail fields, soft delete information, and proper API documentation
- * with Swagger decorators.
- */
 export class DatabaseDto {
     @ApiProperty({
         description: 'Database document identifier',
         example: faker.database.mongodbObjectId(),
         required: true,
     })
-    _id: Types.ObjectId;
+    id: string;
 
     @ApiProperty({
         description: 'Date created at',
