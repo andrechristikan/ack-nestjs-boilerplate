@@ -53,6 +53,9 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
 
     /**
      * Validates requested language against available languages.
+     *
+     * @param customLanguage - The language code to validate
+     * @returns Array of valid languages that match available languages
      */
     private filterLanguage(customLanguage: string): string[] {
         return this.helperService.arrayIntersection(

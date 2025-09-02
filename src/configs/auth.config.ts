@@ -13,7 +13,7 @@ export interface IConfigAuth {
             kid: string;
             privateKeyPath: string;
             publicKeyPath: string;
-            expirationTime: number; // in seconds
+            expirationTime: number;
         };
         algorithm: string;
         jwksUri: string;
@@ -26,9 +26,9 @@ export interface IConfigAuth {
         attempt: boolean;
         maxAttempt: number;
         saltLength: number;
-        expiredIn: number; // in seconds
-        expiredInTemporary: number; // in seconds
-        period: number; // in seconds
+        expiredIn: number;
+        expiredInTemporary: number;
+        period: number;
     };
     apple: {
         header: string;
@@ -91,9 +91,9 @@ export default registerAs(
             attempt: true,
             maxAttempt: 5,
             saltLength: 8,
-            expiredIn: ms('182d') / 1000, // 0.5 years
-            expiredInTemporary: ms('3d') / 1000, // 3 days
-            period: ms('90d') / 1000, // 3 months
+            expiredIn: ms('182d') / 1000,
+            expiredInTemporary: ms('3d') / 1000,
+            period: ms('90d') / 1000,
         },
 
         apple: {

@@ -10,8 +10,8 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { IDatabaseService } from 'src/common/database/interfaces/database.service.interface';
 
 /**
- * Database service that extends PrismaClient with additional functionality
- * Handles database connections, health checks, and logging
+ * Database service that extends PrismaClient with additional functionality.
+ * Handles database connections, health checks, and logging with lifecycle management.
  */
 @Injectable()
 export class DatabaseService
@@ -39,7 +39,8 @@ export class DatabaseService
     }
 
     /**
-     * Health check method to verify database connectivity
+     * Health check method to verify database connectivity.
+     * @returns {Promise<HealthIndicatorResult>} Promise that resolves to health status object
      */
     async isHealthy(): Promise<HealthIndicatorResult> {
         try {

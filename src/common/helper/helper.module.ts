@@ -8,10 +8,6 @@ import { HelperService } from '@common/helper/services/helper.service';
 @Global()
 @Module({})
 export class HelperModule {
-    /**
-     * Creates a dynamic module configuration for helper services.
-     * @returns Dynamic module configuration with HelperService provider
-     */
     static forRoot(): DynamicModule {
         return {
             module: HelperModule,

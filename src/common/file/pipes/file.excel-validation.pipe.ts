@@ -10,11 +10,9 @@ import { ENUM_FILE_STATUS_CODE_ERROR } from '@common/file/enums/file.status-code
 /**
  * A NestJS pipe that validates Excel file data by transforming raw sheet data into DTOs
  * and performing class-validator validation on each sheet's data.
- *
  * This pipe is designed to work with Excel files that have been parsed into sheet structures,
  * where each sheet contains an array of raw data objects that need to be validated against
  * corresponding DTO classes.
- *
  * @template TDto - The DTO class type that extends ClassConstructor, used for validation
  * @template TRaw - The raw data type from the Excel sheet before transformation
  */
@@ -28,14 +26,11 @@ export class FileExcelValidationPipe<
 
     /**
      * Transforms and validates raw Excel sheet data into validated DTO objects.
-     *
      * This method orchestrates the validation process by first checking if the input
      * is valid, then transforming each sheet's raw data into corresponding DTOs,
      * and finally validating each DTO using class-validator decorators.
-     *
-     * @param value - Array of file sheets containing raw data to be validated
-     * @returns Promise that resolves to an array of validated file sheets with DTO data,
-     *          or undefined if no input is provided
+     * @param {IFileSheet<TRaw>[]} value - Array of file sheets containing raw data to be validated
+     * @returns {Promise<IFileSheet<TDto>[] | undefined>} Promise that resolves to an array of validated file sheets with DTO data, or undefined if no input is provided
      * @throws {UnprocessableEntityException} When the input data is invalid or missing
      * @throws {FileImportException} When validation errors occur during DTO validation
      */

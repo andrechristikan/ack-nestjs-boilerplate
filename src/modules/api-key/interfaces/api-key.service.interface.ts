@@ -1,8 +1,9 @@
 import {
-    IDatabaseFilterOperation,
-    IDatabaseFilterOperationComparison,
-} from '@common/database/interfaces/database.interface';
-import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination.interface';
+    IPaginationEqual,
+    IPaginationIn,
+    IPaginationQueryOffsetParams,
+    IPaginationQueryReturn,
+} from '@common/pagination/interfaces/pagination.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
@@ -10,57 +11,32 @@ import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-ke
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
-import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
-import { ApiKeyEntity } from '@modules/api-key/repository/entities/api-key.entity';
+import { ApiKey } from '@prisma/client';
 
 export interface IApiKeyService {
     getList(
-        { search, limit, skip, order }: IPaginationQueryReturn,
-        isActive?: Record<string, IDatabaseFilterOperationComparison>,
-        type?: Record<string, IDatabaseFilterOperation>
+        { where, ...params }: IPaginationQueryOffsetParams,
+        isActive?: Record<string, IPaginationEqual>,
+        type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKeyResponseDto>>;
-    mapList(apiKeys: ApiKeyEntity[]): ApiKeyResponseDto[];
-    mapOne(apiKey: ApiKeyEntity): ApiKeyResponseDto;
-    findOneByIdAndCache(_id: string): Promise<ApiKeyEntity>;
-    findOneActiveByKeyAndCache(key: string): Promise<ApiKeyEntity | undefined>;
+    findOneActiveByKeyAndCache(key: string): Promise<ApiKey | undefined>;
     create({
         description,
         type,
         startDate,
         endDate,
     }: ApiKeyCreateRequestDto): Promise<ApiKeyCreateResponseDto>;
-    active(apiKeyId: string): Promise<ApiKeyResponseDto>;
-    inactive(apiKeyId: string): Promise<ApiKeyResponseDto>;
+    active(id: string): Promise<ApiKeyResponseDto>;
+    inactive(id: string): Promise<ApiKeyResponseDto>;
     update(
-        apiKeyId: string,
+        id: string,
         { description }: ApiKeyUpdateRequestDto
     ): Promise<ApiKeyResponseDto>;
     updateDate(
-        apiKeyId: string,
+        id: string,
         { startDate, endDate }: ApiKeyUpdateDateRequestDto
     ): Promise<ApiKeyResponseDto>;
-    reset(apiKeyId: string): Promise<ApiKeyCreateResponseDto>;
-    delete(apiKeyId: string): Promise<ApiKeyResponseDto>;
-    getCacheByKey(key: string): Promise<ApiKeyEntity | null | undefined>;
-    setCacheByKey(key: string, apiKey: ApiKeyEntity): Promise<void>;
-    deleteCacheByKey(key: string): Promise<void>;
-    validateXApiKey(request: IRequestApp): Promise<ApiKeyEntity>;
-    validateXApiKeyType(
-        request: IRequestApp,
-        allowed: ENUM_API_KEY_TYPE[]
-    ): ApiKeyEntity;
-    createKey(key?: string): string;
-    createHash(key: string, secret: string): string;
-    createSecret(): string;
-    validateCredential(
-        key: string,
-        secret: string,
-        apiKey: ApiKeyEntity
-    ): boolean;
-    isExpired(apiKey: ApiKeyEntity, currentDate: Date): boolean;
-    isNotYetActive(apiKey: ApiKeyEntity, currentDate: Date): boolean;
-    isActive(apiKey: ApiKeyEntity): boolean;
-    isValid(apiKey: ApiKeyEntity, currentDate: Date): boolean;
-    extractKeyFromRequest(request: IRequestApp): string | undefined;
-    validateType(apiKey: ApiKeyEntity, allowed: ENUM_API_KEY_TYPE[]): boolean;
+    reset(id: string): Promise<ApiKeyCreateResponseDto>;
+    delete(id: string): Promise<ApiKeyResponseDto>;
+    validateXApiKey(request: IRequestApp): Promise<ApiKey>;
 }

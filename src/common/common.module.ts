@@ -14,9 +14,11 @@ import { PolicyModule } from '@modules/policy/policy.module';
 import { FileModule } from '@common/file/file.module';
 import { AuthModule } from '@modules/auth/auth.module';
 import { DatabaseModule } from '@common/database/database.module';
+import { PaginationModule } from '@common/pagination/pagination.module';
 
 /**
- * Common module that provides shared functionality across the application
+ * Common module that provides shared functionality across the application.
+ * Configures global services including configuration, caching, logging, database, authentication, and pagination.
  */
 
 @Module({
@@ -92,6 +94,7 @@ import { DatabaseModule } from '@common/database/database.module';
         FileModule.forRoot(),
         AuthModule.forRoot(),
         PolicyModule.forRoot(),
+        PaginationModule.forRoot(),
     ],
 })
 export class CommonModule {}

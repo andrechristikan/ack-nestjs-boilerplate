@@ -1,6 +1,10 @@
 import { HttpStatus } from '@nestjs/common';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { IFileSheet } from '@common/file/interfaces/file.interface';
+import {
+    IPaginationCursorReturn,
+    IPaginationOffsetReturn,
+} from '@common/pagination/interfaces/pagination.interface';
 
 export interface IResponseMetadata {
     statusCode?: number;
@@ -23,13 +27,10 @@ export interface IResponseReturn<T = unknown> {
     data?: T;
 }
 
-export interface IResponsePagingReturn<T> {
-    count: number;
-    page: number;
-    totalPage: number;
-    metadata?: IResponseMetadata;
-    data: T[];
-}
+export type IResponsePagingReturn<T> = IPaginationOffsetReturn<T> &
+    IPaginationCursorReturn<T> & {
+        metadata?: IResponseMetadata;
+    };
 
 export interface IResponseFileReturn<T> {
     data: IFileSheet<T>[];

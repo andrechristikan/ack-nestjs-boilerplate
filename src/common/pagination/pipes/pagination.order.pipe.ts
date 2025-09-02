@@ -8,17 +8,18 @@ import {
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import {
-    IPaginationOrder,
-    IPaginationQueryReturn,
-} from '@common/pagination/interfaces/pagination.interface';
 import { ENUM_PAGINATION_STATUS_CODE_ERROR } from '@common/pagination/enums/pagination.status-code.enum';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import {
+    IPaginationOrderBy,
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 
 /**
- * Creates a pipe that validates and transforms pagination order parameters
- * @param {string[]} [defaultAvailableOrder] - Array of allowed field names for ordering
- * @returns {Type<PipeTransform>} A NestJS pipe transform class for order validation and transformation
+ * Factory function to create PaginationOrderPipe that handles ordering functionality for pagination
+ * @param {string[]} defaultAvailableOrder - Array of fields that can be used for ordering
+ * @returns {Type<PipeTransform>} Configured pipe class for ordering
  */
 export function PaginationOrderPipe(
     defaultAvailableOrder?: string[]
@@ -28,18 +29,21 @@ export function PaginationOrderPipe(
         constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
         /**
-         * Transforms pagination query object with order parameters
-         * @param {object} value - Pagination query object containing orderBy, orderDirection and other pagination properties
-         * @param {string} [value.orderBy] - Field name to order by
-         * @param {ENUM_PAGINATION_ORDER_DIRECTION_TYPE} [value.orderDirection] - Order direction (ASC/DESC)
-         * @returns {Promise<IPaginationQueryReturn>} Transformed pagination query object with order configuration
+         * Transforms input value to add ordering functionality with validation
+         * @param {Object} value - Input object containing order parameters and pagination params
+         * @param {string} value.orderBy - Field to order by
+         * @param {ENUM_PAGINATION_ORDER_DIRECTION_TYPE} value.orderDirection - Direction of ordering (ASC/DESC)
+         * @returns {Promise<IPaginationQueryOffsetParams | IPaginationQueryCursorParams>} Transformed pagination params with ordering
+         * @throws {UnprocessableEntityException} When orderBy field is not in allowed list
          */
         async transform(
             value: {
                 orderBy?: string;
                 orderDirection?: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
-            } & IPaginationQueryReturn
-        ): Promise<IPaginationQueryReturn> {
+            } & (IPaginationQueryOffsetParams | IPaginationQueryCursorParams)
+        ): Promise<
+            IPaginationQueryOffsetParams | IPaginationQueryCursorParams
+        > {
             if (
                 !value.orderBy ||
                 !value.orderDirection ||
@@ -69,26 +73,36 @@ export function PaginationOrderPipe(
 
             return {
                 ...value,
-                order: this.buildOrderObject(finalOrderBy, finalOrderDirection),
+                orderBy: this.buildOrderObject(
+                    finalOrderBy,
+                    finalOrderDirection
+                ),
             };
         }
 
         /**
          * Builds order object for database query
          * @param {string} field - Field name to order by
-         * @param {ENUM_PAGINATION_ORDER_DIRECTION_TYPE} orderDirection - Order direction
-         * @returns {IPaginationOrder} Order object for database query
+         * @param {ENUM_PAGINATION_ORDER_DIRECTION_TYPE} orderDirection - Order direction (ASC/DESC)
+         * @returns {IPaginationOrderBy} Order object for query
          */
-        buildOrderObject(
+        private buildOrderObject(
             field: string,
             orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE
-        ): IPaginationOrder {
+        ): IPaginationOrderBy {
             return {
                 [field]: orderDirection,
             };
         }
 
-        addToRequestInstance(
+        /**
+         * Adds order information to request instance
+         * @param {string} orderBy - Field to order by
+         * @param {ENUM_PAGINATION_ORDER_DIRECTION_TYPE} orderDirection - Order direction
+         * @param {string[]} availableOrderBy - Array of allowed order fields
+         * @returns {void}
+         */
+        private addToRequestInstance(
             orderBy: string,
             orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
             availableOrderBy: string[]

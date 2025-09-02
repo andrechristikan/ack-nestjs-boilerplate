@@ -7,10 +7,11 @@ import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import { ResponseFileInterceptor } from '@common/response/interceptors/response.file.interceptor';
 
 /**
- * Decorator for standard API responses with optional caching
- * @param {string} messagePath - Path to response message
- * @param {IResponseOptions} [options] - Response configuration options
- * @returns {MethodDecorator}
+ * Decorator for standard API responses with optional caching.
+ *
+ * @param messagePath - Path to response message
+ * @param options - Response configuration options
+ * @returns Method decorator function
  */
 export function Response(
     messagePath: string,
@@ -39,10 +40,11 @@ export function Response(
 }
 
 /**
- * Decorator for paginated API responses with optional caching
- * @param {string} messagePath - Path to response message
- * @param {IResponseOptions} [options] - Response configuration options
- * @returns {MethodDecorator}
+ * Decorator for paginated API responses with optional caching.
+ *
+ * @param messagePath - Path to response message
+ * @param options - Response configuration options
+ * @returns Method decorator function
  */
 export function ResponsePaging(
     messagePath: string,
@@ -71,8 +73,9 @@ export function ResponsePaging(
 }
 
 /**
- * Decorator for file download responses
- * @returns {MethodDecorator}
+ * Decorator for file download responses.
+ *
+ * @returns Method decorator function
  */
 export function ResponseFile(): MethodDecorator {
     return applyDecorators(UseInterceptors(ResponseFileInterceptor));

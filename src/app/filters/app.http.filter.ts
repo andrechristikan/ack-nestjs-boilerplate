@@ -42,8 +42,9 @@ export class AppHttpFilter implements ExceptionFilter {
     /**
      * Handles HTTP exceptions with path validation and response formatting.
      * Redirects invalid paths and creates standardized error responses.
-     * @param exception - The HTTP exception to handle
-     * @param host - Arguments host containing request/response context
+     * @param {HttpException} exception - The HTTP exception to handle
+     * @param {ArgumentsHost} host - Arguments host containing request/response context
+     * @returns {Promise<void>}
      */
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
@@ -133,8 +134,8 @@ export class AppHttpFilter implements ExceptionFilter {
     /**
      * Type guard to check if exception response implements IAppException interface.
      * Validates object has required statusCode and message properties.
-     * @param obj - The object to check
-     * @returns True if object has statusCode and message properties
+     * @param {unknown} obj - The object to check
+     * @returns {boolean} True if object has statusCode and message properties
      */
     isErrorException(obj: unknown): obj is IAppException<unknown> {
         return typeof obj === 'object'
@@ -144,7 +145,8 @@ export class AppHttpFilter implements ExceptionFilter {
 
     /**
      * Sends exceptions with status >= 500 to Sentry for monitoring
-     * @param exception - The HTTP exception to send to Sentry
+     * @param {HttpException} exception - The HTTP exception to send to Sentry
+     * @returns {void}
      */
     sendToSentry(exception: HttpException): void {
         if (exception.getStatus() < 500) {

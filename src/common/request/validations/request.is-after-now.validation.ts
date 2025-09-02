@@ -37,7 +37,6 @@ export class IsAfterNowConstraint implements ValidatorConstraintInterface {
     /**
      * Generates a default error message for validation failures.
      *
-     * @param args - Validation arguments containing property information
      * @returns Error message string
      */
     defaultMessage(): string {

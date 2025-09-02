@@ -10,15 +10,6 @@ import { RouterModule } from '@router';
 @Module({
     controllers: [],
     providers: [],
-    imports: [
-        // Common
-        CommonModule,
-
-        // Routes
-        RouterModule,
-
-        // Workers
-        WorkerModule,
-    ],
+    imports: [CommonModule, RouterModule, WorkerModule],
 })
 export class AppModule {}

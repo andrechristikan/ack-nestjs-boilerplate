@@ -60,6 +60,7 @@ export class AwsSESGetTemplateDto extends PickType(AwsSESTemplateDto, [
 /**
  * DTO for sending emails through AWS SES using templates.
  * Supports single email sending with recipients, CC, BCC, and template data.
+ * @template T - Type of template data object
  */
 export class AwsSESSendDto<T> {
     @ApiProperty({

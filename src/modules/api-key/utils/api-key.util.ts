@@ -1,0 +1,162 @@
+import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { plainToInstance } from 'class-transformer';
+import { HelperService } from '@common/helper/services/helper.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
+import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { ApiKey, ENUM_API_KEY_TYPE } from '@prisma/client';
+
+@Injectable()
+export class ApiKeyUtil {
+    private readonly keyPrefix: string;
+    private readonly env: ENUM_APP_ENVIRONMENT;
+    private readonly header: string;
+
+    constructor(
+        @Inject(CACHE_MANAGER) private cacheManager: Cache,
+        private readonly configService: ConfigService,
+        private readonly helperService: HelperService
+    ) {
+        this.keyPrefix = this.configService.get<string>(
+            'auth.xApiKey.keyPrefix'
+        );
+        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.header = this.configService.get<string>('auth.xApiKey.header');
+    }
+
+    mapList(apiKeys: ApiKey[]): ApiKeyResponseDto[] {
+        return plainToInstance(ApiKeyResponseDto, apiKeys);
+    }
+
+    mapOne(apiKey: ApiKey): ApiKeyResponseDto {
+        return plainToInstance(ApiKeyResponseDto, apiKey);
+    }
+
+    async getCacheByKey(key: string): Promise<ApiKey | null | undefined> {
+        const cacheKey = `${this.keyPrefix}:${key}`;
+        const cachedApiKey = await this.cacheManager.get<string>(cacheKey);
+        if (cachedApiKey) {
+            return JSON.parse(cachedApiKey) as ApiKey;
+        }
+
+        return null;
+    }
+
+    async setCacheByKey(key: string, apiKey: ApiKey): Promise<void> {
+        const cacheKey = `${this.keyPrefix}:${key}`;
+        await this.cacheManager.set(cacheKey, JSON.stringify(apiKey));
+
+        return;
+    }
+
+    async deleteCacheByKey(key: string): Promise<void> {
+        const cacheKey = `${this.keyPrefix}:${key}`;
+        await this.cacheManager.del(cacheKey);
+
+        return;
+    }
+
+    validateXApiKeyType(
+        request: IRequestApp,
+        allowed: ENUM_API_KEY_TYPE[]
+    ): ApiKey {
+        const { __apiKey } = request;
+        if (this.validateType(__apiKey, allowed)) {
+            throw new ForbiddenException({
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
+                message: 'apiKey.error.xApiKey.forbidden',
+            });
+        }
+
+        return __apiKey;
+    }
+
+    createKey(key?: string): string {
+        const random: string = this.helperService.randomString(25);
+        return `${this.env}_${key ?? random}`;
+    }
+
+    createHash(key: string, secret: string): string {
+        return this.helperService.sha256Hash(`${key}:${secret}`);
+    }
+
+    createSecret(): string {
+        return this.helperService.randomString(50);
+    }
+
+    validateCredential(key: string, secret: string, apiKey: ApiKey): boolean {
+        if (!apiKey) {
+            return false;
+        }
+
+        const expectedHash = this.createHash(key, secret);
+        return this.helperService.sha256Compare(expectedHash, apiKey.hash);
+    }
+
+    isExpired(
+        apiKey: {
+            startDate?: Date;
+            endDate?: Date;
+        },
+        currentDate: Date
+    ): boolean {
+        if (apiKey.endDate && apiKey.endDate) {
+            return currentDate > apiKey.endDate;
+        }
+
+        return false;
+    }
+
+    isNotYetActive(
+        apiKey: {
+            startDate?: Date;
+            endDate?: Date;
+        },
+        currentDate: Date
+    ): boolean {
+        if (apiKey.startDate && apiKey.endDate) {
+            return currentDate < apiKey.startDate;
+        }
+
+        return false;
+    }
+
+    isActive(apiKey: { isActive: boolean }): boolean {
+        return apiKey.isActive;
+    }
+
+    isValid(
+        apiKey: {
+            startDate?: Date;
+            endDate?: Date;
+            isActive: boolean;
+        },
+        currentDate: Date
+    ): boolean {
+        return (
+            apiKey &&
+            apiKey.isActive &&
+            !this.isExpired(apiKey, currentDate) &&
+            !this.isNotYetActive(apiKey, currentDate)
+        );
+    }
+
+    extractKeyFromRequest(request: IRequestApp): string | undefined {
+        const xApiKey: string = request.headers[
+            `${this.header.toLowerCase()}`
+        ] as string;
+
+        return xApiKey;
+    }
+
+    validateType(
+        apiKey: { type: ENUM_API_KEY_TYPE },
+        allowed: ENUM_API_KEY_TYPE[]
+    ): boolean {
+        return !apiKey || !allowed.includes(apiKey.type);
+    }
+}

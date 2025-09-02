@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
-import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
 import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { ENUM_API_KEY_TYPE } from '@prisma/client';
 
 export class ApiKeyResponseDto extends DatabaseDto {
     @ApiHideProperty()

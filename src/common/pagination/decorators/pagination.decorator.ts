@@ -1,49 +1,64 @@
 import { Query } from '@nestjs/common';
 import { PaginationOrderPipe } from '@common/pagination/pipes/pagination.order.pipe';
-import { PaginationPagingPipe } from '@common/pagination/pipes/pagination.paging.pipe';
 import { PaginationSearchPipe } from '@common/pagination/pipes/pagination.search.pipe';
 import {
+    IPaginationQueryCursorOptions,
     IPaginationQueryFilterDateOptions,
     IPaginationQueryFilterEnumOptions,
     IPaginationQueryFilterEqualOptions,
     IPaginationQueryFilterOptions,
-    IPaginationQueryOptions,
+    IPaginationQueryOffsetOptions,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
     PaginationQueryFilterDatePipe,
     PaginationQueryFilterEqualPipe,
-    PaginationQueryFilterInBooleanPipe,
     PaginationQueryFilterInEnumPipe,
-    PaginationQueryFilterNinBooleanPipe,
     PaginationQueryFilterNinEnumPipe,
     PaginationQueryFilterNotEqualPipe,
 } from '@common/pagination/pipes/pagination.filter.pipe';
+import { PaginationOffsetPipe } from '@common/pagination/pipes/pagination.offset.pipe';
+import { PaginationCursorPipe } from '@common/pagination/pipes/pagination.cursor.pipe';
 
 /**
- * Creates a pagination query parameter decorator that applies search, paging, and ordering pipes.
- * Combines multiple pagination pipes into a single decorator for comprehensive query processing.
- *
- * @param options - Configuration options for search fields, default per page, and available order fields
- * @returns Parameter decorator that applies pagination pipes to query parameters
+ * Creates a parameter decorator for handling pagination query parameters.
+ * Converts request query parameters to database query format with search, paging, and ordering.
+ * @param {IPaginationQueryOffsetOptions} [options] - Optional configuration for pagination behavior
+ * @returns {ParameterDecorator} Parameter decorator that applies pagination pipes for database queries
  */
-export function PaginationQuery(
-    options?: IPaginationQueryOptions
+export function PaginationOffsetQuery(
+    options?: IPaginationQueryOffsetOptions
 ): ParameterDecorator {
     return Query(
         PaginationSearchPipe(options?.availableSearch),
-        PaginationPagingPipe(options?.defaultPerPage),
+        PaginationOffsetPipe(options?.defaultPerPage),
         PaginationOrderPipe(options?.availableOrderBy)
     );
 }
 
 /**
- * Creates a query parameter decorator for filtering enum values using IN operation.
- * Validates that query values exist in the allowed enum and creates database filter conditions.
- *
- * @param field - Query parameter field name
- * @param defaultEnum - Array of allowed enum values for validation
- * @param options - Configuration options including number parsing and custom field mapping
- * @returns Parameter decorator that applies enum IN filtering to the specified field
+ * Creates a parameter decorator for handling cursor-based pagination query parameters.
+ * Converts request query parameters to database query format with search, cursor paging, and ordering.
+ * @param {IPaginationQueryCursorOptions} [options] - Optional configuration for cursor pagination behavior
+ * @returns {ParameterDecorator} Parameter decorator that applies pagination pipes for cursor-based database queries
+ */
+export function PaginationCursorQuery(
+    options?: IPaginationQueryCursorOptions
+): ParameterDecorator {
+    return Query(
+        PaginationSearchPipe(options?.availableSearch),
+        PaginationCursorPipe(options?.defaultPerPage, options?.cursorField),
+        PaginationOrderPipe(options?.availableOrderBy)
+    );
+}
+
+/**
+ * Creates a parameter decorator for enum filtering using 'in' operator for database queries.
+ * Converts query parameter to database 'in' filter format.
+ * @template T - Type of enum values
+ * @param {string} field - The query parameter field name
+ * @param {T[]} defaultEnum - Array of default enum values
+ * @param {IPaginationQueryFilterEnumOptions} [options] - Optional filter configuration
+ * @returns {ParameterDecorator} Parameter decorator that converts to database 'in' filter
  */
 export function PaginationQueryFilterInEnum<T>(
     field: string,
@@ -54,13 +69,13 @@ export function PaginationQueryFilterInEnum<T>(
 }
 
 /**
- * Creates a query parameter decorator for filtering enum values using NOT IN operation.
- * Validates that query values exist in the allowed enum and creates database exclusion filter conditions.
- *
- * @param field - Query parameter field name
- * @param defaultEnum - Array of allowed enum values for validation
- * @param options - Configuration options including number parsing and custom field mapping
- * @returns Parameter decorator that applies enum NOT IN filtering to the specified field
+ * Creates a parameter decorator for enum filtering using 'not in' operator for database queries.
+ * Converts query parameter to database 'not in' filter format.
+ * @template T - Type of enum values
+ * @param {string} field - The query parameter field name
+ * @param {T[]} defaultEnum - Array of default enum values
+ * @param {IPaginationQueryFilterEnumOptions} [options] - Optional filter configuration
+ * @returns {ParameterDecorator} Parameter decorator that converts to database 'not in' filter
  */
 export function PaginationQueryFilterNinEnum<T>(
     field: string,
@@ -71,44 +86,53 @@ export function PaginationQueryFilterNinEnum<T>(
 }
 
 /**
- * Creates a query parameter decorator for filtering boolean values using IN operation.
- * Transforms comma-separated boolean strings and creates database filter with IN condition.
- *
- * @param field - Query parameter field name
- * @param options - Configuration options including custom field mapping
- * @returns Parameter decorator that applies boolean IN filtering to the specified field
+ * Creates a parameter decorator for boolean equality filtering in database queries.
+ * Converts query parameter to database boolean equality filter format.
+ * @param {string} field - The query parameter field name
+ * @param {IPaginationQueryFilterOptions} [options] - Optional filter configuration
+ * @returns {ParameterDecorator} Parameter decorator that converts to database boolean filter
  */
-export function PaginationQueryFilterInBoolean(
+export function PaginationQueryFilterEqualBoolean(
     field: string,
     options?: IPaginationQueryFilterOptions
 ): ParameterDecorator {
-    return Query(field, PaginationQueryFilterInBooleanPipe(options));
+    return Query(
+        field,
+        PaginationQueryFilterEqualPipe({
+            ...options,
+            isBoolean: true,
+        })
+    );
 }
 
 /**
- * Creates a query parameter decorator for filtering boolean values using NOT IN operation.
- * Transforms comma-separated boolean strings and creates database filter with NOT IN condition.
- *
- * @param field - Query parameter field name
- * @param options - Configuration options including custom field mapping
- * @returns Parameter decorator that applies boolean NOT IN filtering to the specified field
+ * Creates a parameter decorator for number equality filtering in database queries.
+ * Converts query parameter to database number equality filter format.
+ * @param {string} field - The query parameter field name
+ * @param {IPaginationQueryFilterOptions} [options] - Optional filter configuration
+ * @returns {ParameterDecorator} Parameter decorator that converts to database number filter
  */
-export function PaginationQueryFilterNinBoolean(
+export function PaginationQueryFilterEqualNumber(
     field: string,
     options?: IPaginationQueryFilterOptions
 ): ParameterDecorator {
-    return Query(field, PaginationQueryFilterNinBooleanPipe(options));
+    return Query(
+        field,
+        PaginationQueryFilterEqualPipe({
+            ...options,
+            isNumber: true,
+        })
+    );
 }
 
 /**
- * Creates a query parameter decorator for exact value matching using EQUAL operation.
- * Validates and transforms string or numeric values for exact database matching.
- *
- * @param field - Query parameter field name
- * @param options - Configuration options including number parsing and custom field mapping
- * @returns Parameter decorator that applies equal filtering to the specified field
+ * Creates a parameter decorator for string equality filtering in database queries.
+ * Converts query parameter to database string equality filter format.
+ * @param {string} field - The query parameter field name
+ * @param {IPaginationQueryFilterEqualOptions} [options] - Optional filter configuration
+ * @returns {ParameterDecorator} Parameter decorator that converts to database string filter
  */
-export function PaginationQueryFilterEqual(
+export function PaginationQueryFilterEqualString(
     field: string,
     options?: IPaginationQueryFilterEqualOptions
 ): ParameterDecorator {
@@ -116,12 +140,11 @@ export function PaginationQueryFilterEqual(
 }
 
 /**
- * Creates a query parameter decorator for non-matching values using NOT EQUAL operation.
- * Validates and transforms string or numeric values for database exclusion matching.
- *
- * @param field - Query parameter field name
- * @param options - Configuration options including number parsing and custom field mapping
- * @returns Parameter decorator that applies not equal filtering to the specified field
+ * Creates a parameter decorator for inequality filtering in database queries.
+ * Converts query parameter to database inequality filter format.
+ * @param {string} field - The query parameter field name
+ * @param {IPaginationQueryFilterEqualOptions} [options] - Optional filter configuration
+ * @returns {ParameterDecorator} Parameter decorator that converts to database inequality filter
  */
 export function PaginationQueryFilterNotEqual(
     field: string,
@@ -131,12 +154,11 @@ export function PaginationQueryFilterNotEqual(
 }
 
 /**
- * Creates a query parameter decorator for date-based filtering operations.
- * Validates ISO date strings and creates database filter with configurable comparison operations (equal, gte, lte).
- *
- * @param field - Query parameter field name
- * @param options - Configuration options including day-of handling, comparison type, and custom field mapping
- * @returns Parameter decorator that applies date filtering to the specified field
+ * Creates a parameter decorator for date range filtering in database queries.
+ * Converts query parameter to database date range filter format.
+ * @param {string} field - The query parameter field name
+ * @param {IPaginationQueryFilterDateOptions} [options] - Optional date filter configuration
+ * @returns {ParameterDecorator} Parameter decorator that converts to database date filter
  */
 export function PaginationQueryFilterDate(
     field: string,

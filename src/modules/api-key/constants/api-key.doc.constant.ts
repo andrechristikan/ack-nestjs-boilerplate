@@ -1,15 +1,14 @@
 import { faker } from '@faker-js/faker';
-import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
+import { ENUM_API_KEY_TYPE } from '@prisma/client';
 
 export const ApiKeyDocQueryList = [
     {
         name: 'isActive',
         allowEmptyValue: true,
         required: false,
-        type: 'string',
-        example: 'true,false',
-        description:
-            "boolean value with ',' delimiter. Available values: true, false.",
+        type: 'boolean',
+        example: true,
+        description: 'boolean value. Available values: true, false.',
     },
     {
         name: 'type',

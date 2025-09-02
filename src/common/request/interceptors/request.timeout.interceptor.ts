@@ -35,10 +35,9 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
 
     /**
      * Intercepts HTTP requests and applies timeout handling.
-     *
-     * @param context - Execution context containing route metadata
-     * @param next - Call handler for the next interceptor or route handler
-     * @returns Observable with timeout applied
+     * @param {ExecutionContext} context - Execution context containing route metadata
+     * @param {CallHandler} next - Call handler for the next interceptor or route handler
+     * @returns {Observable<unknown>} Observable with timeout applied
      */
     intercept(
         context: ExecutionContext,
@@ -71,6 +70,9 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
 
     /**
      * Handles timeout logic and converts TimeoutError to RequestTimeoutException.
+     * @param {CallHandler} next - Call handler for the next interceptor or route handler
+     * @param {number} timeoutMs - Timeout duration in milliseconds
+     * @returns {Observable<unknown>} Observable with timeout and error handling applied
      */
     private handleTimeoutRequest(
         next: CallHandler,

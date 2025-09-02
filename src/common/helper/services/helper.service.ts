@@ -27,8 +27,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Removes duplicate values from an array.
-     * @param array - Array to remove duplicates from
-     * @returns Array with unique values only
+     * @template T - Type of array elements
+     * @param {T[]} array - Array to remove duplicates from
+     * @returns {T[]} Array with unique values only
      */
     arrayUnique<T>(array: T[]): T[] {
         return _.uniq(array);
@@ -36,8 +37,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Shuffles array elements randomly.
-     * @param array - Array to shuffle
-     * @returns New array with shuffled elements
+     * @template T - Type of array elements
+     * @param {T[]} array - Array to shuffle
+     * @returns {T[]} New array with shuffled elements
      */
     arrayShuffle<T>(array: T[]): T[] {
         return _.shuffle(array);
@@ -45,9 +47,10 @@ export class HelperService implements IHelperService {
 
     /**
      * Splits array into smaller chunks of specified size.
-     * @param a - Array to chunk
-     * @param size - Size of each chunk
-     * @returns Array of arrays, each containing up to 'size' elements
+     * @template T - Type of array elements
+     * @param {T[]} a - Array to chunk
+     * @param {number} size - Size of each chunk
+     * @returns {T[][]} Array of arrays, each containing up to 'size' elements
      */
     arrayChunk<T>(a: T[], size: number): T[][] {
         return _.chunk<T>(a, size);
@@ -55,9 +58,10 @@ export class HelperService implements IHelperService {
 
     /**
      * Returns intersection of two arrays (common elements).
-     * @param a - First array
-     * @param b - Second array
-     * @returns Array containing elements present in both input arrays
+     * @template T - Type of array elements
+     * @param {T[]} a - First array
+     * @param {T[]} b - Second array
+     * @returns {T[]} Array containing elements present in both input arrays
      */
     arrayIntersection<T>(a: T[], b: T[]): T[] {
         return _.intersection(a, b);
@@ -65,8 +69,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Encodes string to Base64 format.
-     * @param data - String to encode
-     * @returns Base64 encoded string
+     * @param {string} data - String to encode
+     * @returns {string} Base64 encoded string
      */
     base64Encrypt(data: string): string {
         const buff: Buffer = Buffer.from(data, 'utf8');
@@ -75,8 +79,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Decodes Base64 string back to original string.
-     * @param data - Base64 encoded string
-     * @returns Decoded string
+     * @param {string} data - Base64 encoded string
+     * @returns {string} Decoded string
      */
     base64Decrypt(data: string): string {
         const buff: Buffer = Buffer.from(data, 'base64');
@@ -85,9 +89,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Compares two Base64 encoded strings for equality.
-     * @param basicToken1 - First Base64 string
-     * @param basicToken2 - Second Base64 string
-     * @returns True if strings are identical
+     * @param {string} basicToken1 - First Base64 string
+     * @param {string} basicToken2 - Second Base64 string
+     * @returns {boolean} True if strings are identical
      */
     base64Compare(basicToken1: string, basicToken2: string): boolean {
         return basicToken1 === basicToken2;
@@ -95,10 +99,11 @@ export class HelperService implements IHelperService {
 
     /**
      * Encrypts data using AES-256-CBC encryption.
-     * @param data - Data to encrypt
-     * @param key - Encryption key
-     * @param iv - Initialization vector
-     * @returns Encrypted string
+     * @template T - Type of data to encrypt
+     * @param {T} data - Data to encrypt
+     * @param {string} key - Encryption key
+     * @param {string} iv - Initialization vector
+     * @returns {string} Encrypted string
      */
     aes256Encrypt<T>(data: T, key: string, iv: string): string {
         const cIv = enc.Utf8.parse(iv);
@@ -113,10 +118,11 @@ export class HelperService implements IHelperService {
 
     /**
      * Decrypts AES-256-CBC encrypted data.
-     * @param encrypted - Encrypted string
-     * @param key - Decryption key
-     * @param iv - Initialization vector
-     * @returns Decrypted data
+     * @template T - Type of decrypted data
+     * @param {string} encrypted - Encrypted string
+     * @param {string} key - Decryption key
+     * @param {string} iv - Initialization vector
+     * @returns {T} Decrypted data
      */
     aes256Decrypt<T>(encrypted: string, key: string, iv: string): T {
         const cIv = enc.Utf8.parse(iv);
@@ -131,9 +137,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Compares two AES encrypted strings for equality.
-     * @param aes1 - First encrypted string
-     * @param aes2 - Second encrypted string
-     * @returns True if strings are identical
+     * @param {string} aes1 - First encrypted string
+     * @param {string} aes2 - Second encrypted string
+     * @returns {boolean} True if strings are identical
      */
     aes256Compare(aes1: string, aes2: string): boolean {
         return aes1 === aes2;
@@ -141,8 +147,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Generates bcrypt salt for password hashing.
-     * @param length - Salt rounds/length
-     * @returns Generated salt string
+     * @param {number} length - Salt rounds/length
+     * @returns {string} Generated salt string
      */
     bcryptGenerateSalt(length: number): string {
         return genSaltSync(length);
@@ -150,9 +156,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Hashes password using bcrypt with provided salt.
-     * @param passwordString - Plain text password
-     * @param salt - Salt for hashing
-     * @returns Hashed password
+     * @param {string} passwordString - Plain text password
+     * @param {string} salt - Salt for hashing
+     * @returns {string} Hashed password
      */
     bcryptHash(passwordString: string, salt: string): string {
         return hashSync(passwordString, salt);
@@ -160,9 +166,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Compares plain text password with bcrypt hashed password.
-     * @param passwordString - Plain text password
-     * @param passwordHashed - Hashed password to compare against
-     * @returns True if passwords match
+     * @param {string} passwordString - Plain text password
+     * @param {string} passwordHashed - Hashed password to compare against
+     * @returns {boolean} True if passwords match
      */
     bcryptCompare(passwordString: string, passwordHashed: string): boolean {
         return compareSync(passwordString, passwordHashed);
@@ -170,8 +176,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Creates SHA256 hash of input string.
-     * @param string - String to hash
-     * @returns SHA256 hash in hexadecimal format
+     * @param {string} string - String to hash
+     * @returns {string} SHA256 hash in hexadecimal format
      */
     sha256Hash(string: string): string {
         return SHA256(string).toString(enc.Hex);
@@ -179,9 +185,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Compares two SHA256 hashes for equality.
-     * @param hashOne - First hash
-     * @param hashTwo - Second hash
-     * @returns True if hashes are identical
+     * @param {string} hashOne - First hash
+     * @param {string} hashTwo - Second hash
+     * @returns {boolean} True if hashes are identical
      */
     sha256Compare(hashOne: string, hashTwo: string): boolean {
         return hashOne === hashTwo;
@@ -189,8 +195,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Validates if string contains only numeric characters.
-     * @param number - String to validate
-     * @returns True if string is a valid number
+     * @param {string} number - String to validate
+     * @returns {boolean} True if string is a valid number
      */
     checkNumberString(number: string): boolean {
         const regex = /^-?\d+$/;
@@ -199,8 +205,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Generates random number with specified digit length.
-     * @param length - Number of digits
-     * @returns Random number with specified length
+     * @param {number} length - Number of digits
+     * @returns {number} Random number with specified length
      */
     randomNumber(length: number): number {
         const min: number = Number.parseInt(`1`.padEnd(length, '0'));
@@ -210,9 +216,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Generates random number within specified range.
-     * @param min - Minimum value (inclusive)
-     * @param max - Maximum value (exclusive)
-     * @returns Random number within range
+     * @param {number} min - Minimum value (inclusive)
+     * @param {number} max - Maximum value (exclusive)
+     * @returns {number} Random number within range
      */
     randomNumberInRange(min: number, max: number): number {
         min = Math.ceil(min);
@@ -222,9 +228,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Calculates percentage of value relative to total.
-     * @param value - Value to calculate percentage for
-     * @param total - Total value for percentage calculation
-     * @returns Percentage rounded to 2 decimal places
+     * @param {number} value - Value to calculate percentage for
+     * @param {number} total - Total value for percentage calculation
+     * @returns {number} Percentage rounded to 2 decimal places
      */
     calculatePercent(value: number, total: number): number {
         let tValue = value / total;
@@ -237,8 +243,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Generates random alphanumeric string of specified length.
-     * @param length - Length of string to generate
-     * @returns Random string containing letters and numbers
+     * @param {number} length - Length of string to generate
+     * @returns {string} Random string containing letters and numbers
      */
     randomString(length: number): string {
         let result = '';
@@ -259,8 +265,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Censors string by replacing characters with asterisks while preserving some characters.
-     * @param text - Text to censor
-     * @returns Censored text with asterisks
+     * @param {string} text - Text to censor
+     * @returns {string} Censored text with asterisks
      */
     censorString(text: string): string {
         if (text.length <= 5) {
@@ -277,9 +283,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Validates password strength based on complexity requirements.
-     * @param password - Password to validate
-     * @param options - Password validation options
-     * @returns True if password meets strength requirements
+     * @param {string} password - Password to validate
+     * @param {IHelperPasswordOptions} [options] - Password validation options
+     * @returns {boolean} True if password meets strength requirements
      */
     checkPasswordStrength(
         password: string,
@@ -295,8 +301,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Validates email address format and structure comprehensively.
-     * @param value - Email address to validate
-     * @returns Validation result with status and error message if invalid
+     * @param {string} value - Email address to validate
+     * @returns {IHelperEmailValidation} Validation result with status and error message if invalid
      */
     checkEmail(value: string): IHelperEmailValidation {
         const regex = new RegExp(/\S+@\S+\.\S+/);
@@ -318,7 +324,7 @@ export class HelperService implements IHelperService {
 
         const [localPart, domain] = value.split('@');
 
-        if (!domain || domain.length > 63) {
+        if (!domain || domain.length > 253) {
             return {
                 validated: false,
                 messagePath: 'request.error.email.domainLength',
@@ -421,9 +427,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Checks if URL matches any of the provided wildcard patterns.
-     * @param url - URL to check
-     * @param patterns - Array of patterns, may include wildcards (*)
-     * @returns True if URL matches any pattern
+     * @param {string} url - URL to check
+     * @param {string[]} patterns - Array of patterns, may include wildcards (*)
+     * @returns {boolean} True if URL matches any pattern
      */
     checkUrlContainWildcard(url: string, patterns: string[]): boolean {
         if (patterns.includes(url)) {
@@ -449,9 +455,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Calculates age duration from date of birth.
-     * @param dateOfBirth - Date of birth
-     * @param fromYear - Optional year to calculate age from
-     * @returns Duration object representing age
+     * @param {Date} dateOfBirth - Date of birth
+     * @param {number} [fromYear] - Optional year to calculate age from
+     * @returns {Duration} Duration object representing age
      */
     calculateAge(dateOfBirth: Date, fromYear?: number): Duration {
         const dateTime = DateTime.now()
@@ -485,8 +491,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Validates if string is a valid ISO date format.
-     * @param date - ISO date string to validate
-     * @returns True if date string is valid ISO format
+     * @param {string} date - ISO date string to validate
+     * @returns {boolean} True if date string is valid ISO format
      */
     dateCheckIso(date: string): boolean {
         return DateTime.fromISO(date).setZone(this.defTz).isValid;
@@ -494,8 +500,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Validates if timestamp is a valid date timestamp.
-     * @param timestamp - Timestamp in milliseconds
-     * @returns True if timestamp represents valid date
+     * @param {number} timestamp - Timestamp in milliseconds
+     * @returns {boolean} True if timestamp represents valid date
      */
     dateCheckTimestamp(timestamp: number): boolean {
         return DateTime.fromMillis(timestamp).setZone(this.defTz).isValid;
@@ -503,8 +509,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Gets timezone name for given date.
-     * @param date - Date to get timezone for
-     * @returns Timezone name string
+     * @param {Date} date - Date to get timezone for
+     * @returns {string} Timezone name string
      */
     dateGetZone(date: Date): string {
         return DateTime.fromJSDate(date).setZone(this.defTz).zone.name;
@@ -512,8 +518,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Gets timezone offset for given date.
-     * @param date - Date to get timezone offset for
-     * @returns Timezone offset string
+     * @param {Date} date - Date to get timezone offset for
+     * @returns {string} Timezone offset string
      */
     dateGetZoneOffset(date: Date): string {
         return DateTime.fromJSDate(date).setZone(this.defTz).offsetNameShort;
@@ -521,8 +527,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Converts date to timestamp in milliseconds.
-     * @param date - Date to convert
-     * @returns Timestamp in milliseconds
+     * @param {Date} date - Date to convert
+     * @returns {number} Timestamp in milliseconds
      */
     dateGetTimestamp(date: Date): number {
         return DateTime.fromJSDate(date).setZone(this.defTz).toMillis();
@@ -530,8 +536,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Formats date to RFC2822 string format.
-     * @param date - Date to format
-     * @returns RFC2822 formatted date string
+     * @param {Date} date - Date to format
+     * @returns {string} RFC2822 formatted date string
      */
     dateFormatToRFC2822(date: Date): string {
         return DateTime.fromJSDate(date).setZone(this.defTz).toRFC2822();
@@ -539,8 +545,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Formats date to ISO string format.
-     * @param date - Date to format
-     * @returns ISO formatted date string
+     * @param {Date} date - Date to format
+     * @returns {string} ISO formatted date string
      */
     dateFormatToIso(date: Date): string {
         return DateTime.fromJSDate(date).setZone(this.defTz).toISO();
@@ -548,8 +554,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Formats date to ISO date string (YYYY-MM-DD).
-     * @param date - Date to format
-     * @returns ISO date string
+     * @param {Date} date - Date to format
+     * @returns {string} ISO date string
      */
     dateFormatToIsoDate(date: Date): string {
         return DateTime.fromJSDate(date).setZone(this.defTz).toISODate();
@@ -557,8 +563,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Formats date to ISO time string.
-     * @param date - Date to format
-     * @returns ISO time string
+     * @param {Date} date - Date to format
+     * @returns {string} ISO time string
      */
     dateFormatToIsoTime(date: Date): string {
         return DateTime.fromJSDate(date).setZone(this.defTz).toISOTime();
@@ -566,9 +572,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Creates new date with optional day positioning (start/end of day).
-     * @param date - Optional base date (defaults to current date)
-     * @param options - Date creation options
-     * @returns Created date
+     * @param {Date} [date] - Optional base date (defaults to current date)
+     * @param {IHelperDateCreateOptions} [options] - Date creation options
+     * @returns {Date} Created date
      */
     dateCreate(date?: Date, options?: IHelperDateCreateOptions): Date {
         let mDate = date
@@ -592,8 +598,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Creates DateTime instance from Date object.
-     * @param date - Optional Date object (defaults to current date)
-     * @returns DateTime instance
+     * @param {Date} [date] - Optional Date object (defaults to current date)
+     * @returns {DateTime} DateTime instance
      */
     dateCreateInstance(date?: Date): DateTime {
         return date ? DateTime.fromJSDate(date) : DateTime.now();
@@ -601,9 +607,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Creates date from ISO string with optional day positioning.
-     * @param iso - ISO date string
-     * @param options - Date creation options
-     * @returns Created date
+     * @param {string} iso - ISO date string
+     * @param {IHelperDateCreateOptions} [options] - Date creation options
+     * @returns {Date} Created date
      */
     dateCreateFromIso(iso: string, options?: IHelperDateCreateOptions): Date {
         const date = DateTime.fromISO(iso).setZone(this.defTz);
@@ -625,9 +631,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Creates date from timestamp with optional day positioning.
-     * @param timestamp - Optional timestamp in milliseconds (defaults to current time)
-     * @param options - Date creation options
-     * @returns Created date
+     * @param {number} [timestamp] - Optional timestamp in milliseconds (defaults to current time)
+     * @param {IHelperDateCreateOptions} [options] - Date creation options
+     * @returns {Date} Created date
      */
     dateCreateFromTimestamp(
         timestamp?: number,
@@ -654,9 +660,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Sets specific date units (year, month, day, etc.) on a date.
-     * @param date - Date to modify
-     * @param units - Object containing date units to set
-     * @returns Modified date
+     * @param {Date} date - Date to modify
+     * @param {DateObjectUnits} units - Object containing date units to set
+     * @returns {Date} Modified date
      */
     dateSet(date: Date, units: DateObjectUnits): Date {
         return DateTime.fromJSDate(date)
@@ -667,9 +673,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Adds duration to a date (moves date forward).
-     * @param date - Base date
-     * @param duration - Duration to add
-     * @returns New date with added duration
+     * @param {Date} date - Base date
+     * @param {Duration} duration - Duration to add
+     * @returns {Date} New date with added duration
      */
     dateForward(date: Date, duration: Duration): Date {
         return DateTime.fromJSDate(date)
@@ -680,9 +686,9 @@ export class HelperService implements IHelperService {
 
     /**
      * Subtracts duration from a date (moves date backward).
-     * @param date - Base date
-     * @param duration - Duration to subtract
-     * @returns New date with subtracted duration
+     * @param {Date} date - Base date
+     * @param {Duration} duration - Duration to subtract
+     * @returns {Date} New date with subtracted duration
      */
     dateBackward(date: Date, duration: Duration): Date {
         return DateTime.fromJSDate(date)
@@ -693,8 +699,8 @@ export class HelperService implements IHelperService {
 
     /**
      * Creates Duration object from duration-like object.
-     * @param duration - Duration configuration object
-     * @returns Duration instance
+     * @param {DurationLikeObject} duration - Duration configuration object
+     * @returns {Duration} Duration instance
      */
     dateCreateDuration(duration: DurationLikeObject): Duration {
         return Duration.fromObject(duration);

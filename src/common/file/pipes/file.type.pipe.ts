@@ -24,8 +24,9 @@ export class FileTypePipe implements PipeTransform {
 
     /**
      * Transforms and validates the input value against allowed MIME types.
-     * @param value - Single file, array of files, or object containing files
-     * @returns The original value if validation passes
+     * @param {IFileInput} value - Single file, array of files, or object containing files
+     * @returns {Promise<IFileInput>} The original value if validation passes
+     * @throws {UnsupportedMediaTypeException} When any file has an invalid MIME type
      */
     async transform(value: IFileInput): Promise<IFileInput> {
         if (!value) {

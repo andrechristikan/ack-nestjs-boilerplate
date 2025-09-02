@@ -3,7 +3,8 @@ import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 /**
- * Response metadata DTO containing API request information
+ * Response metadata DTO containing API request information.
+ * Provides contextual data about the API response including language, timing, and versioning.
  */
 export class ResponseMetadataDto {
     @ApiProperty({
@@ -72,7 +73,9 @@ export class ResponseMetadataDto {
 }
 
 /**
- * Generic response DTO wrapper for API responses
+ * Generic response DTO wrapper for API responses.
+ * Provides standardized structure for all API responses with metadata and status information.
+ *
  * @template T - Type of the response data
  */
 export class ResponseDto<T> {

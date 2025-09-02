@@ -2,7 +2,7 @@ import { registerAs } from '@nestjs/config';
 
 export interface IConfigAws {
     s3: {
-        presignExpired: number; // in seconds
+        presignExpired: number;
         region?: string;
         credential: {
             key?: string;

@@ -13,8 +13,9 @@ export class FileService implements IFileService {
     /**
      * Writes data to CSV format using semicolon as field separator.
      * Converts JSON data to CSV buffer for download or storage.
-     * @param sheet - File sheet object containing data and optional sheet name
-     * @returns Buffer containing the CSV data
+     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
+     * @param {IFileSheet<T>} sheet - File sheet object containing data and optional sheet name
+     * @returns {Buffer} Buffer containing the CSV data
      */
     writeCsv<T = Record<string, string | number | Date>>(
         sheet: IFileSheet<T>
@@ -30,8 +31,9 @@ export class FileService implements IFileService {
     /**
      * Writes array data to CSV format using semicolon as field separator.
      * Converts 2D array data to CSV buffer for download or storage.
-     * @param sheets - 2D array of data where each sub-array represents a row
-     * @returns Buffer containing the CSV data
+     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
+     * @param {T[][]} sheets - 2D array of data where each sub-array represents a row
+     * @returns {Buffer} Buffer containing the CSV data
      */
     writeCsvFromArray<T = Record<string, string | number | Date>>(
         sheets: T[][]
@@ -47,8 +49,9 @@ export class FileService implements IFileService {
     /**
      * Writes data to Excel (XLSX) format with support for multiple sheets.
      * Creates a workbook with multiple worksheets from the provided data.
-     * @param sheets - Array of file sheet objects, each representing a sheet with data and optional sheet name
-     * @returns Buffer containing the Excel data
+     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
+     * @param {IFileSheet<T>[]} sheets - Array of file sheet objects, each representing a sheet with data and optional sheet name
+     * @returns {Buffer} Buffer containing the Excel data
      */
     writeExcel<T = Record<string, string | number | Date>>(
         sheets: IFileSheet<T>[]
@@ -75,8 +78,9 @@ export class FileService implements IFileService {
     /**
      * Writes 2D array data to Excel (XLSX) format as a single sheet.
      * Creates a workbook with one worksheet from the provided array data.
-     * @param sheets - 2D array of data where each sub-array represents a row
-     * @returns Buffer containing the Excel data
+     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
+     * @param {T[][]} sheets - 2D array of data where each sub-array represents a row
+     * @returns {Buffer} Buffer containing the Excel data
      */
     writeExcelFromArray<T = Record<string, string | number | Date>>(
         sheets: T[][]
@@ -95,39 +99,17 @@ export class FileService implements IFileService {
     }
 
     /**
-     * Reads CSV data from a buffer and converts it to JSON format.
+     * Reads CSV data from a buffer or string and converts it to JSON format.
      * Parses the first sheet of the CSV file and returns the data with sheet information.
-     * @param file - Buffer containing the CSV file data
-     * @returns IFileSheet object containing the parsed data and sheet name
+     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
+     * @param {Buffer | string} file - Buffer or string containing the CSV file data
+     * @returns {IFileSheet<T>} IFileSheet object containing the parsed data and sheet name
      */
     readCsv<T = Record<string, string | number | Date>>(
-        file: Buffer
+        file: Buffer | string
     ): IFileSheet<T> {
         const workbook = read(file, {
-            type: 'buffer',
-        });
-
-        const worksheetsName: string = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[worksheetsName];
-        const rows: T[] = utils.sheet_to_json(worksheet);
-
-        return {
-            data: rows,
-            sheetName: worksheetsName,
-        };
-    }
-
-    /**
-     * Reads CSV data from a string and converts it to JSON format.
-     * Parses the first sheet of the CSV string and returns the data with sheet information.
-     * @param file - String containing the CSV file data
-     * @returns IFileSheet object containing the parsed data and sheet name
-     */
-    readCsvFromString<T = Record<string, string | number | Date>>(
-        file: string
-    ): IFileSheet<T> {
-        const workbook = read(file, {
-            type: 'string',
+            type: typeof file === 'string' ? 'string' : 'buffer',
         });
 
         const worksheetsName: string = workbook.SheetNames[0];
@@ -144,8 +126,9 @@ export class FileService implements IFileService {
      * Reads Excel (XLSX) data from a buffer and converts all sheets to JSON format.
      * Parses all worksheets in the Excel file and returns an array of sheet data objects,
      * each containing the parsed data and corresponding sheet name.
-     * @param file - Buffer containing the Excel file data
-     * @returns Array of IFileSheet objects, each containing data and sheet name for every worksheet
+     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
+     * @param {Buffer} file - Buffer containing the Excel file data
+     * @returns {IFileSheet<T>[]} Array of IFileSheet objects, each containing data and sheet name for every worksheet
      */
     readExcel<T = Record<string, string | number | Date>>(
         file: Buffer

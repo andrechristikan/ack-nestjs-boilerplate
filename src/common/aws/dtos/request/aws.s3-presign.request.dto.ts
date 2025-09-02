@@ -3,8 +3,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 /**
- * DTO for AWS S3 presigned URL request
- * @description Data transfer object used to validate and structure requests for generating S3 presigned URLs
+ * DTO for AWS S3 presigned URL request.
+ * Data transfer object used to validate and structure requests for generating S3 presigned URLs.
  */
 export class AwsS3PresignRequestDto {
     /**
@@ -37,9 +37,9 @@ export class AwsS3PresignRequestDto {
 }
 
 /**
- * DTO for AWS S3 multipart upload presigned URL request
- * @description Data transfer object for generating presigned URLs for specific parts in multipart uploads
- * @extends AwsS3PresignRequestDto
+ * DTO for AWS S3 multipart upload presigned URL request.
+ * Data transfer object for generating presigned URLs for specific parts in multipart uploads.
+ * Extends AwsS3PresignRequestDto with additional multipart-specific properties.
  */
 export class AwsS3PresignPartRequestDto extends AwsS3PresignRequestDto {
     /**

@@ -4,8 +4,8 @@ import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { ApiProperty, IntersectionType, PickType } from '@nestjs/swagger';
 
 /**
- * DTO for AWS S3 presigned URL response
- * @description Data Transfer Object that contains presigned URL information for S3 uploads.
+ * DTO for AWS S3 presigned URL response.
+ * Data Transfer Object that contains presigned URL information for S3 uploads.
  * Extends selected properties from AwsS3Dto including key, mime type, and file extension.
  */
 export class AwsS3PresignDto extends PickType(AwsS3Dto, [
@@ -37,11 +37,9 @@ export class AwsS3PresignDto extends PickType(AwsS3Dto, [
 }
 
 /**
- * DTO for AWS S3 presigned URL with multipart information
- * @description Extended DTO that combines presigned URL information with multipart upload details.
+ * DTO for AWS S3 presigned URL with multipart information.
+ * Extended DTO that combines presigned URL information with multipart upload details.
  * Includes size and part number properties for multipart uploads to S3.
- * @see AwsS3PresignDto
- * @see AwsS3MultipartPartDto
  */
 export class AwsS3PresignPartDto extends IntersectionType(
     AwsS3PresignDto,

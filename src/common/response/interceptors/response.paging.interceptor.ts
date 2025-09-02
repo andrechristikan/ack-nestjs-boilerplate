@@ -84,7 +84,13 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         metadata: rMetadata,
                         data: rData,
                         count,
+                        hasNext,
+                        hasPrevious,
                         totalPage,
+                        nextCursor,
+                        previousCursor,
+                        nextPage,
+                        previousPage,
                     } = responseData;
 
                     data = rData;
@@ -106,8 +112,14 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
 
                     const finalMetadata: ResponsePagingMetadataDto = {
                         ...metadata,
-                        totalPage,
                         count,
+                        hasNext,
+                        hasPrevious,
+                        totalPage,
+                        nextCursor,
+                        previousCursor,
+                        nextPage,
+                        previousPage,
                         search: request.__pagination.search,
                         filters: request.__pagination.filters,
                         page: request.__pagination.page,
@@ -178,6 +190,12 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
             orderDirection: undefined,
             availableSearch: undefined,
             availableOrderBy: undefined,
+            nextPage: undefined,
+            previousPage: undefined,
+            hasNext: false,
+            hasPrevious: false,
+            nextCursor: undefined,
+            previousCursor: undefined,
         };
     }
 

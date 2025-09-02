@@ -36,8 +36,8 @@ export class MessageService implements IMessageService {
     /**
      * Filters and validates if a custom language is supported by the application.
      * Returns the language if it's available, otherwise returns undefined.
-     * @param customLanguage - The language code to validate
-     * @returns The validated language code or undefined if not supported
+     * @param {string} customLanguage - The language code to validate
+     * @returns {string} The validated language code or undefined if not supported
      */
     filterLanguage(customLanguage: string): string {
         return this.availableLanguage.find(e => e === customLanguage);
@@ -46,9 +46,9 @@ export class MessageService implements IMessageService {
     /**
      * Retrieves and formats a localized message from the i18n system.
      * Uses custom language if provided and valid, otherwise falls back to default language.
-     * @param path - The i18n message key path (e.g., 'error.validation.required')
-     * @param options - Optional configuration including custom language and message properties
-     * @returns The formatted localized message string
+     * @param {string} path - The i18n message key path (e.g., 'error.validation.required')
+     * @param {IMessageSetOptions} [options] - Optional configuration including custom language and message properties
+     * @returns {string} The formatted localized message string
      */
     setMessage(path: string, options?: IMessageSetOptions): string {
         const language: string = options?.customLanguage
@@ -64,9 +64,9 @@ export class MessageService implements IMessageService {
     /**
      * Converts class-validator ValidationError objects into localized message objects.
      * Handles nested validation errors and provides detailed property path information.
-     * @param errors - Array of ValidationError objects from class-validator
-     * @param options - Optional configuration including custom language preference
-     * @returns Array of formatted validation error messages with property paths
+     * @param {ValidationError[]} errors - Array of ValidationError objects from class-validator
+     * @param {IMessageErrorOptions} [options] - Optional configuration including custom language preference
+     * @returns {IMessageValidationError[]} Array of formatted validation error messages with property paths
      */
     setValidationMessage(
         errors: ValidationError[],
@@ -103,9 +103,9 @@ export class MessageService implements IMessageService {
     /**
      * Formats validation import errors with localized messages for bulk operations.
      * Maps each import error to include row, sheet information, and localized error messages.
-     * @param errors - Array of validation import error parameters
-     * @param options - Optional configuration including custom language preference
-     * @returns Array of formatted validation import errors with localized messages
+     * @param {IMessageValidationImportErrorParam[]} errors - Array of validation import error parameters
+     * @param {IMessageErrorOptions} [options] - Optional configuration including custom language preference
+     * @returns {IMessageValidationImportError[]} Array of formatted validation import errors with localized messages
      */
     setValidationImportMessage(
         errors: IMessageValidationImportErrorParam[],

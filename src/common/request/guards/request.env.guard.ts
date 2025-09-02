@@ -27,9 +27,8 @@ export class RequestEnvGuard implements CanActivate {
 
     /**
      * Validates if current environment is allowed to access the route.
-     *
-     * @param context - Execution context containing route metadata
-     * @returns Promise resolving to true if access is allowed
+     * @param {ExecutionContext} context - Execution context containing route metadata
+     * @returns {Promise<boolean>} Promise resolving to true if access is allowed
      * @throws {ForbiddenException} When environment access is not permitted
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {

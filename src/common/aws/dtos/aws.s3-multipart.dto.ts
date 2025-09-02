@@ -4,8 +4,9 @@ import { Type } from 'class-transformer';
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 
 /**
- * DTO representing a single part in AWS S3 multipart upload
- * @description Contains information about an individual part of a multipart upload including ETag, part number, and size
+ * DTO representing a single part in AWS S3 multipart upload.
+ * Contains information about an individual part of a multipart upload including ETag, part number, and size.
+ * Extends selected properties from AwsS3Dto.
  */
 export class AwsS3MultipartPartDto extends PickType(AwsS3Dto, [
     'size',
@@ -34,9 +35,8 @@ export class AwsS3MultipartPartDto extends PickType(AwsS3Dto, [
 }
 
 /**
- * DTO for AWS S3 multipart upload information
- * @description Contains comprehensive information about a multipart upload session including upload ID, part tracking, and uploaded parts
- * @extends AwsS3Dto
+ * DTO for AWS S3 multipart upload information.
+ * Contains comprehensive information about a multipart upload session including upload ID, part tracking, and uploaded parts.
  */
 export class AwsS3MultipartDto extends AwsS3Dto {
     /**

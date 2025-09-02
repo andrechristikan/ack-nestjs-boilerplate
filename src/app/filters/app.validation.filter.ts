@@ -26,8 +26,9 @@ export class AppValidationFilter implements ExceptionFilter {
     /**
      * Handles RequestValidationException and formats validation errors into standardized responses.
      * Processes field-specific validation messages with metadata and localization support.
-     * @param exception - The request validation exception to handle
-     * @param host - Arguments host containing request/response context
+     * @param {RequestValidationException} exception - The request validation exception to handle
+     * @param {ArgumentsHost} host - Arguments host containing request/response context
+     * @returns {Promise<void>}
      */
     async catch(
         exception: RequestValidationException,

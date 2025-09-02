@@ -27,7 +27,8 @@ import { ENUM_PAGINATION_STATUS_CODE_ERROR } from '@common/pagination/enums/pagi
 import { ENUM_PAGINATION_FILTER_DATE_BETWEEN_TYPE } from '@common/pagination/enums/pagination.enum';
 
 /**
- * Creates a pipe that validates and transforms comma-separated string values against an enum array using 'in' operator
+ * Creates a pipe that validates and transforms comma-separated string values against an enum array using 'in' operator.
+ * Converts query parameters to database filter format for enum inclusion filtering.
  * @template T - The enum type to validate against
  * @param {T[]} defaultEnum - Array of valid enum values to validate against
  * @param {IPaginationQueryFilterEnumOptions} [options] - Optional configuration for custom field mapping
@@ -45,7 +46,7 @@ export function PaginationQueryFilterInEnumPipe<T>(
         ) {}
 
         /**
-         * Transforms comma-separated string into pagination filter object with 'in' operator
+         * Transforms comma-separated string into pagination filter object with 'in' operator.
          * @param {string} value - Comma-separated string values to validate
          * @param {ArgumentMetadata} metadata - NestJS argument metadata containing field information
          * @returns {Promise<Record<string, IPaginationIn> | undefined>} Pagination filter object or undefined
@@ -115,7 +116,8 @@ export function PaginationQueryFilterInEnumPipe<T>(
 }
 
 /**
- * Creates a pipe that validates and transforms comma-separated string values against an enum array using 'not in' operator
+ * Creates a pipe that validates and transforms comma-separated string values against an enum array using 'not in' operator.
+ * Converts query parameters to database filter format for enum exclusion filtering.
  * @template T - The enum type to validate against
  * @param {T[]} defaultEnum - Array of valid enum values to validate against
  * @param {IPaginationQueryFilterEnumOptions} [options] - Optional configuration for custom field mapping
@@ -133,7 +135,7 @@ export function PaginationQueryFilterNinEnumPipe<T>(
         ) {}
 
         /**
-         * Transforms comma-separated string into pagination filter object with 'not in' operator
+         * Transforms comma-separated string into pagination filter object with 'not in' operator.
          * @param {string} value - Comma-separated string values to validate
          * @param {ArgumentMetadata} metadata - NestJS argument metadata containing field information
          * @returns {Promise<Record<string, IPaginationNin> | undefined>} Pagination filter object or undefined
@@ -203,7 +205,8 @@ export function PaginationQueryFilterNinEnumPipe<T>(
 }
 
 /**
- * Creates a pipe that validates and transforms string values for equality filtering
+ * Creates a pipe that validates and transforms string values for equality filtering.
+ * Converts query parameters to database filter format for equality comparison.
  * @template T - The type of value to validate and transform
  * @param {IPaginationQueryFilterEqualOptions} [options] - Configuration options for type conversion and custom field mapping
  * @returns {Type<PipeTransform>} A NestJS pipe transform class for equality filtering
@@ -216,7 +219,7 @@ export function PaginationQueryFilterEqualPipe<T>(
         constructor(@Inject(REQUEST) protected readonly request: IRequestApp) {}
 
         /**
-         * Transforms string value into pagination filter object with equality operator
+         * Transforms string value into pagination filter object with equality operator.
          * @param {string} value - String value to validate and transform
          * @param {ArgumentMetadata} metadata - NestJS argument metadata containing field information
          * @returns {Promise<Record<string, IPaginationEqual> | undefined>} Pagination filter object or undefined
@@ -295,7 +298,8 @@ export function PaginationQueryFilterEqualPipe<T>(
 }
 
 /**
- * Creates a pipe that validates and transforms string values for not equal filtering
+ * Creates a pipe that validates and transforms string values for not equal filtering.
+ * Converts query parameters to database filter format for inequality comparison.
  * @template T - The type of value to validate and transform
  * @param {IPaginationQueryFilterEqualOptions} [options] - Configuration options for type conversion and custom field mapping
  * @returns {Type<PipeTransform>} A NestJS pipe transform class for not equal filtering
@@ -308,7 +312,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
         constructor(@Inject(REQUEST) protected readonly request: IRequestApp) {}
 
         /**
-         * Transforms string value into pagination filter object with not equal operator
+         * Transforms string value into pagination filter object with not equal operator.
          * @param {string} value - String value to validate and transform
          * @param {ArgumentMetadata} metadata - NestJS argument metadata containing field information
          * @returns {Promise<Record<string, IPaginationNotEqual> | undefined>} Pagination filter object or undefined
@@ -387,7 +391,8 @@ export function PaginationQueryFilterNotEqualPipe<T>(
 }
 
 /**
- * Creates a pipe that validates and transforms ISO date strings for date filtering
+ * Creates a pipe that validates and transforms ISO date strings for date filtering.
+ * Converts query parameters to database filter format for date range operations.
  * @param {IPaginationQueryFilterDateOptions} [options] - Configuration options for date operations and custom field mapping
  * @returns {Type<PipeTransform>} A NestJS pipe transform class for date filtering
  */
@@ -402,7 +407,7 @@ export function PaginationQueryFilterDatePipe(
         ) {}
 
         /**
-         * Transforms ISO date string into pagination filter object with date operations
+         * Transforms ISO date string into pagination filter object with date operations.
          * @param {string} value - ISO date string to validate and transform
          * @param {ArgumentMetadata} metadata - NestJS argument metadata containing field information
          * @returns {Promise<Record<string, IPaginationDate> | undefined>} Pagination filter object or undefined
@@ -447,7 +452,7 @@ export function PaginationQueryFilterDatePipe(
             };
         }
 
-        addToRequestInstance(field: string, value: Date): void {
+        private addToRequestInstance(field: string, value: Date): void {
             this.request.__pagination = {
                 ...this.request.__pagination,
                 filters: this.request.__pagination?.filters

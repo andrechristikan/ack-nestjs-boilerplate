@@ -10,8 +10,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
-    PaginationQuery,
-    PaginationQueryFilterInBoolean,
+    PaginationOffsetQuery,
+    PaginationQueryFilterEqualBoolean,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
@@ -19,7 +19,6 @@ import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
 import {
     API_KEY_DEFAULT_AVAILABLE_SEARCH,
     API_KEY_DEFAULT_TYPE,
@@ -40,8 +39,11 @@ import {
     ApiKeyAdminUpdateDateDoc,
     ApiKeyAdminUpdateDoc,
 } from '@modules/api-key/docs/api-key.admin.doc';
-import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination.interface';
-import { IDatabaseFilterOperation } from '@common/database/interfaces/database.interface';
+import {
+    IPaginationEqual,
+    IPaginationIn,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -57,7 +59,8 @@ import {
     PolicyRoleProtected,
 } from '@modules/policy/decorators/policy.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { RequestObjectIdPipe } from '@common/request/pipes/requiest.object-id.pipe';
+import { RequestObjectIdPipe } from '@common/request/pipes/request.object-id.pipe';
+import { ENUM_API_KEY_TYPE } from '@prisma/client';
 
 @ApiTags('modules.admin.apiKey')
 @Controller({
@@ -65,7 +68,6 @@ import { RequestObjectIdPipe } from '@common/request/pipes/requiest.object-id.pi
     path: '/api-key',
 })
 export class ApiKeyAdminController {
-    // TODO: CHANGE THIS WITH USE CASES
     constructor(private readonly apiKeyService: ApiKeyService) {}
 
     @ApiKeyAdminListDoc()
@@ -80,17 +82,17 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationQuery({
+        @PaginationOffsetQuery({
             availableSearch: API_KEY_DEFAULT_AVAILABLE_SEARCH,
         })
-        pagination: IPaginationQueryReturn,
-        @PaginationQueryFilterInBoolean('isActive')
-        isActive?: Record<string, IDatabaseFilterOperation>,
+        pagination: IPaginationQueryOffsetParams,
+        @PaginationQueryFilterEqualBoolean('isActive')
+        isActive?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterInEnum<ENUM_API_KEY_TYPE>(
             'type',
             API_KEY_DEFAULT_TYPE
         )
-        type?: Record<string, IDatabaseFilterOperation>
+        type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKeyResponseDto>> {
         const results: IResponsePagingReturn<ApiKeyResponseDto> =
             await this.apiKeyService.getList(pagination, isActive, type);

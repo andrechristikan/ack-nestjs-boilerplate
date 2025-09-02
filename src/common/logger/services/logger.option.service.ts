@@ -50,7 +50,7 @@ export class LoggerOptionService {
      * Creates and configures Pino logger options based on application configuration.
      * Sets up transports for console and file logging, configures serializers for
      * request/response objects, and implements sensitive data redaction.
-     * @returns Promise resolving to configured Pino logger parameters
+     * @returns {Promise<Params>} Promise resolving to configured Pino logger parameters
      */
     async createOptions(): Promise<Params> {
         const rfs = await import('rotating-file-stream');
@@ -80,7 +80,7 @@ export class LoggerOptionService {
      * Builds transport configurations for console and file logging based on application settings.
      * Creates pino-pretty transport for formatted console output when prettier is enabled,
      * and pino/file transport for file logging when intoFile is enabled.
-     * @returns Array of transport configurations with target module names and their respective options
+     * @returns {Array<{target: string; options: Record<string, unknown>}>} Array of transport configurations with target module names and their respective options
      */
     private buildTransports(): Array<{
         target: string;
@@ -114,7 +114,7 @@ export class LoggerOptionService {
 
     /**
      * Creates a log formatter function that adds timestamp and application metadata.
-     * @returns Function that formats log objects with timestamp and application labels
+     * @returns {Function} Function that formats log objects with timestamp and application labels
      */
     private createLogFormatter(): (
         object: Record<string, unknown>
@@ -137,8 +137,8 @@ export class LoggerOptionService {
 
     /**
      * Creates a rotating file stream for log files if file logging is enabled.
-     * @param rfs - The rotating-file-stream module imported dynamically
-     * @returns RotatingFileStream instance if file logging is enabled, undefined otherwise
+     * @param {typeof import('rotating-file-stream')} rfs - The rotating-file-stream module imported dynamically
+     * @returns {import('rotating-file-stream').RotatingFileStream | undefined} RotatingFileStream instance if file logging is enabled, undefined otherwise
      */
     private createFileStream(
         rfs: typeof import('rotating-file-stream')
@@ -157,7 +157,7 @@ export class LoggerOptionService {
 
     /**
      * Creates redaction configuration to hide sensitive data in logs.
-     * @returns Redaction configuration object
+     * @returns {{paths: string[]; censor: string}} Redaction configuration object
      */
     private createRedactionConfig(): { paths: string[]; censor: string } {
         const paths = [
@@ -175,8 +175,8 @@ export class LoggerOptionService {
 
     /**
      * Maps sensitive fields to their full paths for redaction.
-     * @param basePath - The base path for the sensitive fields (e.g., 'req.body', 'req.headers')
-     * @returns Array of complete paths for sensitive fields with proper bracket notation for fields containing hyphens
+     * @param {string} basePath - The base path for the sensitive fields (e.g., 'req.body', 'req.headers')
+     * @returns {string[]} Array of complete paths for sensitive fields with proper bracket notation for fields containing hyphens
      */
     private mapSensitiveFieldPaths(basePath: string): string[] {
         return LOGGER_SENSITIVE_FIELDS.map(field =>
@@ -188,7 +188,7 @@ export class LoggerOptionService {
 
     /**
      * Creates custom serializers for request, response, and error objects.
-     * @returns Object containing serializer functions for req, res, and err properties
+     * @returns {Object} Object containing serializer functions for req, res, and err properties
      */
     private createSerializers(): {
         req: (request: IRequestApp) => Record<string, unknown>;
@@ -206,7 +206,7 @@ export class LoggerOptionService {
 
     /**
      * Creates a serializer function for HTTP request objects.
-     * @returns Function that serializes request objects with relevant HTTP and user information
+     * @returns {Function} Function that serializes request objects with relevant HTTP and user information
      */
     private createRequestSerializer(): (
         request: IRequestApp
@@ -236,7 +236,7 @@ export class LoggerOptionService {
 
     /**
      * Creates a serializer function for HTTP response objects.
-     * @returns Function that serializes response objects with status code and headers
+     * @returns {Function} Function that serializes response objects with status code and headers
      */
     private createResponseSerializer(): (
         response: Response
@@ -252,7 +252,7 @@ export class LoggerOptionService {
 
     /**
      * Creates a serializer function for error objects.
-     * @returns Function that serializes error objects with type, message, code, and stack trace
+     * @returns {Function} Function that serializes error objects with type, message, code, and stack trace
      */
     private createErrorSerializer(): (error: Error) => Record<string, unknown> {
         return (error: Error) => ({
@@ -265,7 +265,7 @@ export class LoggerOptionService {
 
     /**
      * Creates auto-logging configuration based on application settings.
-     * @returns Auto-logging configuration object with ignore function if enabled, otherwise returns the autoLogger boolean value
+     * @returns {{ignore: Function} | boolean} Auto-logging configuration object with ignore function if enabled, otherwise returns the autoLogger boolean value
      */
     private createAutoLoggingConfig():
         | { ignore: (req: IRequestApp) => boolean }

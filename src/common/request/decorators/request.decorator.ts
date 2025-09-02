@@ -11,9 +11,8 @@ import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 /**
  * Request timeout decorator for route handlers.
  * Sets a custom timeout value for specific endpoints.
- *
- * @param seconds - Timeout duration in ms.StringValue format
- * @returns A method decorator that applies custom timeout metadata
+ * @param {ms.StringValue} seconds - Timeout duration in ms.StringValue format
+ * @returns {MethodDecorator} A method decorator that applies custom timeout metadata
  */
 export function RequestTimeout(seconds: ms.StringValue): MethodDecorator {
     return applyDecorators(
@@ -25,9 +24,8 @@ export function RequestTimeout(seconds: ms.StringValue): MethodDecorator {
 /**
  * Environment protection decorator for route handlers.
  * Restricts access to endpoints based on the current application environment.
- *
- * @param envs - Array of application environments where the route should be accessible
- * @returns A method decorator that applies environment-based access control
+ * @param {...ENUM_APP_ENVIRONMENT[]} envs - Array of application environments where the route should be accessible
+ * @returns {MethodDecorator} A method decorator that applies environment-based access control
  */
 export function RequestEnvProtected(
     ...envs: ENUM_APP_ENVIRONMENT[]

@@ -14,29 +14,48 @@ export interface IPaginationQuery {
     filters?: IPaginationQueryFilter;
     page: number;
     perPage: number;
-    skip: number;
+    skip?: number;
+    cursor?: string;
     orderBy: string;
     orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
     availableSearch: string[];
     availableOrderBy: string[];
 }
 
-export interface IPaginationQueryOptions {
+export interface IPaginationQueryOffsetOptions {
     availableSearch?: string[];
     defaultPerPage?: number;
     availableOrderBy?: string[];
 }
 
-export type IPaginationOrder = Record<
+export interface IPaginationQueryCursorOptions {
+    availableSearch?: string[];
+    defaultPerPage?: number;
+    availableOrderBy?: string[];
+    cursorField?: string;
+}
+
+export type IPaginationOrderBy = Record<
     string,
     ENUM_PAGINATION_ORDER_DIRECTION_TYPE
 >;
 
 export interface IPaginationQueryReturn {
-    search?: { or: Record<string, { contains: string }>[] };
-    order?: IPaginationOrder;
+    where?: { or: Record<string, { contains: string }>[] };
+    orderBy?: IPaginationOrderBy;
     limit: number;
+}
+
+export interface IPaginationQueryOffsetParams extends IPaginationQueryReturn {
+    select?: unknown;
     skip: number;
+}
+
+export interface IPaginationQueryCursorParams extends IPaginationQueryReturn {
+    select?: unknown;
+    cursor?: string;
+    cursorField?: string;
+    includeCount?: boolean;
 }
 
 export interface IPaginationQueryFilterOptions {
@@ -86,4 +105,35 @@ export interface IPaginationDate {
     gte?: Date;
     lte?: Date;
     equals?: Date;
+}
+
+export interface IPaginationOffsetReturn<T = unknown> {
+    count: number;
+    page: number;
+    totalPage: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+    nextPage?: number;
+    previousPage?: number;
+    data: T[];
+}
+
+export interface IPaginationCursorReturn<T = unknown> {
+    count: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+    nextCursor?: string;
+    previousCursor?: string;
+    data: T[];
+}
+
+export interface IPaginationRepository {
+    findMany: (args?: unknown) => Promise<unknown[]>;
+    count: (args?: unknown) => Promise<number>;
+}
+
+export interface IPaginationCursorValue {
+    cursor: string;
+    orderBy: IPaginationOrderBy;
+    where: unknown;
 }

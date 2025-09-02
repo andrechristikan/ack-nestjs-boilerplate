@@ -26,8 +26,9 @@ export class AppValidationImportFilter implements ExceptionFilter {
     /**
      * Handles FileImportException and formats file import validation errors into standardized responses.
      * Processes import-specific validation messages with metadata and localization support.
-     * @param exception - The file import exception to handle
-     * @param host - Arguments host containing request/response context
+     * @param {FileImportException} exception - The file import exception to handle
+     * @param {ArgumentsHost} host - Arguments host containing request/response context
+     * @returns {Promise<void>}
      */
     async catch(
         exception: FileImportException,

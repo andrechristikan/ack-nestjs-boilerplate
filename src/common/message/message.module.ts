@@ -12,11 +12,6 @@ import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 @Global()
 @Module({})
 export class MessageModule {
-    /**
-     * Creates a dynamic module configuration for internationalization services.
-     * Sets up I18n module with language fallbacks and file watching capabilities.
-     * @returns Dynamic module configuration with MessageService and I18n providers
-     */
     static forRoot(): DynamicModule {
         return {
             module: MessageModule,

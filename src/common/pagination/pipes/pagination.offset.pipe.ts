@@ -7,33 +7,33 @@ import {
     PAGINATION_DEFAULT_PER_PAGE,
 } from '@common/pagination/constants/pagination.constant';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { IPaginationQueryReturn } from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 
 /**
- * Creates a pipe that validates and transforms pagination paging parameters (page and perPage)
- * @param {number} [defaultPerPage] - Default number of items per page, defaults to PAGINATION_DEFAULT_PER_PAGE
- * @returns {Type<PipeTransform>} A NestJS pipe transform class for pagination paging validation and transformation
+ * Factory function to create PaginationOffsetPipe that handles offset-based pagination
+ * @param {number} defaultPerPage - Default number of items per page
+ * @returns {Type<PipeTransform>} Configured pipe class for offset pagination
  */
-export function PaginationPagingPipe(
+export function PaginationOffsetPipe(
     defaultPerPage: number = PAGINATION_DEFAULT_PER_PAGE
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
-    class MixinPaginationPagingPipe implements PipeTransform {
+    class MixinPaginationOffsetPipe implements PipeTransform {
         constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
         /**
-         * Transforms pagination query object with paging parameters and calculates skip value
-         * @param {object} value - Pagination query object containing page, perPage and other pagination properties
-         * @param {number|string} [value.page] - Page number to retrieve
-         * @param {number|string} [value.perPage] - Number of items per page
-         * @returns {Promise<IPaginationQueryReturn>} Transformed pagination query object with limit and skip values
+         * Transforms input value to add offset pagination functionality with validation and limits
+         * @param {Object} value - Input object containing pagination parameters
+         * @param {number|string} value.page - Page number (will be normalized to valid range)
+         * @param {number|string} value.perPage - Items per page (will be normalized to valid range)
+         * @returns {Promise<IPaginationQueryOffsetParams>} Transformed pagination params with limit and skip
          */
         async transform(
             value: {
                 page?: number | string;
                 perPage?: number | string;
-            } & IPaginationQueryReturn
-        ): Promise<IPaginationQueryReturn> {
+            } & IPaginationQueryOffsetParams
+        ): Promise<IPaginationQueryOffsetParams> {
             let finalPage = Number(value.page) ?? 1;
             let finalPerPage = Number(value.perPage) ?? defaultPerPage;
 
@@ -59,7 +59,14 @@ export function PaginationPagingPipe(
             };
         }
 
-        addToRequestInstance(
+        /**
+         * Adds pagination information to request instance
+         * @param {number} page - Current page number
+         * @param {number} perPage - Items per page
+         * @param {number} skip - Number of items to skip
+         * @returns {void}
+         */
+        private addToRequestInstance(
             page: number,
             perPage: number,
             skip: number
@@ -73,5 +80,5 @@ export function PaginationPagingPipe(
         }
     }
 
-    return mixin(MixinPaginationPagingPipe);
+    return mixin(MixinPaginationOffsetPipe);
 }

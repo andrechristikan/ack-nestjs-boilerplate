@@ -7,7 +7,8 @@ import {
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 
 /**
- * Pagination metadata DTO extending base response metadata with pagination info
+ * Pagination metadata DTO extending base response metadata with pagination information.
+ * Provides comprehensive pagination details including search, filtering, sorting, and page statistics.
  */
 export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
@@ -26,15 +27,63 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
 
     @ApiProperty({
         required: true,
-        example: 1,
-    })
-    page: number;
-
-    @ApiProperty({
-        required: true,
         example: 20,
     })
     perPage: number;
+
+    @ApiProperty({
+        required: false,
+        example: 1,
+    })
+    page?: number;
+
+    @ApiProperty({
+        required: false,
+        example: 5,
+    })
+    totalPage?: number;
+
+    @ApiProperty({
+        required: false,
+        example: 100,
+    })
+    count?: number;
+
+    @ApiProperty({
+        required: false,
+        example: 2,
+    })
+    nextPage?: number;
+
+    @ApiProperty({
+        required: false,
+        example: 0,
+    })
+    previousPage?: number;
+
+    @ApiProperty({
+        required: false,
+        example: faker.string.alphanumeric(16),
+    })
+    nextCursor?: string;
+
+    @ApiProperty({
+        required: false,
+        example: faker.string.alphanumeric(16),
+    })
+    previousCursor?: string;
+
+    @ApiProperty({
+        required: true,
+        example: true,
+    })
+    hasNext: boolean;
+
+    @ApiProperty({
+        required: true,
+        example: true,
+    })
+    hasPrevious: boolean;
 
     @ApiProperty({
         required: true,
@@ -61,21 +110,13 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
         example: ['createdAt', 'updatedAt'],
     })
     availableOrderBy: string[];
-
-    @ApiProperty({
-        required: true,
-    })
-    count: number;
-
-    @ApiProperty({
-        required: true,
-    })
-    totalPage: number;
 }
 
 /**
- * Paginated response DTO for API responses with data arrays
- * @template T - Type of the individual data items
+ * Paginated response DTO for API responses with data arrays.
+ * Extends standard response structure to include pagination metadata and array of data items.
+ *
+ * @template T - Type of the individual data items in the array
  */
 export class ResponsePagingDto<T> extends PickType(ResponseDto, [
     'statusCode',

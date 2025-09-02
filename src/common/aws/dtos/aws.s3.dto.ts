@@ -5,8 +5,8 @@ import { StreamingBlobTypes } from '@smithy/types';
 import { Exclude } from 'class-transformer';
 
 /**
- * DTO for AWS S3 object information
- * @description Data transfer object containing comprehensive information about an S3 object including metadata, URLs, and accessibility settings
+ * DTO for AWS S3 object information.
+ * Data transfer object containing comprehensive information about an S3 object including metadata, URLs, and accessibility settings.
  */
 export class AwsS3Dto {
     /**
