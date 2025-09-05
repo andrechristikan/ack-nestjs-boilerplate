@@ -261,9 +261,9 @@ export class AuthService implements IAuthService {
         loginFrom: ENUM_AUTH_LOGIN_FROM
     ): IAuthJwtAccessTokenPayload {
         return {
-            userId: data._id.toString(),
+            userId: data.id,
             type: data.role.type,
-            roleId: data.role._id.toString(),
+            roleId: data.role.id,
             username: data.username,
             email: data.email,
             sessionId,
@@ -395,14 +395,14 @@ export class AuthService implements IAuthService {
                 ENUM_AUTH_LOGIN_FROM.CREDENTIAL
             );
         const accessToken: string = this.createAccessToken(
-            user._id.toString(),
+            user.id,
             payloadAccessToken
         );
 
         const payloadRefreshToken: IAuthJwtRefreshTokenPayload =
             this.createPayloadRefreshToken(payloadAccessToken);
         const refreshToken: string = this.createRefreshToken(
-            user._id.toString(),
+            user.id,
             payloadRefreshToken
         );
 
@@ -440,7 +440,7 @@ export class AuthService implements IAuthService {
                 payloadRefreshToken.loginFrom
             );
         const accessToken: string = this.createAccessToken(
-            user._id,
+            user.id,
             payloadAccessToken
         );
 

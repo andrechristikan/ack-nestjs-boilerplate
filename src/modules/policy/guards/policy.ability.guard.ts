@@ -8,11 +8,14 @@ import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
-import { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { POLICY_ABILITY_META_KEY } from '@modules/policy/constants/policy.constant';
 import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
+import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 
+/**
+ * Guard that validates user access based on policy abilities and permissions
+ */
 @Injectable()
 export class PolicyAbilityGuard implements CanActivate {
     constructor(
@@ -20,9 +23,14 @@ export class PolicyAbilityGuard implements CanActivate {
         private readonly policyAbilityFactory: PolicyAbilityFactory
     ) {}
 
+    /**
+     * Validates if the current user has the required abilities to access the resource
+     * @param {ExecutionContext} context - NestJS execution context containing request information
+     * @returns {Promise<boolean>} Promise that resolves to true if user has required abilities
+     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const abilities =
-            this.reflector.get<IPolicyAbility[]>(
+            this.reflector.get<RoleAbilityRequestDto[]>(
                 POLICY_ABILITY_META_KEY,
                 context.getHandler()
             ) || [];

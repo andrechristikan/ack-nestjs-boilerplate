@@ -63,6 +63,7 @@
         "@nestjs/terminus": "^11.0.0",
         "@nestjs/throttler": "^6.4.0",
         "@prisma/client": "^6.14.0",
+        "@prisma/extension-read-replicas": "^0.4.1",
         "@sentry/nestjs": "^9.32.0",
         "@sentry/profiling-node": "^9.32.0",
         "axios": "^1.10.0",

@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { passportJwtSecret } from 'jwks-rsa';
 import { Algorithm } from 'jsonwebtoken';
 import { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthJwtRefreshGuardKey } from '@modules/auth/constants/auth.contant';
+import { AuthJwtRefreshGuardKey } from '@modules/auth/constants/auth.constant';
 
 /**
  * JWT Refresh Token Strategy for authentication using Passport.js

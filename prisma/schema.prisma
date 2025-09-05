@@ -35,7 +35,7 @@ model Role {
   name String @unique
   description String?
   type  ENUM_ROLE_TYPE @default(USER) 
-  permissions Json[] @default([])
+  abilities Json[] @default([])
 
   // timestamps fields
   createdAt DateTime? @default(now())

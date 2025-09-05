@@ -6,21 +6,28 @@ import {
 import { Injectable } from '@nestjs/common';
 import { ENUM_POLICY_ACTION } from '@modules/policy/enums/policy.enum';
 import {
-    IPolicyAbility,
     IPolicyAbilityRule,
     IPolicyAbilitySubject,
 } from '@modules/policy/interfaces/policy.interface';
-import { RolePermissionEntity } from '@modules/role/repository/entities/role.permission.entity';
+import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 
+/**
+ * Factory class for creating and handling policy abilities using CASL library
+ */
 @Injectable()
 export class PolicyAbilityFactory {
-    createForUser(permissions: RolePermissionEntity[]): IPolicyAbilityRule {
+    /**
+     * Creates policy ability rules for a specific user based on their permissions
+     * @param {IPolicyAbility[]} abilities - Array of policy abilities assigned to the user
+     * @returns {IPolicyAbilityRule} CASL ability rule object for the user
+     */
+    createForUser(abilities: RoleAbilityRequestDto[]): IPolicyAbilityRule {
         const { can, build } = new AbilityBuilder<IPolicyAbilityRule>(
             createMongoAbility
         );
 
-        for (const permission of permissions) {
-            can(permission.action, permission.subject);
+        for (const ability of abilities) {
+            can(ability.action, ability.subject);
         }
 
         return build({
@@ -31,11 +38,17 @@ export class PolicyAbilityFactory {
         });
     }
 
+    /**
+     * Validates if user abilities match the required abilities for access control
+     * @param {IPolicyAbilityRule} userAbilities - User's current ability rules
+     * @param {RoleAbilityRequestDto[]} abilities - Required abilities to check against
+     * @returns {boolean} True if user has all required abilities, false otherwise
+     */
     handlerAbilities(
         userAbilities: IPolicyAbilityRule,
-        abilities: IPolicyAbility[]
+        abilities: RoleAbilityRequestDto[]
     ): boolean {
-        return abilities.every((ability: IPolicyAbility) =>
+        return abilities.every((ability: RoleAbilityRequestDto) =>
             ability.action.every((action: ENUM_POLICY_ACTION) =>
                 userAbilities.can(action, ability.subject)
             )

@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
-import { RolePermissionRequestDto } from '@modules/role/dtos/request/role.permission.request.dto';
+import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 
 export class RoleUpdateRequestDto {
     @ApiProperty({
@@ -37,14 +37,14 @@ export class RoleUpdateRequestDto {
 
     @ApiProperty({
         required: true,
-        description: 'Permission list of role',
+        description: 'Ability list of role',
         isArray: true,
-        type: RolePermissionRequestDto,
-        oneOf: [{ $ref: getSchemaPath(RolePermissionRequestDto) }],
+        type: RoleAbilityRequestDto,
+        oneOf: [{ $ref: getSchemaPath(RoleAbilityRequestDto) }],
     })
-    @Type(() => RolePermissionRequestDto)
+    @Type(() => RoleAbilityRequestDto)
     @IsNotEmpty()
     @ValidateNested()
     @IsArray()
-    permissions: RolePermissionRequestDto[];
+    abilities: RoleAbilityRequestDto[];
 }

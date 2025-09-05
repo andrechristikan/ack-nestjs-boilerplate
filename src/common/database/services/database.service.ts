@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorResult } from '@nestjs/terminus';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { readReplicas } from '@prisma/extension-read-replicas';
 import { IDatabaseService } from 'src/common/database/interfaces/database.service.interface';
 
 /**
@@ -23,6 +24,7 @@ export class DatabaseService
 {
     private readonly logger: Logger = new Logger(DatabaseService.name);
     private readonly isDebugMode: boolean;
+    private readonly readUrl: string;
 
     constructor(private readonly configService: ConfigService) {
         super({
@@ -36,6 +38,7 @@ export class DatabaseService
         });
 
         this.isDebugMode = this.configService.get<boolean>('database.debug');
+        this.readUrl = this.configService.get<string>('database.readUrl');
     }
 
     /**
@@ -63,6 +66,7 @@ export class DatabaseService
     async onModuleInit(): Promise<void> {
         try {
             await this.setupLogging();
+            await this.setupReadReplicas();
             await this.connect();
         } catch (error: unknown) {
             this.logger.error('Failed to initialize database service', error);
@@ -72,6 +76,21 @@ export class DatabaseService
 
     async onModuleDestroy(): Promise<void> {
         await this.disconnect();
+    }
+
+    /**
+     * Sets up read replicas for database load balancing
+     * Note: For MongoDB this is not needed as it's built-in, but prepared here for potential use with other databases
+     * @returns {Promise<void>} Promise that resolves when read replica setup is complete
+     */
+    private async setupReadReplicas(): Promise<void> {
+        if (this.readUrl) {
+            this.$extends(readReplicas({ url: this.readUrl }));
+        } else {
+            this.logger.warn(
+                'Read replica URL not provided. Skipping read replica setup.'
+            );
+        }
     }
 
     private async connect(): Promise<void> {

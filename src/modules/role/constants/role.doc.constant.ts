@@ -14,7 +14,7 @@ export const RoleDocQueryList = [
 
 export const RoleDocParamsId = [
     {
-        name: 'role',
+        name: 'roleId',
         allowEmptyValue: false,
         required: true,
         type: 'string',

@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { passportJwtSecret } from 'jwks-rsa';
 import { Algorithm } from 'jsonwebtoken';
 import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthJwtAccessGuardKey } from '@modules/auth/constants/auth.contant';
+import { AuthJwtAccessGuardKey } from '@modules/auth/constants/auth.constant';
 
 /**
  * JWT Access Token Strategy for authentication using Passport.js

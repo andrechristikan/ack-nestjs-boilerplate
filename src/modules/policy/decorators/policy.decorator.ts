@@ -6,10 +6,15 @@ import {
 import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard';
 import { PolicyRoleGuard } from '@modules/policy/guards/policy.role.guard';
-import { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 
+/**
+ * Method decorator that applies policy ability-based protection guards
+ * @param {...RoleAbilityRequestDto[]} abilities - List of policy abilities required for access
+ * @returns {MethodDecorator} Combined decorators for policy ability validation
+ */
 export function PolicyAbilityProtected(
-    ...abilities: IPolicyAbility[]
+    ...abilities: RoleAbilityRequestDto[]
 ): MethodDecorator {
     return applyDecorators(
         UseGuards(PolicyAbilityGuard),
@@ -17,6 +22,11 @@ export function PolicyAbilityProtected(
     );
 }
 
+/**
+ * Method decorator that applies policy role-based protection guards
+ * @param {...ENUM_POLICY_ROLE_TYPE[]} roles - List of policy role types required for access
+ * @returns {MethodDecorator} Combined decorators for policy role validation
+ */
 export function PolicyRoleProtected(
     ...roles: ENUM_POLICY_ROLE_TYPE[]
 ): MethodDecorator {

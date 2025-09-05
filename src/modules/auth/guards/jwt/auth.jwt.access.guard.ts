@@ -3,7 +3,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
 import { isUUID } from 'class-validator';
 import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthJwtAccessGuardKey } from '@modules/auth/constants/auth.contant';
+import { AuthJwtAccessGuardKey } from '@modules/auth/constants/auth.constant';
 
 /**
  * JWT Access Token Guard for protecting routes with access token authentication

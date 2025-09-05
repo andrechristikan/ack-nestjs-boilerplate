@@ -5,27 +5,24 @@ import {
     Injectable,
 } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common';
-import { Types } from 'mongoose';
+import { isMongoId } from 'class-validator';
 
 /**
- * Validation pipe that ensures string values are valid MongoDB ObjectIds.
- * Throws BadRequestException for invalid ObjectId formats.
+ * Pipe that validates if the input value is a valid MongoDB ObjectId
  */
 @Injectable()
-export class RequestObjectIdPipe implements PipeTransform {
+export class RequestIsValidObjectIdPipe implements PipeTransform {
     /**
-     * Validates that the input value is a valid MongoDB ObjectId format.
-     *
-     * @param value - The string value to validate as an ObjectId
-     * @param metadata - Argument metadata containing parameter information
-     * @returns The validated ObjectId string if valid
-     * @throws {BadRequestException} When value is invalid ObjectId format
+     * Validates and transforms the input value to ensure it's a valid MongoDB ObjectId
+     * @param {string} value - The input value to validate
+     * @param {ArgumentMetadata} metadata - NestJS argument metadata containing validation context
+     * @returns {Promise<string>} Promise that resolves to the validated ObjectId string
      */
     async transform(
         value: string,
         metadata: ArgumentMetadata
     ): Promise<string> {
-        if (!value || !Types.ObjectId.isValid(value)) {
+        if (!value || typeof value !== 'string' || isMongoId(value)) {
             throw new BadRequestException({
                 statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
                 message: 'request.error.isMongoId',

@@ -59,8 +59,8 @@ import {
     PolicyRoleProtected,
 } from '@modules/policy/decorators/policy.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { RequestObjectIdPipe } from '@common/request/pipes/request.object-id.pipe';
 import { ENUM_API_KEY_TYPE } from '@prisma/client';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 
 @ApiTags('modules.admin.apiKey')
 @Controller({
@@ -132,13 +132,13 @@ export class ApiKeyAdminController {
     // @UserProtected() // TODO: Resolve this
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/:apiKey/reset')
+    @Patch('/update/:apiKeyId/reset')
     async reset(
-        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
-        apiKey: string
+        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         const updated: ApiKeyCreateResponseDto =
-            await this.apiKeyService.reset(apiKey);
+            await this.apiKeyService.reset(apiKeyId);
 
         return {
             data: updated,
@@ -155,13 +155,13 @@ export class ApiKeyAdminController {
     // @UserProtected() // TODO: Resolve this
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/update/:apiKey')
+    @Put('/update/:apiKeyId')
     async update(
         @Body() body: ApiKeyUpdateRequestDto,
-        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
-        apiKey: string
+        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
-        const updated = await this.apiKeyService.update(apiKey, body);
+        const updated = await this.apiKeyService.update(apiKeyId, body);
 
         return {
             data: updated,
@@ -178,13 +178,13 @@ export class ApiKeyAdminController {
     // @UserProtected() // TODO: Resolve this
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/update/:apiKey/date')
+    @Put('/update/:apiKeyId/date')
     async updateDate(
         @Body() body: ApiKeyUpdateDateRequestDto,
-        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
-        apiKey: string
+        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
-        const updated = await this.apiKeyService.updateDate(apiKey, body);
+        const updated = await this.apiKeyService.updateDate(apiKeyId, body);
 
         return {
             data: updated,
@@ -201,12 +201,12 @@ export class ApiKeyAdminController {
     // @UserProtected() // TODO: Resolve this
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/:apiKey/inactive')
+    @Patch('/update/:apiKeyId/inactive')
     async inactive(
-        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
-        apiKey: string
+        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
-        const updated = await this.apiKeyService.inactive(apiKey);
+        const updated = await this.apiKeyService.inactive(apiKeyId);
 
         return {
             data: updated,
@@ -223,12 +223,12 @@ export class ApiKeyAdminController {
     // @UserProtected() // TODO: Resolve this
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/:apiKey/active')
+    @Patch('/update/:apiKeyId/active')
     async active(
-        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
-        apiKey: string
+        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
-        const updated = await this.apiKeyService.active(apiKey);
+        const updated = await this.apiKeyService.active(apiKeyId);
 
         return {
             data: updated,
@@ -245,12 +245,12 @@ export class ApiKeyAdminController {
     // @UserProtected() // TODO: Resolve this
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/delete/:apiKey')
+    @Delete('/delete/:apiKeyId')
     async delete(
-        @Param('apiKey', RequestRequiredPipe, RequestObjectIdPipe)
-        apiKey: string
+        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
-        const deleted = await this.apiKeyService.delete(apiKey);
+        const deleted = await this.apiKeyService.delete(apiKeyId);
 
         return {
             data: deleted,

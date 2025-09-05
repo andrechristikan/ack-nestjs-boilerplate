@@ -22,7 +22,7 @@ export const ApiKeyDocQueryList = [
 
 export const ApiKeyDocParamsId = [
     {
-        name: 'apiKey',
+        name: 'apiKeyId',
         allowEmptyValue: false,
         required: true,
         type: 'string',

@@ -171,6 +171,16 @@ export class AppEnvDto {
     DATABASE_URL: string;
 
     /**
+     * Database read replica URL/string (optional)
+     */
+    @ValidateIf(
+        o => o.DATABASE_READ_URL !== undefined && o.DATABASE_READ_URL !== ''
+    )
+    @IsString()
+    @IsNotEmpty()
+    DATABASE_READ_URL?: string;
+
+    /**
      * Whether database debug mode is enabled
      */
     @IsBoolean()

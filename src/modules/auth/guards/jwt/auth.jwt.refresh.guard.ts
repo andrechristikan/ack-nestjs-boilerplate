@@ -6,7 +6,7 @@ import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
-import { AuthJwtRefreshGuardKey } from '@modules/auth/constants/auth.contant';
+import { AuthJwtRefreshGuardKey } from '@modules/auth/constants/auth.constant';
 
 /**
  * JWT Refresh Token Guard for protecting routes that require refresh token authentication

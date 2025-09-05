@@ -1,6 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 
+/**
+ * Response DTO for authentication token containing token information and user role
+ */
 export class AuthTokenResponseDto {
     @ApiProperty({
         example: 'Bearer',

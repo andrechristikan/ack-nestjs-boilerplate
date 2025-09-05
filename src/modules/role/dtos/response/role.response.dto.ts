@@ -3,7 +3,7 @@ import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 import { DatabaseDto } from '@common/database/dtos/database.dto';
-import { RolePermissionResponseDto } from '@modules/role/dtos/response/role.permission.response.dto';
+import { RoleAbilityResponseDto } from '@modules/role/dtos/response/role.ability.response.dto';
 
 export class RoleResponseDto extends DatabaseDto {
     @ApiProperty({
@@ -31,13 +31,13 @@ export class RoleResponseDto extends DatabaseDto {
     type: ENUM_POLICY_ROLE_TYPE;
 
     @ApiProperty({
-        type: RolePermissionResponseDto,
-        oneOf: [{ $ref: getSchemaPath(RolePermissionResponseDto) }],
+        type: RoleAbilityResponseDto,
+        oneOf: [{ $ref: getSchemaPath(RoleAbilityResponseDto) }],
         required: true,
 
         isArray: true,
         default: [],
     })
-    @Type(() => RolePermissionResponseDto)
-    permissions: RolePermissionResponseDto[];
+    @Type(() => RoleAbilityResponseDto)
+    abilities: RoleAbilityResponseDto[];
 }
