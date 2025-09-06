@@ -2,7 +2,6 @@ import { DatabaseService } from '@common/database/services/database.service';
 import {
     IPaginationIn,
     IPaginationQueryOffsetParams,
-    IPaginationQueryReturn,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
@@ -19,7 +18,6 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class RoleService implements IRoleService {
@@ -52,6 +50,20 @@ export class RoleService implements IRoleService {
         };
     }
 
+    async getOne(id: string): Promise<RoleResponseDto> {
+        const role = await this.databaseService.role.findUnique({
+            where: { id },
+        });
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'role.error.notFound',
+            });
+        }
+
+        return this.roleUtil.mapOne(role);
+    }
+
     async create(data: RoleCreateRequestDto): Promise<RoleResponseDto> {
         const { name, ...others } = this.roleUtil.serializeCreateDto(data);
         const exist = await this.databaseService.role.findFirst({
@@ -73,10 +85,12 @@ export class RoleService implements IRoleService {
     }
 
     async update(
-        _id: string,
-        { permissions, type, description }: RoleUpdateRequestDto
+        id: string,
+        data: RoleUpdateRequestDto
     ): Promise<RoleResponseDto> {
-        const role = await this.roleRepository.findOneByObjectId(_id);
+        const role = await this.databaseService.role.findUnique({
+            where: { id },
+        });
         if (!role) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
@@ -84,11 +98,32 @@ export class RoleService implements IRoleService {
             });
         }
 
-        const update = await this.roleRepository.update({
-            where: { _id: role._id },
-            data: { permissions, type, description },
+        const serialize = this.roleUtil.serializeUpdateDto(data);
+        const update = await this.databaseService.role.update({
+            where: { id },
+            data: serialize,
         });
 
         return this.roleUtil.mapOne(update);
+    }
+
+    async delete(id: string): Promise<void> {
+        const role = await this.databaseService.role.findUnique({
+            where: { id },
+        });
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'role.error.notFound',
+            });
+        }
+
+        // TODO: CHECK IF ROLE IS USED IN USER
+
+        await this.databaseService.role.delete({
+            where: { id },
+        });
+
+        return;
     }
 }

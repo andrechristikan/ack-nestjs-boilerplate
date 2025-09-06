@@ -8,7 +8,6 @@ import { CountryModule } from '@modules/country/country.module';
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
 import { RoleModule } from '@modules/role/role.module';
 import { MigrationCreateSeed } from '@migration/seeds/migration.user.seed';
-import { UserModule } from '@modules/user/user.module';
 import { AuthModule } from '@modules/auth/auth.module';
 
 @Module({
@@ -18,7 +17,6 @@ import { AuthModule } from '@modules/auth/auth.module';
         ApiKeyModule,
         CountryModule,
         RoleModule,
-        UserModule,
         AuthModule,
     ],
     providers: [

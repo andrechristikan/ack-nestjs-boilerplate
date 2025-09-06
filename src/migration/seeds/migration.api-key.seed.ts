@@ -1,11 +1,11 @@
 import { Command } from 'nestjs-command';
 import { Injectable, Logger } from '@nestjs/common';
-import { ApiKeyService } from '@modules/api-key/services/api-key.service';
-import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
-import { ApiKeyRepository } from '@modules/api-key/repository/repositories/api-key.repository';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { ConfigService } from '@nestjs/config';
 import { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
+import { ENUM_API_KEY_TYPE } from '@prisma/client';
+import { DatabaseService } from '@common/database/services/database.service';
+import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 
 @Injectable()
 export class MigrationApiKeySeed {
@@ -14,13 +14,13 @@ export class MigrationApiKeySeed {
     private readonly env: ENUM_APP_ENVIRONMENT;
     private readonly apiKeys: ApiKeyCreateRawRequestDto[] = [
         {
-            description: 'Api Key Default Migration',
+            name: 'Api Key Default Migration',
             type: ENUM_API_KEY_TYPE.DEFAULT,
             key: 'fyFGb7ywyM37TqDY8nuhAmGW5',
             secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
         },
         {
-            description: 'Api Key System Migration',
+            name: 'Api Key System Migration',
             type: ENUM_API_KEY_TYPE.SYSTEM,
             key: 'UTDH0fuDMAbd1ZVnwnyrQJd8Q',
             secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
@@ -28,8 +28,8 @@ export class MigrationApiKeySeed {
     ];
 
     constructor(
-        private readonly apiKeyRepository: ApiKeyRepository,
-        private readonly apiKeyService: ApiKeyService,
+        private readonly databaseService: DatabaseService,
+        private readonly apiKeyUtil: ApiKeyUtil,
         private readonly configService: ConfigService
     ) {
         this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
@@ -42,35 +42,31 @@ export class MigrationApiKeySeed {
     async seeds(): Promise<void> {
         this.logger.log('Seeding Api Keys...');
 
-        const existingApiKeys = await this.apiKeyRepository.findMany({
+        const existingApiKeys = await this.databaseService.apiKey.findMany({
             where: {
                 key: {
                     in: this.apiKeys.map(apiKey => `${this.env}_${apiKey.key}`),
                 },
             },
             select: {
-                _id: true,
+                id: true,
             },
-            withDeleted: true,
         });
         if (existingApiKeys.length > 0) {
             this.logger.log('Api Keys already exist, skipping seed.');
             return;
         }
 
-        await this.apiKeyRepository.createMany({
+        await this.databaseService.apiKey.createMany({
             data: this.apiKeys.map(apiKey => {
-                const key = this.apiKeyService.createKey(apiKey.key);
-                const hashed = this.apiKeyService.createHash(
-                    key,
-                    apiKey.secret
-                );
+                const key = this.apiKeyUtil.createKey(apiKey.key);
+                const hashed = this.apiKeyUtil.createHash(key, apiKey.secret);
 
                 return {
                     hash: hashed,
                     key: key,
                     type: apiKey.type,
-                    description: apiKey.description,
+                    name: apiKey.name,
                     isActive: true,
                 };
             }),
@@ -92,21 +88,20 @@ export class MigrationApiKeySeed {
             ...this.apiKeys
                 .map(apiKey => {
                     return [
-                        this.apiKeyService.deleteCacheByKey(
-                            this.apiKeyService.createKey(apiKey.key)
+                        this.apiKeyUtil.deleteCacheByKey(
+                            this.apiKeyUtil.createKey(apiKey.key)
                         ),
                     ];
                 })
                 .flat(),
-            this.apiKeyRepository.deleteMany({
+            this.databaseService.apiKey.deleteMany({
                 where: {
                     key: {
                         in: this.apiKeys.map(apiKey =>
-                            this.apiKeyService.createKey(apiKey.key)
+                            this.apiKeyUtil.createKey(apiKey.key)
                         ),
                     },
                 },
-                withDeleted: true,
             }),
         ]);
 

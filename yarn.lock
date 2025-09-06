@@ -3210,11 +3210,6 @@
     "@prisma/fetch-engine" "6.14.0"
     "@prisma/get-platform" "6.14.0"
 
-"@prisma/extension-read-replicas@^0.4.1":
-  version "0.4.1"
-  resolved "https://registry.yarnpkg.com/@prisma/extension-read-replicas/-/extension-read-replicas-0.4.1.tgz#0c92a612fee72de9bc7f437632e386d220a4d7dd"
-  integrity sha512-mCMDloqUKUwx2o5uedTs1FHX3Nxdt1GdRMoeyp1JggjiwOALmIYWhxfIN08M2BZ0w8SKwvJqicJZMjkQYkkijw==
-
 "@prisma/fetch-engine@6.14.0":
   version "6.14.0"
   resolved "https://registry.yarnpkg.com/@prisma/fetch-engine/-/fetch-engine-6.14.0.tgz#f0cf3df2b1bfe65bb0904fb7da06b25dddea6f4b"

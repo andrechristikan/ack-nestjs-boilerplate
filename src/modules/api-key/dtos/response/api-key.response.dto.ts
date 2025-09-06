@@ -33,9 +33,9 @@ export class ApiKeyResponseDto extends DatabaseDto {
     @ApiProperty({
         description: 'Name of api key',
         example: faker.string.alpha(10),
-        required: true,
+        required: false,
     })
-    description: string;
+    name?: string;
 
     @ApiProperty({
         description: 'Type of api key',
@@ -51,4 +51,18 @@ export class ApiKeyResponseDto extends DatabaseDto {
         required: true,
     })
     key: string;
+
+    @ApiProperty({
+        description: 'Last used at timestamp of api key',
+        example: faker.date.recent(),
+        required: false,
+    })
+    lastUsedAt?: Date;
+
+    @ApiProperty({
+        description: 'Last IP address used with api key',
+        example: faker.internet.ipv4(),
+        required: false,
+    })
+    lastIPAddress?: string;
 }

@@ -8,14 +8,16 @@ generator client {
 }
 
 model ApiKey {
-  id          String            @id @default(auto()) @map("_id") @db.ObjectId
-  type        ENUM_API_KEY_TYPE @default(DEFAULT)
-  description String?
-  key         String
-  hash        String
-  isActive    Boolean           @default(true)
-  startDate   DateTime?
-  endDate     DateTime?
+  id        String            @id @default(auto()) @map("_id") @db.ObjectId
+  type      ENUM_API_KEY_TYPE @default(DEFAULT)
+  name      String
+  key       String
+  hash      String
+  isActive  Boolean           @default(true)
+  startDate DateTime?
+  endDate   DateTime?
+  lastUsedAt DateTime?
+  lastIPAddress String?
 
   // timestamps fields
   createdAt DateTime? @default(now())
@@ -23,31 +25,76 @@ model ApiKey {
   updatedAt DateTime? @updatedAt
   updatedBy String?
 
-  @@unique([key])
-  @@index([type, key ])
-  @@index([isActive])
-  @@index([createdAt])
+  // Unique constraints
+  @@unique(fields: [key])
+  @@unique(fields: [hash]) 
+
+  // Query-optimized indexes
+  @@index(fields: [createdBy, createdAt]) 
+  @@index(fields: [type])
+  @@index(fields: [name])
+  @@index(fields: [createdAt])
+
+  // Collection name
   @@map("ApiKeys")
 }
 
 model Role {
-  id          String            @id @default(auto()) @map("_id") @db.ObjectId
-  name String @unique
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
   description String?
-  type  ENUM_ROLE_TYPE @default(USER) 
-  abilities Json[] @default([])
+  type        ENUM_ROLE_TYPE @default(USER)
+  abilities   Json[]         @default([])
 
   // timestamps fields
   createdAt DateTime? @default(now())
   createdBy String?
   updatedAt DateTime? @updatedAt
   updatedBy String?
+
+  // Unique constraints
+  @@unique(fields: [name])
+
+  // Query-optimized indexes
+  @@index(fields: [type])
+  @@index(fields: [createdAt])
+
+  // Collection name
+  @@map("Roles")
+}
+
+model Country {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  alpha2Code  String
+  alpha3Code  String
+  phoneCode   String[]
+  continent   String
+  timezone    String
+
+  // timestamps fields
+  createdAt DateTime? @default(now())
+  createdBy String?
+  updatedAt DateTime? @updatedAt
+  updatedBy String?
+
+  // Unique constraints
+  @@unique(fields: [alpha2Code])
+  @@unique(fields: [alpha3Code])
+
+  // Query-optimized indexes
+  @@index(fields: [name])
+  @@index(fields: [continent])
+  @@index(fields: [createdAt])
+
+  // Collection name
+  @@map("Countries")
 }
 
 enum ENUM_ROLE_TYPE {
-  SUPER_ADMIN     @map("SUPER_ADMIN")
-  ADMIN     @map("ADMIN")
-  USER      @map("USER")
+  SUPER_ADMIN @map("SUPER_ADMIN")
+  ADMIN       @map("ADMIN")
+  USER        @map("USER")
 }
 
 enum ENUM_API_KEY_TYPE {

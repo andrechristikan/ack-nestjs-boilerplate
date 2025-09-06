@@ -1,0 +1,76 @@
+import {
+    PaginationOffsetQuery,
+    PaginationQueryFilterInEnum,
+} from '@common/pagination/decorators/pagination.decorator';
+import {
+    IPaginationIn,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import {
+    Response,
+    ResponsePaging,
+} from '@common/response/decorators/response.decorator';
+import {
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
+import {
+    ROLE_DEFAULT_AVAILABLE_SEARCH,
+    ROLE_DEFAULT_ROLE_TYPE,
+} from '@modules/role/constants/role.list.constant';
+import {
+    RolePublicGetDoc,
+    RolePublicListDoc,
+} from '@modules/role/docs/role.public.doc';
+import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
+import { RoleService } from '@modules/role/services/role.service';
+import { Controller, Get, Param } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+
+@ApiTags('modules.public.role')
+@Controller({
+    version: '1',
+    path: '/role',
+})
+export class RolePublicController {
+    constructor(private readonly roleService: RoleService) {}
+
+    @RolePublicListDoc()
+    @ResponsePaging('role.list')
+    @ApiKeyProtected()
+    @Get('/list')
+    async list(
+        @PaginationOffsetQuery({
+            availableSearch: ROLE_DEFAULT_AVAILABLE_SEARCH,
+        })
+        pagination: IPaginationQueryOffsetParams,
+        @PaginationQueryFilterInEnum<ENUM_POLICY_ROLE_TYPE>(
+            'type',
+            ROLE_DEFAULT_ROLE_TYPE
+        )
+        type?: Record<string, IPaginationIn>
+    ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
+        const results: IResponsePagingReturn<RoleListResponseDto> =
+            await this.roleService.getList(pagination, type);
+
+        return results;
+    }
+
+    @RolePublicGetDoc()
+    @Response('role.get')
+    @ApiKeyProtected()
+    @Get('/get/:roleId')
+    async get(
+        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        roleId: string
+    ): Promise<IResponseReturn<RoleResponseDto>> {
+        const role: RoleResponseDto = await this.roleService.getOne(roleId);
+
+        return { data: role };
+    }
+}

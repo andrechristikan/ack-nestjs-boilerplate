@@ -6,7 +6,8 @@ import {
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
 } from '@modules/policy/enums/policy.enum';
-import { RoleRepository } from '@modules/role/repository/repositories/role.repository';
+import { DatabaseService } from '@common/database/services/database.service';
+import { RoleUtil } from '@modules/role/utils/role.util';
 
 @Injectable()
 export class MigrationRoleSeed {
@@ -16,13 +17,13 @@ export class MigrationRoleSeed {
         {
             name: 'superadmin',
             description: 'Super Admin Role',
-            permissions: [],
+            abilities: [],
             type: ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN,
         },
         {
             name: 'admin',
             description: 'Admin Role',
-            permissions: Object.values(ENUM_POLICY_SUBJECT).map(role => ({
+            abilities: Object.values(ENUM_POLICY_SUBJECT).map(role => ({
                 subject: role,
                 action: Object.values(ENUM_POLICY_ACTION),
             })),
@@ -31,12 +32,15 @@ export class MigrationRoleSeed {
         {
             name: 'user',
             description: 'User Role',
-            permissions: [],
+            abilities: [],
             type: ENUM_POLICY_ROLE_TYPE.USER,
         },
     ];
 
-    constructor(private readonly roleRepository: RoleRepository) {}
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly roleUtil: RoleUtil
+    ) {}
 
     @Command({
         command: 'seed:role',
@@ -45,24 +49,25 @@ export class MigrationRoleSeed {
     async seeds(): Promise<void> {
         this.logger.log('Seeding Roles...');
 
-        const existingRoles = await this.roleRepository.findMany({
+        const existingRoles = await this.databaseService.role.findMany({
             where: {
                 name: {
                     in: this.roles.map(role => role.name),
                 },
             },
             select: {
-                _id: true,
+                id: true,
             },
-            withDeleted: true,
         });
         if (existingRoles.length > 0) {
             this.logger.log('Roles already exist, skipping seed.');
             return;
         }
 
-        await this.roleRepository.createMany({
-            data: this.roles,
+        await this.databaseService.role.createMany({
+            data: this.roles.map(role =>
+                this.roleUtil.serializeCreateDto(role)
+            ),
         });
 
         this.logger.log('Roles seeded successfully.');
@@ -77,13 +82,14 @@ export class MigrationRoleSeed {
     async remove(): Promise<void> {
         this.logger.log('Removing Roles...');
 
-        await this.roleRepository.deleteMany({
+        await this.databaseService.role.deleteMany({
             where: {
                 name: {
-                    in: this.roles.map(role => role.name),
+                    in: this.roles.map(role =>
+                        this.roleUtil.serializeName(role.name)
+                    ),
                 },
             },
-            withDeleted: true,
         });
 
         this.logger.log('Roles removed successfully.');

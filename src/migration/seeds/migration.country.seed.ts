@@ -1,7 +1,7 @@
 import { Command } from 'nestjs-command';
 import { Injectable, Logger } from '@nestjs/common';
-import { CountryRepository } from '@modules/country/repository/repositories/country.repository';
 import { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
+import { DatabaseService } from '@common/database/services/database.service';
 
 @Injectable()
 export class MigrationCountrySeed {
@@ -12,15 +12,13 @@ export class MigrationCountrySeed {
             name: 'Indonesia',
             alpha2Code: 'ID',
             alpha3Code: 'IDN',
-            fipsCode: 'ID',
-            numericCode: '360',
             phoneCode: ['62'],
             continent: 'Asia',
             timezone: 'Asia/Jakarta',
         },
     ];
 
-    constructor(private readonly countryRepository: CountryRepository) {}
+    constructor(private readonly databaseService: DatabaseService) {}
 
     @Command({
         command: 'seed:country',
@@ -29,23 +27,22 @@ export class MigrationCountrySeed {
     async seeds(): Promise<void> {
         this.logger.log('Seeding Countries...');
 
-        const existingCountries = await this.countryRepository.findMany({
+        const existingCountries = await this.databaseService.country.findMany({
             where: {
                 alpha2Code: {
                     in: this.countries.map(country => country.alpha2Code),
                 },
             },
             select: {
-                _id: true,
+                id: true,
             },
-            withDeleted: true,
         });
         if (existingCountries.length > 0) {
             this.logger.log('Countries already exist, skipping seed.');
             return;
         }
 
-        await this.countryRepository.createMany({
+        await this.databaseService.country.createMany({
             data: this.countries,
         });
 
@@ -61,13 +58,12 @@ export class MigrationCountrySeed {
     async remove(): Promise<void> {
         this.logger.log('Removing Countries...');
 
-        await this.countryRepository.deleteMany({
+        await this.databaseService.country.deleteMany({
             where: {
                 alpha2Code: {
                     in: this.countries.map(country => country.alpha2Code),
                 },
             },
-            withDeleted: true,
         });
 
         this.logger.log('Countries removed successfully.');

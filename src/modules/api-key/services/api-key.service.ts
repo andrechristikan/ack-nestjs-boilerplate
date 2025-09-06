@@ -25,6 +25,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { ApiKey } from '@prisma/client';
 import { PaginationService } from '@common/pagination/services/pagination.service';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -48,6 +49,9 @@ export class ApiKeyService implements IApiKeyService {
                     ...where,
                     ...isActive,
                     ...type,
+                },
+                orderBy: {
+                    createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
                 },
             }
         );
@@ -77,7 +81,7 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async create({
-        description,
+        name,
         type,
         startDate,
         endDate,
@@ -88,7 +92,7 @@ export class ApiKeyService implements IApiKeyService {
 
         const created = await this.databaseService.apiKey.create({
             data: {
-                description,
+                name,
                 key,
                 hash,
                 isActive: true,
@@ -198,7 +202,7 @@ export class ApiKeyService implements IApiKeyService {
 
     async update(
         id: string,
-        { description }: ApiKeyUpdateRequestDto
+        { name }: ApiKeyUpdateRequestDto
     ): Promise<ApiKeyResponseDto> {
         const apiKey = await this.databaseService.apiKey.findUnique({
             where: { id },
@@ -225,7 +229,7 @@ export class ApiKeyService implements IApiKeyService {
                 where: { id },
 
                 data: {
-                    description,
+                    name,
                 },
             }),
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
@@ -379,6 +383,8 @@ export class ApiKeyService implements IApiKeyService {
                 message: 'apiKey.error.xApiKey.invalid',
             });
         }
+
+        // TODO: LATEST USED, IP ADDRESS
 
         return apiKey;
     }

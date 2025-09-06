@@ -11,5 +11,5 @@ export class ApiKeyUpdateRequestDto {
     @IsOptional()
     @IsString()
     @MaxLength(100)
-    description?: string;
+    name?: string;
 }

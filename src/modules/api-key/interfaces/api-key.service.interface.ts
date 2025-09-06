@@ -21,7 +21,7 @@ export interface IApiKeyService {
     ): Promise<IResponsePagingReturn<ApiKeyResponseDto>>;
     findOneActiveByKeyAndCache(key: string): Promise<ApiKey | undefined>;
     create({
-        description,
+        name,
         type,
         startDate,
         endDate,
@@ -30,7 +30,7 @@ export interface IApiKeyService {
     inactive(id: string): Promise<ApiKeyResponseDto>;
     update(
         id: string,
-        { description }: ApiKeyUpdateRequestDto
+        { name }: ApiKeyUpdateRequestDto
     ): Promise<ApiKeyResponseDto>;
     updateDate(
         id: string,

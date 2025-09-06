@@ -54,32 +54,6 @@ export class CountryRequestDto {
 
     @ApiProperty({
         required: true,
-        description: 'Country code, Numeric code version',
-        example: faker.location.countryCode('numeric'),
-        maxLength: 3,
-        minLength: 1,
-    })
-    @IsNotEmpty()
-    @IsString()
-    @MaxLength(3)
-    @MinLength(1)
-    numericCode: string;
-
-    @ApiProperty({
-        required: true,
-        description: 'Country code, FIPS version',
-        example: faker.location.countryCode('alpha-2'),
-        maxLength: 2,
-        minLength: 2,
-    })
-    @IsNotEmpty()
-    @IsString()
-    @MaxLength(2)
-    @MinLength(2)
-    fipsCode: string;
-
-    @ApiProperty({
-        required: true,
         description: 'Country phone code',
         example: [faker.helpers.arrayElement(['62', '65'])],
         maxLength: 4,
