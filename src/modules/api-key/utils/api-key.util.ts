@@ -1,14 +1,13 @@
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { HelperService } from '@common/helper/services/helper.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
-import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { ApiKey, ENUM_API_KEY_TYPE } from '@prisma/client';
+import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 
 @Injectable()
 export class ApiKeyUtil {
@@ -28,15 +27,15 @@ export class ApiKeyUtil {
         this.header = this.configService.get<string>('auth.xApiKey.header');
     }
 
-    mapList(apiKeys: ApiKey[]): ApiKeyResponseDto[] {
-        return plainToInstance(ApiKeyResponseDto, apiKeys);
+    mapList(apiKeys: ApiKey[]): ApiKeyDto[] {
+        return plainToInstance(ApiKeyDto, apiKeys);
     }
 
-    mapOne(apiKey: ApiKey): ApiKeyResponseDto {
-        return plainToInstance(ApiKeyResponseDto, apiKey);
+    mapOne(apiKey: ApiKey): ApiKeyDto {
+        return plainToInstance(ApiKeyDto, apiKey);
     }
 
-    async getCacheByKey(key: string): Promise<ApiKey | null | undefined> {
+    async getCacheByKey(key: string): Promise<ApiKey | null> {
         const cacheKey = `${this.keyPrefix}:${key}`;
         const cachedApiKey = await this.cacheManager.get<string>(cacheKey);
         if (cachedApiKey) {
@@ -60,21 +59,6 @@ export class ApiKeyUtil {
         return;
     }
 
-    validateXApiKeyType(
-        request: IRequestApp,
-        allowed: ENUM_API_KEY_TYPE[]
-    ): ApiKey {
-        const { __apiKey } = request;
-        if (this.validateType(__apiKey, allowed)) {
-            throw new ForbiddenException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
-                message: 'apiKey.error.xApiKey.forbidden',
-            });
-        }
-
-        return __apiKey;
-    }
-
     createKey(key?: string): string {
         const random: string = this.helperService.randomString(25);
         return `${this.env}_${key ?? random}`;
@@ -88,7 +72,11 @@ export class ApiKeyUtil {
         return this.helperService.randomString(50);
     }
 
-    validateCredential(key: string, secret: string, apiKey: ApiKey): boolean {
+    validateCredential(
+        key: string,
+        secret: string,
+        apiKey: { hash: string }
+    ): boolean {
         if (!apiKey) {
             return false;
         }

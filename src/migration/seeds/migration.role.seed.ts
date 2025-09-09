@@ -3,11 +3,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import {
     ENUM_POLICY_ACTION,
-    ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
 } from '@modules/policy/enums/policy.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
+import { ENUM_ROLE_TYPE } from '@prisma/client';
 
 @Injectable()
 export class MigrationRoleSeed {
@@ -18,7 +18,7 @@ export class MigrationRoleSeed {
             name: 'superadmin',
             description: 'Super Admin Role',
             abilities: [],
-            type: ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN,
+            type: ENUM_ROLE_TYPE.SUPER_ADMIN,
         },
         {
             name: 'admin',
@@ -27,13 +27,13 @@ export class MigrationRoleSeed {
                 subject: role,
                 action: Object.values(ENUM_POLICY_ACTION),
             })),
-            type: ENUM_POLICY_ROLE_TYPE.ADMIN,
+            type: ENUM_ROLE_TYPE.ADMIN,
         },
         {
             name: 'user',
             description: 'User Role',
             abilities: [],
-            type: ENUM_POLICY_ROLE_TYPE.USER,
+            type: ENUM_ROLE_TYPE.USER,
         },
     ];
 

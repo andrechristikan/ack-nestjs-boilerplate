@@ -1,0 +1,57 @@
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
+import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
+import {
+    ForbiddenException,
+    Injectable,
+    InternalServerErrorException,
+} from '@nestjs/common';
+import { ENUM_ROLE_TYPE } from '@prisma/client';
+
+@Injectable()
+export class PolicyService implements IPolicyService {
+    constructor(private readonly policyAbilityFactory: PolicyAbilityFactory) {}
+
+    async validateAbility(
+        request: IRequestApp,
+        abilities: RoleAbilityRequestDto[]
+    ): Promise<boolean> {
+        const { __user, user, __abilities } = request;
+
+        if (!__user || !user) {
+            throw new ForbiddenException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        }
+
+        const { type } = user;
+
+        if (type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
+            return true;
+        } else if (abilities.length === 0) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.PREDEFINED_NOT_FOUND,
+                message: 'policy.error.predefinedNotFound',
+            });
+        }
+
+        const userAbilities =
+            this.policyAbilityFactory.createForUser(__abilities);
+        const policyHandler = this.policyAbilityFactory.handlerAbilities(
+            userAbilities,
+            abilities
+        );
+        if (!policyHandler) {
+            throw new ForbiddenException({
+                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.FORBIDDEN,
+                message: 'policy.error.forbidden',
+            });
+        }
+
+        return true;
+    }
+}

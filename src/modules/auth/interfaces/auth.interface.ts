@@ -1,5 +1,8 @@
-import { ENUM_AUTH_LOGIN_FROM } from '@modules/auth/enums/auth.enum';
-import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
+import {
+    ENUM_ROLE_TYPE,
+    ENUM_USER_LOGIN_FROM,
+    ENUM_USER_SIGN_UP_WITH,
+} from '@prisma/client';
 
 export interface IAuthPassword {
     salt: string;
@@ -25,16 +28,15 @@ export interface IAuthJwtVerificationPayload {
 }
 
 export interface IAuthJwtAccessTokenPayload {
-    loginDate: Date;
-    loginFrom: ENUM_AUTH_LOGIN_FROM;
+    loginAt: Date;
+    loginFrom: ENUM_USER_LOGIN_FROM;
+    loginWith: ENUM_USER_SIGN_UP_WITH;
     email: string;
     username: string;
     userId: string;
     sessionId: string;
     roleId: string;
-    type: ENUM_POLICY_ROLE_TYPE;
-    termPolicy: IAuthJwtTermPolicyPayload;
-    verification: IAuthJwtVerificationPayload;
+    type: ENUM_ROLE_TYPE;
     iat?: number;
     nbf?: number;
     exp?: number;

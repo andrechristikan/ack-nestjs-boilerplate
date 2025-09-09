@@ -1,5 +1,4 @@
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { ENUM_AUTH_LOGIN_FROM } from '@modules/auth/enums/auth.enum';
 import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
@@ -7,6 +6,12 @@ import {
     IAuthPasswordOptions,
     IAuthSocialPayload,
 } from '@modules/auth/interfaces/auth.interface';
+import { IUser } from '@modules/user/interfaces/user.interface';
+import {
+    ENUM_USER_LOGIN_FROM,
+    ENUM_USER_SIGN_UP_WITH,
+    User,
+} from '@prisma/client';
 
 export interface IAuthService {
     createAccessToken(
@@ -21,21 +26,21 @@ export interface IAuthService {
     validateRefreshToken(subject: string, token: string): boolean;
     payloadToken<T>(token: string): T;
     createPayloadAccessToken(
-        data: any, // TODO: CHANGE WITH USER DOC INTERFACE
+        data: IUser,
         sessionId: string,
-        loginDate: Date,
-        loginFrom: ENUM_AUTH_LOGIN_FROM
+        loginAt: Date,
+        loginFrom: ENUM_USER_LOGIN_FROM,
+        loginWith: ENUM_USER_SIGN_UP_WITH
     ): IAuthJwtAccessTokenPayload;
     createPayloadRefreshToken({
         sessionId,
         userId,
         loginFrom,
-        loginDate,
+        loginAt,
+        loginWith,
     }: IAuthJwtAccessTokenPayload): IAuthJwtRefreshTokenPayload;
     validatePassword(passwordString: string, passwordHash: string): boolean;
-    checkPasswordAttempt(
-        user: any // TODO: CHANGE WITH USER DOC INTERFACE
-    ): boolean;
+    checkPasswordAttempt(data: User): boolean;
     createPassword(
         password: string,
         options?: IAuthPasswordOptions
@@ -43,11 +48,13 @@ export interface IAuthService {
     createPasswordRandom(): string;
     checkPasswordExpired(passwordExpired: Date): boolean;
     createTokens(
-        user: any, // TODO: CHANGE WITH USER DOC INTERFACE
-        sessionId: string
+        data: IUser,
+        sessionId: string,
+        loginFrom: ENUM_USER_LOGIN_FROM,
+        loginWith: ENUM_USER_SIGN_UP_WITH
     ): AuthTokenResponseDto;
     refreshToken(
-        user: any, // TODO: CHANGE WITH USER DOC INTERFACE
+        data: IUser,
         refreshTokenFromRequest: string
     ): AuthTokenResponseDto;
     appleGetTokenInfo(token: string): Promise<IAuthSocialPayload>;

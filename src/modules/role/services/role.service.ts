@@ -4,20 +4,25 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
+import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
+import { RoleDto } from '@modules/role/dtos/role.dto';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { IRoleService } from '@modules/role/interfaces/role.service.interface';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import {
     ConflictException,
+    ForbiddenException,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { ENUM_ROLE_TYPE, Role } from '@prisma/client';
 
 @Injectable()
 export class RoleService implements IRoleService {
@@ -50,7 +55,7 @@ export class RoleService implements IRoleService {
         };
     }
 
-    async getOne(id: string): Promise<RoleResponseDto> {
+    async getOne(id: string): Promise<RoleDto> {
         const role = await this.databaseService.role.findUnique({
             where: { id },
         });
@@ -64,7 +69,7 @@ export class RoleService implements IRoleService {
         return this.roleUtil.mapOne(role);
     }
 
-    async create(data: RoleCreateRequestDto): Promise<RoleResponseDto> {
+    async create(data: RoleCreateRequestDto): Promise<RoleDto> {
         const { name, ...others } = this.roleUtil.serializeCreateDto(data);
         const exist = await this.databaseService.role.findFirst({
             where: { name },
@@ -80,14 +85,11 @@ export class RoleService implements IRoleService {
             data: { name, ...others },
         });
 
-        const mapRole: RoleResponseDto = this.roleUtil.mapOne(create);
+        const mapRole: RoleDto = this.roleUtil.mapOne(create);
         return mapRole;
     }
 
-    async update(
-        id: string,
-        data: RoleUpdateRequestDto
-    ): Promise<RoleResponseDto> {
+    async update(id: string, data: RoleUpdateRequestDto): Promise<RoleDto> {
         const role = await this.databaseService.role.findUnique({
             where: { id },
         });
@@ -110,6 +112,7 @@ export class RoleService implements IRoleService {
     async delete(id: string): Promise<void> {
         const role = await this.databaseService.role.findUnique({
             where: { id },
+            select: { id: true },
         });
         if (!role) {
             throw new NotFoundException({
@@ -118,12 +121,52 @@ export class RoleService implements IRoleService {
             });
         }
 
-        // TODO: CHECK IF ROLE IS USED IN USER
+        const roleUsed = await this.databaseService.user.findFirst({
+            where: { roleId: id },
+            select: { id: true },
+        });
+        if (roleUsed) {
+            throw new ConflictException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.USED,
+                message: 'role.error.used',
+            });
+        }
 
         await this.databaseService.role.delete({
             where: { id },
         });
 
         return;
+    }
+
+    async validateRoleGuard(
+        request: IRequestApp,
+        roles: ENUM_ROLE_TYPE[]
+    ): Promise<RoleAbilityDto[]> {
+        const { __user, user } = request;
+        if (!__user || !user) {
+            throw new ForbiddenException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        }
+
+        const { type } = user;
+
+        if (type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
+            return [];
+        } else if (roles.length === 0) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.PREDEFINED_NOT_FOUND,
+                message: 'role.error.predefinedNotFound',
+            });
+        } else if (!roles.includes(type)) {
+            throw new ForbiddenException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.FORBIDDEN,
+                message: 'role.error.forbidden',
+            });
+        }
+
+        return this.roleUtil.mapOne(__user.role).abilities;
     }
 }

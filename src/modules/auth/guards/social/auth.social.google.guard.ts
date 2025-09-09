@@ -34,6 +34,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
      * @throws UnauthorizedException - When token is missing, malformed, or invalid
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
+        // TODO: MOVE LOGIC TO SERVICE
         const request = context
             .switchToHttp()
             .getRequest<IRequestApp<IAuthSocialPayload>>();

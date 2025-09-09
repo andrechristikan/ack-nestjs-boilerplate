@@ -9,7 +9,7 @@ import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import { RoleDocParamsId } from '@modules/role/constants/role.doc.constant';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
-import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
+import { RoleDto } from '@modules/role/dtos/role.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function RoleAdminCreateDoc(): MethodDecorator {
@@ -26,9 +26,9 @@ export function RoleAdminCreateDoc(): MethodDecorator {
             dto: RoleCreateRequestDto,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponse<RoleResponseDto>('role.create', {
+        DocResponse<RoleDto>('role.create', {
             httpStatus: HttpStatus.CREATED,
-            dto: RoleResponseDto,
+            dto: RoleDto,
         })
     );
 }
@@ -48,8 +48,8 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponse<RoleResponseDto>('role.update', {
-            dto: RoleResponseDto,
+        DocResponse<RoleDto>('role.update', {
+            dto: RoleDto,
         })
     );
 }

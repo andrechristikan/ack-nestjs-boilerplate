@@ -22,3 +22,9 @@ export type IFileUploadMultipleFieldOptions = Pick<
 >;
 
 export type IFileInput = IFile | IFile[];
+
+export interface IFileRandomFilenameOptions {
+    prefix?: string;
+    mime: string;
+    randomLength?: number;
+}

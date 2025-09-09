@@ -4,7 +4,7 @@ import {
     ENUM_POLICY_SUBJECT,
 } from '@modules/policy/enums/policy.enum';
 
-export class RoleAbilityResponseDto {
+export class RoleAbilityDto {
     @ApiProperty({
         required: true,
         description: 'Ability subject',

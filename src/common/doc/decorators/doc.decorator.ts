@@ -26,17 +26,20 @@ import {
     IDocResponsePagingOptions,
 } from '@common/doc/interfaces/doc.interface';
 import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
 import { ResponseDto } from '@common/response/dtos/response.dto';
 import { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
 import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
-import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import {
+    DOC_CONTENT_TYPE_MAPPING,
+    DOC_PAGINATION_QUERIES,
+    DOC_STANDARD_ERROR_RESPONSES,
+} from '@common/doc/constants/doc.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 
 /**
  * Helper function to create a schema object with consistent structure.
@@ -68,50 +71,6 @@ function createSchemaObject(doc: IDocOfOptions): SchemaObject {
 
     return schema;
 }
-
-const CONTENT_TYPE_MAPPING = {
-    [ENUM_DOC_REQUEST_BODY_TYPE.FORM_DATA]: 'multipart/form-data',
-    [ENUM_DOC_REQUEST_BODY_TYPE.TEXT]: 'text/plain',
-    [ENUM_DOC_REQUEST_BODY_TYPE.JSON]: 'application/json',
-    [ENUM_DOC_REQUEST_BODY_TYPE.FORM_URLENCODED]: 'x-www-form-urlencoded',
-} as const;
-
-const STANDARD_ERROR_RESPONSES = {
-    INTERNAL_SERVER_ERROR: DocDefault({
-        httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-        messagePath: 'http.serverError.internalServerError',
-        statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
-    }),
-    REQUEST_TIMEOUT: DocDefault({
-        httpStatus: HttpStatus.REQUEST_TIMEOUT,
-        messagePath: 'http.serverError.requestTimeout',
-        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT,
-    }),
-    VALIDATION_ERROR: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
-        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
-        messagePath: 'request.error.validation',
-    }),
-} as const;
-
-const PAGINATION_QUERIES = [
-    {
-        name: 'perPage',
-        required: false,
-        allowEmptyValue: true,
-        example: 20,
-        type: 'number',
-        description: 'Data per page, max 100',
-    },
-    {
-        name: 'page',
-        required: false,
-        allowEmptyValue: true,
-        example: 1,
-        type: 'number',
-        description: 'page number, max 20',
-    },
-] as const;
 
 /**
  * Creates a default API documentation decorator with a standard response schema.
@@ -293,8 +252,8 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 },
             },
         ]),
-        STANDARD_ERROR_RESPONSES.INTERNAL_SERVER_ERROR,
-        STANDARD_ERROR_RESPONSES.REQUEST_TIMEOUT
+        DOC_STANDARD_ERROR_RESPONSES.INTERNAL_SERVER_ERROR,
+        DOC_STANDARD_ERROR_RESPONSES.REQUEST_TIMEOUT
     );
 }
 
@@ -307,14 +266,14 @@ export function Doc(options?: IDocOptions): MethodDecorator {
 export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
 
-    if (options?.bodyType && options.bodyType in CONTENT_TYPE_MAPPING) {
-        docs.push(ApiConsumes(CONTENT_TYPE_MAPPING[options.bodyType]));
+    if (options?.bodyType && options.bodyType in DOC_CONTENT_TYPE_MAPPING) {
+        docs.push(ApiConsumes(DOC_CONTENT_TYPE_MAPPING[options.bodyType]));
     } else {
         docs.push(ApiConsumes('none'));
     }
 
     if (options?.bodyType) {
-        docs.push(STANDARD_ERROR_RESPONSES.VALIDATION_ERROR);
+        docs.push(DOC_STANDARD_ERROR_RESPONSES.VALIDATION_ERROR);
     }
 
     if (options?.params?.length) {
@@ -372,15 +331,15 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
         {
             condition: options?.role,
             error: {
-                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ROLE_FORBIDDEN,
-                messagePath: 'policy.error.roleForbidden',
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.FORBIDDEN,
+                messagePath: 'role.error.forbidden',
             },
         },
         {
             condition: options?.policy,
             error: {
-                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ABILITY_FORBIDDEN,
-                messagePath: 'policy.error.abilityForbidden',
+                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.FORBIDDEN,
+                messagePath: 'policy.error.forbidden',
             },
         },
         {
@@ -563,7 +522,7 @@ export function DocResponsePaging<T>(
 ): MethodDecorator {
     const docs = [
         ApiProduces('application/json'),
-        ...PAGINATION_QUERIES.map(query => ApiQuery(query)),
+        ...DOC_PAGINATION_QUERIES.map(query => ApiQuery(query)),
         ApiExtraModels(ResponsePagingDto),
         ApiExtraModels(options.dto),
         ApiResponse({

@@ -43,7 +43,6 @@
         "db:format": "prisma format"
     },
     "dependencies": {
-        "@aws-sdk/client-pinpoint": "^3.835.0",
         "@aws-sdk/client-s3": "^3.837.0",
         "@aws-sdk/client-ses": "^3.835.0",
         "@aws-sdk/s3-request-presigner": "^3.837.0",

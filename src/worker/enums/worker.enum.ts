@@ -1,6 +1,6 @@
 export enum ENUM_WORKER_QUEUES {
-    EMAIL_QUEUE = 'EMAIL_QUEUE',
-    SMS_QUEUE = 'SMS_QUEUE',
+    EMAIL = 'email',
+    SMS = 'sms',
 }
 
 export enum ENUM_WORKER_PRIORITY {

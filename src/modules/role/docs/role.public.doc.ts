@@ -10,7 +10,7 @@ import {
     RoleDocQueryList,
 } from '@modules/role/constants/role.doc.constant';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
+import { RoleDto } from '@modules/role/dtos/role.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function RolePublicListDoc(): MethodDecorator {
@@ -41,8 +41,8 @@ export function RolePublicGetDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
-        DocResponse<RoleResponseDto>('role.get', {
-            dto: RoleResponseDto,
+        DocResponse<RoleDto>('role.get', {
+            dto: RoleDto,
         })
     );
 }

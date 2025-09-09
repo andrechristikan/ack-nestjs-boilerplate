@@ -10,13 +10,18 @@ import {
     IAuthPasswordOptions,
     IAuthSocialPayload,
 } from '@modules/auth/interfaces/auth.interface';
-import { ENUM_AUTH_LOGIN_FROM } from '@modules/auth/enums/auth.enum';
 import { readFileSync } from 'fs';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { join } from 'path';
 import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
 import { HelperService } from '@common/helper/services/helper.service';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { IUser } from '@modules/user/interfaces/user.interface';
+import {
+    ENUM_USER_LOGIN_FROM,
+    ENUM_USER_SIGN_UP_WITH,
+    User,
+} from '@prisma/client';
 
 /**
  * Authentication service providing JWT token management, password operations,
@@ -250,15 +255,16 @@ export class AuthService implements IAuthService {
      * Creates the payload for an access token from user data and login information.
      * @param data The user data containing profile and role information
      * @param sessionId The unique session identifier
-     * @param loginDate The date and time of login
+     * @param loginAt The date and time of login
      * @param loginFrom The source of the login (credential, social, etc.)
      * @returns The formatted access token payload
      */
     createPayloadAccessToken(
-        data: any, // TODO: CHANGE WITH USER DOC INTERFACE
+        data: IUser,
         sessionId: string,
-        loginDate: Date,
-        loginFrom: ENUM_AUTH_LOGIN_FROM
+        loginAt: Date,
+        loginFrom: ENUM_USER_LOGIN_FROM,
+        loginWith: ENUM_USER_SIGN_UP_WITH
     ): IAuthJwtAccessTokenPayload {
         return {
             userId: data.id,
@@ -267,18 +273,9 @@ export class AuthService implements IAuthService {
             username: data.username,
             email: data.email,
             sessionId,
-            termPolicy: {
-                term: data.termPolicy.term,
-                privacy: data.termPolicy.privacy,
-                marketing: data.termPolicy.marketing,
-                cookies: data.termPolicy.cookies,
-            },
-            verification: {
-                email: data.verification.email,
-                mobileNumber: data.verification.mobileNumber,
-            },
-            loginDate,
+            loginAt,
             loginFrom,
+            loginWith,
         };
     }
 
@@ -291,11 +288,13 @@ export class AuthService implements IAuthService {
         sessionId,
         userId,
         loginFrom,
-        loginDate,
+        loginAt,
+        loginWith,
     }: IAuthJwtAccessTokenPayload): IAuthJwtRefreshTokenPayload {
         return {
-            loginDate,
+            loginAt,
             loginFrom,
+            loginWith,
             sessionId,
             userId,
         };
@@ -316,9 +315,7 @@ export class AuthService implements IAuthService {
      * @param user The user object containing password attempt information
      * @returns True if password attempts exceeded limit, false otherwise
      */
-    checkPasswordAttempt(
-        user: any // TODO: CHANGE WITH USER DOC INTERFACE
-    ): boolean {
+    checkPasswordAttempt(user: User): boolean {
         return this.passwordAttempt
             ? user.passwordAttempt > this.passwordMaxAttempt
             : false;
@@ -378,11 +375,15 @@ export class AuthService implements IAuthService {
      * Creates both access and refresh tokens for a user session.
      * @param user The user object containing profile and role information
      * @param sessionId The unique session identifier
+     * @param loginFrom The source of the login (credential, social, etc.)
+     * @param loginWith The method used for sign-up (email, google, apple, etc.)
      * @returns Token response object containing access token, refresh token, and metadata
      */
     createTokens(
-        user: any, // TODO: CHANGE WITH USER DOC INTERFACE
-        sessionId: string
+        user: IUser,
+        sessionId: string,
+        loginFrom: ENUM_USER_LOGIN_FROM,
+        loginWith: ENUM_USER_SIGN_UP_WITH
     ): AuthTokenResponseDto {
         const loginDate = this.helperService.dateCreate();
         const roleType = user.role.type;
@@ -392,7 +393,8 @@ export class AuthService implements IAuthService {
                 user,
                 sessionId,
                 loginDate,
-                ENUM_AUTH_LOGIN_FROM.CREDENTIAL
+                loginFrom,
+                loginWith
             );
         const accessToken: string = this.createAccessToken(
             user.id,
@@ -422,7 +424,7 @@ export class AuthService implements IAuthService {
      * @returns Token response object containing new access token and existing refresh token
      */
     refreshToken(
-        user: any, // TODO: CHANGE WITH USER DOC INTERFACE
+        user: IUser,
         refreshTokenFromRequest: string
     ): AuthTokenResponseDto {
         const roleType = user.role.type;
@@ -436,8 +438,9 @@ export class AuthService implements IAuthService {
             this.createPayloadAccessToken(
                 user,
                 payloadRefreshToken.sessionId,
-                payloadRefreshToken.loginDate,
-                payloadRefreshToken.loginFrom
+                payloadRefreshToken.loginAt,
+                payloadRefreshToken.loginFrom,
+                payloadRefreshToken.loginWith
             );
         const accessToken: string = this.createAccessToken(
             user.id,

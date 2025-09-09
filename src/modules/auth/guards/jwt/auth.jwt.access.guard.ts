@@ -28,6 +28,7 @@ export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
         user: T,
         info: Error
     ): T {
+        // TODO: MOVE LOGIC TO SERVICE
         if (err || !user) {
             throw new UnauthorizedException({
                 statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,

@@ -1,7 +1,7 @@
-import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
+import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { ApiProperty, PickType } from '@nestjs/swagger';
 
-export class ApiKeyCreateResponseDto extends PickType(ApiKeyResponseDto, [
+export class ApiKeyCreateResponseDto extends PickType(ApiKeyDto, [
     'key',
     'id',
 ] as const) {

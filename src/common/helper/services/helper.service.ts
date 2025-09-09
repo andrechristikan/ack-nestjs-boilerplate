@@ -251,13 +251,8 @@ export class HelperService implements IHelperService {
         const characters =
             'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-        let counter = 0;
-        while (counter < length) {
-            result += characters.charAt(
-                Math.floor(Math.random() * characters.length)
-            );
-
-            counter += 1;
+        for (let i = 0; i < length; i++) {
+            result += characters[Math.floor(Math.random() * characters.length)];
         }
 
         return result;

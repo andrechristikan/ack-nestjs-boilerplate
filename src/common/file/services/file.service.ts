@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { IFileService } from '@common/file/interfaces/file.service.interface';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
 import { read, utils, write } from 'xlsx';
-import { IFileSheet } from '@common/file/interfaces/file.interface';
+import {
+    IFileRandomFilenameOptions,
+    IFileSheet,
+} from '@common/file/interfaces/file.interface';
+import { HelperService } from '@common/helper/services/helper.service';
 
 /**
  * Service for handling file operations including CSV and Excel file creation and reading.
@@ -10,6 +14,8 @@ import { IFileSheet } from '@common/file/interfaces/file.interface';
  */
 @Injectable()
 export class FileService implements IFileService {
+    constructor(private readonly helperService: HelperService) {}
+
     /**
      * Writes data to CSV format using semicolon as field separator.
      * Converts JSON data to CSV buffer for download or storage.
@@ -152,5 +158,32 @@ export class FileService implements IFileService {
         }
 
         return sheets;
+    }
+
+    /**
+     * Generates a random filename with specified prefix and MIME type extension.
+     * Creates a unique filename by combining a prefix, random string, and file extension derived from MIME type.
+     * Automatically removes leading slash if present to ensure proper path formatting.
+     * @param {IFileRandomFilenameOptions} options - Configuration options for filename generation
+     * @param {string} options.prefix - Directory prefix or path to prepend to the filename
+     * @param {string} options.mime - MIME type used to determine file extension (e.g., 'image/jpeg', 'text/csv')
+     * @param {number} [options.randomLength=10] - Length of the random string portion (defaults to 10 characters)
+     * @returns {string} Generated filename in format: 'prefix/randomString.extension'
+     */
+    createRandomFilename({
+        prefix,
+        mime,
+        randomLength,
+    }: IFileRandomFilenameOptions): string {
+        const randomPath = this.helperService.randomString(randomLength ?? 10);
+        const extension = mime.split('/')[1];
+
+        let path: string = `${prefix}/${randomPath}.${extension.toLowerCase()}`;
+
+        if (path.startsWith('/')) {
+            path = path.replace('/', '');
+        }
+
+        return path;
     }
 }

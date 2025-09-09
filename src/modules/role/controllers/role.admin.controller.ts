@@ -6,13 +6,9 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     ENUM_POLICY_ACTION,
-    ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
 } from '@modules/policy/enums/policy.enum';
-import {
-    PolicyAbilityProtected,
-    PolicyRoleProtected,
-} from '@modules/policy/decorators/policy.decorator';
+import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleService } from '@modules/role/services/role.service';
 import {
     RoleAdminCreateDoc,
@@ -20,10 +16,13 @@ import {
     RoleAdminUpdateDoc,
 } from '@modules/role/docs/role.admin.doc';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
+import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { RoleDto } from '@modules/role/dtos/role.dto';
 
 @ApiTags('modules.admin.role')
 @Controller({
@@ -39,15 +38,15 @@ export class RoleAdminController {
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected(). // TODO: Resolve this
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Post('/create')
     async create(
         @Body()
         body: RoleCreateRequestDto
-    ): Promise<IResponseReturn<RoleResponseDto>> {
+    ): Promise<IResponseReturn<RoleDto>> {
         const data = await this.roleService.create(body);
 
         return {
@@ -61,8 +60,8 @@ export class RoleAdminController {
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected(). // TODO: Resolve this
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/:roleId')
@@ -71,7 +70,7 @@ export class RoleAdminController {
         roleId: string,
         @Body()
         body: RoleUpdateRequestDto
-    ): Promise<IResponseReturn<RoleResponseDto>> {
+    ): Promise<IResponseReturn<RoleDto>> {
         const data = await this.roleService.update(roleId, body);
 
         return {
@@ -79,15 +78,14 @@ export class RoleAdminController {
         };
     }
 
-    // TODO: RESOLVE THIS AFTER USER MODULE IS READY
     @RoleAdminDeleteDoc()
     @Response('role.delete')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected(). // TODO: Resolve this
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/delete/:roleId')

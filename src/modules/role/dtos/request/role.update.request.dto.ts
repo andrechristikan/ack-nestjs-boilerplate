@@ -10,8 +10,8 @@ import {
     ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
+import { ENUM_ROLE_TYPE } from '@prisma/client';
 
 export class RoleUpdateRequestDto {
     @ApiProperty({
@@ -27,13 +27,13 @@ export class RoleUpdateRequestDto {
 
     @ApiProperty({
         description: 'Representative for role type',
-        example: ENUM_POLICY_ROLE_TYPE.ADMIN,
+        example: ENUM_ROLE_TYPE.ADMIN,
         required: true,
-        enum: ENUM_POLICY_ROLE_TYPE,
+        enum: ENUM_ROLE_TYPE,
     })
-    @IsEnum(ENUM_POLICY_ROLE_TYPE)
+    @IsEnum(ENUM_ROLE_TYPE)
     @IsNotEmpty()
-    type: ENUM_POLICY_ROLE_TYPE;
+    type: ENUM_ROLE_TYPE;
 
     @ApiProperty({
         required: true,

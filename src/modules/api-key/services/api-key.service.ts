@@ -2,6 +2,7 @@ import {
     BadRequestException,
     ForbiddenException,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
@@ -19,13 +20,13 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
-import { ApiKey } from '@prisma/client';
+import { ApiKey, ENUM_API_KEY_TYPE } from '@prisma/client';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -40,7 +41,7 @@ export class ApiKeyService implements IApiKeyService {
         { where, ...params }: IPaginationQueryOffsetParams,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKeyResponseDto>> {
+    ): Promise<IResponsePagingReturn<ApiKeyDto>> {
         const { data, ...others } = await this.paginationService.offSet<ApiKey>(
             this.databaseService.apiKey,
             {
@@ -56,28 +57,12 @@ export class ApiKeyService implements IApiKeyService {
             }
         );
 
-        const apiKeys: ApiKeyResponseDto[] = this.apiKeyUtil.mapList(data);
+        const apiKeys: ApiKeyDto[] = this.apiKeyUtil.mapList(data);
 
         return {
             data: apiKeys,
             ...others,
         };
-    }
-
-    async findOneActiveByKeyAndCache(key: string): Promise<ApiKey | undefined> {
-        const cached = await this.apiKeyUtil.getCacheByKey(key);
-        if (cached) {
-            return cached;
-        }
-
-        const apiKey = await this.databaseService.apiKey.findFirst({
-            where: { key },
-        });
-        if (apiKey) {
-            await this.apiKeyUtil.setCacheByKey(key, apiKey);
-        }
-
-        return apiKey;
     }
 
     async create({
@@ -119,7 +104,7 @@ export class ApiKeyService implements IApiKeyService {
         return { id: created.id, key: created.key, secret };
     }
 
-    async active(id: string): Promise<ApiKeyResponseDto> {
+    async active(id: string): Promise<ApiKeyDto> {
         const today = this.helperService.dateCreate();
         const apiKey = await this.databaseService.apiKey.findUnique({
             where: { id },
@@ -166,7 +151,7 @@ export class ApiKeyService implements IApiKeyService {
         return this.apiKeyUtil.mapOne(updated);
     }
 
-    async inactive(id: string): Promise<ApiKeyResponseDto> {
+    async inactive(id: string): Promise<ApiKeyDto> {
         const apiKey = await this.databaseService.apiKey.findUnique({
             where: { id },
             select: {
@@ -203,7 +188,7 @@ export class ApiKeyService implements IApiKeyService {
     async update(
         id: string,
         { name }: ApiKeyUpdateRequestDto
-    ): Promise<ApiKeyResponseDto> {
+    ): Promise<ApiKeyDto> {
         const apiKey = await this.databaseService.apiKey.findUnique({
             where: { id },
             select: {
@@ -227,7 +212,6 @@ export class ApiKeyService implements IApiKeyService {
         const [updated] = await Promise.all([
             this.databaseService.apiKey.update({
                 where: { id },
-
                 data: {
                     name,
                 },
@@ -241,7 +225,7 @@ export class ApiKeyService implements IApiKeyService {
     async updateDate(
         id: string,
         { startDate, endDate }: ApiKeyUpdateDateRequestDto
-    ): Promise<ApiKeyResponseDto> {
+    ): Promise<ApiKeyDto> {
         const apiKey = await this.databaseService.apiKey.findUnique({
             where: { id },
             select: {
@@ -321,7 +305,7 @@ export class ApiKeyService implements IApiKeyService {
         return { id: updated.id, key: updated.key, secret };
     }
 
-    async delete(id: string): Promise<ApiKeyResponseDto> {
+    async delete(id: string): Promise<ApiKeyDto> {
         const apiKey = await this.databaseService.apiKey.findUnique({
             where: {
                 id,
@@ -350,7 +334,24 @@ export class ApiKeyService implements IApiKeyService {
         return this.apiKeyUtil.mapOne(deleted);
     }
 
-    async validateXApiKey(request: IRequestApp): Promise<ApiKey> {
+    async findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null> {
+        const cached = await this.apiKeyUtil.getCacheByKey(key);
+        if (cached) {
+            return cached;
+        }
+
+        const apiKey = await this.databaseService.apiKey.findFirst({
+            where: { key },
+        });
+
+        if (apiKey) {
+            await this.apiKeyUtil.setCacheByKey(key, apiKey);
+        }
+
+        return null;
+    }
+
+    async validateXApiKeyGuard(request: IRequestApp): Promise<ApiKey> {
         const xApiKey: string[] =
             this.apiKeyUtil.extractKeyFromRequest(request)?.split(':') ?? [];
         if (!xApiKey || xApiKey.length === 0) {
@@ -387,5 +388,28 @@ export class ApiKeyService implements IApiKeyService {
         // TODO: LATEST USED, IP ADDRESS
 
         return apiKey;
+    }
+
+    validateXApiKeyTypeGuard(
+        request: IRequestApp,
+        apiKeyTypes: ENUM_API_KEY_TYPE[]
+    ): boolean {
+        if (apiKeyTypes.length === 0) {
+            throw new InternalServerErrorException({
+                statusCode:
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_PREDEFINED_NOT_FOUND,
+                message: 'apiKey.error.xApiKey.predefinedNotFound',
+            });
+        }
+
+        const { __apiKey } = request;
+        if (this.apiKeyUtil.validateType(__apiKey, apiKeyTypes)) {
+            throw new ForbiddenException({
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
+                message: 'apiKey.error.xApiKey.forbidden',
+            });
+        }
+
+        return true;
     }
 }

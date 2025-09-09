@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
+import { ENUM_ROLE_TYPE } from '@prisma/client';
 
 /**
  * Response DTO for authentication token containing token information and user role
@@ -12,12 +12,12 @@ export class AuthTokenResponseDto {
     tokenType: string;
 
     @ApiProperty({
-        example: ENUM_POLICY_ROLE_TYPE.USER,
-        enum: ENUM_POLICY_ROLE_TYPE,
+        example: ENUM_ROLE_TYPE.USER,
+        enum: ENUM_ROLE_TYPE,
         type: String,
         required: true,
     })
-    roleType: ENUM_POLICY_ROLE_TYPE;
+    roleType: ENUM_ROLE_TYPE;
 
     @ApiProperty({
         example: 3600,

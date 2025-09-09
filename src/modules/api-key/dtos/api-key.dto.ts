@@ -4,7 +4,7 @@ import { Exclude } from 'class-transformer';
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { ENUM_API_KEY_TYPE } from '@prisma/client';
 
-export class ApiKeyResponseDto extends DatabaseDto {
+export class ApiKeyDto extends DatabaseDto {
     @ApiHideProperty()
     @Exclude()
     hash: string;

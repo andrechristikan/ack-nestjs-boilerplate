@@ -28,7 +28,6 @@ import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-ke
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
-import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 import {
     ApiKeyAdminActiveDoc,
     ApiKeyAdminCreateDoc,
@@ -51,16 +50,15 @@ import {
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     ENUM_POLICY_ACTION,
-    ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
 } from '@modules/policy/enums/policy.enum';
-import {
-    PolicyAbilityProtected,
-    PolicyRoleProtected,
-} from '@modules/policy/decorators/policy.decorator';
+import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { ENUM_API_KEY_TYPE } from '@prisma/client';
+import { ENUM_API_KEY_TYPE, ENUM_ROLE_TYPE } from '@prisma/client';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
+import { RoleProtected } from '@modules/role/decorators/role.decorator';
 
 @ApiTags('modules.admin.apiKey')
 @Controller({
@@ -76,8 +74,8 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected() // TODO: Resolve this
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -93,8 +91,8 @@ export class ApiKeyAdminController {
             API_KEY_DEFAULT_TYPE
         )
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKeyResponseDto>> {
-        const results: IResponsePagingReturn<ApiKeyResponseDto> =
+    ): Promise<IResponsePagingReturn<ApiKeyDto>> {
+        const results: IResponsePagingReturn<ApiKeyDto> =
             await this.apiKeyService.getList(pagination, isActive, type);
 
         return results;
@@ -106,8 +104,8 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected() // TODO: Resolve this
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Post('/create')
@@ -128,8 +126,8 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected() // TODO: Resolve this
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/update/:apiKeyId/reset')
@@ -151,8 +149,8 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected() // TODO: Resolve this
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/:apiKeyId')
@@ -160,7 +158,7 @@ export class ApiKeyAdminController {
         @Body() body: ApiKeyUpdateRequestDto,
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    ): Promise<IResponseReturn<ApiKeyDto>> {
         const updated = await this.apiKeyService.update(apiKeyId, body);
 
         return {
@@ -174,8 +172,8 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected() // TODO: Resolve this
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/:apiKeyId/date')
@@ -183,7 +181,7 @@ export class ApiKeyAdminController {
         @Body() body: ApiKeyUpdateDateRequestDto,
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    ): Promise<IResponseReturn<ApiKeyDto>> {
         const updated = await this.apiKeyService.updateDate(apiKeyId, body);
 
         return {
@@ -197,15 +195,15 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected() // TODO: Resolve this
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/update/:apiKeyId/inactive')
     async inactive(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    ): Promise<IResponseReturn<ApiKeyDto>> {
         const updated = await this.apiKeyService.inactive(apiKeyId);
 
         return {
@@ -219,15 +217,15 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected() // TODO: Resolve this
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/update/:apiKeyId/active')
     async active(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    ): Promise<IResponseReturn<ApiKeyDto>> {
         const updated = await this.apiKeyService.active(apiKeyId);
 
         return {
@@ -241,15 +239,15 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    // @UserProtected() // TODO: Resolve this
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/delete/:apiKeyId')
     async delete(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    ): Promise<IResponseReturn<ApiKeyDto>> {
         const deleted = await this.apiKeyService.delete(apiKeyId);
 
         return {

@@ -17,7 +17,6 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 import {
     ROLE_DEFAULT_AVAILABLE_SEARCH,
     ROLE_DEFAULT_ROLE_TYPE,
@@ -27,10 +26,11 @@ import {
     RolePublicListDoc,
 } from '@modules/role/docs/role.public.doc';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleResponseDto } from '@modules/role/dtos/response/role.response.dto';
+import { RoleDto } from '@modules/role/dtos/role.dto';
 import { RoleService } from '@modules/role/services/role.service';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ENUM_ROLE_TYPE } from '@prisma/client';
 
 @ApiTags('modules.public.role')
 @Controller({
@@ -49,7 +49,7 @@ export class RolePublicController {
             availableSearch: ROLE_DEFAULT_AVAILABLE_SEARCH,
         })
         pagination: IPaginationQueryOffsetParams,
-        @PaginationQueryFilterInEnum<ENUM_POLICY_ROLE_TYPE>(
+        @PaginationQueryFilterInEnum<ENUM_ROLE_TYPE>(
             'type',
             ROLE_DEFAULT_ROLE_TYPE
         )
@@ -68,8 +68,8 @@ export class RolePublicController {
     async get(
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         roleId: string
-    ): Promise<IResponseReturn<RoleResponseDto>> {
-        const role: RoleResponseDto = await this.roleService.getOne(roleId);
+    ): Promise<IResponseReturn<RoleDto>> {
+        const role: RoleDto = await this.roleService.getOne(roleId);
 
         return { data: role };
     }

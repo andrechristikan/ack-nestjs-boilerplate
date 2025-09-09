@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
+import { ENUM_ROLE_TYPE } from '@prisma/client';
 
 export const RoleDocQueryList = [
     {
@@ -7,8 +7,8 @@ export const RoleDocQueryList = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: Object.values(ENUM_POLICY_ROLE_TYPE).join(','),
-        description: `enum value with ',' delimiter. Available values: ${Object.values(ENUM_POLICY_ROLE_TYPE).join(',')}`,
+        example: Object.values(ENUM_ROLE_TYPE).join(','),
+        description: `enum value with ',' delimiter. Available values: ${Object.values(ENUM_ROLE_TYPE).join(',')}`,
     },
 ];
 

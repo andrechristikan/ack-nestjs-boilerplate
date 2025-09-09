@@ -20,8 +20,8 @@ import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.cr
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
-import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 import { API_KEY_DEFAULT_AVAILABLE_SEARCH } from '@modules/api-key/constants/api-key.list.constant';
+import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 
 export function ApiKeyAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -34,8 +34,8 @@ export function ApiKeyAdminListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ policy: true, role: true }),
-        DocResponsePaging<ApiKeyResponseDto>('apiKey.list', {
-            dto: ApiKeyResponseDto,
+        DocResponsePaging<ApiKeyDto>('apiKey.list', {
+            dto: ApiKeyDto,
             availableSearch: API_KEY_DEFAULT_AVAILABLE_SEARCH,
         })
     );
@@ -71,7 +71,7 @@ export function ApiKeyAdminActiveDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocResponse('apiKey.active', {
-            dto: ApiKeyResponseDto,
+            dto: ApiKeyDto,
         }),
         DocGuard({ policy: true, role: true }),
         DocErrorGroup([
@@ -110,7 +110,7 @@ export function ApiKeyAdminInactiveDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocResponse('apiKey.inactive', {
-            dto: ApiKeyResponseDto,
+            dto: ApiKeyDto,
         }),
         DocGuard({ policy: true, role: true }),
         DocErrorGroup([
@@ -169,7 +169,7 @@ export function ApiKeyAdminUpdateDoc(): MethodDecorator {
         }),
         DocGuard({ policy: true, role: true }),
         DocResponse('apiKey.update', {
-            dto: ApiKeyResponseDto,
+            dto: ApiKeyDto,
         }),
         DocErrorGroup([
             DocDefault({
@@ -199,7 +199,7 @@ export function ApiKeyAdminUpdateDateDoc(): MethodDecorator {
         }),
         DocGuard({ policy: true, role: true }),
         DocResponse('apiKey.updateDate', {
-            dto: ApiKeyResponseDto,
+            dto: ApiKeyDto,
         }),
         DocErrorGroup([
             DocDefault({
@@ -227,7 +227,7 @@ export function ApiKeyAdminDeleteDoc(): MethodDecorator {
         }),
         DocGuard({ policy: true, role: true }),
         DocResponse('apiKey.delete', {
-            dto: ApiKeyResponseDto,
+            dto: ApiKeyDto,
         }),
         DocErrorGroup([
             DocDefault({

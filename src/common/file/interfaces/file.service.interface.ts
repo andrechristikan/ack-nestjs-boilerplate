@@ -1,4 +1,7 @@
-import { IFileSheet } from '@common/file/interfaces/file.interface';
+import {
+    IFileRandomFilenameOptions,
+    IFileSheet,
+} from '@common/file/interfaces/file.interface';
 
 export interface IFileService {
     writeCsv<T = Record<string, string | number | Date>>(
@@ -19,4 +22,9 @@ export interface IFileService {
     readExcel<T = Record<string, string | number | Date>>(
         file: Buffer
     ): IFileSheet<T>[];
+    createRandomFilename({
+        prefix,
+        mime,
+        randomLength,
+    }: IFileRandomFilenameOptions): string;
 }

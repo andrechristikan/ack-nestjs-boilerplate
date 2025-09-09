@@ -8,15 +8,15 @@ generator client {
 }
 
 model ApiKey {
-  id        String            @id @default(auto()) @map("_id") @db.ObjectId
-  type      ENUM_API_KEY_TYPE @default(DEFAULT)
-  name      String
-  key       String
-  hash      String
-  isActive  Boolean           @default(true)
-  startDate DateTime?
-  endDate   DateTime?
-  lastUsedAt DateTime?
+  id            String            @id @default(auto()) @map("_id") @db.ObjectId
+  type          ENUM_API_KEY_TYPE @default(DEFAULT)
+  name          String
+  key           String
+  hash          String
+  isActive      Boolean           @default(true)
+  startDate     DateTime?
+  endDate       DateTime?
+  lastUsedAt    DateTime?
   lastIPAddress String?
 
   // timestamps fields
@@ -25,17 +25,12 @@ model ApiKey {
   updatedAt DateTime? @updatedAt
   updatedBy String?
 
-  // Unique constraints
   @@unique(fields: [key])
-  @@unique(fields: [hash]) 
-
-  // Query-optimized indexes
-  @@index(fields: [createdBy, createdAt]) 
+  @@unique(fields: [hash])
+  @@index(fields: [createdBy, createdAt])
   @@index(fields: [type])
   @@index(fields: [name])
   @@index(fields: [createdAt])
-
-  // Collection name
   @@map("ApiKeys")
 }
 
@@ -52,25 +47,25 @@ model Role {
   updatedAt DateTime? @updatedAt
   updatedBy String?
 
-  // Unique constraints
-  @@unique(fields: [name])
+  users User[] @relation("UserRole")
 
-  // Query-optimized indexes
+  @@unique(fields: [name])
   @@index(fields: [type])
   @@index(fields: [createdAt])
-
-  // Collection name
   @@map("Roles")
 }
 
 model Country {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  alpha2Code  String
-  alpha3Code  String
-  phoneCode   String[]
-  continent   String
-  timezone    String
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  alpha2Code String
+  alpha3Code String
+  phoneCode  String[]
+  continent  String
+  timezone   String
+
+  mobileNumbers UserMobile[] @relation("UserMobileCountry")
+  users         User[]       @relation("UserCountry")
 
   // timestamps fields
   createdAt DateTime? @default(now())
@@ -78,26 +73,127 @@ model Country {
   updatedAt DateTime? @updatedAt
   updatedBy String?
 
-  // Unique constraints
   @@unique(fields: [alpha2Code])
   @@unique(fields: [alpha3Code])
-
-  // Query-optimized indexes
   @@index(fields: [name])
   @@index(fields: [continent])
   @@index(fields: [createdAt])
-
-  // Collection name
   @@map("Countries")
 }
 
+model UserMobile {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @db.ObjectId
+  countryId    String    @db.ObjectId
+  numberCode   String
+  mobileNumber String
+  isVerified   Boolean   @default(false)
+  verifiedAt   DateTime?
+
+  // timestamps fields
+  createdAt DateTime? @default(now())
+  createdBy String?
+  updatedAt DateTime? @updatedAt
+  updatedBy String?
+
+  country Country? @relation("UserMobileCountry", fields: [countryId], references: [id])
+  user    User?    @relation("UserMobileUser", fields: [userId], references: [id])
+
+  @@unique(fields: [mobileNumber])
+  @@index(fields: [userId])
+  @@index(fields: [isVerified])
+  @@index(fields: [createdAt])
+  @@map("UserMobiles")
+}
+
+model User {
+  id              String                  @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  username        String
+  isVerified      Boolean                 @default(false)
+  verifiedAt      DateTime?
+  email           String
+  roleId          String                  @db.ObjectId
+  password        String
+  passwordExpired DateTime
+  passwordCreated DateTime
+  passwordAttempt Int
+  signUpDate      DateTime                @default(now())
+  signUpFrom      ENUM_USER_SIGN_UP_FROM
+  signUpWith      ENUM_USER_SIGN_UP_WITH
+  salt            String
+  status          ENUM_USER_STATUS        @default(ACTIVE)
+  gender          ENUM_USER_GENDER?
+  countryId       String                  @db.ObjectId
+  lastLoginAt     DateTime?
+  lastIPAddress   String?
+  lastLoginFrom   ENUM_USER_LOGIN_FROM?
+  lastLoginWith   ENUM_USER_SIGN_UP_WITH?
+  termPolicy      Json
+  photo           Json?
+
+  // timestamps fields
+  createdAt DateTime? @default(now())
+  createdBy String?
+  updatedAt DateTime? @updatedAt
+  updatedBy String?
+
+  mobileNumbers UserMobile[] @relation("UserMobileUser")
+  role          Role?        @relation("UserRole", fields: [roleId], references: [id])
+  country       Country?     @relation("UserCountry", fields: [countryId], references: [id])
+
+  @@unique(fields: [username])
+  @@unique(fields: [email])
+  @@index(fields: [roleId])
+  @@index(fields: [countryId])
+  @@index(fields: [status])
+  @@index(fields: [createdAt])
+  @@map("Users")
+}
+
+enum ENUM_USER_GENDER {
+  MALE   @map("male")
+  FEMALE @map("female")
+}
+
+enum ENUM_USER_STATUS {
+  ACTIVE   @map("active")
+  INACTIVE @map("inactive")
+  BLOCKED  @map("blocked")
+}
+
+enum ENUM_USER_SIGN_UP_FROM {
+  SYSTEM  @map("system")
+  ADMIN   @map("admin")
+  WEBSITE @map("website")
+  MOBILE  @map("mobile")
+}
+
+enum ENUM_USER_SIGN_UP_WITH {
+  CREDENTIAL    @map("credential")
+  SOCIAL_GOOGLE @map("socialGoogle")
+  SOCIAL_APPLE  @map("socialApple")
+}
+
+enum ENUM_USER_LOGIN_FROM {
+  WEBSITE @map("website")
+  MOBILE  @map("mobile")
+}
+
 enum ENUM_ROLE_TYPE {
-  SUPER_ADMIN @map("SUPER_ADMIN")
-  ADMIN       @map("ADMIN")
-  USER        @map("USER")
+  SUPER_ADMIN @map("superAdmin")
+  ADMIN       @map("admin")
+  USER        @map("user")
 }
 
 enum ENUM_API_KEY_TYPE {
-  SYSTEM  @map("SYSTEM")
-  DEFAULT @map("DEFAULT")
+  SYSTEM  @map("system")
+  DEFAULT @map("default")
+}
+
+enum ENUM_TERM_POLICY_TYPE {
+  TERMS_OF_SERVICE @map("termsOfService")
+  PRIVACY          @map("privacy")
+  COOKIE           @map("cookie")
+  MARKETING        @map("marketing")
 }

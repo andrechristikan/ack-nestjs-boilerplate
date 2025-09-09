@@ -8,7 +8,7 @@ export class ApiKeyXApiKeyGuard implements CanActivate {
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest<IRequestApp>();
-        const apiKey = await this.apiKeyService.validateXApiKey(request);
+        const apiKey = await this.apiKeyService.validateXApiKeyGuard(request);
 
         request.__apiKey = apiKey;
 

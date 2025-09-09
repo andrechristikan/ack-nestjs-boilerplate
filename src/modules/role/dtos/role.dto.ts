@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
 import { DatabaseDto } from '@common/database/dtos/database.dto';
-import { RoleAbilityResponseDto } from '@modules/role/dtos/response/role.ability.response.dto';
+import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 
-export class RoleResponseDto extends DatabaseDto {
+export class RoleDto extends DatabaseDto {
     @ApiProperty({
         description: 'Name of role',
         example: faker.person.jobTitle(),
@@ -23,21 +23,19 @@ export class RoleResponseDto extends DatabaseDto {
 
     @ApiProperty({
         description: 'Representative for role type',
-        example: ENUM_POLICY_ROLE_TYPE.ADMIN,
+        example: ENUM_ROLE_TYPE.ADMIN,
         required: true,
-
-        enum: ENUM_POLICY_ROLE_TYPE,
+        enum: ENUM_ROLE_TYPE,
     })
-    type: ENUM_POLICY_ROLE_TYPE;
+    type: ENUM_ROLE_TYPE;
 
     @ApiProperty({
-        type: RoleAbilityResponseDto,
-        oneOf: [{ $ref: getSchemaPath(RoleAbilityResponseDto) }],
+        type: RoleAbilityDto,
+        oneOf: [{ $ref: getSchemaPath(RoleAbilityDto) }],
         required: true,
-
         isArray: true,
         default: [],
     })
-    @Type(() => RoleAbilityResponseDto)
-    abilities: RoleAbilityResponseDto[];
+    @Type(() => RoleAbilityDto)
+    abilities: RoleAbilityDto[];
 }
