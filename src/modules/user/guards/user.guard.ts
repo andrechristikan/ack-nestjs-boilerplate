@@ -13,16 +13,16 @@ export class UserGuard implements CanActivate {
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const isVerified =
-            this.reflector.get<boolean[]>(
+            this.reflector.get<boolean>(
                 USER_GUARD_IS_VERIFIED_META_KEY,
                 context.getHandler()
-            ) || [];
+            ) || false;
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
 
         const user = await this.userService.validateUserGuard(
             request,
-            isVerified.includes(true)
+            isVerified
         );
 
         request.__user = user;

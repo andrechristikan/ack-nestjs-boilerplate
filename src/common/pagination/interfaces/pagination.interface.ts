@@ -44,6 +44,7 @@ export interface IPaginationQueryReturn {
     where?: { or: Record<string, { contains: string }>[] };
     orderBy?: IPaginationOrderBy;
     limit: number;
+    includes: unknown;
 }
 
 export interface IPaginationQueryOffsetParams extends IPaginationQueryReturn {

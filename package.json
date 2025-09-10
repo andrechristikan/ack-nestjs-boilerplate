@@ -82,6 +82,7 @@
         "nestjs-command": "^3.1.5",
         "nestjs-i18n": "^10.5.1",
         "nestjs-pino": "^4.4.0",
+        "nestjs-real-ip": "^3.0.1",
         "passport": "^0.7.0",
         "passport-jwt": "^4.0.1",
         "pino-http": "^10.5.0",

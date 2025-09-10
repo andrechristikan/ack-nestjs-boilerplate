@@ -1,16 +1,32 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import {
+    IPaginationEqual,
+    IPaginationIn,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { AuthService } from '@modules/auth/services/auth.service';
+import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
+import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { IUserService } from '@modules/user/interfaces/user.service.interface';
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { UserUtil } from '@modules/user/utils/user.util';
+import {
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 import { ENUM_USER_STATUS } from '@prisma/client';
 
 @Injectable()
 export class UserService implements IUserService {
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly paginationService: PaginationService,
+        private readonly userUtil: UserUtil,
         private readonly authService: AuthService
     ) {}
 
@@ -53,6 +69,55 @@ export class UserService implements IUserService {
         }
 
         return user;
+    }
+
+    async getList(
+        { where, ...params }: IPaginationQueryOffsetParams,
+        status?: Record<string, IPaginationIn>,
+        role?: Record<string, IPaginationEqual>,
+        country?: Record<string, IPaginationEqual>
+    ): Promise<IResponsePagingReturn<UserListResponseDto>> {
+        const { data, ...others } = await this.paginationService.offSet<IUser>(
+            this.databaseService.user,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    ...status,
+                    ...country,
+                    ...role,
+                },
+                includes: {
+                    role: true,
+                },
+            }
+        );
+
+        const users: UserListResponseDto[] = this.userUtil.mapList(data);
+
+        return {
+            data: users,
+            ...others,
+        };
+    }
+
+    async getOne(id: string): Promise<UserProfileResponseDto> {
+        const user = await this.databaseService.user.findUnique({
+            where: { id },
+            include: {
+                role: true,
+                country: true,
+                mobileNumbers: true,
+            },
+        });
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'user.error.notFound',
+            });
+        }
+
+        return this.userUtil.mapProfile(user);
     }
 
     // async findAll(

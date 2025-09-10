@@ -385,8 +385,6 @@ export class ApiKeyService implements IApiKeyService {
             });
         }
 
-        // TODO: LATEST USED, IP ADDRESS
-
         return apiKey;
     }
 

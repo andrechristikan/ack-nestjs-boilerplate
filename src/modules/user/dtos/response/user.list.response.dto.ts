@@ -1,50 +1,31 @@
-import {
-    ApiHideProperty,
-    ApiProperty,
-    getSchemaPath,
-    OmitType,
-} from '@nestjs/swagger';
-import { Exclude, Type } from 'class-transformer';
-import { CountryShortResponseDto } from '@modules/country/dtos/response/country.short.response.dto';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
+import { ApiHideProperty, OmitType } from '@nestjs/swagger';
+import { Exclude } from 'class-transformer';
+import { UserDto } from '@modules/user/dtos/user.dto';
 import {
     ENUM_USER_GENDER,
+    ENUM_USER_LOGIN_FROM,
     ENUM_USER_SIGN_UP_FROM,
-} from '@modules/user/enums/user.enum';
-import { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
-import { UserGetResponseDto } from '@modules/user/dtos/response/user.get.response.dto';
-import { UserVerificationResponseDto } from '@modules/user/dtos/response/user.verification.response.dto';
+    ENUM_USER_SIGN_UP_WITH,
+} from '@prisma/client';
 
-export class UserListResponseDto extends OmitType(UserGetResponseDto, [
+export class UserListResponseDto extends OmitType(UserDto, [
+    'password',
     'passwordExpired',
     'passwordCreated',
+    'passwordAttempt',
     'signUpDate',
     'signUpFrom',
+    'signUpWith',
+    'salt',
     'gender',
-    'role',
-    'country',
-    'mobileNumber',
-    'verification',
+    'lastLoginAt',
+    'lastIPAddress',
+    'lastLoginFrom',
+    'lastLoginWith',
 ] as const) {
-    @ApiProperty({
-        required: true,
-        type: RoleListResponseDto,
-        oneOf: [{ $ref: getSchemaPath(RoleListResponseDto) }],
-    })
-    @Type(() => RoleListResponseDto)
-    role: RoleListResponseDto;
-
-    @ApiProperty({
-        required: true,
-        type: CountryShortResponseDto,
-        oneOf: [{ $ref: getSchemaPath(CountryShortResponseDto) }],
-    })
-    @Type(() => CountryShortResponseDto)
-    country: CountryShortResponseDto;
-
     @ApiHideProperty()
     @Exclude()
-    mobileNumber?: UserUpdateMobileNumberRequestDto;
+    password: string;
 
     @ApiHideProperty()
     @Exclude()
@@ -56,6 +37,10 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
 
     @ApiHideProperty()
     @Exclude()
+    passwordAttempt: number;
+
+    @ApiHideProperty()
+    @Exclude()
     signUpDate: Date;
 
     @ApiHideProperty()
@@ -64,9 +49,29 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
 
     @ApiHideProperty()
     @Exclude()
+    signUpWith: ENUM_USER_SIGN_UP_WITH;
+
+    @ApiHideProperty()
+    @Exclude()
+    salt: string;
+
+    @ApiHideProperty()
+    @Exclude()
     gender?: ENUM_USER_GENDER;
 
     @ApiHideProperty()
     @Exclude()
-    verification: UserVerificationResponseDto;
+    lastLoginAt?: Date;
+
+    @ApiHideProperty()
+    @Exclude()
+    lastIPAddress?: string;
+
+    @ApiHideProperty()
+    @Exclude()
+    lastLoginFrom?: ENUM_USER_LOGIN_FROM;
+
+    @ApiHideProperty()
+    @Exclude()
+    lastLoginWith?: ENUM_USER_SIGN_UP_WITH;
 }

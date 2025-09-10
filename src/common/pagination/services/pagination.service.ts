@@ -29,7 +29,7 @@ export class PaginationService implements IPaginationService {
         repository: IPaginationRepository,
         args: IPaginationQueryOffsetParams
     ): Promise<IPaginationOffsetReturn<TReturn>> {
-        const { limit, skip, orderBy, where, select } = args;
+        const { limit, skip, orderBy, where, select, includes } = args;
         const currentPage = Math.floor(skip / limit) + 1;
 
         if (limit <= 0) {
@@ -62,6 +62,7 @@ export class PaginationService implements IPaginationService {
                 take: limit,
                 select,
                 orderBy,
+                includes,
             }),
         ]);
 

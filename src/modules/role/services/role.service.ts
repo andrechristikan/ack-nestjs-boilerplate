@@ -37,7 +37,7 @@ export class RoleService implements IRoleService {
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
         const { data, ...others } = await this.paginationService.offSet<Role>(
-            this.databaseService.apiKey,
+            this.databaseService.role,
             {
                 ...params,
                 where: {

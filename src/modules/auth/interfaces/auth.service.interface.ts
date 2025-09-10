@@ -1,3 +1,4 @@
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import {
     IAuthJwtAccessTokenPayload,
@@ -57,6 +58,20 @@ export interface IAuthService {
         data: IUser,
         refreshTokenFromRequest: string
     ): AuthTokenResponseDto;
-    appleGetTokenInfo(token: string): Promise<IAuthSocialPayload>;
-    googleGetTokenInfo(idToken: string): Promise<IAuthSocialPayload>;
+    validateJwtAccessGuard(
+        err: Error,
+        user: IAuthJwtAccessTokenPayload,
+        info: Error
+    ): Promise<IAuthJwtAccessTokenPayload>;
+    validateJwtRefreshGuard(
+        err: Error,
+        user: IAuthJwtRefreshTokenPayload,
+        info: Error
+    ): Promise<IAuthJwtRefreshTokenPayload>;
+    validateOAuthAppleGuard(
+        request: IRequestApp<IAuthSocialPayload>
+    ): Promise<boolean>;
+    validateOAuthGoogleGuard(
+        request: IRequestApp<IAuthSocialPayload>
+    ): Promise<boolean>;
 }

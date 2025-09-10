@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import verifyAppleToken from 'verify-apple-id-token';
 import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
@@ -22,6 +22,9 @@ import {
     ENUM_USER_SIGN_UP_WITH,
     User,
 } from '@prisma/client';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
+import { isUUID } from 'class-validator';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 
 /**
  * Authentication service providing JWT token management, password operations,
@@ -46,6 +49,14 @@ export class AuthService implements IAuthService {
     private readonly jwtAudience: string;
     private readonly jwtIssuer: string;
     private readonly jwtAlgorithm: Algorithm;
+
+    // apple
+    private readonly appleHeader: string;
+    private readonly applePrefix: string;
+
+    // google
+    private readonly googleHeader: string;
+    private readonly googlePrefix: string;
 
     // password
     private readonly passwordExpiredIn: number;
@@ -122,6 +133,14 @@ export class AuthService implements IAuthService {
         this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer');
         this.jwtAlgorithm =
             this.configService.get<Algorithm>('auth.jwt.algorithm');
+
+        this.appleHeader = this.configService.get<string>('auth.apple.header');
+        this.applePrefix = this.configService.get<string>('auth.apple.prefix');
+
+        this.googleHeader =
+            this.configService.get<string>('auth.google.header');
+        this.googlePrefix =
+            this.configService.get<string>('auth.google.prefix');
 
         // password
         this.passwordExpiredIn = this.configService.get<number>(
@@ -457,33 +476,166 @@ export class AuthService implements IAuthService {
     }
 
     /**
-     * Verifies and extracts information from an Apple ID token.
-     * @param token The Apple ID token to verify
-     * @returns Promise containing the verified token payload with email and verification status
+     * Validates the JWT access token and ensures it contains a valid UUID subject (sub) claim.
+     * @param err - Any error that occurred during authentication
+     * @param user - The authenticated user payload from JWT token
+     * @param info - Additional information about the authentication process
+     * @returns The validated user payload
+     * @throws UnauthorizedException when authentication fails or user data is invalid
      */
-    async appleGetTokenInfo(token: string): Promise<IAuthSocialPayload> {
-        const payload = await verifyAppleToken({
-            idToken: token,
-            clientId: [this.appleClientId, this.appleSignInClientId],
-        });
+    async validateJwtAccessGuard(
+        err: Error,
+        user: IAuthJwtAccessTokenPayload,
+        info: Error
+    ): Promise<IAuthJwtAccessTokenPayload> {
+        if (err || !user) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                message: 'auth.error.accessTokenUnauthorized',
+                _error: err ? err : info,
+            });
+        }
 
-        return { email: payload.email, emailVerified: payload.email_verified };
+        const { sub } = user;
+        if (!sub) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        } else if (!isUUID(sub)) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        }
+
+        return user;
     }
 
     /**
-     * Verifies and extracts information from a Google ID token.
-     * @param idToken The Google ID token to verify
-     * @returns Promise containing the verified token payload with email and verification status
+     * Validates the JWT refresh token and ensures it contains a valid UUID subject (sub) claim.
+     * @param err - Any error that occurred during authentication
+     * @param user - The authenticated user payload from JWT refresh token
+     * @param info - Additional information about the authentication process
+     * @returns The validated user payload
+     * @throws UnauthorizedException when authentication fails or user data is invalid
      */
-    async googleGetTokenInfo(idToken: string): Promise<IAuthSocialPayload> {
-        const login: LoginTicket = await this.googleClient.verifyIdToken({
-            idToken: idToken,
-        });
-        const payload: TokenPayload = login.getPayload();
+    async validateJwtRefreshGuard(
+        err: Error,
+        user: IAuthJwtRefreshTokenPayload,
+        info: Error
+    ): Promise<IAuthJwtRefreshTokenPayload> {
+        if (err || !user) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN,
+                message: 'auth.error.refreshTokenUnauthorized',
+                _error: err ? err : info,
+            });
+        }
 
-        return {
-            email: payload.email,
-            emailVerified: true,
-        };
+        const { sub } = user as IAuthJwtAccessTokenPayload;
+        if (!sub) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        } else if (!isUUID(sub)) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        }
+
+        return user;
+    }
+
+    /**
+     * Validates the Apple social authentication token from the request headers.
+     * Extracts the token, verifies it, and attaches the user payload to the request object.
+     * @param request - The HTTP request object containing headers
+     * @returns Promise<boolean> - True if authentication is successful
+     * @throws UnauthorizedException - When token is missing, malformed, or invalid
+     */
+    async validateOAuthAppleGuard(
+        request: IRequestApp<IAuthSocialPayload>
+    ): Promise<boolean> {
+        const requestHeader =
+            (
+                request.headers[`${this.appleHeader?.toLowerCase()}`] as string
+            )?.split(`${this.applePrefix} `) ?? [];
+
+        if (!requestHeader || requestHeader.length !== 2) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_REQUIRED,
+                message: 'auth.error.socialAppleRequired',
+            });
+        }
+
+        try {
+            const idToken: string = requestHeader[1];
+
+            const payload = await verifyAppleToken({
+                idToken,
+                clientId: [this.appleClientId, this.appleSignInClientId],
+            });
+
+            request.user = {
+                email: payload.email,
+                emailVerified: payload.email_verified,
+            };
+
+            return true;
+        } catch (err: unknown) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_INVALID,
+                message: 'auth.error.socialAppleInvalid',
+                _error: err,
+            });
+        }
+    }
+
+    /**
+     * Validates the Google social authentication token from the request headers.
+     * Extracts the token, verifies it using Google's OAuth2 client, and attaches the user payload to the request object.
+     * @param request - The HTTP request object containing headers
+     * @returns Promise<boolean> - True if authentication is successful
+     * @throws UnauthorizedException - When token is missing, malformed, or invalid
+     */
+    async validateOAuthGoogleGuard(
+        request: IRequestApp<IAuthSocialPayload>
+    ): Promise<boolean> {
+        const requestHeader =
+            (
+                request.headers[`${this.googleHeader?.toLowerCase()}`] as string
+            )?.split(`${this.googlePrefix} `) ?? [];
+
+        if (!requestHeader || requestHeader.length !== 2) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_REQUIRED,
+                message: 'auth.error.socialGoogleRequired',
+            });
+        }
+
+        try {
+            const idToken: string = requestHeader[1];
+
+            const login: LoginTicket = await this.googleClient.verifyIdToken({
+                idToken,
+            });
+            const payload: TokenPayload = login.getPayload();
+
+            request.user = {
+                email: payload.email,
+                emailVerified: payload.email_verified,
+            };
+
+            return true;
+        } catch (err: unknown) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_INVALID,
+                message: 'auth.error.socialGoogleInvalid',
+                _error: err,
+            });
+        }
     }
 }
