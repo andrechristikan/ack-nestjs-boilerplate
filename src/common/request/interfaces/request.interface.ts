@@ -4,6 +4,7 @@ import { IPaginationQuery } from '@common/pagination/interfaces/pagination.inter
 import { ApiKey } from '@prisma/client';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
+import { IBrowser, ICPU, IDevice, IEngine, IOS } from 'ua-parser-js';
 
 export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
     user?: T;
@@ -16,4 +17,27 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
 
     __language: string;
     __version: string;
+}
+
+export interface IRequestLog {
+    userAgent: IRequestUserAgent;
+    ipAddress: string;
+}
+
+export interface IRequestUserAgent {
+    ua: string;
+    browser: Omit<
+        IBrowser,
+        'is' | 'toString' | 'withClientHints' | 'withFeatureCheck'
+    >;
+    cpu: Omit<ICPU, 'is' | 'toString' | 'withClientHints' | 'withFeatureCheck'>;
+    device: Omit<
+        IDevice,
+        'is' | 'toString' | 'withClientHints' | 'withFeatureCheck'
+    >;
+    engine: Omit<
+        IEngine,
+        'is' | 'toString' | 'withClientHints' | 'withFeatureCheck'
+    >;
+    os: Omit<IOS, 'is' | 'toString' | 'withClientHints' | 'withFeatureCheck'>;
 }

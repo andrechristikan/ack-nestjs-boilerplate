@@ -17,7 +17,7 @@ export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
     /**
      * Handles the request validation after JWT strategy processing.
      * Validates that the user exists, has a valid subject (sub) claim,
-     * and that the subject is a valid UUID format.
+     * and that the subject is a string format.
      *
      * @param {Error} err - Any error that occurred during authentication
      * @param {IAuthJwtAccessTokenPayload} user - The authenticated user payload from JWT token

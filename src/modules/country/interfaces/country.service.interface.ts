@@ -6,5 +6,4 @@ export interface ICountryService {
     getList(
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<CountryResponseDto>>;
-    getByAlpha2Code(alpha2Code: string): Promise<CountryResponseDto>;
 }

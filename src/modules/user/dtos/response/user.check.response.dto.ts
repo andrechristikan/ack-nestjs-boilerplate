@@ -1,27 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { UserCensorResponseDto } from '@modules/user/dtos/response/user.censor.response.dto';
 
-export class UserCheckResponseDto {
-    @ApiProperty({
-        required: true,
-    })
-    exist: boolean;
-
-    @ApiProperty({
-        required: false,
-        type: UserCensorResponseDto,
-    })
-    @Type(() => UserCensorResponseDto)
-    user?: UserCensorResponseDto;
-}
-
-export class UserCheckUsernameResponseDto extends UserCheckResponseDto {
+export class UserCheckEmailResponseDto {
     @ApiProperty({
         required: true,
     })
     badWord: boolean;
 
+    @ApiProperty({
+        required: true,
+    })
+    exist: boolean;
+}
+
+export class UserCheckUsernameResponseDto extends UserCheckEmailResponseDto {
     @ApiProperty({
         required: true,
     })

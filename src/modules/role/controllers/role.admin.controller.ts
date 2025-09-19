@@ -47,11 +47,7 @@ export class RoleAdminController {
         @Body()
         body: RoleCreateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        const data = await this.roleService.create(body);
-
-        return {
-            data,
-        };
+        return this.roleService.create(body);
     }
 
     @RoleAdminUpdateDoc()
@@ -71,11 +67,7 @@ export class RoleAdminController {
         @Body()
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        const data = await this.roleService.update(roleId, body);
-
-        return {
-            data,
-        };
+        return this.roleService.update(roleId, body);
     }
 
     @RoleAdminDeleteDoc()
@@ -93,8 +85,6 @@ export class RoleAdminController {
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         roleId: string
     ): Promise<void> {
-        await this.roleService.delete(roleId);
-
-        return;
+        return this.roleService.delete(roleId);
     }
 }

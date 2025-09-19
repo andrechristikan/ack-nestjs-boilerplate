@@ -23,7 +23,6 @@ import {
     User,
 } from '@prisma/client';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
-import { isUUID } from 'class-validator';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 
 /**
@@ -62,7 +61,7 @@ export class AuthService implements IAuthService {
     private readonly passwordExpiredIn: number;
     private readonly passwordExpiredTemporary: number;
     private readonly passwordSaltLength: number;
-
+    private readonly passwordPeriodExpiredIn: number;
     private readonly passwordAttempt: boolean;
     private readonly passwordMaxAttempt: number;
 
@@ -152,7 +151,9 @@ export class AuthService implements IAuthService {
         this.passwordSaltLength = this.configService.get<number>(
             'auth.password.saltLength'
         );
-
+        this.passwordPeriodExpiredIn = this.configService.get<number>(
+            'auth.password.period'
+        );
         this.passwordAttempt = this.configService.get<boolean>(
             'auth.password.attempt'
         );
@@ -341,10 +342,10 @@ export class AuthService implements IAuthService {
     }
 
     /**
-     * Creates a new password hash with salt and expiration information.
+     * Creates a new password hash with salt, expiration information and period expiration.
      * @param password The plain text password to hash
      * @param options Optional settings for password creation (e.g., temporary password)
-     * @returns Object containing password hash, salt, creation date, and expiration date
+     * @returns Object containing password hash, salt, creation date, expiration date, and period expiration date
      */
     createPassword(
         password: string,
@@ -363,12 +364,19 @@ export class AuthService implements IAuthService {
             })
         );
         const passwordHash = this.helperService.bcryptHash(password, salt);
+        const passwordPeriodExpired: Date = this.helperService.dateForward(
+            today,
+            this.helperService.dateCreateDuration({
+                seconds: this.passwordPeriodExpiredIn,
+            })
+        );
 
         return {
             passwordHash,
             passwordExpired,
             passwordCreated: today,
             salt,
+            passwordPeriodExpired,
         };
     }
 
@@ -476,7 +484,7 @@ export class AuthService implements IAuthService {
     }
 
     /**
-     * Validates the JWT access token and ensures it contains a valid UUID subject (sub) claim.
+     * Validates the JWT access token and ensures it contains a valid string subject (sub) claim.
      * @param err - Any error that occurred during authentication
      * @param user - The authenticated user payload from JWT token
      * @param info - Additional information about the authentication process
@@ -502,7 +510,7 @@ export class AuthService implements IAuthService {
                 statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
                 message: 'auth.error.accessTokenUnauthorized',
             });
-        } else if (!isUUID(sub)) {
+        } else if (typeof sub !== 'string') {
             throw new UnauthorizedException({
                 statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
                 message: 'auth.error.accessTokenUnauthorized',
@@ -513,7 +521,7 @@ export class AuthService implements IAuthService {
     }
 
     /**
-     * Validates the JWT refresh token and ensures it contains a valid UUID subject (sub) claim.
+     * Validates the JWT refresh token and ensures it contains a valid string subject (sub) claim.
      * @param err - Any error that occurred during authentication
      * @param user - The authenticated user payload from JWT refresh token
      * @param info - Additional information about the authentication process
@@ -539,7 +547,7 @@ export class AuthService implements IAuthService {
                 statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
                 message: 'auth.error.accessTokenUnauthorized',
             });
-        } else if (!isUUID(sub)) {
+        } else if (typeof sub !== 'string') {
             throw new UnauthorizedException({
                 statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
                 message: 'auth.error.accessTokenUnauthorized',

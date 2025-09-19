@@ -3,7 +3,10 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import {
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
@@ -16,9 +19,12 @@ export interface IRoleService {
         { where, ...params }: IPaginationQueryOffsetParams,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>>;
-    getOne(id: string): Promise<RoleDto>;
-    create(data: RoleCreateRequestDto): Promise<RoleDto>;
-    update(id: string, data: RoleUpdateRequestDto): Promise<RoleDto>;
+    getOne(id: string): Promise<IResponseReturn<RoleDto>>;
+    create(data: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>>;
+    update(
+        id: string,
+        data: RoleUpdateRequestDto
+    ): Promise<IResponseReturn<RoleDto>>;
     delete(id: string): Promise<void>;
     validateRoleGuard(
         request: IRequestApp,

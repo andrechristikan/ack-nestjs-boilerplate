@@ -206,12 +206,12 @@ export class HelperService implements IHelperService {
     /**
      * Generates random number with specified digit length.
      * @param {number} length - Number of digits
-     * @returns {number} Random number with specified length
+     * @returns {string} Random number with specified length
      */
-    randomNumber(length: number): number {
+    randomDigits(length: number): string {
         const min: number = Number.parseInt(`1`.padEnd(length, '0'));
         const max: number = Number.parseInt(`9`.padEnd(length, '9'));
-        return this.randomNumberInRange(min, max);
+        return this.randomNumberInRange(min, max).toString();
     }
 
     /**

@@ -26,7 +26,7 @@ export class UserDto extends DatabaseDto {
         maxLength: 50,
         minLength: 3,
     })
-    username: string;
+    username: Lowercase<string>;
 
     @ApiProperty({
         required: true,
@@ -45,11 +45,11 @@ export class UserDto extends DatabaseDto {
         example: faker.internet.email(),
         maxLength: 100,
     })
-    email: string;
+    email: Lowercase<string>;
 
     @ApiProperty({
         required: true,
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     })
     roleId: string;
 
@@ -118,7 +118,7 @@ export class UserDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     })
     countryId: string;
 

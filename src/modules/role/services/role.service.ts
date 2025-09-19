@@ -1,11 +1,12 @@
-import { DatabaseService } from '@common/database/services/database.service';
 import {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import {
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
@@ -14,7 +15,9 @@ import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { IRoleService } from '@modules/role/interfaces/role.service.interface';
+import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleUtil } from '@modules/role/utils/role.util';
+import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     ConflictException,
     ForbiddenException,
@@ -22,30 +25,22 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { ENUM_ROLE_TYPE, Role } from '@prisma/client';
+import { ENUM_ROLE_TYPE } from '@prisma/client';
 
 @Injectable()
 export class RoleService implements IRoleService {
     constructor(
-        private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService,
+        private readonly roleRepository: RoleRepository,
+        private readonly userRepository: UserRepository,
         private readonly roleUtil: RoleUtil
     ) {}
 
     async getList(
-        { where, ...params }: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        const { data, ...others } = await this.paginationService.offSet<Role>(
-            this.databaseService.role,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    ...type,
-                },
-            }
-        );
+        const { data, ...others } =
+            await this.roleRepository.findWithPagination(pagination, type);
 
         const roles: RoleListResponseDto[] = this.roleUtil.mapList(data);
 
@@ -55,10 +50,8 @@ export class RoleService implements IRoleService {
         };
     }
 
-    async getOne(id: string): Promise<RoleDto> {
-        const role = await this.databaseService.role.findUnique({
-            where: { id },
-        });
+    async getOne(id: string): Promise<IResponseReturn<RoleDto>> {
+        const role = await this.roleRepository.findOneById(id);
         if (!role) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
@@ -66,14 +59,14 @@ export class RoleService implements IRoleService {
             });
         }
 
-        return this.roleUtil.mapOne(role);
+        return { data: this.roleUtil.mapOne(role) };
     }
 
-    async create(data: RoleCreateRequestDto): Promise<RoleDto> {
-        const { name, ...others } = this.roleUtil.serializeCreateDto(data);
-        const exist = await this.databaseService.role.findFirst({
-            where: { name },
-        });
+    async create({
+        name,
+        ...others
+    }: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
+        const exist = await this.roleRepository.existByName(name);
         if (exist) {
             throw new ConflictException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.EXIST,
@@ -81,18 +74,15 @@ export class RoleService implements IRoleService {
             });
         }
 
-        const create = await this.databaseService.role.create({
-            data: { name, ...others },
-        });
-
-        const mapRole: RoleDto = this.roleUtil.mapOne(create);
-        return mapRole;
+        const create = await this.roleRepository.create({ name, ...others });
+        return { data: this.roleUtil.mapOne(create) };
     }
 
-    async update(id: string, data: RoleUpdateRequestDto): Promise<RoleDto> {
-        const role = await this.databaseService.role.findUnique({
-            where: { id },
-        });
+    async update(
+        id: string,
+        data: RoleUpdateRequestDto
+    ): Promise<IResponseReturn<RoleDto>> {
+        const role = await this.roleRepository.existById(id);
         if (!role) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
@@ -100,20 +90,12 @@ export class RoleService implements IRoleService {
             });
         }
 
-        const serialize = this.roleUtil.serializeUpdateDto(data);
-        const update = await this.databaseService.role.update({
-            where: { id },
-            data: serialize,
-        });
-
-        return this.roleUtil.mapOne(update);
+        const update = await this.roleRepository.update(id, data);
+        return { data: this.roleUtil.mapOne(update) };
     }
 
     async delete(id: string): Promise<void> {
-        const role = await this.databaseService.role.findUnique({
-            where: { id },
-            select: { id: true },
-        });
+        const role = await this.roleRepository.existById(id);
         if (!role) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
@@ -121,10 +103,7 @@ export class RoleService implements IRoleService {
             });
         }
 
-        const roleUsed = await this.databaseService.user.findFirst({
-            where: { roleId: id },
-            select: { id: true },
-        });
+        const roleUsed = await this.userRepository.existByRole(id);
         if (roleUsed) {
             throw new ConflictException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.USED,
@@ -132,9 +111,7 @@ export class RoleService implements IRoleService {
             });
         }
 
-        await this.databaseService.role.delete({
-            where: { id },
-        });
+        await this.roleRepository.delete(id);
 
         return;
     }

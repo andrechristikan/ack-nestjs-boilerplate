@@ -1,4 +1,4 @@
-import { applyDecorators } from '@nestjs/common';
+import { HttpStatus, applyDecorators } from '@nestjs/common';
 import {
     Doc,
     DocAuth,
@@ -13,6 +13,10 @@ import {
     UserDocParamsId,
     UserDocQueryList,
 } from '@modules/user/constants/user.doc.constant';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { DatabaseIdResponseDto } from '@common/database/dtos/database.id.dto';
+import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 
 export function UserAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -52,45 +56,45 @@ export function UserAdminGetDoc(): MethodDecorator {
     );
 }
 
-// export function UserAdminCreateDoc(): MethodDecorator {
-//     return applyDecorators(
-//         Doc({
-//             summary: 'create a user',
-//         }),
-//         DocAuth({
-//             xApiKey: true,
-//             jwtAccessToken: true,
-//         }),
-//         DocRequest({
-//             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-//             dto: UserCreateRequestDto,
-//         }),
-//         DocGuard({ role: true, policy: true }),
-//         DocResponse<DatabaseIdResponseDto>('user.create', {
-//             httpStatus: HttpStatus.CREATED,
-//             dto: DatabaseIdResponseDto,
-//         })
-//     );
-// }
+export function UserAdminCreateDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'create a user',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: UserCreateRequestDto,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse<DatabaseIdResponseDto>('user.create', {
+            httpStatus: HttpStatus.CREATED,
+            dto: DatabaseIdResponseDto,
+        })
+    );
+}
 
-// export function UserAdminUpdateStatusDoc(): MethodDecorator {
-//     return applyDecorators(
-//         Doc({
-//             summary: 'update status of user',
-//         }),
-//         DocRequest({
-//             params: UserDocParamsId,
-//             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-//             dto: UserUpdateStatusRequestDto,
-//         }),
-//         DocAuth({
-//             xApiKey: true,
-//             jwtAccessToken: true,
-//         }),
-//         DocGuard({ role: true, policy: true }),
-//         DocResponse('user.updateStatus')
-//     );
-// }
+export function UserAdminUpdateStatusDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'update status of user',
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: UserUpdateStatusRequestDto,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('user.updateStatus')
+    );
+}
 
 // export function UserAdminUpdateDoc(): MethodDecorator {
 //     return applyDecorators(

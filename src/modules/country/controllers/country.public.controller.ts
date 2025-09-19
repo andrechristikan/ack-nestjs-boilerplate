@@ -28,9 +28,6 @@ export class CountryPublicController {
         })
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<CountryResponseDto>> {
-        const results: IResponsePagingReturn<CountryResponseDto> =
-            await this.countryService.getList(pagination);
-
-        return results;
+        return this.countryService.getList(pagination);
     }
 }

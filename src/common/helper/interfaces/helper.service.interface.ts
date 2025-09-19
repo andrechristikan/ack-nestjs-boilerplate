@@ -21,7 +21,7 @@ export interface IHelperService {
     sha256Hash(string: string): string;
     sha256Compare(hashOne: string, hashTwo: string): boolean;
     checkNumberString(number: string): boolean;
-    randomNumber(length: number): number;
+    randomDigits(length: number): string;
     randomNumberInRange(min: number, max: number): number;
     calculatePercent(value: number, total: number): number;
     randomString(length: number): string;

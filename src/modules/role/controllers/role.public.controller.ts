@@ -55,10 +55,7 @@ export class RolePublicController {
         )
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        const results: IResponsePagingReturn<RoleListResponseDto> =
-            await this.roleService.getList(pagination, type);
-
-        return results;
+        return this.roleService.getList(pagination, type);
     }
 
     @RolePublicGetDoc()
@@ -69,8 +66,6 @@ export class RolePublicController {
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         roleId: string
     ): Promise<IResponseReturn<RoleDto>> {
-        const role: RoleDto = await this.roleService.getOne(roleId);
-
-        return { data: role };
+        return this.roleService.getOne(roleId);
     }
 }

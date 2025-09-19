@@ -18,6 +18,6 @@ export const RoleDocParamsId = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     },
 ];

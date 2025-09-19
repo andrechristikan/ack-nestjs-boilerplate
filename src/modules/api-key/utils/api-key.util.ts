@@ -8,6 +8,8 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { ApiKey, ENUM_API_KEY_TYPE } from '@prisma/client';
 import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
+import { IApiKeyGenerateCredential } from '@modules/api-key/interfaces/api-key.interface';
+import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 
 @Injectable()
 export class ApiKeyUtil {
@@ -33,6 +35,10 @@ export class ApiKeyUtil {
 
     mapOne(apiKey: ApiKey): ApiKeyDto {
         return plainToInstance(ApiKeyDto, apiKey);
+    }
+
+    mapCreate(apiKey: ApiKey, secret: string): ApiKeyCreateResponseDto {
+        return plainToInstance(ApiKeyCreateResponseDto, { ...apiKey, secret });
     }
 
     async getCacheByKey(key: string): Promise<ApiKey | null> {
@@ -145,6 +151,14 @@ export class ApiKeyUtil {
         apiKey: { type: ENUM_API_KEY_TYPE },
         allowed: ENUM_API_KEY_TYPE[]
     ): boolean {
-        return !apiKey || !allowed.includes(apiKey.type);
+        return apiKey && allowed.includes(apiKey.type);
+    }
+
+    generateCredential(key?: string): IApiKeyGenerateCredential {
+        key = key ?? this.createKey();
+        const secret = this.createSecret();
+        const hash: string = this.createHash(key, secret);
+
+        return { key, secret, hash };
     }
 }

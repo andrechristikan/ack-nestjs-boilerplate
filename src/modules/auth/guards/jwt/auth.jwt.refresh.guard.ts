@@ -18,7 +18,7 @@ export class AuthJwtRefreshGuard extends AuthGuard(AuthJwtRefreshGuardKey) {
     /**
      * Handles the request validation after JWT refresh token strategy processing.
      * Validates that the user exists, has a valid subject (sub) claim,
-     * and that the subject is a valid UUID format for refresh token operations.
+     * and that the subject is a string format for refresh token operations.
      *
      * @param {Error} err - Any error that occurred during authentication
      * @param {IAuthJwtRefreshTokenPayload} user - The authenticated user payload from JWT refresh token

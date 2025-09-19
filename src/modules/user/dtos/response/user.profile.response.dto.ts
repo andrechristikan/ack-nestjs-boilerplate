@@ -1,9 +1,9 @@
-import { ApiProperty, getSchemaPath, OmitType } from '@nestjs/swagger';
+import { ApiProperty, OmitType, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { CountryShortResponseDto } from '@modules/country/dtos/response/country.short.response.dto';
-import { RoleGetResponseDto } from '@modules/role/dtos/response/role.get.response.dto';
 import { UserGetResponseDto } from '@modules/user/dtos/response/user.get.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
+import { RoleDto } from '@modules/role/dtos/role.dto';
+import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
 
 export class UserProfileResponseDto extends OmitType(UserGetResponseDto, [
     'role',
@@ -12,19 +12,19 @@ export class UserProfileResponseDto extends OmitType(UserGetResponseDto, [
 ] as const) {
     @ApiProperty({
         required: true,
-        type: RoleGetResponseDto,
-        oneOf: [{ $ref: getSchemaPath(RoleGetResponseDto) }],
+        type: RoleDto,
+        oneOf: [{ $ref: getSchemaPath(RoleDto) }],
     })
-    @Type(() => RoleGetResponseDto)
-    role: RoleGetResponseDto;
+    @Type(() => RoleDto)
+    role: RoleDto;
 
     @ApiProperty({
         required: true,
-        type: CountryShortResponseDto,
-        oneOf: [{ $ref: getSchemaPath(CountryShortResponseDto) }],
+        type: CountryResponseDto,
+        oneOf: [{ $ref: getSchemaPath(CountryResponseDto) }],
     })
-    @Type(() => CountryShortResponseDto)
-    country: CountryShortResponseDto;
+    @Type(() => CountryResponseDto)
+    country: CountryResponseDto;
 
     @ApiProperty({
         required: false,

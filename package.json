@@ -91,6 +91,7 @@
         "response-time": "^2.3.3",
         "rotating-file-stream": "^3.2.6",
         "rxjs": "^7.8.2",
+        "ua-parser-js": "^2.0.5",
         "uuid": "^11.1.0",
         "verify-apple-id-token": "^3.1.2",
         "xlsx": "^0.18.5",

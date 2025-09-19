@@ -51,10 +51,10 @@ export class UserUtil {
         return !!username.search(this.usernamePattern);
     }
 
-    async checkUsernameBadWord(username: string): Promise<boolean> {
+    async checkBadWord(str: string): Promise<boolean> {
         const filterBadWordModule = await import('bad-words');
         const filterBadWord = new filterBadWordModule.Filter();
-        return filterBadWord.isProfane(username);
+        return filterBadWord.isProfane(str);
     }
 
     mapList(users: IUser[]): UserListResponseDto[] {

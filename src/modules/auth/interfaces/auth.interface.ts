@@ -9,6 +9,7 @@ export interface IAuthPassword {
     passwordHash: string;
     passwordExpired: Date;
     passwordCreated: Date;
+    passwordPeriodExpired: Date;
 }
 
 export interface IAuthPasswordOptions {

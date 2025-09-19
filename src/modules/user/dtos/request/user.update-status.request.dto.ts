@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ENUM_USER_STATUS } from '@prisma/client';
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { ENUM_USER_STATUS } from '@modules/user/enums/user.enum';
 
 export class UserUpdateStatusRequestDto {
     @ApiProperty({

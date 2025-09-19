@@ -7,7 +7,7 @@ export const UserDocParamsId = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     },
 ];
 
@@ -17,7 +17,7 @@ export const UserDocQueryList = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
         description: 'Filter by roleId',
     },
     {
@@ -25,7 +25,7 @@ export const UserDocQueryList = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     },
     {
         name: 'status',

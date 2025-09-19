@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
     IsAlphanumeric,
     IsNotEmpty,
@@ -12,5 +13,6 @@ export class UserUpdateClaimUsernameRequestDto {
     @IsAlphanumeric()
     @MaxLength(50)
     @MinLength(3)
+    @Transform(({ value }) => value.toLowerCase().trim())
     username: string;
 }

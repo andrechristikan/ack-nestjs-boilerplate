@@ -4,7 +4,10 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import {
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
 import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
@@ -23,16 +26,23 @@ export interface IApiKeyService {
         type,
         startDate,
         endDate,
-    }: ApiKeyCreateRequestDto): Promise<ApiKeyCreateResponseDto>;
-    active(id: string): Promise<ApiKeyDto>;
-    inactive(id: string): Promise<ApiKeyDto>;
-    update(id: string, { name }: ApiKeyUpdateRequestDto): Promise<ApiKeyDto>;
-    updateDate(
+    }: ApiKeyCreateRequestDto): Promise<
+        IResponseReturn<ApiKeyCreateResponseDto>
+    >;
+    active(id: string): Promise<IResponseReturn<ApiKeyDto>>;
+    inactive(id: string): Promise<IResponseReturn<ApiKeyDto>>;
+    update(
+        id: string,
+        { name }: ApiKeyUpdateRequestDto
+    ): Promise<IResponseReturn<ApiKeyDto>>;
+    updateDates(
         id: string,
         { startDate, endDate }: ApiKeyUpdateDateRequestDto
-    ): Promise<ApiKeyDto>;
-    reset(id: string): Promise<ApiKeyCreateResponseDto>;
-    delete(id: string): Promise<ApiKeyDto>;
+    ): Promise<IResponseReturn<ApiKeyDto>>;
+    reset(id: string): Promise<IResponseReturn<ApiKeyCreateResponseDto>>;
+    delete(id: string): Promise<IResponseReturn<ApiKeyDto>>;
+    findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null>;
+    validateApiKey(apiKey: ApiKey, includeActive: boolean): void;
     findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null>;
     validateXApiKeyGuard(request: IRequestApp): Promise<ApiKey>;
     validateXApiKeyTypeGuard(

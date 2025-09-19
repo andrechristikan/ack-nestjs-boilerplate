@@ -5,7 +5,7 @@ import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.req
 
 export class UserUpdateMobileNumberRequestDto extends PickType(
     UserCreateRequestDto,
-    ['country'] as const
+    ['countryId'] as const
 ) {
     @ApiProperty({
         example: `628${faker.string.fromCharacters('1234567890', {

@@ -92,10 +92,7 @@ export class ApiKeyAdminController {
         )
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKeyDto>> {
-        const results: IResponsePagingReturn<ApiKeyDto> =
-            await this.apiKeyService.getList(pagination, isActive, type);
-
-        return results;
+        return this.apiKeyService.getList(pagination, isActive, type);
     }
 
     @ApiKeyAdminCreateDoc()
@@ -112,12 +109,7 @@ export class ApiKeyAdminController {
     async create(
         @Body() body: ApiKeyCreateRequestDto
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        const created: ApiKeyCreateResponseDto =
-            await this.apiKeyService.create(body);
-
-        return {
-            data: created,
-        };
+        return this.apiKeyService.create(body);
     }
 
     @ApiKeyAdminResetDoc()
@@ -135,12 +127,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        const updated: ApiKeyCreateResponseDto =
-            await this.apiKeyService.reset(apiKeyId);
-
-        return {
-            data: updated,
-        };
+        return this.apiKeyService.reset(apiKeyId);
     }
 
     @ApiKeyAdminUpdateDoc()
@@ -159,11 +146,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyDto>> {
-        const updated = await this.apiKeyService.update(apiKeyId, body);
-
-        return {
-            data: updated,
-        };
+        return this.apiKeyService.update(apiKeyId, body);
     }
 
     @ApiKeyAdminUpdateDateDoc()
@@ -182,11 +165,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyDto>> {
-        const updated = await this.apiKeyService.updateDate(apiKeyId, body);
-
-        return {
-            data: updated,
-        };
+        return this.apiKeyService.updateDates(apiKeyId, body);
     }
 
     @ApiKeyAdminInactiveDoc()
@@ -204,11 +183,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyDto>> {
-        const updated = await this.apiKeyService.inactive(apiKeyId);
-
-        return {
-            data: updated,
-        };
+        return this.apiKeyService.inactive(apiKeyId);
     }
 
     @ApiKeyAdminActiveDoc()
@@ -226,11 +201,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyDto>> {
-        const updated = await this.apiKeyService.active(apiKeyId);
-
-        return {
-            data: updated,
-        };
+        return this.apiKeyService.active(apiKeyId);
     }
 
     @ApiKeyAdminDeleteDoc()
@@ -248,10 +219,6 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyDto>> {
-        const deleted = await this.apiKeyService.delete(apiKeyId);
-
-        return {
-            data: deleted,
-        };
+        return this.apiKeyService.delete(apiKeyId);
     }
 }
