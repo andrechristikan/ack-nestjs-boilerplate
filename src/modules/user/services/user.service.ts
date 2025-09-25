@@ -3,6 +3,9 @@ import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseIdResponseDto } from '@common/database/dtos/database.id.dto';
+import { IFile } from '@common/file/interfaces/file.interface';
+import { FileService } from '@common/file/services/file.service';
+import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationEqual,
     IPaginationIn,
@@ -30,12 +33,14 @@ import {
     UserCheckEmailRequestDto,
     UserCheckUsernameRequestDto,
 } from '@modules/user/dtos/request/user.check.request.dto';
+import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
+import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
 import {
-    UserUpdatePhotoProfileResponseDto,
+    UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
-} from '@modules/user/dtos/request/user.update-profile.request.dto';
+} from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import {
     UserCheckEmailResponseDto,
@@ -73,6 +78,8 @@ export class UserService implements IUserService {
         private readonly countryRepository: CountryRepository,
         private readonly roleRepository: RoleRepository,
         private readonly awsS3Service: AwsS3Service,
+        private readonly helperService: HelperService,
+        private readonly fileService: FileService,
         private readonly authService: AuthService
     ) {}
 
@@ -372,7 +379,7 @@ export class UserService implements IUserService {
         userId: string,
         { countryId, ...data }: UserUpdateProfileRequestDto,
         requestLog: IRequestLog
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         const checkCountry = await this.countryRepository.existById(countryId);
         if (!checkCountry) {
             throw new NotFoundException({
@@ -391,6 +398,8 @@ export class UserService implements IUserService {
                 requestLog,
                 userId
             );
+
+            return;
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
@@ -426,9 +435,9 @@ export class UserService implements IUserService {
 
     async updatePhotoProfile(
         userId: string,
-        { photo, size }: UserUpdatePhotoProfileResponseDto,
+        { photo, size }: UserUpdateProfilePhotoRequestDto,
         requestLog: IRequestLog
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         try {
             const aws: AwsS3Dto = this.awsS3Service.mapPresign({
                 key: photo,
@@ -440,6 +449,255 @@ export class UserService implements IUserService {
                 aws,
                 requestLog
             );
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async deleteSelf(
+        userId: string,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        try {
+            const today = this.helperService.dateCreate();
+            await this.userRepository.deleteSelf(userId, today, requestLog);
+            // TODO: NEXT SESSION DELETE
+            // await this.sessionService.updateManyRevokeByUser(user._id, {
+            //     session,
+            // });
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async addMobileNumber(
+        userId: string,
+        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
+        const checkCountry =
+            await this.countryRepository.findOneById(countryId);
+        if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'country.error.notFound',
+            });
+        }
+
+        const checkValidMobileNumber = this.userUtil.checkMobileNumber(
+            checkCountry.phoneCode,
+            phoneCode
+        );
+        if (!checkValidMobileNumber) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_INVALID,
+                message: 'user.error.mobileNumberInvalid',
+            });
+        }
+
+        try {
+            const updated = await this.userRepository.addMobileNumber(
+                userId,
+                {
+                    number,
+                    countryId,
+                    phoneCode,
+                },
+                userId,
+                requestLog
+            );
+
+            return {
+                data: {
+                    id: updated.id,
+                },
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async updateMobileNumber(
+        userId: string,
+        mobileNumberId: string,
+        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const [checkExist, checkCountry] = await Promise.all([
+            this.userRepository.existMobileNumber(userId, mobileNumberId),
+            this.countryRepository.findOneById(countryId),
+        ]);
+        if (!checkExist) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_NOT_FOUND,
+                message: 'user.error.mobileNumberNotFound',
+            });
+        } else if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'country.error.notFound',
+            });
+        }
+
+        const checkValidMobileNumber = this.userUtil.checkMobileNumber(
+            checkCountry.phoneCode,
+            phoneCode
+        );
+        if (!checkValidMobileNumber) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_INVALID,
+                message: 'user.error.mobileNumberInvalid',
+            });
+        }
+
+        try {
+            await this.userRepository.updateMobileNumber(
+                userId,
+                mobileNumberId,
+                {
+                    number,
+                    countryId,
+                    phoneCode,
+                },
+                userId,
+                requestLog
+            );
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async deleteMobileNumber(
+        userId: string,
+        mobileNumberId: string,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const checkExist = await this.userRepository.existMobileNumber(
+            userId,
+            mobileNumberId
+        );
+        if (!checkExist) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_NOT_FOUND,
+                message: 'user.error.mobileNumberNotFound',
+            });
+        }
+
+        try {
+            await this.userRepository.deleteMobileNumber(
+                userId,
+                mobileNumberId,
+                userId,
+                requestLog
+            );
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async claimUsername(
+        userId: string,
+        { username }: UserClaimUsernameRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const [checkUsername, checkBadWord, exist] = await Promise.all([
+            this.userUtil.checkUsernamePattern(username),
+            this.userUtil.checkBadWord(username),
+            this.userRepository.existByUsername(username),
+        ]);
+        if (checkUsername) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_NOT_ALLOWED,
+                message: 'user.error.usernameNotAllowed',
+            });
+        } else if (checkBadWord) {
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USERNAME_CONTAIN_BAD_WORD,
+                message: 'user.error.usernameContainBadWord',
+            });
+        } else if (exist) {
+            throw new ConflictException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_EXIST,
+                message: 'user.error.usernameExist',
+            });
+        }
+
+        try {
+            await this.userRepository.claimUsername(
+                userId,
+                { username },
+                userId,
+                requestLog
+            );
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async uploadPhotoProfile(
+        userId: string,
+        file: IFile,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        try {
+            const mime = this.fileService.extractExtensionFromFilename(
+                file.originalname
+            );
+            const key: string = this.userUtil.createRandomFilenamePhotoWithPath(
+                userId,
+                {
+                    mime,
+                }
+            );
+
+            const aws: AwsS3Dto = await this.awsS3Service.putItem({
+                key,
+                size: file.size,
+                file: file.buffer,
+            });
+
+            await this.userRepository.updatePhotoProfile(
+                userId,
+                aws,
+                requestLog
+            );
+
+            return;
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,

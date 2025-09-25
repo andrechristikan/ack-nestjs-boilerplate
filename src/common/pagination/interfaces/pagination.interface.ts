@@ -2,6 +2,7 @@ import { ENUM_HELPER_DATE_DAY_OF } from '@common/helper/enums/helper.enum';
 import {
     ENUM_PAGINATION_FILTER_DATE_BETWEEN_TYPE,
     ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+    ENUM_PAGINATION_TYPE,
 } from '@common/pagination/enums/pagination.enum';
 
 export type IPaginationQueryFilter = Record<
@@ -14,7 +15,6 @@ export interface IPaginationQuery {
     filters?: IPaginationQueryFilter;
     page: number;
     perPage: number;
-    skip?: number;
     cursor?: string;
     orderBy: string;
     orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
@@ -109,18 +109,22 @@ export interface IPaginationDate {
 }
 
 export interface IPaginationOffsetReturn<T = unknown> {
+    type: ENUM_PAGINATION_TYPE.OFFSET;
     count: number;
-    page: number;
-    totalPage: number;
+    perPage: number;
     hasNext: boolean;
     hasPrevious: boolean;
+    page: number;
     nextPage?: number;
     previousPage?: number;
+    totalPage: number;
     data: T[];
 }
 
 export interface IPaginationCursorReturn<T = unknown> {
-    count: number;
+    type: ENUM_PAGINATION_TYPE.CURSOR;
+    count?: number;
+    perPage: number;
     hasNext: boolean;
     hasPrevious: boolean;
     nextCursor?: string;

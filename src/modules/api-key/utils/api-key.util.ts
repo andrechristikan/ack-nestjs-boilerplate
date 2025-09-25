@@ -93,13 +93,13 @@ export class ApiKeyUtil {
 
     isExpired(
         apiKey: {
-            startDate?: Date;
-            endDate?: Date;
+            startAt?: Date;
+            endAt?: Date;
         },
         currentDate: Date
     ): boolean {
-        if (apiKey.endDate && apiKey.endDate) {
-            return currentDate > apiKey.endDate;
+        if (apiKey.startAt && apiKey.endAt) {
+            return currentDate > apiKey.endAt;
         }
 
         return false;
@@ -107,13 +107,13 @@ export class ApiKeyUtil {
 
     isNotYetActive(
         apiKey: {
-            startDate?: Date;
-            endDate?: Date;
+            startAt?: Date;
+            endAt?: Date;
         },
         currentDate: Date
     ): boolean {
-        if (apiKey.startDate && apiKey.endDate) {
-            return currentDate < apiKey.startDate;
+        if (apiKey.startAt && apiKey.endAt) {
+            return currentDate < apiKey.startAt;
         }
 
         return false;
@@ -125,8 +125,8 @@ export class ApiKeyUtil {
 
     isValid(
         apiKey: {
-            startDate?: Date;
-            endDate?: Date;
+            startAt?: Date;
+            endAt?: Date;
             isActive: boolean;
         },
         currentDate: Date

@@ -15,6 +15,8 @@ import { FileModule } from '@common/file/file.module';
 import { AuthModule } from '@modules/auth/auth.module';
 import { DatabaseModule } from '@common/database/database.module';
 import { PaginationModule } from '@common/pagination/pagination.module';
+import { ApiKeyModule } from '@modules/api-key/api-key.module';
+import { RoleModule } from '@modules/role/role.module';
 
 /**
  * Common module that provides shared functionality across the application.
@@ -95,6 +97,9 @@ import { PaginationModule } from '@common/pagination/pagination.module';
         AuthModule.forRoot(),
         PolicyModule.forRoot(),
         PaginationModule.forRoot(),
+        PolicyModule.forRoot(),
+        ApiKeyModule.forRoot(),
+        RoleModule.forRoot(),
     ],
 })
 export class CommonModule {}

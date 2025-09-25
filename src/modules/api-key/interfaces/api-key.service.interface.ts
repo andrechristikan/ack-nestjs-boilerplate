@@ -24,8 +24,8 @@ export interface IApiKeyService {
     create({
         name,
         type,
-        startDate,
-        endDate,
+        startAt,
+        endAt,
     }: ApiKeyCreateRequestDto): Promise<
         IResponseReturn<ApiKeyCreateResponseDto>
     >;
@@ -37,7 +37,7 @@ export interface IApiKeyService {
     ): Promise<IResponseReturn<ApiKeyDto>>;
     updateDates(
         id: string,
-        { startDate, endDate }: ApiKeyUpdateDateRequestDto
+        { startAt, endAt }: ApiKeyUpdateDateRequestDto
     ): Promise<IResponseReturn<ApiKeyDto>>;
     reset(id: string): Promise<IResponseReturn<ApiKeyCreateResponseDto>>;
     delete(id: string): Promise<IResponseReturn<ApiKeyDto>>;

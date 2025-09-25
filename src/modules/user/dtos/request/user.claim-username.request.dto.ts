@@ -7,12 +7,12 @@ import {
     MinLength,
 } from 'class-validator';
 
-export class UserUpdateClaimUsernameRequestDto {
+export class UserClaimUsernameRequestDto {
     @IsNotEmpty()
     @IsString()
     @IsAlphanumeric()
     @MaxLength(50)
     @MinLength(3)
     @Transform(({ value }) => value.toLowerCase().trim())
-    username: string;
+    username: Lowercase<string>;
 }

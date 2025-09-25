@@ -27,4 +27,10 @@ export class CountryRepository {
             select: { id: true },
         });
     }
+
+    async findOneById(id: string): Promise<Country | null> {
+        return this.databaseService.country.findUnique({
+            where: { id },
+        });
+    }
 }

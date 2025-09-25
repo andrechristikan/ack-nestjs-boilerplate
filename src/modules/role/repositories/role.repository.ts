@@ -54,6 +54,19 @@ export class RoleRepository {
         });
     }
 
+    async usedByUser(id: string): Promise<{ id: string } | null> {
+        return this.databaseService.role.findFirst({
+            where: {
+                users: {
+                    some: {
+                        roleId: id,
+                    },
+                },
+            },
+            select: { id: true },
+        });
+    }
+
     async create({
         name,
         abilities,

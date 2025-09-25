@@ -50,7 +50,7 @@ export function PaginationOffsetPipe(
             }
 
             const skip = (finalPage - 1) * finalPerPage;
-            this.addToRequestInstance(finalPage, finalPerPage, skip);
+            this.addToRequestInstance(finalPage, finalPerPage);
 
             return {
                 ...value,
@@ -63,19 +63,13 @@ export function PaginationOffsetPipe(
          * Adds pagination information to request instance
          * @param {number} page - Current page number
          * @param {number} perPage - Items per page
-         * @param {number} skip - Number of items to skip
          * @returns {void}
          */
-        private addToRequestInstance(
-            page: number,
-            perPage: number,
-            skip: number
-        ): void {
+        private addToRequestInstance(page: number, perPage: number): void {
             this.request.__pagination = {
                 ...this.request.__pagination,
                 page,
                 perPage,
-                skip,
             };
         }
     }

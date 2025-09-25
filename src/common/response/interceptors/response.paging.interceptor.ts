@@ -21,6 +21,7 @@ import { HelperService } from '@common/helper/services/helper.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { ENUM_PAGINATION_TYPE } from '@common/pagination/enums/pagination.enum';
 
 /**
  * Global pagination response interceptor that standardizes paginated HTTP response format
@@ -86,12 +87,26 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         count,
                         hasNext,
                         hasPrevious,
-                        totalPage,
-                        nextCursor,
-                        previousCursor,
-                        nextPage,
-                        previousPage,
+                        perPage,
                     } = responseData;
+
+                    let nextCursor: string | undefined;
+                    let previousCursor: string | undefined;
+
+                    let totalPage: number | undefined;
+                    let nextPage: number | undefined;
+                    let previousPage: number | undefined;
+                    let page: number | undefined;
+
+                    if (responseData.type === 'cursor') {
+                        nextCursor = responseData.nextCursor;
+                        previousCursor = responseData.previousCursor;
+                    } else if (responseData.type === 'offset') {
+                        totalPage = responseData.totalPage;
+                        nextPage = responseData.nextPage;
+                        previousPage = responseData.previousPage;
+                        page = responseData.page;
+                    }
 
                     data = rData;
                     messagePath = rMetadata?.messagePath ?? messagePath;
@@ -120,10 +135,10 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         previousCursor,
                         nextPage,
                         previousPage,
+                        page,
+                        perPage,
                         search: request.__pagination.search,
                         filters: request.__pagination.filters,
-                        page: request.__pagination.page,
-                        perPage: request.__pagination.perPage,
                         orderBy: request.__pagination.orderBy,
                         orderDirection: request.__pagination.orderDirection,
                         availableSearch: request.__pagination.availableSearch,
@@ -210,6 +225,13 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
     ): void {
         if (!responseData) {
             throw new Error('ResponsePaging must instanceof IResponsePaging');
+        }
+
+        if (
+            responseData.type !== ENUM_PAGINATION_TYPE.OFFSET &&
+            responseData.type !== ENUM_PAGINATION_TYPE.CURSOR
+        ) {
+            throw new Error('Field type must be cursor or offset');
         }
 
         if (!responseData.data || !Array.isArray(responseData.data)) {

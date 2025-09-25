@@ -41,7 +41,7 @@ export class ApiKeyRepository {
     }
 
     async create(
-        { name, type, startDate, endDate }: ApiKeyCreateRequestDto,
+        { name, type, startAt, endAt }: ApiKeyCreateRequestDto,
         key: string,
         hash: string
     ): Promise<ApiKey> {
@@ -52,8 +52,8 @@ export class ApiKeyRepository {
                 hash,
                 isActive: true,
                 type,
-                startDate,
-                endDate,
+                startAt,
+                endAt,
             },
         });
     }
@@ -90,15 +90,15 @@ export class ApiKeyRepository {
 
     async updateDates(
         id: string,
-        { startDate, endDate }: ApiKeyUpdateDateRequestDto
+        { startAt, endAt }: ApiKeyUpdateDateRequestDto
     ): Promise<ApiKey> {
         return this.databaseService.apiKey.update({
             where: {
                 id,
             },
             data: {
-                startDate,
-                endDate,
+                startAt,
+                endAt,
             },
         });
     }

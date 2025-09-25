@@ -57,8 +57,8 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async create({
-        startDate,
-        endDate,
+        startAt,
+        endAt,
         ...others
     }: ApiKeyCreateRequestDto): Promise<
         IResponseReturn<ApiKeyCreateResponseDto>
@@ -67,15 +67,15 @@ export class ApiKeyService implements IApiKeyService {
         const created = await this.apiKeyRepository.create(
             {
                 ...others,
-                startDate:
-                    startDate && endDate
-                        ? this.helperService.dateCreate(startDate, {
+                startAt:
+                    startAt && endAt
+                        ? this.helperService.dateCreate(startAt, {
                               dayOf: ENUM_HELPER_DATE_DAY_OF.START,
                           })
                         : null,
-                endDate:
-                    startDate && endDate
-                        ? this.helperService.dateCreate(endDate, {
+                endAt:
+                    startAt && endAt
+                        ? this.helperService.dateCreate(endAt, {
                               dayOf: ENUM_HELPER_DATE_DAY_OF.END,
                           })
                         : null,
@@ -149,17 +149,17 @@ export class ApiKeyService implements IApiKeyService {
 
     async updateDates(
         id: string,
-        { startDate, endDate }: ApiKeyUpdateDateRequestDto
+        { startAt, endAt }: ApiKeyUpdateDateRequestDto
     ): Promise<IResponseReturn<ApiKeyDto>> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
         const [updated] = await Promise.all([
             this.apiKeyRepository.updateDates(id, {
-                startDate: this.helperService.dateCreate(startDate, {
+                startAt: this.helperService.dateCreate(startAt, {
                     dayOf: ENUM_HELPER_DATE_DAY_OF.START,
                 }),
-                endDate: this.helperService.dateCreate(endDate, {
+                endAt: this.helperService.dateCreate(endAt, {
                     dayOf: ENUM_HELPER_DATE_DAY_OF.END,
                 }),
             }),

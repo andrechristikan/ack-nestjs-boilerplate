@@ -27,11 +27,12 @@ export interface IResponseReturn<T = unknown> {
     data?: T;
 }
 
-export type IResponsePagingReturn<T> =
+export type IResponsePagingReturn<T> = (
     | IPaginationOffsetReturn<T>
-    | (IPaginationCursorReturn<T> & {
-          metadata?: IResponseMetadata;
-      });
+    | IPaginationCursorReturn<T>
+) & {
+    metadata?: IResponseMetadata;
+};
 
 export interface IResponseFileReturn<T> {
     data: IFileSheet<T>[];

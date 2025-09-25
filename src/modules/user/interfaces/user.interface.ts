@@ -1,10 +1,10 @@
-import { Country, Role, User, UserMobile } from '@prisma/client';
+import { Country, Role, User, UserMobileNumber } from '@prisma/client';
 
 export interface IUser extends User {
     role: Role;
 }
 
 export interface IUserProfile extends IUser {
-    mobileNumbers: UserMobile[];
+    mobileNumbers: UserMobileNumber[];
     country: Country;
 }

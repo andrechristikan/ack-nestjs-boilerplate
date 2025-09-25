@@ -27,4 +27,5 @@ export interface IFileService {
         mime,
         randomLength,
     }: IFileRandomFilenameOptions): string;
+    extractExtensionFromFilename(filename: string): string;
 }

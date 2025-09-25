@@ -23,10 +23,13 @@ export interface IAwsS3PresignOptions extends IAwsS3MultipartOptions {
     expired?: number;
 }
 
-export interface IAwsS3PutItem {
-    file?: Buffer;
+export interface IAwsS3CreateMultiplePart {
     key: string;
     size?: number;
+}
+
+export interface IAwsS3PutItem extends IAwsS3CreateMultiplePart {
+    file: Buffer;
 }
 
 export interface IAwsS3ConfigCredential {

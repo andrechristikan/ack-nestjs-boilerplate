@@ -9,7 +9,7 @@ export class PolicyModule {
         return {
             module: PolicyModule,
             providers: [PolicyAbilityFactory, PolicyService],
-            exports: [],
+            exports: [PolicyService],
             imports: [],
         };
     }

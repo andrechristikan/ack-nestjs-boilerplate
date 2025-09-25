@@ -18,7 +18,7 @@ export class UserUpdateProfileRequestDto extends PickType(
     gender: ENUM_USER_GENDER;
 }
 
-export class UserUpdatePhotoProfileResponseDto extends PickType(
+export class UserUpdateProfilePhotoRequestDto extends PickType(
     AwsS3PresignRequestDto,
     ['size']
 ) {

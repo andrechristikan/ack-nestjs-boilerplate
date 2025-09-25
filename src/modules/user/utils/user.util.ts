@@ -69,7 +69,7 @@ export class UserUtil {
         return plainToInstance(UserProfileResponseDto, user);
     }
 
-    checkMobileNumber(phoneCode: string[], mobileNumber: string): boolean {
-        return phoneCode.some(e => mobileNumber.startsWith(e));
+    checkMobileNumber(phoneCodes: string[], phoneCode: string): boolean {
+        return phoneCodes.includes(phoneCode);
     }
 }

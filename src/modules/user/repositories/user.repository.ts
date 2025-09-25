@@ -11,13 +11,16 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
+import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
+import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { IUser, IUserProfile } from '@modules/user/interfaces/user.interface';
 import { IVerificationCreate } from '@modules/verification/interfaces/verification.interface';
 import { Injectable } from '@nestjs/common';
 import {
+    Country,
     ENUM_ACTIVITY_LOG_ACTION,
     ENUM_PASSWORD_HISTORY_TYPE,
     ENUM_TERM_POLICY_TYPE,
@@ -26,6 +29,7 @@ import {
     ENUM_USER_STATUS,
     Prisma,
     User,
+    UserMobileNumber,
 } from '@prisma/client';
 
 @Injectable()
@@ -77,7 +81,7 @@ export class UserRepository {
 
     async findOneById(id: string): Promise<IUser | null> {
         return this.databaseService.user.findUnique({
-            where: { id },
+            where: { id, deletedAt: null },
             include: {
                 role: true,
             },
@@ -86,7 +90,7 @@ export class UserRepository {
 
     async findOneProfileById(id: string): Promise<IUserProfile | null> {
         return this.databaseService.user.findUnique({
-            where: { id },
+            where: { id, deletedAt: null },
             include: {
                 role: true,
                 country: true,
@@ -95,9 +99,18 @@ export class UserRepository {
         });
     }
 
-    async existByRole(roleId: string): Promise<{ id: string } | null> {
-        return this.databaseService.user.findFirst({
-            where: { roleId },
+    async existMobileNumber(
+        userId: string,
+        mobileNumberId: string
+    ): Promise<{ id: string } | null> {
+        return this.databaseService.userMobileNumber.findFirst({
+            where: {
+                id: mobileNumberId,
+                user: {
+                    id: userId,
+                    deletedAt: null,
+                },
+            },
             select: { id: true },
         });
     }
@@ -190,9 +203,9 @@ export class UserRepository {
         { status }: UserUpdateStatusRequestDto,
         { ipAddress, userAgent }: IRequestLog,
         updatedBy: string
-    ): Promise<void> {
-        await this.databaseService.user.update({
-            where: { id },
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id, deletedAt: null },
             data: {
                 status,
                 updatedBy,
@@ -216,9 +229,9 @@ export class UserRepository {
         { countryId, ...data }: UserUpdateProfileRequestDto,
         { ipAddress, userAgent }: IRequestLog,
         updatedBy: string
-    ): Promise<void> {
-        await this.databaseService.user.update({
-            where: { id: userId },
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
             data: {
                 ...data,
                 countryId,
@@ -239,9 +252,9 @@ export class UserRepository {
         userId: string,
         photo: AwsS3Dto,
         { ipAddress, userAgent }: IRequestLog
-    ): Promise<void> {
-        await this.databaseService.user.update({
-            where: { id: userId },
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
             data: {
                 photo: photo as unknown as Prisma.InputJsonValue,
                 updatedBy: userId,
@@ -249,6 +262,173 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PHOTO_PROFILE,
                         ipAddress: ipAddress,
+                        userAgent: { ...userAgent },
+                        createdBy: userId,
+                    },
+                },
+            },
+        });
+    }
+
+    async deleteSelf(
+        userId: string,
+        deletedAt: Date,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                deletedAt,
+                deletedBy: userId,
+                updatedBy: userId,
+                status: ENUM_USER_STATUS.INACTIVE,
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.USER_DELETE_SELF,
+                        ipAddress,
+                        userAgent: { ...userAgent },
+                        createdBy: userId,
+                        createdAt: deletedAt,
+                    },
+                },
+            },
+        });
+    }
+
+    async addMobileNumber(
+        userId: string,
+        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
+        updatedBy: string,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<UserMobileNumber & { country: Country }> {
+        const updated = await this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                mobileNumbers: {
+                    create: {
+                        countryId,
+                        number,
+                        phoneCode,
+                        createdBy: updatedBy,
+                    },
+                },
+                updatedBy,
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.USER_ADD_MOBILE_NUMBER,
+                        ipAddress,
+                        userAgent: { ...userAgent },
+                        createdBy: userId,
+                    },
+                },
+            },
+            include: {
+                mobileNumbers: {
+                    where: {
+                        countryId,
+                        number,
+                        phoneCode,
+                    },
+                    take: 1,
+                    include: {
+                        country: true,
+                    },
+                },
+            },
+        });
+
+        return updated.mobileNumbers[0];
+    }
+
+    async updateMobileNumber(
+        userId: string,
+        mobileNumberId: string,
+        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
+        updatedBy: string,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<UserMobileNumber & { country: Country }> {
+        const updated = await this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                mobileNumbers: {
+                    update: {
+                        where: { id: mobileNumberId },
+                        data: {
+                            countryId,
+                            number,
+                            phoneCode,
+                            updatedBy: updatedBy,
+                        },
+                    },
+                },
+                updatedBy,
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_MOBILE_NUMBER,
+                        ipAddress,
+                        userAgent: { ...userAgent },
+                        createdBy: userId,
+                    },
+                },
+            },
+            include: {
+                mobileNumbers: {
+                    where: {
+                        countryId,
+                        number,
+                        phoneCode,
+                    },
+                    take: 1,
+                    include: {
+                        country: true,
+                    },
+                },
+            },
+        });
+
+        return updated.mobileNumbers[0];
+    }
+
+    async deleteMobileNumber(
+        userId: string,
+        mobileNumberId: string,
+        updatedBy: string,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                mobileNumbers: {
+                    delete: { id: mobileNumberId },
+                },
+                updatedBy,
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.USER_DELETE_MOBILE_NUMBER,
+                        ipAddress,
+                        userAgent: { ...userAgent },
+                        createdBy: userId,
+                    },
+                },
+            },
+        });
+    }
+
+    async claimUsername(
+        userId: string,
+        { username }: UserClaimUsernameRequestDto,
+        updatedBy: string,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                username,
+                updatedBy,
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.USER_CLAIM_USERNAME,
+                        ipAddress,
                         userAgent: { ...userAgent },
                         createdBy: userId,
                     },

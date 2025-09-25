@@ -3,14 +3,16 @@ import {
     Doc,
     DocAuth,
     DocRequest,
+    DocRequestFile,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { FileSingleDto } from '@common/file/dtos/file.single.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import {
-    UserUpdatePhotoProfileResponseDto,
+    UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
-} from '@modules/user/dtos/request/user.update-profile.request.dto';
+} from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
@@ -76,8 +78,24 @@ export function UserSharedUpdatePhotoProfileDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            dto: UserUpdatePhotoProfileResponseDto,
+            dto: UserUpdateProfilePhotoRequestDto,
         }),
         DocResponse('user.updatePhotoProfile')
+    );
+}
+
+export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'upload photo profile',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocRequestFile({
+            dto: FileSingleDto,
+        }),
+        DocResponse('user.uploadPhotoProfile')
     );
 }

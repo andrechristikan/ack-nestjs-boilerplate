@@ -6,7 +6,6 @@ import {
     ENUM_POLICY_SUBJECT,
 } from '@modules/policy/enums/policy.enum';
 import { DatabaseService } from '@common/database/services/database.service';
-import { RoleUtil } from '@modules/role/utils/role.util';
 import { ENUM_ROLE_TYPE } from '@prisma/client';
 
 @Injectable()
@@ -37,10 +36,7 @@ export class MigrationRoleSeed {
         },
     ];
 
-    constructor(
-        private readonly databaseService: DatabaseService,
-        private readonly roleUtil: RoleUtil
-    ) {}
+    constructor(private readonly databaseService: DatabaseService) {}
 
     @Command({
         command: 'seed:role',
@@ -65,9 +61,10 @@ export class MigrationRoleSeed {
         }
 
         await this.databaseService.role.createMany({
-            data: this.roles.map(role =>
-                this.roleUtil.serializeCreateDto(role)
-            ),
+            data: this.roles.map(role => ({
+                ...role,
+                abilities: role.abilities.map(ability => ({ ...ability })),
+            })),
         });
 
         this.logger.log('Roles seeded successfully.');
@@ -85,9 +82,7 @@ export class MigrationRoleSeed {
         await this.databaseService.role.deleteMany({
             where: {
                 name: {
-                    in: this.roles.map(role =>
-                        this.roleUtil.serializeName(role.name)
-                    ),
+                    in: this.roles.map(role => role.name.toLowerCase().trim()),
                 },
             },
         });

@@ -186,4 +186,16 @@ export class FileService implements IFileService {
 
         return path;
     }
+
+    /**
+     * Extracts the file extension from a given filename.
+     * Returns the file extension in lowercase without the leading dot.
+     * If the filename has no extension, returns an empty string.
+     * @param {string} filename - The name of the file from which to extract the extension
+     * @returns {string} The extracted file extension in lowercase, or an empty string if none exists
+     */
+    extractExtensionFromFilename(filename: string): string {
+        const parts = filename.split('.');
+        return parts.length > 1 ? parts.pop().toLowerCase() : '';
+    }
 }

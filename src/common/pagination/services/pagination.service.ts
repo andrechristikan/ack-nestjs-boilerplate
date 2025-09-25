@@ -3,6 +3,7 @@ import {
     PAGINATION_DEFAULT_MAX_PAGE,
     PAGINATION_DEFAULT_MAX_PER_PAGE,
 } from '@common/pagination/constants/pagination.constant';
+import { ENUM_PAGINATION_TYPE } from '@common/pagination/enums/pagination.enum';
 import {
     IPaginationCursorReturn,
     IPaginationCursorValue,
@@ -73,7 +74,9 @@ export class PaginationService implements IPaginationService {
         const previousPage = hasPrevious ? currentPage - 1 : undefined;
 
         return {
+            type: ENUM_PAGINATION_TYPE.OFFSET,
             count,
+            perPage: limit,
             page: currentPage,
             totalPage,
             hasNext,
@@ -166,7 +169,9 @@ export class PaginationService implements IPaginationService {
         const hasPrevious = false;
 
         return {
+            type: ENUM_PAGINATION_TYPE.CURSOR,
             nextCursor,
+            perPage: limit,
             hasNext,
             previousCursor,
             hasPrevious,

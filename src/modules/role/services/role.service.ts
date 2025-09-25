@@ -17,7 +17,6 @@ import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-cod
 import { IRoleService } from '@modules/role/interfaces/role.service.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleUtil } from '@modules/role/utils/role.util';
-import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     ConflictException,
     ForbiddenException,
@@ -31,7 +30,6 @@ import { ENUM_ROLE_TYPE } from '@prisma/client';
 export class RoleService implements IRoleService {
     constructor(
         private readonly roleRepository: RoleRepository,
-        private readonly userRepository: UserRepository,
         private readonly roleUtil: RoleUtil
     ) {}
 
@@ -95,16 +93,17 @@ export class RoleService implements IRoleService {
     }
 
     async delete(id: string): Promise<void> {
-        const role = await this.roleRepository.existById(id);
+        const [role, roleUsed] = await Promise.all([
+            this.roleRepository.existById(id),
+            this.roleRepository.usedByUser(id),
+        ]);
+
         if (!role) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'role.error.notFound',
             });
-        }
-
-        const roleUsed = await this.userRepository.existByRole(id);
-        if (roleUsed) {
+        } else if (roleUsed) {
             throw new ConflictException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.USED,
                 message: 'role.error.used',

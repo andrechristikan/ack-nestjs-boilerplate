@@ -61,7 +61,7 @@ model Country {
   continent  String
   timezone   String
 
-  mobileNumbers UserMobile[] @relation("UserMobileCountry")
+  mobileNumbers UserMobileNumber[] @relation("UserMobileNumberCountry")
   users         User[]       @relation("UserCountry")
 
   // timestamps fields
@@ -78,12 +78,12 @@ model Country {
   @@map("Countries")
 }
 
-model UserMobile {
+model UserMobileNumber {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   userId       String    @db.ObjectId
   countryId    String    @db.ObjectId
-  numberCode   String
-  mobileNumber String
+  phoneCode   String
+  number String
   isVerified   Boolean   @default(false)
   verifiedAt   DateTime?
 
@@ -93,10 +93,10 @@ model UserMobile {
   updatedAt DateTime? @updatedAt
   updatedBy String?
 
-  country Country? @relation("UserMobileCountry", fields: [countryId], references: [id])
-  user    User?    @relation("UserMobileUser", fields: [userId], references: [id])
+  country Country? @relation("UserMobileNumberCountry", fields: [countryId], references: [id])
+  user    User?    @relation("UserMobileNumberUser", fields: [userId], references: [id])
 
-  @@unique(fields: [mobileNumber])
+  @@unique(fields: [number])
   @@index(fields: [userId])
   @@index(fields: [isVerified])
   @@index(fields: [createdAt])
@@ -134,8 +134,10 @@ model User {
   createdBy String?
   updatedAt DateTime? @updatedAt
   updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
 
-  mobileNumbers UserMobile[] @relation("UserMobileUser")
+  mobileNumbers UserMobileNumber[] @relation("UserMobileNumberUser")
   verifications Verification[] @relation("UserVerifications")
   passwordHistories PasswordHistory[] @relation("UserPasswordHistories")
   activityLogs  ActivityLog[]  @relation("UserActivityLogs")
@@ -277,4 +279,9 @@ enum ENUM_ACTIVITY_LOG_ACTION {
     USER_UPDATE_PROFILE @map("USER_UPDATE_PROFILE")
     USER_UPDATE_PHOTO_PROFILE @map("USER_UPDATE_PHOTO_PROFILE")
     USER_UPDATE_PASSWORD @map("USER_UPDATE_PASSWORD")
+    USER_DELETE_SELF @map("USER_DELETE_SELF")
+    USER_ADD_MOBILE_NUMBER @map("USER_ADD_MOBILE_NUMBER")
+    USER_UPDATE_MOBILE_NUMBER @map("USER_UPDATE_MOBILE_NUMBER")
+    USER_DELETE_MOBILE_NUMBER @map("USER_DELETE_MOBILE_NUMBER")
+    USER_CLAIM_USERNAME @map("USER_CLAIM_USERNAME")
 }

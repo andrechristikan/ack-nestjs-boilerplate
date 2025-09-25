@@ -36,13 +36,6 @@ export class DatabaseDto {
     updatedBy?: string;
 
     @ApiProperty({
-        description: 'Flag for deleted',
-        default: false,
-        required: true,
-    })
-    deleted: boolean;
-
-    @ApiProperty({
         description: 'Date delete at',
         required: false,
     })

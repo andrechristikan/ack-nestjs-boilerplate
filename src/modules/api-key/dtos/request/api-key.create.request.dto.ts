@@ -27,7 +27,7 @@ export class ApiKeyCreateRequestDto extends IntersectionType(
 
 export class ApiKeyCreateRawRequestDto extends OmitType(
     ApiKeyCreateRequestDto,
-    ['startDate', 'endDate'] as const
+    ['startAt', 'endAt'] as const
 ) {
     @ApiProperty({
         name: 'key',

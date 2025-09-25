@@ -13,6 +13,7 @@ import {
     AwsS3PresignRequestDto,
 } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import {
+    IAwsS3CreateMultiplePart,
     IAwsS3DeleteDirOptions,
     IAwsS3GetItemsOptions,
     IAwsS3MultipartOptions,
@@ -43,12 +44,12 @@ export interface IAwsS3Service {
         options?: IAwsS3DeleteDirOptions
     ): Promise<void | _Object[]>;
     createMultiPart(
-        file: IAwsS3PutItem,
+        file: IAwsS3CreateMultiplePart,
         maxPartNumber: number,
         options?: IAwsS3MultipartOptions
     ): Promise<AwsS3MultipartDto>;
     createMultiPartWithAcl(
-        file: IAwsS3PutItem,
+        file: IAwsS3CreateMultiplePart,
         maxPartNumber: number,
         options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3MultipartDto>;

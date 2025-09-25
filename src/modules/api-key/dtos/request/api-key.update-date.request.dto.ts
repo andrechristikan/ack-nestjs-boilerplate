@@ -13,7 +13,7 @@ export class ApiKeyUpdateDateRequestDto {
     @IsNotEmpty()
     @IsISO8601()
     @IsAfterNow()
-    startDate: Date;
+    startAt: Date;
 
     @ApiProperty({
         description: 'Api Key end date',
@@ -23,5 +23,5 @@ export class ApiKeyUpdateDateRequestDto {
     @IsNotEmpty()
     @IsISO8601()
     @GreaterThanEqualOtherProperty('startDate')
-    endDate: Date;
+    endAt: Date;
 }

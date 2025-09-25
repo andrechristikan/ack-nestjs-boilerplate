@@ -50,6 +50,7 @@ import { IAwsS3Service } from '@common/aws/interfaces/aws.s3-service.interface';
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import {
     IAwsS3ConfigBucket,
+    IAwsS3CreateMultiplePart,
     IAwsS3DeleteDirOptions,
     IAwsS3FileInfo,
     IAwsS3GetItemsOptions,
@@ -526,13 +527,13 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Initiates a multipart upload for large files in S3.
-     * @param {IAwsS3PutItem} file - The file object containing key, file data, and optional size
+     * @param {IAwsS3CreateMultiplePart} file - The file object containing key, and optional size
      * @param {number} maxPartNumber - The maximum number of parts for the multipart upload
      * @param {IAwsS3MultipartOptions} [options] - Optional configuration including force update and access level
      * @returns {Promise<AwsS3MultipartDto>} Promise that resolves to an AwsS3MultipartDto with upload information
      */
     async createMultiPart(
-        file: IAwsS3PutItem,
+        file: IAwsS3CreateMultiplePart,
         maxPartNumber: number,
         options?: IAwsS3MultipartOptions
     ): Promise<AwsS3MultipartDto> {
@@ -604,13 +605,13 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Initiates a multipart upload with Access Control List (ACL) permissions for large files in S3.
-     * @param {IAwsS3PutItem} file - The file object containing key, file data, and optional size
+     * @param {IAwsS3CreateMultiplePart} file - The file object containing key, and optional size
      * @param {number} maxPartNumber - The maximum number of parts for the multipart upload
      * @param {IAwsS3PutItemWithAclOptions} [options] - Optional configuration including ACL settings, force update, and access level
      * @returns {Promise<AwsS3MultipartDto>} Promise that resolves to an AwsS3MultipartDto with upload information
      */
     async createMultiPartWithAcl(
-        file: IAwsS3PutItem,
+        file: IAwsS3CreateMultiplePart,
         maxPartNumber: number,
         options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3MultipartDto> {

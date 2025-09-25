@@ -11,6 +11,16 @@ export const UserDocParamsId = [
     },
 ];
 
+export const UserDocParamsMobileNumberId = [
+    {
+        name: 'mobileNumberId',
+        allowEmptyValue: false,
+        required: true,
+        type: 'string',
+        example: faker.database.mongodbObjectId(),
+    },
+];
+
 export const UserDocQueryList = [
     {
         name: 'roleId',

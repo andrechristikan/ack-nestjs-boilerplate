@@ -1,4 +1,8 @@
 import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { FileUploadSingle } from '@common/file/decorators/file.decorator';
+import { ENUM_FILE_MIME_IMAGE } from '@common/file/enums/file.enum';
+import { IFile } from '@common/file/interfaces/file.interface';
+import { FileTypePipe } from '@common/file/pipes/file.type.pipe';
 import {
     RequestIPAddress,
     RequestUserAgent,
@@ -17,12 +21,13 @@ import {
     UserSharedProfileDoc,
     UserSharedUpdatePhotoProfileDoc,
     UserSharedUpdateProfileDoc,
+    UserSharedUploadPhotoProfileDoc,
 } from '@modules/user/docs/user.shared.doc';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import {
-    UserUpdatePhotoProfileResponseDto,
+    UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
-} from '@modules/user/dtos/request/user.update-profile.request.dto';
+} from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserService } from '@modules/user/services/user.service';
 import {
@@ -72,7 +77,7 @@ export class UserSharedController {
         data: UserUpdateProfileRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: IRequestUserAgent
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         return this.userService.updateProfile(userId, data, {
             ipAddress,
             userAgent,
@@ -86,8 +91,8 @@ export class UserSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/profile/generate/photo-presign')
-    async uploadPhotoProfile(
+    @Post('/profile/update/photo/presign')
+    async generatePhotoProfilePresign(
         @AuthJwtPayload('userId')
         userId: string,
         @Body() data: UserGeneratePhotoProfileRequestDto
@@ -105,11 +110,40 @@ export class UserSharedController {
     async updatePhotoProfile(
         @AuthJwtPayload('userId')
         userId: string,
-        @Body() body: UserUpdatePhotoProfileResponseDto,
+        @Body() body: UserUpdateProfilePhotoRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: IRequestUserAgent
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         return this.userService.updatePhotoProfile(userId, body, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @UserSharedUploadPhotoProfileDoc()
+    @Response('user.uploadPhotoProfile')
+    // @TermPolicyAcceptanceProtected(ENUM_TERM_POLICY_TYPE.PRIVACY) // TODO: NEED TO ENABLE THIS
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @FileUploadSingle()
+    @Post('/profile/upload/photo')
+    async uploadPhotoProfile(
+        @AuthJwtPayload('userId')
+        userId: string,
+        @Body(
+            'file',
+            new FileTypePipe([
+                ENUM_FILE_MIME_IMAGE.JPEG,
+                ENUM_FILE_MIME_IMAGE.PNG,
+                ENUM_FILE_MIME_IMAGE.JPG,
+            ])
+        )
+        file: IFile,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: IRequestUserAgent
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.uploadPhotoProfile(userId, file, {
             ipAddress,
             userAgent,
         });
