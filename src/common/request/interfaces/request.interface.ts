@@ -2,9 +2,9 @@ import { Request } from 'express';
 import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { IPaginationQuery } from '@common/pagination/interfaces/pagination.interface';
 import { ApiKey } from '@prisma/client';
-import { IUser } from '@modules/user/interfaces/user.interface';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { IBrowser, ICPU, IDevice, IEngine, IOS } from 'ua-parser-js';
+import { IUser } from '@modules/user/interfaces/user.interface';
 
 export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
     user?: T;

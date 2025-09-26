@@ -17,9 +17,9 @@ model ApiKey {
   endAt       DateTime?
 
   // timestamps fields
-  createdAt DateTime? @default(now())
-  createdBy String?
-  updatedAt DateTime? @updatedAt
+  createdAt DateTime @default(now())
+  createdBy String
+  updatedAt DateTime @updatedAt
   updatedBy String?
 
   @@unique(fields: [key])
@@ -39,9 +39,9 @@ model Role {
   abilities   Json[]         @default([])
 
   // timestamps fields
-  createdAt DateTime? @default(now())
-  createdBy String?
-  updatedAt DateTime? @updatedAt
+  createdAt DateTime @default(now())
+  createdBy String
+  updatedAt DateTime @updatedAt
   updatedBy String?
 
   users User[] @relation("UserRole")
@@ -65,9 +65,9 @@ model Country {
   users         User[]       @relation("UserCountry")
 
   // timestamps fields
-  createdAt DateTime? @default(now())
-  createdBy String?
-  updatedAt DateTime? @updatedAt
+  createdAt DateTime @default(now())
+  createdBy String
+  updatedAt DateTime @updatedAt
   updatedBy String?
 
   @@unique(fields: [alpha2Code])
@@ -88,9 +88,9 @@ model UserMobileNumber {
   verifiedAt   DateTime?
 
   // timestamps fields
-  createdAt DateTime? @default(now())
-  createdBy String?
-  updatedAt DateTime? @updatedAt
+  createdAt DateTime @default(now())
+  createdBy String
+  updatedAt DateTime @updatedAt
   updatedBy String?
 
   country Country? @relation("UserMobileNumberCountry", fields: [countryId], references: [id])
@@ -130,9 +130,9 @@ model User {
   photo           Json?
 
   // timestamps fields
-  createdAt DateTime? @default(now())
-  createdBy String?
-  updatedAt DateTime? @updatedAt
+  createdAt DateTime @default(now())
+  createdBy String
+  updatedAt DateTime @updatedAt
   updatedBy String?
   deletedAt DateTime?
   deletedBy String?
@@ -143,6 +143,7 @@ model User {
   activityLogs  ActivityLog[]  @relation("UserActivityLogs")
   role          Role?        @relation("UserRole", fields: [roleId], references: [id])
   country       Country?     @relation("UserCountry", fields: [countryId], references: [id])
+  sessions      Session[]    @relation("UserSessions")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -165,9 +166,9 @@ model Verification {
   reference String
 
   // timestamps fields
-  createdAt DateTime? @default(now())
-  createdBy String?
-  updatedAt DateTime? @updatedAt
+  createdAt DateTime @default(now())
+  createdBy String
+  updatedAt DateTime @updatedAt
   updatedBy String?
 
   user  User? @relation("UserVerifications", fields: [userId], references: [id])
@@ -190,8 +191,8 @@ model PasswordHistory {
   user User? @relation("UserPasswordHistories",fields: [userId], references: [id])
 
   // timestamps fields
-  createdAt DateTime? @default(now())
-  createdBy String?
+  createdAt DateTime @default(now())
+  createdBy String
 }
 
 model ActivityLog {
@@ -204,13 +205,34 @@ model ActivityLog {
   user User? @relation("UserActivityLogs", fields: [userId], references: [id])
 
   // timestamps fields
-  createdAt DateTime? @default(now())
-  createdBy String?
+  createdAt DateTime @default(now())
+  createdBy String
 
   @@index(fields: [userId])
   @@index(fields: [action])
   @@index(fields: [createdAt])
   @@map("ActivityLogs")
+}
+
+model Session {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  ipAddress String
+  userAgent Json
+  expiredAt DateTime
+  revokedAt DateTime?
+  isRevoked Boolean @default(false)
+
+  user User? @relation("UserSessions", fields: [userId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String
+
+  @@index(fields: [userId])
+  @@index(fields: [expiredAt])
+  @@index(fields: [isRevoked])
+  @@map("Sessions")
 }
 
 enum ENUM_USER_GENDER {
@@ -240,6 +262,12 @@ enum ENUM_USER_SIGN_UP_WITH {
 enum ENUM_USER_LOGIN_FROM {
   WEBSITE @map("website")
   MOBILE  @map("mobile")
+}
+
+enum ENUM_USER_LOGIN_WITH {
+  CREDENTIAL    @map("credential")
+  SOCIAL_GOOGLE @map("socialGoogle")
+  SOCIAL_APPLE  @map("socialApple")
 }
 
 enum ENUM_ROLE_TYPE {
@@ -285,4 +313,5 @@ enum ENUM_ACTIVITY_LOG_ACTION {
     USER_DELETE_MOBILE_NUMBER @map("USER_DELETE_MOBILE_NUMBER")
     USER_CLAIM_USERNAME @map("USER_CLAIM_USERNAME")
     USER_UPDATE_PASSWORD_BY_ADMIN @map("USER_UPDATE_PASSWORD_BY_ADMIN")
+    USER_LOGIN_CREDENTIAL @map("USER_LOGIN_CREDENTIAL")
 }

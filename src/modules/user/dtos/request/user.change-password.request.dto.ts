@@ -1,5 +1,5 @@
 import { IsPassword } from '@common/request/validations/request.is-password.validation';
-import { faker } from '@faker-js/faker/.';
+import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 

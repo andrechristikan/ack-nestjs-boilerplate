@@ -4,9 +4,10 @@ import { HelperService } from '@common/helper/services/helper.service';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserDto } from '@modules/user/dtos/user.dto';
-import { IUser, IUserProfile } from '@modules/user/interfaces/user.interface';
+import { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { User } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 
 @Injectable()
@@ -57,11 +58,11 @@ export class UserUtil {
         return filterBadWord.isProfane(str);
     }
 
-    mapList(users: IUser[]): UserListResponseDto[] {
+    mapList(users: User[]): UserListResponseDto[] {
         return plainToInstance(UserListResponseDto, users);
     }
 
-    mapOne(user: IUser): UserDto {
+    mapOne(user: User): UserDto {
         return plainToInstance(UserDto, user);
     }
 

@@ -17,7 +17,11 @@ import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.req
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { IUser, IUserProfile } from '@modules/user/interfaces/user.interface';
+import {
+    IUser,
+    IUserLogin,
+    IUserProfile,
+} from '@modules/user/interfaces/user.interface';
 import { IVerificationCreate } from '@modules/verification/interfaces/verification.interface';
 import { Injectable } from '@nestjs/common';
 import {
@@ -82,9 +86,15 @@ export class UserRepository {
         });
     }
 
-    async findOneById(id: string): Promise<IUser | null> {
+    async findOneById(id: string): Promise<User | null> {
         return this.databaseService.user.findUnique({
             where: { id, deletedAt: null },
+        });
+    }
+
+    async findOneWithRoleByEmail(email: string): Promise<IUser | null> {
+        return this.databaseService.user.findUnique({
+            where: { email, deletedAt: null },
             include: {
                 role: true,
             },
@@ -98,6 +108,15 @@ export class UserRepository {
                 role: true,
                 country: true,
                 mobileNumbers: true,
+            },
+        });
+    }
+
+    async findOneWithRoleById(id: string): Promise<IUser | null> {
+        return this.databaseService.user.findUnique({
+            where: { id, deletedAt: null },
+            include: {
+                role: true,
             },
         });
     }
@@ -291,6 +310,12 @@ export class UserRepository {
                         userAgent: { ...userAgent },
                         createdBy: userId,
                         createdAt: deletedAt,
+                    },
+                },
+                sessions: {
+                    updateMany: {
+                        where: { isRevoked: false },
+                        data: { isRevoked: true },
                     },
                 },
             },
@@ -549,6 +574,47 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_CHANGE_PASSWORD,
+                        ipAddress,
+                        userAgent: { ...userAgent },
+                        createdBy: userId,
+                    },
+                },
+                sessions: {
+                    updateMany: {
+                        where: { isRevoked: false },
+                        data: { isRevoked: true },
+                    },
+                },
+            },
+        });
+    }
+
+    async updateLoginInfo(
+        userId: string,
+        { loginFrom, loginWith, sessionId, expiredAt }: IUserLogin,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                lastLoginAt: this.helperService.dateCreate(),
+                lastIPAddress: ipAddress,
+                lastLoginFrom: loginFrom,
+                lastLoginWith: loginWith,
+                updatedBy: userId,
+                sessions: {
+                    create: {
+                        id: sessionId,
+                        expiredAt,
+                        isRevoked: false,
+                        ipAddress,
+                        userAgent: { ...userAgent },
+                        createdBy: userId,
+                    },
+                },
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.USER_LOGIN_CREDENTIAL,
                         ipAddress,
                         userAgent: { ...userAgent },
                         createdBy: userId,

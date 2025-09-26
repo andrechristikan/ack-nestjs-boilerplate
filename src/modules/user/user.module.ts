@@ -10,6 +10,7 @@ import { RoleModule } from '@modules/role/role.module';
 import { AwsModule } from '@common/aws/aws.module';
 import { AuthModule } from '@modules/auth/auth.module';
 import { FileModule } from '@common/file/file.module';
+import { SessionModule } from '@modules/session/session.module';
 
 @Module({
     imports: [
@@ -22,6 +23,7 @@ import { FileModule } from '@common/file/file.module';
         AwsModule,
         AuthModule,
         FileModule,
+        SessionModule,
     ],
     exports: [UserService, UserUtil, UserRepository],
     providers: [UserService, UserUtil, UserRepository],

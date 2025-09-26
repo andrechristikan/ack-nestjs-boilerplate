@@ -16,7 +16,6 @@ import { join } from 'path';
 import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
 import { HelperService } from '@common/helper/services/helper.service';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { IUser } from '@modules/user/interfaces/user.interface';
 import {
     ENUM_USER_LOGIN_FROM,
     ENUM_USER_SIGN_UP_WITH,
@@ -24,6 +23,7 @@ import {
 } from '@prisma/client';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { IUser } from '@modules/user/interfaces/user.interface';
 
 /**
  * Authentication service providing JWT token management, password operations,
@@ -280,7 +280,7 @@ export class AuthService implements IAuthService {
      * @returns The formatted access token payload
      */
     createPayloadAccessToken(
-        data: IUser,
+        data: User,
         sessionId: string,
         loginAt: Date,
         loginFrom: ENUM_USER_LOGIN_FROM,
@@ -288,8 +288,7 @@ export class AuthService implements IAuthService {
     ): IAuthJwtAccessTokenPayload {
         return {
             userId: data.id,
-            type: data.role.type,
-            roleId: data.role.id,
+            roleId: data.roleId,
             username: data.username,
             email: data.email,
             sessionId,
@@ -413,7 +412,6 @@ export class AuthService implements IAuthService {
         loginWith: ENUM_USER_SIGN_UP_WITH
     ): AuthTokenResponseDto {
         const loginDate = this.helperService.dateCreate();
-        const roleType = user.role.type;
 
         const payloadAccessToken: IAuthJwtAccessTokenPayload =
             this.createPayloadAccessToken(
@@ -437,8 +435,8 @@ export class AuthService implements IAuthService {
 
         return {
             tokenType: this.jwtPrefix,
-            roleType,
-            expiresIn: this.jwtAccessTokenExpirationTime,
+            roleType: user.role.type,
+            expiresIn: this.jwtRefreshTokenExpirationTime,
             accessToken,
             refreshToken,
         };
@@ -454,8 +452,6 @@ export class AuthService implements IAuthService {
         user: IUser,
         refreshTokenFromRequest: string
     ): AuthTokenResponseDto {
-        const roleType = user.role.type;
-
         const payloadRefreshToken =
             this.payloadToken<IAuthJwtRefreshTokenPayload>(
                 refreshTokenFromRequest
@@ -476,7 +472,7 @@ export class AuthService implements IAuthService {
 
         return {
             tokenType: this.jwtPrefix,
-            roleType,
+            roleType: user.role.type,
             expiresIn: this.jwtAccessTokenExpirationTime,
             accessToken,
             refreshToken: refreshTokenFromRequest,
@@ -646,4 +642,6 @@ export class AuthService implements IAuthService {
             });
         }
     }
+
+    // TODO: NEED TO ADD CACHE FOR CACHE, CACHE SESSION ID FOR REFRESH TOKEN
 }

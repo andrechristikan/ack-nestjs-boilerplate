@@ -28,9 +28,9 @@ export class PolicyService implements IPolicyService {
             });
         }
 
-        const { type } = user;
+        const { role } = __user;
 
-        if (type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
+        if (role.type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
             return true;
         } else if (abilities.length === 0) {
             throw new InternalServerErrorException({

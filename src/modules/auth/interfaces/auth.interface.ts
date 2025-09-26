@@ -37,7 +37,6 @@ export interface IAuthJwtAccessTokenPayload {
     userId: string;
     sessionId: string;
     roleId: string;
-    type: ENUM_ROLE_TYPE;
     iat?: number;
     nbf?: number;
     exp?: number;

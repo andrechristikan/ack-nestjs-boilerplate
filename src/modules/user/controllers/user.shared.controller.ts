@@ -52,6 +52,36 @@ import { ApiTags } from '@nestjs/swagger';
 export class UserSharedController {
     constructor(private readonly userService: UserService) {}
 
+    // TODO: NEXT: Implement this
+    //     @AuthSharedRefreshDoc()
+    //     @Response('auth.refresh')
+    //     @UserProtected()
+    //     @AuthJwtRefreshProtected()
+    //     @ApiKeyProtected()
+    //     @HttpCode(HttpStatus.OK)
+    //     @Post('/refresh')
+    //     async refresh(
+    //         @AuthJwtToken() refreshToken: string,
+    //         @AuthJwtPayload<IAuthJwtRefreshTokenPayload>()
+    //         { user: userFromPayload, session }: IAuthJwtRefreshTokenPayload
+    //     ): Promise<IResponse<AuthRefreshResponseDto>> {
+    //         const checkActive = await this.sessionService.findLoginSession(session);
+    //         if (!checkActive) {
+    //             throw new UnauthorizedException({
+    //                 statusCode: ENUM_SESSION_STATUS_CODE_ERROR.NOT_FOUND,
+    //                 message: 'session.error.notFound',
+    //             });
+    //         }
+
+    //         const user: IUserDoc =
+    //             await this.userService.findOneActiveById(userFromPayload);
+    //         const token = this.authService.refreshToken(user, refreshToken);
+
+    //         return {
+    //             data: token,
+    //         };
+    //     }
+
     @UserSharedProfileDoc()
     @Response('user.profile')
     @UserProtected()
@@ -155,8 +185,13 @@ export class UserSharedController {
     @Patch('/change-password')
     async changePassword(
         @Body() body: UserChangePasswordRequestDto,
-        @AuthJwtPayload('userId') userId: string
+        @AuthJwtPayload('userId') userId: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: IRequestUserAgent
     ): Promise<IResponseReturn<void>> {
-        return this.userService.changePassword(userId, body);
+        return this.userService.changePassword(userId, body, {
+            ipAddress,
+            userAgent,
+        });
     }
 }

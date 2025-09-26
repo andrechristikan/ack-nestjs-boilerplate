@@ -27,7 +27,7 @@ export interface IAuthService {
     validateRefreshToken(subject: string, token: string): boolean;
     payloadToken<T>(token: string): T;
     createPayloadAccessToken(
-        data: IUser,
+        data: User,
         sessionId: string,
         loginAt: Date,
         loginFrom: ENUM_USER_LOGIN_FROM,

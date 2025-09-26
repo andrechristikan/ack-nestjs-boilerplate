@@ -127,16 +127,16 @@ export class RoleService implements IRoleService {
             });
         }
 
-        const { type } = user;
+        const { role } = __user;
 
-        if (type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
+        if (role.type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
             return [];
         } else if (roles.length === 0) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.PREDEFINED_NOT_FOUND,
                 message: 'role.error.predefinedNotFound',
             });
-        } else if (!roles.includes(type)) {
+        } else if (!roles.includes(role.type)) {
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.FORBIDDEN,
                 message: 'role.error.forbidden',

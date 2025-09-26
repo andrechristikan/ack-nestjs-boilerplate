@@ -29,6 +29,7 @@ import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto
 import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
+import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import {
     UserCheckEmailRequestDto,
@@ -37,6 +38,7 @@ import {
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
+import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
 import {
     UserUpdateProfilePhotoRequestDto,
@@ -49,6 +51,7 @@ import {
 } from '@modules/user/dtos/response/user.check.response.dto';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { IUserService } from '@modules/user/interfaces/user.service.interface';
@@ -65,12 +68,15 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import {
+    ENUM_USER_LOGIN_FROM,
+    ENUM_USER_LOGIN_WITH,
     ENUM_USER_STATUS,
     ENUM_VERIFICATION_TYPE,
     PasswordHistory,
 } from '@prisma/client';
 import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 import { Queue } from 'bullmq';
+import { Duration } from 'luxon';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -85,7 +91,8 @@ export class UserService implements IUserService {
         private readonly awsS3Service: AwsS3Service,
         private readonly helperService: HelperService,
         private readonly fileService: FileService,
-        private readonly authService: AuthService
+        private readonly authService: AuthService,
+        private readonly sessionUtil: SessionUtil
     ) {}
 
     async validateUserGuard(
@@ -93,7 +100,7 @@ export class UserService implements IUserService {
         requiredVerified: boolean
     ): Promise<IUser> {
         const { userId } = request.user;
-        const user = await this.userRepository.findOneById(userId);
+        const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
@@ -469,11 +476,10 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         try {
-            await this.userRepository.deleteSelf(userId, requestLog);
-            // TODO: NEXT SESSION DELETE
-            // await this.sessionService.updateManyRevokeByUser(user._id, {
-            //     session,
-            // });
+            await Promise.all([
+                this.userRepository.deleteSelf(userId, requestLog),
+                // TODO: NEXT DELETE ALL CACHE FOR USER
+            ]);
 
             return;
         } catch (err: unknown) {
@@ -800,9 +806,9 @@ export class UserService implements IUserService {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
                 message: 'auth.error.passwordAttemptMax',
             });
-        }
-
-        if (!this.authService.validatePassword(oldPassword, user.password)) {
+        } else if (
+            !this.authService.validatePassword(oldPassword, user.password)
+        ) {
             await this.userRepository.increasePasswordAttempt(userId);
 
             throw new BadRequestException({
@@ -836,16 +842,14 @@ export class UserService implements IUserService {
         const password = this.authService.createPassword(newPassword);
 
         try {
-            const updated = await this.userRepository.changePassword(
-                userId,
-                password,
-                requestLog
-            );
-
-            // TODO: NEXT SESSION DELETE
-            // await this.sessionService.updateManyRevokeByUser(user._id, {
-            //     session,
-            // });
+            const [updated] = await Promise.all([
+                this.userRepository.changePassword(
+                    userId,
+                    password,
+                    requestLog
+                ),
+                // TODO: NEXT DELETE ALL CACHE FOR USER
+            ]);
 
             await this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
@@ -861,6 +865,96 @@ export class UserService implements IUserService {
             );
 
             return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async loginCredential(
+        { email, password, from }: UserLoginRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+        const user = await this.userRepository.findOneWithRoleByEmail(email);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'user.error.notFound',
+            });
+        } else if (user.status !== ENUM_USER_STATUS.ACTIVE) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
+                message: 'user.error.inactive',
+            });
+        }
+
+        if (this.authService.checkPasswordAttempt(user)) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
+                message: 'auth.error.passwordAttemptMax',
+            });
+        } else if (
+            !this.authService.validatePassword(password, user.password)
+        ) {
+            await this.userRepository.increasePasswordAttempt(user.id);
+
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_MATCH,
+                message: 'auth.error.passwordNotMatch',
+            });
+        }
+
+        await this.userRepository.resetPasswordAttempt(user.id);
+
+        const checkPasswordExpired: boolean =
+            this.authService.checkPasswordExpired(user.passwordExpired);
+        if (checkPasswordExpired) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
+                message: 'auth.error.passwordExpired',
+            });
+        } else if (user.isVerified !== true) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_NOT_VERIFIED,
+                message: 'user.error.emailNotVerified',
+            });
+        }
+
+        try {
+            const sessionId = this.sessionUtil.createSessionId();
+            const tokens = this.authService.createTokens(
+                user,
+                sessionId,
+                from,
+                ENUM_USER_LOGIN_WITH.CREDENTIAL
+            );
+            const expiredAt = this.helperService.dateForward(
+                this.helperService.dateCreate(),
+                Duration.fromObject({
+                    seconds: tokens.expiresIn,
+                })
+            );
+
+            await Promise.all([
+                // TODO: NEXT ADD CACHE FOR REFRESH TOKEN AND DONT FORGET TO SET TTL
+                this.userRepository.updateLoginInfo(
+                    user.id,
+                    {
+                        loginFrom: from,
+                        loginWith: ENUM_USER_LOGIN_WITH.CREDENTIAL,
+                        sessionId,
+                        expiredAt,
+                    },
+                    requestLog
+                ),
+            ]);
+
+            return {
+                data: tokens,
+            };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
