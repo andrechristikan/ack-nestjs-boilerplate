@@ -8,6 +8,7 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import { FileSingleDto } from '@common/file/dtos/file.single.dto';
+import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import {
     UserUpdateProfilePhotoRequestDto,
@@ -97,5 +98,22 @@ export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
             dto: FileSingleDto,
         }),
         DocResponse('user.uploadPhotoProfile')
+    );
+}
+
+export function UserSharedChangePasswordDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'change password',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: UserChangePasswordRequestDto,
+        }),
+        DocResponse('user.changePassword')
     );
 }

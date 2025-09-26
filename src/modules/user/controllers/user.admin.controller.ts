@@ -44,6 +44,7 @@ import {
     UserAdminCreateDoc,
     UserAdminGetDoc,
     UserAdminListDoc,
+    UserAdminUpdatePasswordDoc,
     UserAdminUpdateStatusDoc,
 } from '@modules/user/docs/user.admin.doc';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
@@ -161,9 +162,37 @@ export class UserAdminController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: IRequestUserAgent
     ): Promise<IResponseReturn<void>> {
-        return this.userService.updateStatus(
+        return this.userService.updateStatusByAdmin(
             userId,
             data,
+            {
+                ipAddress,
+                userAgent,
+            },
+            updatedBy
+        );
+    }
+
+    @UserAdminUpdatePasswordDoc()
+    @Response('user.updatePassword')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
+    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/update/:userId/password')
+    async updatePassword(
+        @Param('userId', RequestRequiredPipe)
+        userId: string,
+        @AuthJwtPayload('userId') updatedBy: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: IRequestUserAgent
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.updatePasswordByAdmin(
+            userId,
             {
                 ipAddress,
                 userAgent,

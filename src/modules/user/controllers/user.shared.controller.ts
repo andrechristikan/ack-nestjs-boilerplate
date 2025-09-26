@@ -17,12 +17,14 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
+    UserSharedChangePasswordDoc,
     UserSharedGeneratePhotoProfileDoc,
     UserSharedProfileDoc,
     UserSharedUpdatePhotoProfileDoc,
     UserSharedUpdateProfileDoc,
     UserSharedUploadPhotoProfileDoc,
 } from '@modules/user/docs/user.shared.doc';
+import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import {
     UserUpdateProfilePhotoRequestDto,
@@ -36,6 +38,7 @@ import {
     Get,
     HttpCode,
     HttpStatus,
+    Patch,
     Post,
     Put,
 } from '@nestjs/common';
@@ -51,7 +54,6 @@ export class UserSharedController {
 
     @UserSharedProfileDoc()
     @Response('user.profile')
-    // @TermPolicyAcceptanceProtected(ENUM_TERM_POLICY_TYPE.PRIVACY) // TODO: NEED TO ENABLE THIS
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -65,7 +67,6 @@ export class UserSharedController {
 
     @UserSharedUpdateProfileDoc()
     @Response('user.updateProfile')
-    // @TermPolicyAcceptanceProtected(ENUM_TERM_POLICY_TYPE.PRIVACY) // TODO: NEED TO ENABLE THIS
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -86,7 +87,6 @@ export class UserSharedController {
 
     @UserSharedGeneratePhotoProfileDoc()
     @Response('user.uploadPhotoProfile')
-    // @TermPolicyAcceptanceProtected(ENUM_TERM_POLICY_TYPE.PRIVACY) // TODO: NEED TO ENABLE THIS
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -102,7 +102,6 @@ export class UserSharedController {
 
     @UserSharedUpdatePhotoProfileDoc()
     @Response('user.updatePhotoProfile')
-    // @TermPolicyAcceptanceProtected(ENUM_TERM_POLICY_TYPE.PRIVACY) // TODO: NEED TO ENABLE THIS
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -122,7 +121,6 @@ export class UserSharedController {
 
     @UserSharedUploadPhotoProfileDoc()
     @Response('user.uploadPhotoProfile')
-    // @TermPolicyAcceptanceProtected(ENUM_TERM_POLICY_TYPE.PRIVACY) // TODO: NEED TO ENABLE THIS
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -147,5 +145,18 @@ export class UserSharedController {
             ipAddress,
             userAgent,
         });
+    }
+
+    @UserSharedChangePasswordDoc()
+    @Response('user.changePassword')
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/change-password')
+    async changePassword(
+        @Body() body: UserChangePasswordRequestDto,
+        @AuthJwtPayload('userId') userId: string
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.changePassword(userId, body);
     }
 }

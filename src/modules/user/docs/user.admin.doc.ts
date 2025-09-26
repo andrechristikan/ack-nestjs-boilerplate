@@ -96,21 +96,19 @@ export function UserAdminUpdateStatusDoc(): MethodDecorator {
     );
 }
 
-// export function UserAdminUpdateDoc(): MethodDecorator {
-//     return applyDecorators(
-//         Doc({
-//             summary: 'update a user',
-//         }),
-//         DocRequest({
-//             params: UserDocParamsId,
-//             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-//             dto: UserUpdateRequestDto,
-//         }),
-//         DocAuth({
-//             xApiKey: true,
-//             jwtAccessToken: true,
-//         }),
-//         DocGuard({ role: true, policy: true }),
-//         DocResponse('user.update')
-//     );
-// }
+export function UserAdminUpdatePasswordDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'update password of user',
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('user.updatePassword')
+    );
+}

@@ -337,7 +337,7 @@ export class AuthService implements IAuthService {
      */
     checkPasswordAttempt(user: User): boolean {
         return this.passwordAttempt
-            ? user.passwordAttempt > this.passwordMaxAttempt
+            ? user.passwordAttempt >= this.passwordMaxAttempt
             : false;
     }
 

@@ -1,5 +1,6 @@
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { DatabaseService } from '@common/database/services/database.service';
+import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationCursorReturn,
     IPaginationEqual,
@@ -27,6 +28,7 @@ import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_SIGN_UP_WITH,
     ENUM_USER_STATUS,
+    PasswordHistory,
     Prisma,
     User,
     UserMobileNumber,
@@ -36,7 +38,8 @@ import {
 export class UserRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly helperService: HelperService
     ) {}
 
     async findWithPaginationOffset(
@@ -198,7 +201,7 @@ export class UserRepository {
         });
     }
 
-    async updateStatus(
+    async updateStatusByAdmin(
         id: string,
         { status }: UserUpdateStatusRequestDto,
         { ipAddress, userAgent }: IRequestLog,
@@ -227,21 +230,20 @@ export class UserRepository {
     async updateProfile(
         userId: string,
         { countryId, ...data }: UserUpdateProfileRequestDto,
-        { ipAddress, userAgent }: IRequestLog,
-        updatedBy: string
+        { ipAddress, userAgent }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 ...data,
                 countryId,
-                updatedBy,
+                updatedBy: userId,
                 activityLogs: {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PROFILE,
                         ipAddress,
                         userAgent: { ...userAgent },
-                        createdBy: updatedBy,
+                        createdBy: userId,
                     },
                 },
             },
@@ -272,9 +274,9 @@ export class UserRepository {
 
     async deleteSelf(
         userId: string,
-        deletedAt: Date,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<User> {
+        const deletedAt = this.helperService.dateCreate();
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
             data: {
@@ -344,7 +346,6 @@ export class UserRepository {
         userId: string,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        updatedBy: string,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<UserMobileNumber & { country: Country }> {
         const updated = await this.databaseService.user.update({
@@ -357,11 +358,11 @@ export class UserRepository {
                             countryId,
                             number,
                             phoneCode,
-                            updatedBy: updatedBy,
+                            updatedBy: userId,
                         },
                     },
                 },
-                updatedBy,
+                updatedBy: userId,
                 activityLogs: {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_MOBILE_NUMBER,
@@ -392,7 +393,6 @@ export class UserRepository {
     async deleteMobileNumber(
         userId: string,
         mobileNumberId: string,
-        updatedBy: string,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
@@ -401,7 +401,7 @@ export class UserRepository {
                 mobileNumbers: {
                     delete: { id: mobileNumberId },
                 },
-                updatedBy,
+                updatedBy: userId,
                 activityLogs: {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_DELETE_MOBILE_NUMBER,
@@ -417,17 +417,138 @@ export class UserRepository {
     async claimUsername(
         userId: string,
         { username }: UserClaimUsernameRequestDto,
-        updatedBy: string,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 username,
-                updatedBy,
+                updatedBy: userId,
                 activityLogs: {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_CLAIM_USERNAME,
+                        ipAddress,
+                        userAgent: { ...userAgent },
+                        createdBy: userId,
+                    },
+                },
+            },
+        });
+    }
+
+    async updatePasswordByAdmin(
+        userId: string,
+        {
+            passwordCreated,
+            passwordExpired,
+            passwordHash,
+            salt,
+            passwordPeriodExpired,
+        }: IAuthPassword,
+        { ipAddress, userAgent }: IRequestLog,
+        updatedBy: string
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                password: passwordHash,
+                salt,
+                passwordCreated,
+                passwordExpired,
+                passwordAttempt: 0,
+                updatedBy,
+                passwordHistories: {
+                    create: {
+                        password: passwordHash,
+                        salt,
+                        type: ENUM_PASSWORD_HISTORY_TYPE.ADMIN,
+                        expiredAt: passwordPeriodExpired,
+                        createdAt: passwordCreated,
+                        createdBy: updatedBy,
+                    },
+                },
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PASSWORD_BY_ADMIN,
+                        ipAddress,
+                        userAgent: { ...userAgent },
+                        createdBy: updatedBy,
+                    },
+                },
+            },
+        });
+    }
+
+    async increasePasswordAttempt(userId: string): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                passwordAttempt: {
+                    increment: 1,
+                },
+            },
+        });
+    }
+
+    async resetPasswordAttempt(userId: string): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                passwordAttempt: 0,
+            },
+        });
+    }
+
+    async findAllPasswordHistoryActive(
+        userId: string
+    ): Promise<PasswordHistory[]> {
+        const today = this.helperService.dateCreate();
+        return this.databaseService.passwordHistory.findMany({
+            where: {
+                userId,
+                expiredAt: {
+                    gte: today,
+                },
+            },
+            orderBy: {
+                createdAt: Prisma.SortOrder.desc,
+            },
+        });
+    }
+
+    async changePassword(
+        userId: string,
+        {
+            passwordCreated,
+            passwordExpired,
+            passwordHash,
+            salt,
+            passwordPeriodExpired,
+        }: IAuthPassword,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                password: passwordHash,
+                salt,
+                passwordCreated,
+                passwordExpired,
+                passwordAttempt: 0,
+                updatedBy: userId,
+                passwordHistories: {
+                    create: {
+                        password: passwordHash,
+                        salt,
+                        type: ENUM_PASSWORD_HISTORY_TYPE.PROFILE,
+                        expiredAt: passwordPeriodExpired,
+                        createdAt: passwordCreated,
+                        createdBy: userId,
+                    },
+                },
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.USER_CHANGE_PASSWORD,
                         ipAddress,
                         userAgent: { ...userAgent },
                         createdBy: userId,

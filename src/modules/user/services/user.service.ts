@@ -29,6 +29,7 @@ import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto
 import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
+import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import {
     UserCheckEmailRequestDto,
     UserCheckUsernameRequestDto,
@@ -63,7 +64,11 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { ENUM_USER_STATUS, ENUM_VERIFICATION_TYPE } from '@prisma/client';
+import {
+    ENUM_USER_STATUS,
+    ENUM_VERIFICATION_TYPE,
+    PasswordHistory,
+} from '@prisma/client';
 import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 import { Queue } from 'bullmq';
 
@@ -282,7 +287,7 @@ export class UserService implements IUserService {
         }
     }
 
-    async updateStatus(
+    async updateStatusByAdmin(
         userId: string,
         { status }: UserUpdateStatusRequestDto,
         requestLog: IRequestLog,
@@ -301,7 +306,7 @@ export class UserService implements IUserService {
                 _metadata: {
                     customProperty: {
                         messageProperties: {
-                            status: status.toLowerCase(),
+                            status: user.status.toLowerCase(),
                         },
                     },
                 },
@@ -309,7 +314,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            await this.userRepository.updateStatus(
+            await this.userRepository.updateStatusByAdmin(
                 userId,
                 { status },
                 requestLog,
@@ -395,8 +400,7 @@ export class UserService implements IUserService {
                     countryId,
                     ...data,
                 },
-                requestLog,
-                userId
+                requestLog
             );
 
             return;
@@ -465,8 +469,7 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         try {
-            const today = this.helperService.dateCreate();
-            await this.userRepository.deleteSelf(userId, today, requestLog);
+            await this.userRepository.deleteSelf(userId, requestLog);
             // TODO: NEXT SESSION DELETE
             // await this.sessionService.updateManyRevokeByUser(user._id, {
             //     session,
@@ -575,7 +578,6 @@ export class UserService implements IUserService {
                     countryId,
                     phoneCode,
                 },
-                userId,
                 requestLog
             );
 
@@ -609,7 +611,6 @@ export class UserService implements IUserService {
             await this.userRepository.deleteMobileNumber(
                 userId,
                 mobileNumberId,
-                userId,
                 requestLog
             );
 
@@ -655,7 +656,6 @@ export class UserService implements IUserService {
             await this.userRepository.claimUsername(
                 userId,
                 { username },
-                userId,
                 requestLog
             );
 
@@ -695,6 +695,169 @@ export class UserService implements IUserService {
                 userId,
                 aws,
                 requestLog
+            );
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async updatePasswordByAdmin(
+        userId: string,
+        requestLog: IRequestLog,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        const user = await this.userRepository.findOneById(userId);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'user.error.notFound',
+            });
+        } else if (user.status === ENUM_USER_STATUS.BLOCKED) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
+                message: 'user.error.statusInvalid',
+                _metadata: {
+                    customProperty: {
+                        messageProperties: {
+                            status: user.status.toLowerCase(),
+                        },
+                    },
+                },
+            });
+        }
+
+        try {
+            const passwordString = this.authService.createPasswordRandom();
+            const password = this.authService.createPassword(passwordString, {
+                temporary: true,
+            });
+
+            const updated = await this.userRepository.updatePasswordByAdmin(
+                userId,
+                password,
+                requestLog,
+                updatedBy
+            );
+
+            await this.emailQueue.add(
+                ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
+                {
+                    send: { email: updated.email, name: updated.name },
+                    data: {
+                        passwordExpiredAt: password.passwordExpired,
+                        password: passwordString,
+                    },
+                },
+                {
+                    debounce: {
+                        id: `${ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD}-${updated.id}`,
+                        ttl: 1000,
+                    },
+                }
+            );
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async checkPasswordHistoryActiveByPeriod(
+        userId: string,
+        password: string
+    ): Promise<PasswordHistory | null> {
+        const histories =
+            await this.userRepository.findAllPasswordHistoryActive(userId);
+
+        for (const history of histories) {
+            if (this.helperService.bcryptCompare(password, history.password)) {
+                return history;
+            }
+        }
+
+        return null;
+    }
+
+    async changePassword(
+        userId: string,
+        { newPassword, oldPassword }: UserChangePasswordRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const user = await this.userRepository.findOneById(userId);
+
+        if (this.authService.checkPasswordAttempt(user)) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
+                message: 'auth.error.passwordAttemptMax',
+            });
+        }
+
+        if (!this.authService.validatePassword(oldPassword, user.password)) {
+            await this.userRepository.increasePasswordAttempt(userId);
+
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_MATCH,
+                message: 'auth.error.passwordNotMatch',
+            });
+        }
+
+        await this.userRepository.resetPasswordAttempt(userId);
+
+        const passwordCheck = await this.checkPasswordHistoryActiveByPeriod(
+            userId,
+            newPassword
+        );
+        if (passwordCheck) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW,
+                message: 'auth.error.passwordMustNew',
+                _metadata: {
+                    customProperty: {
+                        messageProperties: {
+                            period: this.helperService.dateFormatToRFC2822(
+                                passwordCheck.expiredAt
+                            ),
+                        },
+                    },
+                },
+            });
+        }
+
+        const password = this.authService.createPassword(newPassword);
+
+        try {
+            const updated = await this.userRepository.changePassword(
+                userId,
+                password,
+                requestLog
+            );
+
+            // TODO: NEXT SESSION DELETE
+            // await this.sessionService.updateManyRevokeByUser(user._id, {
+            //     session,
+            // });
+
+            await this.emailQueue.add(
+                ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
+                {
+                    send: { email: user.email, name: user.name },
+                },
+                {
+                    debounce: {
+                        id: `${ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD}-${updated.id}`,
+                        ttl: 1000,
+                    },
+                }
             );
 
             return;
