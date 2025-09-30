@@ -13,6 +13,7 @@ import VerificationConfig from '@configs/verification.config';
 import HomeConfig from '@configs/home.config';
 import SettingConfig from '@configs/setting.config';
 import LoggerConfig from '@configs/logger.config';
+import SessionConfig from '@configs/session.config';
 
 export default [
     AppConfig,
@@ -30,4 +31,5 @@ export default [
     VerificationConfig,
     HomeConfig,
     SettingConfig,
+    SessionConfig,
 ];

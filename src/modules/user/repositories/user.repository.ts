@@ -1,5 +1,6 @@
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationCursorReturn,
@@ -13,9 +14,13 @@ import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import {
+    UserCreateRequestDto,
+    UserCreateSocialRequestDto,
+} from '@modules/user/dtos/request/user.create.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
+import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import {
     IUser,
@@ -28,7 +33,9 @@ import {
     Country,
     ENUM_ACTIVITY_LOG_ACTION,
     ENUM_PASSWORD_HISTORY_TYPE,
+    ENUM_TERM_POLICY_STATUS,
     ENUM_TERM_POLICY_TYPE,
+    ENUM_USER_LOGIN_WITH,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_SIGN_UP_WITH,
     ENUM_USER_STATUS,
@@ -42,6 +49,7 @@ import {
 export class UserRepository {
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService,
         private readonly helperService: HelperService
     ) {}
@@ -182,7 +190,7 @@ export class UserRepository {
                 isVerified: false,
                 status: ENUM_USER_STATUS.ACTIVE,
                 termPolicy: {
-                    [ENUM_TERM_POLICY_TYPE.COOKIE]: true,
+                    [ENUM_TERM_POLICY_TYPE.COOKIE]: false,
                     [ENUM_TERM_POLICY_TYPE.MARKETING]: false,
                     [ENUM_TERM_POLICY_TYPE.PRIVACY]: true,
                     [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: true,
@@ -594,6 +602,21 @@ export class UserRepository {
         { loginFrom, loginWith, sessionId, expiredAt }: IUserLogin,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<User> {
+        let action: ENUM_ACTIVITY_LOG_ACTION =
+            ENUM_ACTIVITY_LOG_ACTION.USER_LOGIN_CREDENTIAL;
+        switch (loginWith) {
+            case ENUM_USER_LOGIN_WITH.SOCIAL_GOOGLE:
+                action = ENUM_ACTIVITY_LOG_ACTION.USER_LOGIN_GOOGLE;
+                break;
+            case ENUM_USER_LOGIN_WITH.SOCIAL_APPLE:
+                action = ENUM_ACTIVITY_LOG_ACTION.USER_LOGIN_APPLE;
+                break;
+            case ENUM_USER_LOGIN_WITH.CREDENTIAL:
+            default:
+                action = ENUM_ACTIVITY_LOG_ACTION.USER_LOGIN_CREDENTIAL;
+                break;
+        }
+
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
             data: {
@@ -614,7 +637,7 @@ export class UserRepository {
                 },
                 activityLogs: {
                     create: {
-                        action: ENUM_ACTIVITY_LOG_ACTION.USER_LOGIN_CREDENTIAL,
+                        action,
                         ipAddress,
                         userAgent: { ...userAgent },
                         createdBy: userId,
@@ -622,5 +645,217 @@ export class UserRepository {
                 },
             },
         });
+    }
+
+    async createBySocial(
+        email: string,
+        username: string,
+        roleId: string,
+        loginWith: ENUM_USER_LOGIN_WITH,
+        {
+            countryId,
+            name,
+            from,
+            cookie,
+            marketing,
+        }: UserCreateSocialRequestDto,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<IUser> {
+        const userId = this.databaseUtil.createId();
+        const signUpWith =
+            loginWith === ENUM_USER_LOGIN_WITH.SOCIAL_GOOGLE
+                ? ENUM_USER_SIGN_UP_WITH.SOCIAL_GOOGLE
+                : ENUM_USER_SIGN_UP_WITH.SOCIAL_APPLE;
+
+        const termPolicies = await this.databaseService.termPolicy.findMany({
+            where: {
+                type: {
+                    in: [
+                        ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE,
+                        ENUM_TERM_POLICY_TYPE.PRIVACY,
+                    ],
+                },
+                status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        const [user] = await Promise.all([
+            this.databaseService.user.create({
+                data: {
+                    id: userId,
+                    email,
+                    countryId,
+                    name,
+                    roleId,
+                    signUpFrom: from,
+                    signUpWith,
+                    username,
+                    isVerified: true,
+                    status: ENUM_USER_STATUS.ACTIVE,
+                    termPolicy: {
+                        [ENUM_TERM_POLICY_TYPE.COOKIE]: cookie,
+                        [ENUM_TERM_POLICY_TYPE.MARKETING]: marketing,
+                        [ENUM_TERM_POLICY_TYPE.PRIVACY]: true,
+                        [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: true,
+                    },
+                    createdBy: userId,
+                    activityLogs: {
+                        create: {
+                            action: ENUM_ACTIVITY_LOG_ACTION.USER_CREATED,
+                            ipAddress,
+                            userAgent: { ...userAgent },
+                            createdBy: userId,
+                        },
+                    },
+                },
+                include: {
+                    role: true,
+                },
+            }),
+            ...termPolicies.map(termPolicy =>
+                this.databaseService.userAcceptance.create({
+                    data: {
+                        userId,
+                        termPolicyId: termPolicy.id,
+                        createdBy: userId,
+                    },
+                })
+            ),
+        ]);
+
+        return user;
+    }
+
+    async verify(
+        userId: string,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                isVerified: true,
+                updatedBy: userId,
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.USER_VERIFIED,
+                        ipAddress,
+                        userAgent: { ...userAgent },
+                        createdBy: userId,
+                    },
+                },
+            },
+        });
+    }
+
+    async signUp(
+        username: string,
+        roleId: string,
+        {
+            countryId,
+            email,
+            marketing,
+            name,
+            from,
+            cookie,
+        }: UserSignUpRequestDto,
+        {
+            passwordCreated,
+            passwordExpired,
+            passwordHash,
+            salt,
+            passwordPeriodExpired,
+        }: IAuthPassword,
+        { expiredAt, reference, token, type }: IVerificationCreate,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        const termPolicies = await this.databaseService.termPolicy.findMany({
+            where: {
+                type: {
+                    in: [
+                        ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE,
+                        ENUM_TERM_POLICY_TYPE.PRIVACY,
+                    ],
+                },
+                status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        const userId = this.databaseUtil.createId();
+        const [user] = await Promise.all([
+            this.databaseService.user.create({
+                data: {
+                    id: userId,
+                    email,
+                    countryId,
+                    name,
+                    roleId,
+                    signUpFrom: from,
+                    signUpWith: ENUM_USER_SIGN_UP_WITH.CREDENTIAL,
+                    username,
+                    isVerified: false,
+                    status: ENUM_USER_STATUS.ACTIVE,
+                    passwordCreated,
+                    passwordExpired,
+                    password: passwordHash,
+                    salt,
+                    passwordAttempt: 0,
+                    passwordHistories: {
+                        create: {
+                            password: passwordHash,
+                            salt,
+                            type: ENUM_PASSWORD_HISTORY_TYPE.SIGN_UP,
+                            expiredAt: passwordPeriodExpired,
+                            createdAt: passwordCreated,
+                            createdBy: userId,
+                        },
+                    },
+                    termPolicy: {
+                        [ENUM_TERM_POLICY_TYPE.COOKIE]: cookie,
+                        [ENUM_TERM_POLICY_TYPE.MARKETING]: marketing,
+                        [ENUM_TERM_POLICY_TYPE.PRIVACY]: true,
+                        [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: true,
+                    },
+                    createdBy: userId,
+                    activityLogs: {
+                        create: {
+                            action: ENUM_ACTIVITY_LOG_ACTION.USER_SIGNED_UP,
+                            ipAddress,
+                            userAgent: { ...userAgent },
+                            createdBy: userId,
+                        },
+                    },
+                    verifications: {
+                        create: {
+                            expiredAt,
+                            reference,
+                            token,
+                            type,
+                            to: email,
+                            createdBy: userId,
+                        },
+                    },
+                },
+                include: {
+                    role: true,
+                },
+            }),
+            ...termPolicies.map(termPolicy =>
+                this.databaseService.userAcceptance.create({
+                    data: {
+                        userId,
+                        termPolicyId: termPolicy.id,
+                        createdBy: userId,
+                    },
+                })
+            ),
+        ]);
+
+        return user;
     }
 }

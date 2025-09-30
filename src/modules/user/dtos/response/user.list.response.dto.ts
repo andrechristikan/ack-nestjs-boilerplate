@@ -25,19 +25,19 @@ export class UserListResponseDto extends OmitType(UserDto, [
 ] as const) {
     @ApiHideProperty()
     @Exclude()
-    password: string;
+    password?: string;
 
     @ApiHideProperty()
     @Exclude()
-    passwordExpired: Date;
+    passwordExpired?: Date;
 
     @ApiHideProperty()
     @Exclude()
-    passwordCreated: Date;
+    passwordCreated?: Date;
 
     @ApiHideProperty()
     @Exclude()
-    passwordAttempt: number;
+    passwordAttempt?: number;
 
     @ApiHideProperty()
     @Exclude()
@@ -53,7 +53,7 @@ export class UserListResponseDto extends OmitType(UserDto, [
 
     @ApiHideProperty()
     @Exclude()
-    salt: string;
+    salt?: string;
 
     @ApiHideProperty()
     @Exclude()

@@ -14,7 +14,7 @@ import { plainToInstance } from 'class-transformer';
 export class UserUtil {
     private readonly usernamePrefix: string;
     private readonly usernamePattern: RegExp;
-    private readonly uploadPath: string;
+    private readonly uploadPhotoProfilePath: string;
 
     constructor(
         private readonly configService: ConfigService,
@@ -27,14 +27,19 @@ export class UserUtil {
         this.usernamePattern = this.configService.get<RegExp>(
             'user.usernamePattern'
         );
-        this.uploadPath = this.configService.get<string>('user.uploadPath');
+        this.uploadPhotoProfilePath = this.configService.get<string>(
+            'user.uploadPhotoProfilePath'
+        );
     }
 
-    createRandomFilenamePhotoWithPath(
+    createRandomFilenamePhotoProfileWithPath(
         user: string,
         { mime }: IFileRandomFilenameOptions
     ): string {
-        const path: string = this.uploadPath.replace('{user}', user);
+        const path: string = this.uploadPhotoProfilePath.replace(
+            '{user}',
+            user
+        );
         return this.fileService.createRandomFilename({
             prefix: path,
             mime,

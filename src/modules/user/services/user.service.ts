@@ -3,6 +3,7 @@ import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseIdResponseDto } from '@common/database/dtos/database.id.dto';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { HelperService } from '@common/helper/services/helper.service';
@@ -20,7 +21,11 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
+import {
+    IAuthJwtRefreshTokenPayload,
+    IAuthPassword,
+} from '@modules/auth/interfaces/auth.interface';
 import { AuthService } from '@modules/auth/services/auth.service';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
 import { CountryRepository } from '@modules/country/repositories/country.repository';
@@ -29,6 +34,7 @@ import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto
 import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
+import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import {
@@ -36,7 +42,10 @@ import {
     UserCheckUsernameRequestDto,
 } from '@modules/user/dtos/request/user.check.request.dto';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import {
+    UserCreateRequestDto,
+    UserCreateSocialRequestDto,
+} from '@modules/user/dtos/request/user.create.request.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
@@ -44,6 +53,7 @@ import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
+import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import {
     UserCheckEmailResponseDto,
@@ -66,9 +76,9 @@ import {
     Injectable,
     InternalServerErrorException,
     NotFoundException,
+    UnauthorizedException,
 } from '@nestjs/common';
 import {
-    ENUM_USER_LOGIN_FROM,
     ENUM_USER_LOGIN_WITH,
     ENUM_USER_STATUS,
     ENUM_VERIFICATION_TYPE,
@@ -80,6 +90,8 @@ import { Duration } from 'luxon';
 
 @Injectable()
 export class UserService implements IUserService {
+    private readonly userRoleName: string = 'user';
+
     constructor(
         @InjectQueue(ENUM_WORKER_QUEUES.EMAIL)
         private readonly emailQueue: Queue,
@@ -92,6 +104,7 @@ export class UserService implements IUserService {
         private readonly helperService: HelperService,
         private readonly fileService: FileService,
         private readonly authService: AuthService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly sessionUtil: SessionUtil
     ) {}
 
@@ -99,6 +112,13 @@ export class UserService implements IUserService {
         request: IRequestApp,
         requiredVerified: boolean
     ): Promise<IUser> {
+        if (!request.user) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        }
+
         const { userId } = request.user;
         const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
@@ -424,12 +444,10 @@ export class UserService implements IUserService {
         userId: string,
         { mime, size }: UserGeneratePhotoProfileRequestDto
     ): Promise<IResponseReturn<AwsS3PresignDto>> {
-        const key: string = this.userUtil.createRandomFilenamePhotoWithPath(
-            userId,
-            {
+        const key: string =
+            this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
                 mime,
-            }
-        );
+            });
 
         const aws: AwsS3PresignDto = await this.awsS3Service.presignPutItem(
             {
@@ -478,7 +496,7 @@ export class UserService implements IUserService {
         try {
             await Promise.all([
                 this.userRepository.deleteSelf(userId, requestLog),
-                // TODO: NEXT DELETE ALL CACHE FOR USER
+                this.sessionUtil.deleteAllLogins(userId),
             ]);
 
             return;
@@ -684,12 +702,10 @@ export class UserService implements IUserService {
             const mime = this.fileService.extractExtensionFromFilename(
                 file.originalname
             );
-            const key: string = this.userUtil.createRandomFilenamePhotoWithPath(
-                userId,
-                {
+            const key: string =
+                this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
                     mime,
-                }
-            );
+                });
 
             const aws: AwsS3Dto = await this.awsS3Service.putItem({
                 key,
@@ -754,7 +770,7 @@ export class UserService implements IUserService {
             await this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
                 {
-                    send: { email: updated.email, name: updated.name },
+                    send: { email: updated.email, username: updated.username },
                     data: {
                         passwordExpiredAt: password.passwordExpired,
                         password: passwordString,
@@ -839,16 +855,16 @@ export class UserService implements IUserService {
             });
         }
 
-        const password = this.authService.createPassword(newPassword);
-
         try {
+            const password = this.authService.createPassword(newPassword);
+
             const [updated] = await Promise.all([
                 this.userRepository.changePassword(
                     userId,
                     password,
                     requestLog
                 ),
-                // TODO: NEXT DELETE ALL CACHE FOR USER
+                this.sessionUtil.deleteAllLogins(userId),
             ]);
 
             await this.emailQueue.add(
@@ -891,7 +907,12 @@ export class UserService implements IUserService {
             });
         }
 
-        if (this.authService.checkPasswordAttempt(user)) {
+        if (!user.password) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_SET,
+                message: 'auth.error.passwordNotSet',
+            });
+        } else if (this.authService.checkPasswordAttempt(user)) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
                 message: 'auth.error.passwordAttemptMax',
@@ -924,7 +945,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const sessionId = this.sessionUtil.createSessionId();
+            const sessionId = this.databaseUtil.createId();
             const tokens = this.authService.createTokens(
                 user,
                 sessionId,
@@ -939,7 +960,7 @@ export class UserService implements IUserService {
             );
 
             await Promise.all([
-                // TODO: NEXT ADD CACHE FOR REFRESH TOKEN AND DONT FORGET TO SET TTL
+                this.sessionUtil.setLogin(user.id, sessionId, expiredAt),
                 this.userRepository.updateLoginInfo(
                     user.id,
                     {
@@ -955,6 +976,234 @@ export class UserService implements IUserService {
             return {
                 data: tokens,
             };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async loginWithSocial(
+        email: string,
+        loginWith: ENUM_USER_LOGIN_WITH,
+        { from, ...others }: UserCreateSocialRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+        let user = await this.userRepository.findOneWithRoleByEmail(email);
+
+        if (!user) {
+            const role = await this.roleRepository.existByName(
+                this.userRoleName
+            );
+            if (!role) {
+                throw new NotFoundException({
+                    statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                    message: 'role.error.notFound',
+                });
+            }
+
+            const randomUsername = this.userUtil.createRandomUsername();
+            user = await this.userRepository.createBySocial(
+                email,
+                randomUsername,
+                role.id,
+                loginWith,
+                { from, ...others },
+                requestLog
+            );
+
+            await this.emailQueue.add(
+                ENUM_SEND_EMAIL_PROCESS.WELCOME,
+                {
+                    send: { email: user.email, username: user.username },
+                },
+                {
+                    debounce: {
+                        id: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${user.id}`,
+                        ttl: 1000,
+                    },
+                }
+            );
+        }
+
+        if (user.status !== ENUM_USER_STATUS.ACTIVE) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
+                message: 'user.error.inactive',
+            });
+        }
+
+        try {
+            const promises = [];
+            if (!user.isVerified) {
+                promises.push(this.userRepository.verify(user.id, requestLog));
+            }
+
+            const sessionId = this.databaseUtil.createId();
+            const tokens = this.authService.createTokens(
+                user,
+                sessionId,
+                from,
+                loginWith
+            );
+            const expiredAt = this.helperService.dateForward(
+                this.helperService.dateCreate(),
+                Duration.fromObject({
+                    seconds: tokens.expiresIn,
+                })
+            );
+
+            await Promise.all([
+                ...promises,
+                this.sessionUtil.setLogin(user.id, sessionId, expiredAt),
+                this.userRepository.updateLoginInfo(
+                    user.id,
+                    {
+                        loginFrom: from,
+                        loginWith,
+                        sessionId,
+                        expiredAt,
+                    },
+                    requestLog
+                ),
+            ]);
+
+            return {
+                data: tokens,
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async refreshToken(
+        user: IUser,
+        refreshToken: string
+    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+        const { sessionId, userId } =
+            this.authService.payloadToken<IAuthJwtRefreshTokenPayload>(
+                refreshToken
+            );
+
+        const checkActive = this.sessionUtil.getLogin(userId, sessionId);
+        if (!checkActive) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.FORBIDDEN,
+                message: 'session.error.forbidden',
+            });
+        }
+
+        try {
+            const tokens = this.authService.refreshToken(user, refreshToken);
+
+            return {
+                data: tokens,
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async signUp(
+        {
+            countryId,
+            email,
+            password: passwordString,
+            ...others
+        }: UserSignUpRequestDto,
+        requestLog: IRequestLog
+    ): Promise<void> {
+        const [role, emailExist, checkCountry] = await Promise.all([
+            this.roleRepository.existByName(this.userRoleName),
+            this.userRepository.existByEmail(email),
+            this.countryRepository.existById(countryId),
+        ]);
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'role.error.notFound',
+            });
+        } else if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'country.error.notFound',
+            });
+        } else if (emailExist) {
+            throw new ConflictException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_EXIST,
+                message: 'user.error.emailExist',
+            });
+        }
+
+        try {
+            const password = this.authService.createPassword(passwordString);
+            const randomUsername = this.userUtil.createRandomUsername();
+            const emailVerification = this.verificationUtil.createVerification(
+                ENUM_VERIFICATION_TYPE.EMAIL
+            );
+
+            const created = await this.userRepository.signUp(
+                randomUsername,
+                role.id,
+                {
+                    countryId,
+                    email,
+                    password: passwordString,
+                    ...others,
+                },
+                password,
+                emailVerification,
+                requestLog
+            );
+
+            await Promise.all([
+                this.emailQueue.add(
+                    ENUM_SEND_EMAIL_PROCESS.WELCOME,
+                    {
+                        send: {
+                            email: created.email,
+                            username: created.username,
+                        },
+                    },
+                    {
+                        debounce: {
+                            id: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${created.id}`,
+                            ttl: 1000,
+                        },
+                    }
+                ),
+                this.emailQueue.add(
+                    ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+                    {
+                        send: {
+                            email,
+                            username: created.username,
+                        },
+                        data: {
+                            token: emailVerification.token,
+                            expiredAt: emailVerification.expiredAt,
+                            reference: emailVerification.reference,
+                            link: emailVerification.link,
+                        } as EmailVerificationDto,
+                    },
+                    {
+                        debounce: {
+                            id: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created.id}`,
+                            ttl: 1000,
+                        },
+                    }
+                ),
+            ]);
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,

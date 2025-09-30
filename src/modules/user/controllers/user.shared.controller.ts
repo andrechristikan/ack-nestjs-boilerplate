@@ -14,12 +14,19 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
+    AuthJwtRefreshProtected,
+    AuthJwtToken,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import {
+    UserCurrent,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
 import {
     UserSharedChangePasswordDoc,
     UserSharedGeneratePhotoProfileDoc,
     UserSharedProfileDoc,
+    UserSharedRefreshDoc,
     UserSharedUpdatePhotoProfileDoc,
     UserSharedUpdateProfileDoc,
     UserSharedUploadPhotoProfileDoc,
@@ -31,6 +38,7 @@ import {
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { IUser } from '@modules/user/interfaces/user.interface';
 import { UserService } from '@modules/user/services/user.service';
 import {
     Body,
@@ -52,35 +60,19 @@ import { ApiTags } from '@nestjs/swagger';
 export class UserSharedController {
     constructor(private readonly userService: UserService) {}
 
-    // TODO: NEXT: Implement this
-    //     @AuthSharedRefreshDoc()
-    //     @Response('auth.refresh')
-    //     @UserProtected()
-    //     @AuthJwtRefreshProtected()
-    //     @ApiKeyProtected()
-    //     @HttpCode(HttpStatus.OK)
-    //     @Post('/refresh')
-    //     async refresh(
-    //         @AuthJwtToken() refreshToken: string,
-    //         @AuthJwtPayload<IAuthJwtRefreshTokenPayload>()
-    //         { user: userFromPayload, session }: IAuthJwtRefreshTokenPayload
-    //     ): Promise<IResponse<AuthRefreshResponseDto>> {
-    //         const checkActive = await this.sessionService.findLoginSession(session);
-    //         if (!checkActive) {
-    //             throw new UnauthorizedException({
-    //                 statusCode: ENUM_SESSION_STATUS_CODE_ERROR.NOT_FOUND,
-    //                 message: 'session.error.notFound',
-    //             });
-    //         }
-
-    //         const user: IUserDoc =
-    //             await this.userService.findOneActiveById(userFromPayload);
-    //         const token = this.authService.refreshToken(user, refreshToken);
-
-    //         return {
-    //             data: token,
-    //         };
-    //     }
+    @UserSharedRefreshDoc()
+    @Response('user.refresh')
+    @UserProtected()
+    @AuthJwtRefreshProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/refresh')
+    async refresh(
+        @UserCurrent() user: IUser,
+        @AuthJwtToken() refreshToken: string
+    ): Promise<IResponseReturn<AuthTokenResponseDto>> {
+        return this.userService.refreshToken(user, refreshToken);
+    }
 
     @UserSharedProfileDoc()
     @Response('user.profile')

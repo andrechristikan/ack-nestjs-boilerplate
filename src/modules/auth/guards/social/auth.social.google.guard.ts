@@ -22,6 +22,6 @@ export class AuthSocialGoogleGuard implements CanActivate {
             .switchToHttp()
             .getRequest<IRequestApp<IAuthSocialPayload>>();
 
-        return this.authService.validateOAuthAppleGuard(request);
+        return this.authService.validateOAuthGoogleGuard(request);
     }
 }

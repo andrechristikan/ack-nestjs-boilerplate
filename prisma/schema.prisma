@@ -18,7 +18,7 @@ model ApiKey {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String
+  createdBy String?
   updatedAt DateTime @updatedAt
   updatedBy String?
 
@@ -40,7 +40,7 @@ model Role {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String
+  createdBy String?
   updatedAt DateTime @updatedAt
   updatedBy String?
 
@@ -66,7 +66,7 @@ model Country {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String
+  createdBy String?
   updatedAt DateTime @updatedAt
   updatedBy String?
 
@@ -89,7 +89,7 @@ model UserMobileNumber {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String
+  createdBy String?
   updatedAt DateTime @updatedAt
   updatedBy String?
 
@@ -105,20 +105,20 @@ model UserMobileNumber {
 
 model User {
   id              String                  @id @default(auto()) @map("_id") @db.ObjectId
-  name            String
+  name            String?
   username        String
   isVerified      Boolean                 @default(false)
   verifiedAt      DateTime?
   email           String
   roleId          String                  @db.ObjectId
-  password        String
-  passwordExpired DateTime
-  passwordCreated DateTime
-  passwordAttempt Int
+  password        String?
+  passwordExpired DateTime?
+  passwordCreated DateTime?
+  passwordAttempt Int?
   signUpAt      DateTime                @default(now())
   signUpFrom      ENUM_USER_SIGN_UP_FROM
   signUpWith      ENUM_USER_SIGN_UP_WITH
-  salt            String
+  salt            String?
   status          ENUM_USER_STATUS        @default(ACTIVE)
   gender          ENUM_USER_GENDER?
   countryId       String                  @db.ObjectId
@@ -131,7 +131,7 @@ model User {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String
+  createdBy String?
   updatedAt DateTime @updatedAt
   updatedBy String?
   deletedAt DateTime?
@@ -144,6 +144,7 @@ model User {
   role          Role?        @relation("UserRole", fields: [roleId], references: [id])
   country       Country?     @relation("UserCountry", fields: [countryId], references: [id])
   sessions      Session[]    @relation("UserSessions")
+  acceptances  UserAcceptance[] @relation("UserAcceptanceUser")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -167,7 +168,7 @@ model Verification {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String
+  createdBy String?
   updatedAt DateTime @updatedAt
   updatedBy String?
 
@@ -192,7 +193,7 @@ model PasswordHistory {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String
+  createdBy String?
 }
 
 model ActivityLog {
@@ -206,7 +207,7 @@ model ActivityLog {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String
+  createdBy String?
 
   @@index(fields: [userId])
   @@index(fields: [action])
@@ -227,7 +228,7 @@ model Session {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String
+  createdBy String?
 
   @@index(fields: [userId])
   @@index(fields: [expiredAt])
@@ -235,57 +236,103 @@ model Session {
   @@map("Sessions")
 }
 
+model TermPolicy {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  type ENUM_TERM_POLICY_TYPE
+  content Json[] @default([])
+  version Int @default(1)
+  status ENUM_TERM_POLICY_STATUS @default(DRAFT)
+  publishedAt DateTime?
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  userAcceptances UserAcceptance[] @relation("UserAcceptanceTermPolicy")
+
+  @@unique(fields:[type, version, status])
+  @@index(fields: [type])
+  @@index(fields: [status])
+  @@map("TermPolicies")
+}
+
+model UserAcceptance {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  termPolicyId String @db.ObjectId
+  acceptedAt DateTime @default(now())
+
+  user User? @relation("UserAcceptanceUser", fields: [userId], references: [id])
+  termPolicy TermPolicy? @relation("UserAcceptanceTermPolicy", fields: [termPolicyId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  @@unique(fields:[userId, termPolicyId])
+  @@index(fields: [userId])
+  @@index(fields: [termPolicyId])
+  @@map("UserAcceptances")
+}
+
 enum ENUM_USER_GENDER {
-  MALE   @map("male")
-  FEMALE @map("female")
+  MALE   @map("MALE")
+  FEMALE @map("FEMALE")
 }
 
 enum ENUM_USER_STATUS {
-  ACTIVE   @map("active")
-  INACTIVE @map("inactive")
-  BLOCKED  @map("blocked")
+  ACTIVE   @map("ACTIVE")
+  INACTIVE @map("INACTIVE")
+  BLOCKED  @map("BLOCKED")
 }
 
 enum ENUM_USER_SIGN_UP_FROM {
-  SYSTEM  @map("system")
-  ADMIN   @map("admin")
-  WEBSITE @map("website")
-  MOBILE  @map("mobile")
+  SYSTEM  @map("SYSTEM")
+  ADMIN   @map("ADMIN")
+  WEBSITE @map("WEBSITE")
+  MOBILE  @map("MOBILE")
 }
 
 enum ENUM_USER_SIGN_UP_WITH {
-  CREDENTIAL    @map("credential")
-  SOCIAL_GOOGLE @map("socialGoogle")
-  SOCIAL_APPLE  @map("socialApple")
+  CREDENTIAL    @map("CREDENTIAL")
+  SOCIAL_GOOGLE @map("SOCIAL_GOOGLE")
+  SOCIAL_APPLE  @map("SOCIAL_APPLE")
 }
 
 enum ENUM_USER_LOGIN_FROM {
-  WEBSITE @map("website")
-  MOBILE  @map("mobile")
+  WEBSITE @map("WEBSITE")
+  MOBILE  @map("MOBILE")
 }
 
 enum ENUM_USER_LOGIN_WITH {
-  CREDENTIAL    @map("credential")
-  SOCIAL_GOOGLE @map("socialGoogle")
-  SOCIAL_APPLE  @map("socialApple")
+  CREDENTIAL    @map("CREDENTIAL")
+  SOCIAL_GOOGLE @map("SOCIAL_GOOGLE")
+  SOCIAL_APPLE  @map("SOCIAL_APPLE")
 }
 
 enum ENUM_ROLE_TYPE {
-  SUPER_ADMIN @map("superAdmin")
-  ADMIN       @map("admin")
-  USER        @map("user")
+  SUPER_ADMIN @map("SUPER_ADMIN")
+  ADMIN       @map("ADMIN")
+  USER        @map("USER")
 }
 
 enum ENUM_API_KEY_TYPE {
-  SYSTEM  @map("system")
-  DEFAULT @map("default")
+  SYSTEM  @map("SYSTEM")
+  DEFAULT @map("DEFAULT")
 }
 
 enum ENUM_TERM_POLICY_TYPE {
-  TERMS_OF_SERVICE @map("termsOfService")
-  PRIVACY          @map("privacy")
-  COOKIE           @map("cookie")
-  MARKETING        @map("marketing")
+  TERMS_OF_SERVICE @map("TERMS_OF_SERVICE")
+  PRIVACY          @map("PRIVACY")
+  COOKIE           @map("COOKIE")
+  MARKETING        @map("MARKETING")
+}
+
+enum ENUM_TERM_POLICY_STATUS {
+  DRAFT    @map("DRAFT")
+  PUBLISHED @map("PUBLISHED")
 }
 
  enum ENUM_VERIFICATION_TYPE {
@@ -314,4 +361,8 @@ enum ENUM_ACTIVITY_LOG_ACTION {
     USER_CLAIM_USERNAME @map("USER_CLAIM_USERNAME")
     USER_UPDATE_PASSWORD_BY_ADMIN @map("USER_UPDATE_PASSWORD_BY_ADMIN")
     USER_LOGIN_CREDENTIAL @map("USER_LOGIN_CREDENTIAL")
+    USER_LOGIN_GOOGLE @map("USER_LOGIN_GOOGLE")
+    USER_LOGIN_APPLE @map("USER_LOGIN_APPLE")
+    USER_VERIFIED @map("USER_VERIFIED")
+    USER_SIGNED_UP @map("USER_SIGNED_UP")
 }

@@ -15,11 +15,11 @@ import { UserTermPolicyDto } from '@modules/user/dtos/user.term-policy.dto';
 
 export class UserDto extends DatabaseDto {
     @ApiProperty({
-        required: true,
+        required: false,
         maxLength: 100,
         minLength: 1,
     })
-    name: string;
+    name?: string;
 
     @ApiProperty({
         required: true,
@@ -62,26 +62,26 @@ export class UserDto extends DatabaseDto {
     role: RoleDto;
 
     @ApiProperty({
-        required: true,
+        required: false,
         example: faker.internet.password(),
         minLength: 6,
     })
-    password: string;
+    password?: string;
 
     @ApiProperty({
-        required: true,
+        required: false,
         example: faker.date.future(),
     })
-    passwordExpired: Date;
+    passwordExpired?: Date;
 
     @ApiProperty({
-        required: true,
+        required: false,
         example: faker.date.past(),
     })
-    passwordCreated: Date;
+    passwordCreated?: Date;
 
-    @ApiProperty({ required: true, example: 0, minimum: 0 })
-    passwordAttempt: number;
+    @ApiProperty({ required: false, example: 0, minimum: 0 })
+    passwordAttempt?: number;
 
     @ApiProperty({
         required: true,
@@ -104,10 +104,10 @@ export class UserDto extends DatabaseDto {
     signUpWith: ENUM_USER_SIGN_UP_WITH;
 
     @ApiProperty({
-        required: true,
+        required: false,
         example: faker.string.alpha(10),
     })
-    salt: string;
+    salt?: string;
 
     @ApiProperty({
         required: true,

@@ -642,6 +642,4 @@ export class AuthService implements IAuthService {
             });
         }
     }
-
-    // TODO: NEED TO ADD CACHE FOR CACHE, CACHE SESSION ID FOR REFRESH TOKEN
 }

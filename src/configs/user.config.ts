@@ -3,7 +3,7 @@ import { registerAs } from '@nestjs/config';
 export interface IUserConfig {
     usernamePrefix: string;
     usernamePattern: RegExp;
-    uploadPath: string;
+    uploadPhotoProfilePath: string;
 }
 
 export default registerAs(
@@ -11,6 +11,6 @@ export default registerAs(
     (): IUserConfig => ({
         usernamePrefix: 'user',
         usernamePattern: /^[a-zA-Z0-9-_]+$/,
-        uploadPath: '/users/{user}',
+        uploadPhotoProfilePath: '/users/{userId}/profile',
     })
 );

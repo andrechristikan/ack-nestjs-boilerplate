@@ -1,8 +1,4 @@
-import {
-    ENUM_ROLE_TYPE,
-    ENUM_USER_LOGIN_FROM,
-    ENUM_USER_SIGN_UP_WITH,
-} from '@prisma/client';
+import { ENUM_USER_LOGIN_FROM, ENUM_USER_SIGN_UP_WITH } from '@prisma/client';
 
 export interface IAuthPassword {
     salt: string;

@@ -17,7 +17,7 @@ export const AuthJwtPayload = createParamDecorator(
     <T = IAuthJwtAccessTokenPayload>(
         data: string,
         ctx: ExecutionContext
-    ): T => {
+    ): T | undefined => {
         const { user } = ctx
             .switchToHttp()
             .getRequest<IRequestApp & { user: T }>();
@@ -34,7 +34,7 @@ export const AuthJwtPayload = createParamDecorator(
  * @returns The JWT token string or undefined if not found
  */
 export const AuthJwtToken = createParamDecorator(
-    (_: unknown, ctx: ExecutionContext): string => {
+    (_: unknown, ctx: ExecutionContext): string | undefined => {
         const { headers } = ctx.switchToHttp().getRequest<IRequestApp>();
         const { authorization } = headers;
         const authorizations: string[] = authorization?.split(' ') ?? [];

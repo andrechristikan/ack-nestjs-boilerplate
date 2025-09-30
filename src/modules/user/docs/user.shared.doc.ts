@@ -15,7 +15,23 @@ import {
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { applyDecorators } from '@nestjs/common';
+
+export function UserSharedRefreshDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'refresh token',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtRefreshToken: true,
+        }),
+        DocResponse<UserTokenResponseDto>('user.response', {
+            dto: UserTokenResponseDto,
+        })
+    );
+}
 
 export function UserSharedProfileDoc(): MethodDecorator {
     return applyDecorators(

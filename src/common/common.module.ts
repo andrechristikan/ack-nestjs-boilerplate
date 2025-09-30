@@ -5,11 +5,9 @@ import { RequestModule } from '@common/request/request.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import configs from '@config';
 import { BullModule } from '@nestjs/bullmq';
-import { CacheModule, CacheOptions } from '@nestjs/cache-manager';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { LoggerOptionModule } from '@common/logger/logger.option.module';
 import { LoggerOptionService } from '@common/logger/services/logger.option.service';
-import { RedisClientOptions, createKeyv } from '@keyv/redis';
 import { PolicyModule } from '@modules/policy/policy.module';
 import { FileModule } from '@common/file/file.module';
 import { AuthModule } from '@modules/auth/auth.module';
@@ -17,6 +15,8 @@ import { DatabaseModule } from '@common/database/database.module';
 import { PaginationModule } from '@common/pagination/pagination.module';
 import { ApiKeyModule } from '@modules/api-key/api-key.module';
 import { RoleModule } from '@modules/role/role.module';
+import KeyvRedis from '@keyv/redis';
+import { CacheModule, CacheOptions } from '@nestjs/cache-manager';
 
 /**
  * Common module that provides shared functionality across the application.
@@ -43,6 +43,7 @@ import { RoleModule } from '@modules/role/role.module';
                     port: configService.get<number>('redis.queue.port'),
                     username: configService.get<string>('redis.queue.username'),
                     password: configService.get<string>('redis.queue.password'),
+                    db: 1,
                 },
                 defaultJobOptions: {
                     backoff: {
@@ -53,6 +54,13 @@ import { RoleModule } from '@modules/role/role.module';
                 },
             }),
         }),
+        PinoLoggerModule.forRootAsync({
+            imports: [LoggerOptionModule],
+            inject: [LoggerOptionService],
+            useFactory: async (loggerOptionService: LoggerOptionService) => {
+                return loggerOptionService.createOptions();
+            },
+        }),
         CacheModule.registerAsync({
             isGlobal: true,
             imports: [ConfigModule],
@@ -62,7 +70,7 @@ import { RoleModule } from '@modules/role/role.module';
                 max: configService.get<number>('redis.cached.max'),
                 ttl: configService.get<number>('redis.cached.ttl'),
                 stores: [
-                    createKeyv({
+                    new KeyvRedis({
                         socket: {
                             host: configService.get<string>(
                                 'redis.cached.host'
@@ -77,17 +85,10 @@ import { RoleModule } from '@modules/role/role.module';
                         password: configService.get<string>(
                             'redis.cached.password'
                         ),
-                    } as RedisClientOptions).store,
+                    }),
                 ],
             }),
             inject: [ConfigService],
-        }),
-        PinoLoggerModule.forRootAsync({
-            imports: [LoggerOptionModule],
-            inject: [LoggerOptionService],
-            useFactory: async (loggerOptionService: LoggerOptionService) => {
-                return loggerOptionService.createOptions();
-            },
         }),
         DatabaseModule.forRoot(),
         MessageModule.forRoot(),
