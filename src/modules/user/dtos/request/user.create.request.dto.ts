@@ -1,10 +1,5 @@
 import { faker } from '@faker-js/faker';
-import {
-    ApiProperty,
-    IntersectionType,
-    OmitType,
-    PickType,
-} from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
     IsMongoId,
     IsNotEmpty,
@@ -15,8 +10,6 @@ import {
 } from 'class-validator';
 import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
 import { Transform } from 'class-transformer';
-import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
-import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 
 export class UserCreateRequestDto {
     @ApiProperty({
@@ -60,9 +53,3 @@ export class UserCreateRequestDto {
     @IsMongoId()
     countryId: string;
 }
-
-export class UserCreateSocialRequestDto extends IntersectionType(
-    OmitType(UserCreateRequestDto, ['email', 'roleId']),
-    PickType(UserLoginRequestDto, ['from']),
-    PickType(UserSignUpRequestDto, ['marketing', 'cookie'])
-) {}

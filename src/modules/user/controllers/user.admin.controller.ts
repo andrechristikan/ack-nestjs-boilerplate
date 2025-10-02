@@ -48,13 +48,13 @@ import {
     UserAdminUpdateStatusDoc,
 } from '@modules/user/docs/user.admin.doc';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { DatabaseIdResponseDto } from '@common/database/dtos/database.id.dto';
+import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { IRequestUserAgent } from '@common/request/interfaces/request.interface';
+import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -131,8 +131,8 @@ export class UserAdminController {
         body: UserCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
-    ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<DatabaseIdDto>> {
         return this.userService.createByAdmin(
             body,
             {
@@ -160,7 +160,7 @@ export class UserAdminController {
         @AuthJwtPayload('userId') updatedBy: string,
         @Body() data: UserUpdateStatusRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.updateStatusByAdmin(
             userId,
@@ -189,7 +189,7 @@ export class UserAdminController {
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.updatePasswordByAdmin(
             userId,

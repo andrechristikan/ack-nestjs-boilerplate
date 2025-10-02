@@ -7,7 +7,7 @@ import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { IRequestUserAgent } from '@common/request/interfaces/request.interface';
+import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -99,7 +99,7 @@ export class UserSharedController {
         @Body()
         data: UserUpdateProfileRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.updateProfile(userId, data, {
             ipAddress,
@@ -133,7 +133,7 @@ export class UserSharedController {
         userId: string,
         @Body() body: UserUpdateProfilePhotoRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.updatePhotoProfile(userId, body, {
             ipAddress,
@@ -161,7 +161,7 @@ export class UserSharedController {
         )
         file: IFile,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.uploadPhotoProfile(userId, file, {
             ipAddress,
@@ -179,7 +179,7 @@ export class UserSharedController {
         @Body() body: UserChangePasswordRequestDto,
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.changePassword(userId, body, {
             ipAddress,

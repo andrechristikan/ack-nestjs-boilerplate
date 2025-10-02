@@ -278,91 +278,91 @@ model UserAcceptance {
 }
 
 enum ENUM_USER_GENDER {
-  MALE   @map("MALE")
-  FEMALE @map("FEMALE")
+  MALE   @map("male")
+  FEMALE @map("female")
 }
 
 enum ENUM_USER_STATUS {
-  ACTIVE   @map("ACTIVE")
-  INACTIVE @map("INACTIVE")
-  BLOCKED  @map("BLOCKED")
+  ACTIVE   @map("active")
+  INACTIVE @map("inactive")
+  BLOCKED  @map("blocked")
 }
 
 enum ENUM_USER_SIGN_UP_FROM {
-  SYSTEM  @map("SYSTEM")
-  ADMIN   @map("ADMIN")
-  WEBSITE @map("WEBSITE")
-  MOBILE  @map("MOBILE")
+  SYSTEM  @map("system")
+  ADMIN   @map("admin")
+  WEBSITE @map("website")
+  MOBILE  @map("mobile")
 }
 
 enum ENUM_USER_SIGN_UP_WITH {
-  CREDENTIAL    @map("CREDENTIAL")
-  SOCIAL_GOOGLE @map("SOCIAL_GOOGLE")
-  SOCIAL_APPLE  @map("SOCIAL_APPLE")
+  CREDENTIAL    @map("credential")
+  SOCIAL_GOOGLE @map("socialGoogle")
+  SOCIAL_APPLE  @map("socialApple")
 }
 
 enum ENUM_USER_LOGIN_FROM {
-  WEBSITE @map("WEBSITE")
-  MOBILE  @map("MOBILE")
+  WEBSITE @map("website")
+  MOBILE  @map("mobile")
 }
 
 enum ENUM_USER_LOGIN_WITH {
-  CREDENTIAL    @map("CREDENTIAL")
-  SOCIAL_GOOGLE @map("SOCIAL_GOOGLE")
-  SOCIAL_APPLE  @map("SOCIAL_APPLE")
+  CREDENTIAL    @map("credential")
+  SOCIAL_GOOGLE @map("socialGoogle")
+  SOCIAL_APPLE  @map("socialApple")
 }
 
 enum ENUM_ROLE_TYPE {
-  SUPER_ADMIN @map("SUPER_ADMIN")
-  ADMIN       @map("ADMIN")
-  USER        @map("USER")
+  SUPER_ADMIN @map("superAdmin")
+  ADMIN       @map("admin")
+  USER        @map("user")
 }
 
 enum ENUM_API_KEY_TYPE {
-  SYSTEM  @map("SYSTEM")
-  DEFAULT @map("DEFAULT")
+  SYSTEM  @map("system")
+  DEFAULT @map("default")
 }
 
 enum ENUM_TERM_POLICY_TYPE {
-  TERMS_OF_SERVICE @map("TERMS_OF_SERVICE")
-  PRIVACY          @map("PRIVACY")
-  COOKIE           @map("COOKIE")
-  MARKETING        @map("MARKETING")
+  TERMS_OF_SERVICE @map("termsOfService")
+  PRIVACY          @map("privacy")
+  COOKIE           @map("cookie")
+  MARKETING        @map("marketing")
 }
 
 enum ENUM_TERM_POLICY_STATUS {
-  DRAFT    @map("DRAFT")
-  PUBLISHED @map("PUBLISHED")
+  DRAFT    @map("draft")
+  PUBLISHED @map("published")
 }
 
  enum ENUM_VERIFICATION_TYPE {
-    MOBILE_NUMBER @map("MOBILE_NUMBER")
-    EMAIL @map("EMAIL")
+    MOBILE_NUMBER @map("mobileNumber")
+    EMAIL @map("email")
 }
 
 enum ENUM_PASSWORD_HISTORY_TYPE {
-    SIGN_UP @map("SIGN_UP")
-    FORGOT @map("FORGOT")
-    ADMIN @map("ADMIN")
-    PROFILE @map("PROFILE")
+    SIGN_UP @map("signUp")
+    FORGOT @map("forgot")
+    ADMIN @map("admin")
+    PROFILE @map("profile")
 }
 
 enum ENUM_ACTIVITY_LOG_ACTION {
-    USER_CREATED @map("USER_CREATED")
-    USER_BLOCKED @map("USER_BLOCKED")
-    USER_UPDATE_STATUS @map("USER_UPDATE_STATUS")
-    USER_UPDATE_PROFILE @map("USER_UPDATE_PROFILE")
-    USER_UPDATE_PHOTO_PROFILE @map("USER_UPDATE_PHOTO_PROFILE")
-    USER_CHANGE_PASSWORD @map("USER_CHANGE_PASSWORD")
-    USER_DELETE_SELF @map("USER_DELETE_SELF")
-    USER_ADD_MOBILE_NUMBER @map("USER_ADD_MOBILE_NUMBER")
-    USER_UPDATE_MOBILE_NUMBER @map("USER_UPDATE_MOBILE_NUMBER")
-    USER_DELETE_MOBILE_NUMBER @map("USER_DELETE_MOBILE_NUMBER")
-    USER_CLAIM_USERNAME @map("USER_CLAIM_USERNAME")
-    USER_UPDATE_PASSWORD_BY_ADMIN @map("USER_UPDATE_PASSWORD_BY_ADMIN")
-    USER_LOGIN_CREDENTIAL @map("USER_LOGIN_CREDENTIAL")
-    USER_LOGIN_GOOGLE @map("USER_LOGIN_GOOGLE")
-    USER_LOGIN_APPLE @map("USER_LOGIN_APPLE")
-    USER_VERIFIED @map("USER_VERIFIED")
-    USER_SIGNED_UP @map("USER_SIGNED_UP")
+    USER_CREATED @map("userCreated")
+    USER_BLOCKED @map("userBlocked")
+    USER_UPDATE_STATUS @map("userUpdateStatus")
+    USER_UPDATE_PROFILE @map("userUpdateProfile")
+    USER_UPDATE_PHOTO_PROFILE @map("userUpdatePhotoProfile")
+    USER_CHANGE_PASSWORD @map("userChangePassword")
+    USER_DELETE_SELF @map("userDeleteSelf")
+    USER_ADD_MOBILE_NUMBER @map("userAddMobileNumber")
+    USER_UPDATE_MOBILE_NUMBER @map("userUpdateMobileNumber")
+    USER_DELETE_MOBILE_NUMBER @map("userDeleteMobileNumber")
+    USER_CLAIM_USERNAME @map("userClaimUsername")
+    USER_UPDATE_PASSWORD_BY_ADMIN @map("userUpdatePasswordByAdmin")
+    USER_LOGIN_CREDENTIAL @map("userLoginCredential")
+    USER_LOGIN_GOOGLE @map("userLoginGoogle")
+    USER_LOGIN_APPLE @map("userLoginApple")
+    USER_VERIFIED @map("userVerified")
+    USER_SIGNED_UP @map("userSignedUp")
 }

@@ -5,10 +5,14 @@ import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
     LOGGER_EXCLUDED_ROUTES,
+    LOGGER_REQUEST_ID_HEADERS,
     LOGGER_SENSITIVE_FIELDS,
+    LOGGER_SENSITIVE_PATHS,
 } from '@common/logger/constants/logger.constant';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { Response } from 'express';
+import { LoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
+import { randomUUID } from 'crypto';
 
 /**
  * Service responsible for configuring and providing logger options for the application.
@@ -29,6 +33,9 @@ export class LoggerOptionService {
     private readonly filePath: string;
     private readonly prettier: boolean;
 
+    private readonly sensitiveFields: Set<string>;
+    private readonly sensitivePaths: string[];
+
     constructor(
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
@@ -44,6 +51,15 @@ export class LoggerOptionService {
         this.intoFile = this.configService.get<boolean>('logger.intoFile');
         this.filePath = this.configService.get<string>('logger.filePath');
         this.prettier = this.configService.get<boolean>('logger.prettier');
+
+        this.sensitiveFields = new Set(
+            LOGGER_SENSITIVE_FIELDS.map(field => field.toLowerCase())
+        );
+        this.sensitivePaths = LOGGER_SENSITIVE_PATHS.map(path =>
+            LOGGER_SENSITIVE_FIELDS.map(field =>
+                field.includes('-') ? `${path}["${field}"]` : `${path}.${field}`
+            )
+        ).flat();
     }
 
     /**
@@ -59,12 +75,15 @@ export class LoggerOptionService {
 
         return {
             pinoHttp: {
+                genReqId: this.getReqId,
                 formatters: {
                     log: this.createLogFormatter(),
                 },
                 messageKey: 'msg',
                 timestamp: false,
+                wrapSerializers: false,
                 base: null,
+
                 transport:
                     transports.length > 0 ? { targets: transports } : undefined,
                 level: this.enable ? this.level : 'silent',
@@ -74,6 +93,28 @@ export class LoggerOptionService {
                 autoLogging: this.createAutoLoggingConfig(),
             },
         };
+    }
+
+    /**
+     * Generates or extracts a request ID from HTTP headers or request object.
+     * Checks predefined headers for existing request IDs, falling back to the request's ID or generating a new UUID.
+     * @param {IRequestApp} request - The HTTP request object
+     * @returns {string} The request ID string
+     */
+    private getReqId(request: IRequestApp): string {
+        const headers = request.headers;
+        if (!headers) {
+            return (request.id as string) ?? randomUUID();
+        }
+
+        for (const header of LOGGER_REQUEST_ID_HEADERS) {
+            const value = headers[header];
+            if (value) {
+                return value as string;
+            }
+        }
+
+        return (request.id as string) ?? randomUUID();
     }
 
     /**
@@ -121,16 +162,31 @@ export class LoggerOptionService {
     ) => Record<string, unknown> {
         return (object: Record<string, unknown>) => {
             const today = this.helperService.dateCreate();
+            const level = object.level ?? 'INFO';
 
             return {
-                ...object,
+                level,
                 timestamp: today.valueOf(),
                 iso: this.helperService.dateFormatToIso(today),
                 labels: {
                     name: this.name,
-                    env: this.env,
+                    environment: this.env,
                     version: this.version,
                 },
+                ...(object.req && {
+                    request: object.req,
+                }),
+                ...(object.res && {
+                    response: this.createResponseSerializer(
+                        object.res as Response & { body: unknown }
+                    ),
+                }),
+                ...(object.err && {
+                    error: this.createErrorSerializer(object.err as Error),
+                }),
+                ...(this.env !== ENUM_APP_ENVIRONMENT.PRODUCTION && {
+                    debug: this.addDebugInfo(),
+                }),
             };
         };
     }
@@ -159,31 +215,16 @@ export class LoggerOptionService {
      * Creates redaction configuration to hide sensitive data in logs.
      * @returns {{paths: string[]; censor: string}} Redaction configuration object
      */
-    private createRedactionConfig(): { paths: string[]; censor: string } {
-        const paths = [
-            ...this.mapSensitiveFieldPaths('req.body'),
-            ...this.mapSensitiveFieldPaths('req.headers'),
-            ...this.mapSensitiveFieldPaths('res.body'),
-            ...this.mapSensitiveFieldPaths('res.headers'),
-        ];
-
+    private createRedactionConfig(): {
+        paths: string[];
+        censor: string;
+        remove: boolean;
+    } {
         return {
-            paths,
-            censor: '***REDACTED***',
+            paths: this.sensitivePaths,
+            censor: '***[REDACTED]***',
+            remove: false,
         };
-    }
-
-    /**
-     * Maps sensitive fields to their full paths for redaction.
-     * @param {string} basePath - The base path for the sensitive fields (e.g., 'req.body', 'req.headers')
-     * @returns {string[]} Array of complete paths for sensitive fields with proper bracket notation for fields containing hyphens
-     */
-    private mapSensitiveFieldPaths(basePath: string): string[] {
-        return LOGGER_SENSITIVE_FIELDS.map(field =>
-            field.includes('-')
-                ? `${basePath}["${field}"]`
-                : `${basePath}.${field}`
-        );
     }
 
     /**
@@ -192,15 +233,139 @@ export class LoggerOptionService {
      */
     private createSerializers(): {
         req: (request: IRequestApp) => Record<string, unknown>;
-        res: (
-            response: Response & { headers: Record<string, string> }
-        ) => Record<string, unknown>;
-        err: (error: Error) => Record<string, unknown>;
     } {
         return {
             req: this.createRequestSerializer(),
-            res: this.createResponseSerializer(),
-            err: this.createErrorSerializer(),
+        };
+    }
+
+    /**
+     * Recursively sanitizes objects by redacting sensitive fields and handling circular references.
+     * Protects against deep object traversal and truncates large arrays to prevent memory issues.
+     * @param {unknown} obj - The object to sanitize
+     * @param {number} maxDepth - Maximum recursion depth to prevent stack overflow (default: 5)
+     * @param {number} currentDepth - Current recursion depth (default: 0)
+     * @returns {unknown} The sanitized object with sensitive data redacted
+     */
+    private sanitizeObject(
+        obj: unknown,
+        maxDepth: number = 5,
+        currentDepth: number = 0
+    ): unknown {
+        if (
+            !obj ||
+            typeof obj !== 'object' ||
+            obj instanceof Date ||
+            obj instanceof RegExp ||
+            currentDepth >= maxDepth
+        ) {
+            return obj;
+        }
+
+        if (obj instanceof Buffer) {
+            return { buffer: '[BUFFER]' };
+        }
+
+        if (Array.isArray(obj)) {
+            if (obj.length > 10) {
+                const newObj = obj
+                    .slice(0, 10)
+                    .map(item =>
+                        this.sanitizeObject(item, maxDepth, currentDepth + 1)
+                    );
+
+                newObj.push({
+                    truncated: `...[TRUNCATED] - total length ${obj.length}`,
+                });
+
+                return newObj;
+            }
+            return obj.map(item =>
+                this.sanitizeObject(item, maxDepth, currentDepth + 1)
+            );
+        }
+
+        const result = { ...obj };
+
+        for (const key in result) {
+            if (this.sensitiveFields.has(key.toLowerCase())) {
+                result[key] = `[REDACTED]`;
+            } else if (typeof result[key] === 'object') {
+                result[key] = this.sanitizeObject(
+                    result[key],
+                    maxDepth,
+                    currentDepth + 1
+                );
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Extracts the client's IP address from various sources in the HTTP request.
+     * Checks multiple sources including direct IP, connection properties, and proxy headers.
+     * @param {IRequestApp} request - The HTTP request object
+     * @returns {string} The client's IP address or 'unknown' if not found
+     */
+    private extractClientIP(request: IRequestApp): string {
+        if (request.ip) {
+            return request.ip as string;
+        }
+
+        if (request.connection?.remoteAddress) {
+            return request.connection.remoteAddress as string;
+        }
+        if (request.socket?.remoteAddress) {
+            return request.socket.remoteAddress as string;
+        }
+
+        const headers = request.headers;
+        if (headers) {
+            const forwarded = headers['x-forwarded-for'] as string;
+            if (forwarded) {
+                const firstIP = forwarded.split(',')[0].trim();
+                if (firstIP) {
+                    return firstIP;
+                }
+            }
+
+            const realIP = headers['x-real-ip'] as string;
+            if (realIP) {
+                return realIP;
+            }
+        }
+
+        return 'unknown';
+    }
+
+    /**
+     * Extracts and serializes user information from the request object.
+     * Returns the user ID if available, otherwise returns null.
+     * @param {IRequestApp} request - The HTTP request object containing user information
+     * @returns {string | null} The user ID string or null if not authenticated
+     */
+    private serializeUser(request: IRequestApp): string | null {
+        return (request.user as unknown as { userId: string })?.userId ?? null;
+    }
+
+    /**
+     * Adds debug information including memory usage and uptime to log entries.
+     * Only includes debug information in non-production environments for security.
+     * @returns {LoggerDebugInfo | undefined} Debug information object with memory and uptime data, or undefined in production
+     */
+    private addDebugInfo(): LoggerDebugInfo | undefined {
+        if (this.env === ENUM_APP_ENVIRONMENT.PRODUCTION) {
+            return undefined;
+        }
+
+        const memUsage = process.memoryUsage();
+        return {
+            memory: {
+                rss: Math.round(memUsage.rss / 1024 / 1024),
+                heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+            },
+            uptime: Math.round(process.uptime()),
         };
     }
 
@@ -218,13 +383,14 @@ export class LoggerOptionService {
                 url: request.url,
                 path: request.path,
                 route: request.route?.path,
-                parameters: request.params,
-                query: request.query,
-                headers: request.headers,
-                body: request.body,
-                ip: request.ip,
-                user: (request.user as unknown as { userId: string })?.userId,
+                query: this.sanitizeObject(request.query),
+                params: this.sanitizeObject(request.params),
+                headers: this.sanitizeObject(request.headers),
+                body: this.sanitizeObject(request.body),
+                ip: this.extractClientIP(request),
+                user: this.serializeUser(request),
                 userAgent: request.headers['user-agent'],
+                contentType: request.headers?.['content-type'],
                 referer: request.headers.referer,
                 remoteAddress: (request as unknown as { remoteAddress: string })
                     .remoteAddress,
@@ -235,32 +401,43 @@ export class LoggerOptionService {
     }
 
     /**
-     * Creates a serializer function for HTTP response objects.
-     * @returns {Function} Function that serializes response objects with status code and headers
+     * Creates a serialized representation of HTTP response objects.
+     * Extracts status code, headers, body content, and response metadata for logging.
+     * @param {Response & { body: unknown }} response - The HTTP response object with body content
+     * @returns {Record<string, unknown>} Serialized response object with sanitized data
      */
-    private createResponseSerializer(): (
-        response: Response
-    ) => Record<string, unknown> {
-        return (response: Response) => {
-            // TODO: Consider to add response body: statusCode, message, and errors. except data.
-            return {
-                httpCode: response.statusCode,
-                headers: response.getHeaders(),
-            };
+    private createResponseSerializer(
+        response: Response & { body: unknown }
+    ): Record<string, unknown> {
+        let body: unknown = response.body;
+        try {
+            body = JSON.parse(response.body as string);
+        } catch {}
+
+        return {
+            httpCode: response.statusCode,
+            headers: this.sanitizeObject(
+                response.getHeaders() as Record<string, unknown>
+            ),
+            body: this.sanitizeObject(body),
+            contentLength: response.getHeader('content-length'),
+            responseTime: response.getHeader('X-Response-Time'),
         };
     }
 
     /**
-     * Creates a serializer function for error objects.
-     * @returns {Function} Function that serializes error objects with type, message, code, and stack trace
+     * Creates a serialized representation of error objects for logging.
+     * Extracts error type, message, status code, and stack trace information.
+     * @param {Error} error - The error object to serialize
+     * @returns {Record<string, unknown>} Serialized error object with relevant error information
      */
-    private createErrorSerializer(): (error: Error) => Record<string, unknown> {
-        return (error: Error) => ({
+    private createErrorSerializer(error: Error): Record<string, unknown> {
+        return {
             type: error.name,
             message: error.message,
             code: (error as unknown as { statusCode?: number })?.statusCode,
             stack: error.stack,
-        });
+        };
     }
 
     /**

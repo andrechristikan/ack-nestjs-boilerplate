@@ -15,5 +15,5 @@ export enum ENUM_POLICY_SUBJECT {
     ROLE = 'role',
     USER = 'user',
     SESSION = 'session',
-    ACTIVITY = 'activity',
+    ACTIVITY_LOG = 'activityLog',
 }

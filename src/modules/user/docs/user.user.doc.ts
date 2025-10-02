@@ -1,4 +1,4 @@
-import { DatabaseIdResponseDto } from '@common/database/dtos/database.id.dto';
+import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import {
     Doc,
     DocAuth,
@@ -45,7 +45,7 @@ export function UserUserAddMobileNumberDoc(): MethodDecorator {
         DocGuard({ role: true }),
         DocResponse('user.addMobileNumber', {
             httpStatus: HttpStatus.CREATED,
-            dto: DatabaseIdResponseDto,
+            dto: DatabaseIdDto,
         })
     );
 }

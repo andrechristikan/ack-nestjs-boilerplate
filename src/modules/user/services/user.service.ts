@@ -2,7 +2,7 @@ import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
 import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import { DatabaseIdResponseDto } from '@common/database/dtos/database.id.dto';
+import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
@@ -42,10 +42,8 @@ import {
     UserCheckUsernameRequestDto,
 } from '@modules/user/dtos/request/user.check.request.dto';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import {
-    UserCreateRequestDto,
-    UserCreateSocialRequestDto,
-} from '@modules/user/dtos/request/user.create.request.dto';
+import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
+import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
@@ -208,7 +206,7 @@ export class UserService implements IUserService {
         { countryId, email, name, roleId }: UserCreateRequestDto,
         requestLog: IRequestLog,
         createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
+    ): Promise<IResponseReturn<DatabaseIdDto>> {
         const [checkRole, emailExist, checkCountry] = await Promise.all([
             this.roleRepository.existById(roleId),
             this.userRepository.existByEmail(email),
@@ -513,7 +511,7 @@ export class UserService implements IUserService {
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
+    ): Promise<IResponseReturn<DatabaseIdDto>> {
         const checkCountry =
             await this.countryRepository.findOneById(countryId);
         if (!checkCountry) {

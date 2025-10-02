@@ -2,7 +2,7 @@ import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { IRequestUserAgent } from '@common/request/interfaces/request.interface';
+import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -18,7 +18,7 @@ import {
     UserPublicLoginCredentialDoc,
     UserPublicSignUpDoc,
 } from '@modules/user/docs/user.public.doc';
-import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
@@ -36,14 +36,14 @@ export class UserPublicController {
     constructor(private readonly userService: UserService) {}
 
     @UserPublicLoginCredentialDoc()
-    @Response('auseruth.loginCredential')
+    @Response('user.loginCredential')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/login/credential')
     async loginWithCredential(
         @Body() data: UserLoginRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         return this.userService.loginCredential(data, {
             ipAddress,
@@ -60,7 +60,7 @@ export class UserPublicController {
         @AuthJwtPayload<IAuthSocialPayload>('email')
         email: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent,
+        @RequestUserAgent() userAgent: RequestUserAgentDto,
         @Body() data: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         return this.userService.loginWithSocial(
@@ -84,7 +84,7 @@ export class UserPublicController {
         email: string,
         @Body() data: UserCreateSocialRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         return this.userService.loginWithSocial(
             email,
@@ -105,7 +105,7 @@ export class UserPublicController {
         @Body()
         data: UserSignUpRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<void> {
         return this.userService.signUp(data, {
             ipAddress,

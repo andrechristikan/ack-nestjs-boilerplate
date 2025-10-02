@@ -4,6 +4,7 @@ export interface IConfigRedis {
     cached: {
         host: string;
         port: number;
+        database?: number;
         password?: string;
         username?: string;
         ttl: number; // in milliseconds
@@ -12,6 +13,7 @@ export interface IConfigRedis {
     queue: {
         host: string;
         port: number;
+        database?: number;
         password?: string;
         username?: string;
     };
@@ -23,16 +25,22 @@ export default registerAs(
         cached: {
             host: process.env.REDIS_HOST ?? 'localhost',
             port: process.env.REDIS_PORT ? +process.env.REDIS_PORT : 6379,
+            database: process.env.REDIS_DATABASE
+                ? +process.env.REDIS_DATABASE
+                : 0,
             password: process.env.REDIS_PASSWORD,
             username: process.env.REDIS_USERNAME,
             ttl: 5 * 60 * 1000, // 5 mins
             max: 10,
         },
         queue: {
-            host: process.env.REDIS_HOST ?? 'localhost',
-            port: process.env.REDIS_PORT ? +process.env.REDIS_PORT : 6379,
-            password: process.env.REDIS_PASSWORD,
-            username: process.env.REDIS_USERNAME,
+            host: process.env.QUEUE_REDIS_HOST ?? 'localhost',
+            port: process.env.QUEUE_REDIS_PORT ? +process.env.REDIS_PORT : 6379,
+            database: process.env.QUEUE_REDIS_DATABASE
+                ? +process.env.QUEUE_REDIS_DATABASE
+                : 0,
+            password: process.env.QUEUE_REDIS_PASSWORD,
+            username: process.env.QUEUE_REDIS_USERNAME,
         },
     })
 );

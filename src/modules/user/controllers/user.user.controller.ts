@@ -1,9 +1,9 @@
-import { DatabaseIdResponseDto } from '@common/database/dtos/database.id.dto';
+import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { IRequestUserAgent } from '@common/request/interfaces/request.interface';
+import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -11,7 +11,6 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     UserUserAddMobileNumberDoc,
@@ -37,7 +36,6 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
 
 @ApiTags('modules.user.user')
 @Controller({
@@ -49,7 +47,6 @@ export class UserUserController {
 
     @UserUserDeleteSelfDoc()
     @Response('user.deleteSelf')
-    @RoleProtected(ENUM_ROLE_TYPE.USER)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -57,7 +54,7 @@ export class UserUserController {
     async deleteSelf(
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.deleteSelf(userId, {
             ipAddress,
@@ -67,7 +64,6 @@ export class UserUserController {
 
     @UserUserAddMobileNumberDoc()
     @Response('user.addMobileNumber')
-    @RoleProtected(ENUM_ROLE_TYPE.USER)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -75,10 +71,10 @@ export class UserUserController {
     async addMobileNumber(
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent,
+        @RequestUserAgent() userAgent: RequestUserAgentDto,
         @Body()
         data: UserAddMobileNumberRequestDto
-    ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
+    ): Promise<IResponseReturn<DatabaseIdDto>> {
         return this.userService.addMobileNumber(userId, data, {
             ipAddress,
             userAgent,
@@ -87,7 +83,6 @@ export class UserUserController {
 
     @UserUserUpdateMobileNumberDoc()
     @Response('user.updateMobileNumber')
-    @RoleProtected(ENUM_ROLE_TYPE.USER)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -96,7 +91,7 @@ export class UserUserController {
         @AuthJwtPayload('userId') userId: string,
         @Param('mobileNumberId') mobileNumberId: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent,
+        @RequestUserAgent() userAgent: RequestUserAgentDto,
         @Body()
         data: UserUpdateMobileNumberRequestDto
     ): Promise<IResponseReturn<void>> {
@@ -113,7 +108,6 @@ export class UserUserController {
 
     @UserUserDeleteMobileNumberDoc()
     @Response('user.deleteMobileNumber')
-    @RoleProtected(ENUM_ROLE_TYPE.USER)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -122,7 +116,7 @@ export class UserUserController {
         @AuthJwtPayload('userId') userId: string,
         @Param('mobileNumberId') mobileNumberId: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.deleteMobileNumber(userId, mobileNumberId, {
             ipAddress,
@@ -132,7 +126,6 @@ export class UserUserController {
 
     @UserUserClaimUsernameDoc()
     @Response('user.claimUsername')
-    @RoleProtected(ENUM_ROLE_TYPE.USER)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -143,7 +136,7 @@ export class UserUserController {
         @Body()
         data: UserClaimUsernameRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: IRequestUserAgent
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.claimUsername(userId, data, {
             ipAddress,

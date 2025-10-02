@@ -43,7 +43,7 @@ import { CacheModule, CacheOptions } from '@nestjs/cache-manager';
                     port: configService.get<number>('redis.queue.port'),
                     username: configService.get<string>('redis.queue.username'),
                     password: configService.get<string>('redis.queue.password'),
-                    db: 1,
+                    db: configService.get<number>('redis.queue.database'),
                 },
                 defaultJobOptions: {
                     backoff: {
@@ -84,6 +84,9 @@ import { CacheModule, CacheOptions } from '@nestjs/cache-manager';
                         ),
                         password: configService.get<string>(
                             'redis.cached.password'
+                        ),
+                        database: configService.get<number>(
+                            'redis.cached.database'
                         ),
                     }),
                 ],

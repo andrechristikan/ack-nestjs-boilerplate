@@ -36,6 +36,9 @@ import { SESSION_CACHE_MANAGER } from '@modules/session/constants/session.consta
                         password: configService.get<string>(
                             'redis.cached.password'
                         ),
+                        database: configService.get<number>(
+                            'redis.cached.database'
+                        ),
                     }),
                 ],
             }),

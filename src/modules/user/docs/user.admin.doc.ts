@@ -15,7 +15,7 @@ import {
 } from '@modules/user/constants/user.doc.constant';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { DatabaseIdResponseDto } from '@common/database/dtos/database.id.dto';
+import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 
 export function UserAdminListDoc(): MethodDecorator {
@@ -70,9 +70,9 @@ export function UserAdminCreateDoc(): MethodDecorator {
             dto: UserCreateRequestDto,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponse<DatabaseIdResponseDto>('user.create', {
+        DocResponse<DatabaseIdDto>('user.create', {
             httpStatus: HttpStatus.CREATED,
-            dto: DatabaseIdResponseDto,
+            dto: DatabaseIdDto,
         })
     );
 }

@@ -11,6 +11,30 @@ export const LOGGER_EXCLUDED_ROUTES: string[] = [
 ] as const;
 
 /**
+ * Array of HTTP header names used to extract or identify request IDs.
+ * These headers are checked in order to maintain request tracing across services.
+ */
+export const LOGGER_REQUEST_ID_HEADERS = [
+    'x-correlation-id',
+    'x-request-id',
+] as const;
+
+/**
+ * Array of object paths that may contain sensitive data in request/response objects.
+ * Used by the logger redaction system to identify where sensitive fields might be located.
+ */
+export const LOGGER_SENSITIVE_PATHS = [
+    'req.body',
+    'req.headers',
+    'res.body',
+    'res.headers',
+    'request.body',
+    'request.headers',
+    'response.body',
+    'response.headers',
+];
+
+/**
  * Array of field names containing sensitive data that should be masked in logs.
  * Includes authentication tokens, personal identification, financial data, and biometric information.
  */
