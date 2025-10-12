@@ -1,11 +1,6 @@
-import {
-    PaginationOffsetQuery,
-    PaginationQueryFilterEqualString,
-} from '@common/pagination/decorators/pagination.decorator';
-import {
-    IPaginationEqual,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAdminListDoc } from '@modules/activity-log/docs/activity-log.admin.doc';
@@ -20,16 +15,16 @@ import {
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_ROLE_TYPE } from '@prisma/client';
 
-@ApiTags('modules.admin.activityLog')
+@ApiTags('modules.admin.user.activityLog')
 @Controller({
     version: '1',
-    path: '/activity-log',
+    path: '/user/:userId/activity-log',
 })
-export class UserAdminController {
+export class ActivityLogAdminController {
     constructor(private readonly activityLogService: ActivityLogService) {}
 
     @ActivityLogAdminListDoc()
@@ -52,9 +47,8 @@ export class UserAdminController {
     async list(
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams,
-        @PaginationQueryFilterEqualString('user')
-        user?: Record<string, IPaginationEqual>
+        @Param('userId', RequestRequiredPipe) userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListOffset(pagination, user);
+        return this.activityLogService.getListOffsetByUser(userId, pagination);
     }
 }

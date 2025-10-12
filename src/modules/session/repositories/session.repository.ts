@@ -1,25 +1,139 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperService } from '@common/helper/services/helper.service';
+import {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import { PaginationService } from '@common/pagination/services/pagination.service';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { ISession } from '@modules/session/interfaces/session.interface';
 import { Injectable } from '@nestjs/common';
-import { Session } from '@prisma/client';
+import { ENUM_ACTIVITY_LOG_ACTION, Prisma, Session } from '@prisma/client';
 
 @Injectable()
 export class SessionRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly paginationService: PaginationService
     ) {}
 
-    async findOneActiveSession(id: string): Promise<Session> {
+    async findWithPaginationOffsetByUser(
+        userId: string,
+        { where, ...others }: IPaginationQueryOffsetParams
+    ): Promise<IResponsePagingReturn<ISession>> {
+        return this.paginationService.offSet<ISession>(
+            this.databaseService.passwordHistory,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    userId,
+                },
+                includes: {
+                    user: true,
+                },
+            }
+        );
+    }
+
+    async findWithPaginationCursorByUser(
+        userId: string,
+        { where, ...others }: IPaginationQueryCursorParams
+    ): Promise<IResponsePagingReturn<ISession>> {
+        return this.paginationService.cursor<ISession>(
+            this.databaseService.passwordHistory,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    userId,
+                },
+                includes: {
+                    user: true,
+                },
+            }
+        );
+    }
+
+    async findOneActiveByUser(
+        userId: string,
+        sessionId: string
+    ): Promise<Session> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.session.findFirst({
             where: {
-                id,
+                id: sessionId,
+                userId,
                 expiredAt: {
                     gte: today,
                 },
                 isRevoked: false,
+            },
+        });
+    }
+
+    async revokeByUser(
+        userId: string,
+        sessionId: string,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<Session> {
+        return this.databaseService.session.update({
+            where: {
+                id: sessionId,
+                userId,
+            },
+            data: {
+                isRevoked: true,
+                revokedAt: this.helperService.dateCreate(),
+                updatedBy: userId,
+                user: {
+                    update: {
+                        activityLogs: {
+                            create: {
+                                action: ENUM_ACTIVITY_LOG_ACTION.USER_REVOKE_SESSION,
+                                ipAddress,
+                                userAgent: JSON.stringify(
+                                    userAgent
+                                ) as Prisma.InputJsonValue,
+                                createdBy: userId,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    async revokeByAdmin(
+        sessionId: string,
+        { ipAddress, userAgent }: IRequestLog,
+        revokeBy: string
+    ): Promise<Session> {
+        return this.databaseService.session.update({
+            where: {
+                id: sessionId,
+            },
+            data: {
+                isRevoked: true,
+                revokedAt: this.helperService.dateCreate(),
+                updatedBy: revokeBy,
+                user: {
+                    update: {
+                        activityLogs: {
+                            create: {
+                                action: ENUM_ACTIVITY_LOG_ACTION.ADMIN_REVOKE_SESSION,
+                                ipAddress,
+                                userAgent: JSON.stringify(
+                                    userAgent
+                                ) as Prisma.InputJsonValue,
+                                createdBy: revokeBy,
+                            },
+                        },
+                    },
+                },
             },
         });
     }

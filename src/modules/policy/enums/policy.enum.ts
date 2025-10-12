@@ -16,4 +16,5 @@ export enum ENUM_POLICY_SUBJECT {
     USER = 'user',
     SESSION = 'session',
     ACTIVITY_LOG = 'activityLog',
+    PASSWORD_HISTORY = 'passwordHistory',
 }

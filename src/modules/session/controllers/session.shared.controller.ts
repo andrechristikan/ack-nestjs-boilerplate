@@ -16,44 +16,26 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
-} from '@modules/policy/enums/policy.enum';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
-import {
-    SessionAdminListDoc,
-    SessionAdminRevokeDoc,
-} from '@modules/session/docs/session.admin.doc';
+    SessionSharedListDoc,
+    SessionSharedRevokeDoc,
+} from '@modules/session/docs/session.shared.doc';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
 
-@ApiTags('modules.admin.user.session')
+@ApiTags('modules.shared.user.session')
 @Controller({
     version: '1',
-    path: '/user/:userId/session',
+    path: '/session',
 })
-export class SessionAdminController {
+export class SessionSharedController {
     constructor(private readonly sessionService: SessionService) {}
 
-    @SessionAdminListDoc()
+    @SessionSharedListDoc()
     @ResponsePaging('session.list')
-    @PolicyAbilityProtected(
-        {
-            subject: ENUM_POLICY_SUBJECT.USER,
-            action: [ENUM_POLICY_ACTION.READ],
-        },
-        {
-            subject: ENUM_POLICY_SUBJECT.SESSION,
-            action: [ENUM_POLICY_ACTION.READ],
-        }
-    )
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -61,43 +43,26 @@ export class SessionAdminController {
     async list(
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams,
-        @Param('userId', RequestRequiredPipe) userId: string
+        @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        return this.sessionService.getListOffsetByUser(userId, pagination);
+        return this.sessionService.getListCursorByUser(userId, pagination);
     }
 
-    @SessionAdminRevokeDoc()
+    @SessionSharedRevokeDoc()
     @ResponsePaging('session.revoke')
-    @PolicyAbilityProtected(
-        {
-            subject: ENUM_POLICY_SUBJECT.USER,
-            action: [ENUM_POLICY_ACTION.READ],
-        },
-        {
-            subject: ENUM_POLICY_SUBJECT.SESSION,
-            action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
-        }
-    )
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/revoke/:sessionId')
     async revoke(
-        @Param('userId', RequestRequiredPipe) userId: string,
         @Param('sessionId', RequestRequiredPipe) sessionId: string,
-        @AuthJwtPayload('userId') revokeBy: string,
+        @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.sessionService.revokeByAdmin(
-            userId,
-            sessionId,
-            {
-                ipAddress,
-                userAgent,
-            },
-            revokeBy
-        );
+        return this.sessionService.revoke(userId, sessionId, {
+            ipAddress,
+            userAgent,
+        });
     }
 }

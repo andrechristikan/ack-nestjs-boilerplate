@@ -1,9 +1,12 @@
 import { HelperService } from '@common/helper/services/helper.service';
 import { RedisClientType } from '@keyv/redis';
 import { SESSION_CACHE_MANAGER } from '@modules/session/constants/session.constant';
+import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
+import { ISession } from '@modules/session/interfaces/session.interface';
 import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { plainToInstance } from 'class-transformer';
 import Keyv from 'keyv';
 
 @Injectable()
@@ -109,5 +112,9 @@ export class SessionUtil implements OnModuleInit {
 
     async flushAll(): Promise<void> {
         this.cacheManager.clear();
+    }
+
+    mapList(sessions: ISession[]): SessionResponseDto[] {
+        return plainToInstance(SessionResponseDto, sessions);
     }
 }

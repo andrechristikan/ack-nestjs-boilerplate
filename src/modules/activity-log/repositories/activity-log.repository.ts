@@ -1,7 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import {
     IPaginationCursorReturn,
-    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -18,8 +17,8 @@ export class ActivityLogRepository {
     ) {}
 
     async findWithPaginationOffset(
-        { where, ...params }: IPaginationQueryOffsetParams,
-        user?: Record<string, IPaginationEqual>
+        userId: string,
+        { where, ...params }: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<IActivityLog>> {
         return this.paginationService.offSet<IActivityLog>(
             this.databaseService.activityLog,
@@ -27,7 +26,7 @@ export class ActivityLogRepository {
                 ...params,
                 where: {
                     ...where,
-                    ...user,
+                    userId,
                 },
                 includes: {
                     user: true,
@@ -37,8 +36,8 @@ export class ActivityLogRepository {
     }
 
     async findWithPaginationCursor(
-        { where, ...params }: IPaginationQueryCursorParams,
-        user?: Record<string, IPaginationEqual>
+        userId: string,
+        { where, ...params }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
         return this.paginationService.cursor<IActivityLog>(
             this.databaseService.user,
@@ -46,7 +45,7 @@ export class ActivityLogRepository {
                 ...params,
                 where: {
                     ...where,
-                    ...user,
+                    userId,
                 },
                 includes: {
                     user: true,

@@ -11,6 +11,7 @@ import { AwsModule } from '@common/aws/aws.module';
 import { AuthModule } from '@modules/auth/auth.module';
 import { FileModule } from '@common/file/file.module';
 import { SessionModule } from '@modules/session/session.module';
+import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 
 @Module({
     imports: [
@@ -18,6 +19,7 @@ import { SessionModule } from '@modules/session/session.module';
             name: ENUM_WORKER_QUEUES.EMAIL,
         }),
         VerificationModule,
+        PasswordHistoryModule,
         CountryModule,
         RoleModule,
         AwsModule,

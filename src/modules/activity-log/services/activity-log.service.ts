@@ -1,5 +1,4 @@
 import {
-    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -17,14 +16,14 @@ export class ActivityLogService implements IActivityLogService {
         private readonly activityUtil: ActivityLogUtil
     ) {}
 
-    async getListOffset(
-        pagination: IPaginationQueryOffsetParams,
-        user?: Record<string, IPaginationEqual>
+    async getListOffsetByUser(
+        userId: string,
+        pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
         const { data, ...others } =
             await this.activityRepository.findWithPaginationOffset(
-                pagination,
-                user
+                userId,
+                pagination
             );
 
         const activityLogs: ActivityLogResponseDto[] =
@@ -35,14 +34,14 @@ export class ActivityLogService implements IActivityLogService {
         };
     }
 
-    async getListCursor(
-        pagination: IPaginationQueryCursorParams,
-        user?: Record<string, IPaginationEqual>
+    async getListCursorByUser(
+        userId: string,
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
         const { data, ...others } =
             await this.activityRepository.findWithPaginationCursor(
-                pagination,
-                user
+                userId,
+                pagination
             );
 
         const activityLogs: ActivityLogResponseDto[] =

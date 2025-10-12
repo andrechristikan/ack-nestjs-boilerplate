@@ -1,3 +1,4 @@
+import { applyDecorators } from '@nestjs/common';
 import {
     Doc,
     DocAuth,
@@ -5,14 +6,13 @@ import {
     DocRequest,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
-import { applyDecorators } from '@nestjs/common';
+import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
 
-export function ActivityLogAdminListDoc(): MethodDecorator {
+export function PasswordHistoryAdminListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'get all activity logs',
+            summary: 'get all user password histories',
         }),
         DocRequest({
             params: UserDocParamsId,
@@ -22,8 +22,8 @@ export function ActivityLogAdminListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponsePaging<ActivityLogResponseDto>('activityLog.list', {
-            dto: ActivityLogResponseDto,
+        DocResponsePaging<PasswordHistoryResponseDto>('passwordHistory.list', {
+            dto: PasswordHistoryResponseDto,
         })
     );
 }

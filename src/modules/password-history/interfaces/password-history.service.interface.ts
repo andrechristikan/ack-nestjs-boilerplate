@@ -3,15 +3,15 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
+import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
 
-export interface IActivityLogService {
+export interface IPasswordHistoryService {
     getListOffsetByUser(
         userId: string,
         pagination: IPaginationQueryOffsetParams
-    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
+    ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>>;
     getListCursorByUser(
         userId: string,
         pagination: IPaginationQueryCursorParams
-    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
+    ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>>;
 }

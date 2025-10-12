@@ -32,6 +32,7 @@ import { CountryRepository } from '@modules/country/repositories/country.reposit
 import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
 import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
+import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
@@ -98,6 +99,7 @@ export class UserService implements IUserService {
         private readonly userRepository: UserRepository,
         private readonly countryRepository: CountryRepository,
         private readonly roleRepository: RoleRepository,
+        private readonly passwordHistoryRepository: PasswordHistoryRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly helperService: HelperService,
         private readonly fileService: FileService,
@@ -797,7 +799,7 @@ export class UserService implements IUserService {
         password: string
     ): Promise<PasswordHistory | null> {
         const histories =
-            await this.userRepository.findAllPasswordHistoryActive(userId);
+            await this.passwordHistoryRepository.findAllActiveByUser(userId);
 
         for (const history of histories) {
             if (this.helperService.bcryptCompare(password, history.password)) {

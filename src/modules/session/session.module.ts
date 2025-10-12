@@ -9,6 +9,7 @@ import {
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import KeyvRedis from '@keyv/redis';
 import { SESSION_CACHE_MANAGER } from '@modules/session/constants/session.constant';
+import { SessionRepository } from '@modules/session/repositories/session.repository';
 
 @Module({
     imports: [
@@ -45,10 +46,11 @@ import { SESSION_CACHE_MANAGER } from '@modules/session/constants/session.consta
             inject: [ConfigService],
         }),
     ],
-    exports: [SessionUtil, SessionService],
+    exports: [SessionUtil, SessionService, SessionRepository],
     providers: [
         SessionUtil,
         SessionService,
+        SessionRepository,
         {
             provide: SESSION_CACHE_MANAGER,
             useExisting: CACHE_MANAGER,

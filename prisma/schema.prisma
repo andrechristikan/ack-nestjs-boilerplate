@@ -229,6 +229,8 @@ model Session {
   // timestamps fields
   createdAt DateTime @default(now())
   createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
 
   @@index(fields: [userId])
   @@index(fields: [expiredAt])
@@ -365,4 +367,6 @@ enum ENUM_ACTIVITY_LOG_ACTION {
     USER_LOGIN_APPLE @map("userLoginApple")
     USER_VERIFIED @map("userVerified")
     USER_SIGNED_UP @map("userSignedUp")
+    ADMIN_REVOKE_SESSION @map("adminRevokeSession")
+    USER_REVOKE_SESSION @map("userRevokeSession")
 }

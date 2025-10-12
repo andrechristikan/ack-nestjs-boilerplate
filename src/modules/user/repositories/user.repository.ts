@@ -37,7 +37,6 @@ import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_SIGN_UP_WITH,
     ENUM_USER_STATUS,
-    PasswordHistory,
     Prisma,
     User,
     UserMobileNumber,
@@ -546,23 +545,6 @@ export class UserRepository {
             where: { id: userId, deletedAt: null },
             data: {
                 passwordAttempt: 0,
-            },
-        });
-    }
-
-    async findAllPasswordHistoryActive(
-        userId: string
-    ): Promise<PasswordHistory[]> {
-        const today = this.helperService.dateCreate();
-        return this.databaseService.passwordHistory.findMany({
-            where: {
-                userId,
-                expiredAt: {
-                    gte: today,
-                },
-            },
-            orderBy: {
-                createdAt: Prisma.SortOrder.desc,
             },
         });
     }
