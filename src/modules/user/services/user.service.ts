@@ -36,6 +36,7 @@ import { PasswordHistoryRepository } from '@modules/password-history/repositorie
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
+import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import {
@@ -105,7 +106,8 @@ export class UserService implements IUserService {
         private readonly fileService: FileService,
         private readonly authService: AuthService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly sessionUtil: SessionUtil
+        private readonly sessionUtil: SessionUtil,
+        private readonly sessionRepository: SessionRepository
     ) {}
 
     async validateUserGuard(
@@ -494,9 +496,10 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         try {
+            const sessions = await this.sessionRepository.findAllByUser(userId);
             await Promise.all([
                 this.userRepository.deleteSelf(userId, requestLog),
-                this.sessionUtil.deleteAllLogins(userId),
+                this.sessionUtil.deleteAllLogins(userId, sessions),
             ]);
 
             return;
@@ -856,6 +859,7 @@ export class UserService implements IUserService {
         }
 
         try {
+            const sessions = await this.sessionRepository.findAllByUser(userId);
             const password = this.authService.createPassword(newPassword);
 
             const [updated] = await Promise.all([
@@ -864,7 +868,7 @@ export class UserService implements IUserService {
                     password,
                     requestLog
                 ),
-                this.sessionUtil.deleteAllLogins(userId),
+                this.sessionUtil.deleteAllLogins(userId, sessions),
             ]);
 
             await this.emailQueue.add(

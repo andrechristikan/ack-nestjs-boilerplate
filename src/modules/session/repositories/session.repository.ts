@@ -57,6 +57,25 @@ export class SessionRepository {
         );
     }
 
+    async findAllByUser(userId: string): Promise<
+        {
+            id: string;
+        }[]
+    > {
+        return this.databaseService.session.findMany({
+            where: {
+                userId,
+                isRevoked: false,
+                expiredAt: {
+                    gte: this.helperService.dateCreate(),
+                },
+            },
+            select: {
+                id: true,
+            },
+        });
+    }
+
     async findOneActiveByUser(
         userId: string,
         sessionId: string

@@ -1,18 +1,15 @@
 import { HelperService } from '@common/helper/services/helper.service';
-import { RedisClientType } from '@keyv/redis';
 import { SESSION_CACHE_MANAGER } from '@modules/session/constants/session.constant';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { ISession } from '@modules/session/interfaces/session.interface';
 import { Cache } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
-import Keyv from 'keyv';
 
 @Injectable()
-export class SessionUtil implements OnModuleInit {
+export class SessionUtil {
     private readonly logger = new Logger(SessionUtil.name);
-    private redisClient: RedisClientType;
 
     private readonly keyPattern: string;
     private readonly namespace: string;
@@ -24,27 +21,6 @@ export class SessionUtil implements OnModuleInit {
     ) {
         this.keyPattern = this.configService.get<string>('session.keyPattern')!;
         this.namespace = this.configService.get<string>('session.namespace')!;
-    }
-
-    async onModuleInit(): Promise<void> {
-        this.extractRedisClient();
-    }
-
-    private extractRedisClient(): void {
-        const stores = this.cacheManager.stores;
-
-        if (stores.length === 0) {
-            this.logger.warn('No cache stores found');
-        } else {
-            const store = (stores[0] as Keyv).store;
-            this.redisClient = store.client;
-        }
-
-        if (!this.redisClient) {
-            this.logger.warn('Keyv instance not found');
-        } else {
-            this.logger.log('Keyv instance extracted successfully');
-        }
     }
 
     async getLogin(userId: string, sessionId: string): Promise<boolean> {
@@ -88,23 +64,16 @@ export class SessionUtil implements OnModuleInit {
         return;
     }
 
-    async deleteAllLogins(userId: string): Promise<void> {
-        const pattern = `${this.namespace}:${this.keyPattern}:${userId}:*`;
-
-        let cursor = 0;
-        const keys = [];
-
-        do {
-            const result = await this.redisClient.scan(cursor, {
-                MATCH: pattern,
-                COUNT: 100,
-            });
-            cursor = result.cursor;
-            keys.push(...result.keys);
-        } while (cursor !== 0);
-
-        if (keys.length > 0) {
-            await this.cacheManager.mdel(keys);
+    async deleteAllLogins(
+        userId: string,
+        sessions: { id: string }[]
+    ): Promise<void> {
+        if (sessions.length > 0) {
+            await this.cacheManager.mdel(
+                sessions.map(
+                    session => `${this.keyPattern}:${userId}:${session.id}`
+                )
+            );
         }
 
         return;
