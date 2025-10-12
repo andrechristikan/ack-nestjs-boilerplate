@@ -1,7 +1,6 @@
 import {
     IMessageProperties,
     IMessageValidationError,
-    IMessageValidationImportError,
 } from '@common/message/interfaces/message.interface';
 
 export interface IAppException<T> {
@@ -11,9 +10,4 @@ export interface IAppException<T> {
     data?: T;
     metadata?: Record<string, string | number>;
     errors?: IMessageValidationError[];
-}
-
-export interface IAppImportException<T>
-    extends Omit<IAppException<T>, 'errors'> {
-    errors?: IMessageValidationImportError[];
 }

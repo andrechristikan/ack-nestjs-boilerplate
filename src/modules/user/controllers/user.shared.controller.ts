@@ -5,6 +5,7 @@ import { IFile } from '@common/file/interfaces/file.interface';
 import { FileTypePipe } from '@common/file/pipes/file.type.pipe';
 import {
     RequestIPAddress,
+    RequestTimeout,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
@@ -147,6 +148,7 @@ export class UserSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @FileUploadSingle()
+    @RequestTimeout('1m')
     @Post('/profile/upload/photo')
     async uploadPhotoProfile(
         @AuthJwtPayload('userId')
