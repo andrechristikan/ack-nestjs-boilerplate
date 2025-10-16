@@ -34,7 +34,7 @@ export class UserUtil {
 
     createRandomFilenamePhotoProfileWithPath(
         user: string,
-        { mime }: IFileRandomFilenameOptions
+        { extension }: IFileRandomFilenameOptions
     ): string {
         const path: string = this.uploadPhotoProfilePath.replace(
             '{user}',
@@ -42,7 +42,7 @@ export class UserUtil {
         );
         return this.fileService.createRandomFilename({
             prefix: path,
-            mime,
+            extension,
             randomLength: 20,
         });
     }

@@ -4,6 +4,7 @@ import { AuthService } from '@modules/auth/services/auth.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import {
+    ENUM_TERM_POLICY_TYPE,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_SIGN_UP_WITH,
     ENUM_USER_STATUS,
@@ -128,10 +129,10 @@ export class MigrationCreateSeed {
                         signUpFrom: ENUM_USER_SIGN_UP_FROM.SYSTEM,
                         status: ENUM_USER_STATUS.ACTIVE,
                         termPolicy: {
-                            cookies: false,
-                            privacy: false,
-                            marketing: false,
-                            term: false,
+                            [ENUM_TERM_POLICY_TYPE.COOKIE]: false,
+                            [ENUM_TERM_POLICY_TYPE.PRIVACY]: false,
+                            [ENUM_TERM_POLICY_TYPE.MARKETING]: false,
+                            [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: false,
                         },
                         username: this.userUtil.createRandomUsername(),
                     }) as Prisma.UserCreateManyInput

@@ -724,7 +724,7 @@ export class UserRepository {
                 },
             }),
             ...termPolicies.map(termPolicy =>
-                this.databaseService.userAcceptance.create({
+                this.databaseService.termPolicyUserAcceptance.create({
                     data: {
                         userId,
                         termPolicyId: termPolicy.id,
@@ -858,7 +858,7 @@ export class UserRepository {
                 },
             }),
             ...termPolicies.map(termPolicy =>
-                this.databaseService.userAcceptance.create({
+                this.databaseService.termPolicyUserAcceptance.create({
                     data: {
                         userId,
                         termPolicyId: termPolicy.id,

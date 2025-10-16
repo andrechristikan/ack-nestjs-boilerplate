@@ -28,6 +28,6 @@ export interface IRoleService {
     delete(id: string): Promise<void>;
     validateRoleGuard(
         request: IRequestApp,
-        roles: ENUM_ROLE_TYPE[]
+        requiredRoles: ENUM_ROLE_TYPE[]
     ): Promise<RoleAbilityDto[]>;
 }

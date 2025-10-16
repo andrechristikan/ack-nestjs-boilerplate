@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { IFileService } from '@common/file/interfaces/file.service.interface';
-import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
 import { read, utils, write } from 'xlsx';
 import {
     IFileRandomFilenameOptions,
     IFileSheet,
 } from '@common/file/interfaces/file.interface';
 import { HelperService } from '@common/helper/services/helper.service';
+import Mime from 'mime';
+import { ENUM_FILE_EXTENSION_EXCEL } from '@common/file/enums/file.enum';
 
 /**
  * Service for handling file operations including CSV and Excel file creation and reading.
@@ -75,7 +76,7 @@ export class FileService implements IFileService {
 
         const buff: Buffer = write(workbook, {
             type: 'buffer',
-            bookType: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX,
+            bookType: ENUM_FILE_EXTENSION_EXCEL.XLSX,
         });
 
         return buff;
@@ -98,7 +99,7 @@ export class FileService implements IFileService {
 
         const buff: Buffer = write(workbook, {
             type: 'buffer',
-            bookType: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX,
+            bookType: ENUM_FILE_EXTENSION_EXCEL.XLSX,
         });
 
         return buff;
@@ -166,18 +167,16 @@ export class FileService implements IFileService {
      * Automatically removes leading slash if present to ensure proper path formatting.
      * @param {IFileRandomFilenameOptions} options - Configuration options for filename generation
      * @param {string} options.prefix - Directory prefix or path to prepend to the filename
-     * @param {string} options.mime - MIME type used to determine file extension (e.g., 'image/jpeg', 'text/csv')
+     * @param {string} options.extension - File extension (e.g., 'jpg', 'png', 'pdf')
      * @param {number} [options.randomLength=10] - Length of the random string portion (defaults to 10 characters)
      * @returns {string} Generated filename in format: 'prefix/randomString.extension'
      */
     createRandomFilename({
         prefix,
-        mime,
+        extension,
         randomLength,
     }: IFileRandomFilenameOptions): string {
         const randomPath = this.helperService.randomString(randomLength ?? 10);
-        const extension = mime.split('/')[1];
-
         let path: string = `${prefix}/${randomPath}.${extension.toLowerCase()}`;
 
         if (path.startsWith('/')) {
@@ -195,7 +194,17 @@ export class FileService implements IFileService {
      * @returns {string} The extracted file extension in lowercase, or an empty string if none exists
      */
     extractExtensionFromFilename(filename: string): string {
-        const parts = filename.split('.');
-        return parts.length > 1 ? parts.pop().toLowerCase() : '';
+        return Mime.getExtension(filename).toLowerCase();
+    }
+
+    /**
+     * Extracts the MIME type from a given filename.
+     * Uses the file extension to determine the corresponding MIME type.
+     * If the MIME type cannot be determined, returns 'application/octet-stream' as a default.
+     * @param {string} filename - The name of the file from which to extract the MIME type
+     * @returns {string} The extracted MIME type, or 'application/octet-stream' if undetermined
+     */
+    extractMimeFromFilename(filename: string): string {
+        return Mime.getType(filename).toLowerCase();
     }
 }

@@ -25,7 +25,6 @@ import {
     IDocResponseOptions,
     IDocResponsePagingOptions,
 } from '@common/doc/interfaces/doc.interface';
-import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
 import { ResponseDto } from '@common/response/dtos/response.dto';
 import { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
@@ -40,6 +39,7 @@ import {
     DOC_STANDARD_ERROR_RESPONSES,
 } from '@common/doc/constants/doc.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
+import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
 
 /**
  * Helper function to create a schema object with consistent structure.
@@ -603,7 +603,7 @@ export function DocResponseFile(
     const httpStatus: HttpStatus = options?.httpStatus ?? HttpStatus.OK;
 
     return applyDecorators(
-        ApiProduces(options?.fileType ?? ENUM_FILE_MIME.CSV),
+        ApiProduces(options?.extension ?? ENUM_FILE_EXTENSION.CSV),
         ApiResponse({
             description: httpStatus.toString(),
             status: httpStatus,

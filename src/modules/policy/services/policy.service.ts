@@ -15,9 +15,9 @@ import { ENUM_ROLE_TYPE } from '@prisma/client';
 export class PolicyService implements IPolicyService {
     constructor(private readonly policyAbilityFactory: PolicyAbilityFactory) {}
 
-    async validateAbility(
+    async validatePolicyGuard(
         request: IRequestApp,
-        abilities: RoleAbilityRequestDto[]
+        requiredAbilities: RoleAbilityRequestDto[]
     ): Promise<boolean> {
         const { __user, user, __abilities } = request;
 
@@ -32,7 +32,7 @@ export class PolicyService implements IPolicyService {
 
         if (role.type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
             return true;
-        } else if (abilities.length === 0) {
+        } else if (requiredAbilities.length === 0) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_POLICY_STATUS_CODE_ERROR.PREDEFINED_NOT_FOUND,
                 message: 'policy.error.predefinedNotFound',
@@ -43,7 +43,7 @@ export class PolicyService implements IPolicyService {
             this.policyAbilityFactory.createForUser(__abilities);
         const policyHandler = this.policyAbilityFactory.handlerAbilities(
             userAbilities,
-            abilities
+            requiredAbilities
         );
         if (!policyHandler) {
             throw new ForbiddenException({

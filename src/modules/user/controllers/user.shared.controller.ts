@@ -1,8 +1,8 @@
 import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
-import { ENUM_FILE_MIME_IMAGE } from '@common/file/enums/file.enum';
+import { ENUM_FILE_EXTENSION_IMAGE } from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
-import { FileTypePipe } from '@common/file/pipes/file.type.pipe';
+import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import {
     RequestIPAddress,
     RequestTimeout,
@@ -155,10 +155,10 @@ export class UserSharedController {
         userId: string,
         @Body(
             'file',
-            new FileTypePipe([
-                ENUM_FILE_MIME_IMAGE.JPEG,
-                ENUM_FILE_MIME_IMAGE.PNG,
-                ENUM_FILE_MIME_IMAGE.JPG,
+            FileExtensionPipe([
+                ENUM_FILE_EXTENSION_IMAGE.JPEG,
+                ENUM_FILE_EXTENSION_IMAGE.PNG,
+                ENUM_FILE_EXTENSION_IMAGE.JPG,
             ])
         )
         file: IFile,

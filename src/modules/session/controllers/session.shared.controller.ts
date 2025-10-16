@@ -1,5 +1,5 @@
-import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import {
     RequestIPAddress,
     RequestUserAgent,
@@ -41,8 +41,8 @@ export class SessionSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams,
+        @PaginationCursorQuery()
+        pagination: IPaginationQueryCursorParams,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         return this.sessionService.getListCursorByUser(userId, pagination);

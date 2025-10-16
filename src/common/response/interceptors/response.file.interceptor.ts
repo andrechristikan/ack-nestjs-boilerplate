@@ -11,12 +11,11 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { HelperService } from '@common/helper/services/helper.service';
 import { FileService } from '@common/file/services/file.service';
-import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
-import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
 import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ConfigService } from '@nestjs/config';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { ENUM_FILE_EXTENSION_EXCEL } from '@common/file/enums/file.enum';
 
 /**
  * Global file response interceptor that handles file download responses
@@ -41,7 +40,7 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
      * Intercepts HTTP requests and transforms file responses into streamable files.
      *
      * This method only processes HTTP contexts, ignoring other types like WebSocket
-     * or RPC contexts. It validates file response data, generates CSV files,
+     * or RPC contexts. It validates file response data, generates either CSV or Excel files,
      * sets appropriate download headers, and returns a StreamableFile for download.
      *
      * @param context - The execution context containing request/response information
@@ -64,12 +63,18 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
                         (await res) as unknown as IResponseFileReturn<T>;
                     this.validateFileResponse(responseData);
 
-                    const file: Buffer = this.fileService.writeCsv(
-                        responseData.data[0]
-                    );
+                    const file: Buffer =
+                        responseData.extension === ENUM_FILE_EXTENSION_EXCEL.CSV
+                            ? this.fileService.writeCsv(responseData.data[0])
+                            : this.fileService.writeExcel(responseData.data);
                     const timestamp = this.createTimestamp();
 
-                    this.setFileHeaders(response, file, timestamp);
+                    this.setFileHeaders(
+                        response,
+                        responseData.extension,
+                        file,
+                        timestamp
+                    );
                     this.setStandardHeaders(response, request);
 
                     return new StreamableFile(file);
@@ -117,14 +122,17 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
      */
     private setFileHeaders(
         response: Response,
+        extension: ENUM_FILE_EXTENSION_EXCEL,
         file: Buffer,
         timestamp: number
     ): void {
+        const filename = `export-${timestamp}.${extension}`;
+        const mime = this.fileService.extractMimeFromFilename(filename);
         response
-            .setHeader('Content-Type', ENUM_FILE_MIME.CSV)
+            .setHeader('Content-Type', mime)
             .setHeader(
                 'Content-Disposition',
-                `attachment; filename=export-${timestamp}.${ENUM_HELPER_FILE_EXCEL_TYPE.CSV.toLowerCase()}`
+                `attachment; filename=${filename}`
             )
             .setHeader('Content-Length', file.length);
     }

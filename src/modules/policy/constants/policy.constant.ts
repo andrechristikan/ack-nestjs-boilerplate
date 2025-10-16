@@ -1,1 +1,1 @@
-export const POLICY_ABILITY_META_KEY = 'PolicyAbilityMetaKey';
+export const POLICY_REQUIRED_ABILITY_META_KEY = 'PolicyRequiredAbilityMetaKey';

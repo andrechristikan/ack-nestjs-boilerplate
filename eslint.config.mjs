@@ -79,7 +79,7 @@ export default [
             parser: tsParser,
             parserOptions: {
                 project: 'tsconfig.json',
-                tsconfigRootDir: '.',
+                tsconfigRootDir: import.meta.dirname,
             },
         },
         linterOptions: {
@@ -104,7 +104,7 @@ export default [
             parser: tsParser,
             parserOptions: {
                 project: 'tsconfig.json',
-                tsconfigRootDir: '.',
+                tsconfigRootDir: import.meta.dirname,
             },
         },
         linterOptions: {

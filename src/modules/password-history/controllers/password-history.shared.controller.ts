@@ -1,5 +1,5 @@
-import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -31,8 +31,8 @@ export class PasswordHistorySharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams,
+        @PaginationCursorQuery()
+        pagination: IPaginationQueryCursorParams,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {
         return this.passwordHistoryService.getListCursorByUser(

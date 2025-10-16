@@ -67,7 +67,6 @@ import {
 import { AWS_S3_MAX_PART_NUMBER } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ENUM_AWS_S3_ACCESSIBILITY } from '@common/aws/enums/aws.enum';
-import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
 import {
     AwsS3PresignDto,
     AwsS3PresignPartDto,
@@ -76,6 +75,7 @@ import {
     AwsS3PresignPartRequestDto,
     AwsS3PresignRequestDto,
 } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
+import { FileService } from '@common/file/services/file.service';
 
 /**
  * AWS S3 service for managing file operations in Amazon S3 buckets.
@@ -94,7 +94,10 @@ export class AwsS3Service implements IAwsS3Service {
         IAwsS3ConfigBucket
     > = new Map<ENUM_AWS_S3_ACCESSIBILITY, IAwsS3ConfigBucket>();
 
-    constructor(private readonly configService: ConfigService) {
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly fileService: FileService
+    ) {
         this.presignExpired = this.configService.get<number>(
             'aws.s3.presignExpired'
         );
@@ -128,13 +131,10 @@ export class AwsS3Service implements IAwsS3Service {
             key.lastIndexOf('/') + 1,
             key.length
         );
-        const extension: string = filename.substring(
-            filename.lastIndexOf('.') + 1,
-            filename.length
-        );
-        const mime: ENUM_FILE_MIME = Object.values(ENUM_FILE_MIME).find(e =>
-            e.toLowerCase().endsWith(extension.toLowerCase())
-        );
+
+        const extension: string =
+            this.fileService.extractExtensionFromFilename(filename);
+        const mime = this.fileService.extractMimeFromFilename(filename);
 
         return { pathWithFilename, filename, extension, mime };
     }
@@ -577,6 +577,8 @@ export class AwsS3Service implements IAwsS3Service {
             new CreateMultipartUploadCommand({
                 Bucket: config.bucket,
                 Key: file.key,
+                ContentType: mime,
+                ContentDisposition: 'inline',
             });
 
         const response = await this.client.send<
@@ -635,6 +637,8 @@ export class AwsS3Service implements IAwsS3Service {
                 Bucket: config.bucket,
                 Key: file.key,
                 ACL: options?.acl ?? ObjectCannedACL.public_read,
+                ContentType: mime,
+                ContentDisposition: 'inline',
             });
 
         const response = await this.client.send<
@@ -819,6 +823,7 @@ export class AwsS3Service implements IAwsS3Service {
             ContentType: mime,
             ContentLength: size,
             ChecksumAlgorithm: 'SHA256',
+            ContentDisposition: 'inline',
         });
         const expiresIn = options?.expired ?? this.presignExpired;
 
@@ -827,7 +832,7 @@ export class AwsS3Service implements IAwsS3Service {
         });
 
         return {
-            expiredIn: this.presignExpired,
+            expiredIn: expiresIn,
             presignUrl: presignUrl,
             key,
             mime,
@@ -887,7 +892,7 @@ export class AwsS3Service implements IAwsS3Service {
         });
 
         return {
-            expiredIn: this.presignExpired,
+            expiredIn: expiresIn,
             presignUrl: presignUrl,
             key,
             partNumber,

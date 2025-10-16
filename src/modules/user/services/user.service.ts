@@ -4,6 +4,7 @@ import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { ENUM_FILE_EXTENSION_IMAGE } from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { HelperService } from '@common/helper/services/helper.service';
@@ -444,11 +445,11 @@ export class UserService implements IUserService {
 
     async generatePhotoProfilePresign(
         userId: string,
-        { mime, size }: UserGeneratePhotoProfileRequestDto
+        { extension, size }: UserGeneratePhotoProfileRequestDto
     ): Promise<IResponseReturn<AwsS3PresignDto>> {
         const key: string =
             this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
-                mime,
+                extension,
             });
 
         const aws: AwsS3PresignDto = await this.awsS3Service.presignPutItem(
@@ -702,12 +703,13 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         try {
-            const mime = this.fileService.extractExtensionFromFilename(
-                file.originalname
-            );
+            const extension: ENUM_FILE_EXTENSION_IMAGE =
+                this.fileService.extractExtensionFromFilename(
+                    file.originalname
+                ) as ENUM_FILE_EXTENSION_IMAGE;
             const key: string =
                 this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
-                    mime,
+                    extension,
                 });
 
             const aws: AwsS3Dto = await this.awsS3Service.putItem({

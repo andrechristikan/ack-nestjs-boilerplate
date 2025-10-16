@@ -5,6 +5,7 @@ import {
     IPaginationCursorReturn,
     IPaginationOffsetReturn,
 } from '@common/pagination/interfaces/pagination.interface';
+import { ENUM_FILE_EXTENSION_EXCEL } from '@common/file/enums/file.enum';
 
 export interface IResponseMetadata {
     statusCode?: number;
@@ -35,5 +36,6 @@ export type IResponsePagingReturn<T> = (
 };
 
 export interface IResponseFileReturn<T> {
+    extension: ENUM_FILE_EXTENSION_EXCEL;
     data: IFileSheet<T>[];
 }

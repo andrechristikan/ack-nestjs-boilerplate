@@ -24,8 +24,9 @@ export interface IFileService {
     ): IFileSheet<T>[];
     createRandomFilename({
         prefix,
-        mime,
+        extension,
         randomLength,
     }: IFileRandomFilenameOptions): string;
     extractExtensionFromFilename(filename: string): string;
+    extractMimeFromFilename(filename: string): string;
 }

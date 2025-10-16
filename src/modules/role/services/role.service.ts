@@ -117,7 +117,7 @@ export class RoleService implements IRoleService {
 
     async validateRoleGuard(
         request: IRequestApp,
-        roles: ENUM_ROLE_TYPE[]
+        requiredRoles: ENUM_ROLE_TYPE[]
     ): Promise<RoleAbilityDto[]> {
         const { __user, user } = request;
         if (!__user || !user) {
@@ -131,12 +131,12 @@ export class RoleService implements IRoleService {
 
         if (role.type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
             return [];
-        } else if (roles.length === 0) {
+        } else if (requiredRoles.length === 0) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.PREDEFINED_NOT_FOUND,
                 message: 'role.error.predefinedNotFound',
             });
-        } else if (!roles.includes(role.type)) {
+        } else if (!requiredRoles.includes(role.type)) {
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.FORBIDDEN,
                 message: 'role.error.forbidden',

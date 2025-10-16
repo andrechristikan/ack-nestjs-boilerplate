@@ -1,3 +1,5 @@
+import { ENUM_FILE_EXTENSION_IMAGE } from '@common/file/enums/file.enum';
+
 export type IFile = Express.Multer.File;
 
 export interface IFileSheet<T> {
@@ -25,6 +27,6 @@ export type IFileInput = IFile | IFile[];
 
 export interface IFileRandomFilenameOptions {
     prefix?: string;
-    mime: string;
+    extension: ENUM_FILE_EXTENSION_IMAGE;
     randomLength?: number;
 }
