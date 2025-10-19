@@ -22,7 +22,7 @@ export class PasswordHistoryRepository {
         userId: string,
         { where, ...others }: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
-        return this.paginationService.offSet<IPasswordHistory>(
+        return this.paginationService.offset<IPasswordHistory>(
             this.databaseService.passwordHistory,
             {
                 ...others,

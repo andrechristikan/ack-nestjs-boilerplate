@@ -1,7 +1,18 @@
 import { faker } from '@faker-js/faker';
+import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { ENUM_ROLE_TYPE } from '@prisma/client';
 
-export const RoleDocQueryList = [
+export const RoleDocParamsId: ApiParamOptions[] = [
+    {
+        name: 'roleId',
+        allowEmptyValue: false,
+        required: true,
+        type: 'string',
+        example: faker.database.mongodbObjectId(),
+    },
+];
+
+export const RoleDocQueryList: ApiQueryOptions[] = [
     {
         name: 'type',
         allowEmptyValue: true,
@@ -9,15 +20,5 @@ export const RoleDocQueryList = [
         type: 'string',
         example: Object.values(ENUM_ROLE_TYPE).join(','),
         description: `enum value with ',' delimiter. Available values: ${Object.values(ENUM_ROLE_TYPE).join(',')}`,
-    },
-];
-
-export const RoleDocParamsId = [
-    {
-        name: 'roleId',
-        allowEmptyValue: false,
-        required: true,
-        type: 'string',
-        example: faker.database.mongodbObjectId(),
     },
 ];

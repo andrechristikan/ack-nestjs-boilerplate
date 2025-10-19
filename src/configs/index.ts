@@ -14,6 +14,7 @@ import HomeConfig from '@configs/home.config';
 import SettingConfig from '@configs/setting.config';
 import LoggerConfig from '@configs/logger.config';
 import SessionConfig from '@configs/session.config';
+import TermPolicyConfig from '@configs/term-policy.config';
 
 export default [
     AppConfig,
@@ -32,4 +33,5 @@ export default [
     HomeConfig,
     SettingConfig,
     SessionConfig,
+    TermPolicyConfig,
 ];

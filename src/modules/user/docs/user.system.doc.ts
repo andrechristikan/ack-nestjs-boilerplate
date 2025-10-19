@@ -1,28 +1,3 @@
-// import { applyDecorators } from '@nestjs/common';
-// import {
-//     Doc,
-//     DocAuth,
-//     DocRequest,
-//     DocResponse,
-//     DocResponsePaging,
-// } from '@common/doc/decorators/doc.decorator';
-// import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
-// import {
-//     UserDocQueryCountry,
-//     UserDocQueryRole,
-//     UserDocQueryStatus,
-// } from '@modules/user/constants/user.doc.constant';
-// import { UserCheckMobileNumberRequestDto } from '@modules/user/dtos/request/user.check-mobile-number.request.dto';
-// import {
-//     UserCheckEmailRequestDto,
-//     UserCheckUsernameRequestDto,
-// } from '@modules/user/dtos/request/user.check.request.dto';
-// import {
-//     UserCheckResponseDto,
-//     UserCheckUsernameResponseDto,
-// } from '@modules/user/dtos/response/user.check.response.dto';
-// import { UserShortResponseDto } from '@modules/user/dtos/response/user.short.response.dto';
-
 import {
     Doc,
     DocAuth,

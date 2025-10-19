@@ -23,7 +23,7 @@ export class SessionRepository {
         userId: string,
         { where, ...others }: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ISession>> {
-        return this.paginationService.offSet<ISession>(
+        return this.paginationService.offset<ISession>(
             this.databaseService.passwordHistory,
             {
                 ...others,
@@ -114,9 +114,8 @@ export class SessionRepository {
                             create: {
                                 action: ENUM_ACTIVITY_LOG_ACTION.USER_REVOKE_SESSION,
                                 ipAddress,
-                                userAgent: JSON.stringify(
-                                    userAgent
-                                ) as Prisma.InputJsonValue,
+                                userAgent:
+                                    userAgent as unknown as Prisma.InputJsonValue,
                                 createdBy: userId,
                             },
                         },
@@ -145,9 +144,8 @@ export class SessionRepository {
                             create: {
                                 action: ENUM_ACTIVITY_LOG_ACTION.ADMIN_REVOKE_SESSION,
                                 ipAddress,
-                                userAgent: JSON.stringify(
-                                    userAgent
-                                ) as Prisma.InputJsonValue,
+                                userAgent:
+                                    userAgent as unknown as Prisma.InputJsonValue,
                                 createdBy: revokeBy,
                             },
                         },

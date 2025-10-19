@@ -78,7 +78,7 @@ export function UserSharedGeneratePhotoProfileDoc(): MethodDecorator {
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
             dto: UserGeneratePhotoProfileRequestDto,
         }),
-        DocResponse<AwsS3PresignDto>('user.generatePhotoProfile', {
+        DocResponse<AwsS3PresignDto>('user.generatePhotoProfilePresign', {
             dto: AwsS3PresignDto,
         })
     );

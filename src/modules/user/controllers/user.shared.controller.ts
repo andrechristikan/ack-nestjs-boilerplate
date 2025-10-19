@@ -19,6 +19,7 @@ import {
     AuthJwtToken,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
     UserCurrent,
     UserProtected,
@@ -63,6 +64,7 @@ export class UserSharedController {
 
     @UserSharedRefreshDoc()
     @Response('user.refresh')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtRefreshProtected()
     @ApiKeyProtected()
@@ -77,6 +79,7 @@ export class UserSharedController {
 
     @UserSharedProfileDoc()
     @Response('user.profile')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -90,6 +93,7 @@ export class UserSharedController {
 
     @UserSharedUpdateProfileDoc()
     @Response('user.updateProfile')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -109,12 +113,13 @@ export class UserSharedController {
     }
 
     @UserSharedGeneratePhotoProfileDoc()
-    @Response('user.uploadPhotoProfile')
+    @Response('user.generatePhotoProfilePresign')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/profile/update/photo/presign')
+    @Post('/profile/generate/photo/presign')
     async generatePhotoProfilePresign(
         @AuthJwtPayload('userId')
         userId: string,
@@ -125,6 +130,7 @@ export class UserSharedController {
 
     @UserSharedUpdatePhotoProfileDoc()
     @Response('user.updatePhotoProfile')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -144,6 +150,7 @@ export class UserSharedController {
 
     @UserSharedUploadPhotoProfileDoc()
     @Response('user.uploadPhotoProfile')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -173,6 +180,7 @@ export class UserSharedController {
 
     @UserSharedChangePasswordDoc()
     @Response('user.changePassword')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

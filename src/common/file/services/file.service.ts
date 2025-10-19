@@ -166,24 +166,26 @@ export class FileService implements IFileService {
      * Creates a unique filename by combining a prefix, random string, and file extension derived from MIME type.
      * Automatically removes leading slash if present to ensure proper path formatting.
      * @param {IFileRandomFilenameOptions} options - Configuration options for filename generation
-     * @param {string} options.prefix - Directory prefix or path to prepend to the filename
+     * @param {string} [options.path] - Directory path to prepend to the filename
+     * @param {string} options.prefix - Prefix to include in the filename
      * @param {string} options.extension - File extension (e.g., 'jpg', 'png', 'pdf')
      * @param {number} [options.randomLength=10] - Length of the random string portion (defaults to 10 characters)
      * @returns {string} Generated filename in format: 'prefix/randomString.extension'
      */
     createRandomFilename({
         prefix,
+        path,
         extension,
         randomLength,
     }: IFileRandomFilenameOptions): string {
         const randomPath = this.helperService.randomString(randomLength ?? 10);
-        let path: string = `${prefix}/${randomPath}.${extension.toLowerCase()}`;
+        let fullPath: string = `${path}/${prefix}${prefix ? '-' : ''}${randomPath}.${extension.toLowerCase()}`;
 
-        if (path.startsWith('/')) {
-            path = path.replace('/', '');
+        if (fullPath.startsWith('/')) {
+            fullPath = fullPath.replace('/', '');
         }
 
-        return path;
+        return fullPath;
     }
 
     /**
@@ -206,5 +208,16 @@ export class FileService implements IFileService {
      */
     extractMimeFromFilename(filename: string): string {
         return Mime.getType(filename).toLowerCase();
+    }
+
+    /**
+     * Extracts the filename from a given file path.
+     * Returns only the filename portion, excluding any directory paths.
+     * @param {string} filePath - The full path of the file
+     * @returns {string} The extracted filename
+     */
+    extractFilenameFromPath(filePath: string): string {
+        const parts = filePath.split('/');
+        return parts[parts.length - 1];
     }
 }

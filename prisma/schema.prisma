@@ -255,7 +255,7 @@ model TermPolicy {
 
   userAcceptances TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceTermPolicy")
 
-  @@unique(fields: [type, version, status])
+  @@unique(fields: [type, version])
   @@index(fields: [type])
   @@index(fields: [status])
   @@map("TermPolicies")
@@ -370,5 +370,5 @@ enum ENUM_ACTIVITY_LOG_ACTION {
   USER_SIGNED_UP                @map("userSignedUp")
   ADMIN_REVOKE_SESSION          @map("adminRevokeSession")
   USER_REVOKE_SESSION           @map("userRevokeSession")
-  USER_ACCEPT_TERM_POLICY           @map("userAcceptTermPolicy")
+  USER_ACCEPT_TERM_POLICY       @map("userAcceptTermPolicy")
 }

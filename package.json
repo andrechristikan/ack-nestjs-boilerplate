@@ -28,7 +28,7 @@
         "lint:staged": "lint-staged",
         "lint:fix": "eslint --fix",
         "test": "TZ=UTC jest --config test/jest.json --passWithNoTests --forceExit",
-        "deadcode": "ts-prune --project tsconfig.json --unusedInModule --skip *.json",
+        "deadcode": "ts-prune --project tsconfig.json --skip *.json | grep -v 'used in module'",
         "spell": "cspell lint --config cspell.json '{src,test}/**/*.ts' --color --gitignore --no-must-find-files --no-summary --no-progress || true",
         "package:upgrade": "npx npm-check-updates -u",
         "package:check": "npx npm-check-updates -i",

@@ -1,16 +1,18 @@
-import { ApiParamOptions } from '@nestjs/swagger';
+import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { faker } from '@faker-js/faker';
 import { ENUM_TERM_POLICY_STATUS, ENUM_TERM_POLICY_TYPE } from '@prisma/client';
 
-export const TermPolicyDocParamsId: ApiParamOptions = {
-    name: 'termPolicy',
-    allowEmptyValue: false,
-    required: true,
-    type: 'string',
-    example: faker.string.uuid(),
-};
+export const TermPolicyDocParamsId: ApiParamOptions[] = [
+    {
+        name: 'termPolicyId',
+        allowEmptyValue: false,
+        required: true,
+        type: 'string',
+        example: faker.string.uuid(),
+    },
+];
 
-export const TermPolicyListPublicDocQuery: ApiParamOptions[] = [
+export const TermPolicyListPublicDocQuery: ApiQueryOptions[] = [
     {
         name: 'type',
         allowEmptyValue: true,
@@ -22,7 +24,7 @@ export const TermPolicyListPublicDocQuery: ApiParamOptions[] = [
     },
 ];
 
-export const TermPolicyListAdminDocQuery: ApiParamOptions[] = [
+export const TermPolicyListAdminDocQuery: ApiQueryOptions[] = [
     ...TermPolicyListPublicDocQuery,
     {
         name: 'status',

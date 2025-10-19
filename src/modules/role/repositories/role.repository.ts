@@ -21,7 +21,7 @@ export class RoleRepository {
         { where, ...params }: IPaginationQueryOffsetParams,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<Role>> {
-        return this.paginationService.offSet<Role>(this.databaseService.role, {
+        return this.paginationService.offset<Role>(this.databaseService.role, {
             ...params,
             where: {
                 ...where,

@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
+import { ApiParamOptions } from '@nestjs/swagger';
 
-export const SessionDocParamsId = [
+export const SessionDocParamsId: ApiParamOptions[] = [
     {
         name: 'sessionId',
         allowEmptyValue: false,

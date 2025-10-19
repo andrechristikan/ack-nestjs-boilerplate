@@ -10,6 +10,7 @@ import {
 import { PasswordHistorySharedListDoc } from '@modules/password-history/docs/password-history.shared.doc';
 import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -26,6 +27,7 @@ export class PasswordHistorySharedController {
 
     @PasswordHistorySharedListDoc()
     @ResponsePaging('passwordHistory.list')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

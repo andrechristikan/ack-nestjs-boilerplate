@@ -1,7 +1,8 @@
 import { faker } from '@faker-js/faker';
+import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { ENUM_USER_STATUS } from '@prisma/client';
 
-export const UserDocParamsId = [
+export const UserDocParamsId: ApiParamOptions[] = [
     {
         name: 'userId',
         allowEmptyValue: false,
@@ -11,7 +12,7 @@ export const UserDocParamsId = [
     },
 ];
 
-export const UserDocParamsMobileNumberId = [
+export const UserDocParamsMobileNumberId: ApiParamOptions[] = [
     {
         name: 'mobileNumberId',
         allowEmptyValue: false,
@@ -21,7 +22,7 @@ export const UserDocParamsMobileNumberId = [
     },
 ];
 
-export const UserDocQueryList = [
+export const UserDocQueryList: ApiQueryOptions[] = [
     {
         name: 'roleId',
         allowEmptyValue: true,

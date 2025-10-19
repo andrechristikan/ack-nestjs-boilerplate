@@ -11,6 +11,7 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     UserUserAddMobileNumberDoc,
@@ -64,6 +65,7 @@ export class UserUserController {
 
     @UserUserAddMobileNumberDoc()
     @Response('user.addMobileNumber')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -83,6 +85,7 @@ export class UserUserController {
 
     @UserUserUpdateMobileNumberDoc()
     @Response('user.updateMobileNumber')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -108,6 +111,7 @@ export class UserUserController {
 
     @UserUserDeleteMobileNumberDoc()
     @Response('user.deleteMobileNumber')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -126,6 +130,7 @@ export class UserUserController {
 
     @UserUserClaimUsernameDoc()
     @Response('user.claimUsername')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

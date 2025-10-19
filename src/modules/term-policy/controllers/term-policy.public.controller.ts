@@ -1,10 +1,10 @@
 import {
-    PaginationOffsetQuery,
+    PaginationCursorQuery,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
 import {
     IPaginationIn,
-    IPaginationQueryOffsetParams,
+    IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
@@ -33,10 +33,10 @@ export class TermPolicyPublicController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
+        @PaginationCursorQuery({
             availableSearch: TERM_POLICY_DEFAULT_AVAILABLE_ORDER_BY,
         })
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryCursorParams,
         @PaginationQueryFilterInEnum<ENUM_TERM_POLICY_TYPE>(
             'type',
             TERM_POLICY_DEFAULT_TYPE

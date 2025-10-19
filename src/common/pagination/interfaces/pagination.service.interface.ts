@@ -7,7 +7,7 @@ import {
 } from '@common/pagination/interfaces/pagination.interface';
 
 export interface IPaginationService {
-    offSet<TReturn>(
+    offset<TReturn>(
         repository: IPaginationRepository,
         args: IPaginationQueryOffsetParams
     ): Promise<IPaginationOffsetReturn<TReturn>>;

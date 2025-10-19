@@ -57,7 +57,7 @@ export class UserRepository {
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IUser>> {
-        return this.paginationService.offSet<IUser>(this.databaseService.user, {
+        return this.paginationService.offset<IUser>(this.databaseService.user, {
             ...params,
             where: {
                 ...where,
@@ -217,9 +217,8 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_CREATED,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: createdBy,
                     },
                 },
@@ -245,9 +244,8 @@ export class UserRepository {
                                 ? ENUM_ACTIVITY_LOG_ACTION.USER_BLOCKED
                                 : ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_STATUS,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: updatedBy,
                     },
                 },
@@ -270,9 +268,8 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PROFILE,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: userId,
                     },
                 },
@@ -294,9 +291,8 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PHOTO_PROFILE,
                         ipAddress: ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: userId,
                     },
                 },
@@ -320,9 +316,8 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_DELETE_SELF,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: userId,
                         createdAt: deletedAt,
                     },
@@ -359,9 +354,8 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_ADD_MOBILE_NUMBER,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: userId,
                     },
                 },
@@ -409,9 +403,8 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_MOBILE_NUMBER,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: userId,
                     },
                 },
@@ -450,9 +443,8 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_DELETE_MOBILE_NUMBER,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: userId,
                     },
                 },
@@ -474,9 +466,8 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_CLAIM_USERNAME,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: userId,
                     },
                 },
@@ -519,9 +510,8 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PASSWORD_BY_ADMIN,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: updatedBy,
                     },
                 },
@@ -583,9 +573,8 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_CHANGE_PASSWORD,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: userId,
                     },
                 },
@@ -633,9 +622,8 @@ export class UserRepository {
                         expiredAt,
                         isRevoked: false,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: userId,
                     },
                 },
@@ -643,9 +631,8 @@ export class UserRepository {
                     create: {
                         action,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: userId,
                     },
                 },
@@ -712,9 +699,8 @@ export class UserRepository {
                         create: {
                             action: ENUM_ACTIVITY_LOG_ACTION.USER_CREATED,
                             ipAddress,
-                            userAgent: JSON.stringify(
-                                userAgent
-                            ) as Prisma.InputJsonValue,
+                            userAgent:
+                                userAgent as unknown as Prisma.InputJsonValue,
                             createdBy: userId,
                         },
                     },
@@ -750,9 +736,8 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_VERIFIED,
                         ipAddress,
-                        userAgent: JSON.stringify(
-                            userAgent
-                        ) as Prisma.InputJsonValue,
+                        userAgent:
+                            userAgent as unknown as Prisma.InputJsonValue,
                         createdBy: userId,
                     },
                 },
@@ -836,9 +821,8 @@ export class UserRepository {
                         create: {
                             action: ENUM_ACTIVITY_LOG_ACTION.USER_SIGNED_UP,
                             ipAddress,
-                            userAgent: JSON.stringify(
-                                userAgent
-                            ) as Prisma.InputJsonValue,
+                            userAgent:
+                                userAgent as unknown as Prisma.InputJsonValue,
                             createdBy: userId,
                         },
                     },

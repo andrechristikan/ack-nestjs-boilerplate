@@ -20,7 +20,7 @@ export class ActivityLogRepository {
         userId: string,
         { where, ...params }: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<IActivityLog>> {
-        return this.paginationService.offSet<IActivityLog>(
+        return this.paginationService.offset<IActivityLog>(
             this.databaseService.activityLog,
             {
                 ...params,

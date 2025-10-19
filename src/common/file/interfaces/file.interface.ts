@@ -1,4 +1,4 @@
-import { ENUM_FILE_EXTENSION_IMAGE } from '@common/file/enums/file.enum';
+import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
 
 export type IFile = Express.Multer.File;
 
@@ -26,7 +26,8 @@ export type IFileUploadMultipleFieldOptions = Pick<
 export type IFileInput = IFile | IFile[];
 
 export interface IFileRandomFilenameOptions {
+    path?: string;
     prefix?: string;
-    extension: ENUM_FILE_EXTENSION_IMAGE;
+    extension: ENUM_FILE_EXTENSION;
     randomLength?: number;
 }

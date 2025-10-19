@@ -24,7 +24,7 @@ export class ApiKeyRepository {
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKey>> {
-        return this.paginationService.offSet<ApiKey>(
+        return this.paginationService.offset<ApiKey>(
             this.databaseService.apiKey,
             {
                 ...params,

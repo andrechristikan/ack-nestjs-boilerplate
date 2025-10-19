@@ -41,7 +41,7 @@ export class UserUtil {
             user
         );
         return this.fileService.createRandomFilename({
-            prefix: path,
+            path,
             extension,
             randomLength: 20,
         });

@@ -15,7 +15,7 @@ export class CountryRepository {
     async findWithPagination(
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<Country>> {
-        return this.paginationService.offSet<Country>(
+        return this.paginationService.offset<Country>(
             this.databaseService.country,
             pagination
         );

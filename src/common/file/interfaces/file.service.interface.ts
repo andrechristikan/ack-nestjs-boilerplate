@@ -23,10 +23,12 @@ export interface IFileService {
         file: Buffer
     ): IFileSheet<T>[];
     createRandomFilename({
+        path,
         prefix,
         extension,
         randomLength,
     }: IFileRandomFilenameOptions): string;
     extractExtensionFromFilename(filename: string): string;
     extractMimeFromFilename(filename: string): string;
+    extractFilenameFromPath(filePath: string): string;
 }

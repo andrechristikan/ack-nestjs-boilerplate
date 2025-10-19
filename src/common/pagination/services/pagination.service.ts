@@ -26,7 +26,7 @@ export class PaginationService implements IPaginationService {
      * @param {IPaginationOffsetParams} args - Pagination parameters including limit, skip, orderBy, search, and select
      * @returns {Promise<IPaginationOffsetReturn<TReturn>>} Promise that resolves to paginated result with items and pagination metadata
      */
-    async offSet<TReturn>(
+    async offset<TReturn>(
         repository: IPaginationRepository,
         args: IPaginationQueryOffsetParams
     ): Promise<IPaginationOffsetReturn<TReturn>> {

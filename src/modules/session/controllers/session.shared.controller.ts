@@ -22,6 +22,7 @@ import {
 } from '@modules/session/docs/session.shared.doc';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { SessionService } from '@modules/session/services/session.service';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -36,6 +37,7 @@ export class SessionSharedController {
 
     @SessionSharedListDoc()
     @ResponsePaging('session.list')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -50,6 +52,7 @@ export class SessionSharedController {
 
     @SessionSharedRevokeDoc()
     @ResponsePaging('session.revoke')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

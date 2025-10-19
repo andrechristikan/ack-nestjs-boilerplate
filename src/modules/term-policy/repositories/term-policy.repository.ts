@@ -3,10 +3,14 @@ import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationIn,
     IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
 import { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import {
@@ -24,6 +28,24 @@ export class TermPolicyRepository {
         private readonly paginationService: PaginationService,
         private readonly helperService: HelperService
     ) {}
+
+    async find(
+        { where, ...others }: IPaginationQueryOffsetParams,
+        type?: Record<string, IPaginationIn>,
+        status?: Record<string, IPaginationIn>
+    ): Promise<IResponsePagingReturn<TermPolicy>> {
+        return this.paginationService.offset<TermPolicy>(
+            this.databaseService.termPolicy,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    ...type,
+                    ...status,
+                },
+            }
+        );
+    }
 
     async findPublished(
         { where, ...others }: IPaginationQueryCursorParams,
@@ -58,6 +80,14 @@ export class TermPolicyRepository {
         );
     }
 
+    async findOneById(termPolicyId: string): Promise<TermPolicy | null> {
+        return this.databaseService.termPolicy.findUnique({
+            where: {
+                id: termPolicyId,
+            },
+        });
+    }
+
     async existLatestPublishedByType(type: ENUM_TERM_POLICY_TYPE): Promise<{
         id: string;
     } | null> {
@@ -80,6 +110,27 @@ export class TermPolicyRepository {
             where: {
                 userId,
                 termPolicyId,
+            },
+        });
+    }
+
+    async existByVersionAndType(
+        version: number,
+        type: ENUM_TERM_POLICY_TYPE
+    ): Promise<{
+        id: string;
+        contents: Prisma.JsonArray;
+        status: ENUM_TERM_POLICY_STATUS;
+    } | null> {
+        return this.databaseService.termPolicy.findFirst({
+            where: {
+                version,
+                type,
+            },
+            select: {
+                id: true,
+                contents: true,
+                status: true,
             },
         });
     }
@@ -115,9 +166,8 @@ export class TermPolicyRepository {
                         create: {
                             action: ENUM_ACTIVITY_LOG_ACTION.USER_ACCEPT_TERM_POLICY,
                             ipAddress,
-                            userAgent: JSON.stringify(
-                                userAgent
-                            ) as Prisma.InputJsonValue,
+                            userAgent:
+                                userAgent as unknown as Prisma.InputJsonValue,
                             createdBy: userId,
                         },
                     },
@@ -126,5 +176,124 @@ export class TermPolicyRepository {
         ]);
 
         return userAcceptance;
+    }
+
+    async create(
+        { type, version }: TermPolicyCreateRequestDto,
+        contents: TermContentDto[],
+        createdBy: string
+    ): Promise<TermPolicy> {
+        return this.databaseService.termPolicy.create({
+            data: {
+                type,
+                version,
+                status: ENUM_TERM_POLICY_STATUS.DRAFT,
+                contents: contents as unknown as Prisma.InputJsonArray[],
+                createdBy,
+            },
+        });
+    }
+
+    async delete(termPolicyId: string): Promise<TermPolicy> {
+        return this.databaseService.termPolicy.delete({
+            where: {
+                id: termPolicyId,
+            },
+        });
+    }
+
+    async updateContent(
+        termPolicyId: string,
+        contents: TermContentDto[],
+        content: TermContentDto,
+        updatedBy: string
+    ): Promise<TermPolicy> {
+        const contentIndex = contents.findIndex(
+            c => c.language === content.language
+        );
+        if (contentIndex !== -1) {
+            contents[contentIndex] = content;
+        }
+
+        return this.databaseService.termPolicy.update({
+            where: {
+                id: termPolicyId,
+            },
+            data: {
+                contents: contents as unknown as Prisma.InputJsonArray[],
+                updatedBy,
+            },
+        });
+    }
+
+    async addContent(
+        termPolicyId: string,
+        content: TermContentDto,
+        updatedBy: string
+    ): Promise<TermPolicy> {
+        return this.databaseService.termPolicy.update({
+            where: {
+                id: termPolicyId,
+            },
+            data: {
+                contents: {
+                    push: content as unknown as Prisma.InputJsonValue,
+                },
+                updatedBy,
+            },
+        });
+    }
+
+    async removeContent(
+        termPolicyId: string,
+        contents: TermContentDto[],
+        { language }: TermPolicyRemoveContentRequestDto,
+        updatedBy: string
+    ): Promise<TermPolicy> {
+        const contentIndex = contents.findIndex(c => c.language === language);
+        if (contentIndex !== -1) {
+            contents.splice(contentIndex, 1);
+        }
+
+        return this.databaseService.termPolicy.update({
+            where: {
+                id: termPolicyId,
+            },
+            data: {
+                contents: contents as unknown as Prisma.InputJsonArray[],
+                updatedBy,
+            },
+        });
+    }
+
+    async publish(
+        termPolicyId: string,
+        type: ENUM_TERM_POLICY_TYPE,
+        contents: TermContentDto[],
+        updatedBy: string
+    ): Promise<TermPolicy> {
+        const [termPolicy] = await this.databaseService.$transaction([
+            this.databaseService.termPolicy.update({
+                where: {
+                    id: termPolicyId,
+                },
+                data: {
+                    status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
+                    publishedAt: this.helperService.dateCreate(),
+                    contents: contents as unknown as Prisma.InputJsonArray[],
+                    updatedBy,
+                },
+            }),
+            this.databaseService.user.updateMany({
+                where: {},
+                data: {
+                    termPolicy: {
+                        [type]: false,
+                    },
+                },
+            }),
+        ]);
+
+        return termPolicy;
     }
 }
