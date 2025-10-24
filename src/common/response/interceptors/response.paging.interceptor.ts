@@ -86,7 +86,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         data: rData,
                         count,
                         hasNext,
-                        hasPrevious,
                         perPage,
                     } = responseData;
 
@@ -99,8 +98,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                     let page: number | undefined;
 
                     if (responseData.type === 'cursor') {
-                        nextCursor = responseData.nextCursor;
-                        previousCursor = responseData.previousCursor;
+                        nextCursor = responseData.cursor;
                     } else if (responseData.type === 'offset') {
                         totalPage = responseData.totalPage;
                         nextPage = responseData.nextPage;
@@ -129,7 +127,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         ...metadata,
                         count,
                         hasNext,
-                        hasPrevious,
                         totalPage,
                         nextCursor,
                         previousCursor,

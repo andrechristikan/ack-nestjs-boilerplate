@@ -20,9 +20,10 @@ import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.req
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { ENUM_ACTIVITY_LOG_ACTION, ENUM_ROLE_TYPE } from '@prisma/client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleDto } from '@modules/role/dtos/role.dto';
+import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 
 @ApiTags('modules.admin.role')
 @Controller({
@@ -34,6 +35,7 @@ export class RoleAdminController {
 
     @RoleAdminCreateDoc()
     @Response('role.create')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_ROLE_CREATE)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
@@ -52,6 +54,7 @@ export class RoleAdminController {
 
     @RoleAdminUpdateDoc()
     @Response('role.update')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_ROLE_UPDATE)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -72,6 +75,7 @@ export class RoleAdminController {
 
     @RoleAdminDeleteDoc()
     @Response('role.delete')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_ROLE_DELETE)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
@@ -84,7 +88,7 @@ export class RoleAdminController {
     async delete(
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         roleId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         return this.roleService.delete(roleId);
     }
 }

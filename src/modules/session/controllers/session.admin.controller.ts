@@ -11,6 +11,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -31,7 +32,7 @@ import { SessionService } from '@modules/session/services/session.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { ENUM_ACTIVITY_LOG_ACTION, ENUM_ROLE_TYPE } from '@prisma/client';
 
 @ApiTags('modules.admin.user.session')
 @Controller({
@@ -68,6 +69,7 @@ export class SessionAdminController {
 
     @SessionAdminRevokeDoc()
     @ResponsePaging('session.revoke')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_SESSION_REVOKE)
     @PolicyAbilityProtected(
         {
             subject: ENUM_POLICY_SUBJECT.USER,

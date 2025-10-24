@@ -7,13 +7,13 @@ export interface IConfigAuth {
             kid: string;
             privateKeyPath: string;
             publicKeyPath: string;
-            expirationTime: number; // in seconds
+            expirationTimeInSeconds: number;
         };
         refreshToken: {
             kid: string;
             privateKeyPath: string;
             publicKeyPath: string;
-            expirationTime: number;
+            expirationTimeInSeconds: number;
         };
         algorithm: string;
         jwksUri: string;
@@ -26,9 +26,9 @@ export interface IConfigAuth {
         attempt: boolean;
         maxAttempt: number;
         saltLength: number;
-        expiredIn: number;
-        expiredInTemporary: number;
-        period: number;
+        expiredInSeconds: number;
+        expiredTemporaryInSeconds: number;
+        periodInSeconds: number;
     };
     apple: {
         header: string;
@@ -58,7 +58,7 @@ export default registerAs(
                     process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY_PATH,
                 publicKeyPath:
                     process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY_PATH,
-                expirationTime:
+                expirationTimeInSeconds:
                     ms(
                         process.env
                             .AUTH_JWT_ACCESS_TOKEN_EXPIRED as ms.StringValue
@@ -71,7 +71,7 @@ export default registerAs(
                     process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY_PATH,
                 publicKeyPath:
                     process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY_PATH,
-                expirationTime:
+                expirationTimeInSeconds:
                     ms(
                         process.env
                             .AUTH_JWT_REFRESH_TOKEN_EXPIRED as ms.StringValue
@@ -91,9 +91,9 @@ export default registerAs(
             attempt: true,
             maxAttempt: 5,
             saltLength: 8,
-            expiredIn: ms('182d') / 1000,
-            expiredInTemporary: ms('3d') / 1000,
-            period: ms('90d') / 1000,
+            expiredInSeconds: ms('182d') / 1000,
+            expiredTemporaryInSeconds: ms('3d') / 1000,
+            periodInSeconds: ms('90d') / 1000,
         },
 
         apple: {

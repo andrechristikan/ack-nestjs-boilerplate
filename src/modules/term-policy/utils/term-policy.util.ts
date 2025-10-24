@@ -3,6 +3,7 @@ import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interfa
 import { FileService } from '@common/file/services/file.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
@@ -102,5 +103,14 @@ export class TermPolicyUtil {
 
             return { ...item, language };
         });
+    }
+
+    mapActivityLogMetadata(termPolicy: TermPolicy): IActivityLogMetadata {
+        return {
+            termPolicyId: termPolicy.id,
+            termPolicyType: termPolicy.type,
+            termPolicyVersion: termPolicy.version,
+            timestamp: termPolicy.updatedAt ?? termPolicy.createdAt,
+        };
     }
 }

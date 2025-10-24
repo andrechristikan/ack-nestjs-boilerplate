@@ -54,11 +54,16 @@ import {
 } from '@modules/policy/enums/policy.enum';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { ENUM_API_KEY_TYPE, ENUM_ROLE_TYPE } from '@prisma/client';
+import {
+    ENUM_ACTIVITY_LOG_ACTION,
+    ENUM_API_KEY_TYPE,
+    ENUM_ROLE_TYPE,
+} from '@prisma/client';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 
 @ApiTags('modules.admin.apiKey')
 @Controller({
@@ -97,6 +102,7 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminCreateDoc()
     @Response('apiKey.create')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_CREATE)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
@@ -114,6 +120,7 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminResetDoc()
     @Response('apiKey.reset')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_RESET)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -132,6 +139,7 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminUpdateDoc()
     @Response('apiKey.update')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_UPDATE)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -151,6 +159,7 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminUpdateDateDoc()
     @Response('apiKey.updateDate')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_UPDATE_DATE)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -170,6 +179,7 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminInactiveDoc()
     @Response('apiKey.inactive')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_UPDATE_INACTIVE)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -188,6 +198,7 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminActiveDoc()
     @Response('apiKey.active')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_UPDATE_ACTIVE)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -206,6 +217,7 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminDeleteDoc()
     @Response('apiKey.delete')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_DELETE)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],

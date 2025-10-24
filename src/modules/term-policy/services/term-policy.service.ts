@@ -222,15 +222,17 @@ export class TermPolicyService implements ITermPolicyService {
                     }),
                 })
             );
-            const data = await this.termPolicyRepository.create(
+            const created = await this.termPolicyRepository.create(
                 { contents, type, version },
                 mappedContents,
                 createdBy
             );
-            const termPolicy = this.termPolicyUtil.mapOne(data);
+            const termPolicy = this.termPolicyUtil.mapOne(created);
 
             return {
                 data: termPolicy,
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(created),
             };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
@@ -259,11 +261,14 @@ export class TermPolicyService implements ITermPolicyService {
         }
 
         try {
-            const data = await this.termPolicyRepository.delete(termPolicyId);
-            const termPolicy = this.termPolicyUtil.mapOne(data);
+            const deleted =
+                await this.termPolicyRepository.delete(termPolicyId);
+            const termPolicy = this.termPolicyUtil.mapOne(deleted);
 
             return {
                 data: termPolicy,
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(deleted),
             };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
@@ -345,14 +350,17 @@ export class TermPolicyService implements ITermPolicyService {
                 language,
                 ...this.awsS3Service.mapPresign({ key, size }),
             };
-            await this.termPolicyRepository.updateContent(
+            const updated = await this.termPolicyRepository.updateContent(
                 termPolicyId,
                 termPolicy.contents as unknown as TermContentDto[],
                 mappedContent,
                 updatedBy
             );
 
-            return;
+            return {
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(updated),
+            };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
@@ -386,13 +394,16 @@ export class TermPolicyService implements ITermPolicyService {
                 language,
                 ...this.awsS3Service.mapPresign({ key, size }),
             };
-            await this.termPolicyRepository.addContent(
+            const updated = await this.termPolicyRepository.addContent(
                 termPolicyId,
                 mappedContent,
                 updatedBy
             );
 
-            return;
+            return {
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(updated),
+            };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
@@ -422,14 +433,17 @@ export class TermPolicyService implements ITermPolicyService {
         }
 
         try {
-            await this.termPolicyRepository.removeContent(
+            const updated = await this.termPolicyRepository.removeContent(
                 termPolicyId,
                 termPolicy.contents as unknown as TermContentDto[],
                 { language },
                 updatedBy
             );
 
-            return;
+            return {
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(updated),
+            };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
@@ -477,14 +491,17 @@ export class TermPolicyService implements ITermPolicyService {
                 newItems,
                 contents
             );
-            await this.termPolicyRepository.publish(
+            const updated = await this.termPolicyRepository.publish(
                 termPolicyId,
                 termPolicy.type,
                 newContents,
                 updatedBy
             );
 
-            return;
+            return {
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(updated),
+            };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,

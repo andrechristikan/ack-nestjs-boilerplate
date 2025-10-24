@@ -307,6 +307,8 @@ export class UserService implements IUserService {
 
             return {
                 data: { id: created.id },
+                metadataActivityLog:
+                    this.userUtil.mapActivityLogMetadata(created),
             };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
@@ -344,12 +346,17 @@ export class UserService implements IUserService {
         }
 
         try {
-            await this.userRepository.updateStatusByAdmin(
+            const updated = await this.userRepository.updateStatusByAdmin(
                 userId,
                 { status },
                 requestLog,
                 updatedBy
             );
+
+            return {
+                metadataActivityLog:
+                    this.userUtil.mapActivityLogMetadata(updated),
+            };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
@@ -789,7 +796,10 @@ export class UserService implements IUserService {
                 }
             );
 
-            return;
+            return {
+                metadataActivityLog:
+                    this.userUtil.mapActivityLogMetadata(updated),
+            };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,

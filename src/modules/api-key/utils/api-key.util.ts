@@ -10,6 +10,7 @@ import { ApiKey, ENUM_API_KEY_TYPE } from '@prisma/client';
 import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { IApiKeyGenerateCredential } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 @Injectable()
 export class ApiKeyUtil {
@@ -160,5 +161,14 @@ export class ApiKeyUtil {
         const hash: string = this.createHash(key, secret);
 
         return { key, secret, hash };
+    }
+
+    mapActivityLogMetadata(apiKey: ApiKey): IActivityLogMetadata {
+        return {
+            apiKeyId: apiKey.id,
+            apiKeyName: apiKey.name,
+            apiKeyType: apiKey.type,
+            timestamp: apiKey.updatedAt ?? apiKey.createdAt,
+        };
     }
 }

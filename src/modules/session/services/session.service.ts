@@ -97,7 +97,7 @@ export class SessionService implements ISessionService {
             });
         }
 
-        await Promise.all([
+        const [updated] = await Promise.all([
             this.sessionRepository.revokeByAdmin(
                 sessionId,
                 requestLog,
@@ -106,6 +106,9 @@ export class SessionService implements ISessionService {
             this.sessionUtil.deleteOneLogin(userId, sessionId),
         ]);
 
-        return;
+        return {
+            metadataActivityLog:
+                this.sessionUtil.mapActivityLogMetadata(updated),
+        };
     }
 }

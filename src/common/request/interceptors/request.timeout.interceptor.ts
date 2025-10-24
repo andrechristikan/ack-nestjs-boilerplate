@@ -29,7 +29,7 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
         private readonly reflector: Reflector
     ) {
         this.maxTimeoutInMs = this.configService.get<number>(
-            'request.middleware.timeout'
+            'request.timeoutInMs'
         );
     }
 

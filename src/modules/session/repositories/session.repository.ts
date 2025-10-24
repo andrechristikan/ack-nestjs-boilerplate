@@ -129,7 +129,7 @@ export class SessionRepository {
         sessionId: string,
         { ipAddress, userAgent }: IRequestLog,
         revokeBy: string
-    ): Promise<Session> {
+    ): Promise<ISession> {
         return this.databaseService.session.update({
             where: {
                 id: sessionId,
@@ -142,7 +142,7 @@ export class SessionRepository {
                     update: {
                         activityLogs: {
                             create: {
-                                action: ENUM_ACTIVITY_LOG_ACTION.ADMIN_REVOKE_SESSION,
+                                action: ENUM_ACTIVITY_LOG_ACTION.USER_REVOKE_SESSION_BY_ADMIN,
                                 ipAddress,
                                 userAgent:
                                     userAgent as unknown as Prisma.InputJsonValue,
@@ -151,6 +151,9 @@ export class SessionRepository {
                         },
                     },
                 },
+            },
+            include: {
+                user: true,
             },
         });
     }

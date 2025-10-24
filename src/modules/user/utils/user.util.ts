@@ -1,6 +1,7 @@
 import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { HelperService } from '@common/helper/services/helper.service';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserDto } from '@modules/user/dtos/user.dto';
@@ -77,5 +78,13 @@ export class UserUtil {
 
     checkMobileNumber(phoneCodes: string[], phoneCode: string): boolean {
         return phoneCodes.includes(phoneCode);
+    }
+
+    mapActivityLogMetadata(user: User): IActivityLogMetadata {
+        return {
+            userId: user.id,
+            userUsername: user.username,
+            timestamp: user.updatedAt ?? user.createdAt,
+        };
     }
 }

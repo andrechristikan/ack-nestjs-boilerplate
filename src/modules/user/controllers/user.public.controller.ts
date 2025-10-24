@@ -54,7 +54,7 @@ export class UserPublicController {
     @AuthPublicLoginSocialGoogleDoc()
     @Response('user.loginWithSocialGoogle')
     @AuthSocialGoogleProtected()
-    // @SettingFeatureFlag('auth.social.google') // TODO: NEXT- Enable this
+    // @SettingFeatureFlag('auth.social.google') // TODO: 3 - Enable this
     @Post('/login/social/google')
     async loginWithGoogle(
         @AuthJwtPayload<IAuthSocialPayload>('email')
@@ -77,7 +77,7 @@ export class UserPublicController {
     @AuthPublicLoginSocialAppleDoc()
     @Response('user.loginWithSocialApple')
     @AuthSocialAppleProtected()
-    // @SettingFeatureFlag('auth.social.apple') // TODO: NEXT- Enable this
+    // @SettingFeatureFlag('auth.social.apple') // TODO: 3 - Enable this
     @Post('/login/social/apple')
     async loginWithApple(
         @AuthJwtPayload<IAuthSocialPayload>('email')
@@ -113,7 +113,7 @@ export class UserPublicController {
         });
     }
 
-    // TODO: NEXT
+    // TODO: 5
     // handle forgot password
     // handle reset password
 }

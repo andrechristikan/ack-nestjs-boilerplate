@@ -57,12 +57,8 @@ import { SentryModule } from '@sentry/nestjs/setup';
             useFactory: (config: ConfigService): ThrottlerModuleOptions => ({
                 throttlers: [
                     {
-                        ttl: config.get<number>(
-                            'request.middleware.throttle.ttl'
-                        ),
-                        limit: config.get<number>(
-                            'request.middleware.throttle.limit'
-                        ),
+                        ttl: config.get<number>('request.throttle.ttlInMs'),
+                        limit: config.get<number>('request.throttle.limit'),
                     },
                 ],
             }),

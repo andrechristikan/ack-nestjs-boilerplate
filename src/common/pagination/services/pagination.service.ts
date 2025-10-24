@@ -164,17 +164,11 @@ export class PaginationService implements IPaginationService {
             });
         }
 
-        // TODO: Implement previous cursor logic
-        let previousCursor: string | undefined;
-        const hasPrevious = false;
-
         return {
             type: ENUM_PAGINATION_TYPE.CURSOR,
-            nextCursor,
+            cursor: nextCursor,
             perPage: limit,
             hasNext,
-            previousCursor,
-            hasPrevious,
             data: items as TReturn[],
             ...(includeCount && { count }),
         };

@@ -11,7 +11,11 @@ import {
     ENUM_POLICY_SUBJECT,
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-import { ENUM_ROLE_TYPE, ENUM_USER_STATUS } from '@prisma/client';
+import {
+    ENUM_ACTIVITY_LOG_ACTION,
+    ENUM_ROLE_TYPE,
+    ENUM_USER_STATUS,
+} from '@prisma/client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     AuthJwtAccessProtected,
@@ -55,6 +59,7 @@ import {
 } from '@common/request/decorators/request.decorator';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
+import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -118,6 +123,7 @@ export class UserAdminController {
 
     @UserAdminCreateDoc()
     @Response('user.create')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_USER_CREATE)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
@@ -145,6 +151,7 @@ export class UserAdminController {
 
     @UserAdminUpdateStatusDoc()
     @Response('user.updateStatus')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_USER_UPDATE_STATUS)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -175,6 +182,7 @@ export class UserAdminController {
 
     @UserAdminUpdatePasswordDoc()
     @Response('user.updatePassword')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_USER_UPDATE_PASSWORD)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],

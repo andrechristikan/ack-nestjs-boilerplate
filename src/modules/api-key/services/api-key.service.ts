@@ -84,7 +84,11 @@ export class ApiKeyService implements IApiKeyService {
             hash
         );
 
-        return { data: this.apiKeyUtil.mapCreate(created, secret) };
+        return {
+            data: this.apiKeyUtil.mapCreate(created, secret),
+            metadataActivityLog:
+                this.apiKeyUtil.mapActivityLogMetadata(created),
+        };
     }
 
     async active(id: string): Promise<IResponseReturn<ApiKeyDto>> {
@@ -117,7 +121,11 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
-        return { data: this.apiKeyUtil.mapOne(updated) };
+        return {
+            data: this.apiKeyUtil.mapOne(updated),
+            metadataActivityLog:
+                this.apiKeyUtil.mapActivityLogMetadata(updated),
+        };
     }
 
     async inactive(id: string): Promise<IResponseReturn<ApiKeyDto>> {
@@ -129,7 +137,13 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
-        return { data: this.apiKeyUtil.mapOne(updated) };
+        return {
+            data: this.apiKeyUtil.mapOne(updated),
+            metadataActivityLog: {
+                type: updated.type,
+                name: updated.name,
+            },
+        };
     }
 
     async update(
@@ -144,7 +158,11 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
-        return { data: this.apiKeyUtil.mapOne(updated) };
+        return {
+            data: this.apiKeyUtil.mapOne(updated),
+            metadataActivityLog:
+                this.apiKeyUtil.mapActivityLogMetadata(updated),
+        };
     }
 
     async updateDates(
@@ -166,7 +184,11 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
-        return { data: this.apiKeyUtil.mapOne(updated) };
+        return {
+            data: this.apiKeyUtil.mapOne(updated),
+            metadataActivityLog:
+                this.apiKeyUtil.mapActivityLogMetadata(updated),
+        };
     }
 
     async reset(id: string): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
@@ -180,7 +202,11 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
-        return { data: this.apiKeyUtil.mapCreate(updated, secret) };
+        return {
+            data: this.apiKeyUtil.mapCreate(updated, secret),
+            metadataActivityLog:
+                this.apiKeyUtil.mapActivityLogMetadata(updated),
+        };
     }
 
     async delete(id: string): Promise<IResponseReturn<ApiKeyDto>> {
@@ -197,7 +223,11 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
-        return { data: this.apiKeyUtil.mapOne(deleted) };
+        return {
+            data: this.apiKeyUtil.mapOne(deleted),
+            metadataActivityLog:
+                this.apiKeyUtil.mapActivityLogMetadata(deleted),
+        };
     }
 
     validateApiKey(apiKey: ApiKey, includeActive: boolean = false): void {

@@ -129,9 +129,7 @@ export interface IPaginationCursorReturn<T = unknown> {
     count?: number;
     perPage: number;
     hasNext: boolean;
-    hasPrevious: boolean;
-    nextCursor?: string;
-    previousCursor?: string;
+    cursor?: string;
     data: T[];
 }
 

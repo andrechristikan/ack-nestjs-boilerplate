@@ -37,12 +37,12 @@ export class AuthService implements IAuthService {
     private readonly jwtAccessTokenKid: string;
     private readonly jwtAccessTokenPrivateKey: string;
     private readonly jwtAccessTokenPublicKey: string;
-    private readonly jwtAccessTokenExpirationTime: number;
+    private readonly jwtAccessTokenExpirationTimeInSeconds: number;
 
     private readonly jwtRefreshTokenKid: string;
     private readonly jwtRefreshTokenPrivateKey: string;
     private readonly jwtRefreshTokenPublicKey: string;
-    private readonly jwtRefreshTokenExpirationTime: number;
+    private readonly jwtRefreshTokenExpirationTimeInSeconds: number;
 
     private readonly jwtPrefix: string;
     private readonly jwtAudience: string;
@@ -58,10 +58,10 @@ export class AuthService implements IAuthService {
     private readonly googlePrefix: string;
 
     // password
-    private readonly passwordExpiredIn: number;
-    private readonly passwordExpiredTemporary: number;
+    private readonly passwordExpiredInSeconds: number;
+    private readonly passwordExpiredTemporaryInSeconds: number;
     private readonly passwordSaltLength: number;
-    private readonly passwordPeriodExpiredIn: number;
+    private readonly passwordPeriodInSeconds: number;
     private readonly passwordAttempt: boolean;
     private readonly passwordMaxAttempt: number;
 
@@ -98,9 +98,10 @@ export class AuthService implements IAuthService {
             ),
             'utf8'
         );
-        this.jwtAccessTokenExpirationTime = this.configService.get<number>(
-            'auth.jwt.accessToken.expirationTime'
-        );
+        this.jwtAccessTokenExpirationTimeInSeconds =
+            this.configService.get<number>(
+                'auth.jwt.accessToken.expirationTimeInSeconds'
+            );
 
         this.jwtRefreshTokenKid = this.configService.get<string>(
             'auth.jwt.refreshToken.kid'
@@ -123,9 +124,10 @@ export class AuthService implements IAuthService {
             ),
             'utf8'
         );
-        this.jwtRefreshTokenExpirationTime = this.configService.get<number>(
-            'auth.jwt.refreshToken.expirationTime'
-        );
+        this.jwtRefreshTokenExpirationTimeInSeconds =
+            this.configService.get<number>(
+                'auth.jwt.refreshToken.expirationTimeInSeconds'
+            );
 
         this.jwtPrefix = this.configService.get<string>('auth.jwt.prefix');
         this.jwtAudience = this.configService.get<string>('auth.jwt.audience');
@@ -142,17 +144,17 @@ export class AuthService implements IAuthService {
             this.configService.get<string>('auth.google.prefix');
 
         // password
-        this.passwordExpiredIn = this.configService.get<number>(
-            'auth.password.expiredIn'
+        this.passwordExpiredInSeconds = this.configService.get<number>(
+            'auth.password.expiredInSeconds'
         );
-        this.passwordExpiredTemporary = this.configService.get<number>(
-            'auth.password.expiredInTemporary'
+        this.passwordExpiredTemporaryInSeconds = this.configService.get<number>(
+            'auth.password.expiredTemporaryInSeconds'
         );
         this.passwordSaltLength = this.configService.get<number>(
             'auth.password.saltLength'
         );
-        this.passwordPeriodExpiredIn = this.configService.get<number>(
-            'auth.password.period'
+        this.passwordPeriodInSeconds = this.configService.get<number>(
+            'auth.password.periodInSeconds'
         );
         this.passwordAttempt = this.configService.get<boolean>(
             'auth.password.attempt'
@@ -188,7 +190,7 @@ export class AuthService implements IAuthService {
     ): string {
         return this.jwtService.sign(payload, {
             privateKey: this.jwtAccessTokenPrivateKey,
-            expiresIn: this.jwtAccessTokenExpirationTime,
+            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             audience: this.jwtAudience,
             issuer: this.jwtIssuer,
             subject,
@@ -209,7 +211,7 @@ export class AuthService implements IAuthService {
     ): string {
         return this.jwtService.sign(payload, {
             privateKey: this.jwtRefreshTokenPrivateKey,
-            expiresIn: this.jwtRefreshTokenExpirationTime,
+            expiresIn: this.jwtRefreshTokenExpirationTimeInSeconds,
             audience: this.jwtAudience,
             issuer: this.jwtIssuer,
             subject,
@@ -358,15 +360,15 @@ export class AuthService implements IAuthService {
             today,
             this.helperService.dateCreateDuration({
                 seconds: options?.temporary
-                    ? this.passwordExpiredTemporary
-                    : this.passwordExpiredIn,
+                    ? this.passwordExpiredTemporaryInSeconds
+                    : this.passwordExpiredInSeconds,
             })
         );
         const passwordHash = this.helperService.bcryptHash(password, salt);
         const passwordPeriodExpired: Date = this.helperService.dateForward(
             today,
             this.helperService.dateCreateDuration({
-                seconds: this.passwordPeriodExpiredIn,
+                seconds: this.passwordPeriodInSeconds,
             })
         );
 
@@ -436,7 +438,7 @@ export class AuthService implements IAuthService {
         return {
             tokenType: this.jwtPrefix,
             roleType: user.role.type,
-            expiresIn: this.jwtRefreshTokenExpirationTime,
+            expiresIn: this.jwtRefreshTokenExpirationTimeInSeconds,
             accessToken,
             refreshToken,
         };
@@ -473,7 +475,7 @@ export class AuthService implements IAuthService {
         return {
             tokenType: this.jwtPrefix,
             roleType: user.role.type,
-            expiresIn: this.jwtAccessTokenExpirationTime,
+            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,
             refreshToken: refreshTokenFromRequest,
         };

@@ -386,7 +386,6 @@ export class LoggerOptionService {
                 query: this.sanitizeObject(request.query),
                 params: this.sanitizeObject(request.params),
                 headers: this.sanitizeObject(request.headers),
-                body: this.sanitizeObject(request.body),
                 ip: this.extractClientIP(request),
                 user: this.serializeUser(request),
                 userAgent: request.headers['user-agent'],
@@ -403,23 +402,17 @@ export class LoggerOptionService {
     /**
      * Creates a serialized representation of HTTP response objects.
      * Extracts status code, headers, body content, and response metadata for logging.
-     * @param {Response & { body: unknown }} response - The HTTP response object with body content
+     * @param {Response} response - The HTTP response object with body content
      * @returns {Record<string, unknown>} Serialized response object with sanitized data
      */
     private createResponseSerializer(
-        response: Response & { body: unknown }
+        response: Response
     ): Record<string, unknown> {
-        let body: unknown = response.body;
-        try {
-            body = JSON.parse(response.body as string);
-        } catch {}
-
         return {
             httpCode: response.statusCode,
             headers: this.sanitizeObject(
                 response.getHeaders() as Record<string, unknown>
             ),
-            body: this.sanitizeObject(body),
             contentLength: response.getHeader('content-length'),
             responseTime: response.getHeader('X-Response-Time'),
         };

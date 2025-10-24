@@ -8,6 +8,7 @@ import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
 import { MigrationCreateSeed } from '@migration/seeds/migration.user.seed';
 import { AuthModule } from '@modules/auth/auth.module';
 
+// TODO: 6, Change to commander package
 @Module({
     imports: [CommonModule, CommandModule, CountryModule, AuthModule],
     providers: [

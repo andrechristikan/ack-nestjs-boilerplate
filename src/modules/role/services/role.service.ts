@@ -72,8 +72,11 @@ export class RoleService implements IRoleService {
             });
         }
 
-        const create = await this.roleRepository.create({ name, ...others });
-        return { data: this.roleUtil.mapOne(create) };
+        const created = await this.roleRepository.create({ name, ...others });
+        return {
+            data: this.roleUtil.mapOne(created),
+            metadataActivityLog: this.roleUtil.mapActivityLogMetadata(created),
+        };
     }
 
     async update(
@@ -88,11 +91,14 @@ export class RoleService implements IRoleService {
             });
         }
 
-        const update = await this.roleRepository.update(id, data);
-        return { data: this.roleUtil.mapOne(update) };
+        const updated = await this.roleRepository.update(id, data);
+        return {
+            data: this.roleUtil.mapOne(updated),
+            metadataActivityLog: this.roleUtil.mapActivityLogMetadata(updated),
+        };
     }
 
-    async delete(id: string): Promise<void> {
+    async delete(id: string): Promise<IResponseReturn<void>> {
         const [role, roleUsed] = await Promise.all([
             this.roleRepository.existById(id),
             this.roleRepository.usedByUser(id),
@@ -110,9 +116,11 @@ export class RoleService implements IRoleService {
             });
         }
 
-        await this.roleRepository.delete(id);
+        const deleted = await this.roleRepository.delete(id);
 
-        return;
+        return {
+            metadataActivityLog: this.roleUtil.mapActivityLogMetadata(deleted),
+        };
     }
 
     async validateRoleGuard(

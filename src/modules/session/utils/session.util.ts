@@ -3,14 +3,13 @@ import { SESSION_CACHE_MANAGER } from '@modules/session/constants/session.consta
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { ISession } from '@modules/session/interfaces/session.interface';
 import { Cache } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 @Injectable()
 export class SessionUtil {
-    private readonly logger = new Logger(SessionUtil.name);
-
     private readonly keyPattern: string;
     private readonly namespace: string;
 
@@ -85,5 +84,14 @@ export class SessionUtil {
 
     mapList(sessions: ISession[]): SessionResponseDto[] {
         return plainToInstance(SessionResponseDto, sessions);
+    }
+
+    mapActivityLogMetadata(session: ISession): IActivityLogMetadata {
+        return {
+            sessionId: session.id,
+            userId: session.userId,
+            userUsername: session.user.username,
+            timestamp: session.updatedAt ?? session.createdAt,
+        };
     }
 }

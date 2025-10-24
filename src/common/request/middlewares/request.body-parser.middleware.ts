@@ -9,28 +9,29 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class RequestBodyParserMiddleware implements NestMiddleware {
-    private readonly jsonLimit: number;
-    private readonly textLimit: number;
-    private readonly rawLimit: number;
-    private readonly urlencodedLimit: number;
-    private readonly applicationOctetStreamLimit: number;
+    private readonly jsonLimitInBytes: number;
+    private readonly textLimitInBytes: number;
+    private readonly rawLimitInBytes: number;
+    private readonly urlencodedLimitInBytes: number;
+    private readonly applicationOctetStreamLimitInBytes: number;
 
     constructor(private readonly configService: ConfigService) {
-        this.jsonLimit = this.configService.get<number>(
-            'request.middleware.body.json.limit'
+        this.jsonLimitInBytes = this.configService.get<number>(
+            'request.body.json.limitInBytes'
         );
-        this.textLimit = this.configService.get<number>(
-            'request.middleware.body.text.limit'
+        this.textLimitInBytes = this.configService.get<number>(
+            'request.body.text.limitInBytes'
         );
-        this.rawLimit = this.configService.get<number>(
-            'request.middleware.body.raw.limit'
+        this.rawLimitInBytes = this.configService.get<number>(
+            'request.body.raw.limitInBytes'
         );
-        this.urlencodedLimit = this.configService.get<number>(
-            'request.middleware.body.urlencoded.limit'
+        this.urlencodedLimitInBytes = this.configService.get<number>(
+            'request.body.urlencoded.limitInBytes'
         );
-        this.applicationOctetStreamLimit = this.configService.get<number>(
-            'request.middleware.body.applicationOctetStream.limit'
-        );
+        this.applicationOctetStreamLimitInBytes =
+            this.configService.get<number>(
+                'request.body.applicationOctetStream.limitInBytes'
+            );
     }
 
     /**
@@ -45,28 +46,28 @@ export class RequestBodyParserMiddleware implements NestMiddleware {
 
         if (contentType.includes('application/json')) {
             bodyParser.json({
-                limit: this.jsonLimit,
+                limit: this.jsonLimitInBytes,
                 type: 'application/json',
             })(req, res, next);
         } else if (contentType.includes('application/x-www-form-urlencoded')) {
             bodyParser.urlencoded({
                 extended: false,
-                limit: this.urlencodedLimit,
+                limit: this.urlencodedLimitInBytes,
                 type: 'application/x-www-form-urlencoded',
             })(req, res, next);
         } else if (contentType.includes('text/')) {
             bodyParser.text({
-                limit: this.textLimit,
+                limit: this.textLimitInBytes,
                 type: 'text/*',
             })(req, res, next);
         } else if (contentType.includes('multipart/')) {
             bodyParser.raw({
-                limit: this.rawLimit,
+                limit: this.rawLimitInBytes,
                 type: 'multipart/*',
             })(req, res, next);
         } else if (contentType.includes('application/octet-stream')) {
             bodyParser.raw({
-                limit: this.applicationOctetStreamLimit,
+                limit: this.applicationOctetStreamLimitInBytes,
                 type: 'application/octet-stream',
             })(req, res, next);
         } else {

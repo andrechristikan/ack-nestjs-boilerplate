@@ -39,4 +39,10 @@ export class ActivityLogResponseDto extends DatabaseDto {
     })
     @Type(() => RequestUserAgentDto)
     userAgent: RequestUserAgentDto;
+
+    @ApiProperty({
+        required: false,
+        example: { exampleKey: 'exampleValue' },
+    })
+    metadata?: unknown;
 }

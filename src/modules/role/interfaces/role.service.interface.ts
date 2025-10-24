@@ -25,7 +25,7 @@ export interface IRoleService {
         id: string,
         data: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>>;
-    delete(id: string): Promise<void>;
+    delete(id: string): Promise<IResponseReturn<void>>;
     validateRoleGuard(
         request: IRequestApp,
         requiredRoles: ENUM_ROLE_TYPE[]

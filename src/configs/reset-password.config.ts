@@ -1,5 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
+// TODO: 5
 export interface IConfigResetPassword {
     expiredInMinutes: number;
     otpLength: number;

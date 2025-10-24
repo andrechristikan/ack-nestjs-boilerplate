@@ -11,7 +11,6 @@ import RedisConfig from '@configs/redis.config';
 import ResetPasswordConfig from '@configs/reset-password.config';
 import VerificationConfig from '@configs/verification.config';
 import HomeConfig from '@configs/home.config';
-import SettingConfig from '@configs/setting.config';
 import LoggerConfig from '@configs/logger.config';
 import SessionConfig from '@configs/session.config';
 import TermPolicyConfig from '@configs/term-policy.config';
@@ -31,7 +30,6 @@ export default [
     ResetPasswordConfig,
     VerificationConfig,
     HomeConfig,
-    SettingConfig,
     SessionConfig,
     TermPolicyConfig,
 ];
