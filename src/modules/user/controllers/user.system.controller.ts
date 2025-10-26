@@ -88,9 +88,9 @@ export class UserSystemController {
     @HttpCode(HttpStatus.OK)
     @Post('/check/username')
     async checkUsername(
-        @Body() data: UserCheckUsernameRequestDto
+        @Body() body: UserCheckUsernameRequestDto
     ): Promise<IResponseReturn<UserCheckUsernameResponseDto>> {
-        return this.userService.checkUsername(data);
+        return this.userService.checkUsername(body);
     }
 
     @UserSystemCheckEmailDoc()
@@ -99,8 +99,8 @@ export class UserSystemController {
     @HttpCode(HttpStatus.OK)
     @Post('/check/email')
     async checkEmail(
-        @Body() data: UserCheckEmailRequestDto
+        @Body() body: UserCheckEmailRequestDto
     ): Promise<IResponseReturn<UserCheckEmailResponseDto>> {
-        return this.userService.checkEmail(data);
+        return this.userService.checkEmail(body);
     }
 }

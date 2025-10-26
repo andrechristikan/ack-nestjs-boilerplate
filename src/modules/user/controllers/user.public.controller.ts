@@ -41,11 +41,11 @@ export class UserPublicController {
     @HttpCode(HttpStatus.OK)
     @Post('/login/credential')
     async loginWithCredential(
-        @Body() data: UserLoginRequestDto,
+        @Body() body: UserLoginRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
-        return this.userService.loginCredential(data, {
+        return this.userService.loginCredential(body, {
             ipAddress,
             userAgent,
         });
@@ -61,12 +61,12 @@ export class UserPublicController {
         email: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto,
-        @Body() data: UserCreateSocialRequestDto
+        @Body() body: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         return this.userService.loginWithSocial(
             email,
             ENUM_USER_LOGIN_WITH.SOCIAL_GOOGLE,
-            data,
+            body,
             {
                 ipAddress,
                 userAgent,
@@ -82,14 +82,14 @@ export class UserPublicController {
     async loginWithApple(
         @AuthJwtPayload<IAuthSocialPayload>('email')
         email: string,
-        @Body() data: UserCreateSocialRequestDto,
+        @Body() body: UserCreateSocialRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         return this.userService.loginWithSocial(
             email,
             ENUM_USER_LOGIN_WITH.SOCIAL_APPLE,
-            data,
+            body,
             {
                 ipAddress,
                 userAgent,
@@ -103,11 +103,11 @@ export class UserPublicController {
     @Post('/sign-up')
     async signUp(
         @Body()
-        data: UserSignUpRequestDto,
+        body: UserSignUpRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<void> {
-        return this.userService.signUp(data, {
+        return this.userService.signUp(body, {
             ipAddress,
             userAgent,
         });

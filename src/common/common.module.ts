@@ -68,7 +68,7 @@ import { CacheModule, CacheOptions } from '@nestjs/cache-manager';
                 configService: ConfigService
             ): Promise<CacheOptions> => ({
                 max: configService.get<number>('redis.cached.max'),
-                ttl: configService.get<number>('redis.cached.ttlInSeconds'),
+                ttl: configService.get<number>('redis.cached.ttlInMs'),
                 stores: [
                     new KeyvRedis({
                         socket: {

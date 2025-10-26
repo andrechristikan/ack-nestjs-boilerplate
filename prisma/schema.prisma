@@ -203,7 +203,7 @@ model ActivityLog {
   action    ENUM_ACTIVITY_LOG_ACTION
   ipAddress String
   userAgent Json
-  metadata   Json?
+  metadata  Json?
 
   user User? @relation("UserActivityLogs", fields: [userId], references: [id])
 
@@ -279,6 +279,23 @@ model TermPolicyUserAcceptance {
   @@index(fields: [userId])
   @@index(fields: [termPolicyId])
   @@map("TermPolicyUserAcceptances")
+}
+
+model FeatureFlag {
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  key      String
+  isEnable Boolean @default(true)
+  value    Json
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@unique(fields: [key])
+  @@index(fields: [createdAt])
+  @@map("FeatureFlags")
 }
 
 enum ENUM_USER_GENDER {
@@ -370,26 +387,26 @@ enum ENUM_ACTIVITY_LOG_ACTION {
   USER_VERIFIED                 @map("userVerified")
   USER_SIGNED_UP                @map("userSignedUp")
   USER_REVOKE_SESSION           @map("userRevokeSession")
-  USER_REVOKE_SESSION_BY_ADMIN           @map("userRevokeSessionByAdmin")
+  USER_REVOKE_SESSION_BY_ADMIN  @map("userRevokeSessionByAdmin")
   USER_ACCEPT_TERM_POLICY       @map("userAcceptTermPolicy")
 
-  ADMIN_SESSION_REVOKE          @map("adminSessionRevoke")
-  ADMIN_API_KEY_CREATE          @map("adminApiKeyCreate")
-  ADMIN_API_KEY_RESET           @map("adminApiKeyReset")
-  ADMIN_API_KEY_UPDATE          @map("adminApiKeyUpdate")
-  ADMIN_API_KEY_UPDATE_DATE     @map("adminApiKeyUpdateDate")
-  ADMIN_API_KEY_UPDATE_INACTIVE @map("adminApiKeyUpdateInactive")
-  ADMIN_API_KEY_UPDATE_ACTIVE   @map("adminApiKeyUpdateActive")
-  ADMIN_API_KEY_DELETE          @map("adminApiKeyDelete")
-  ADMIN_ROLE_CREATE             @map("adminRoleCreate")
-  ADMIN_ROLE_UPDATE             @map("adminRoleUpdate")
-  ADMIN_ROLE_DELETE             @map("adminRoleDelete")
-  ADMIN_TERM_POLICY_CREATE      @map("adminTermPolicyCreate")
+  ADMIN_SESSION_REVOKE             @map("adminSessionRevoke")
+  ADMIN_API_KEY_CREATE             @map("adminApiKeyCreate")
+  ADMIN_API_KEY_RESET              @map("adminApiKeyReset")
+  ADMIN_API_KEY_UPDATE             @map("adminApiKeyUpdate")
+  ADMIN_API_KEY_UPDATE_DATE        @map("adminApiKeyUpdateDate")
+  ADMIN_API_KEY_UPDATE_INACTIVE    @map("adminApiKeyUpdateInactive")
+  ADMIN_API_KEY_UPDATE_ACTIVE      @map("adminApiKeyUpdateActive")
+  ADMIN_API_KEY_DELETE             @map("adminApiKeyDelete")
+  ADMIN_ROLE_CREATE                @map("adminRoleCreate")
+  ADMIN_ROLE_UPDATE                @map("adminRoleUpdate")
+  ADMIN_ROLE_DELETE                @map("adminRoleDelete")
+  ADMIN_TERM_POLICY_CREATE         @map("adminTermPolicyCreate")
   ADMIN_TERM_POLICY_UPDATE_CONTENT @map("adminTermPolicyUpdateContent")
-  ADMIN_TERM_POLICY_ADD_CONTENT @map("adminTermPolicyAddContent")
+  ADMIN_TERM_POLICY_ADD_CONTENT    @map("adminTermPolicyAddContent")
   ADMIN_TERM_POLICY_REMOVE_CONTENT @map("adminTermPolicyRemoveContent")
-  ADMIN_TERM_POLICY_PUBLISH     @map("adminTermPolicyPublish")
-  ADMIN_USER_CREATE             @map("adminUserCreate")
-  ADMIN_USER_UPDATE_STATUS     @map("adminUserUpdateStatus")
-  ADMIN_USER_UPDATE_PASSWORD   @map("adminUserUpdatePassword")
+  ADMIN_TERM_POLICY_PUBLISH        @map("adminTermPolicyPublish")
+  ADMIN_USER_CREATE                @map("adminUserCreate")
+  ADMIN_USER_UPDATE_STATUS         @map("adminUserUpdateStatus")
+  ADMIN_USER_UPDATE_PASSWORD       @map("adminUserUpdatePassword")
 }

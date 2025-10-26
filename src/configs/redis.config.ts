@@ -7,7 +7,7 @@ export interface IConfigRedis {
         database?: number;
         password?: string;
         username?: string;
-        ttlInSeconds: number;
+        ttlInMs: number;
         max: number;
     };
     queue: {
@@ -30,7 +30,7 @@ export default registerAs(
                 : 0,
             password: process.env.REDIS_PASSWORD,
             username: process.env.REDIS_USERNAME,
-            ttlInSeconds: 5 * 60 * 1000,
+            ttlInMs: 5 * 60 * 1000,
             max: 10,
         },
         queue: {

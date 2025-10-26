@@ -165,13 +165,13 @@ export class UserAdminController {
         @Param('userId', RequestRequiredPipe)
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
-        @Body() data: UserUpdateStatusRequestDto,
+        @Body() body: UserUpdateStatusRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.updateStatusByAdmin(
             userId,
-            data,
+            body,
             {
                 ipAddress,
                 userAgent,

@@ -1,6 +1,8 @@
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { ActivityLogAdminController } from '@modules/activity-log/controllers/activity-log.admin.controller';
 import { ApiKeyAdminController } from '@modules/api-key/controllers/api-key.admin.controller';
+import { FeatureFlagAdminController } from '@modules/feature-flag/controllers/feature-flag.admin.controller';
+import { FeatureFlagModule } from '@modules/feature-flag/feature-flag.module';
 import { PasswordHistoryAdminController } from '@modules/password-history/controllers/password-history.admin.controller';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { RoleAdminController } from '@modules/role/controllers/role.admin.controller';
@@ -21,6 +23,7 @@ import { Module } from '@nestjs/common';
         ActivityLogAdminController,
         SessionAdminController,
         TermPolicyAdminController,
+        FeatureFlagAdminController,
     ],
     providers: [],
     exports: [],
@@ -30,6 +33,7 @@ import { Module } from '@nestjs/common';
         ActivityLogModule,
         SessionModule,
         TermPolicyModule,
+        FeatureFlagModule,
     ],
 })
 export class RoutesAdminModule {}

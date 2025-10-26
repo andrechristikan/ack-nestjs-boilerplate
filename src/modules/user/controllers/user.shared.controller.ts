@@ -102,11 +102,11 @@ export class UserSharedController {
         @AuthJwtPayload('userId')
         userId: string,
         @Body()
-        data: UserUpdateProfileRequestDto,
+        body: UserUpdateProfileRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.userService.updateProfile(userId, data, {
+        return this.userService.updateProfile(userId, body, {
             ipAddress,
             userAgent,
         });
@@ -123,9 +123,9 @@ export class UserSharedController {
     async generatePhotoProfilePresign(
         @AuthJwtPayload('userId')
         userId: string,
-        @Body() data: UserGeneratePhotoProfileRequestDto
+        @Body() body: UserGeneratePhotoProfileRequestDto
     ): Promise<IResponseReturn<AwsS3PresignDto>> {
-        return this.userService.generatePhotoProfilePresign(userId, data);
+        return this.userService.generatePhotoProfilePresign(userId, body);
     }
 
     @UserSharedUpdatePhotoProfileDoc()

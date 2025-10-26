@@ -19,7 +19,7 @@ import { SessionRepository } from '@modules/session/repositories/session.reposit
                 configService: ConfigService
             ): Promise<CacheOptions> => ({
                 max: configService.get<number>('redis.cached.max'),
-                ttl: configService.get<number>('redis.cached.ttlInSeconds'),
+                ttl: configService.get<number>('redis.cached.ttlInMs'),
                 namespace: configService.get<string>('session.namespace'),
                 stores: [
                     new KeyvRedis({

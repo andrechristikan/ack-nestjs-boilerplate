@@ -67,11 +67,11 @@ export class TermPolicySharedController {
     @Post('/accept')
     async accept(
         @AuthJwtPayload('userId') userId: string,
-        @Body() data: TermPolicyAcceptRequestDto,
+        @Body() body: TermPolicyAcceptRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.userAccept(userId, data, {
+        return this.termPolicyService.userAccept(userId, body, {
             ipAddress,
             userAgent,
         });

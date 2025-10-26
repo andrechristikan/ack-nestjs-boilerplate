@@ -75,9 +75,9 @@ export class UserUserController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto,
         @Body()
-        data: UserAddMobileNumberRequestDto
+        body: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.userService.addMobileNumber(userId, data, {
+        return this.userService.addMobileNumber(userId, body, {
             ipAddress,
             userAgent,
         });
@@ -96,12 +96,12 @@ export class UserUserController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto,
         @Body()
-        data: UserUpdateMobileNumberRequestDto
+        body: UserUpdateMobileNumberRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.updateMobileNumber(
             userId,
             mobileNumberId,
-            data,
+            body,
             {
                 ipAddress,
                 userAgent,
@@ -139,11 +139,11 @@ export class UserUserController {
     async claimUsername(
         @AuthJwtPayload('userId') userId: string,
         @Body()
-        data: UserClaimUsernameRequestDto,
+        body: UserClaimUsernameRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.userService.claimUsername(userId, data, {
+        return this.userService.claimUsername(userId, body, {
             ipAddress,
             userAgent,
         });

@@ -18,4 +18,5 @@ export enum ENUM_POLICY_SUBJECT {
     ACTIVITY_LOG = 'activityLog',
     PASSWORD_HISTORY = 'passwordHistory',
     TERM_POLICY = 'termPolicy',
+    FEATURE_FLAG = 'featureFlag',
 }

@@ -121,10 +121,10 @@ export class TermPolicyAdminController {
     @Post('/create')
     async create(
         @Body()
-        data: TermPolicyCreateRequestDto,
+        body: TermPolicyCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<TermPolicyResponseDto>> {
-        return this.termPolicyService.create(data, createdBy);
+        return this.termPolicyService.create(body, createdBy);
     }
 
     @TermPolicyAdminDeleteDoc()
@@ -162,9 +162,9 @@ export class TermPolicyAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/generate/content/presign')
     async generate(
-        @Body() data: TermPolicyContentPresignRequestDto
+        @Body() body: TermPolicyContentPresignRequestDto
     ): Promise<IResponseReturn<AwsS3PresignDto>> {
-        return this.termPolicyService.generateContentPresign(data);
+        return this.termPolicyService.generateContentPresign(body);
     }
 
     @TermPolicyAdminUpdateContentDoc()
@@ -183,12 +183,12 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', RequestRequiredPipe)
         termPolicyId: string,
         @Body()
-        data: TermPolicyContentRequestDto,
+        body: TermPolicyContentRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyService.updateContent(
             termPolicyId,
-            data,
+            body,
             updatedBy
         );
     }
@@ -209,10 +209,10 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', RequestRequiredPipe)
         termPolicyId: string,
         @Body()
-        data: TermPolicyContentRequestDto,
+        body: TermPolicyContentRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.addContent(termPolicyId, data, updatedBy);
+        return this.termPolicyService.addContent(termPolicyId, body, updatedBy);
     }
 
     @TermPolicyAdminRemoveContentDoc()
@@ -231,12 +231,12 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', RequestRequiredPipe)
         termPolicyId: string,
         @Body()
-        data: TermPolicyRemoveContentRequestDto,
+        body: TermPolicyRemoveContentRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyService.removeContent(
             termPolicyId,
-            data,
+            body,
             updatedBy
         );
     }
