@@ -8,7 +8,7 @@ export interface IConfigFeatureFlag {
 export default registerAs(
     'featureFlag',
     (): IConfigFeatureFlag => ({
-        cachePrefixKey: 'feature-flag:',
+        cachePrefixKey: 'FeatureFlag',
         cacheTtlMs: 60 * 60,
     })
 );

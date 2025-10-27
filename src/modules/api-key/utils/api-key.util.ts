@@ -14,7 +14,7 @@ import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-
 
 @Injectable()
 export class ApiKeyUtil {
-    private readonly keyPrefix: string;
+    private readonly cachePrefixKey: string;
     private readonly env: ENUM_APP_ENVIRONMENT;
     private readonly header: string;
 
@@ -23,8 +23,8 @@ export class ApiKeyUtil {
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {
-        this.keyPrefix = this.configService.get<string>(
-            'auth.xApiKey.keyPrefix'
+        this.cachePrefixKey = this.configService.get<string>(
+            'auth.xApiKey.cachePrefixKey'
         );
         this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
         this.header = this.configService.get<string>('auth.xApiKey.header');
@@ -43,7 +43,7 @@ export class ApiKeyUtil {
     }
 
     async getCacheByKey(key: string): Promise<ApiKey | null> {
-        const cacheKey = `${this.keyPrefix}:${key}`;
+        const cacheKey = `${this.cachePrefixKey}:${key}`;
         const cachedApiKey = await this.cacheManager.get<string>(cacheKey);
         if (cachedApiKey) {
             return JSON.parse(cachedApiKey) as ApiKey;
@@ -53,14 +53,14 @@ export class ApiKeyUtil {
     }
 
     async setCacheByKey(key: string, apiKey: ApiKey): Promise<void> {
-        const cacheKey = `${this.keyPrefix}:${key}`;
+        const cacheKey = `${this.cachePrefixKey}:${key}`;
         await this.cacheManager.set(cacheKey, JSON.stringify(apiKey));
 
         return;
     }
 
     async deleteCacheByKey(key: string): Promise<void> {
-        const cacheKey = `${this.keyPrefix}:${key}`;
+        const cacheKey = `${this.cachePrefixKey}:${key}`;
         await this.cacheManager.del(cacheKey);
 
         return;

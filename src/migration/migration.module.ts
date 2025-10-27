@@ -5,17 +5,26 @@ import { MigrationApiKeySeed } from '@migration/seeds/migration.api-key.seed';
 import { MigrationCountrySeed } from '@migration/seeds/migration.country.seed';
 import { CountryModule } from '@modules/country/country.module';
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
-import { MigrationCreateSeed } from '@migration/seeds/migration.user.seed';
+import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
 import { AuthModule } from '@modules/auth/auth.module';
+import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-flag.seed';
+import { UserModule } from '@modules/user/user.module';
 
-// TODO: 6, Change to commander package
+// TODO: LAST, Change to commander package
 @Module({
-    imports: [CommonModule, CommandModule, CountryModule, AuthModule],
+    imports: [
+        CommonModule,
+        CommandModule,
+        CountryModule,
+        AuthModule,
+        UserModule,
+    ],
     providers: [
         MigrationApiKeySeed,
         MigrationCountrySeed,
         MigrationRoleSeed,
-        MigrationCreateSeed,
+        MigrationUserSeed,
+        MigrationFeatureFlagSeed,
     ],
     exports: [],
 })

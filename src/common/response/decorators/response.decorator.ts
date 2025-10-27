@@ -23,6 +23,7 @@ export function Response(
     ];
 
     if (options?.cached) {
+        // TODO: LAST change CacheInterceptor to custom cache interceptor
         decorators.push(UseInterceptors(CacheInterceptor));
 
         if (typeof options?.cached !== 'boolean') {

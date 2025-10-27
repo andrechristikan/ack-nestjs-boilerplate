@@ -1,9 +1,7 @@
-import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { CommandModule, CommandService } from 'nestjs-command';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { MigrationModule } from '@migration/migration.module';
-import { ConfigService } from '@nestjs/config';
 import { Logger as PinoLogger } from 'nestjs-pino';
 
 async function bootstrap(): Promise<void> {
@@ -17,17 +15,11 @@ async function bootstrap(): Promise<void> {
 
     app.useLogger(app.get(PinoLogger));
 
-    const configService = app.get(ConfigService);
-    const appName: string = configService.get<string>('app.name');
-
-    const logger = new Logger(`${appName}-Migration`);
-
     try {
         await app.select(CommandModule).get(CommandService).exec();
         process.exit(0);
-    } catch (err: unknown) {
-        logger.error(err);
-
+    } catch (_) {
+        await app.close();
         process.exit(1);
     }
 }

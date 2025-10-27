@@ -38,7 +38,7 @@ export default registerAs(
             port: process.env.QUEUE_REDIS_PORT ? +process.env.REDIS_PORT : 6379,
             database: process.env.QUEUE_REDIS_DATABASE
                 ? +process.env.QUEUE_REDIS_DATABASE
-                : 0,
+                : 1,
             password: process.env.QUEUE_REDIS_PASSWORD,
             username: process.env.QUEUE_REDIS_USERNAME,
         },

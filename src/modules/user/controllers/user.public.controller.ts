@@ -12,6 +12,7 @@ import {
     AuthSocialGoogleProtected,
 } from '@modules/auth/decorators/auth.social.decorator';
 import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
+import { FeatureFlag } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import {
     AuthPublicLoginSocialAppleDoc,
     AuthPublicLoginSocialGoogleDoc,
@@ -39,6 +40,7 @@ export class UserPublicController {
     @Response('user.loginCredential')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
+    @FeatureFlag('loginWithCredential')
     @Post('/login/credential')
     async loginWithCredential(
         @Body() body: UserLoginRequestDto,
@@ -54,7 +56,7 @@ export class UserPublicController {
     @AuthPublicLoginSocialGoogleDoc()
     @Response('user.loginWithSocialGoogle')
     @AuthSocialGoogleProtected()
-    // @SettingFeatureFlag('auth.social.google') // TODO: 3 - Enable this
+    @FeatureFlag('loginWithGoogle')
     @Post('/login/social/google')
     async loginWithGoogle(
         @AuthJwtPayload<IAuthSocialPayload>('email')
@@ -77,7 +79,7 @@ export class UserPublicController {
     @AuthPublicLoginSocialAppleDoc()
     @Response('user.loginWithSocialApple')
     @AuthSocialAppleProtected()
-    // @SettingFeatureFlag('auth.social.apple') // TODO: 3 - Enable this
+    @FeatureFlag('loginWithApple')
     @Post('/login/social/apple')
     async loginWithApple(
         @AuthJwtPayload<IAuthSocialPayload>('email')
@@ -99,6 +101,7 @@ export class UserPublicController {
 
     @UserPublicSignUpDoc()
     @Response('user.signUp')
+    @FeatureFlag('signUp')
     @ApiKeyProtected()
     @Post('/sign-up')
     async signUp(

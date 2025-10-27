@@ -15,9 +15,10 @@ import { LoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
 import { randomUUID } from 'crypto';
 
 /**
- * Service responsible for configuring and providing logger options for the application.
- * This service creates Pino logger configurations with support for file rotation,
- * sensitive data redaction, and custom serializers for request/response logging.
+ * Service responsible for configuring logger options for the application.
+ *
+ * Creates Pino logger configurations with file rotation, sensitive data redaction,
+ * and custom serializers for request/response logging.
  */
 @Injectable()
 export class LoggerOptionService {
@@ -64,9 +65,6 @@ export class LoggerOptionService {
 
     /**
      * Creates and configures Pino logger options based on application configuration.
-     * Sets up transports for console and file logging, configures serializers for
-     * request/response objects, and implements sensitive data redaction.
-     * @returns {Promise<Params>} Promise resolving to configured Pino logger parameters
      */
     async createOptions(): Promise<Params> {
         const rfs = await import('rotating-file-stream');
@@ -97,9 +95,6 @@ export class LoggerOptionService {
 
     /**
      * Generates or extracts a request ID from HTTP headers or request object.
-     * Checks predefined headers for existing request IDs, falling back to the request's ID or generating a new UUID.
-     * @param {IRequestApp} request - The HTTP request object
-     * @returns {string} The request ID string
      */
     private getReqId(request: IRequestApp): string {
         const headers = request.headers;
@@ -118,10 +113,7 @@ export class LoggerOptionService {
     }
 
     /**
-     * Builds transport configurations for console and file logging based on application settings.
-     * Creates pino-pretty transport for formatted console output when prettier is enabled,
-     * and pino/file transport for file logging when intoFile is enabled.
-     * @returns {Array<{target: string; options: Record<string, unknown>}>} Array of transport configurations with target module names and their respective options
+     * Builds transport configurations for console and file logging.
      */
     private buildTransports(): Array<{
         target: string;
@@ -136,6 +128,9 @@ export class LoggerOptionService {
                     colorize: true,
                     levelFirst: true,
                     translateTime: 'SYS:standard',
+                    messageFormat: '[{context}] {msg}',
+                    ignore: 'pid,hostname,context,labels',
+                    singleLine: false,
                 },
             });
         }
@@ -153,36 +148,50 @@ export class LoggerOptionService {
         return transports;
     }
 
+    private sanitizeMessage(message: unknown): string | unknown {
+        if (typeof message === 'string' && !this.prettier) {
+            return message
+                .replace(/\x1B\[\d+m/g, '')
+                .replace(/^\s*→?\s*\d+\s+/gm, '')
+                .replace(/^\s+/gm, '')
+                .replace(/\n+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        return message;
+    }
+
     /**
      * Creates a log formatter function that adds timestamp and application metadata.
-     * @returns {Function} Function that formats log objects with timestamp and application labels
      */
     private createLogFormatter(): (
         object: Record<string, unknown>
     ) => Record<string, unknown> {
-        return (object: Record<string, unknown>) => {
+        return (obj: Record<string, unknown>) => {
             const today = this.helperService.dateCreate();
-            const level = object.level ?? 'INFO';
+
+            const { message, res, req, err, ...other } = obj;
 
             return {
-                level,
                 timestamp: today.valueOf(),
-                iso: this.helperService.dateFormatToIso(today),
                 labels: {
                     name: this.name,
                     environment: this.env,
                     version: this.version,
                 },
-                ...(object.req && {
-                    request: object.req,
+                msg: this.sanitizeMessage(message),
+                ...other,
+                ...(req && {
+                    request: req,
                 }),
-                ...(object.res && {
+                ...(res && {
                     response: this.createResponseSerializer(
-                        object.res as Response & { body: unknown }
+                        res as Response & { body: unknown }
                     ),
                 }),
-                ...(object.err && {
-                    error: this.createErrorSerializer(object.err as Error),
+                ...(err && {
+                    error: this.createErrorSerializer(err as Error),
                 }),
                 ...(this.env !== ENUM_APP_ENVIRONMENT.PRODUCTION && {
                     debug: this.addDebugInfo(),
@@ -193,8 +202,6 @@ export class LoggerOptionService {
 
     /**
      * Creates a rotating file stream for log files if file logging is enabled.
-     * @param {typeof import('rotating-file-stream')} rfs - The rotating-file-stream module imported dynamically
-     * @returns {import('rotating-file-stream').RotatingFileStream | undefined} RotatingFileStream instance if file logging is enabled, undefined otherwise
      */
     private createFileStream(
         rfs: typeof import('rotating-file-stream')
@@ -213,7 +220,6 @@ export class LoggerOptionService {
 
     /**
      * Creates redaction configuration to hide sensitive data in logs.
-     * @returns {{paths: string[]; censor: string}} Redaction configuration object
      */
     private createRedactionConfig(): {
         paths: string[];
@@ -229,7 +235,6 @@ export class LoggerOptionService {
 
     /**
      * Creates custom serializers for request, response, and error objects.
-     * @returns {Object} Object containing serializer functions for req, res, and err properties
      */
     private createSerializers(): {
         req: (request: IRequestApp) => Record<string, unknown>;
@@ -240,12 +245,7 @@ export class LoggerOptionService {
     }
 
     /**
-     * Recursively sanitizes objects by redacting sensitive fields and handling circular references.
-     * Protects against deep object traversal and truncates large arrays to prevent memory issues.
-     * @param {unknown} obj - The object to sanitize
-     * @param {number} maxDepth - Maximum recursion depth to prevent stack overflow (default: 5)
-     * @param {number} currentDepth - Current recursion depth (default: 0)
-     * @returns {unknown} The sanitized object with sensitive data redacted
+     * Recursively sanitizes objects by redacting sensitive fields.
      */
     private sanitizeObject(
         obj: unknown,
@@ -303,10 +303,7 @@ export class LoggerOptionService {
     }
 
     /**
-     * Extracts the client's IP address from various sources in the HTTP request.
-     * Checks multiple sources including direct IP, connection properties, and proxy headers.
-     * @param {IRequestApp} request - The HTTP request object
-     * @returns {string} The client's IP address or 'unknown' if not found
+     * Extracts the client's IP address from HTTP request.
      */
     private extractClientIP(request: IRequestApp): string {
         if (request.ip) {
@@ -341,9 +338,6 @@ export class LoggerOptionService {
 
     /**
      * Extracts and serializes user information from the request object.
-     * Returns the user ID if available, otherwise returns null.
-     * @param {IRequestApp} request - The HTTP request object containing user information
-     * @returns {string | null} The user ID string or null if not authenticated
      */
     private serializeUser(request: IRequestApp): string | null {
         return (request.user as unknown as { userId: string })?.userId ?? null;
@@ -351,8 +345,6 @@ export class LoggerOptionService {
 
     /**
      * Adds debug information including memory usage and uptime to log entries.
-     * Only includes debug information in non-production environments for security.
-     * @returns {LoggerDebugInfo | undefined} Debug information object with memory and uptime data, or undefined in production
      */
     private addDebugInfo(): LoggerDebugInfo | undefined {
         if (this.env === ENUM_APP_ENVIRONMENT.PRODUCTION) {
@@ -371,7 +363,6 @@ export class LoggerOptionService {
 
     /**
      * Creates a serializer function for HTTP request objects.
-     * @returns {Function} Function that serializes request objects with relevant HTTP and user information
      */
     private createRequestSerializer(): (
         request: IRequestApp
@@ -401,9 +392,6 @@ export class LoggerOptionService {
 
     /**
      * Creates a serialized representation of HTTP response objects.
-     * Extracts status code, headers, body content, and response metadata for logging.
-     * @param {Response} response - The HTTP response object with body content
-     * @returns {Record<string, unknown>} Serialized response object with sanitized data
      */
     private createResponseSerializer(
         response: Response
@@ -420,22 +408,21 @@ export class LoggerOptionService {
 
     /**
      * Creates a serialized representation of error objects for logging.
-     * Extracts error type, message, status code, and stack trace information.
-     * @param {Error} error - The error object to serialize
-     * @returns {Record<string, unknown>} Serialized error object with relevant error information
      */
     private createErrorSerializer(error: Error): Record<string, unknown> {
         return {
             type: error.name,
             message: error.message,
-            code: (error as unknown as { statusCode?: number })?.statusCode,
+            code: (error as unknown as { status?: number })?.status,
+            statusCode: (
+                error as unknown as { response?: { statusCode?: number } }
+            )?.response?.statusCode,
             stack: error.stack,
         };
     }
 
     /**
      * Creates auto-logging configuration based on application settings.
-     * @returns {{ignore: Function} | boolean} Auto-logging configuration object with ignore function if enabled, otherwise returns the autoLogger boolean value
      */
     private createAutoLoggingConfig():
         | { ignore: (req: IRequestApp) => boolean }

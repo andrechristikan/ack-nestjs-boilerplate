@@ -34,10 +34,11 @@
         "package:check": "npx npm-check-updates -i",
         "generate:keys": "npx ts-node scripts/generate-keys.ts",
         "seed:fresh": "yarn migrate:remove && yarn migrate:seed",
-        "seed": "nestjs-command seed:country && nestjs-command seed:apiKey && nestjs-command seed:role",
-        "migrate:remove": "nestjs-command remove:country && nestjs-command remove:apiKey  && nestjs-command remove:role",
+        "seed": "nestjs-command seed:country && nestjs-command seed:apiKey && nestjs-command seed:role && nestjs-command seed:user && nestjs-command seed:featureFlag",
+        "migrate:remove": "nestjs-command remove:featureFlag && nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apiKey && nestjs-command remove:role",
         "migrate:template": "nestjs-command migrate:template",
         "rollback:template": "nestjs-command rollback:template",
+        "db:migrate": "prisma db push",
         "db:generate": "prisma generate",
         "db:studio": "prisma studio",
         "db:format": "prisma format"

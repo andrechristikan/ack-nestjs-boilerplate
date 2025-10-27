@@ -17,6 +17,7 @@ import { ApiKeyModule } from '@modules/api-key/api-key.module';
 import { RoleModule } from '@modules/role/role.module';
 import KeyvRedis from '@keyv/redis';
 import { CacheModule, CacheOptions } from '@nestjs/cache-manager';
+import { FeatureFlagModule } from '@modules/feature-flag/feature-flag.module';
 
 /**
  * Common module that provides shared functionality across the application.
@@ -104,6 +105,7 @@ import { CacheModule, CacheOptions } from '@nestjs/cache-manager';
         PolicyModule.forRoot(),
         ApiKeyModule.forRoot(),
         RoleModule.forRoot(),
+        FeatureFlagModule.forRoot(),
     ],
 })
 export class CommonModule {}

@@ -11,6 +11,7 @@ import { IDatabaseService } from 'src/common/database/interfaces/database.servic
 
 /**
  * Database service that extends PrismaClient with additional functionality.
+ *
  * Handles database connections, health checks, and logging with lifecycle management.
  */
 @Injectable()
@@ -23,7 +24,7 @@ export class DatabaseService
 {
     private readonly logger: Logger = new Logger(DatabaseService.name);
     private readonly isDebugMode: boolean;
-    private readonly readUrl: string;
+    private readonly prettier: boolean;
 
     constructor(private readonly configService: ConfigService) {
         super({
@@ -37,12 +38,11 @@ export class DatabaseService
         });
 
         this.isDebugMode = this.configService.get<boolean>('database.debug');
-        this.readUrl = this.configService.get<string>('database.readUrl');
+        this.prettier = this.configService.get<boolean>('logger.prettier');
     }
 
     /**
-     * Health check method to verify database connectivity.
-     * @returns {Promise<HealthIndicatorResult>} Promise that resolves to health status object
+     * Performs database health check by pinging the database connection.
      */
     async isHealthy(): Promise<HealthIndicatorResult> {
         try {
@@ -65,7 +65,6 @@ export class DatabaseService
     async onModuleInit(): Promise<void> {
         try {
             await this.setupLogging();
-            // await this.setupReadReplicas();
             await this.connect();
         } catch (error: unknown) {
             this.logger.error('Failed to initialize database service', error);
@@ -107,20 +106,47 @@ export class DatabaseService
     }
 
     private logQuery(event: Prisma.QueryEvent): void {
-        this.logger.debug(
-            `Query [${event.timestamp}] : ${event.query} | Params: ${event.params} | Duration: ${event.duration}ms`
-        );
+        const { query, duration, params, ...other } = event;
+        if (this.prettier) {
+            let sanitizedQuery: string = query;
+            if (typeof sanitizedQuery === 'string') {
+                sanitizedQuery = sanitizedQuery
+                    .replace(/\\"/g, '"')
+                    .replace(/\\\\/g, '\\')
+                    .replace(/\\n/g, '\n')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
+
+            const message = `[Prisma Query] ${duration}ms - ${sanitizedQuery}${params !== '[]' ? ` | Params: ${params}` : ''}`;
+
+            this.logger.debug({
+                ...other,
+                message,
+                params,
+                duration,
+                slowQuery: duration > 1000,
+            });
+        } else {
+            this.logger.debug({
+                ...other,
+                message: query,
+                params,
+                duration,
+                slowQuery: duration > 1000,
+            });
+        }
     }
 
     private logError(event: Prisma.LogEvent): void {
-        this.logger.error('Error', event.message);
+        this.logger.error(event);
     }
 
     private logWarn(event: Prisma.LogEvent): void {
-        this.logger.warn('Warning', event.message);
+        this.logger.warn(event);
     }
 
     private logInfo(event: Prisma.LogEvent): void {
-        this.logger.log('Info', event.message);
+        this.logger.log(event);
     }
 }

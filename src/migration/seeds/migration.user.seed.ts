@@ -13,8 +13,8 @@ import {
 import { UserUtil } from '@modules/user/utils/user.util';
 
 @Injectable()
-export class MigrationCreateSeed {
-    private readonly logger = new Logger(MigrationCreateSeed.name);
+export class MigrationUserSeed {
+    private readonly logger = new Logger(MigrationUserSeed.name);
 
     private readonly password = 'aaAA@123';
     private readonly users = [
@@ -124,7 +124,7 @@ export class MigrationCreateSeed {
                         passwordCreated,
                         passwordExpired,
                         passwordAttempt: 0,
-                        signUpDate: today,
+                        signUpAt: today,
                         signUpWith: ENUM_USER_SIGN_UP_WITH.CREDENTIAL,
                         signUpFrom: ENUM_USER_SIGN_UP_FROM.SYSTEM,
                         status: ENUM_USER_STATUS.ACTIVE,

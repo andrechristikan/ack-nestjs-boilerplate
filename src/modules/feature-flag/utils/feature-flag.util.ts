@@ -17,10 +17,10 @@ export class FeatureFlagUtil {
         private readonly configService: ConfigService
     ) {
         this.cachePrefixKey = this.configService.get<string>(
-            'setting.cachePrefixKey'
+            'featureFlag.cachePrefixKey'
         );
         this.cacheTtlMs = this.configService.get<number>(
-            'setting.cacheTtlSeconds'
+            'featureFlag.cacheTtlSeconds'
         );
     }
 

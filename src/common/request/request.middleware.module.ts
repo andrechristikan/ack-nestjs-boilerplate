@@ -1,15 +1,11 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_GUARD } from '@nestjs/core';
 import {
     ThrottlerGuard,
     ThrottlerModule,
     ThrottlerModuleOptions,
 } from '@nestjs/throttler';
-import { AppGeneralFilter } from '@app/filters/app.general.filter';
-import { AppHttpFilter } from '@app/filters/app.http.filter';
-import { AppValidationImportFilter } from '@app/filters/app.validation-import.filter';
-import { AppValidationFilter } from '@app/filters/app.validation.filter';
 import { RequestRequestIdMiddleware } from '@common/request/middlewares/request.request-id.middleware';
 import { RequestHelmetMiddleware } from '@common/request/middlewares/request.helmet.middleware';
 import { RequestBodyParserMiddleware } from '@common/request/middlewares/request.body-parser.middleware';
@@ -22,7 +18,7 @@ import { SentryModule } from '@sentry/nestjs/setup';
 
 /**
  * Central middleware configuration module for HTTP request/response processing.
- * Configures security, performance optimization, monitoring, and error handling.
+ * Configures security, performance optimization, and monitoring.
  */
 @Module({
     controllers: [],
@@ -31,22 +27,6 @@ import { SentryModule } from '@sentry/nestjs/setup';
         {
             provide: APP_GUARD,
             useClass: ThrottlerGuard,
-        },
-        {
-            provide: APP_FILTER,
-            useClass: AppGeneralFilter,
-        },
-        {
-            provide: APP_FILTER,
-            useClass: AppHttpFilter,
-        },
-        {
-            provide: APP_FILTER,
-            useClass: AppValidationFilter,
-        },
-        {
-            provide: APP_FILTER,
-            useClass: AppValidationImportFilter,
         },
     ],
     imports: [

@@ -285,7 +285,7 @@ model FeatureFlag {
   id       String  @id @default(auto()) @map("_id") @db.ObjectId
   key      String
   isEnable Boolean @default(true)
-  value    Json
+  value    Json?
 
   // timestamps fields
   createdAt DateTime @default(now())

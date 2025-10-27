@@ -44,7 +44,7 @@ export interface IConfigAuth {
     };
     xApiKey: {
         header: string;
-        keyPrefix: string;
+        cachePrefixKey: string;
     };
 }
 
@@ -110,7 +110,7 @@ export default registerAs(
         },
         xApiKey: {
             header: 'x-api-key',
-            keyPrefix: 'ApiKey',
+            cachePrefixKey: 'ApiKey',
         },
     })
 );
