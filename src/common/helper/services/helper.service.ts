@@ -7,7 +7,7 @@ import { IHelperService } from '@common/helper/interfaces/helper.service.interfa
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { compareSync, genSaltSync, hashSync } from 'bcryptjs';
-import { AES, SHA256, enc, mode, pad } from 'crypto-js';
+import { AES, MD5, SHA256, enc, mode, pad } from 'crypto-js';
 import { DateObjectUnits, DateTime, Duration, DurationLikeObject } from 'luxon';
 import _ from 'lodash';
 import { ENUM_HELPER_DATE_DAY_OF } from '@common/helper/enums/helper.enum';
@@ -190,6 +190,26 @@ export class HelperService implements IHelperService {
      * @returns {boolean} True if hashes are identical
      */
     sha256Compare(hashOne: string, hashTwo: string): boolean {
+        return hashOne === hashTwo;
+    }
+
+    /**
+     * Creates MD5 hash of input string.
+     * @param {string} string - String to hash
+     * @returns {string} MD5 hash in hexadecimal format
+     */
+    md5Hash(string: string): string {
+        return MD5(string).toString(enc.Hex);
+    }
+
+    /**
+     *
+     * Compares two MD5 hashes for equality.
+     * @param {string} hashOne - First hash
+     * @param {string} hashTwo - Second hash
+     * @returns {boolean} True if hashes are identical
+     */
+    md5Compare(hashOne: string, hashTwo: string): boolean {
         return hashOne === hashTwo;
     }
 

@@ -1,16 +1,18 @@
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
-import { FeatureFlagUpdateRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update.request';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
 import { FeatureFlag } from '@prisma/client';
 
 export interface IFeatureFlagService {
-    validateFeatureFlagGuard(key: string): Promise<void>;
+    validateFeatureFlagGuard(request: IRequestApp, key: string): Promise<void>;
     findOneByKeyAndCache(key: string): Promise<FeatureFlag | null>;
+    findOneMetadataByKeyAndCache<T>(key: string): Promise<T | null>;
     getList(
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>>;
@@ -18,8 +20,8 @@ export interface IFeatureFlagService {
         id: string,
         data: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>>;
-    update(
+    updateMetadata(
         id: string,
-        data: FeatureFlagUpdateRequestDto
+        data: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>>;
 }

@@ -1,5 +1,5 @@
 import { DatabaseDto } from '@common/database/dtos/database.dto';
-import { IFeatureFlagValue } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class FeatureFlagResponseDto extends DatabaseDto {
@@ -14,7 +14,7 @@ export class FeatureFlagResponseDto extends DatabaseDto {
     isEnable: boolean;
 
     @ApiProperty({
-        description: 'Feature flag value in JSON format',
+        description: 'Feature flag metadata in JSON format',
     })
-    value: IFeatureFlagValue;
+    metadata: IFeatureFlagMetadata;
 }

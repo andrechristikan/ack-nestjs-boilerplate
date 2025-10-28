@@ -33,6 +33,7 @@ import { CountryRepository } from '@modules/country/repositories/country.reposit
 import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
 import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
@@ -108,7 +109,8 @@ export class UserService implements IUserService {
         private readonly authService: AuthService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly sessionUtil: SessionUtil,
-        private readonly sessionRepository: SessionRepository
+        private readonly sessionRepository: SessionRepository,
+        private readonly featureFlagService: FeatureFlagService
     ) {}
 
     async validateUserGuard(
@@ -1007,9 +1009,17 @@ export class UserService implements IUserService {
         { from, ...others }: UserCreateSocialRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
+        const featureFlag =
+            await this.featureFlagService.findOneMetadataByKeyAndCache<{
+                signUpAllowed: boolean;
+            }>(
+                loginWith === ENUM_USER_LOGIN_WITH.SOCIAL_GOOGLE
+                    ? 'loginWithGoogle'
+                    : 'loginWithApple'
+            );
         let user = await this.userRepository.findOneWithRoleByEmail(email);
 
-        if (!user) {
+        if (!user && featureFlag.signUpAllowed) {
             const role = await this.roleRepository.existByName(
                 this.userRoleName
             );

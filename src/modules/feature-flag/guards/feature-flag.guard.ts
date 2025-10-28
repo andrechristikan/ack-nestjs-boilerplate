@@ -16,7 +16,11 @@ export class FeatureFlagGuard implements CanActivate {
             context.getHandler()
         );
 
-        await this.featureFlagService.validateFeatureFlagGuard(featureFlagKey);
+        const request = context.switchToHttp().getRequest();
+        await this.featureFlagService.validateFeatureFlagGuard(
+            request,
+            featureFlagKey
+        );
 
         return true;
     }

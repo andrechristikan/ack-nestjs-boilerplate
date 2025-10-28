@@ -1,13 +1,14 @@
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
-import { FeatureFlagUpdateRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update.request';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
 import { ENUM_FEATURE_FLAG_STATUS_CODE_ERROR } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
-import { IFeatureFlagValue } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { IFeatureFlagService } from '@modules/feature-flag/interfaces/feature-flag.service.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
@@ -26,7 +27,10 @@ export class FeatureFlagService implements IFeatureFlagService {
         private readonly featureFlagUtil: FeatureFlagUtil
     ) {}
 
-    async validateFeatureFlagGuard(key: string): Promise<void> {
+    async validateFeatureFlagGuard(
+        request: IRequestApp,
+        key: string
+    ): Promise<void> {
         try {
             const featureFlag = await this.findOneByKeyAndCache(key);
             if (!featureFlag || !featureFlag.isEnable) {
@@ -35,6 +39,22 @@ export class FeatureFlagService implements IFeatureFlagService {
                         ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.SERVICE_UNAVAILABLE,
                     message: 'featureFlag.error.serviceUnavailable',
                 });
+            }
+
+            const { user } = request;
+            if (user) {
+                const checkRollout =
+                    this.featureFlagUtil.checkRolloutPercentage(
+                        featureFlag.rolloutPercent,
+                        user.userId
+                    );
+                if (!checkRollout) {
+                    throw new ServiceUnavailableException({
+                        statusCode:
+                            ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.SERVICE_UNAVAILABLE,
+                        message: 'featureFlag.error.serviceUnavailable',
+                    });
+                }
             }
         } catch {
             throw new ServiceUnavailableException({
@@ -57,6 +77,15 @@ export class FeatureFlagService implements IFeatureFlagService {
         }
 
         return apiKey;
+    }
+
+    async findOneMetadataByKeyAndCache<T>(key: string): Promise<T | null> {
+        const cached = await this.findOneByKeyAndCache(key);
+        if (cached && cached.metadata) {
+            return cached.metadata as T;
+        }
+
+        return null;
     }
 
     async getList(
@@ -100,9 +129,9 @@ export class FeatureFlagService implements IFeatureFlagService {
         };
     }
 
-    async update(
+    async updateMetadata(
         id: string,
-        data: FeatureFlagUpdateRequestDto
+        data: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
@@ -112,19 +141,20 @@ export class FeatureFlagService implements IFeatureFlagService {
             });
         }
 
-        const validated = this.featureFlagUtil.checkValueKey(
-            featureFlag.value as IFeatureFlagValue,
-            data.value
+        const validated = this.featureFlagUtil.checkMetadataKey(
+            featureFlag.metadata as IFeatureFlagMetadata,
+            data.metadata
         );
         if (!validated) {
             throw new BadRequestException({
-                statusCode: ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.INVALID_VALUE,
-                message: 'featureFlag.error.invalidValue',
+                statusCode:
+                    ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.INVALID_METADATA,
+                message: 'featureFlag.error.invalidMetadata',
             });
         }
 
         const [updated] = await Promise.all([
-            this.featureFlagRepository.update(id, data),
+            this.featureFlagRepository.updateMetadata(id, data),
             this.featureFlagUtil.deleteCacheByKey(featureFlag.key),
         ]);
 

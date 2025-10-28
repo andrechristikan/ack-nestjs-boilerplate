@@ -11,10 +11,18 @@ export class MigrationFeatureFlagSeed {
         {
             key: 'loginWithGoogle',
             isEnable: true,
+            rolloutPercent: 100,
+            metadata: {
+                signUpAllowed: true,
+            },
         },
         {
             key: 'loginWithApple',
             isEnable: true,
+            rolloutPercent: 100,
+            metadata: {
+                signUpAllowed: true,
+            },
         },
         {
             key: 'loginWithCredential',

@@ -1,5 +1,6 @@
+import { HelperService } from '@common/helper/services/helper.service';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
-import { IFeatureFlagValue } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -14,7 +15,8 @@ export class FeatureFlagUtil {
 
     constructor(
         @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperService: HelperService
     ) {
         this.cachePrefixKey = this.configService.get<string>(
             'featureFlag.cachePrefixKey'
@@ -60,12 +62,12 @@ export class FeatureFlagUtil {
         return plainToInstance(FeatureFlagResponseDto, featureFlag);
     }
 
-    checkValueKey(
-        oldValue: IFeatureFlagValue,
-        newValue: IFeatureFlagValue
+    checkMetadataKey(
+        oldMetadata: IFeatureFlagMetadata,
+        newMetadata: IFeatureFlagMetadata
     ): boolean {
-        const oldKeys = Object.keys(oldValue).sort();
-        const newKeys = Object.keys(newValue).sort();
+        const oldKeys = Object.keys(oldMetadata).sort();
+        const newKeys = Object.keys(newMetadata).sort();
 
         const isValidStructure =
             JSON.stringify(oldKeys) === JSON.stringify(newKeys);
@@ -74,7 +76,7 @@ export class FeatureFlagUtil {
         }
 
         for (const key of newKeys) {
-            const val = newValue[key];
+            const val = newMetadata[key];
 
             if (
                 typeof val !== 'string' &&
@@ -86,5 +88,16 @@ export class FeatureFlagUtil {
         }
 
         return true;
+    }
+
+    checkRolloutPercentage(
+        rolloutPercent: number,
+        identifier: string
+    ): boolean {
+        const hash = this.helperService.md5Hash(identifier);
+        const num = Number.parseInt(hash.slice(0, 8), 16);
+        const percentage = num % 100;
+
+        return percentage < rolloutPercent;
     }
 }

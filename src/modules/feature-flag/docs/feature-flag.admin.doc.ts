@@ -11,8 +11,8 @@ import {
     FeatureFlagDocParamsId,
     FeatureFlagDocQueryList,
 } from '@modules/feature-flag/constants/feature-flag.doc';
+import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
-import { FeatureFlagUpdateRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update.request';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
 import { applyDecorators } from '@nestjs/common';
 
@@ -54,20 +54,20 @@ export function FeatureFlagAdminUpdateStatusDoc(): MethodDecorator {
     );
 }
 
-export function FeatureFlagAdminUpdateDoc(): MethodDecorator {
+export function FeatureFlagAdminUpdateMetadataDoc(): MethodDecorator {
     return applyDecorators(
         Doc({}),
         DocRequest({
             params: FeatureFlagDocParamsId,
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            dto: FeatureFlagUpdateRequestDto,
+            dto: FeatureFlagUpdateMetadataRequestDto,
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponse<FeatureFlagResponseDto>('featureFlag.update', {
+        DocResponse<FeatureFlagResponseDto>('featureFlag.updateMetadata', {
             dto: FeatureFlagResponseDto,
         })
     );

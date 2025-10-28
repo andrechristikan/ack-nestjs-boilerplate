@@ -8,7 +8,7 @@ import {
 
 @ValidatorConstraint({ async: false })
 @Injectable()
-export class IsFeatureFlagValueConstraint
+export class IsFeatureFlagMetadataConstraint
     implements ValidatorConstraintInterface
 {
     validate(value: unknown): boolean {
@@ -22,7 +22,6 @@ export class IsFeatureFlagValueConstraint
 
         const setting = value as Record<string, unknown>;
 
-        // check key-value pairs
         for (const key in setting) {
             if (typeof key !== 'string') {
                 return false;
@@ -44,18 +43,18 @@ export class IsFeatureFlagValueConstraint
     }
 
     defaultMessage(): string {
-        return `featureFlag.error.invalidValue`;
+        return `featureFlag.error.invalidMetadata`;
     }
 }
 
-export function IsFeatureFlagValue(validationOptions?: ValidationOptions) {
+export function IsFeatureFlagMetadata(validationOptions?: ValidationOptions) {
     return function (object: unknown, propertyName: string): void {
         registerDecorator({
             target: object.constructor,
             propertyName: propertyName,
             options: validationOptions,
             constraints: [],
-            validator: IsFeatureFlagValueConstraint,
+            validator: IsFeatureFlagMetadataConstraint,
         });
     };
 }

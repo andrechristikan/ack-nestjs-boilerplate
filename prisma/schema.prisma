@@ -282,10 +282,12 @@ model TermPolicyUserAcceptance {
 }
 
 model FeatureFlag {
-  id       String  @id @default(auto()) @map("_id") @db.ObjectId
-  key      String
-  isEnable Boolean @default(true)
-  value    Json?
+  id             String  @id @default(auto()) @map("_id") @db.ObjectId
+  key            String
+  description    String
+  isEnable       Boolean @default(true)
+  rolloutPercent Int     @default(100)
+  metadata       Json?
 
   // timestamps fields
   createdAt DateTime @default(now())

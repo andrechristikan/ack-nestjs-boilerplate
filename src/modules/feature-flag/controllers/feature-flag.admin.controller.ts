@@ -14,11 +14,11 @@ import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decora
 import { FEATURE_FLAG_DEFAULT_AVAILABLE_SEARCH } from '@modules/feature-flag/constants/feature-flag.list.constant';
 import {
     FeatureFlagAdminListDoc,
-    FeatureFlagAdminUpdateDoc,
+    FeatureFlagAdminUpdateMetadataDoc,
     FeatureFlagAdminUpdateStatusDoc,
 } from '@modules/feature-flag/docs/feature-flag.admin.doc';
+import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
-import { FeatureFlagUpdateRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update.request';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
@@ -79,8 +79,8 @@ export class FeatureFlagAdminController {
         return this.featureFlagService.updateStatus(featureFlagId, body);
     }
 
-    @FeatureFlagAdminUpdateDoc()
-    @Response('featureFlag.update')
+    @FeatureFlagAdminUpdateMetadataDoc()
+    @Response('featureFlag.updateMetadata')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.FEATURE_FLAG,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -89,12 +89,12 @@ export class FeatureFlagAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/update/:featureFlagId')
+    @Put('/update/:featureFlagId/metadata')
     async update(
         @Param('featureFlagId', RequestRequiredPipe)
         featureFlagId: string,
-        @Body() body: FeatureFlagUpdateRequestDto
+        @Body() body: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
-        return this.featureFlagService.update(featureFlagId, body);
+        return this.featureFlagService.updateMetadata(featureFlagId, body);
     }
 }
