@@ -10,6 +10,7 @@ export class MigrationFeatureFlagSeed {
     private readonly featureFlags: Prisma.FeatureFlagCreateInput[] = [
         {
             key: 'loginWithGoogle',
+            description: 'Enable login with Google',
             isEnable: true,
             rolloutPercent: 100,
             metadata: {
@@ -18,6 +19,7 @@ export class MigrationFeatureFlagSeed {
         },
         {
             key: 'loginWithApple',
+            description: 'Enable login with Apple',
             isEnable: true,
             rolloutPercent: 100,
             metadata: {
@@ -26,10 +28,12 @@ export class MigrationFeatureFlagSeed {
         },
         {
             key: 'loginWithCredential',
+            description: 'Enable login with Credential',
             isEnable: true,
         },
         {
             key: 'signUp',
+            description: 'Enable user sign up',
             isEnable: true,
         },
         // TODO: LAST

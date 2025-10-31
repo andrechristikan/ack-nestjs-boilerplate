@@ -422,112 +422,18 @@ export class AppEnvDto {
     AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID?: string;
 
     /**
-     * Redis server hostname or IP address
+     * Redis server URL for caching
      */
     @IsNotEmpty()
     @IsString()
-    REDIS_HOST: string;
-
-    /**
-     * Redis server port number
-     */
-    @IsNumber({
-        allowInfinity: false,
-        allowNaN: false,
-        maxDecimalPlaces: 0,
-    })
-    @IsInt()
-    @IsNotEmpty()
-    @Type(() => Number)
-    REDIS_PORT: number;
-
-    /**
-     * Redis database index/number to use (default is 0)
-     */
-    @IsNumber({
-        allowInfinity: false,
-        allowNaN: false,
-        maxDecimalPlaces: 0,
-    })
-    @Min(0)
-    @IsInt()
-    @IsNotEmpty()
-    @Type(() => Number)
-    REDIS_DATABASE: number;
-
-    /**
-     * Redis username for authentication (optional)
-     */
-    @ValidateIf(o => o.REDIS_USERNAME !== undefined && o.REDIS_USERNAME !== '')
-    @IsNotEmpty()
-    @IsString()
-    REDIS_USERNAME?: string;
-
-    /**
-     * Redis password for authentication (optional)
-     */
-    @ValidateIf(o => o.REDIS_PASSWORD !== undefined && o.REDIS_PASSWORD !== '')
-    @IsNotEmpty()
-    @IsString()
-    REDIS_PASSWORD?: string;
+    CACHE_REDIS_URL: string;
 
     /**
      * Queue Redis server hostname or IP address
      */
     @IsNotEmpty()
     @IsString()
-    QUEUE_REDIS_HOST: string;
-
-    /**
-     * Queue Redis server port number
-     */
-    @IsNumber({
-        allowInfinity: false,
-        allowNaN: false,
-        maxDecimalPlaces: 0,
-    })
-    @IsInt()
-    @IsNotEmpty()
-    @Type(() => Number)
-    QUEUE_REDIS_PORT: number;
-
-    /**
-     * Queue Redis database index/number to use (default is 0)
-     */
-    @IsNumber({
-        allowInfinity: false,
-        allowNaN: false,
-        maxDecimalPlaces: 0,
-    })
-    @Min(0)
-    @IsInt()
-    @IsNotEmpty()
-    @Type(() => Number)
-    QUEUE_REDIS_DATABASE: number;
-
-    /**
-     * Queue Redis username for authentication (optional)
-     */
-    @ValidateIf(
-        o =>
-            o.QUEUE_REDIS_USERNAME !== undefined &&
-            o.QUEUE_REDIS_USERNAME !== ''
-    )
-    @IsNotEmpty()
-    @IsString()
-    QUEUE_REDIS_USERNAME?: string;
-
-    /**
-     * Queue Redis password for authentication (optional)
-     */
-    @ValidateIf(
-        o =>
-            o.QUEUE_REDIS_PASSWORD !== undefined &&
-            o.QUEUE_REDIS_PASSWORD !== ''
-    )
-    @IsNotEmpty()
-    @IsString()
-    QUEUE_REDIS_PASSWORD?: string;
+    QUEUE_REDIS_URL: string;
 
     /**
      * Sentry DSN for error tracking and monitoring (optional)

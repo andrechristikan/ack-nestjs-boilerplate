@@ -16,7 +16,7 @@ export class HelloPublicController {
 
     @HelloPublicDoc()
     @Response('hello.hello', {
-        cached: true,
+        cache: true,
     })
     @Get('/')
     async hello(): Promise<IResponseReturn<HelloResponseDto>> {

@@ -3,56 +3,43 @@ import { SessionUtil } from '@modules/session/utils/session.util';
 import { SessionService } from '@modules/session/services/session.service';
 import {
     CACHE_MANAGER,
-    CacheModule,
+    CacheModule as CacheManagerModule,
     CacheOptions,
 } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import KeyvRedis from '@keyv/redis';
-import { SESSION_CACHE_MANAGER } from '@modules/session/constants/session.constant';
+import { SessionCacheProvider } from '@modules/session/constants/session.constant';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
+import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 
 @Module({
     imports: [
-        CacheModule.registerAsync({
+        CacheManagerModule.registerAsync({
             imports: [ConfigModule],
-            useFactory: async (
-                configService: ConfigService
-            ): Promise<CacheOptions> => ({
-                max: configService.get<number>('redis.cached.max'),
-                ttl: configService.get<number>('redis.cached.ttlInMs'),
-                namespace: configService.get<string>('session.namespace'),
-                stores: [
-                    new KeyvRedis({
-                        socket: {
-                            host: configService.get<string>(
-                                'redis.cached.host'
-                            ),
-                            port: configService.get<number>(
-                                'redis.cached.port'
-                            ),
-                        },
-                        username: configService.get<string>(
-                            'redis.cached.username'
-                        ),
-                        password: configService.get<string>(
-                            'redis.cached.password'
-                        ),
-                        database: configService.get<number>(
-                            'redis.cached.database'
-                        ),
-                    }),
-                ],
-            }),
-            inject: [ConfigService],
+            inject: [ConfigService, RedisClientCachedProvider],
+            useFactory: (
+                configService: ConfigService,
+                redisClient: KeyvRedis<unknown>
+            ): CacheOptions => {
+                return {
+                    stores: [redisClient],
+                    ttl: configService.get<number>('redis.cache.ttlInMs'),
+                };
+            },
         }),
     ],
-    exports: [SessionUtil, SessionService, SessionRepository],
+    exports: [
+        SessionUtil,
+        SessionService,
+        SessionRepository,
+        SessionCacheProvider,
+    ],
     providers: [
         SessionUtil,
         SessionService,
         SessionRepository,
         {
-            provide: SESSION_CACHE_MANAGER,
+            provide: SessionCacheProvider,
             useExisting: CACHE_MANAGER,
         },
     ],

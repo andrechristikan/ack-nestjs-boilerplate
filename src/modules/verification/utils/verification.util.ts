@@ -70,6 +70,7 @@ export class VerificationUtil {
             expiredAt: this.setExpiredDate(),
             type,
             token,
+            expiredInMinutes: this.expiredInMinutes,
             link: `${this.homeUrl}/${this.linkBaseUrl}/${token}`,
         };
     }

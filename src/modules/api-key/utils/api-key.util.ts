@@ -2,7 +2,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { HelperService } from '@common/helper/services/helper.service';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
@@ -11,6 +10,7 @@ import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { IApiKeyGenerateCredential } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 
 @Injectable()
 export class ApiKeyUtil {
@@ -19,7 +19,7 @@ export class ApiKeyUtil {
     private readonly header: string;
 
     constructor(
-        @Inject(CACHE_MANAGER) private cacheManager: Cache,
+        @Inject(CacheMainProvider) private cacheManager: Cache,
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {

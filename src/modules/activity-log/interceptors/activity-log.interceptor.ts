@@ -21,6 +21,10 @@ import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-
 import { Response } from 'express';
 import { IResponseActivityLogReturn } from '@common/response/interfaces/response.interface';
 
+/**
+ * Interceptor that automatically logs user activities to the database.
+ * Captures user actions, IP addresses, user agents, and metadata for audit trail purposes.
+ */
 @Injectable()
 export class ActivityLogInterceptor implements NestInterceptor {
     constructor(
@@ -28,6 +32,14 @@ export class ActivityLogInterceptor implements NestInterceptor {
         private readonly activityRepository: ActivityLogRepository
     ) {}
 
+    /**
+     * Intercepts HTTP requests to log user activities after successful responses.
+     * Extracts user information, IP address, user agent, and action metadata to create activity log entries.
+     *
+     * @param {ExecutionContext} context - The execution context containing request information
+     * @param {CallHandler} next - The next handler in the chain
+     * @returns {Observable<Promise<Response>>} Observable of the response with activity logging
+     */
     intercept(
         context: ExecutionContext,
         next: CallHandler

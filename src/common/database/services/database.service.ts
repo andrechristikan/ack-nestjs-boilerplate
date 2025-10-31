@@ -62,6 +62,22 @@ export class DatabaseService
         }
     }
 
+    /**
+     * Converts data to a plain object compatible with Prisma JsonObject format.
+     *
+     * @param {T} data - The data to convert to plain object
+     * @returns {Prisma.JsonObject} Plain object representation of the data
+     */
+    toPlainObject<T>(data: T): Prisma.JsonObject {
+        return structuredClone(data) as unknown as Prisma.JsonObject;
+    }
+
+    /**
+     * Initializes the database service when the module starts.
+     * Sets up logging and establishes database connection.
+     *
+     * @returns {Promise<void>} Promise that resolves when initialization is complete
+     */
     async onModuleInit(): Promise<void> {
         try {
             await this.setupLogging();
@@ -72,6 +88,12 @@ export class DatabaseService
         }
     }
 
+    /**
+     * Cleans up database resources when the module is destroyed.
+     * Disconnects from the database.
+     *
+     * @returns {Promise<void>} Promise that resolves when cleanup is complete
+     */
     async onModuleDestroy(): Promise<void> {
         await this.disconnect();
     }

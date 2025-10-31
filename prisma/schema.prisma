@@ -24,10 +24,7 @@ model ApiKey {
   updatedBy String?
 
   @@unique(fields: [key])
-  @@unique(fields: [hash])
-  @@index(fields: [createdBy, createdAt])
-  @@index(fields: [type])
-  @@index(fields: [name])
+  @@index(fields: [name, isActive, type, createdAt])
   @@index(fields: [createdAt])
   @@map("ApiKeys")
 }
@@ -48,7 +45,7 @@ model Role {
   users User[] @relation("UserRole")
 
   @@unique(fields: [name])
-  @@index(fields: [type])
+  @@index(fields: [name, type, createdAt])
   @@index(fields: [createdAt])
   @@map("Roles")
 }
@@ -73,8 +70,7 @@ model Country {
 
   @@unique(fields: [alpha2Code])
   @@unique(fields: [alpha3Code])
-  @@index(fields: [name])
-  @@index(fields: [continent])
+  @@index(fields: [name, alpha2Code, alpha3Code, continent, createdAt])
   @@index(fields: [createdAt])
   @@map("Countries")
 }
@@ -149,9 +145,9 @@ model User {
 
   @@unique(fields: [username])
   @@unique(fields: [email])
-  @@index(fields: [roleId])
-  @@index(fields: [countryId])
-  @@index(fields: [status])
+  @@index(fields: [status, countryId, roleId, createdAt])
+  @@index(fields: [id, deletedAt])
+  @@index(fields: [email, deletedAt])
   @@index(fields: [createdAt])
   @@map("Users")
 }
@@ -163,7 +159,7 @@ model Verification {
   type       ENUM_VERIFICATION_TYPE
   token      String
   expiredAt  DateTime
-  verifiedAt String?
+  verifiedAt DateTime?
   isUsed     Boolean                @default(false)
   reference  String
 
@@ -175,10 +171,9 @@ model Verification {
 
   user User? @relation("UserVerifications", fields: [userId], references: [id])
 
-  @@unique(fields: [userId, type])
-  @@index(fields: [userId, isUsed, type])
+  @@unique(fields: [reference])
+  @@index(fields: [token, expiredAt, isUsed, type])
   @@index(fields: [token])
-  @@index(fields: [expiredAt])
   @@map("Verifications")
 }
 
@@ -212,7 +207,6 @@ model ActivityLog {
   createdBy String?
 
   @@index(fields: [userId])
-  @@index(fields: [action])
   @@index(fields: [createdAt])
   @@map("ActivityLogs")
 }
@@ -235,8 +229,9 @@ model Session {
   updatedBy String?
 
   @@index(fields: [userId])
-  @@index(fields: [expiredAt])
-  @@index(fields: [isRevoked])
+  @@index(fields: [userId, isRevoked, expiredAt])
+  @@index(fields: [createdAt])
+  @@index(fields: [updatedAt])
   @@map("Sessions")
 }
 
@@ -257,8 +252,10 @@ model TermPolicy {
   userAcceptances TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceTermPolicy")
 
   @@unique(fields: [type, version])
-  @@index(fields: [type])
-  @@index(fields: [status])
+  @@index(fields: [type, status, createdAt])
+  @@index(fields: [createdAt])
+  @@index(fields: [publishedAt])
+  @@index(fields: [version])
   @@map("TermPolicies")
 }
 
@@ -277,7 +274,8 @@ model TermPolicyUserAcceptance {
 
   @@unique(fields: [userId, termPolicyId])
   @@index(fields: [userId])
-  @@index(fields: [termPolicyId])
+  @@index(fields: [acceptedAt])
+  @@index(fields: [createdAt])
   @@map("TermPolicyUserAcceptances")
 }
 
@@ -296,6 +294,7 @@ model FeatureFlag {
   updatedBy String?
 
   @@unique(fields: [key])
+  @@index(fields: [key, createdAt])
   @@index(fields: [createdAt])
   @@map("FeatureFlags")
 }
@@ -391,6 +390,7 @@ enum ENUM_ACTIVITY_LOG_ACTION {
   USER_REVOKE_SESSION           @map("userRevokeSession")
   USER_REVOKE_SESSION_BY_ADMIN  @map("userRevokeSessionByAdmin")
   USER_ACCEPT_TERM_POLICY       @map("userAcceptTermPolicy")
+  USER_VERIFIED_EMAIL           @map("userVerifiedEmail")
 
   ADMIN_SESSION_REVOKE             @map("adminSessionRevoke")
   ADMIN_API_KEY_CREATE             @map("adminApiKeyCreate")

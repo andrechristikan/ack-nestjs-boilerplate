@@ -31,6 +31,7 @@ import {
     Country,
     ENUM_ACTIVITY_LOG_ACTION,
     ENUM_PASSWORD_HISTORY_TYPE,
+    ENUM_ROLE_TYPE,
     ENUM_TERM_POLICY_STATUS,
     ENUM_TERM_POLICY_TYPE,
     ENUM_USER_LOGIN_WITH,
@@ -64,6 +65,7 @@ export class UserRepository {
                 ...status,
                 ...country,
                 ...role,
+                deletedAt: null,
             },
             includes: {
                 role: true,
@@ -71,7 +73,7 @@ export class UserRepository {
         });
     }
 
-    async findWithPaginationCursor(
+    async findActiveWithPaginationCursor(
         { where, ...params }: IPaginationQueryCursorParams,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
@@ -84,6 +86,8 @@ export class UserRepository {
                 ...status,
                 ...country,
                 ...role,
+                deletedAt: null,
+                status: ENUM_USER_STATUS.ACTIVE,
             },
             includes: {
                 role: true,
@@ -94,6 +98,12 @@ export class UserRepository {
     async findOneById(id: string): Promise<User | null> {
         return this.databaseService.user.findUnique({
             where: { id, deletedAt: null },
+        });
+    }
+
+    async findOneActiveById(id: string): Promise<User | null> {
+        return this.databaseService.user.findUnique({
+            where: { id, deletedAt: null, status: ENUM_USER_STATUS.ACTIVE },
         });
     }
 
@@ -109,6 +119,17 @@ export class UserRepository {
     async findOneProfileById(id: string): Promise<IUserProfile | null> {
         return this.databaseService.user.findUnique({
             where: { id, deletedAt: null },
+            include: {
+                role: true,
+                country: true,
+                mobileNumbers: true,
+            },
+        });
+    }
+
+    async findOneActiveProfileById(id: string): Promise<IUserProfile | null> {
+        return this.databaseService.user.findUnique({
+            where: { id, deletedAt: null, status: ENUM_USER_STATUS.ACTIVE },
             include: {
                 role: true,
                 country: true,
@@ -135,7 +156,6 @@ export class UserRepository {
                 id: mobileNumberId,
                 user: {
                     id: userId,
-                    deletedAt: null,
                 },
             },
             select: { id: true },
@@ -158,7 +178,7 @@ export class UserRepository {
 
     async createByAdmin(
         username: string,
-        { countryId, email, name, roleId }: UserCreateRequestDto,
+        { countryId, email, name }: UserCreateRequestDto,
         {
             passwordCreated,
             passwordExpired,
@@ -166,7 +186,19 @@ export class UserRepository {
             salt,
             passwordPeriodExpired,
         }: IAuthPassword,
-        { expiredAt, reference, token, type }: IVerificationCreate,
+        {
+            expiredAt,
+            reference,
+            token,
+            type: verificationType,
+        }: IVerificationCreate,
+        {
+            id: roleId,
+            type: roleType,
+        }: {
+            id: string;
+            type: ENUM_ROLE_TYPE;
+        },
         { ipAddress, userAgent }: IRequestLog,
         createdBy: string
     ): Promise<User> {
@@ -184,7 +216,7 @@ export class UserRepository {
                 salt,
                 passwordAttempt: 0,
                 username,
-                isVerified: false,
+                isVerified: roleType === ENUM_ROLE_TYPE.USER ? false : true,
                 status: ENUM_USER_STATUS.ACTIVE,
                 termPolicy: {
                     [ENUM_TERM_POLICY_TYPE.COOKIE]: false,
@@ -193,12 +225,13 @@ export class UserRepository {
                     [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: true,
                 },
                 createdBy,
+                deletedAt: null,
                 verifications: {
                     create: {
                         expiredAt,
                         reference,
                         token,
-                        type,
+                        type: verificationType,
                         to: email,
                         createdBy: createdBy,
                     },
@@ -218,7 +251,7 @@ export class UserRepository {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_CREATED,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: createdBy,
                     },
                 },
@@ -245,7 +278,7 @@ export class UserRepository {
                                 : ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_STATUS,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: updatedBy,
                     },
                 },
@@ -269,7 +302,7 @@ export class UserRepository {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PROFILE,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -292,7 +325,7 @@ export class UserRepository {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PHOTO_PROFILE,
                         ipAddress: ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -317,7 +350,7 @@ export class UserRepository {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_DELETE_SELF,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: userId,
                         createdAt: deletedAt,
                     },
@@ -355,7 +388,7 @@ export class UserRepository {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_ADD_MOBILE_NUMBER,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -404,7 +437,7 @@ export class UserRepository {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_MOBILE_NUMBER,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -444,7 +477,7 @@ export class UserRepository {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_DELETE_MOBILE_NUMBER,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -467,7 +500,7 @@ export class UserRepository {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_CLAIM_USERNAME,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -511,7 +544,7 @@ export class UserRepository {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PASSWORD_BY_ADMIN,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: updatedBy,
                     },
                 },
@@ -574,7 +607,7 @@ export class UserRepository {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_CHANGE_PASSWORD,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -623,7 +656,7 @@ export class UserRepository {
                         isRevoked: false,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -632,7 +665,7 @@ export class UserRepository {
                         action,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -695,12 +728,13 @@ export class UserRepository {
                         [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: true,
                     },
                     createdBy: userId,
+                    deletedAt: null,
                     activityLogs: {
                         create: {
                             action: ENUM_ACTIVITY_LOG_ACTION.USER_CREATED,
                             ipAddress,
                             userAgent:
-                                userAgent as unknown as Prisma.InputJsonValue,
+                                this.databaseService.toPlainObject(userAgent),
                             createdBy: userId,
                         },
                     },
@@ -737,7 +771,7 @@ export class UserRepository {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_VERIFIED,
                         ipAddress,
                         userAgent:
-                            userAgent as unknown as Prisma.InputJsonValue,
+                            this.databaseService.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -817,12 +851,13 @@ export class UserRepository {
                         [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: true,
                     },
                     createdBy: userId,
+                    deletedAt: null,
                     activityLogs: {
                         create: {
                             action: ENUM_ACTIVITY_LOG_ACTION.USER_SIGNED_UP,
                             ipAddress,
                             userAgent:
-                                userAgent as unknown as Prisma.InputJsonValue,
+                                this.databaseService.toPlainObject(userAgent),
                             createdBy: userId,
                         },
                     },

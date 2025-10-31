@@ -1,6 +1,6 @@
 {
     "name": "ack-nestjs-boilerplate",
-    "version": "7.4.3",
+    "version": "8.0.0",
     "description": "Ack NestJs Boilerplate",
     "repository": {
         "type": "git",
@@ -34,7 +34,8 @@
         "package:check": "npx npm-check-updates -i",
         "generate:keys": "npx ts-node scripts/generate-keys.ts",
         "seed:fresh": "yarn migrate:remove && yarn migrate:seed",
-        "seed": "nestjs-command seed:country && nestjs-command seed:apiKey && nestjs-command seed:role && nestjs-command seed:user && nestjs-command seed:featureFlag",
+        "seed": "yarn migrate:seed",
+        "migrate:seed": "nestjs-command seed:country && nestjs-command seed:apiKey && nestjs-command seed:role && nestjs-command seed:user && nestjs-command seed:featureFlag",
         "migrate:remove": "nestjs-command remove:featureFlag && nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apiKey && nestjs-command remove:role",
         "migrate:template": "nestjs-command migrate:template",
         "rollback:template": "nestjs-command rollback:template",
@@ -159,7 +160,7 @@
     "engines": {
         "npm": "please-use-yarn",
         "yarn": ">= 1.22.22",
-        "node": ">= 20.11.0"
+        "node": ">= 24.11.0"
     },
     "resolutions": {
         "@opentelemetry/instrumentation-http": "0.53.0"

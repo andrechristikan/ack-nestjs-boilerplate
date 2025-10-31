@@ -70,7 +70,7 @@ export class ActivityLogRepository {
                 userId,
                 action,
                 ipAddress,
-                userAgent: userAgent as unknown as Prisma.InputJsonValue,
+                userAgent: this.databaseService.toPlainObject(userAgent),
                 metadata:
                     metadata && Object.keys(metadata).length > 0
                         ? (metadata as Prisma.InputJsonValue)

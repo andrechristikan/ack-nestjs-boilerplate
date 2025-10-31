@@ -1,6 +1,5 @@
 import { Processor } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
 import { EmailMobileNumberVerifiedDto } from '@modules/email/dtos/email.mobile-number-verified.dto';
 import { EmailResetPasswordDto } from '@modules/email/dtos/email.reset-password.dto';
@@ -12,21 +11,20 @@ import { EmailWorkerDto } from '@modules/email/dtos/email.worker.dto';
 import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { IEmailProcessor } from '@modules/email/interfaces/email.processor.interface';
 import { EmailService } from '@modules/email/services/email.service';
-import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
-import { WorkerBase } from '@workers/bases/worker.base';
+import { ENUM_QUEUE } from 'src/queues/enums/queue.enum';
+import { QueueProcessorBase } from 'src/queues/bases/queue.processor.base';
 
-@Processor(ENUM_WORKER_QUEUES.EMAIL)
-export class EmailProcessor extends WorkerBase implements IEmailProcessor {
-    private readonly debug: boolean;
+@Processor({
+    name: ENUM_QUEUE.EMAIL,
+})
+export class EmailProcessor
+    extends QueueProcessorBase
+    implements IEmailProcessor
+{
     private readonly logger = new Logger(EmailProcessor.name);
 
-    constructor(
-        private readonly emailService: EmailService,
-        private readonly configService: ConfigService
-    ) {
+    constructor(private readonly emailService: EmailService) {
         super();
-
-        this.debug = this.configService.get<boolean>('debug.enable');
     }
 
     async process(
@@ -89,9 +87,7 @@ export class EmailProcessor extends WorkerBase implements IEmailProcessor {
                     break;
             }
         } catch (error: unknown) {
-            if (this.debug) {
-                this.logger.error(error);
-            }
+            this.logger.error(error);
         }
 
         return;

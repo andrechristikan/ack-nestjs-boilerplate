@@ -1,7 +1,6 @@
 name: ack-nestjs-boilerplate
 
 services:
-    # Main API service
     apis:
         build:
             context: .
@@ -25,15 +24,14 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: '1'
+                    cpus: "1"
                     memory: 2G
 
-    # JWKS Server for token validation
     jwks-server:
         image: nginx:alpine
         hostname: jwks-server
         ports:
-            - '3011:80'
+            - "3011:80"
         volumes:
             - ./keys/jwks.json:/usr/share/nginx/html/.well-known/jwks.json
             - ./ci/jwks-server/jwks.conf:/etc/nginx/conf.d/default.conf
@@ -42,27 +40,26 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: '0.3'
+                    cpus: "0.3"
                     memory: 128M
         healthcheck:
             test:
                 [
-                    'CMD',
-                    'wget',
-                    '-qO-',
-                    'http://localhost:80/.well-known/jwks.json',
+                    "CMD",
+                    "wget",
+                    "-qO-",
+                    "http://localhost:80/.well-known/jwks.json",
                 ]
             interval: 30s
             timeout: 10s
             retries: 3
             start_period: 5s
 
-    # Redis for caching and queues
     redis:
         image: redis:latest
         hostname: redis
         ports:
-            - '6379:6379'
+            - "6379:6379"
         volumes:
             - redis_data:/data
         networks:
@@ -70,10 +67,10 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: '0.5'
+                    cpus: "0.5"
                     memory: 256M
         healthcheck:
-            test: ['CMD', 'redis-cli', 'ping']
+            test: ["CMD", "redis-cli", "ping"]
             interval: 10s
             timeout: 30s
             retries: 5
@@ -89,7 +86,7 @@ services:
         environment:
             - REDIS_HOST=redis
             - REDIS_PORT=6379
-            - BULL_PREFIX=bull
+            - BULL_PREFIX=queue
             - USER_LOGIN=admin
             - USER_PASSWORD=admin123
         depends_on:
@@ -97,26 +94,25 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: '0.3'
+                    cpus: "0.3"
                     memory: 128M
 
-    # MongoDB Replica Set - Primary Node
     mongo:
         image: mongo:latest
         hostname: mongo
         ports:
-            - '27017:27017'
+            - "27017:27017"
         networks:
             - app-network
         volumes:
             - mongo_data:/data/db
         command: mongod --bind_ip_all --replSet rs0 --port 27017
         extra_hosts:
-            - 'host.docker.internal:host-gateway'
+            - "host.docker.internal:host-gateway"
         deploy:
             resources:
                 limits:
-                    cpus: '1'
+                    cpus: "1"
                     memory: 1GB
         healthcheck:
             test: mongosh --eval "db.adminCommand('ping')" --quiet
@@ -125,10 +121,9 @@ services:
             retries: 5
             start_period: 20s
 
-    # MongoDB Replica Set Initialization service
     mongo-init:
         image: mongo:latest
-        restart: 'no'
+        restart: "no"
         depends_on:
             mongo:
                 condition: service_healthy
@@ -151,6 +146,8 @@ services:
         deploy:
             restart_policy:
                 condition: none
+        profiles:
+            - init
 
 volumes:
     mongo_data:

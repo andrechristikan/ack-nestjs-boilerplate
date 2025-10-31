@@ -6,12 +6,20 @@ import { join } from 'path';
 import { IEmailTemplateService } from '@modules/email/interfaces/email.template-service.interface';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 
+/**
+ * Service for managing email templates in AWS SES
+ * Handles creation, retrieval, and deletion of email templates
+ */
 @Injectable()
 export class EmailTemplateService implements IEmailTemplateService {
     private readonly logger = new Logger(EmailTemplateService.name);
 
     constructor(private readonly awsSESService: AwsSESService) {}
 
+    /**
+     * Import change password email template to AWS SES
+     * @returns {Promise<boolean>} True if template imported successfully, false otherwise
+     */
     async importChangePassword(): Promise<boolean> {
         try {
             const templatePath = join(
@@ -33,12 +41,20 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Get change password email template from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     */
     async getChangePassword(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
             name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
         });
     }
 
+    /**
+     * Delete change password email template from AWS SES
+     * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
+     */
     async deleteChangePassword(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
@@ -53,6 +69,10 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Import welcome email template to AWS SES
+     * @returns {Promise<boolean>} True if template imported successfully, false otherwise
+     */
     async importWelcome(): Promise<boolean> {
         try {
             const templatePath = join(
@@ -74,12 +94,20 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Get welcome email template from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     */
     async getWelcome(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
             name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
         });
     }
 
+    /**
+     * Delete welcome email template from AWS SES
+     * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
+     */
     async deleteWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
@@ -94,6 +122,10 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Import create by admin email template to AWS SES
+     * @returns {Promise<boolean>} True if template imported successfully, false otherwise
+     */
     async importCreateByAdmin(): Promise<boolean> {
         try {
             const templatePath = join(
@@ -115,12 +147,20 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Get create by admin email template from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     */
     async getCreateByAdmin(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
             name: ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN,
         });
     }
 
+    /**
+     * Delete create by admin email template from AWS SES
+     * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
+     */
     async deleteCreateByAdmin(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
@@ -135,6 +175,10 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Import temporary password email template to AWS SES
+     * @returns {Promise<boolean>} True if template imported successfully, false otherwise
+     */
     async importTempPassword(): Promise<boolean> {
         try {
             const templatePath = join(
@@ -156,6 +200,10 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Get temporary password email template from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     */
     async getTempPassword(): Promise<GetTemplateCommandOutput> {
         try {
             const template = await this.awsSESService.getTemplate({
@@ -170,6 +218,10 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Delete temporary password email template from AWS SES
+     * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
+     */
     async deleteTempPassword(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
@@ -184,6 +236,10 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Import reset password email template to AWS SES
+     * @returns {Promise<boolean>} True if template imported successfully, false otherwise
+     */
     async importResetPassword(): Promise<boolean> {
         try {
             const templatePath = join(
@@ -205,12 +261,20 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Get reset password email template from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     */
     async getResetPassword(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
             name: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
         });
     }
 
+    /**
+     * Delete reset password email template from AWS SES
+     * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
+     */
     async deleteResetPassword(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
@@ -225,6 +289,10 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Import email verification template to AWS SES
+     * @returns {Promise<boolean>} True if template imported successfully, false otherwise
+     */
     async importVerification(): Promise<boolean> {
         try {
             const templatePath = join(
@@ -246,12 +314,20 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Get email verification template from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     */
     async getVerification(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
             name: ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
         });
     }
 
+    /**
+     * Delete email verification template from AWS SES
+     * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
+     */
     async deleteVerification(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
@@ -266,6 +342,10 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Import email verified confirmation template to AWS SES
+     * @returns {Promise<boolean>} True if template imported successfully, false otherwise
+     */
     async importEmailVerified(): Promise<boolean> {
         try {
             const templatePath = join(
@@ -287,12 +367,20 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Get email verified confirmation template from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     */
     async getEmailVerified(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
             name: ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED,
         });
     }
 
+    /**
+     * Delete email verified confirmation template from AWS SES
+     * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
+     */
     async deleteEmailVerified(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
@@ -307,6 +395,10 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Import mobile number verified confirmation template to AWS SES
+     * @returns {Promise<boolean>} True if template imported successfully, false otherwise
+     */
     async importMobileNumberVerified(): Promise<boolean> {
         try {
             const templatePath = join(
@@ -328,12 +420,20 @@ export class EmailTemplateService implements IEmailTemplateService {
         }
     }
 
+    /**
+     * Get mobile number verified confirmation template from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     */
     async getMobileNumberVerified(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
             name: ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED,
         });
     }
 
+    /**
+     * Delete mobile number verified confirmation template from AWS SES
+     * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
+     */
     async deleteMobileNumberVerified(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({

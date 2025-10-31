@@ -4,6 +4,14 @@ import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-
 import { SetMetadata, UseInterceptors, applyDecorators } from '@nestjs/common';
 import { ENUM_ACTIVITY_LOG_ACTION } from '@prisma/client';
 
+/**
+ * Decorator that enables activity logging for controller methods.
+ * Automatically tracks user actions with optional metadata for audit trail purposes.
+ *
+ * @param {string} action - The activity action to be logged
+ * @param {IActivityLogMetadata} metadata - Optional metadata to include with the activity log
+ * @returns {MethodDecorator} Method decorator function
+ */
 export function ActivityLog(
     action: string,
     metadata?: IActivityLogMetadata

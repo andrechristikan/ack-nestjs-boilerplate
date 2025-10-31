@@ -1,5 +1,5 @@
 import { HelperService } from '@common/helper/services/helper.service';
-import { SESSION_CACHE_MANAGER } from '@modules/session/constants/session.constant';
+import { SessionCacheProvider } from '@modules/session/constants/session.constant';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { ISession } from '@modules/session/interfaces/session.interface';
 import { Cache } from '@nestjs/cache-manager';
@@ -11,15 +11,13 @@ import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-
 @Injectable()
 export class SessionUtil {
     private readonly keyPattern: string;
-    private readonly namespace: string;
 
     constructor(
-        @Inject(SESSION_CACHE_MANAGER) private cacheManager: Cache,
+        @Inject(SessionCacheProvider) private cacheManager: Cache,
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {
         this.keyPattern = this.configService.get<string>('session.keyPattern')!;
-        this.namespace = this.configService.get<string>('session.namespace')!;
     }
 
     async getLogin(userId: string, sessionId: string): Promise<boolean> {
@@ -36,10 +34,11 @@ export class SessionUtil {
         sessionId: string,
         expiredAt: Date
     ): Promise<void> {
-        const key = `${this.keyPattern}:${userId}:${sessionId}`;
+        const key = this.keyPattern
+            .replace('{userId}', userId)
+            .replace('{sessionId}', sessionId);
         const ttl = Math.floor(
-            (expiredAt.getTime() - this.helperService.dateCreate().getTime()) /
-                1000
+            expiredAt.getTime() - this.helperService.dateCreate().getTime()
         );
 
         await this.cacheManager.set(
@@ -57,7 +56,9 @@ export class SessionUtil {
     }
 
     async deleteOneLogin(userId: string, sessionId: string): Promise<void> {
-        const key = `${this.keyPattern}:${userId}:${sessionId}`;
+        const key = this.keyPattern
+            .replace('{userId}', userId)
+            .replace('{sessionId}', sessionId);
         await this.cacheManager.del(key);
 
         return;
@@ -68,10 +69,9 @@ export class SessionUtil {
         sessions: { id: string }[]
     ): Promise<void> {
         if (sessions.length > 0) {
+            const key = this.keyPattern.replace('{userId}', userId);
             await this.cacheManager.mdel(
-                sessions.map(
-                    session => `${this.keyPattern}:${userId}:${session.id}`
-                )
+                sessions.map(session => key.replace('{sessionId}', session.id))
             );
         }
 

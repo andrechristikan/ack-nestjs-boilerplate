@@ -17,6 +17,7 @@ import {
     ENUM_ACTIVITY_LOG_ACTION,
     ENUM_TERM_POLICY_STATUS,
     ENUM_TERM_POLICY_TYPE,
+    ENUM_USER_STATUS,
     Prisma,
     TermPolicy,
 } from '@prisma/client';
@@ -157,6 +158,8 @@ export class TermPolicyRepository {
             this.databaseService.user.update({
                 where: {
                     id: userId,
+                    deletedAt: null,
+                    status: ENUM_USER_STATUS.ACTIVE,
                 },
                 data: {
                     termPolicy: {
@@ -167,7 +170,7 @@ export class TermPolicyRepository {
                             action: ENUM_ACTIVITY_LOG_ACTION.USER_ACCEPT_TERM_POLICY,
                             ipAddress,
                             userAgent:
-                                userAgent as unknown as Prisma.InputJsonValue,
+                                this.databaseService.toPlainObject(userAgent),
                             createdBy: userId,
                         },
                     },
@@ -285,7 +288,10 @@ export class TermPolicyRepository {
                 },
             }),
             this.databaseService.user.updateMany({
-                where: {},
+                where: {
+                    deletedAt: null,
+                    status: ENUM_USER_STATUS.ACTIVE,
+                },
                 data: {
                     termPolicy: {
                         [type]: false,

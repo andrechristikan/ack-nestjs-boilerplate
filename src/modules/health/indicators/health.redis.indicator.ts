@@ -1,4 +1,4 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { Inject, Injectable } from '@nestjs/common';
 import {
     HealthIndicatorResult,
@@ -9,7 +9,7 @@ import { Cache } from 'cache-manager';
 @Injectable()
 export class HealthRedisIndicator {
     constructor(
-        @Inject(CACHE_MANAGER) private cacheManager: Cache,
+        @Inject(CacheMainProvider) private cacheManager: Cache,
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}
 

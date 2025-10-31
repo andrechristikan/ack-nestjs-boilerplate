@@ -10,7 +10,12 @@ import { AuthModule } from '@modules/auth/auth.module';
 import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-flag.seed';
 import { UserModule } from '@modules/user/user.module';
 
-// TODO: LAST, Change to commander package
+/**
+ * Migration module that provides database seeding functionality.
+ * Contains seed providers for API keys, countries, roles, users, and feature flags.
+ */
+// TODO: LAST - LAST
+// Change to commander package
 @Module({
     imports: [
         CommonModule,

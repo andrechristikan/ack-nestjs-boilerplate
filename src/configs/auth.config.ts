@@ -5,14 +5,14 @@ export interface IConfigAuth {
     jwt: {
         accessToken: {
             kid: string;
-            privateKeyPath: string;
-            publicKeyPath: string;
+            privateKey: string;
+            publicKey: string;
             expirationTimeInSeconds: number;
         };
         refreshToken: {
             kid: string;
-            privateKeyPath: string;
-            publicKeyPath: string;
+            privateKey: string;
+            publicKey: string;
             expirationTimeInSeconds: number;
         };
         algorithm: string;
@@ -54,10 +54,8 @@ export default registerAs(
         jwt: {
             accessToken: {
                 kid: process.env.AUTH_JWT_ACCESS_TOKEN_KID,
-                privateKeyPath:
-                    process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY_PATH,
-                publicKeyPath:
-                    process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY_PATH,
+                privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY,
+                publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY,
                 expirationTimeInSeconds:
                     ms(
                         process.env
@@ -67,10 +65,8 @@ export default registerAs(
 
             refreshToken: {
                 kid: process.env.AUTH_JWT_REFRESH_TOKEN_KID,
-                privateKeyPath:
-                    process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY_PATH,
-                publicKeyPath:
-                    process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY_PATH,
+                privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY,
+                publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY,
                 expirationTimeInSeconds:
                     ms(
                         process.env

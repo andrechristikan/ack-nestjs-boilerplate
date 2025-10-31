@@ -10,9 +10,7 @@ import {
     IAuthPasswordOptions,
     IAuthSocialPayload,
 } from '@modules/auth/interfaces/auth.interface';
-import { readFileSync } from 'fs';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { join } from 'path';
 import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
 import { HelperService } from '@common/helper/services/helper.service';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
@@ -80,23 +78,11 @@ export class AuthService implements IAuthService {
         this.jwtAccessTokenKid = this.configService.get<string>(
             'auth.jwt.accessToken.kid'
         );
-        this.jwtAccessTokenPrivateKey = readFileSync(
-            join(
-                process.cwd(),
-                this.configService.get<string>(
-                    'auth.jwt.accessToken.privateKeyPath'
-                )
-            ),
-            'utf8'
+        this.jwtAccessTokenPrivateKey = this.configService.get<string>(
+            'auth.jwt.accessToken.privateKey'
         );
-        this.jwtAccessTokenPublicKey = readFileSync(
-            join(
-                process.cwd(),
-                this.configService.get<string>(
-                    'auth.jwt.accessToken.publicKeyPath'
-                )
-            ),
-            'utf8'
+        this.jwtAccessTokenPublicKey = this.configService.get<string>(
+            'auth.jwt.accessToken.publicKey'
         );
         this.jwtAccessTokenExpirationTimeInSeconds =
             this.configService.get<number>(
@@ -106,23 +92,11 @@ export class AuthService implements IAuthService {
         this.jwtRefreshTokenKid = this.configService.get<string>(
             'auth.jwt.refreshToken.kid'
         );
-        this.jwtRefreshTokenPrivateKey = readFileSync(
-            join(
-                process.cwd(),
-                this.configService.get<string>(
-                    'auth.jwt.refreshToken.privateKeyPath'
-                )
-            ),
-            'utf8'
+        this.jwtRefreshTokenPrivateKey = this.configService.get<string>(
+            'auth.jwt.refreshToken.privateKey'
         );
-        this.jwtRefreshTokenPublicKey = readFileSync(
-            join(
-                process.cwd(),
-                this.configService.get<string>(
-                    'auth.jwt.refreshToken.publicKeyPath'
-                )
-            ),
-            'utf8'
+        this.jwtRefreshTokenPublicKey = this.configService.get<string>(
+            'auth.jwt.refreshToken.publicKey'
         );
         this.jwtRefreshTokenExpirationTimeInSeconds =
             this.configService.get<number>(

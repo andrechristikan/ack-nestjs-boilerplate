@@ -4,6 +4,10 @@ import { UserService } from '@modules/user/services/user.service';
 import { Reflector } from '@nestjs/core';
 import { USER_GUARD_IS_VERIFIED_META_KEY } from '@modules/user/constants/user.constant';
 
+/**
+ * Guard that validates user authentication and verification status.
+ * Checks if the user is authenticated and optionally validates verification status.
+ */
 @Injectable()
 export class UserGuard implements CanActivate {
     constructor(
@@ -11,6 +15,13 @@ export class UserGuard implements CanActivate {
         private readonly userService: UserService
     ) {}
 
+    /**
+     * Validates user authentication and verification status.
+     * Extracts verification requirement from metadata and validates the user accordingly.
+     *
+     * @param {ExecutionContext} context - The execution context containing request information
+     * @returns {Promise<boolean>} Promise that resolves to true if user is valid and meets verification requirements
+     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const isVerified =
             this.reflector.get<boolean>(

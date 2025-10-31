@@ -8,7 +8,14 @@ import { TermPolicyPublicController } from '@modules/term-policy/controllers/ter
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { UserPublicController } from '@modules/user/controllers/user.public.controller';
 import { UserModule } from '@modules/user/user.module';
+import { VerificationPublicController } from '@modules/verification/controllers/verification.public.controller';
+import { VerificationModule } from '@modules/verification/verification.module';
 import { Module } from '@nestjs/common';
+
+/**
+ * Public routes module that provides publicly accessible endpoints.
+ * Contains controllers for countries, roles, hello world, users, term policies, and verification that don't require authentication.
+ */
 @Module({
     controllers: [
         CountryPublicController,
@@ -16,6 +23,7 @@ import { Module } from '@nestjs/common';
         HelloPublicController,
         UserPublicController,
         TermPolicyPublicController,
+        VerificationPublicController,
     ],
     providers: [],
     exports: [],
@@ -25,6 +33,7 @@ import { Module } from '@nestjs/common';
         UserModule,
         AuthModule,
         TermPolicyModule,
+        VerificationModule,
     ],
 })
 export class RoutesPublicModule {}

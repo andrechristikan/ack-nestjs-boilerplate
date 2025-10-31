@@ -1,7 +1,7 @@
+import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperService } from '@common/helper/services/helper.service';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
 import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FeatureFlag } from '@prisma/client';
@@ -14,7 +14,7 @@ export class FeatureFlagUtil {
     private readonly cacheTtlMs: number;
 
     constructor(
-        @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {

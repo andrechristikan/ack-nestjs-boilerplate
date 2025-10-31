@@ -3,8 +3,9 @@ import { RESPONSE_MESSAGE_PATH_META_KEY } from '@common/response/constants/respo
 import { ResponseInterceptor } from '@common/response/interceptors/response.interceptor';
 import { ResponsePagingInterceptor } from '@common/response/interceptors/response.paging.interceptor';
 import { IResponseOptions } from '@common/response/interfaces/response.interface';
-import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import { ResponseFileInterceptor } from '@common/response/interceptors/response.file.interceptor';
+import { ResponseCacheInterceptor } from '@common/response/interceptors/response.cache.interceptor';
 
 /**
  * Decorator for standard API responses with optional caching.
@@ -22,17 +23,16 @@ export function Response(
         SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
     ];
 
-    if (options?.cached) {
-        // TODO: LAST change CacheInterceptor to custom cache interceptor
-        decorators.push(UseInterceptors(CacheInterceptor));
+    if (options?.cache) {
+        decorators.push(UseInterceptors(ResponseCacheInterceptor));
 
-        if (typeof options?.cached !== 'boolean') {
-            if (options?.cached?.key) {
-                decorators.push(CacheKey(options?.cached?.key));
+        if (typeof options?.cache !== 'boolean') {
+            if (options?.cache?.key) {
+                decorators.push(CacheKey(options?.cache?.key));
             }
 
-            if (options?.cached?.ttl) {
-                decorators.push(CacheTTL(options?.cached?.ttl));
+            if (options?.cache?.ttl) {
+                decorators.push(CacheTTL(options?.cache?.ttl));
             }
         }
     }
@@ -56,16 +56,16 @@ export function ResponsePaging(
         SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
     ];
 
-    if (options?.cached) {
-        decorators.push(UseInterceptors(CacheInterceptor));
+    if (options?.cache) {
+        decorators.push(UseInterceptors(ResponseCacheInterceptor));
 
-        if (typeof options?.cached !== 'boolean') {
-            if (options?.cached?.key) {
-                decorators.push(CacheKey(options?.cached?.key));
+        if (typeof options?.cache !== 'boolean') {
+            if (options?.cache?.key) {
+                decorators.push(CacheKey(options?.cache?.key));
             }
 
-            if (options?.cached?.ttl) {
-                decorators.push(CacheTTL(options?.cached?.ttl));
+            if (options?.cache?.ttl) {
+                decorators.push(CacheTTL(options?.cache?.ttl));
             }
         }
     }

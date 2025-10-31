@@ -16,6 +16,7 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
+import { SESSION_DEFAULT_AVAILABLE_ORDER_BY } from '@modules/session/constants/session.list.constant';
 import {
     SessionSharedListDoc,
     SessionSharedRevokeDoc,
@@ -43,7 +44,9 @@ export class SessionSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationCursorQuery()
+        @PaginationCursorQuery({
+            availableOrderBy: SESSION_DEFAULT_AVAILABLE_ORDER_BY,
+        })
         pagination: IPaginationQueryCursorParams,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {

@@ -1,8 +1,3 @@
-TODO: NEXT
-- apply term policy decorator
-- apply activity log decorator, remove insert in each repository module
-
-
 [![Contributors][ack-contributors-shield]][ack-contributors]
 [![Forks][ack-forks-shield]][ack-forks]
 [![Stargazers][ack-stars-shield]][ack-stars]

@@ -13,6 +13,10 @@ import { UserAdminController } from '@modules/user/controllers/user.admin.contro
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 
+/**
+ * Admin routes module that provides administrative endpoints.
+ * Contains controllers for managing API keys, roles, users, password history, activity logs, sessions, term policies, and feature flags.
+ */
 @Module({
     controllers: [
         ApiKeyAdminController,

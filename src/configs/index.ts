@@ -15,6 +15,7 @@ import LoggerConfig from '@configs/logger.config';
 import SessionConfig from '@configs/session.config';
 import TermPolicyConfig from '@configs/term-policy.config';
 import FeatureFlagConfig from '@configs/feature-flag.config';
+import ResponseConfig from '@configs/response.config';
 
 export default [
     AppConfig,
@@ -34,4 +35,5 @@ export default [
     SessionConfig,
     TermPolicyConfig,
     FeatureFlagConfig,
+    ResponseConfig,
 ];

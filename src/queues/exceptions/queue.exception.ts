@@ -1,4 +1,4 @@
-export class WorkerException extends Error {
+export class QueueException extends Error {
     readonly isFatal: boolean = false;
 
     constructor(message: string, isFatal?: boolean) {

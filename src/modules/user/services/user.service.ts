@@ -69,6 +69,7 @@ import { IUser } from '@modules/user/interfaces/user.interface';
 import { IUserService } from '@modules/user/interfaces/user.service.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { VerificationRepository } from '@modules/verification/repositories/verification.repository';
 import { VerificationUtil } from '@modules/verification/utils/verification.util';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
@@ -81,21 +82,22 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import {
+    ENUM_ROLE_TYPE,
     ENUM_USER_LOGIN_WITH,
     ENUM_USER_STATUS,
     ENUM_VERIFICATION_TYPE,
     PasswordHistory,
 } from '@prisma/client';
-import { ENUM_WORKER_QUEUES } from '@workers/enums/worker.enum';
 import { Queue } from 'bullmq';
 import { Duration } from 'luxon';
+import { ENUM_QUEUE } from 'src/queues/enums/queue.enum';
 
 @Injectable()
 export class UserService implements IUserService {
     private readonly userRoleName: string = 'user';
 
     constructor(
-        @InjectQueue(ENUM_WORKER_QUEUES.EMAIL)
+        @InjectQueue(ENUM_QUEUE.EMAIL)
         private readonly emailQueue: Queue,
         private readonly userUtil: UserUtil,
         private readonly verificationUtil: VerificationUtil,
@@ -110,7 +112,8 @@ export class UserService implements IUserService {
         private readonly databaseUtil: DatabaseUtil,
         private readonly sessionUtil: SessionUtil,
         private readonly sessionRepository: SessionRepository,
-        private readonly featureFlagService: FeatureFlagService
+        private readonly featureFlagService: FeatureFlagService,
+        private readonly verificationRepository: VerificationRepository
     ) {}
 
     async validateUserGuard(
@@ -176,14 +179,14 @@ export class UserService implements IUserService {
         };
     }
 
-    async getListCursor(
+    async getListActiveCursor(
         pagination: IPaginationQueryCursorParams,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<UserListResponseDto>> {
         const { data, ...others } =
-            await this.userRepository.findWithPaginationCursor(
+            await this.userRepository.findActiveWithPaginationCursor(
                 pagination,
                 status,
                 role,
@@ -259,10 +262,12 @@ export class UserService implements IUserService {
                 },
                 password,
                 emailVerification,
+                checkRole,
                 requestLog,
                 createdBy
             );
 
+            const keyVerification = `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created.id}`;
             await Promise.all([
                 this.emailQueue.add(
                     ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN,
@@ -278,33 +283,35 @@ export class UserService implements IUserService {
                         } as EmailCreateByAdminDto,
                     },
                     {
-                        debounce: {
-                            id: `${ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN}-${created.id}`,
-                            ttl: 1000,
-                        },
+                        jobId: `${ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN}-${created.id}`,
                     }
                 ),
-                this.emailQueue.add(
-                    ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
-                    {
-                        send: {
-                            email,
-                            username: created.username,
-                        },
-                        data: {
-                            token: emailVerification.token,
-                            expiredAt: emailVerification.expiredAt,
-                            reference: emailVerification.reference,
-                            link: emailVerification.link,
-                        } as EmailVerificationDto,
-                    },
-                    {
-                        debounce: {
-                            id: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created.id}`,
-                            ttl: 1000,
-                        },
-                    }
-                ),
+                checkRole.type === ENUM_ROLE_TYPE.USER
+                    ? this.emailQueue.add(
+                          ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+                          {
+                              send: {
+                                  email,
+                                  username: created.username,
+                              },
+                              data: {
+                                  token: emailVerification.token,
+                                  expiredAt: emailVerification.expiredAt,
+                                  reference: emailVerification.reference,
+                                  link: emailVerification.link,
+                              } as EmailVerificationDto,
+                          },
+                          {
+                              deduplication: {
+                                  id: keyVerification,
+                                  ttl:
+                                      emailVerification.expiredInMinutes *
+                                      60 *
+                                      1000,
+                              },
+                          }
+                      )
+                    : Promise.resolve(),
             ]);
 
             return {
@@ -411,7 +418,7 @@ export class UserService implements IUserService {
     async getProfile(
         userId: string
     ): Promise<IResponseReturn<UserProfileResponseDto>> {
-        const user = await this.userRepository.findOneProfileById(userId);
+        const user = await this.userRepository.findOneActiveProfileById(userId);
         const mapped = this.userUtil.mapProfile(user);
 
         return {
@@ -791,9 +798,9 @@ export class UserService implements IUserService {
                     },
                 },
                 {
-                    debounce: {
+                    deduplication: {
                         id: `${ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD}-${updated.id}`,
-                        ttl: 1000,
+                        ttl: 5000,
                     },
                 }
             );
@@ -832,7 +839,7 @@ export class UserService implements IUserService {
         { newPassword, oldPassword }: UserChangePasswordRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        const user = await this.userRepository.findOneById(userId);
+        const user = await this.userRepository.findOneActiveById(userId);
 
         if (this.authService.checkPasswordAttempt(user)) {
             throw new ForbiddenException({
@@ -891,9 +898,9 @@ export class UserService implements IUserService {
                     send: { email: user.email, name: user.name },
                 },
                 {
-                    debounce: {
+                    deduplication: {
                         id: `${ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD}-${updated.id}`,
-                        ttl: 1000,
+                        ttl: 5000,
                     },
                 }
             );
@@ -955,7 +962,40 @@ export class UserService implements IUserService {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
                 message: 'auth.error.passwordExpired',
             });
-        } else if (user.isVerified !== true) {
+        } else if (!user.isVerified) {
+            const emailVerification = this.verificationUtil.createVerification(
+                ENUM_VERIFICATION_TYPE.EMAIL
+            );
+
+            await this.verificationRepository.resendEmailByUser(
+                user.id,
+                user.email,
+                emailVerification
+            );
+
+            const keyVerification = `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${user.id}`;
+            await this.emailQueue.add(
+                ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+                {
+                    send: {
+                        email: user.email,
+                        username: user.username,
+                    },
+                    data: {
+                        token: emailVerification.token,
+                        expiredAt: emailVerification.expiredAt,
+                        reference: emailVerification.reference,
+                        link: emailVerification.link,
+                    } as EmailVerificationDto,
+                },
+                {
+                    deduplication: {
+                        id: keyVerification,
+                        ttl: emailVerification.expiredInMinutes * 60 * 1000,
+                    },
+                }
+            );
+
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_NOT_VERIFIED,
                 message: 'user.error.emailNotVerified',
@@ -1046,10 +1086,7 @@ export class UserService implements IUserService {
                     send: { email: user.email, username: user.username },
                 },
                 {
-                    debounce: {
-                        id: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${user.id}`,
-                        ttl: 1000,
-                    },
+                    jobId: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${user.id}`,
                 }
             );
         }
@@ -1192,6 +1229,7 @@ export class UserService implements IUserService {
                 requestLog
             );
 
+            const keyVerification = `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created.id}`;
             await Promise.all([
                 this.emailQueue.add(
                     ENUM_SEND_EMAIL_PROCESS.WELCOME,
@@ -1202,10 +1240,7 @@ export class UserService implements IUserService {
                         },
                     },
                     {
-                        debounce: {
-                            id: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${created.id}`,
-                            ttl: 1000,
-                        },
+                        jobId: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${created.id}`,
                     }
                 ),
                 this.emailQueue.add(
@@ -1223,9 +1258,9 @@ export class UserService implements IUserService {
                         } as EmailVerificationDto,
                     },
                     {
-                        debounce: {
-                            id: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created.id}`,
-                            ttl: 1000,
+                        deduplication: {
+                            id: keyVerification,
+                            ttl: emailVerification.expiredInMinutes * 60 * 1000,
                         },
                     }
                 ),

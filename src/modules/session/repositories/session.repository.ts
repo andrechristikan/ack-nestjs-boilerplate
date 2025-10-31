@@ -9,7 +9,7 @@ import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ISession } from '@modules/session/interfaces/session.interface';
 import { Injectable } from '@nestjs/common';
-import { ENUM_ACTIVITY_LOG_ACTION, Prisma, Session } from '@prisma/client';
+import { ENUM_ACTIVITY_LOG_ACTION, Session } from '@prisma/client';
 
 @Injectable()
 export class SessionRepository {
@@ -115,7 +115,9 @@ export class SessionRepository {
                                 action: ENUM_ACTIVITY_LOG_ACTION.USER_REVOKE_SESSION,
                                 ipAddress,
                                 userAgent:
-                                    userAgent as unknown as Prisma.InputJsonValue,
+                                    this.databaseService.toPlainObject(
+                                        userAgent
+                                    ),
                                 createdBy: userId,
                             },
                         },
@@ -145,7 +147,9 @@ export class SessionRepository {
                                 action: ENUM_ACTIVITY_LOG_ACTION.USER_REVOKE_SESSION_BY_ADMIN,
                                 ipAddress,
                                 userAgent:
-                                    userAgent as unknown as Prisma.InputJsonValue,
+                                    this.databaseService.toPlainObject(
+                                        userAgent
+                                    ),
                                 createdBy: revokeBy,
                             },
                         },

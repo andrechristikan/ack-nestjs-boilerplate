@@ -13,7 +13,7 @@ export class HelloService {
         private readonly configService: ConfigService
     ) {}
 
-    hello(): IResponseReturn<HelloResponseDto> {
+    async hello(): Promise<IResponseReturn<HelloResponseDto>> {
         // date
         const date = this.helperService.dateCreate();
         const dateIso = this.helperService.dateFormatToIso(date);

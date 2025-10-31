@@ -10,6 +10,10 @@ import { UserSharedController } from '@modules/user/controllers/user.shared.cont
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 
+/**
+ * Shared routes module that provides endpoints accessible by multiple user types.
+ * Contains controllers for users, password history, activity logs, sessions, and term policies that are shared between different access levels.
+ */
 @Module({
     controllers: [
         UserSharedController,

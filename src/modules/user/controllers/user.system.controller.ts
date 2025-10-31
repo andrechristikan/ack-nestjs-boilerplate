@@ -74,7 +74,7 @@ export class UserSystemController {
         @PaginationQueryFilterEqualString('country')
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-        return this.userService.getListCursor(
+        return this.userService.getListActiveCursor(
             pagination,
             status,
             role,

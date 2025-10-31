@@ -125,6 +125,7 @@ export class MigrationUserSeed {
                         passwordExpired,
                         passwordAttempt: 0,
                         signUpAt: today,
+                        isVerified: true,
                         signUpWith: ENUM_USER_SIGN_UP_WITH.CREDENTIAL,
                         signUpFrom: ENUM_USER_SIGN_UP_FROM.SYSTEM,
                         status: ENUM_USER_STATUS.ACTIVE,
@@ -135,6 +136,7 @@ export class MigrationUserSeed {
                             [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: false,
                         },
                         username: this.userUtil.createRandomUsername(),
+                        deletedAt: null,
                     }) as Prisma.UserCreateManyInput
             ),
         });

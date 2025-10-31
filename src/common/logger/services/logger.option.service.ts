@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Params } from 'nestjs-pino';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
@@ -95,6 +95,9 @@ export class LoggerOptionService {
 
     /**
      * Generates or extracts a request ID from HTTP headers or request object.
+     *
+     * @param {IRequestApp} request - The HTTP request object to extract ID from
+     * @returns {string} Unique request identifier
      */
     private getReqId(request: IRequestApp): string {
         const headers = request.headers;
@@ -114,6 +117,8 @@ export class LoggerOptionService {
 
     /**
      * Builds transport configurations for console and file logging.
+     *
+     * @returns {Array<{target: string; options: Record<string, unknown>}>} Array of transport configurations
      */
     private buildTransports(): Array<{
         target: string;
@@ -129,7 +134,7 @@ export class LoggerOptionService {
                     levelFirst: true,
                     translateTime: 'SYS:standard',
                     messageFormat: '[{context}] {msg}',
-                    ignore: 'pid,hostname,context,labels',
+                    ignore: 'pid,hostname,context',
                     singleLine: false,
                 },
             });
@@ -148,6 +153,12 @@ export class LoggerOptionService {
         return transports;
     }
 
+    /**
+     * Sanitizes log messages by removing ANSI escape codes and formatting.
+     *
+     * @param {unknown} message - The message to sanitize
+     * @returns {string | unknown} Sanitized message or original if not a string
+     */
     private sanitizeMessage(message: unknown): string | unknown {
         if (typeof message === 'string' && !this.prettier) {
             return message
@@ -164,6 +175,8 @@ export class LoggerOptionService {
 
     /**
      * Creates a log formatter function that adds timestamp and application metadata.
+     *
+     * @returns {(object: Record<string, unknown>) => Record<string, unknown>} Log formatter function
      */
     private createLogFormatter(): (
         object: Record<string, unknown>
@@ -171,16 +184,16 @@ export class LoggerOptionService {
         return (obj: Record<string, unknown>) => {
             const today = this.helperService.dateCreate();
 
-            const { message, res, req, err, ...other } = obj;
+            const { message, msg, res, req, err, ...other } = obj;
 
             return {
                 timestamp: today.valueOf(),
-                labels: {
+                service: {
                     name: this.name,
                     environment: this.env,
                     version: this.version,
                 },
-                msg: this.sanitizeMessage(message),
+                msg: this.sanitizeMessage(message ?? msg),
                 ...other,
                 ...(req && {
                     request: req,
@@ -202,6 +215,9 @@ export class LoggerOptionService {
 
     /**
      * Creates a rotating file stream for log files if file logging is enabled.
+     *
+     * @param {typeof import('rotating-file-stream')} rfs - The rotating file stream module
+     * @returns {import('rotating-file-stream').RotatingFileStream | undefined} File stream or undefined if disabled
      */
     private createFileStream(
         rfs: typeof import('rotating-file-stream')
@@ -220,6 +236,8 @@ export class LoggerOptionService {
 
     /**
      * Creates redaction configuration to hide sensitive data in logs.
+     *
+     * @returns {{paths: string[]; censor: string; remove: boolean}} Redaction configuration object
      */
     private createRedactionConfig(): {
         paths: string[];
@@ -228,13 +246,15 @@ export class LoggerOptionService {
     } {
         return {
             paths: this.sensitivePaths,
-            censor: '***[REDACTED]***',
+            censor: '[REDACTED]',
             remove: false,
         };
     }
 
     /**
      * Creates custom serializers for request, response, and error objects.
+     *
+     * @returns {{req: (request: IRequestApp) => Record<string, unknown>}} Object containing serializer functions
      */
     private createSerializers(): {
         req: (request: IRequestApp) => Record<string, unknown>;
@@ -246,6 +266,11 @@ export class LoggerOptionService {
 
     /**
      * Recursively sanitizes objects by redacting sensitive fields.
+     *
+     * @param {unknown} obj - The object to sanitize
+     * @param {number} maxDepth - Maximum recursion depth (default: 5)
+     * @param {number} currentDepth - Current recursion depth (default: 0)
+     * @returns {unknown} Sanitized object with sensitive fields redacted
      */
     private sanitizeObject(
         obj: unknown,
@@ -304,6 +329,9 @@ export class LoggerOptionService {
 
     /**
      * Extracts the client's IP address from HTTP request.
+     *
+     * @param {IRequestApp} request - The HTTP request object
+     * @returns {string} Client IP address or 'unknown' if not found
      */
     private extractClientIP(request: IRequestApp): string {
         if (request.ip) {
@@ -338,6 +366,9 @@ export class LoggerOptionService {
 
     /**
      * Extracts and serializes user information from the request object.
+     *
+     * @param {IRequestApp} request - The HTTP request object
+     * @returns {string | null} User ID or null if not authenticated
      */
     private serializeUser(request: IRequestApp): string | null {
         return (request.user as unknown as { userId: string })?.userId ?? null;
@@ -345,6 +376,8 @@ export class LoggerOptionService {
 
     /**
      * Adds debug information including memory usage and uptime to log entries.
+     *
+     * @returns {LoggerDebugInfo | undefined} Debug information object or undefined in production
      */
     private addDebugInfo(): LoggerDebugInfo | undefined {
         if (this.env === ENUM_APP_ENVIRONMENT.PRODUCTION) {
@@ -363,6 +396,8 @@ export class LoggerOptionService {
 
     /**
      * Creates a serializer function for HTTP request objects.
+     *
+     * @returns {(request: IRequestApp) => Record<string, unknown>} Request serializer function
      */
     private createRequestSerializer(): (
         request: IRequestApp
@@ -392,6 +427,9 @@ export class LoggerOptionService {
 
     /**
      * Creates a serialized representation of HTTP response objects.
+     *
+     * @param {Response} response - The HTTP response object to serialize
+     * @returns {Record<string, unknown>} Serialized response object
      */
     private createResponseSerializer(
         response: Response
@@ -408,9 +446,12 @@ export class LoggerOptionService {
 
     /**
      * Creates a serialized representation of error objects for logging.
+     *
+     * @param {Error} error - The error object to serialize
+     * @returns {Record<string, unknown>} Serialized error object
      */
     private createErrorSerializer(error: Error): Record<string, unknown> {
-        return {
+        const defaultError = {
             type: error.name,
             message: error.message,
             code: (error as unknown as { status?: number })?.status,
@@ -419,10 +460,24 @@ export class LoggerOptionService {
             )?.response?.statusCode,
             stack: error.stack,
         };
+
+        if (error instanceof HttpException) {
+            const response = error.getResponse() as { _error?: unknown };
+            return {
+                ...defaultError,
+                stack: response._error
+                    ? String(response._error)
+                    : defaultError.stack,
+            };
+        }
+
+        return defaultError;
     }
 
     /**
      * Creates auto-logging configuration based on application settings.
+     *
+     * @returns {{ignore: (req: IRequestApp) => boolean} | boolean} Auto-logging configuration or boolean flag
      */
     private createAutoLoggingConfig():
         | { ignore: (req: IRequestApp) => boolean }

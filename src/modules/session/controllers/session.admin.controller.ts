@@ -23,6 +23,7 @@ import {
     ENUM_POLICY_SUBJECT,
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { SESSION_DEFAULT_AVAILABLE_ORDER_BY } from '@modules/session/constants/session.list.constant';
 import {
     SessionAdminListDoc,
     SessionAdminRevokeDoc,
@@ -60,7 +61,9 @@ export class SessionAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationOffsetQuery()
+        @PaginationOffsetQuery({
+            availableOrderBy: SESSION_DEFAULT_AVAILABLE_ORDER_BY,
+        })
         pagination: IPaginationQueryOffsetParams,
         @Param('userId', RequestRequiredPipe) userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {

@@ -46,11 +46,17 @@ class JwtKeysGenerator {
     }
 
     /**
-     * Generates ES512 elliptic curve key pair and saves to specified paths.
-     * @param privateKeyPath - Path to save private key
-     * @param publicKeyPath - Path to save public key
+     * Generates ES512 elliptic curve key pair and returns the key strings.
+     * @param privateKeyPath - Path to save private key (optional for file creation)
+     * @param publicKeyPath - Path to save public key (optional for file creation)
+     * @param saveToFile - Whether to save keys to files (default: true)
+     * @returns Object containing private and public key strings
      */
-    generateES512KeyPair(privateKeyPath: string, publicKeyPath: string): void {
+    generateES512KeyPair(
+        privateKeyPath?: string,
+        publicKeyPath?: string,
+        saveToFile: boolean = true
+    ): { privateKey: string; publicKey: string } {
         const keyPair = crypto.generateKeyPairSync('ec', {
             namedCurve: 'secp521r1',
             publicKeyEncoding: {
@@ -63,30 +69,36 @@ class JwtKeysGenerator {
             },
         });
 
-        fs.writeFileSync(privateKeyPath, keyPair.privateKey);
-        fs.writeFileSync(publicKeyPath, keyPair.publicKey);
+        if (saveToFile && privateKeyPath && publicKeyPath) {
+            fs.writeFileSync(privateKeyPath, keyPair.privateKey);
+            fs.writeFileSync(publicKeyPath, keyPair.publicKey);
 
-        try {
-            fs.chmodSync(privateKeyPath, 0o600);
-        } catch (err) {
-            console.warn(`Could not set permissions for ${privateKeyPath}`);
+            try {
+                fs.chmodSync(privateKeyPath, 0o600);
+            } catch (err) {
+                console.warn(`Could not set permissions for ${privateKeyPath}`);
+            }
         }
+
+        return {
+            privateKey: keyPair.privateKey,
+            publicKey: keyPair.publicKey,
+        };
     }
 
     /**
-     * Extracts elliptic curve parameters from public key for JWK creation.
-     * @param publicKeyPath - Path to public key file
+     * Extracts elliptic curve parameters from public key string for JWK creation.
+     * @param publicKeyString - Public key string in PEM format
      * @returns Object containing x, y coordinates and curve type
      */
-    extractECParams(publicKeyPath: string): {
+    extractECParamsFromString(publicKeyString: string): {
         x?: string;
         y?: string;
         crv?: string;
     } {
         try {
-            const pemContent = fs.readFileSync(publicKeyPath, 'utf8');
             const publicKey = crypto.createPublicKey({
-                key: pemContent,
+                key: publicKeyString,
                 format: 'pem',
             });
 
@@ -99,7 +111,28 @@ class JwtKeysGenerator {
             };
         } catch (error) {
             console.error(
-                `Error extracting EC parameters from ${publicKeyPath}: ${error.message}`
+                `Error extracting EC parameters from public key: ${error instanceof Error ? error.message : String(error)}`
+            );
+            throw error;
+        }
+    }
+
+    /**
+     * Extracts elliptic curve parameters from public key file for JWK creation.
+     * @param publicKeyPath - Path to public key file
+     * @returns Object containing x, y coordinates and curve type
+     */
+    extractECParams(publicKeyPath: string): {
+        x?: string;
+        y?: string;
+        crv?: string;
+    } {
+        try {
+            const pemContent = fs.readFileSync(publicKeyPath, 'utf8');
+            return this.extractECParamsFromString(pemContent);
+        } catch (error) {
+            console.error(
+                `Error extracting EC parameters from ${publicKeyPath}: ${error instanceof Error ? error.message : String(error)}`
             );
             throw error;
         }
@@ -169,44 +202,177 @@ class JwtKeysGenerator {
             fs.writeFileSync(outputPath, JSON.stringify(jwks, null, 2));
             console.log(`JWKS successfully created at ${outputPath}`);
         } catch (error) {
-            console.error(`Error creating JWKS: ${error.message}`);
+            console.error(
+                `Error creating JWKS: ${error instanceof Error ? error.message : String(error)}`
+            );
             throw error;
         }
     }
 
     /**
+     * Creates JWKS from public key strings and returns both JWKS and KIDs.
+     * @param accessPublicKey - Access token public key string
+     * @param refreshPublicKey - Refresh token public key string
+     * @returns Object containing JWKS and generated KIDs
+     */
+    createJwksFromStrings(
+        accessPublicKey: string,
+        refreshPublicKey: string
+    ): { jwks: any; accessKid: string; refreshKid: string } {
+        const accessParams = this.extractECParamsFromString(accessPublicKey);
+        const refreshParams = this.extractECParamsFromString(refreshPublicKey);
+
+        // randomly generate a kid for the keys
+        const accessKid = crypto.randomBytes(16).toString('hex');
+        const refreshKid = crypto.randomBytes(16).toString('hex');
+        const accessJwk = this.createJwk(accessParams, accessKid);
+        const refreshJwk = this.createJwk(refreshParams, refreshKid);
+
+        const jwks = {
+            keys: [accessJwk, refreshJwk],
+        };
+
+        return { jwks, accessKid, refreshKid };
+    }
+
+    /**
+     * Prints JWT keys and configuration to console in a formatted way.
+     * @param accessKeys - Access token key pair
+     * @param refreshKeys - Refresh token key pair
+     * @param accessKid - Access token key ID
+     * @param refreshKid - Refresh token key ID
+     */
+    printKeysToConsole(
+        accessKeys: { privateKey: string; publicKey: string },
+        refreshKeys: { privateKey: string; publicKey: string },
+        accessKid: string,
+        refreshKid: string
+    ): void {
+        console.log('\n' + '='.repeat(80));
+        console.log('🔑 JWT KEYS GENERATED - CONSOLE OUTPUT');
+        console.log('='.repeat(80));
+
+        console.log('\n📋 Environment Variables for .env:');
+        console.log('-'.repeat(50));
+        console.log(`AUTH_JWT_ACCESS_TOKEN_KID=${accessKid}`);
+        console.log(`AUTH_JWT_REFRESH_TOKEN_KID=${refreshKid}`);
+
+        // Convert keys to base64 for env storage (escape newlines)
+        const accessPrivateKeyForEnv = accessKeys.privateKey.replace(
+            /\n/g,
+            '\\n'
+        );
+        const accessPublicKeyForEnv = accessKeys.publicKey.replace(
+            /\n/g,
+            '\\n'
+        );
+        const refreshPrivateKeyForEnv = refreshKeys.privateKey.replace(
+            /\n/g,
+            '\\n'
+        );
+        const refreshPublicKeyForEnv = refreshKeys.publicKey.replace(
+            /\n/g,
+            '\\n'
+        );
+
+        console.log(
+            `AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY="${accessPrivateKeyForEnv}"`
+        );
+        console.log(
+            `AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY="${accessPublicKeyForEnv}"`
+        );
+        console.log(
+            `AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY="${refreshPrivateKeyForEnv}"`
+        );
+        console.log(
+            `AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY="${refreshPublicKeyForEnv}"`
+        );
+
+        console.log('\n🔐 Access Token Keys:');
+        console.log('-'.repeat(50));
+        console.log('Private Key:');
+        console.log(accessKeys.privateKey);
+        console.log('\nPublic Key:');
+        console.log(accessKeys.publicKey);
+
+        console.log('\n🔄 Refresh Token Keys:');
+        console.log('-'.repeat(50));
+        console.log('Private Key:');
+        console.log(refreshKeys.privateKey);
+        console.log('\nPublic Key:');
+        console.log(refreshKeys.publicKey);
+
+        console.log('\n' + '='.repeat(80));
+        console.log('✅ Keys printed to console successfully!');
+        console.log('='.repeat(80) + '\n');
+    }
+
+    /**
      * Main method to generate all JWT keys and JWKS file.
      * Creates access token keys, refresh token keys, and JWKS configuration.
+     * Supports three output modes: console, env update, and file creation.
      */
     generateKeys(): void {
         try {
             this.ensureDir(this.keyDir);
 
-            // Generate access token
+            // Generate access token keys
             console.log('Generating Access Token ES512 keys...');
-            this.generateES512KeyPair(
+            const accessKeys = this.generateES512KeyPair(
                 this.accessTokenPrivateKeyPath,
-                this.accessTokenPublicKeyPath
-            );
-
-            // Generate refresh token
-            console.log('Generating Refresh Token ES512 keys...');
-            this.generateES512KeyPair(
-                this.refreshTokenPrivateKeyPath,
-                this.refreshTokenPublicKeyPath
-            );
-
-            // Generate JWKS
-            console.log('Generating JWKS...');
-            this.createJwks(
                 this.accessTokenPublicKeyPath,
-                this.refreshTokenPublicKeyPath,
-                this.jwksOutputPath
+                true
             );
 
-            console.log('JWT keys and JWKS generated successfully!');
+            // Generate refresh token keys
+            console.log('Generating Refresh Token ES512 keys...');
+            const refreshKeys = this.generateES512KeyPair(
+                this.refreshTokenPrivateKeyPath,
+                this.refreshTokenPublicKeyPath,
+                true
+            );
+
+            // Generate JWKS and get KIDs
+            console.log('Generating JWKS...');
+            const { jwks, accessKid, refreshKid } = this.createJwksFromStrings(
+                accessKeys.publicKey,
+                refreshKeys.publicKey
+            );
+
+            // Save JWKS to file
+            const outputDir = path.dirname(this.jwksOutputPath);
+            this.ensureDir(outputDir);
+            fs.writeFileSync(
+                this.jwksOutputPath,
+                JSON.stringify(jwks, null, 2)
+            );
+            console.log(`JWKS successfully created at ${this.jwksOutputPath}`);
+
+            // 1. Print to console
+            this.printKeysToConsole(
+                accessKeys,
+                refreshKeys,
+                accessKid,
+                refreshKid
+            );
+
+            // 2. Update .env file
+            this.updateEnvWithKeys(
+                accessKid,
+                refreshKid,
+                accessKeys,
+                refreshKeys
+            );
+
+            console.log('✅ JWT keys and JWKS generated successfully!');
+            console.log('📝 Keys have been:');
+            console.log('   1. ✅ Printed to console');
+            console.log('   2. ✅ Saved to files');
+            console.log('   3. ✅ Updated in .env');
         } catch (err) {
-            console.error(`Failed to generate JWT keys: ${err.message}`);
+            console.error(
+                `Failed to generate JWT keys: ${err instanceof Error ? err.message : String(err)}`
+            );
             process.exit(1);
         }
     }
@@ -239,14 +405,102 @@ class JwtKeysGenerator {
 
             console.log('JWT keys and JWKS removed successfully!');
         } catch (err) {
-            console.error(`Failed to remove JWT keys: ${err.message}`);
+            console.error(
+                `Failed to remove JWT keys: ${err instanceof Error ? err.message : String(err)}`
+            );
             process.exit(1);
         }
     }
 
     /**
-     * Updates .env file with new key identifiers from generated JWKS.
+     * Updates .env file with new key identifiers and key strings.
+     * @param accessKid - Access token key ID
+     * @param refreshKid - Refresh token key ID
+     * @param accessKeys - Access token key pair
+     * @param refreshKeys - Refresh token key pair
+     */
+    updateEnvWithKeys(
+        accessKid: string,
+        refreshKid: string,
+        accessKeys: { privateKey: string; publicKey: string },
+        refreshKeys: { privateKey: string; publicKey: string }
+    ): void {
+        const envPath = path.join(process.cwd(), '.env');
+        const envExamplePath = path.join(process.cwd(), '.env.example');
+
+        // Ensure .env exists
+        if (!fs.existsSync(envPath)) {
+            if (fs.existsSync(envExamplePath)) {
+                fs.copyFileSync(envExamplePath, envPath);
+                console.log('📄 .env file created from .env.example');
+            } else {
+                console.error('.env.example not found. Cannot create .env');
+                process.exit(1);
+            }
+        }
+
+        // Read current .env content
+        let envContent = fs.readFileSync(envPath, 'utf8');
+
+        // Prepare key strings for env (escape newlines)
+        const accessPrivateKeyForEnv = accessKeys.privateKey.replace(
+            /\n/g,
+            '\\n'
+        );
+        const accessPublicKeyForEnv = accessKeys.publicKey.replace(
+            /\n/g,
+            '\\n'
+        );
+        const refreshPrivateKeyForEnv = refreshKeys.privateKey.replace(
+            /\n/g,
+            '\\n'
+        );
+        const refreshPublicKeyForEnv = refreshKeys.publicKey.replace(
+            /\n/g,
+            '\\n'
+        );
+
+        // Define env variables to update
+        const envUpdates = [
+            { key: 'AUTH_JWT_ACCESS_TOKEN_KID', value: accessKid },
+            { key: 'AUTH_JWT_REFRESH_TOKEN_KID', value: refreshKid },
+            {
+                key: 'AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY',
+                value: `"${accessPrivateKeyForEnv}"`,
+            },
+            {
+                key: 'AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY',
+                value: `"${accessPublicKeyForEnv}"`,
+            },
+            {
+                key: 'AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY',
+                value: `"${refreshPrivateKeyForEnv}"`,
+            },
+            {
+                key: 'AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY',
+                value: `"${refreshPublicKeyForEnv}"`,
+            },
+        ];
+
+        // Update or add each environment variable
+        for (const { key, value } of envUpdates) {
+            const regex = new RegExp(`^${key}=.*$`, 'm');
+            if (regex.test(envContent)) {
+                envContent = envContent.replace(regex, `${key}=${value}`);
+            } else {
+                envContent += `\n${key}=${value}`;
+            }
+        }
+
+        // Write updated content back to .env
+        fs.writeFileSync(envPath, envContent);
+        console.log('📝 .env file updated with new keys and KIDs');
+    }
+
+    /**
+     * Updates .env file with new key identifiers from generated JWKS (Legacy method).
      * Synchronizes environment configuration with generated keys.
+     * @deprecated Use updateEnvWithKeys instead for new key format
      */
     updateEnv(): void {
         const envPath = path.join(process.cwd(), '.env');
@@ -321,19 +575,30 @@ function main() {
 
     if (command === 'generate') {
         generator.generateKeys();
-        generator.updateEnv();
+        // Note: generateKeys() now handles all three outputs:
+        // 1. Console printing
+        // 2. File creation
+        // 3. .env update
     } else if (command === 'rollback') {
         generator.rollbackKeys();
     } else {
         console.log(`
-Usage: node migrate-jwt-keys.js [command] [keysDir]
+Usage: node generate-keys.js [command] [keysDir]
 
 Commands:
-  generate    Generate JWT ES512 keys and JWKS (default)
-  rollback    Remove JWT ES512 keys and JWKS
+  generate    Generate JWT ES512 keys and JWKS with 3 outputs:
+              1. Print keys to console
+              2. Save keys to files  
+              3. Update .env with keys and KIDs (default)
+  rollback    Remove JWT ES512 keys and JWKS files
 
 Arguments:
   keysDir     Output directory for keys (default: ./keys)
+
+Examples:
+  yarn generate:keys
+  node generate-keys.js generate
+  node generate-keys.js rollback ./keys
         `);
     }
 }

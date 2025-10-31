@@ -1,1 +1,1 @@
-export const SESSION_CACHE_MANAGER = 'SESSION_CACHE_MANAGER';
+export const SessionCacheProvider = 'SessionCacheProvider';

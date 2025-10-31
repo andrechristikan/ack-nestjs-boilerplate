@@ -25,7 +25,7 @@ export interface IResponseActivityLogReturn {
 }
 
 export interface IResponseOptions {
-    cached?: IResponseCacheOptions | boolean;
+    cache?: IResponseCacheOptions | boolean;
 }
 
 export interface IResponseReturn<T = unknown>

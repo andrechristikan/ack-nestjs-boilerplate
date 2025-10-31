@@ -13,6 +13,11 @@ import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
 
+/**
+ * Service for handling email operations using AWS SES
+ * Provides methods to send various types of emails like welcome, password reset, verification, etc.
+ */
+// TODO: SEND EMAIL FROM THIS SERVICE USING QUEUE SYSTEM. eg: sendChangePasswordWithQueue
 @Injectable()
 export class EmailService implements IEmailService {
     private readonly logger = new Logger(EmailService.name);
@@ -36,6 +41,11 @@ export class EmailService implements IEmailService {
         this.homeUrl = this.configService.get<string>('home.url');
     }
 
+    /**
+     * Send change password notification email
+     * @param {EmailSendDto} emailData - Email and username data
+     * @returns {Promise<boolean>} True if email sent successfully, false otherwise
+     */
     async sendChangePassword({
         username,
         email,
@@ -61,6 +71,11 @@ export class EmailService implements IEmailService {
         }
     }
 
+    /**
+     * Send welcome email to new users
+     * @param {EmailSendDto} emailData - Email and username data
+     * @returns {Promise<boolean>} True if email sent successfully, false otherwise
+     */
     async sendWelcome({ username, email }: EmailSendDto): Promise<boolean> {
         try {
             await this.awsSESService.send({
@@ -84,6 +99,12 @@ export class EmailService implements IEmailService {
         }
     }
 
+    /**
+     * Send email notification when user is created by admin
+     * @param {EmailSendDto} emailData - Email and username data
+     * @param {EmailCreateByAdminDto} passwordData - Password information including expiration dates
+     * @returns {Promise<boolean>} True if email sent successfully, false otherwise
+     */
     async sendCreateByAdmin(
         { username, email }: EmailSendDto,
         {
@@ -123,6 +144,12 @@ export class EmailService implements IEmailService {
         }
     }
 
+    /**
+     * Send temporary password email
+     * @param {EmailSendDto} emailData - Email and username data
+     * @param {EmailTempPasswordDto} passwordData - Temporary password information including expiration dates
+     * @returns {Promise<boolean>} True if email sent successfully, false otherwise
+     */
     async sendTempPassword(
         { username, email }: EmailSendDto,
         {
@@ -161,6 +188,12 @@ export class EmailService implements IEmailService {
         }
     }
 
+    /**
+     * Send password reset email with reset link
+     * @param {EmailSendDto} emailData - Email and username data
+     * @param {EmailResetPasswordDto} resetData - Reset password link and expiration data
+     * @returns {Promise<boolean>} True if email sent successfully, false otherwise
+     */
     async sendResetPassword(
         { username, email }: EmailSendDto,
         { expiredDate, link }: EmailResetPasswordDto
@@ -189,6 +222,12 @@ export class EmailService implements IEmailService {
         }
     }
 
+    /**
+     * Send email verification message
+     * @param {EmailSendDto} emailData - Email and username data
+     * @param {EmailVerificationDto} verificationData - Verification token, link, reference and expiration data
+     * @returns {Promise<boolean>} True if email sent successfully, false otherwise
+     */
     async sendVerification(
         { username, email }: EmailSendDto,
         { expiredAt, reference, token, link }: EmailVerificationDto
@@ -219,6 +258,12 @@ export class EmailService implements IEmailService {
         }
     }
 
+    /**
+     * Send email verified confirmation
+     * @param {EmailSendDto} emailData - Email and username data
+     * @param {EmailVerifiedDto} verifiedData - Verification reference data
+     * @returns {Promise<boolean>} True if email sent successfully, false otherwise
+     */
     async sendEmailVerified(
         { username, email }: EmailSendDto,
         { reference }: EmailVerifiedDto
@@ -245,6 +290,12 @@ export class EmailService implements IEmailService {
         }
     }
 
+    /**
+     * Send mobile number verified confirmation email
+     * @param {EmailSendDto} emailData - Email and username data
+     * @param {EmailMobileNumberVerifiedDto} mobileData - Mobile number and reference data
+     * @returns {Promise<boolean>} True if email sent successfully, false otherwise
+     */
     async sendMobileNumberVerified(
         { username, email }: EmailSendDto,
         { reference, mobileNumber }: EmailMobileNumberVerifiedDto
