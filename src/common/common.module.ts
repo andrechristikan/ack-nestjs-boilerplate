@@ -12,10 +12,9 @@ import { ApiKeyModule } from '@modules/api-key/api-key.module';
 import { RoleModule } from '@modules/role/role.module';
 import { FeatureFlagModule } from '@modules/feature-flag/feature-flag.module';
 import { RedisCacheModule, RedisQueueModule } from '@common/redis/redis.module';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { CacheMainModule } from '@common/cache/cache.module';
 import { LoggerModule } from '@common/logger/logger.module';
-import { BullModule } from '@nestjs/bullmq';
 import { QueueRegisterModule } from 'src/queues/queue.register.module';
 
 /**
@@ -33,25 +32,6 @@ import { QueueRegisterModule } from 'src/queues/queue.register.module';
             cache: true,
             envFilePath: ['.env', `.env.${process.env.NODE_ENV || 'local'}`],
             expandVariables: false,
-        }),
-        BullModule.forRootAsync({
-            imports: [ConfigModule],
-            inject: [ConfigService],
-            useFactory: (configService: ConfigService) => ({
-                connection: {
-                    url: configService.get<string>('redis.queue.url'),
-                },
-                prefix: configService.get<string>('redis.queue.namespace'),
-                defaultJobOptions: {
-                    backoff: {
-                        type: 'exponential',
-                        delay: 3000,
-                    },
-                    attempts: 3,
-                    removeOnComplete: 20,
-                    removeOnFail: 50,
-                },
-            }),
         }),
         HelperModule.forRoot(),
         MessageModule.forRoot(),

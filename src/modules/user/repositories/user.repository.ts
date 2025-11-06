@@ -202,61 +202,91 @@ export class UserRepository {
         { ipAddress, userAgent }: IRequestLog,
         createdBy: string
     ): Promise<User> {
-        return this.databaseService.user.create({
-            data: {
-                email,
-                countryId,
-                roleId,
-                name,
-                signUpFrom: ENUM_USER_SIGN_UP_FROM.ADMIN,
-                signUpWith: ENUM_USER_SIGN_UP_WITH.CREDENTIAL,
-                passwordCreated,
-                passwordExpired,
-                password: passwordHash,
-                salt,
-                passwordAttempt: 0,
-                username,
-                isVerified: roleType === ENUM_ROLE_TYPE.USER ? false : true,
-                status: ENUM_USER_STATUS.ACTIVE,
-                termPolicy: {
-                    [ENUM_TERM_POLICY_TYPE.COOKIE]: false,
-                    [ENUM_TERM_POLICY_TYPE.MARKETING]: false,
-                    [ENUM_TERM_POLICY_TYPE.PRIVACY]: true,
-                    [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: true,
+        const termPolicies = await this.databaseService.termPolicy.findMany({
+            where: {
+                type: {
+                    in: [
+                        ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE,
+                        ENUM_TERM_POLICY_TYPE.PRIVACY,
+                    ],
                 },
-                createdBy,
-                deletedAt: null,
-                verifications: {
-                    create: {
-                        expiredAt,
-                        reference,
-                        token,
-                        type: verificationType,
-                        to: email,
-                        createdBy: createdBy,
-                    },
-                },
-                passwordHistories: {
-                    create: {
-                        password: passwordHash,
-                        salt,
-                        type: ENUM_PASSWORD_HISTORY_TYPE.ADMIN,
-                        expiredAt: passwordPeriodExpired,
-                        createdAt: passwordCreated,
-                        createdBy: createdBy,
-                    },
-                },
-                activityLogs: {
-                    create: {
-                        action: ENUM_ACTIVITY_LOG_ACTION.USER_CREATED,
-                        ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
-                        createdBy: createdBy,
-                    },
-                },
+                status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
+            },
+            select: {
+                id: true,
             },
         });
+
+        const userId = this.databaseUtil.createId();
+        const [user] = await this.databaseService.$transaction([
+            this.databaseService.user.create({
+                data: {
+                    id: userId,
+                    email,
+                    countryId,
+                    roleId,
+                    name,
+                    signUpFrom: ENUM_USER_SIGN_UP_FROM.ADMIN,
+                    signUpWith: ENUM_USER_SIGN_UP_WITH.CREDENTIAL,
+                    passwordCreated,
+                    passwordExpired,
+                    password: passwordHash,
+                    salt,
+                    passwordAttempt: 0,
+                    username,
+                    isVerified: roleType === ENUM_ROLE_TYPE.USER ? false : true,
+                    status: ENUM_USER_STATUS.ACTIVE,
+                    termPolicy: {
+                        [ENUM_TERM_POLICY_TYPE.COOKIE]: false,
+                        [ENUM_TERM_POLICY_TYPE.MARKETING]: false,
+                        [ENUM_TERM_POLICY_TYPE.PRIVACY]: true,
+                        [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: true,
+                    },
+                    createdBy,
+                    deletedAt: null,
+                    verifications: {
+                        create: {
+                            expiredAt,
+                            reference,
+                            token,
+                            type: verificationType,
+                            to: email,
+                            createdBy: createdBy,
+                        },
+                    },
+                    passwordHistories: {
+                        create: {
+                            password: passwordHash,
+                            salt,
+                            type: ENUM_PASSWORD_HISTORY_TYPE.ADMIN,
+                            expiredAt: passwordPeriodExpired,
+                            createdAt: passwordCreated,
+                            createdBy: createdBy,
+                        },
+                    },
+                    activityLogs: {
+                        create: {
+                            action: ENUM_ACTIVITY_LOG_ACTION.USER_CREATED,
+                            ipAddress,
+                            userAgent:
+                                this.databaseService.toPlainObject(userAgent),
+                            createdBy: createdBy,
+                        },
+                    },
+                },
+            }),
+            ...termPolicies.map(termPolicy =>
+                this.databaseService.termPolicyUserAcceptance.create({
+                    data: {
+                        userId,
+                        termPolicyId: termPolicy.id,
+                        createdBy: userId,
+                    },
+                })
+            ),
+        ]);
+
+        return user;
     }
 
     async updateStatusByAdmin(
@@ -699,7 +729,9 @@ export class UserRepository {
                     in: [
                         ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE,
                         ENUM_TERM_POLICY_TYPE.PRIVACY,
-                    ],
+                        cookie ? ENUM_TERM_POLICY_TYPE.COOKIE : null,
+                        marketing ? ENUM_TERM_POLICY_TYPE.MARKETING : null,
+                    ].filter(Boolean) as ENUM_TERM_POLICY_TYPE[],
                 },
                 status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
             },
@@ -708,7 +740,7 @@ export class UserRepository {
             },
         });
 
-        const [user] = await Promise.all([
+        const [user] = await this.databaseService.$transaction([
             this.databaseService.user.create({
                 data: {
                     id: userId,
@@ -806,7 +838,9 @@ export class UserRepository {
                     in: [
                         ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE,
                         ENUM_TERM_POLICY_TYPE.PRIVACY,
-                    ],
+                        cookie ? ENUM_TERM_POLICY_TYPE.COOKIE : null,
+                        marketing ? ENUM_TERM_POLICY_TYPE.MARKETING : null,
+                    ].filter(Boolean) as ENUM_TERM_POLICY_TYPE[],
                 },
                 status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
             },
@@ -816,7 +850,7 @@ export class UserRepository {
         });
 
         const userId = this.databaseUtil.createId();
-        const [user] = await Promise.all([
+        const [user] = await this.databaseService.$transaction([
             this.databaseService.user.create({
                 data: {
                     id: userId,

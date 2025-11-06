@@ -29,18 +29,24 @@ export class MigrationFeatureFlagSeed {
         {
             key: 'loginWithCredential',
             description: 'Enable login with Credential',
+            rolloutPercent: 100,
             isEnable: true,
         },
         {
             key: 'signUp',
             description: 'Enable user sign up',
+            rolloutPercent: 100,
             isEnable: true,
         },
-        // TODO: LAST
-        // {
-        //     key: 'resetPassword',
-        //     isEnable: true,
-        // },
+        {
+            key: 'changePassword',
+            description: 'Enable change password feature',
+            rolloutPercent: 100,
+            isEnable: true,
+            metadata: {
+                resetPasswordAllowed: true,
+            },
+        },
     ];
 
     constructor(private readonly databaseService: DatabaseService) {}

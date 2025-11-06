@@ -211,32 +211,18 @@ export class AppEnvDto {
     AUTH_JWT_ACCESS_TOKEN_KID: string;
 
     /**
-     * File path to the private key for signing access tokens
+     * Access token private key content
      */
     @IsString()
     @IsNotEmpty()
-    @Matches(
-        /^([a-zA-Z]:)?[\/\\]?([^<>:"|?*\r\n]+[\/\\])*[^<>:"|?*\r\n]*\.(pem|key|crt|pub)$/,
-        {
-            message:
-                'Must be a valid file path with .pem, .key, .crt, or .pub extension',
-        }
-    )
-    AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY_PATH: string;
+    AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY: string;
 
     /**
-     * File path to the public key for verifying access tokens
+     * Access token public key content
      */
     @IsString()
     @IsNotEmpty()
-    @Matches(
-        /^([a-zA-Z]:)?[\/\\]?([^<>:"|?*\r\n]+[\/\\])*[^<>:"|?*\r\n]*\.(pem|key|crt|pub)$/,
-        {
-            message:
-                'Must be a valid file path with .pem, .key, .crt, or .pub extension',
-        }
-    )
-    AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY_PATH: string;
+    AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY: string;
 
     /**
      * Expiration time for access tokens (duration format: 15m, 1h, 1d)
@@ -258,32 +244,18 @@ export class AppEnvDto {
     AUTH_JWT_REFRESH_TOKEN_KID: string;
 
     /**
-     * File path to the private key for signing refresh tokens
+     * Refresh token private key content
      */
     @IsString()
     @IsNotEmpty()
-    @Matches(
-        /^([a-zA-Z]:)?[\/\\]?([^<>:"|?*\r\n]+[\/\\])*[^<>:"|?*\r\n]*\.(pem|key|crt|pub)$/,
-        {
-            message:
-                'Must be a valid file path with .pem, .key, .crt, or .pub extension',
-        }
-    )
-    AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY_PATH: string;
+    AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY: string;
 
     /**
-     * File path to the public key for verifying refresh tokens
+     * Refresh token public key content
      */
     @IsString()
     @IsNotEmpty()
-    @Matches(
-        /^([a-zA-Z]:)?[\/\\]?([^<>:"|?*\r\n]+[\/\\])*[^<>:"|?*\r\n]*\.(pem|key|crt|pub)$/,
-        {
-            message:
-                'Must be a valid file path with .pem, .key, .crt, or .pub extension',
-        }
-    )
-    AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY_PATH: string;
+    AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: string;
 
     /**
      * Expiration time for refresh tokens (duration format: 15m, 1h, 1d)

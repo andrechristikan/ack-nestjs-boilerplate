@@ -1,1 +1,1 @@
-export const FEATURE_FLAG_IS_ACTIVE_META_KEY = 'FeatureFlagIsActiveMetaKey';
+export const FEATURE_FLAG_KEY_PATH_META_KEY = 'FeatureFlagKeyPathMetaKey';

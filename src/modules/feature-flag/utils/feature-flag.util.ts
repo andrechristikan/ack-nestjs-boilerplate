@@ -76,12 +76,15 @@ export class FeatureFlagUtil {
         }
 
         for (const key of newKeys) {
-            const val = newMetadata[key];
+            const newVal = newMetadata[key];
+            const oldVal = oldMetadata[key];
 
-            if (
-                typeof val !== 'string' &&
-                typeof val !== 'number' &&
-                typeof val !== 'boolean'
+            if (typeof newVal !== typeof oldVal) {
+                return false;
+            } else if (
+                newVal === undefined ||
+                newVal === null ||
+                newVal === ''
             ) {
                 return false;
             }

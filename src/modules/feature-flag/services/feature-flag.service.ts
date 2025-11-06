@@ -15,6 +15,7 @@ import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import {
     BadRequestException,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
     ServiceUnavailableException,
 } from '@nestjs/common';
@@ -29,16 +30,47 @@ export class FeatureFlagService implements IFeatureFlagService {
 
     async validateFeatureFlagGuard(
         request: IRequestApp,
-        key: string
+        keyPath: string
     ): Promise<void> {
         try {
-            const featureFlag = await this.findOneByKeyAndCache(key);
+            const keys = keyPath.split('.');
+            if (keys.length === 0) {
+                throw new InternalServerErrorException({
+                    statusCode:
+                        ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.PREDEFINED_KEY_EMPTY,
+                    message: 'featureFlag.error.predefinedKeyEmpty',
+                });
+            } else if (keys.length > 2) {
+                throw new InternalServerErrorException({
+                    statusCode:
+                        ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.PREDEFINED_KEY_LENGTH_EXCEEDED,
+                    message: 'featureFlag.error.predefinedKeyLengthExceeded',
+                });
+            }
+
+            const featureFlag = await this.findOneByKeyAndCache(keys[0]);
             if (!featureFlag || !featureFlag.isEnable) {
                 throw new ServiceUnavailableException({
                     statusCode:
                         ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.SERVICE_UNAVAILABLE,
                     message: 'featureFlag.error.serviceUnavailable',
                 });
+            } else if (keys.length > 1) {
+                const metadata: boolean | number | string | null =
+                    featureFlag.metadata[keys[1]];
+                if (typeof metadata === 'boolean' && !metadata) {
+                    throw new ServiceUnavailableException({
+                        statusCode:
+                            ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.SERVICE_UNAVAILABLE,
+                        message: 'featureFlag.error.serviceUnavailable',
+                    });
+                } else if (typeof metadata !== 'boolean') {
+                    throw new InternalServerErrorException({
+                        statusCode:
+                            ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.PREDEFINED_KEY_TYPE_INVALID,
+                        message: 'featureFlag.error.predefinedKeyTypeInvalid',
+                    });
+                }
             }
 
             const { user } = request;

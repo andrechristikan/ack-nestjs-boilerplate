@@ -1,4 +1,3 @@
-import { Processor } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { EmailMobileNumberVerifiedDto } from '@modules/email/dtos/email.mobile-number-verified.dto';
@@ -13,10 +12,9 @@ import { IEmailProcessor } from '@modules/email/interfaces/email.processor.inter
 import { EmailService } from '@modules/email/services/email.service';
 import { ENUM_QUEUE } from 'src/queues/enums/queue.enum';
 import { QueueProcessorBase } from 'src/queues/bases/queue.processor.base';
+import { QueueProcessor } from 'src/queues/decorators/queue.decorator';
 
-@Processor({
-    name: ENUM_QUEUE.EMAIL,
-})
+@QueueProcessor(ENUM_QUEUE.EMAIL)
 export class EmailProcessor
     extends QueueProcessorBase
     implements IEmailProcessor

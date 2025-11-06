@@ -1,4 +1,4 @@
-import { FEATURE_FLAG_IS_ACTIVE_META_KEY } from '@modules/feature-flag/constants/feature-flag.constant';
+import { FEATURE_FLAG_KEY_PATH_META_KEY } from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -22,15 +22,15 @@ export class FeatureFlagGuard implements CanActivate {
      * @returns {Promise<boolean>} Promise that resolves to true if feature flag is active
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const featureFlagKey = this.reflector.get<string>(
-            FEATURE_FLAG_IS_ACTIVE_META_KEY,
+        const featureFlagKeyPath = this.reflector.get<string>(
+            FEATURE_FLAG_KEY_PATH_META_KEY,
             context.getHandler()
         );
 
         const request = context.switchToHttp().getRequest();
         await this.featureFlagService.validateFeatureFlagGuard(
             request,
-            featureFlagKey
+            featureFlagKeyPath
         );
 
         return true;
