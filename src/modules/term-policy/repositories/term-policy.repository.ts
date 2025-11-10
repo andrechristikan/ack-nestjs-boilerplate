@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationIn,
@@ -26,6 +27,7 @@ import {
 export class TermPolicyRepository {
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService,
         private readonly helperService: HelperService
     ) {}
@@ -170,7 +172,7 @@ export class TermPolicyRepository {
                             action: ENUM_ACTIVITY_LOG_ACTION.USER_ACCEPT_TERM_POLICY,
                             ipAddress,
                             userAgent:
-                                this.databaseService.toPlainObject(userAgent),
+                                this.databaseUtil.toPlainObject(userAgent),
                             createdBy: userId,
                         },
                     },

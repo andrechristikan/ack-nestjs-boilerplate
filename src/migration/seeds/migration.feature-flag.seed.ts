@@ -44,7 +44,7 @@ export class MigrationFeatureFlagSeed {
             rolloutPercent: 100,
             isEnable: true,
             metadata: {
-                resetPasswordAllowed: true,
+                forgotAllowed: true,
             },
         },
     ];

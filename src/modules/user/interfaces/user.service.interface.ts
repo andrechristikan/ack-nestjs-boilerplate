@@ -40,7 +40,7 @@ import { UserListResponseDto } from '@modules/user/dtos/response/user.list.respo
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import { ENUM_USER_LOGIN_WITH, PasswordHistory } from '@prisma/client';
+import { ENUM_USER_LOGIN_WITH } from '@prisma/client';
 
 export interface IUserService {
     validateUserGuard(
@@ -133,10 +133,6 @@ export interface IUserService {
         requestLog: IRequestLog,
         updatedBy: string
     ): Promise<IResponseReturn<void>>;
-    checkPasswordHistoryActiveByPeriod(
-        userId: string,
-        password: string
-    ): Promise<PasswordHistory | null>;
     changePassword(
         userId: string,
         { newPassword, oldPassword }: UserChangePasswordRequestDto,

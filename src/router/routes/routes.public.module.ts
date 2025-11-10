@@ -3,12 +3,11 @@ import { CountryPublicController } from '@modules/country/controllers/country.pu
 import { CountryModule } from '@modules/country/country.module';
 import { HelloPublicController } from '@modules/hello/controllers/hello.public.controller';
 import { HelloModule } from '@modules/hello/hello.module';
+import { ResetPasswordModule } from '@modules/reset-password/reset-password.module';
 import { RolePublicController } from '@modules/role/controllers/role.public.controller';
 import { TermPolicyPublicController } from '@modules/term-policy/controllers/term-policy.public.controller';
-import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { UserPublicController } from '@modules/user/controllers/user.public.controller';
 import { UserModule } from '@modules/user/user.module';
-import { VerificationPublicController } from '@modules/verification/controllers/verification.public.controller';
 import { VerificationModule } from '@modules/verification/verification.module';
 import { Module } from '@nestjs/common';
 
@@ -23,7 +22,6 @@ import { Module } from '@nestjs/common';
         HelloPublicController,
         UserPublicController,
         TermPolicyPublicController,
-        VerificationPublicController,
     ],
     providers: [],
     exports: [],
@@ -32,8 +30,8 @@ import { Module } from '@nestjs/common';
         HelloModule,
         UserModule,
         AuthModule,
-        TermPolicyModule,
         VerificationModule,
+        ResetPasswordModule,
     ],
 })
 export class RoutesPublicModule {}

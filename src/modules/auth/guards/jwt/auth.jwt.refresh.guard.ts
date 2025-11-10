@@ -2,7 +2,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtRefreshGuardKey } from '@modules/auth/constants/auth.constant';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
 
 /**
  * JWT Refresh Token Guard for protecting routes that require refresh token authentication.
@@ -11,7 +11,7 @@ import { AuthService } from '@modules/auth/services/auth.service';
  */
 @Injectable()
 export class AuthJwtRefreshGuard extends AuthGuard(AuthJwtRefreshGuardKey) {
-    constructor(private readonly authService: AuthService) {
+    constructor(private readonly authUtil: AuthUtil) {
         super();
     }
 
@@ -31,6 +31,6 @@ export class AuthJwtRefreshGuard extends AuthGuard(AuthJwtRefreshGuardKey) {
         user: IAuthJwtRefreshTokenPayload,
         info: Error
     ): T {
-        return this.authService.validateJwtRefreshGuard(err, user, info) as T;
+        return this.authUtil.validateJwtRefreshGuard(err, user, info) as T;
     }
 }

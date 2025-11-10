@@ -31,7 +31,7 @@ import { ApiTags } from '@nestjs/swagger';
 @ApiTags('modules.shared.user.session')
 @Controller({
     version: '1',
-    path: '/session',
+    path: '/user/session',
 })
 export class SessionSharedController {
     constructor(private readonly sessionService: SessionService) {}

@@ -5,6 +5,7 @@ export interface IConfigVerification {
     otpLength: number;
     tokenLength: number;
     linkBaseUrl: string;
+    resendInMinutes: number;
     reference: {
         prefix: string;
         length: number;
@@ -16,11 +17,12 @@ export default registerAs(
     (): IConfigVerification => ({
         expiredInMinutes: 5,
         otpLength: 6,
-        tokenLength: 20,
+        tokenLength: 50,
         linkBaseUrl: 'verify-email',
+        resendInMinutes: 2,
         reference: {
             prefix: 'VER',
-            length: 10,
+            length: 25,
         },
     })
 );

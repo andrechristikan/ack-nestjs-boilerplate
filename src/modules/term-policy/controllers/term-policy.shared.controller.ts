@@ -39,7 +39,7 @@ import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto
 @ApiTags('modules.shared.user.termPolicy')
 @Controller({
     version: '1',
-    path: '/term-policy',
+    path: '/user/term-policy',
 })
 export class TermPolicySharedController {
     constructor(private readonly termPolicyService: TermPolicyService) {}

@@ -128,6 +128,24 @@ export class UserUserController {
         });
     }
 
+    // TODO: 5
+    // @VerificationUserRequestMobileNumberDoc()
+    // @Response('verification.requestMobileNumber')
+    // @UserProtected()
+    // @AuthJwtAccessProtected()
+    // @ApiKeyProtected()
+    // @HttpCode(HttpStatus.OK)
+    // @Post('/mobile-number/:mobileNumberId/request')
+    // async requestMobileNumber(
+    //     @AuthJwtPayload('userId') userId: string,
+    //     @Param('mobileNumberId', RequestRequiredPipe) mobileNumberId: string
+    // ): Promise<IResponseReturn<VerificationMobileNumberResponseDto>> {
+    //     return this.verificationService.requestMobileNumber(
+    //         userId,
+    //         mobileNumberId
+    //     );
+    // }
+
     @UserUserClaimUsernameDoc()
     @Response('user.claimUsername')
     @TermPolicyAcceptanceProtected()

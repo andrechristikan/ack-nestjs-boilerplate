@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { AuthService } from '@modules/auth/services/auth.service';
 import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
 
 /**
  * Guard for validating Google social authentication tokens.
@@ -9,7 +9,7 @@ import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
  */
 @Injectable()
 export class AuthSocialGoogleGuard implements CanActivate {
-    constructor(private readonly authService: AuthService) {}
+    constructor(private readonly authUtil: AuthUtil) {}
 
     /**
      * Validates Google authentication token and attaches user payload to request.
@@ -22,6 +22,6 @@ export class AuthSocialGoogleGuard implements CanActivate {
             .switchToHttp()
             .getRequest<IRequestApp<IAuthSocialPayload>>();
 
-        return this.authService.validateOAuthGoogleGuard(request);
+        return this.authUtil.validateOAuthGoogleGuard(request);
     }
 }

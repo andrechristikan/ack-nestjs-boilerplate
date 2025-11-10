@@ -4,7 +4,8 @@ export interface IVerificationCreate {
     type: ENUM_VERIFICATION_TYPE;
     expiredAt: Date;
     expiredInMinutes: number;
+    resendInMinutes: number;
     reference: string;
     token: string;
-    link: string;
+    link?: string;
 }

@@ -16,6 +16,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CacheMainModule } from '@common/cache/cache.module';
 import { LoggerModule } from '@common/logger/logger.module';
 import { QueueRegisterModule } from 'src/queues/queue.register.module';
+import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 
 /**
  * Common module that provides shared functionality across the application.
@@ -51,6 +52,7 @@ import { QueueRegisterModule } from 'src/queues/queue.register.module';
         PolicyModule.forRoot(),
         RoleModule.forRoot(),
         FeatureFlagModule.forRoot(),
+        TermPolicyModule.forRoot(),
     ],
 })
 export class CommonModule {}

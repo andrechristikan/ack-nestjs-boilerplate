@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryCursorParams,
@@ -16,7 +17,8 @@ export class SessionRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperService: HelperService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findWithPaginationOffsetByUser(
@@ -115,9 +117,7 @@ export class SessionRepository {
                                 action: ENUM_ACTIVITY_LOG_ACTION.USER_REVOKE_SESSION,
                                 ipAddress,
                                 userAgent:
-                                    this.databaseService.toPlainObject(
-                                        userAgent
-                                    ),
+                                    this.databaseUtil.toPlainObject(userAgent),
                                 createdBy: userId,
                             },
                         },
@@ -147,9 +147,7 @@ export class SessionRepository {
                                 action: ENUM_ACTIVITY_LOG_ACTION.USER_REVOKE_SESSION_BY_ADMIN,
                                 ipAddress,
                                 userAgent:
-                                    this.databaseService.toPlainObject(
-                                        userAgent
-                                    ),
+                                    this.databaseUtil.toPlainObject(userAgent),
                                 createdBy: revokeBy,
                             },
                         },

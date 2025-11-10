@@ -1,7 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { VerificationVerifyEmailRequestDto } from '@modules/verification/dtos/request/verification.verify-email.request.dto';
 import { IVerificationCreate } from '@modules/verification/interfaces/verification.interface';
 import { Injectable } from '@nestjs/common';
 import {
@@ -17,14 +17,13 @@ import {
 export class VerificationRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    async findOneActiveEmailByToken({
-        token,
-    }: VerificationVerifyEmailRequestDto): Promise<
-        (Verification & { user: User }) | null
-    > {
+    async findOneActiveEmailByToken(
+        token: string
+    ): Promise<(Verification & { user: User }) | null> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.verification.findFirst({
@@ -69,9 +68,7 @@ export class VerificationRepository {
                                 action: ENUM_ACTIVITY_LOG_ACTION.USER_VERIFIED_EMAIL,
                                 ipAddress,
                                 userAgent:
-                                    this.databaseService.toPlainObject(
-                                        userAgent
-                                    ),
+                                    this.databaseUtil.toPlainObject(userAgent),
                                 createdBy: userId,
                             },
                         },
@@ -137,5 +134,23 @@ export class VerificationRepository {
                 return newVerification;
             }
         );
+    }
+
+    async requestMobileNumber(
+        userId: string,
+        mobileNumberId: string,
+        { expiredAt, reference, token, type }: IVerificationCreate
+    ): Promise<Verification> {
+        return this.databaseService.verification.create({
+            data: {
+                userId,
+                token,
+                reference,
+                type,
+                to: mobileNumberId,
+                expiredAt,
+                createdBy: userId,
+            },
+        });
     }
 }

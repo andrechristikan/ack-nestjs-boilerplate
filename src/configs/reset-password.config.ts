@@ -1,11 +1,10 @@
 import { registerAs } from '@nestjs/config';
 
-// TODO: 5
 export interface IConfigResetPassword {
     expiredInMinutes: number;
-    otpLength: number;
     tokenLength: number;
-    prefixUrl: string;
+    linkBaseUrl: string;
+    resendInMinutes: number;
     reference: {
         prefix: string;
         length: number;
@@ -16,12 +15,12 @@ export default registerAs(
     'resetPassword',
     (): IConfigResetPassword => ({
         expiredInMinutes: 5,
-        otpLength: 6,
         tokenLength: 50,
-        prefixUrl: 'reset-password',
+        linkBaseUrl: 'reset-password',
+        resendInMinutes: 2,
         reference: {
             prefix: 'RES',
-            length: 10,
+            length: 25,
         },
     })
 );

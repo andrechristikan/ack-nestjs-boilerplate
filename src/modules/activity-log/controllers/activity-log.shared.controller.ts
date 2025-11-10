@@ -18,7 +18,7 @@ import { ApiTags } from '@nestjs/swagger';
 @ApiTags('modules.shared.user.activityLog')
 @Controller({
     version: '1',
-    path: '/activity-log',
+    path: '/user/activity-log',
 })
 export class ActivityLogSharedController {
     constructor(private readonly activityLogService: ActivityLogService) {}

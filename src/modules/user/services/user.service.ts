@@ -27,7 +27,7 @@ import {
     IAuthJwtRefreshTokenPayload,
     IAuthPassword,
 } from '@modules/auth/interfaces/auth.interface';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
 import { CountryRepository } from '@modules/country/repositories/country.repository';
 import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
@@ -86,7 +86,6 @@ import {
     ENUM_USER_LOGIN_WITH,
     ENUM_USER_STATUS,
     ENUM_VERIFICATION_TYPE,
-    PasswordHistory,
 } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { Duration } from 'luxon';
@@ -100,7 +99,6 @@ export class UserService implements IUserService {
         @InjectQueue(ENUM_QUEUE.EMAIL)
         private readonly emailQueue: Queue,
         private readonly userUtil: UserUtil,
-        private readonly verificationUtil: VerificationUtil,
         private readonly userRepository: UserRepository,
         private readonly countryRepository: CountryRepository,
         private readonly roleRepository: RoleRepository,
@@ -108,11 +106,12 @@ export class UserService implements IUserService {
         private readonly awsS3Service: AwsS3Service,
         private readonly helperService: HelperService,
         private readonly fileService: FileService,
-        private readonly authService: AuthService,
+        private readonly authUtil: AuthUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly sessionUtil: SessionUtil,
         private readonly sessionRepository: SessionRepository,
         private readonly featureFlagService: FeatureFlagService,
+        private readonly verificationUtil: VerificationUtil,
         private readonly verificationRepository: VerificationRepository
     ) {}
 
@@ -142,7 +141,7 @@ export class UserService implements IUserService {
         }
 
         const checkPasswordExpired: boolean =
-            this.authService.checkPasswordExpired(user.passwordExpired);
+            this.authUtil.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
@@ -241,8 +240,8 @@ export class UserService implements IUserService {
         }
 
         try {
-            const passwordString = this.authService.createPasswordRandom();
-            const password: IAuthPassword = this.authService.createPassword(
+            const passwordString = this.authUtil.createPasswordRandom();
+            const password: IAuthPassword = this.authUtil.createPassword(
                 passwordString,
                 {
                     temporary: true,
@@ -267,7 +266,6 @@ export class UserService implements IUserService {
                 createdBy
             );
 
-            const keyVerification = `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created.id}`;
             await Promise.all([
                 this.emailQueue.add(
                     ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN,
@@ -286,7 +284,7 @@ export class UserService implements IUserService {
                         jobId: `${ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN}-${created.id}`,
                     }
                 ),
-                checkRole.type === ENUM_ROLE_TYPE.USER
+                checkRole.type !== ENUM_ROLE_TYPE.USER
                     ? this.emailQueue.add(
                           ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
                           {
@@ -299,16 +297,12 @@ export class UserService implements IUserService {
                                   expiredAt: emailVerification.expiredAt,
                                   reference: emailVerification.reference,
                                   link: emailVerification.link,
+                                  expiredInMinutes:
+                                      emailVerification.expiredInMinutes,
                               } as EmailVerificationDto,
                           },
                           {
-                              deduplication: {
-                                  id: keyVerification,
-                                  ttl:
-                                      emailVerification.expiredInMinutes *
-                                      60 *
-                                      1000,
-                              },
+                              jobId: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created.id}`,
                           }
                       )
                     : Promise.resolve(),
@@ -586,11 +580,11 @@ export class UserService implements IUserService {
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        const [checkExist, checkCountry] = await Promise.all([
+        const [checkMobileNumberExist, checkCountry] = await Promise.all([
             this.userRepository.existMobileNumber(userId, mobileNumberId),
             this.countryRepository.findOneById(countryId),
         ]);
-        if (!checkExist) {
+        if (!checkMobileNumberExist) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_NOT_FOUND,
                 message: 'user.error.mobileNumberNotFound',
@@ -616,7 +610,7 @@ export class UserService implements IUserService {
         try {
             await this.userRepository.updateMobileNumber(
                 userId,
-                mobileNumberId,
+                checkMobileNumberExist,
                 {
                     number,
                     countryId,
@@ -776,8 +770,8 @@ export class UserService implements IUserService {
         }
 
         try {
-            const passwordString = this.authService.createPasswordRandom();
-            const password = this.authService.createPassword(passwordString, {
+            const passwordString = this.authUtil.createPasswordRandom();
+            const password = this.authUtil.createPassword(passwordString, {
                 temporary: true,
             });
 
@@ -800,7 +794,7 @@ export class UserService implements IUserService {
                 {
                     deduplication: {
                         id: `${ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD}-${updated.id}`,
-                        ttl: 5000,
+                        ttl: 1000,
                     },
                 }
             );
@@ -818,22 +812,6 @@ export class UserService implements IUserService {
         }
     }
 
-    async checkPasswordHistoryActiveByPeriod(
-        userId: string,
-        password: string
-    ): Promise<PasswordHistory | null> {
-        const histories =
-            await this.passwordHistoryRepository.findAllActiveByUser(userId);
-
-        for (const history of histories) {
-            if (this.helperService.bcryptCompare(password, history.password)) {
-                return history;
-            }
-        }
-
-        return null;
-    }
-
     async changePassword(
         userId: string,
         { newPassword, oldPassword }: UserChangePasswordRequestDto,
@@ -841,13 +819,13 @@ export class UserService implements IUserService {
     ): Promise<IResponseReturn<void>> {
         const user = await this.userRepository.findOneActiveById(userId);
 
-        if (this.authService.checkPasswordAttempt(user)) {
+        if (this.authUtil.checkPasswordAttempt(user)) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
                 message: 'auth.error.passwordAttemptMax',
             });
         } else if (
-            !this.authService.validatePassword(oldPassword, user.password)
+            !this.authUtil.validatePassword(oldPassword, user.password)
         ) {
             await this.userRepository.increasePasswordAttempt(userId);
 
@@ -859,8 +837,10 @@ export class UserService implements IUserService {
 
         await this.userRepository.resetPasswordAttempt(userId);
 
-        const passwordCheck = await this.checkPasswordHistoryActiveByPeriod(
-            userId,
+        const passwordHistories =
+            await this.passwordHistoryRepository.findAllActiveByUser(userId);
+        const passwordCheck = this.userUtil.checkPasswordPeriod(
+            passwordHistories,
             newPassword
         );
         if (passwordCheck) {
@@ -881,7 +861,7 @@ export class UserService implements IUserService {
 
         try {
             const sessions = await this.sessionRepository.findAllByUser(userId);
-            const password = this.authService.createPassword(newPassword);
+            const password = this.authUtil.createPassword(newPassword);
 
             const [updated] = await Promise.all([
                 this.userRepository.changePassword(
@@ -900,7 +880,7 @@ export class UserService implements IUserService {
                 {
                     deduplication: {
                         id: `${ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD}-${updated.id}`,
-                        ttl: 5000,
+                        ttl: 1000,
                     },
                 }
             );
@@ -937,14 +917,12 @@ export class UserService implements IUserService {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_SET,
                 message: 'auth.error.passwordNotSet',
             });
-        } else if (this.authService.checkPasswordAttempt(user)) {
+        } else if (this.authUtil.checkPasswordAttempt(user)) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
                 message: 'auth.error.passwordAttemptMax',
             });
-        } else if (
-            !this.authService.validatePassword(password, user.password)
-        ) {
+        } else if (!this.authUtil.validatePassword(password, user.password)) {
             await this.userRepository.increasePasswordAttempt(user.id);
 
             throw new BadRequestException({
@@ -956,7 +934,7 @@ export class UserService implements IUserService {
         await this.userRepository.resetPasswordAttempt(user.id);
 
         const checkPasswordExpired: boolean =
-            this.authService.checkPasswordExpired(user.passwordExpired);
+            this.authUtil.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
@@ -973,7 +951,6 @@ export class UserService implements IUserService {
                 emailVerification
             );
 
-            const keyVerification = `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${user.id}`;
             await this.emailQueue.add(
                 ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
                 {
@@ -986,11 +963,12 @@ export class UserService implements IUserService {
                         expiredAt: emailVerification.expiredAt,
                         reference: emailVerification.reference,
                         link: emailVerification.link,
+                        expiredInMinutes: emailVerification.expiredInMinutes,
                     } as EmailVerificationDto,
                 },
                 {
                     deduplication: {
-                        id: keyVerification,
+                        id: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${user.id}`,
                         ttl: emailVerification.expiredInMinutes * 60 * 1000,
                     },
                 }
@@ -1004,7 +982,7 @@ export class UserService implements IUserService {
 
         try {
             const sessionId = this.databaseUtil.createId();
-            const tokens = this.authService.createTokens(
+            const tokens = this.authUtil.createTokens(
                 user,
                 sessionId,
                 from,
@@ -1105,7 +1083,7 @@ export class UserService implements IUserService {
             }
 
             const sessionId = this.databaseUtil.createId();
-            const tokens = this.authService.createTokens(
+            const tokens = this.authUtil.createTokens(
                 user,
                 sessionId,
                 from,
@@ -1150,7 +1128,7 @@ export class UserService implements IUserService {
         refreshToken: string
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         const { sessionId, userId } =
-            this.authService.payloadToken<IAuthJwtRefreshTokenPayload>(
+            this.authUtil.payloadToken<IAuthJwtRefreshTokenPayload>(
                 refreshToken
             );
 
@@ -1163,7 +1141,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const tokens = this.authService.refreshToken(user, refreshToken);
+            const tokens = this.authUtil.refreshToken(user, refreshToken);
 
             return {
                 data: tokens,
@@ -1209,7 +1187,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const password = this.authService.createPassword(passwordString);
+            const password = this.authUtil.createPassword(passwordString);
             const randomUsername = this.userUtil.createRandomUsername();
             const emailVerification = this.verificationUtil.createVerification(
                 ENUM_VERIFICATION_TYPE.EMAIL
@@ -1229,7 +1207,6 @@ export class UserService implements IUserService {
                 requestLog
             );
 
-            const keyVerification = `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created.id}`;
             await Promise.all([
                 this.emailQueue.add(
                     ENUM_SEND_EMAIL_PROCESS.WELCOME,
@@ -1255,12 +1232,14 @@ export class UserService implements IUserService {
                             expiredAt: emailVerification.expiredAt,
                             reference: emailVerification.reference,
                             link: emailVerification.link,
+                            expiredInMinutes:
+                                emailVerification.expiredInMinutes,
                         } as EmailVerificationDto,
                     },
                     {
                         deduplication: {
-                            id: keyVerification,
-                            ttl: emailVerification.expiredInMinutes * 60 * 1000,
+                            id: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created.id}`,
+                            ttl: emailVerification.resendInMinutes * 60 * 1000,
                         },
                     }
                 ),

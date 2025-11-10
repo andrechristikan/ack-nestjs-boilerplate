@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import ObjectID from 'bson-objectid';
 
 /**
@@ -25,5 +26,15 @@ export class DatabaseUtil {
      */
     createId(): string {
         return ObjectID().toHexString();
+    }
+
+    /**
+     * Converts data to a plain object compatible with Prisma JsonObject format.
+     *
+     * @param {T} data - The data to convert to plain object
+     * @returns {Prisma.JsonObject} Plain object representation of the data
+     */
+    toPlainObject<T>(data: T): Prisma.JsonObject {
+        return structuredClone(data) as unknown as Prisma.JsonObject;
     }
 }

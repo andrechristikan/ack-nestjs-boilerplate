@@ -107,6 +107,12 @@ export class UserRepository {
         });
     }
 
+    async findOneActiveByEmail(email: string): Promise<User | null> {
+        return this.databaseService.user.findUnique({
+            where: { email, deletedAt: null, status: ENUM_USER_STATUS.ACTIVE },
+        });
+    }
+
     async findOneWithRoleByEmail(email: string): Promise<IUser | null> {
         return this.databaseService.user.findUnique({
             where: { email, deletedAt: null },
@@ -150,7 +156,12 @@ export class UserRepository {
     async existMobileNumber(
         userId: string,
         mobileNumberId: string
-    ): Promise<{ id: string } | null> {
+    ): Promise<{
+        id: string;
+        number: string;
+        phoneCode: string;
+        isVerified: boolean;
+    } | null> {
         return this.databaseService.userMobileNumber.findFirst({
             where: {
                 id: mobileNumberId,
@@ -158,7 +169,12 @@ export class UserRepository {
                     id: userId,
                 },
             },
-            select: { id: true },
+            select: {
+                id: true,
+                number: true,
+                phoneCode: true,
+                isVerified: true,
+            },
         });
     }
 
@@ -269,7 +285,7 @@ export class UserRepository {
                             action: ENUM_ACTIVITY_LOG_ACTION.USER_CREATED,
                             ipAddress,
                             userAgent:
-                                this.databaseService.toPlainObject(userAgent),
+                                this.databaseUtil.toPlainObject(userAgent),
                             createdBy: createdBy,
                         },
                     },
@@ -307,8 +323,7 @@ export class UserRepository {
                                 ? ENUM_ACTIVITY_LOG_ACTION.USER_BLOCKED
                                 : ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_STATUS,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: updatedBy,
                     },
                 },
@@ -331,8 +346,7 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PROFILE,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -354,8 +368,7 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PHOTO_PROFILE,
                         ipAddress: ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -379,8 +392,7 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_DELETE_SELF,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                         createdAt: deletedAt,
                     },
@@ -417,8 +429,7 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_ADD_MOBILE_NUMBER,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -443,7 +454,12 @@ export class UserRepository {
 
     async updateMobileNumber(
         userId: string,
-        mobileNumberId: string,
+        mobileNumber: {
+            id: string;
+            number: string;
+            phoneCode: string;
+            isVerified: boolean;
+        },
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<UserMobileNumber & { country: Country }> {
@@ -452,12 +468,17 @@ export class UserRepository {
             data: {
                 mobileNumbers: {
                     update: {
-                        where: { id: mobileNumberId },
+                        where: { id: mobileNumber.id },
                         data: {
                             countryId,
                             number,
                             phoneCode,
                             updatedBy: userId,
+                            isVerified:
+                                mobileNumber.number === number &&
+                                mobileNumber.phoneCode === phoneCode
+                                    ? mobileNumber.isVerified
+                                    : false,
                         },
                     },
                 },
@@ -466,8 +487,7 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_MOBILE_NUMBER,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -506,8 +526,7 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_DELETE_MOBILE_NUMBER,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -529,8 +548,7 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_CLAIM_USERNAME,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -573,8 +591,7 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_UPDATE_PASSWORD_BY_ADMIN,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: updatedBy,
                     },
                 },
@@ -636,8 +653,7 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_CHANGE_PASSWORD,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -685,8 +701,7 @@ export class UserRepository {
                         expiredAt,
                         isRevoked: false,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -694,8 +709,7 @@ export class UserRepository {
                     create: {
                         action,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -766,7 +780,7 @@ export class UserRepository {
                             action: ENUM_ACTIVITY_LOG_ACTION.USER_CREATED,
                             ipAddress,
                             userAgent:
-                                this.databaseService.toPlainObject(userAgent),
+                                this.databaseUtil.toPlainObject(userAgent),
                             createdBy: userId,
                         },
                     },
@@ -802,8 +816,7 @@ export class UserRepository {
                     create: {
                         action: ENUM_ACTIVITY_LOG_ACTION.USER_VERIFIED,
                         ipAddress,
-                        userAgent:
-                            this.databaseService.toPlainObject(userAgent),
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
@@ -891,7 +904,7 @@ export class UserRepository {
                             action: ENUM_ACTIVITY_LOG_ACTION.USER_SIGNED_UP,
                             ipAddress,
                             userAgent:
-                                this.databaseService.toPlainObject(userAgent),
+                                this.databaseUtil.toPlainObject(userAgent),
                             createdBy: userId,
                         },
                     },

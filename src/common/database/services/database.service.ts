@@ -63,16 +63,6 @@ export class DatabaseService
     }
 
     /**
-     * Converts data to a plain object compatible with Prisma JsonObject format.
-     *
-     * @param {T} data - The data to convert to plain object
-     * @returns {Prisma.JsonObject} Plain object representation of the data
-     */
-    toPlainObject<T>(data: T): Prisma.JsonObject {
-        return structuredClone(data) as unknown as Prisma.JsonObject;
-    }
-
-    /**
      * Initializes the database service when the module starts.
      * Sets up logging and establishes database connection.
      *

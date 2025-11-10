@@ -18,7 +18,7 @@ import { ApiTags } from '@nestjs/swagger';
 @ApiTags('modules.shared.user.passwordHistory')
 @Controller({
     version: '1',
-    path: '/password-history',
+    path: '/user/password-history',
 })
 export class PasswordHistorySharedController {
     constructor(

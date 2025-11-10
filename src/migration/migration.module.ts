@@ -10,7 +10,6 @@ import { AuthModule } from '@modules/auth/auth.module';
 import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-flag.seed';
 import { UserModule } from '@modules/user/user.module';
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
-import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 
 /**
  * Migration module that provides database seeding functionality.
@@ -25,7 +24,6 @@ import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
         CountryModule,
         AuthModule,
         UserModule,
-        TermPolicyModule,
     ],
     providers: [
         MigrationApiKeySeed,

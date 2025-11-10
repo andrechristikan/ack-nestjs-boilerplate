@@ -5,7 +5,6 @@ import { PasswordHistoryModule } from '@modules/password-history/password-histor
 import { SessionSharedController } from '@modules/session/controllers/session.shared.controller';
 import { SessionModule } from '@modules/session/session.module';
 import { TermPolicySharedController } from '@modules/term-policy/controllers/term-policy.shared.controller';
-import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
@@ -29,7 +28,6 @@ import { Module } from '@nestjs/common';
         PasswordHistoryModule,
         ActivityLogModule,
         SessionModule,
-        TermPolicyModule,
     ],
 })
 export class RoutesSharedModule {}

@@ -116,7 +116,56 @@ export class UserPublicController {
         });
     }
 
-    // TODO: 5
-    // handle forgot password
-    // handle reset password
+    // TODO: 1
+    // @VerificationPublicVerifyEmailDoc()
+    // @Response('verification.verifyEmail')
+    // @ApiKeyProtected()
+    // @HttpCode(HttpStatus.OK)
+    // @Post('/verify/email')
+    // async verifyEmail(
+    //     @Body() body: VerificationVerifyEmailRequestDto,
+    //     @RequestIPAddress() ipAddress: string,
+    //     @RequestUserAgent() userAgent: RequestUserAgentDto
+    // ): Promise<IResponseReturn<void>> {
+    //     return this.verificationService.verifyEmail(body, {
+    //         ipAddress,
+    //         userAgent,
+    //     });
+    // }
+
+    // TODO: 2
+    // @ResetPasswordPublicForgotDoc()
+    // @Response('resetPassword.forgot')
+    // @FeatureFlag('changePassword.forgotAllowed')
+    // @ApiKeyProtected()
+    // @HttpCode(HttpStatus.OK)
+    // @Post('/forgot')
+    // async forgot(
+    //     @Body() body: ResetPasswordForgotRequestDto,
+    //     @RequestIPAddress() ipAddress: string,
+    //     @RequestUserAgent() userAgent: RequestUserAgentDto
+    // ): Promise<IResponseReturn<void>> {
+    //     return this.resetPasswordService.forgot(body, {
+    //         ipAddress,
+    //         userAgent,
+    //     });
+    // }
+
+    // TODO: 3
+    // @ResetPasswordPublicResetDoc()
+    // @Response('resetPassword.reset')
+    // @FeatureFlag('changePassword.forgotAllowed')
+    // @ApiKeyProtected()
+    // @HttpCode(HttpStatus.OK)
+    // @Post('/reset')
+    // async reset(
+    //     @Body() body: ResetPasswordResetRequestDto,
+    //     @RequestIPAddress() ipAddress: string,
+    //     @RequestUserAgent() userAgent: RequestUserAgentDto
+    // ): Promise<IResponseReturn<void>> {
+    //     return this.resetPasswordService.reset(body, {
+    //         ipAddress,
+    //         userAgent,
+    //     });
+    // }
 }

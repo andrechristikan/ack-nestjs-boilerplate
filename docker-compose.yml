@@ -10,17 +10,23 @@ services:
         volumes:
             - ./src/:/app/src/
             - .env/:/app/.env
-            - ./keys/access-token.pem:/app/keys/access-token.pem
-            - ./keys/access-token.pub:/app/keys/access-token.pub
-            - ./keys/refresh-token.pem:/app/keys/refresh-token.pem
-            - ./keys/refresh-token.pub:/app/keys/refresh-token.pub
         restart: on-failure
         networks:
             - app-network
         depends_on:
-            - redis
-            - mongo
-            - jwks-server
+            redis:
+                condition: service_healthy
+            mongo:
+                condition: service_healthy
+            jwks-server:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+        profiles: ["api", "full"]
         deploy:
             resources:
                 limits:
@@ -90,7 +96,8 @@ services:
             - USER_LOGIN=admin
             - USER_PASSWORD=admin123
         depends_on:
-            - redis
+            redis:
+                condition: service_healthy
         deploy:
             resources:
                 limits:

@@ -92,6 +92,7 @@ model UserMobileNumber {
 
   country Country? @relation("UserMobileNumberCountry", fields: [countryId], references: [id])
   user    User?    @relation("UserMobileNumberUser", fields: [userId], references: [id])
+  verifications Verification[] @relation("UserMobileNumberVerification")
 
   @@unique(fields: [number])
   @@index(fields: [userId])
@@ -142,6 +143,7 @@ model User {
   country           Country?                   @relation("UserCountry", fields: [countryId], references: [id])
   sessions          Session[]                  @relation("UserSessions")
   acceptances       TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
+  resetPasswords    ResetPassword[]            @relation("UserResetPassword")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -155,6 +157,7 @@ model User {
 model Verification {
   id         String                 @id @default(auto()) @map("_id") @db.ObjectId
   userId     String                 @db.ObjectId
+  mobileNumberId String?                @db.ObjectId
   to         String
   type       ENUM_VERIFICATION_TYPE
   token      String
@@ -170,6 +173,7 @@ model Verification {
   updatedBy String?
 
   user User? @relation("UserVerifications", fields: [userId], references: [id])
+  mobileNumber UserMobileNumber? @relation("UserMobileNumberVerification", fields: [mobileNumberId], references: [id])
 
   @@unique(fields: [reference])
   @@index(fields: [token, expiredAt, isUsed, type])
@@ -299,6 +303,32 @@ model FeatureFlag {
   @@map("FeatureFlags")
 }
 
+
+
+model ResetPassword {
+  id         String                 @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String                 @db.ObjectId
+  to         String
+  token      String
+  expiredAt  DateTime
+  resetAt DateTime?
+  isUsed     Boolean                @default(false)
+  reference  String
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  user User? @relation("UserResetPassword", fields: [userId], references: [id])
+
+  @@unique(fields: [reference])
+  @@index(fields: [token, expiredAt, isUsed])
+  @@index(fields: [token])
+  @@map("ResetPasswords")
+}
+
 enum ENUM_USER_GENDER {
   MALE   @map("male")
   FEMALE @map("female")
@@ -391,6 +421,7 @@ enum ENUM_ACTIVITY_LOG_ACTION {
   USER_REVOKE_SESSION_BY_ADMIN  @map("userRevokeSessionByAdmin")
   USER_ACCEPT_TERM_POLICY       @map("userAcceptTermPolicy")
   USER_VERIFIED_EMAIL           @map("userVerifiedEmail")
+  USER_FORGOT_PASSWORD         @map("userForgotPassword")
 
   ADMIN_SESSION_REVOKE             @map("adminSessionRevoke")
   ADMIN_API_KEY_CREATE             @map("adminApiKeyCreate")

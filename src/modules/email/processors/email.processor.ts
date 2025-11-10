@@ -9,10 +9,10 @@ import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
 import { EmailWorkerDto } from '@modules/email/dtos/email.worker.dto';
 import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
 import { IEmailProcessor } from '@modules/email/interfaces/email.processor.interface';
-import { EmailService } from '@modules/email/services/email.service';
 import { ENUM_QUEUE } from 'src/queues/enums/queue.enum';
 import { QueueProcessorBase } from 'src/queues/bases/queue.processor.base';
 import { QueueProcessor } from 'src/queues/decorators/queue.decorator';
+import { EmailUtil } from '@modules/email/utils/email.util';
 
 @QueueProcessor(ENUM_QUEUE.EMAIL)
 export class EmailProcessor
@@ -21,7 +21,7 @@ export class EmailProcessor
 {
     private readonly logger = new Logger(EmailProcessor.name);
 
-    constructor(private readonly emailService: EmailService) {
+    constructor(private readonly emailUtil: EmailUtil) {
         super();
     }
 
@@ -92,53 +92,53 @@ export class EmailProcessor
     }
 
     async processWelcome(data: EmailSendDto): Promise<boolean> {
-        return this.emailService.sendWelcome(data);
+        return this.emailUtil.sendWelcome(data);
     }
 
     async processChangePassword(data: EmailSendDto): Promise<boolean> {
-        return this.emailService.sendChangePassword(data);
+        return this.emailUtil.sendChangePassword(data);
     }
 
     async processTempPassword(
         data: EmailSendDto,
         tempPassword: EmailTempPasswordDto
     ): Promise<boolean> {
-        return this.emailService.sendTempPassword(data, tempPassword);
+        return this.emailUtil.sendTempPassword(data, tempPassword);
     }
 
     async processCreateByAdmin(
         data: EmailSendDto,
         createdByAdmin: EmailTempPasswordDto
     ): Promise<boolean> {
-        return this.emailService.sendCreateByAdmin(data, createdByAdmin);
+        return this.emailUtil.sendCreateByAdmin(data, createdByAdmin);
     }
 
     async processResetPassword(
         data: EmailSendDto,
         resetPassword: EmailResetPasswordDto
     ): Promise<boolean> {
-        return this.emailService.sendResetPassword(data, resetPassword);
+        return this.emailUtil.sendResetPassword(data, resetPassword);
     }
 
     async processVerification(
         data: EmailSendDto,
         verification: EmailVerificationDto
     ): Promise<boolean> {
-        return this.emailService.sendVerification(data, verification);
+        return this.emailUtil.sendVerification(data, verification);
     }
 
     async processEmailVerified(
         data: EmailSendDto,
         emailVerified: EmailVerifiedDto
     ): Promise<boolean> {
-        return this.emailService.sendEmailVerified(data, emailVerified);
+        return this.emailUtil.sendEmailVerified(data, emailVerified);
     }
 
     async processMobileNumberVerified(
         data: EmailSendDto,
         mobileNumberVerified: EmailMobileNumberVerifiedDto
     ): Promise<boolean> {
-        return this.emailService.sendMobileNumberVerified(
+        return this.emailUtil.sendMobileNumberVerified(
             data,
             mobileNumberVerified
         );

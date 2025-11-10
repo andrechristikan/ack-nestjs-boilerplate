@@ -8,7 +8,7 @@ import { UserDto } from '@modules/user/dtos/user.dto';
 import { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { User } from '@prisma/client';
+import { PasswordHistory, User } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 
 @Injectable()
@@ -86,5 +86,18 @@ export class UserUtil {
             userUsername: user.username,
             timestamp: user.updatedAt ?? user.createdAt,
         };
+    }
+
+    checkPasswordPeriod(
+        histories: PasswordHistory[],
+        password: string
+    ): PasswordHistory | null {
+        for (const history of histories) {
+            if (this.helperService.bcryptCompare(password, history.password)) {
+                return history;
+            }
+        }
+
+        return null;
     }
 }

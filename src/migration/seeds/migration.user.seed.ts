@@ -1,6 +1,5 @@
 import { Command } from 'nestjs-command';
 import { Injectable, Logger } from '@nestjs/common';
-import { AuthService } from '@modules/auth/services/auth.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import {
@@ -13,9 +12,10 @@ import {
     ENUM_USER_STATUS,
 } from '@prisma/client';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { faker } from '@faker-js/faker';
 import { UAParser } from 'ua-parser-js';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 
 @Injectable()
 export class MigrationUserSeed {
@@ -52,7 +52,7 @@ export class MigrationUserSeed {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly authService: AuthService,
+        private readonly authUtil: AuthUtil,
         private readonly userUtil: UserUtil,
         private readonly helperService: HelperService
     ) {}
@@ -138,7 +138,7 @@ export class MigrationUserSeed {
 
         const today = this.helperService.dateCreate();
         const { passwordCreated, passwordExpired, passwordHash, salt } =
-            this.authService.createPassword(this.password);
+            this.authUtil.createPassword(this.password);
 
         const userAgent = UAParser(faker.internet.userAgent());
         const ip = faker.internet.ip();
@@ -190,7 +190,7 @@ export class MigrationUserSeed {
                                     action: ENUM_ACTIVITY_LOG_ACTION.USER_CREATED,
                                     ipAddress: ip,
                                     userAgent:
-                                        this.databaseService.toPlainObject(
+                                        this.databaseUtil.toPlainObject(
                                             userAgent
                                         ),
                                     createdBy: userId,

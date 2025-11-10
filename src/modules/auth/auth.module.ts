@@ -1,14 +1,14 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { AuthJwtAccessStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.access.strategy';
 import { AuthJwtRefreshStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.refresh.strategy';
-import { AuthService } from '@modules/auth/services/auth.service';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Algorithm } from 'jsonwebtoken';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
 
 @Module({
-    providers: [AuthService],
-    exports: [AuthService],
+    providers: [AuthUtil],
+    exports: [AuthUtil],
     controllers: [],
     imports: [
         JwtModule.registerAsync({

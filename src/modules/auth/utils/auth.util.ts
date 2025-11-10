@@ -11,7 +11,6 @@ import {
     IAuthSocialPayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
 import { HelperService } from '@common/helper/services/helper.service';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import {
@@ -24,13 +23,13 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { IUser } from '@modules/user/interfaces/user.interface';
 
 /**
- * Authentication service providing JWT token management, password operations,
+ * Authentication util providing JWT token management, password operations,
  * and social authentication integration. Handles access and refresh token
  * generation, validation, and payload management for user authentication
  * across the application.
  */
 @Injectable()
-export class AuthService implements IAuthService {
+export class AuthUtil {
     // jwt
     private readonly jwtAccessTokenKid: string;
     private readonly jwtAccessTokenPrivateKey: string;
