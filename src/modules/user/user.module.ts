@@ -10,6 +10,8 @@ import { AuthModule } from '@modules/auth/auth.module';
 import { FileModule } from '@common/file/file.module';
 import { SessionModule } from '@modules/session/session.module';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
+import { ResetPasswordModule } from '@modules/reset-password/reset-password.module';
+import { EmailModule } from '@modules/email/email.module';
 
 @Module({
     imports: [
@@ -21,6 +23,8 @@ import { PasswordHistoryModule } from '@modules/password-history/password-histor
         AuthModule,
         FileModule,
         SessionModule,
+        ResetPasswordModule,
+        EmailModule,
     ],
     exports: [UserService, UserUtil, UserRepository],
     providers: [UserService, UserUtil, UserRepository],

@@ -120,7 +120,7 @@ export class UserSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/profile/generate/photo/presign')
+    @Post('/profile/generate-presign/photo')
     async generatePhotoProfilePresign(
         @AuthJwtPayload('userId')
         userId: string,

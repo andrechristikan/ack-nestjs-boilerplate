@@ -237,19 +237,19 @@ export class EmailTemplateService implements IEmailTemplateService {
     }
 
     /**
-     * Import reset password email template to AWS SES
+     * Import forgot password email template to AWS SES
      * @returns {Promise<boolean>} True if template imported successfully, false otherwise
      */
-    async importResetPassword(): Promise<boolean> {
+    async importForgotPassword(): Promise<boolean> {
         try {
             const templatePath = join(
                 process.cwd(),
-                'src/modules/email/templates/reset-password.template.hbs'
+                'src/modules/email/templates/forgot-password.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
-                name: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
-                subject: `Reset Password`,
+                name: ENUM_SEND_EMAIL_PROCESS.FORGOT_PASSWORD,
+                subject: `Forgot Password`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
 
@@ -262,23 +262,23 @@ export class EmailTemplateService implements IEmailTemplateService {
     }
 
     /**
-     * Get reset password email template from AWS SES
+     * Get forgot password email template from AWS SES
      * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
      */
-    async getResetPassword(): Promise<GetTemplateCommandOutput> {
+    async getForgotPassword(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
-            name: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
+            name: ENUM_SEND_EMAIL_PROCESS.FORGOT_PASSWORD,
         });
     }
 
     /**
-     * Delete reset password email template from AWS SES
+     * Delete forgot password email template from AWS SES
      * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
      */
-    async deleteResetPassword(): Promise<boolean> {
+    async deleteForgotPassword(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
+                name: ENUM_SEND_EMAIL_PROCESS.FORGOT_PASSWORD,
             });
 
             return true;

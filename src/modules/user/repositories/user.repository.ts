@@ -13,6 +13,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { IResetPasswordCreate } from '@modules/reset-password/interfaces/reset-password.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
@@ -38,9 +39,12 @@ import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_SIGN_UP_WITH,
     ENUM_USER_STATUS,
+    ENUM_VERIFICATION_TYPE,
     Prisma,
+    ResetPassword,
     User,
     UserMobileNumber,
+    Verification,
 } from '@prisma/client';
 
 @Injectable()
@@ -149,6 +153,53 @@ export class UserRepository {
             where: { id, deletedAt: null },
             include: {
                 role: true,
+            },
+        });
+    }
+
+    async findOneActiveByResetPasswordToken(
+        token: string
+    ): Promise<(ResetPassword & { user: User }) | null> {
+        const today = this.helperService.dateCreate();
+
+        return this.databaseService.resetPassword.findFirst({
+            where: {
+                token,
+                isUsed: false,
+                expiredAt: {
+                    gt: today,
+                },
+                user: {
+                    deletedAt: null,
+                    status: ENUM_USER_STATUS.ACTIVE,
+                },
+            },
+            include: {
+                user: true,
+            },
+        });
+    }
+
+    async findOneActiveByVerificationEmailToken(
+        token: string
+    ): Promise<(Verification & { user: User }) | null> {
+        const today = this.helperService.dateCreate();
+
+        return this.databaseService.verification.findFirst({
+            where: {
+                token,
+                isUsed: false,
+                type: ENUM_VERIFICATION_TYPE.EMAIL,
+                expiredAt: {
+                    gt: today,
+                },
+                user: {
+                    deletedAt: null,
+                    status: ENUM_USER_STATUS.ACTIVE,
+                },
+            },
+            include: {
+                user: true,
             },
         });
     }
@@ -935,5 +986,139 @@ export class UserRepository {
         ]);
 
         return user;
+    }
+
+    async forgotPassword(
+        userId: string,
+        email: string,
+        { expiredAt, reference, token }: IResetPasswordCreate,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<void> {
+        await this.databaseService.user.update({
+            where: {
+                id: userId,
+                deletedAt: null,
+                status: ENUM_USER_STATUS.ACTIVE,
+            },
+            data: {
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.USER_FORGOT_PASSWORD,
+                        ipAddress,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        createdBy: userId,
+                    },
+                },
+                resetPasswords: {
+                    updateMany: {
+                        where: { isUsed: false },
+                        data: { isUsed: true },
+                    },
+                    create: {
+                        expiredAt,
+                        reference,
+                        token,
+                        createdBy: userId,
+                        to: email,
+                    },
+                },
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        return;
+    }
+
+    async verifyEmail(
+        id: string,
+        userId: string,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<Verification> {
+        const today = this.helperService.dateCreate();
+
+        return this.databaseService.verification.update({
+            where: {
+                id,
+            },
+            data: {
+                isUsed: true,
+                verifiedAt: today,
+                user: {
+                    update: {
+                        verifiedAt: today,
+                        isVerified: true,
+                        activityLogs: {
+                            create: {
+                                action: ENUM_ACTIVITY_LOG_ACTION.USER_VERIFIED_EMAIL,
+                                ipAddress,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                createdBy: userId,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    async requestVerificationEmail(
+        userId: string,
+        userEmail: string,
+        { expiredAt, reference, token, type }: IVerificationCreate
+    ): Promise<Verification> {
+        const today = this.helperService.dateCreate();
+
+        return this.databaseService.$transaction(
+            async (tx: Prisma.TransactionClient) => {
+                const activeVerification = await tx.verification.findFirst({
+                    where: {
+                        userId,
+                        type,
+                        isUsed: false,
+                        expiredAt: {
+                            gt: today,
+                        },
+                    },
+                    select: {
+                        id: true,
+                    },
+                });
+
+                const promises = [
+                    this.databaseService.verification.create({
+                        data: {
+                            expiredAt,
+                            reference,
+                            token,
+                            type,
+                            userId,
+                            to: userEmail,
+                            createdBy: reference,
+                            createdAt: today,
+                        },
+                    }),
+                ];
+
+                if (activeVerification) {
+                    promises.push(
+                        tx.verification.update({
+                            where: {
+                                id: activeVerification.id,
+                            },
+                            data: {
+                                expiredAt: today,
+                            },
+                        })
+                    );
+                }
+
+                const [newVerification] = await Promise.all(promises);
+
+                return newVerification;
+            }
+        );
     }
 }

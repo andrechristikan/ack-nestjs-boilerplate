@@ -13,9 +13,9 @@ export interface IEmailTemplateService {
     importTempPassword(): Promise<boolean>;
     getTempPassword(): Promise<GetTemplateCommandOutput>;
     deleteTempPassword(): Promise<boolean>;
-    importResetPassword(): Promise<boolean>;
-    getResetPassword(): Promise<GetTemplateCommandOutput>;
-    deleteResetPassword(): Promise<boolean>;
+    importForgotPassword(): Promise<boolean>;
+    getForgotPassword(): Promise<GetTemplateCommandOutput>;
+    deleteForgotPassword(): Promise<boolean>;
     importVerification(): Promise<boolean>;
     getVerification(): Promise<GetTemplateCommandOutput>;
     deleteVerification(): Promise<boolean>;

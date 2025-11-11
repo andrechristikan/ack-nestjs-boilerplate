@@ -4,13 +4,13 @@ import { title } from 'case';
 import { ConfigService } from '@nestjs/config';
 import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
-import { EmailResetPasswordDto } from '@modules/email/dtos/email.reset-password.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
 import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
 import { EmailMobileNumberVerifiedDto } from '@modules/email/dtos/email.mobile-number-verified.dto';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
+import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
 
 /**
  * Util for handling email operations using AWS SES
@@ -189,16 +189,16 @@ export class EmailUtil {
     /**
      * Send password reset email with reset link
      * @param {EmailSendDto} emailData - Email and username data
-     * @param {EmailResetPasswordDto} resetData - Reset password link and expiration data
+     * @param {EmailForgotPasswordDto} resetData - Reset password link and expiration data
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
-    async sendResetPassword(
+    async sendForgotPassword(
         { username, email }: EmailSendDto,
-        { expiredAt, link, reference, expiredInMinutes }: EmailResetPasswordDto
+        { expiredAt, link, reference, expiredInMinutes }: EmailForgotPasswordDto
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
+                templateName: ENUM_SEND_EMAIL_PROCESS.FORGOT_PASSWORD,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {

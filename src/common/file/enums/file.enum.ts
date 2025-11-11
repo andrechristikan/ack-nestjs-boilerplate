@@ -1,10 +1,3 @@
-export enum ENUM_FILE_TYPE {
-    AUDIO = 'audio',
-    IMAGE = 'image',
-    EXCEL = 'excel',
-    VIDEO = 'video',
-}
-
 export enum ENUM_FILE_EXTENSION_IMAGE {
     JPG = 'jpg',
     JPEG = 'jpeg',

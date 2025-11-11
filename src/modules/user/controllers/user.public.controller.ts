@@ -16,12 +16,18 @@ import { FeatureFlag } from '@modules/feature-flag/decorators/feature-flag.decor
 import {
     AuthPublicLoginSocialAppleDoc,
     AuthPublicLoginSocialGoogleDoc,
+    UserPublicForgotPasswordDoc,
     UserPublicLoginCredentialDoc,
+    UserPublicResetPasswordDoc,
     UserPublicSignUpDoc,
+    UserPublicVerifyEmailDoc,
 } from '@modules/user/docs/user.public.doc';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
+import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
+import { UserResetPasswordRequestDto } from '@modules/user/dtos/request/user.reset-password.request';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
+import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { UserService } from '@modules/user/services/user.service';
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
@@ -116,56 +122,53 @@ export class UserPublicController {
         });
     }
 
-    // TODO: 1
-    // @VerificationPublicVerifyEmailDoc()
-    // @Response('verification.verifyEmail')
-    // @ApiKeyProtected()
-    // @HttpCode(HttpStatus.OK)
-    // @Post('/verify/email')
-    // async verifyEmail(
-    //     @Body() body: VerificationVerifyEmailRequestDto,
-    //     @RequestIPAddress() ipAddress: string,
-    //     @RequestUserAgent() userAgent: RequestUserAgentDto
-    // ): Promise<IResponseReturn<void>> {
-    //     return this.verificationService.verifyEmail(body, {
-    //         ipAddress,
-    //         userAgent,
-    //     });
-    // }
+    @UserPublicVerifyEmailDoc()
+    @Response('user.verifyEmail')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/verify/email')
+    async verifyEmail(
+        @Body() body: UserVerifyEmailRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.verifyEmail(body, {
+            ipAddress,
+            userAgent,
+        });
+    }
 
-    // TODO: 2
-    // @ResetPasswordPublicForgotDoc()
-    // @Response('resetPassword.forgot')
-    // @FeatureFlag('changePassword.forgotAllowed')
-    // @ApiKeyProtected()
-    // @HttpCode(HttpStatus.OK)
-    // @Post('/forgot')
-    // async forgot(
-    //     @Body() body: ResetPasswordForgotRequestDto,
-    //     @RequestIPAddress() ipAddress: string,
-    //     @RequestUserAgent() userAgent: RequestUserAgentDto
-    // ): Promise<IResponseReturn<void>> {
-    //     return this.resetPasswordService.forgot(body, {
-    //         ipAddress,
-    //         userAgent,
-    //     });
-    // }
+    @UserPublicForgotPasswordDoc()
+    @Response('user.forgotPassword')
+    @FeatureFlag('changePassword.forgotAllowed')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/password/forgot')
+    async forgotPassword(
+        @Body() body: UserForgotPasswordRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.forgotPassword(body, {
+            ipAddress,
+            userAgent,
+        });
+    }
 
-    // TODO: 3
-    // @ResetPasswordPublicResetDoc()
-    // @Response('resetPassword.reset')
-    // @FeatureFlag('changePassword.forgotAllowed')
-    // @ApiKeyProtected()
-    // @HttpCode(HttpStatus.OK)
-    // @Post('/reset')
-    // async reset(
-    //     @Body() body: ResetPasswordResetRequestDto,
-    //     @RequestIPAddress() ipAddress: string,
-    //     @RequestUserAgent() userAgent: RequestUserAgentDto
-    // ): Promise<IResponseReturn<void>> {
-    //     return this.resetPasswordService.reset(body, {
-    //         ipAddress,
-    //         userAgent,
-    //     });
-    // }
+    @UserPublicResetPasswordDoc()
+    @Response('user.resetPassword')
+    @FeatureFlag('changePassword.forgotAllowed')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/password/reset')
+    async reset(
+        @Body() body: UserResetPasswordRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.resetPassword(body, {
+            ipAddress,
+            userAgent,
+        });
+    }
 }

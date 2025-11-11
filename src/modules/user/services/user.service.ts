@@ -30,11 +30,10 @@ import {
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
 import { CountryRepository } from '@modules/country/repositories/country.repository';
-import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
-import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
-import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
+import { EmailService } from '@modules/email/services/email.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
+import { ResetPasswordUtil } from '@modules/reset-password/utils/reset-password.util';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
@@ -48,6 +47,7 @@ import {
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
@@ -55,8 +55,10 @@ import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
+import { UserResetPasswordRequestDto } from '@modules/user/dtos/request/user.reset-password.request';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import {
     UserCheckEmailResponseDto,
     UserCheckUsernameResponseDto,
@@ -69,9 +71,7 @@ import { IUser } from '@modules/user/interfaces/user.interface';
 import { IUserService } from '@modules/user/interfaces/user.service.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { VerificationRepository } from '@modules/verification/repositories/verification.repository';
 import { VerificationUtil } from '@modules/verification/utils/verification.util';
-import { InjectQueue } from '@nestjs/bullmq';
 import {
     BadRequestException,
     ConflictException,
@@ -87,17 +87,13 @@ import {
     ENUM_USER_STATUS,
     ENUM_VERIFICATION_TYPE,
 } from '@prisma/client';
-import { Queue } from 'bullmq';
 import { Duration } from 'luxon';
-import { ENUM_QUEUE } from 'src/queues/enums/queue.enum';
 
 @Injectable()
 export class UserService implements IUserService {
     private readonly userRoleName: string = 'user';
 
     constructor(
-        @InjectQueue(ENUM_QUEUE.EMAIL)
-        private readonly emailQueue: Queue,
         private readonly userUtil: UserUtil,
         private readonly userRepository: UserRepository,
         private readonly countryRepository: CountryRepository,
@@ -112,7 +108,8 @@ export class UserService implements IUserService {
         private readonly sessionRepository: SessionRepository,
         private readonly featureFlagService: FeatureFlagService,
         private readonly verificationUtil: VerificationUtil,
-        private readonly verificationRepository: VerificationRepository
+        private readonly resetPasswordUtil: ResetPasswordUtil,
+        private readonly emailService: EmailService
     ) {}
 
     async validateUserGuard(
@@ -266,43 +263,33 @@ export class UserService implements IUserService {
                 createdBy
             );
 
+            // @note: send email after all creation
             await Promise.all([
-                this.emailQueue.add(
-                    ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN,
+                this.emailService.sendWelcomeByAdmin(
+                    created.id,
                     {
-                        send: {
-                            email,
-                            username: created.username,
-                        },
-                        data: {
-                            passwordExpiredAt: password.passwordExpired,
-                            password: passwordString,
-                            passwordCreatedAt: password.passwordCreated,
-                        } as EmailCreateByAdminDto,
+                        email,
+                        username: randomUsername,
                     },
                     {
-                        jobId: `${ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN}-${created.id}`,
+                        password: passwordString,
+                        passwordCreatedAt: password.passwordCreated,
+                        passwordExpiredAt: password.passwordExpired,
                     }
                 ),
                 checkRole.type !== ENUM_ROLE_TYPE.USER
-                    ? this.emailQueue.add(
-                          ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+                    ? this.emailService.sendVerification(
+                          created.id,
                           {
-                              send: {
-                                  email,
-                                  username: created.username,
-                              },
-                              data: {
-                                  token: emailVerification.token,
-                                  expiredAt: emailVerification.expiredAt,
-                                  reference: emailVerification.reference,
-                                  link: emailVerification.link,
-                                  expiredInMinutes:
-                                      emailVerification.expiredInMinutes,
-                              } as EmailVerificationDto,
+                              email,
+                              username: created.username,
                           },
                           {
-                              jobId: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created.id}`,
+                              expiredAt: emailVerification.expiredAt,
+                              reference: emailVerification.reference,
+                              link: emailVerification.link,
+                              expiredInMinutes:
+                                  emailVerification.expiredInMinutes,
                           }
                       )
                     : Promise.resolve(),
@@ -782,20 +769,17 @@ export class UserService implements IUserService {
                 updatedBy
             );
 
-            await this.emailQueue.add(
-                ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
+            // @note: send email after all creation
+            await this.emailService.sendTemporaryPassword(
+                updated.id,
                 {
-                    send: { email: updated.email, username: updated.username },
-                    data: {
-                        passwordExpiredAt: password.passwordExpired,
-                        password: passwordString,
-                    },
+                    email: updated.email,
+                    username: updated.username,
                 },
                 {
-                    deduplication: {
-                        id: `${ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD}-${updated.id}`,
-                        ttl: 1000,
-                    },
+                    password: passwordString,
+                    passwordCreatedAt: password.passwordCreated,
+                    passwordExpiredAt: password.passwordExpired,
                 }
             );
 
@@ -863,7 +847,7 @@ export class UserService implements IUserService {
             const sessions = await this.sessionRepository.findAllByUser(userId);
             const password = this.authUtil.createPassword(newPassword);
 
-            const [updated] = await Promise.all([
+            await Promise.all([
                 this.userRepository.changePassword(
                     userId,
                     password,
@@ -872,18 +856,11 @@ export class UserService implements IUserService {
                 this.sessionUtil.deleteAllLogins(userId, sessions),
             ]);
 
-            await this.emailQueue.add(
-                ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
-                {
-                    send: { email: user.email, name: user.name },
-                },
-                {
-                    deduplication: {
-                        id: `${ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD}-${updated.id}`,
-                        ttl: 1000,
-                    },
-                }
-            );
+            // @note: send email after all creation
+            await this.emailService.sendChangePassword(user.id, {
+                email: user.email,
+                username: user.username,
+            });
 
             return;
         } catch (err: unknown) {
@@ -945,32 +922,24 @@ export class UserService implements IUserService {
                 ENUM_VERIFICATION_TYPE.EMAIL
             );
 
-            await this.verificationRepository.resendEmailByUser(
+            await this.userRepository.requestVerificationEmail(
                 user.id,
                 user.email,
                 emailVerification
             );
 
-            await this.emailQueue.add(
-                ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+            // @note: send email after all creation
+            await this.emailService.sendVerification(
+                user.id,
                 {
-                    send: {
-                        email: user.email,
-                        username: user.username,
-                    },
-                    data: {
-                        token: emailVerification.token,
-                        expiredAt: emailVerification.expiredAt,
-                        reference: emailVerification.reference,
-                        link: emailVerification.link,
-                        expiredInMinutes: emailVerification.expiredInMinutes,
-                    } as EmailVerificationDto,
+                    email: user.email,
+                    username: user.username,
                 },
                 {
-                    deduplication: {
-                        id: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${user.id}`,
-                        ttl: emailVerification.expiredInMinutes * 60 * 1000,
-                    },
+                    expiredAt: emailVerification.expiredAt,
+                    reference: emailVerification.reference,
+                    link: emailVerification.link,
+                    expiredInMinutes: emailVerification.expiredInMinutes,
                 }
             );
 
@@ -1058,15 +1027,11 @@ export class UserService implements IUserService {
                 requestLog
             );
 
-            await this.emailQueue.add(
-                ENUM_SEND_EMAIL_PROCESS.WELCOME,
-                {
-                    send: { email: user.email, username: user.username },
-                },
-                {
-                    jobId: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${user.id}`,
-                }
-            );
+            // @note: send email after all creation
+            await this.emailService.sendWelcome(user.id, {
+                email: user.email,
+                username: user.username,
+            });
         }
 
         if (user.status !== ENUM_USER_STATUS.ACTIVE) {
@@ -1207,43 +1172,191 @@ export class UserService implements IUserService {
                 requestLog
             );
 
+            // @note: send email after all creation
             await Promise.all([
-                this.emailQueue.add(
-                    ENUM_SEND_EMAIL_PROCESS.WELCOME,
+                this.emailService.sendWelcome(created.id, {
+                    email: created.email,
+                    username: created.username,
+                }),
+                this.emailService.sendVerification(
+                    created.id,
                     {
-                        send: {
-                            email: created.email,
-                            username: created.username,
-                        },
+                        email: created.email,
+                        username: created.username,
                     },
                     {
-                        jobId: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${created.id}`,
-                    }
-                ),
-                this.emailQueue.add(
-                    ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
-                    {
-                        send: {
-                            email,
-                            username: created.username,
-                        },
-                        data: {
-                            token: emailVerification.token,
-                            expiredAt: emailVerification.expiredAt,
-                            reference: emailVerification.reference,
-                            link: emailVerification.link,
-                            expiredInMinutes:
-                                emailVerification.expiredInMinutes,
-                        } as EmailVerificationDto,
-                    },
-                    {
-                        deduplication: {
-                            id: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${created.id}`,
-                            ttl: emailVerification.resendInMinutes * 60 * 1000,
-                        },
+                        expiredAt: emailVerification.expiredAt,
+                        reference: emailVerification.reference,
+                        link: emailVerification.link,
+                        expiredInMinutes: emailVerification.expiredInMinutes,
                     }
                 ),
             ]);
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async verifyEmail(
+        { token }: UserVerifyEmailRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const verification =
+            await this.userRepository.findOneActiveByVerificationEmailToken(
+                token
+            );
+        if (!verification) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.TOKEN_INVALID,
+                message: 'user.error.verificationTokenInvalid',
+            });
+        }
+
+        try {
+            await this.userRepository.verifyEmail(
+                verification.id,
+                verification.userId,
+                requestLog
+            );
+
+            // @note: send email after all creation
+            await this.emailService.sendVerified(
+                verification.user.id,
+                {
+                    email: verification.user.email,
+                    username: verification.user.username,
+                },
+                {
+                    reference: verification.reference,
+                }
+            );
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async forgotPassword(
+        { email }: UserForgotPasswordRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const user = await this.userRepository.findOneActiveByEmail(email);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'user.error.notFound',
+            });
+        }
+
+        try {
+            const resetPassword = this.resetPasswordUtil.createForgotPassword();
+
+            await this.userRepository.forgotPassword(
+                user.id,
+                email,
+                resetPassword,
+                requestLog
+            );
+
+            // @note: send email after all creation
+            await this.emailService.sendForgotPassword(
+                user.id,
+                {
+                    email: user.email,
+                    username: user.username,
+                },
+                {
+                    expiredAt: resetPassword.expiredAt,
+                    link: resetPassword.link,
+                    reference: resetPassword.reference,
+                    expiredInMinutes: resetPassword.expiredInMinutes,
+                },
+                resetPassword.resendInMinutes
+            );
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async resetPassword(
+        { newPassword, token }: UserResetPasswordRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const resetPassword =
+            await this.userRepository.findOneActiveByResetPasswordToken(token);
+        if (!resetPassword) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'user.error.notFound',
+            });
+        }
+
+        const passwordHistories =
+            await this.passwordHistoryRepository.findAllActiveByUser(
+                resetPassword.userId
+            );
+        const passwordCheck = this.userUtil.checkPasswordPeriod(
+            passwordHistories,
+            newPassword
+        );
+        if (passwordCheck) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW,
+                message: 'auth.error.passwordMustNew',
+                _metadata: {
+                    customProperty: {
+                        messageProperties: {
+                            period: this.helperService.dateFormatToRFC2822(
+                                passwordCheck.expiredAt
+                            ),
+                        },
+                    },
+                },
+            });
+        }
+
+        try {
+            const sessions = await this.sessionRepository.findAllByUser(
+                resetPassword.userId
+            );
+            const password = this.authUtil.createPassword(newPassword);
+
+            await Promise.all([
+                this.userRepository.changePassword(
+                    resetPassword.userId,
+                    password,
+                    requestLog
+                ),
+                this.sessionUtil.deleteAllLogins(
+                    resetPassword.userId,
+                    sessions
+                ),
+            ]);
+
+            // @note: send email after all creation
+            await this.emailService.sendChangePassword(resetPassword.user.id, {
+                email: resetPassword.user.email,
+                username: resetPassword.user.username,
+            });
+
+            return;
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,

@@ -1,7 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { EmailMobileNumberVerifiedDto } from '@modules/email/dtos/email.mobile-number-verified.dto';
-import { EmailResetPasswordDto } from '@modules/email/dtos/email.reset-password.dto';
 import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
@@ -13,6 +12,7 @@ import { ENUM_QUEUE } from 'src/queues/enums/queue.enum';
 import { QueueProcessorBase } from 'src/queues/bases/queue.processor.base';
 import { QueueProcessor } from 'src/queues/decorators/queue.decorator';
 import { EmailUtil } from '@modules/email/utils/email.util';
+import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
 
 @QueueProcessor(ENUM_QUEUE.EMAIL)
 export class EmailProcessor
@@ -53,10 +53,10 @@ export class EmailProcessor
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD:
-                    await this.processResetPassword(
+                case ENUM_SEND_EMAIL_PROCESS.FORGOT_PASSWORD:
+                    await this.processForgotPassword(
                         job.data.send,
-                        job.data.data as EmailResetPasswordDto
+                        job.data.data as EmailForgotPasswordDto
                     );
 
                     break;
@@ -113,11 +113,11 @@ export class EmailProcessor
         return this.emailUtil.sendCreateByAdmin(data, createdByAdmin);
     }
 
-    async processResetPassword(
+    async processForgotPassword(
         data: EmailSendDto,
-        resetPassword: EmailResetPasswordDto
+        forgotPassword: EmailForgotPasswordDto
     ): Promise<boolean> {
-        return this.emailUtil.sendResetPassword(data, resetPassword);
+        return this.emailUtil.sendForgotPassword(data, forgotPassword);
     }
 
     async processVerification(

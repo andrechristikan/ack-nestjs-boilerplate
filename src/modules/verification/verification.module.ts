@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
 import { VerificationUtil } from '@modules/verification/utils/verification.util';
-import { VerificationRepository } from '@modules/verification/repositories/verification.repository';
 
 @Module({
     imports: [],
-    exports: [VerificationUtil, VerificationRepository],
-    providers: [VerificationUtil, VerificationRepository],
+    exports: [VerificationUtil],
+    providers: [VerificationUtil],
     controllers: [],
 })
 export class VerificationModule {}
