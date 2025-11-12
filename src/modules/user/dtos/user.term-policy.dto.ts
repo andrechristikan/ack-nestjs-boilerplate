@@ -7,26 +7,26 @@ export class UserTermPolicyDto {
         description: 'Terms of Service acceptance',
         example: true,
     })
-    [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: boolean;
+    [ENUM_TERM_POLICY_TYPE.termsOfService]: boolean;
 
     @ApiProperty({
         required: true,
         description: 'Privacy Policy acceptance',
         example: true,
     })
-    [ENUM_TERM_POLICY_TYPE.PRIVACY]: boolean;
+    [ENUM_TERM_POLICY_TYPE.privacy]: boolean;
 
     @ApiProperty({
         required: true,
         description: 'Cookie Policy acceptance',
         example: true,
     })
-    [ENUM_TERM_POLICY_TYPE.COOKIE]: boolean;
+    [ENUM_TERM_POLICY_TYPE.cookie]: boolean;
 
     @ApiProperty({
         required: true,
         description: 'Marketing Policy acceptance',
         example: false,
     })
-    [ENUM_TERM_POLICY_TYPE.MARKETING]: boolean;
+    [ENUM_TERM_POLICY_TYPE.marketing]: boolean;
 }

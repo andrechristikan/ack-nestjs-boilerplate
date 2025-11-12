@@ -114,7 +114,7 @@ export class SessionRepository {
                     update: {
                         activityLogs: {
                             create: {
-                                action: ENUM_ACTIVITY_LOG_ACTION.USER_REVOKE_SESSION,
+                                action: ENUM_ACTIVITY_LOG_ACTION.userRevokeSession,
                                 ipAddress,
                                 userAgent:
                                     this.databaseUtil.toPlainObject(userAgent),
@@ -144,7 +144,7 @@ export class SessionRepository {
                     update: {
                         activityLogs: {
                             create: {
-                                action: ENUM_ACTIVITY_LOG_ACTION.USER_REVOKE_SESSION_BY_ADMIN,
+                                action: ENUM_ACTIVITY_LOG_ACTION.userRevokeSessionByAdmin,
                                 ipAddress,
                                 userAgent:
                                     this.databaseUtil.toPlainObject(userAgent),

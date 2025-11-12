@@ -1,49 +1,42 @@
-import { Command } from 'nestjs-command';
-import { Injectable, Logger } from '@nestjs/common';
-import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
-} from '@modules/policy/enums/policy.enum';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
+import { migrationRoleData } from '@migration/data/migration.role.data';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Command } from 'nest-commander';
 
-@Injectable()
-export class MigrationRoleSeed {
+@Command({
+    name: 'role',
+    description: 'Seed/Rollback Roles',
+    allowUnknownOptions: false,
+})
+export class MigrationRoleSeed
+    extends MigrationSeedBase
+    implements IMigrationSeed
+{
     private readonly logger = new Logger(MigrationRoleSeed.name);
 
-    private readonly roles: RoleCreateRequestDto[] = [
-        {
-            name: 'superadmin',
-            description: 'Super Admin Role',
-            abilities: [],
-            type: ENUM_ROLE_TYPE.SUPER_ADMIN,
-        },
-        {
-            name: 'admin',
-            description: 'Admin Role',
-            abilities: Object.values(ENUM_POLICY_SUBJECT).map(role => ({
-                subject: role,
-                action: Object.values(ENUM_POLICY_ACTION),
-            })),
-            type: ENUM_ROLE_TYPE.ADMIN,
-        },
-        {
-            name: 'user',
-            description: 'User Role',
-            abilities: [],
-            type: ENUM_ROLE_TYPE.USER,
-        },
-    ];
+    private readonly env: ENUM_APP_ENVIRONMENT;
+    private readonly roles: RoleCreateRequestDto[] = [];
 
-    constructor(private readonly databaseService: DatabaseService) {}
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly configService: ConfigService,
+        private readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
 
-    @Command({
-        command: 'seed:role',
-        describe: 'seeds roles',
-    })
-    async seeds(): Promise<void> {
+        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.roles = migrationRoleData[this.env];
+    }
+
+    async seed(): Promise<void> {
         this.logger.log('Seeding Roles...');
+        this.logger.log(`Found ${this.roles.length} Roles to seed.`);
 
         const existingRoles = await this.databaseService.role.findMany({
             where: {
@@ -56,14 +49,14 @@ export class MigrationRoleSeed {
             },
         });
         if (existingRoles.length > 0) {
-            this.logger.log('Roles already exist, skipping seed.');
+            this.logger.warn('Roles already exist, skipping seed.');
             return;
         }
 
         await this.databaseService.role.createMany({
             data: this.roles.map(role => ({
                 ...role,
-                abilities: role.abilities.map(ability => ({ ...ability })),
+                abilities: this.databaseUtil.toPlainArray(role.abilities),
             })),
         });
 
@@ -72,12 +65,9 @@ export class MigrationRoleSeed {
         return;
     }
 
-    @Command({
-        command: 'remove:role',
-        describe: 'remove roles',
-    })
-    async remove(): Promise<void> {
-        this.logger.log('Removing Roles...');
+    async rollback(): Promise<void> {
+        this.logger.log('Rolling back Roles...');
+        this.logger.log(`Found ${this.roles.length} Roles to rollback.`);
 
         await this.databaseService.role.deleteMany({
             where: {
@@ -87,7 +77,7 @@ export class MigrationRoleSeed {
             },
         });
 
-        this.logger.log('Roles removed successfully.');
+        this.logger.log('Roles rolled back successfully.');
 
         return;
     }

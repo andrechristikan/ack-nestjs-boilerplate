@@ -55,7 +55,7 @@ export class SessionAdminController {
             action: [ENUM_POLICY_ACTION.READ],
         }
     )
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -72,7 +72,7 @@ export class SessionAdminController {
 
     @SessionAdminRevokeDoc()
     @ResponsePaging('session.revoke')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_SESSION_REVOKE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminSessionRevoke)
     @PolicyAbilityProtected(
         {
             subject: ENUM_POLICY_SUBJECT.USER,
@@ -83,7 +83,7 @@ export class SessionAdminController {
             action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
         }
     )
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

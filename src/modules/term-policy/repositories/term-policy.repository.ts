@@ -61,7 +61,7 @@ export class TermPolicyRepository {
                 where: {
                     ...where,
                     ...type,
-                    status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
+                    status: ENUM_TERM_POLICY_STATUS.published,
                 },
             }
         );
@@ -97,7 +97,7 @@ export class TermPolicyRepository {
         return this.databaseService.termPolicy.findFirst({
             where: {
                 type,
-                status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
+                status: ENUM_TERM_POLICY_STATUS.published,
             },
             orderBy: {
                 version: Prisma.SortOrder.desc,
@@ -161,7 +161,7 @@ export class TermPolicyRepository {
                 where: {
                     id: userId,
                     deletedAt: null,
-                    status: ENUM_USER_STATUS.ACTIVE,
+                    status: ENUM_USER_STATUS.active,
                 },
                 data: {
                     termPolicy: {
@@ -169,7 +169,7 @@ export class TermPolicyRepository {
                     },
                     activityLogs: {
                         create: {
-                            action: ENUM_ACTIVITY_LOG_ACTION.USER_ACCEPT_TERM_POLICY,
+                            action: ENUM_ACTIVITY_LOG_ACTION.userAcceptTermPolicy,
                             ipAddress,
                             userAgent:
                                 this.databaseUtil.toPlainObject(userAgent),
@@ -192,7 +192,7 @@ export class TermPolicyRepository {
             data: {
                 type,
                 version,
-                status: ENUM_TERM_POLICY_STATUS.DRAFT,
+                status: ENUM_TERM_POLICY_STATUS.draft,
                 contents: contents as unknown as Prisma.InputJsonArray[],
                 createdBy,
             },
@@ -283,7 +283,7 @@ export class TermPolicyRepository {
                     id: termPolicyId,
                 },
                 data: {
-                    status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
+                    status: ENUM_TERM_POLICY_STATUS.published,
                     publishedAt: this.helperService.dateCreate(),
                     contents: contents as unknown as Prisma.InputJsonArray[],
                     updatedBy,
@@ -292,7 +292,7 @@ export class TermPolicyRepository {
             this.databaseService.user.updateMany({
                 where: {
                     deletedAt: null,
-                    status: ENUM_USER_STATUS.ACTIVE,
+                    status: ENUM_USER_STATUS.active,
                 },
                 data: {
                     termPolicy: {

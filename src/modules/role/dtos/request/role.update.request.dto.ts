@@ -27,7 +27,7 @@ export class RoleUpdateRequestDto {
 
     @ApiProperty({
         description: 'Representative for role type',
-        example: ENUM_ROLE_TYPE.ADMIN,
+        example: ENUM_ROLE_TYPE.admin,
         required: true,
         enum: ENUM_ROLE_TYPE,
     })

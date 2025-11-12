@@ -83,7 +83,7 @@ export class TermPolicyAdminController {
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -109,12 +109,12 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminCreateDoc()
     @Response('termPolicy.create')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_TERM_POLICY_CREATE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminTermPolicyCreate)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -133,7 +133,7 @@ export class TermPolicyAdminController {
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -155,7 +155,7 @@ export class TermPolicyAdminController {
             ENUM_POLICY_ACTION.UPDATE,
         ],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -169,12 +169,12 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminUpdateContentDoc()
     @Response('termPolicy.updateContent')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_TERM_POLICY_UPDATE_CONTENT)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminTermPolicyUpdateContent)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -195,12 +195,12 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminAddContentDoc()
     @Response('termPolicy.addContent')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_TERM_POLICY_ADD_CONTENT)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminTermPolicyAddContent)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -217,12 +217,12 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminRemoveContentDoc()
     @Response('termPolicy.removeContent')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_TERM_POLICY_REMOVE_CONTENT)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminTermPolicyRemoveContent)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -243,12 +243,12 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminPublishDoc()
     @Response('termPolicy.publish')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_TERM_POLICY_PUBLISH)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminTermPolicyPublish)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

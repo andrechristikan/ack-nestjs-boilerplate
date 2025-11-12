@@ -6,7 +6,7 @@ export class UserUpdateStatusRequestDto {
     @ApiProperty({
         required: true,
         enum: ENUM_USER_STATUS,
-        default: ENUM_USER_STATUS.ACTIVE,
+        default: ENUM_USER_STATUS.active,
     })
     @IsString()
     @IsEnum(ENUM_USER_STATUS)

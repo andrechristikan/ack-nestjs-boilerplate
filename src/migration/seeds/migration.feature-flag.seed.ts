@@ -1,62 +1,61 @@
-import { Command } from 'nestjs-command';
-import { Injectable, Logger } from '@nestjs/common';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
+import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
+import { migrationFeatureFlagData } from '@migration/data/migration.feature-flag.data';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
+import { Command } from 'nest-commander';
 
-@Injectable()
-export class MigrationFeatureFlagSeed {
+@Command({
+    name: 'featureFlag',
+    description: 'Seed/Rollback Feature Flags',
+    allowUnknownOptions: false,
+})
+export class MigrationFeatureFlagSeed
+    extends MigrationSeedBase
+    implements IMigrationSeed
+{
     private readonly logger = new Logger(MigrationFeatureFlagSeed.name);
 
-    private readonly featureFlags: Prisma.FeatureFlagCreateInput[] = [
-        {
-            key: 'loginWithGoogle',
-            description: 'Enable login with Google',
-            isEnable: true,
-            rolloutPercent: 100,
-            metadata: {
-                signUpAllowed: true,
-            },
-        },
-        {
-            key: 'loginWithApple',
-            description: 'Enable login with Apple',
-            isEnable: true,
-            rolloutPercent: 100,
-            metadata: {
-                signUpAllowed: true,
-            },
-        },
-        {
-            key: 'loginWithCredential',
-            description: 'Enable login with Credential',
-            rolloutPercent: 100,
-            isEnable: true,
-        },
-        {
-            key: 'signUp',
-            description: 'Enable user sign up',
-            rolloutPercent: 100,
-            isEnable: true,
-        },
-        {
-            key: 'changePassword',
-            description: 'Enable change password feature',
-            rolloutPercent: 100,
-            isEnable: true,
-            metadata: {
-                forgotAllowed: true,
-            },
-        },
-    ];
+    private readonly env: ENUM_APP_ENVIRONMENT;
+    private readonly featureFlags: Prisma.FeatureFlagCreateInput[] = [];
 
-    constructor(private readonly databaseService: DatabaseService) {}
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly configService: ConfigService
+    ) {
+        super();
 
-    @Command({
-        command: 'seed:featureFlag',
-        describe: 'seeds featureFlags',
-    })
-    async seeds(): Promise<void> {
+        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.featureFlags = migrationFeatureFlagData[this.env];
+    }
+
+    async seed(): Promise<void> {
         this.logger.log('Seeding Feature Flags...');
+        this.logger.log(
+            `Found ${this.featureFlags.length} Feature Flags to seed.`
+        );
+
+        const existingFeatureFlags =
+            await this.databaseService.featureFlag.findMany({
+                where: {
+                    key: {
+                        in: this.featureFlags.map(
+                            featureFlag => featureFlag.key
+                        ),
+                    },
+                },
+                select: {
+                    id: true,
+                },
+            });
+
+        if (existingFeatureFlags.length > 0) {
+            this.logger.warn('Feature Flags already exist, skipping seed.');
+            return;
+        }
 
         await this.databaseService.featureFlag.createMany({
             data: this.featureFlags,
@@ -67,16 +66,21 @@ export class MigrationFeatureFlagSeed {
         return;
     }
 
-    @Command({
-        command: 'remove:featureFlag',
-        describe: 'remove featureFlags',
-    })
-    async remove(): Promise<void> {
-        this.logger.log('Removing Feature Flags...');
+    async rollback(): Promise<void> {
+        this.logger.log('Rolling back Feature Flags...');
+        this.logger.log(
+            `Found ${this.featureFlags.length} Feature Flags to rollback.`
+        );
 
-        await this.databaseService.featureFlag.deleteMany({});
+        await this.databaseService.featureFlag.deleteMany({
+            where: {
+                key: {
+                    in: this.featureFlags.map(featureFlag => featureFlag.key),
+                },
+            },
+        });
 
-        this.logger.log('Feature Flags removed successfully.');
+        this.logger.log('Feature Flags rollback successfully.');
 
         return;
     }

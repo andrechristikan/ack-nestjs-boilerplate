@@ -22,7 +22,7 @@ export class ActivityLogResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        example: ENUM_ACTIVITY_LOG_ACTION.USER_LOGIN_CREDENTIAL,
+        example: ENUM_ACTIVITY_LOG_ACTION.userLoginCredential,
         enum: ENUM_ACTIVITY_LOG_ACTION,
     })
     action: ENUM_ACTIVITY_LOG_ACTION;

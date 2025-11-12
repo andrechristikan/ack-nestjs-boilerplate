@@ -1,70 +1,45 @@
-import { Command } from 'nestjs-command';
-import { Injectable, Logger } from '@nestjs/common';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
-import { ENUM_TERM_POLICY_STATUS, ENUM_TERM_POLICY_TYPE } from '@prisma/client';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
+import { migrationTermPolicyData } from '@migration/data/migration.term-policy.data';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { faker } from '@faker-js/faker';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { ENUM_TERM_POLICY_STATUS } from '@prisma/client';
+import { Command } from 'nest-commander';
 
-@Injectable()
-export class MigrationTermPolicySeed {
+@Command({
+    name: 'termPolicy',
+    description: 'Seed/Rollback Term Policies',
+    allowUnknownOptions: false,
+})
+export class MigrationTermPolicySeed
+    extends MigrationSeedBase
+    implements IMigrationSeed
+{
     private readonly logger = new Logger(MigrationTermPolicySeed.name);
 
-    private readonly termPolicies: TermPolicyCreateRequestDto[] = [
-        {
-            type: ENUM_TERM_POLICY_TYPE.COOKIE,
-            version: 1,
-            contents: [
-                {
-                    key: faker.system.filePath(),
-                    language: ENUM_MESSAGE_LANGUAGE.EN,
-                    size: faker.number.int({ min: 1000, max: 5000 }),
-                },
-            ],
-        },
-        {
-            type: ENUM_TERM_POLICY_TYPE.MARKETING,
-            version: 1,
-            contents: [
-                {
-                    key: faker.system.filePath(),
-                    language: ENUM_MESSAGE_LANGUAGE.EN,
-                    size: faker.number.int({ min: 1000, max: 5000 }),
-                },
-            ],
-        },
-        {
-            type: ENUM_TERM_POLICY_TYPE.PRIVACY,
-            version: 1,
-            contents: [
-                {
-                    key: faker.system.filePath(),
-                    language: ENUM_MESSAGE_LANGUAGE.EN,
-                    size: faker.number.int({ min: 1000, max: 5000 }),
-                },
-            ],
-        },
-        {
-            type: ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE,
-            version: 1,
-            contents: [
-                {
-                    key: faker.system.filePath(),
-                    language: ENUM_MESSAGE_LANGUAGE.EN,
-                    size: faker.number.int({ min: 1000, max: 5000 }),
-                },
-            ],
-        },
-    ];
+    private readonly env: ENUM_APP_ENVIRONMENT;
+    private readonly termPolicies: TermPolicyCreateRequestDto[] = [];
 
-    constructor(private readonly databaseService: DatabaseService) {}
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly configService: ConfigService,
+        private readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
 
-    @Command({
-        command: 'seed:termPolicy',
-        describe: 'seeds termPolicies',
-    })
-    async seeds(): Promise<void> {
+        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.termPolicies = migrationTermPolicyData[this.env];
+    }
+
+    async seed(): Promise<void> {
         this.logger.log('Seeding TermPolicies...');
+        this.logger.log(
+            `Found ${this.termPolicies.length} TermPolicies to seed.`
+        );
 
         const existingTermPolicies =
             await this.databaseService.termPolicy.findMany({
@@ -80,17 +55,15 @@ export class MigrationTermPolicySeed {
                 },
             });
         if (existingTermPolicies.length > 0) {
-            this.logger.log('TermPolicies already exist, skipping seed.');
+            this.logger.warn('TermPolicies already exist, skipping seed.');
             return;
         }
 
         await this.databaseService.termPolicy.createMany({
             data: this.termPolicies.map(termPolicy => ({
                 ...termPolicy,
-                contents: termPolicy.contents.map(content => ({
-                    ...content,
-                })),
-                status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
+                contents: this.databaseUtil.toPlainArray(termPolicy.contents),
+                status: ENUM_TERM_POLICY_STATUS.published,
             })),
         });
 
@@ -99,16 +72,21 @@ export class MigrationTermPolicySeed {
         return;
     }
 
-    @Command({
-        command: 'remove:termPolicy',
-        describe: 'remove termPolicies',
-    })
-    async remove(): Promise<void> {
-        this.logger.log('Removing TermPolicies...');
+    async rollback(): Promise<void> {
+        this.logger.log('Rolling back TermPolicies...');
+        this.logger.log(
+            `Found ${this.termPolicies.length} TermPolicies to rollback.`
+        );
 
-        await this.databaseService.termPolicy.deleteMany({});
+        await this.databaseService.termPolicy.deleteMany({
+            where: {
+                type: {
+                    in: this.termPolicies.map(termPolicy => termPolicy.type),
+                },
+            },
+        });
 
-        this.logger.log('TermPolicies removed successfully.');
+        this.logger.log('TermPolicies rolled back successfully.');
 
         return;
     }

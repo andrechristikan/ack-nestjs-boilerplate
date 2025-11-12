@@ -5,7 +5,7 @@ import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 export class TermPolicyAcceptRequestDto {
     @ApiProperty({
         description: 'Type of the terms policy',
-        example: ENUM_TERM_POLICY_TYPE.PRIVACY,
+        example: ENUM_TERM_POLICY_TYPE.privacy,
         enum: ENUM_TERM_POLICY_TYPE,
         required: true,
     })

@@ -39,7 +39,7 @@ export class ActivityLogAdminController {
             action: [ENUM_POLICY_ACTION.READ],
         }
     )
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

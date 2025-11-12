@@ -11,7 +11,7 @@ export class UserUpdateProfileRequestDto extends PickType(
     @ApiProperty({
         required: true,
         enum: ENUM_USER_GENDER,
-        example: ENUM_USER_GENDER.MALE,
+        example: ENUM_USER_GENDER.male,
     })
     @IsEnum(ENUM_USER_GENDER)
     @IsNotEmpty()

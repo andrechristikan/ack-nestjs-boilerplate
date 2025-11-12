@@ -28,7 +28,7 @@ export class UserLoginRequestDto {
     @ApiProperty({
         description: 'from where the user is logging in',
         enum: ENUM_USER_LOGIN_FROM,
-        example: ENUM_USER_LOGIN_FROM.WEBSITE,
+        example: ENUM_USER_LOGIN_FROM.website,
         required: true,
     })
     @IsNotEmpty()

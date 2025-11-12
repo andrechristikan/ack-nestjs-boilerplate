@@ -91,14 +91,14 @@ export class UserDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        example: ENUM_USER_SIGN_UP_FROM.ADMIN,
+        example: ENUM_USER_SIGN_UP_FROM.admin,
         enum: ENUM_USER_SIGN_UP_FROM,
     })
     signUpFrom: ENUM_USER_SIGN_UP_FROM;
 
     @ApiProperty({
         required: true,
-        example: ENUM_USER_SIGN_UP_WITH.CREDENTIAL,
+        example: ENUM_USER_SIGN_UP_WITH.credential,
         enum: ENUM_USER_SIGN_UP_WITH,
     })
     signUpWith: ENUM_USER_SIGN_UP_WITH;
@@ -111,7 +111,7 @@ export class UserDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        example: ENUM_USER_STATUS.ACTIVE,
+        example: ENUM_USER_STATUS.active,
         enum: ENUM_USER_STATUS,
     })
     status: ENUM_USER_STATUS;
@@ -123,7 +123,7 @@ export class UserDto extends DatabaseDto {
     countryId: string;
 
     @ApiProperty({
-        example: ENUM_USER_GENDER.MALE,
+        example: ENUM_USER_GENDER.male,
         enum: ENUM_USER_GENDER,
         required: false,
     })
@@ -146,14 +146,14 @@ export class UserDto extends DatabaseDto {
     @ApiProperty({
         required: false,
         enum: ENUM_USER_LOGIN_FROM,
-        example: ENUM_USER_LOGIN_FROM.WEBSITE,
+        example: ENUM_USER_LOGIN_FROM.website,
     })
     lastLoginFrom?: ENUM_USER_LOGIN_FROM;
 
     @ApiProperty({
         required: false,
         enum: ENUM_USER_SIGN_UP_WITH,
-        example: ENUM_USER_SIGN_UP_WITH.CREDENTIAL,
+        example: ENUM_USER_SIGN_UP_WITH.credential,
     })
     lastLoginWith?: ENUM_USER_SIGN_UP_WITH;
 

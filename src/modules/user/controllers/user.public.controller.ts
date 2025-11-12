@@ -73,7 +73,7 @@ export class UserPublicController {
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         return this.userService.loginWithSocial(
             email,
-            ENUM_USER_LOGIN_WITH.SOCIAL_GOOGLE,
+            ENUM_USER_LOGIN_WITH.socialGoogle,
             body,
             {
                 ipAddress,
@@ -96,7 +96,7 @@ export class UserPublicController {
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         return this.userService.loginWithSocial(
             email,
-            ENUM_USER_LOGIN_WITH.SOCIAL_APPLE,
+            ENUM_USER_LOGIN_WITH.socialApple,
             body,
             {
                 ipAddress,

@@ -75,7 +75,7 @@ export class UserAdminController {
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -109,7 +109,7 @@ export class UserAdminController {
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -123,12 +123,12 @@ export class UserAdminController {
 
     @UserAdminCreateDoc()
     @Response('user.create')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_USER_CREATE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminUserCreate)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @Post('/create')
@@ -151,12 +151,12 @@ export class UserAdminController {
 
     @UserAdminUpdateStatusDoc()
     @Response('user.updateStatus')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_USER_UPDATE_STATUS)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminUserUpdateStatus)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -182,12 +182,12 @@ export class UserAdminController {
 
     @UserAdminUpdatePasswordDoc()
     @Response('user.updatePassword')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_USER_UPDATE_PASSWORD)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminUserUpdatePassword)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

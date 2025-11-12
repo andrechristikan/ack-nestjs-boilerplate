@@ -153,8 +153,7 @@ services:
         deploy:
             restart_policy:
                 condition: none
-        profiles:
-            - init
+        profiles: ["init"]
 
 volumes:
     mongo_data:

@@ -50,12 +50,12 @@ export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
 
     @ApiProperty({
         description: 'enum user sign up from',
-        example: ENUM_USER_SIGN_UP_FROM.MOBILE,
+        example: ENUM_USER_SIGN_UP_FROM.mobile,
         required: true,
-        enum: [ENUM_USER_SIGN_UP_FROM.MOBILE, ENUM_USER_SIGN_UP_FROM.WEBSITE],
+        enum: [ENUM_USER_SIGN_UP_FROM.mobile, ENUM_USER_SIGN_UP_FROM.website],
     })
     @IsNotEmpty()
     @IsString()
-    @IsEnum([ENUM_USER_SIGN_UP_FROM.MOBILE, ENUM_USER_SIGN_UP_FROM.WEBSITE])
+    @IsEnum([ENUM_USER_SIGN_UP_FROM.mobile, ENUM_USER_SIGN_UP_FROM.website])
     from: ENUM_USER_SIGN_UP_FROM;
 }

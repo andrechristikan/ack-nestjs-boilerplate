@@ -9,7 +9,7 @@ export class UserTokenResponseDto {
     tokenType: string;
 
     @ApiProperty({
-        example: ENUM_ROLE_TYPE.USER,
+        example: ENUM_ROLE_TYPE.user,
         enum: ENUM_ROLE_TYPE,
         required: true,
     })

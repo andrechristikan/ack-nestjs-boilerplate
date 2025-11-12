@@ -31,5 +31,19 @@
         ],
         "deleteOutDir": true,
         "watchAssets": true
+    },
+    "projects": {
+        "app": {
+            "type": "application",
+            "root": "src",
+            "entryFile": "main",
+            "sourceRoot": "src"
+        },
+        "migration": {
+            "type": "application",
+            "root": "src",
+            "entryFile": "migration",
+            "sourceRoot": "src"
+        }
     }
 }

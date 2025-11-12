@@ -8,7 +8,7 @@ export class TermPolicyResponseDto extends DatabaseDto {
     @ApiProperty({
         description: 'Type of terms or policy',
         enum: ENUM_TERM_POLICY_TYPE,
-        example: ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE,
+        example: ENUM_TERM_POLICY_TYPE.termsOfService,
         required: true,
     })
     readonly type: ENUM_TERM_POLICY_TYPE;
@@ -16,7 +16,7 @@ export class TermPolicyResponseDto extends DatabaseDto {
     @ApiProperty({
         description: 'Status of terms or policy',
         enum: ENUM_TERM_POLICY_STATUS,
-        example: ENUM_TERM_POLICY_STATUS.DRAFT,
+        example: ENUM_TERM_POLICY_STATUS.draft,
         required: true,
     })
     readonly status: ENUM_TERM_POLICY_STATUS;

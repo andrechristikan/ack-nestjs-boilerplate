@@ -9,7 +9,7 @@ generator client {
 
 model ApiKey {
   id       String            @id @default(auto()) @map("_id") @db.ObjectId
-  type     ENUM_API_KEY_TYPE @default(DEFAULT)
+  type     ENUM_API_KEY_TYPE @default(default)
   name     String
   key      String
   hash     String
@@ -33,7 +33,7 @@ model Role {
   id          String         @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String?
-  type        ENUM_ROLE_TYPE @default(USER)
+  type        ENUM_ROLE_TYPE @default(user)
   abilities   Json[]         @default([])
 
   // timestamps fields
@@ -90,8 +90,8 @@ model UserMobileNumber {
   updatedAt DateTime @updatedAt
   updatedBy String?
 
-  country Country? @relation("UserMobileNumberCountry", fields: [countryId], references: [id])
-  user    User?    @relation("UserMobileNumberUser", fields: [userId], references: [id])
+  country       Country?       @relation("UserMobileNumberCountry", fields: [countryId], references: [id])
+  user          User?          @relation("UserMobileNumberUser", fields: [userId], references: [id])
   verifications Verification[] @relation("UserMobileNumberVerification")
 
   @@unique(fields: [number])
@@ -117,7 +117,7 @@ model User {
   signUpFrom      ENUM_USER_SIGN_UP_FROM
   signUpWith      ENUM_USER_SIGN_UP_WITH
   salt            String?
-  status          ENUM_USER_STATUS        @default(ACTIVE)
+  status          ENUM_USER_STATUS        @default(active)
   gender          ENUM_USER_GENDER?
   countryId       String                  @db.ObjectId
   lastLoginAt     DateTime?
@@ -155,16 +155,16 @@ model User {
 }
 
 model Verification {
-  id         String                 @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String                 @db.ObjectId
+  id             String                 @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String                 @db.ObjectId
   mobileNumberId String?                @db.ObjectId
-  to         String
-  type       ENUM_VERIFICATION_TYPE
-  token      String
-  expiredAt  DateTime
-  verifiedAt DateTime?
-  isUsed     Boolean                @default(false)
-  reference  String
+  to             String
+  type           ENUM_VERIFICATION_TYPE
+  token          String
+  expiredAt      DateTime
+  verifiedAt     DateTime?
+  isUsed         Boolean                @default(false)
+  reference      String
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -172,7 +172,7 @@ model Verification {
   updatedAt DateTime @updatedAt
   updatedBy String?
 
-  user User? @relation("UserVerifications", fields: [userId], references: [id])
+  user         User?             @relation("UserVerifications", fields: [userId], references: [id])
   mobileNumber UserMobileNumber? @relation("UserMobileNumberVerification", fields: [mobileNumberId], references: [id])
 
   @@unique(fields: [reference])
@@ -244,7 +244,7 @@ model TermPolicy {
   type        ENUM_TERM_POLICY_TYPE
   contents    Json[]                  @default([])
   version     Int                     @default(1)
-  status      ENUM_TERM_POLICY_STATUS @default(DRAFT)
+  status      ENUM_TERM_POLICY_STATUS @default(draft)
   publishedAt DateTime?
 
   // timestamps fields
@@ -303,17 +303,15 @@ model FeatureFlag {
   @@map("FeatureFlags")
 }
 
-
-
 model ResetPassword {
-  id         String                 @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String                 @db.ObjectId
-  to         String
-  token      String
-  expiredAt  DateTime
-  resetAt DateTime?
-  isUsed     Boolean                @default(false)
-  reference  String
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String    @db.ObjectId
+  to        String
+  token     String
+  expiredAt DateTime
+  resetAt   DateTime?
+  isUsed    Boolean   @default(false)
+  reference String
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -330,116 +328,115 @@ model ResetPassword {
 }
 
 enum ENUM_USER_GENDER {
-  MALE   @map("male")
-  FEMALE @map("female")
+  male
+  female
 }
 
 enum ENUM_USER_STATUS {
-  ACTIVE   @map("active")
-  INACTIVE @map("inactive")
-  BLOCKED  @map("blocked")
+  active
+  inactive
+  blocked
 }
 
 enum ENUM_USER_SIGN_UP_FROM {
-  SYSTEM  @map("system")
-  ADMIN   @map("admin")
-  WEBSITE @map("website")
-  MOBILE  @map("mobile")
+  system
+  admin
+  website
+  mobile
 }
 
 enum ENUM_USER_SIGN_UP_WITH {
-  CREDENTIAL    @map("credential")
-  SOCIAL_GOOGLE @map("socialGoogle")
-  SOCIAL_APPLE  @map("socialApple")
+  credential
+  socialGoogle
+  socialApple
 }
 
 enum ENUM_USER_LOGIN_FROM {
-  WEBSITE @map("website")
-  MOBILE  @map("mobile")
+  website
+  mobile
 }
 
 enum ENUM_USER_LOGIN_WITH {
-  CREDENTIAL    @map("credential")
-  SOCIAL_GOOGLE @map("socialGoogle")
-  SOCIAL_APPLE  @map("socialApple")
+  credential
+  socialGoogle
+  socialApple
 }
 
 enum ENUM_ROLE_TYPE {
-  SUPER_ADMIN @map("superAdmin")
-  ADMIN       @map("admin")
-  USER        @map("user")
+  superAdmin
+  admin
+  user
 }
 
 enum ENUM_API_KEY_TYPE {
-  SYSTEM  @map("system")
-  DEFAULT @map("default")
+  system
+  default
 }
 
 enum ENUM_TERM_POLICY_TYPE {
-  TERMS_OF_SERVICE @map("termsOfService")
-  PRIVACY          @map("privacy")
-  COOKIE           @map("cookie")
-  MARKETING        @map("marketing")
+  termsOfService
+  privacy
+  cookie
+  marketing
 }
 
 enum ENUM_TERM_POLICY_STATUS {
-  DRAFT     @map("draft")
-  PUBLISHED @map("published")
+  draft
+  published
 }
 
 enum ENUM_VERIFICATION_TYPE {
-  MOBILE_NUMBER @map("mobileNumber")
-  EMAIL         @map("email")
+  mobileNumber
+  email
 }
 
 enum ENUM_PASSWORD_HISTORY_TYPE {
-  SIGN_UP @map("signUp")
-  FORGOT  @map("forgot")
-  ADMIN   @map("admin")
-  PROFILE @map("profile")
+  signUp
+  forgot
+  admin
+  profile
 }
 
 enum ENUM_ACTIVITY_LOG_ACTION {
-  USER_CREATED                  @map("userCreated")
-  USER_BLOCKED                  @map("userBlocked")
-  USER_UPDATE_STATUS            @map("userUpdateStatus")
-  USER_UPDATE_PROFILE           @map("userUpdateProfile")
-  USER_UPDATE_PHOTO_PROFILE     @map("userUpdatePhotoProfile")
-  USER_CHANGE_PASSWORD          @map("userChangePassword")
-  USER_DELETE_SELF              @map("userDeleteSelf")
-  USER_ADD_MOBILE_NUMBER        @map("userAddMobileNumber")
-  USER_UPDATE_MOBILE_NUMBER     @map("userUpdateMobileNumber")
-  USER_DELETE_MOBILE_NUMBER     @map("userDeleteMobileNumber")
-  USER_CLAIM_USERNAME           @map("userClaimUsername")
-  USER_UPDATE_PASSWORD_BY_ADMIN @map("userUpdatePasswordByAdmin")
-  USER_LOGIN_CREDENTIAL         @map("userLoginCredential")
-  USER_LOGIN_GOOGLE             @map("userLoginGoogle")
-  USER_LOGIN_APPLE              @map("userLoginApple")
-  USER_VERIFIED                 @map("userVerified")
-  USER_SIGNED_UP                @map("userSignedUp")
-  USER_REVOKE_SESSION           @map("userRevokeSession")
-  USER_REVOKE_SESSION_BY_ADMIN  @map("userRevokeSessionByAdmin")
-  USER_ACCEPT_TERM_POLICY       @map("userAcceptTermPolicy")
-  USER_VERIFIED_EMAIL           @map("userVerifiedEmail")
-  USER_FORGOT_PASSWORD         @map("userForgotPassword")
+  userCreated
+  userBlocked
+  userUpdateStatus
+  userUpdateProfile
+  userUpdatePhotoProfile
+  userChangePassword
+  userDeleteSelf
+  userAddMobileNumber
+  userUpdateMobileNumber
+  userDeleteMobileNumber
+  userClaimUsername
+  userUpdatePasswordByAdmin
+  userLoginCredential
+  userLoginGoogle
+  userLoginApple
+  userVerifiedEmail
+  userSignedUp
+  userRevokeSession
+  userRevokeSessionByAdmin
+  userAcceptTermPolicy
+  userForgotPassword
 
-  ADMIN_SESSION_REVOKE             @map("adminSessionRevoke")
-  ADMIN_API_KEY_CREATE             @map("adminApiKeyCreate")
-  ADMIN_API_KEY_RESET              @map("adminApiKeyReset")
-  ADMIN_API_KEY_UPDATE             @map("adminApiKeyUpdate")
-  ADMIN_API_KEY_UPDATE_DATE        @map("adminApiKeyUpdateDate")
-  ADMIN_API_KEY_UPDATE_INACTIVE    @map("adminApiKeyUpdateInactive")
-  ADMIN_API_KEY_UPDATE_ACTIVE      @map("adminApiKeyUpdateActive")
-  ADMIN_API_KEY_DELETE             @map("adminApiKeyDelete")
-  ADMIN_ROLE_CREATE                @map("adminRoleCreate")
-  ADMIN_ROLE_UPDATE                @map("adminRoleUpdate")
-  ADMIN_ROLE_DELETE                @map("adminRoleDelete")
-  ADMIN_TERM_POLICY_CREATE         @map("adminTermPolicyCreate")
-  ADMIN_TERM_POLICY_UPDATE_CONTENT @map("adminTermPolicyUpdateContent")
-  ADMIN_TERM_POLICY_ADD_CONTENT    @map("adminTermPolicyAddContent")
-  ADMIN_TERM_POLICY_REMOVE_CONTENT @map("adminTermPolicyRemoveContent")
-  ADMIN_TERM_POLICY_PUBLISH        @map("adminTermPolicyPublish")
-  ADMIN_USER_CREATE                @map("adminUserCreate")
-  ADMIN_USER_UPDATE_STATUS         @map("adminUserUpdateStatus")
-  ADMIN_USER_UPDATE_PASSWORD       @map("adminUserUpdatePassword")
+  adminSessionRevoke
+  adminApiKeyCreate
+  adminApiKeyReset
+  adminApiKeyUpdate
+  adminApiKeyUpdateDate
+  adminApiKeyUpdateInactive
+  adminApiKeyUpdateActive
+  adminApiKeyDelete
+  adminRoleCreate
+  adminRoleUpdate
+  adminRoleDelete
+  adminTermPolicyCreate
+  adminTermPolicyUpdateContent
+  adminTermPolicyAddContent
+  adminTermPolicyRemoveContent
+  adminTermPolicyPublish
+  adminUserCreate
+  adminUserUpdateStatus
+  adminUserUpdatePassword
 }

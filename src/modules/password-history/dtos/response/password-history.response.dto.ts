@@ -29,7 +29,7 @@ export class PasswordHistoryResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        example: ENUM_PASSWORD_HISTORY_TYPE.ADMIN,
+        example: ENUM_PASSWORD_HISTORY_TYPE.admin,
         enum: ENUM_PASSWORD_HISTORY_TYPE,
     })
     type: ENUM_PASSWORD_HISTORY_TYPE;

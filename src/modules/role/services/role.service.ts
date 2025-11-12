@@ -137,7 +137,7 @@ export class RoleService implements IRoleService {
 
         const { role } = __user;
 
-        if (role.type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
+        if (role.type === ENUM_ROLE_TYPE.superAdmin) {
             return [];
         } else if (requiredRoles.length === 0) {
             throw new InternalServerErrorException({

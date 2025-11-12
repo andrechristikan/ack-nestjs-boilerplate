@@ -30,7 +30,7 @@ export class PolicyService implements IPolicyService {
 
         const { role } = __user;
 
-        if (role.type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
+        if (role.type === ENUM_ROLE_TYPE.superAdmin) {
             return true;
         } else if (requiredAbilities.length === 0) {
             throw new InternalServerErrorException({

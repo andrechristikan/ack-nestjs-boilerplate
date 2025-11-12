@@ -46,7 +46,7 @@ export class FeatureFlagAdminController {
         subject: ENUM_POLICY_SUBJECT.FEATURE_FLAG,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -66,7 +66,7 @@ export class FeatureFlagAdminController {
         subject: ENUM_POLICY_SUBJECT.FEATURE_FLAG,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -85,7 +85,7 @@ export class FeatureFlagAdminController {
         subject: ENUM_POLICY_SUBJECT.FEATURE_FLAG,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

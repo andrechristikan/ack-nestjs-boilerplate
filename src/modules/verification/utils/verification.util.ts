@@ -65,11 +65,11 @@ export class VerificationUtil {
 
     createVerification(type: ENUM_VERIFICATION_TYPE): IVerificationCreate {
         const token =
-            type === ENUM_VERIFICATION_TYPE.MOBILE_NUMBER
+            type === ENUM_VERIFICATION_TYPE.mobileNumber
                 ? this.createOtp()
                 : this.createToken();
         const link =
-            type === ENUM_VERIFICATION_TYPE.MOBILE_NUMBER
+            type === ENUM_VERIFICATION_TYPE.mobileNumber
                 ? null
                 : `${this.homeUrl}/${this.linkBaseUrl}/${token}`;
 

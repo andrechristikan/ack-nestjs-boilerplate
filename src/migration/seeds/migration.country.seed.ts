@@ -1,31 +1,40 @@
-import { Command } from 'nestjs-command';
-import { Injectable, Logger } from '@nestjs/common';
-import { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
+import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
+import { migrationCountryData } from '@migration/data/migration.country.data';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
+import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Command } from 'nest-commander';
 
-@Injectable()
-export class MigrationCountrySeed {
+@Command({
+    name: 'country',
+    description: 'Seed/Rollback Countries',
+    allowUnknownOptions: false,
+})
+export class MigrationCountrySeed
+    extends MigrationSeedBase
+    implements IMigrationSeed
+{
     private readonly logger = new Logger(MigrationCountrySeed.name);
 
-    private readonly countries: CountryRequestDto[] = [
-        {
-            name: 'Indonesia',
-            alpha2Code: 'ID',
-            alpha3Code: 'IDN',
-            phoneCode: ['62'],
-            continent: 'Asia',
-            timezone: 'Asia/Jakarta',
-        },
-    ];
+    private readonly env: ENUM_APP_ENVIRONMENT;
+    private countries: CountryRequestDto[] = [];
 
-    constructor(private readonly databaseService: DatabaseService) {}
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly configService: ConfigService
+    ) {
+        super();
 
-    @Command({
-        command: 'seed:country',
-        describe: 'seeds countries',
-    })
-    async seeds(): Promise<void> {
+        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.countries = migrationCountryData[this.env];
+    }
+
+    async seed(): Promise<void> {
         this.logger.log('Seeding Countries...');
+        this.logger.log(`Found ${this.countries.length} Countries to seed.`);
 
         const existingCountries = await this.databaseService.country.findMany({
             where: {
@@ -37,8 +46,9 @@ export class MigrationCountrySeed {
                 id: true,
             },
         });
+
         if (existingCountries.length > 0) {
-            this.logger.log('Countries already exist, skipping seed.');
+            this.logger.warn('Countries already exist, skipping seed.');
             return;
         }
 
@@ -51,12 +61,11 @@ export class MigrationCountrySeed {
         return;
     }
 
-    @Command({
-        command: 'remove:country',
-        describe: 'remove countries',
-    })
-    async remove(): Promise<void> {
-        this.logger.log('Removing Countries...');
+    async rollback(): Promise<void> {
+        this.logger.log('Rolling back Countries...');
+        this.logger.log(
+            `Found ${this.countries.length} Countries to rollback.`
+        );
 
         await this.databaseService.country.deleteMany({
             where: {
@@ -66,7 +75,7 @@ export class MigrationCountrySeed {
             },
         });
 
-        this.logger.log('Countries removed successfully.');
+        this.logger.log('Countries rolled back successfully.');
 
         return;
     }

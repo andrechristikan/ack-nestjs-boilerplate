@@ -1,7 +1,15 @@
-import { Command } from 'nestjs-command';
-import { Injectable, Logger } from '@nestjs/common';
-import { HelperService } from '@common/helper/services/helper.service';
+import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperService } from '@common/helper/services/helper.service';
+import { faker } from '@faker-js/faker';
+import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
+import { migrationUserData } from '@migration/data/migration.user.data';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { UserUtil } from '@modules/user/utils/user.util';
+import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
     ENUM_ACTIVITY_LOG_ACTION,
     ENUM_PASSWORD_HISTORY_TYPE,
@@ -10,59 +18,48 @@ import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_SIGN_UP_WITH,
     ENUM_USER_STATUS,
+    Prisma,
 } from '@prisma/client';
-import { UserUtil } from '@modules/user/utils/user.util';
-import { faker } from '@faker-js/faker';
+import { Command } from 'nest-commander';
 import { UAParser } from 'ua-parser-js';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 
-@Injectable()
-export class MigrationUserSeed {
+@Command({
+    name: 'user',
+    description: 'Seed/Rollback Users',
+    allowUnknownOptions: false,
+})
+export class MigrationUserSeed
+    extends MigrationSeedBase
+    implements IMigrationSeed
+{
     private readonly logger = new Logger(MigrationUserSeed.name);
 
-    private readonly password = 'aaAA@123';
+    private readonly env: ENUM_APP_ENVIRONMENT;
     private readonly users: {
         country: string;
         email: string;
         name: string;
         role: string;
-        id?: string;
-    }[] = [
-        {
-            country: 'ID',
-            email: 'superadmin@mail.com',
-            name: 'Super Admin',
-            role: 'superadmin',
-        },
-        {
-            country: 'ID',
-            email: 'admin@mail.com',
-            name: 'Admin',
-            role: 'admin',
-        },
-        {
-            country: 'ID',
-            email: 'user@mail.com',
-            name: 'User',
-            role: 'user',
-        },
-    ];
+        password: string;
+    }[] = [];
 
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly authUtil: AuthUtil,
         private readonly userUtil: UserUtil,
         private readonly helperService: HelperService
-    ) {}
+    ) {
+        super();
 
-    @Command({
-        command: 'seed:user',
-        describe: 'seeds users',
-    })
-    async seeds(): Promise<void> {
+        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.users = migrationUserData[this.env];
+    }
+
+    async seed(): Promise<void> {
         this.logger.log('Seeding Users...');
+        this.logger.log(`Found ${this.users.length} Users to seed.`);
 
         const existingUsers = await this.databaseService.user.findMany({
             where: {
@@ -75,7 +72,7 @@ export class MigrationUserSeed {
             },
         });
         if (existingUsers.length > 0) {
-            this.logger.log('Users already exist, skipping seed.');
+            this.logger.warn('Users already exist, skipping seed.');
             return;
         }
 
@@ -94,7 +91,7 @@ export class MigrationUserSeed {
             },
         });
         if (roles.length !== uniqueRoles.length) {
-            this.logger.error('Roles not found for users, cannot seed.');
+            this.logger.warn('Roles not found for users, cannot seed.');
             return;
         }
 
@@ -121,24 +118,22 @@ export class MigrationUserSeed {
             where: {
                 type: {
                     in: [
-                        ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE,
-                        ENUM_TERM_POLICY_TYPE.PRIVACY,
+                        ENUM_TERM_POLICY_TYPE.termsOfService,
+                        ENUM_TERM_POLICY_TYPE.privacy,
                     ],
                 },
-                status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
+                status: ENUM_TERM_POLICY_STATUS.published,
             },
             select: {
                 id: true,
             },
         });
-        if (termPolicies.length < 2) {
+        if (termPolicies.length !== 2) {
             this.logger.error('TermPolicies not found for users, cannot seed.');
             return;
         }
 
         const today = this.helperService.dateCreate();
-        const { passwordCreated, passwordExpired, passwordHash, salt } =
-            this.authUtil.createPassword(this.password);
 
         const userAgent = UAParser(faker.internet.userAgent());
         const ip = faker.internet.ip();
@@ -146,6 +141,9 @@ export class MigrationUserSeed {
         await this.databaseService.$transaction([
             ...this.users.flatMap(user => {
                 const userId = this.databaseUtil.createId();
+                const { passwordCreated, passwordExpired, passwordHash, salt } =
+                    this.authUtil.createPassword(user.password);
+
                 return [
                     this.databaseService.user.create({
                         data: {
@@ -164,14 +162,14 @@ export class MigrationUserSeed {
                             passwordAttempt: 0,
                             signUpAt: today,
                             isVerified: true,
-                            signUpWith: ENUM_USER_SIGN_UP_WITH.CREDENTIAL,
-                            signUpFrom: ENUM_USER_SIGN_UP_FROM.SYSTEM,
-                            status: ENUM_USER_STATUS.ACTIVE,
+                            signUpWith: ENUM_USER_SIGN_UP_WITH.credential,
+                            signUpFrom: ENUM_USER_SIGN_UP_FROM.system,
+                            status: ENUM_USER_STATUS.active,
                             termPolicy: {
-                                [ENUM_TERM_POLICY_TYPE.COOKIE]: false,
-                                [ENUM_TERM_POLICY_TYPE.MARKETING]: false,
-                                [ENUM_TERM_POLICY_TYPE.PRIVACY]: true,
-                                [ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE]: true,
+                                [ENUM_TERM_POLICY_TYPE.cookie]: false,
+                                [ENUM_TERM_POLICY_TYPE.marketing]: false,
+                                [ENUM_TERM_POLICY_TYPE.privacy]: true,
+                                [ENUM_TERM_POLICY_TYPE.termsOfService]: true,
                             },
                             username: this.userUtil.createRandomUsername(),
                             deletedAt: null,
@@ -179,7 +177,7 @@ export class MigrationUserSeed {
                                 create: {
                                     password: passwordHash,
                                     salt,
-                                    type: ENUM_PASSWORD_HISTORY_TYPE.ADMIN,
+                                    type: ENUM_PASSWORD_HISTORY_TYPE.admin,
                                     expiredAt: passwordExpired,
                                     createdAt: passwordCreated,
                                     createdBy: userId,
@@ -187,7 +185,7 @@ export class MigrationUserSeed {
                             },
                             activityLogs: {
                                 create: {
-                                    action: ENUM_ACTIVITY_LOG_ACTION.USER_CREATED,
+                                    action: ENUM_ACTIVITY_LOG_ACTION.userCreated,
                                     ipAddress: ip,
                                     userAgent:
                                         this.databaseUtil.toPlainObject(
@@ -216,24 +214,60 @@ export class MigrationUserSeed {
         return;
     }
 
-    @Command({
-        command: 'remove:user',
-        describe: 'remove users',
-    })
-    async remove(): Promise<void> {
-        this.logger.log('Removing Users...');
+    async rollback(): Promise<void> {
+        this.logger.log('Rolling back Users...');
+        this.logger.log(`Found ${this.users.length} Users to rollback.`);
 
-        await this.databaseService.$transaction([
-            this.databaseService.session.deleteMany(),
-            this.databaseService.userMobileNumber.deleteMany(),
-            this.databaseService.verification.deleteMany(),
-            this.databaseService.passwordHistory.deleteMany(),
-            this.databaseService.activityLog.deleteMany(),
-            this.databaseService.termPolicyUserAcceptance.deleteMany(),
-            this.databaseService.user.deleteMany(),
-        ]);
+        const existingUsers = await this.databaseService.user.findMany({
+            where: {
+                email: {
+                    in: this.users.map(user => user.email),
+                },
+            },
+            select: {
+                id: true,
+            },
+        });
+        if (existingUsers.length === 0) {
+            this.logger.warn('Users do not exist, skipping rollback.');
+            return;
+        }
 
-        this.logger.log('Users removed successfully.');
+        const transaction: Prisma.PrismaPromise<unknown>[] = [];
+        const postTransaction: Prisma.PrismaPromise<unknown>[] = [];
+
+        for (const user of existingUsers) {
+            postTransaction.push(
+                this.databaseService.user.deleteMany({
+                    where: { id: user.id },
+                })
+            );
+            transaction.push(
+                this.databaseService.session.deleteMany({
+                    where: { userId: user.id },
+                }),
+                this.databaseService.userMobileNumber.deleteMany({
+                    where: { userId: user.id },
+                }),
+                this.databaseService.verification.deleteMany({
+                    where: { userId: user.id },
+                }),
+                this.databaseService.passwordHistory.deleteMany({
+                    where: { userId: user.id },
+                }),
+                this.databaseService.activityLog.deleteMany({
+                    where: { userId: user.id },
+                }),
+                this.databaseService.termPolicyUserAcceptance.deleteMany({
+                    where: { userId: user.id },
+                })
+            );
+        }
+
+        await this.databaseService.$transaction(transaction);
+        await this.databaseService.$transaction(postTransaction);
+
+        this.logger.log('Users rollback completed.');
 
         return;
     }

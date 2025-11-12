@@ -79,7 +79,7 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -102,12 +102,12 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminCreateDoc()
     @Response('apiKey.create')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_CREATE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminApiKeyCreate)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -120,12 +120,12 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminResetDoc()
     @Response('apiKey.reset')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_RESET)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminApiKeyReset)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -139,12 +139,12 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminUpdateDoc()
     @Response('apiKey.update')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_UPDATE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminApiKeyUpdate)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -159,12 +159,12 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminUpdateDateDoc()
     @Response('apiKey.updateDate')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_UPDATE_DATE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminApiKeyUpdateDate)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -179,12 +179,12 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminInactiveDoc()
     @Response('apiKey.inactive')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_UPDATE_INACTIVE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminApiKeyUpdateInactive)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -198,12 +198,12 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminActiveDoc()
     @Response('apiKey.active')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_UPDATE_ACTIVE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminApiKeyUpdateActive)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -217,12 +217,12 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminDeleteDoc()
     @Response('apiKey.delete')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_API_KEY_DELETE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminApiKeyDelete)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

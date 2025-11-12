@@ -16,7 +16,7 @@ export class ApiKeyCreateRequestDto extends IntersectionType(
 ) {
     @ApiProperty({
         description: 'Api Key name',
-        example: ENUM_API_KEY_TYPE.DEFAULT,
+        example: ENUM_API_KEY_TYPE.default,
         required: true,
         enum: ENUM_API_KEY_TYPE,
     })

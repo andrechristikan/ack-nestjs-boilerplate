@@ -1,51 +1,49 @@
-import { Command } from 'nestjs-command';
-import { Injectable, Logger } from '@nestjs/common';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
-import { ConfigService } from '@nestjs/config';
-import { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
-import { ENUM_API_KEY_TYPE } from '@prisma/client';
 import { DatabaseService } from '@common/database/services/database.service';
+import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
+import { migrationApiKeyData } from '@migration/data/migration.api-key.data';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Command } from 'nest-commander';
 
-@Injectable()
-export class MigrationApiKeySeed {
+@Command({
+    name: 'apiKey',
+    description: 'Seed/Rollback Api Keys',
+    allowUnknownOptions: false,
+})
+export class MigrationApiKeySeed
+    extends MigrationSeedBase
+    implements IMigrationSeed
+{
     private readonly logger = new Logger(MigrationApiKeySeed.name);
 
     private readonly env: ENUM_APP_ENVIRONMENT;
-    private readonly apiKeys: ApiKeyCreateRawRequestDto[] = [
-        {
-            name: 'Api Key Default Migration',
-            type: ENUM_API_KEY_TYPE.DEFAULT,
-            key: 'fyFGb7ywyM37TqDY8nuhAmGW5',
-            secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
-        },
-        {
-            name: 'Api Key System Migration',
-            type: ENUM_API_KEY_TYPE.SYSTEM,
-            key: 'UTDH0fuDMAbd1ZVnwnyrQJd8Q',
-            secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
-        },
-    ];
+    private apiKeys: ApiKeyCreateRawRequestDto[] = [];
 
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly apiKeyUtil: ApiKeyUtil,
         private readonly configService: ConfigService
     ) {
+        super();
+
         this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.apiKeys = migrationApiKeyData[this.env];
     }
 
-    @Command({
-        command: 'seed:apiKey',
-        describe: 'seeds apikeys',
-    })
-    async seeds(): Promise<void> {
+    async seed(): Promise<void> {
         this.logger.log('Seeding Api Keys...');
+        this.logger.log(`Found ${this.apiKeys.length} Api Keys to seed.`);
 
         const existingApiKeys = await this.databaseService.apiKey.findMany({
             where: {
                 key: {
-                    in: this.apiKeys.map(apiKey => `${this.env}_${apiKey.key}`),
+                    in: this.apiKeys.map(apiKey =>
+                        this.apiKeyUtil.createKey(apiKey.key)
+                    ),
                 },
             },
             select: {
@@ -53,7 +51,7 @@ export class MigrationApiKeySeed {
             },
         });
         if (existingApiKeys.length > 0) {
-            this.logger.log('Api Keys already exist, skipping seed.');
+            this.logger.warn('Api Keys already exist, skipping seed.');
             return;
         }
 
@@ -61,7 +59,6 @@ export class MigrationApiKeySeed {
             data: this.apiKeys.map(apiKey => {
                 const key = this.apiKeyUtil.createKey(apiKey.key);
                 const hashed = this.apiKeyUtil.createHash(key, apiKey.secret);
-
                 return {
                     hash: hashed,
                     key: key,
@@ -77,12 +74,9 @@ export class MigrationApiKeySeed {
         return;
     }
 
-    @Command({
-        command: 'remove:apiKey',
-        describe: 'remove apikeys',
-    })
-    async remove(): Promise<void> {
-        this.logger.log('Removing Api Keys...');
+    async rollback(): Promise<void> {
+        this.logger.log('Rolling back Api Keys...');
+        this.logger.log(`Found ${this.apiKeys.length} Api Keys to rollback.`);
 
         await Promise.all([
             ...this.apiKeys
@@ -105,7 +99,7 @@ export class MigrationApiKeySeed {
             }),
         ]);
 
-        this.logger.log('Api Keys removed successfully.');
+        this.logger.log('Api Keys rolled back successfully.');
 
         return;
     }

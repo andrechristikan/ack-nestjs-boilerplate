@@ -39,7 +39,7 @@ export class ApiKeyDto extends DatabaseDto {
 
     @ApiProperty({
         description: 'Type of api key',
-        example: ENUM_API_KEY_TYPE.DEFAULT,
+        example: ENUM_API_KEY_TYPE.default,
         enum: ENUM_API_KEY_TYPE,
         required: true,
     })

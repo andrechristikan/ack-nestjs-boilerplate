@@ -66,8 +66,8 @@ export class TermPolicyService implements ITermPolicyService {
             requiredTermPolicies =
                 requiredTermPolicies.length === 0
                     ? [
-                          ENUM_TERM_POLICY_TYPE.TERMS_OF_SERVICE,
-                          ENUM_TERM_POLICY_TYPE.PRIVACY,
+                          ENUM_TERM_POLICY_TYPE.termsOfService,
+                          ENUM_TERM_POLICY_TYPE.privacy,
                       ]
                     : requiredTermPolicies;
 
@@ -253,7 +253,7 @@ export class TermPolicyService implements ITermPolicyService {
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'termPolicy.error.notFound',
             });
-        } else if (termPolicy.status !== ENUM_TERM_POLICY_STATUS.DRAFT) {
+        } else if (termPolicy.status !== ENUM_TERM_POLICY_STATUS.draft) {
             throw new BadRequestException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.STATUS_INVALID,
                 message: 'termPolicy.error.statusInvalid',
@@ -294,7 +294,7 @@ export class TermPolicyService implements ITermPolicyService {
             );
         if (
             termPolicy &&
-            termPolicy.status === ENUM_TERM_POLICY_STATUS.PUBLISHED
+            termPolicy.status === ENUM_TERM_POLICY_STATUS.published
         ) {
             throw new BadRequestException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.STATUS_INVALID,
@@ -338,7 +338,7 @@ export class TermPolicyService implements ITermPolicyService {
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'termPolicy.error.notFound',
             });
-        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.PUBLISHED) {
+        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.published) {
             throw new BadRequestException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.STATUS_INVALID,
                 message: 'termPolicy.error.statusInvalid',
@@ -382,7 +382,7 @@ export class TermPolicyService implements ITermPolicyService {
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'termPolicy.error.notFound',
             });
-        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.PUBLISHED) {
+        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.published) {
             throw new BadRequestException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.STATUS_INVALID,
                 message: 'termPolicy.error.statusInvalid',
@@ -425,7 +425,7 @@ export class TermPolicyService implements ITermPolicyService {
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'termPolicy.error.notFound',
             });
-        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.PUBLISHED) {
+        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.published) {
             throw new BadRequestException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.STATUS_INVALID,
                 message: 'termPolicy.error.statusInvalid',
@@ -464,7 +464,7 @@ export class TermPolicyService implements ITermPolicyService {
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'termPolicy.error.notFound',
             });
-        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.PUBLISHED) {
+        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.published) {
             throw new BadRequestException({
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.STATUS_INVALID,
                 message: 'termPolicy.error.statusInvalid',

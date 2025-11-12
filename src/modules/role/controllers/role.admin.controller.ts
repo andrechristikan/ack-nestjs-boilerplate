@@ -35,12 +35,12 @@ export class RoleAdminController {
 
     @RoleAdminCreateDoc()
     @Response('role.create')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_ROLE_CREATE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminRoleCreate)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -54,12 +54,12 @@ export class RoleAdminController {
 
     @RoleAdminUpdateDoc()
     @Response('role.update')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_ROLE_UPDATE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminRoleUpdate)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -75,12 +75,12 @@ export class RoleAdminController {
 
     @RoleAdminDeleteDoc()
     @Response('role.delete')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.ADMIN_ROLE_DELETE)
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminRoleDelete)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.ADMIN)
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

@@ -130,7 +130,7 @@ export class UserService implements IUserService {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'user.error.notFound',
             });
-        } else if (user.status !== ENUM_USER_STATUS.ACTIVE) {
+        } else if (user.status !== ENUM_USER_STATUS.active) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'user.error.inactive',
@@ -245,7 +245,7 @@ export class UserService implements IUserService {
                 }
             );
             const emailVerification = this.verificationUtil.createVerification(
-                ENUM_VERIFICATION_TYPE.EMAIL
+                ENUM_VERIFICATION_TYPE.email
             );
             const randomUsername = this.userUtil.createRandomUsername();
             const created = await this.userRepository.createByAdmin(
@@ -277,7 +277,7 @@ export class UserService implements IUserService {
                         passwordExpiredAt: password.passwordExpired,
                     }
                 ),
-                checkRole.type !== ENUM_ROLE_TYPE.USER
+                checkRole.type !== ENUM_ROLE_TYPE.user
                     ? this.emailService.sendVerification(
                           created.id,
                           {
@@ -321,7 +321,7 @@ export class UserService implements IUserService {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'user.error.notFound',
             });
-        } else if (user.status === ENUM_USER_STATUS.BLOCKED) {
+        } else if (user.status === ENUM_USER_STATUS.blocked) {
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
                 message: 'user.error.statusInvalid',
@@ -742,7 +742,7 @@ export class UserService implements IUserService {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'user.error.notFound',
             });
-        } else if (user.status === ENUM_USER_STATUS.BLOCKED) {
+        } else if (user.status === ENUM_USER_STATUS.blocked) {
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
                 message: 'user.error.statusInvalid',
@@ -882,7 +882,7 @@ export class UserService implements IUserService {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'user.error.notFound',
             });
-        } else if (user.status !== ENUM_USER_STATUS.ACTIVE) {
+        } else if (user.status !== ENUM_USER_STATUS.active) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'user.error.inactive',
@@ -919,7 +919,7 @@ export class UserService implements IUserService {
             });
         } else if (!user.isVerified) {
             const emailVerification = this.verificationUtil.createVerification(
-                ENUM_VERIFICATION_TYPE.EMAIL
+                ENUM_VERIFICATION_TYPE.email
             );
 
             await this.userRepository.requestVerificationEmail(
@@ -955,7 +955,7 @@ export class UserService implements IUserService {
                 user,
                 sessionId,
                 from,
-                ENUM_USER_LOGIN_WITH.CREDENTIAL
+                ENUM_USER_LOGIN_WITH.credential
             );
             const expiredAt = this.helperService.dateForward(
                 this.helperService.dateCreate(),
@@ -970,7 +970,7 @@ export class UserService implements IUserService {
                     user.id,
                     {
                         loginFrom: from,
-                        loginWith: ENUM_USER_LOGIN_WITH.CREDENTIAL,
+                        loginWith: ENUM_USER_LOGIN_WITH.credential,
                         sessionId,
                         expiredAt,
                     },
@@ -1000,7 +1000,7 @@ export class UserService implements IUserService {
             await this.featureFlagService.findOneMetadataByKeyAndCache<{
                 signUpAllowed: boolean;
             }>(
-                loginWith === ENUM_USER_LOGIN_WITH.SOCIAL_GOOGLE
+                loginWith === ENUM_USER_LOGIN_WITH.socialGoogle
                     ? 'loginWithGoogle'
                     : 'loginWithApple'
             );
@@ -1034,7 +1034,7 @@ export class UserService implements IUserService {
             });
         }
 
-        if (user.status !== ENUM_USER_STATUS.ACTIVE) {
+        if (user.status !== ENUM_USER_STATUS.active) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'user.error.inactive',
@@ -1155,7 +1155,7 @@ export class UserService implements IUserService {
             const password = this.authUtil.createPassword(passwordString);
             const randomUsername = this.userUtil.createRandomUsername();
             const emailVerification = this.verificationUtil.createVerification(
-                ENUM_VERIFICATION_TYPE.EMAIL
+                ENUM_VERIFICATION_TYPE.email
             );
 
             const created = await this.userRepository.signUp(

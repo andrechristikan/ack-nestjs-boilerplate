@@ -37,4 +37,14 @@ export class DatabaseUtil {
     toPlainObject<T>(data: T): Prisma.JsonObject {
         return structuredClone(data) as unknown as Prisma.JsonObject;
     }
+
+    /**
+     * Converts data to a plain array compatible with Prisma JsonObject array format.
+     *
+     * @param {T} data - The data to convert to plain array
+     * @returns {Prisma.JsonObject[]} Plain array representation of the data
+     */
+    toPlainArray<T>(data: T): Prisma.JsonObject[] {
+        return structuredClone(data) as unknown as Prisma.JsonObject[];
+    }
 }
