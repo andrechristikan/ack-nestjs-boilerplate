@@ -27,7 +27,7 @@ export class UserGuard implements CanActivate {
             this.reflector.get<boolean>(
                 USER_GUARD_IS_VERIFIED_META_KEY,
                 context.getHandler()
-            ) || false;
+            ) ?? false;
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
 

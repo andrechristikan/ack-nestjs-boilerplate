@@ -329,7 +329,7 @@ export class HelperService implements IHelperService {
             };
         }
 
-        const atSymbolCount = (value.match(/@/g) || []).length;
+        const atSymbolCount = (value.match(/@/g) ?? []).length;
         if (atSymbolCount !== 1) {
             return {
                 validated: false,

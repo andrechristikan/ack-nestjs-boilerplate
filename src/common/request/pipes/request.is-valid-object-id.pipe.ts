@@ -1,3 +1,4 @@
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
 import {
     ArgumentMetadata,
@@ -12,6 +13,8 @@ import { isMongoId } from 'class-validator';
  */
 @Injectable()
 export class RequestIsValidObjectIdPipe implements PipeTransform {
+    constructor(private readonly databaseUtil: DatabaseUtil) {}
+
     /**
      * Validates and transforms the input value to ensure it's a valid MongoDB ObjectId
      * @param {string} value - The input value to validate

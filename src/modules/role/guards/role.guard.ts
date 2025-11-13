@@ -25,7 +25,7 @@ export class RoleGuard implements CanActivate {
             this.reflector.get<ENUM_ROLE_TYPE[]>(
                 ROLE_REQUIRED_META_KEY,
                 context.getHandler()
-            ) || [];
+            ) ?? [];
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
         const abilities = await this.roleService.validateRoleGuard(

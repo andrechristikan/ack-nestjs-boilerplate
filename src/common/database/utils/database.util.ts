@@ -16,6 +16,19 @@ import ObjectID from 'bson-objectid';
 @Injectable()
 export class DatabaseUtil {
     /**
+     * Checks if the provided ID string is a valid BSON ObjectID.
+     *
+     * Utilizes the BSON ObjectID library's isValid method to determine
+     * if the given string conforms to the ObjectID format.
+     *
+     * @param {string} id - The ID string to validate
+     * @returns {boolean} True if the ID is a valid ObjectID, false otherwise
+     */
+    checkIdIsValid(id: string): boolean {
+        return ObjectID.isValid(id);
+    }
+
+    /**
      * Creates a new unique identifier using BSON ObjectID.
      *
      * Generates a new ObjectID and converts it to a hexadecimal string format.

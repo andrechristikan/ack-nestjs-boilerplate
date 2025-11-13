@@ -31,7 +31,7 @@ import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
             load: configs,
             isGlobal: true,
             cache: true,
-            envFilePath: ['.env', `.env.${process.env.NODE_ENV || 'local'}`],
+            envFilePath: ['.env', `.env.${process.env.NODE_ENV ?? 'local'}`],
             expandVariables: false,
         }),
         HelperModule.forRoot(),

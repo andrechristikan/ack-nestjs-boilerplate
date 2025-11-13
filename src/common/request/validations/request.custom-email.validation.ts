@@ -58,7 +58,7 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
         const validationResult = this.helperService.checkEmail(
             validationArguments.value
         );
-        return validationResult.messagePath || 'request.error.email.invalid';
+        return validationResult.messagePath ?? 'request.error.email.invalid';
     }
 
     /**

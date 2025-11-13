@@ -26,7 +26,7 @@ export class PolicyAbilityGuard implements CanActivate {
             this.reflector.get<RoleAbilityRequestDto[]>(
                 POLICY_REQUIRED_ABILITY_META_KEY,
                 context.getHandler()
-            ) || [];
+            ) ?? [];
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
         return this.policyService.validatePolicyGuard(

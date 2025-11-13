@@ -42,7 +42,7 @@ export class RequestBodyParserMiddleware implements NestMiddleware {
      * @param next - The next middleware function
      */
     use(req: Request, res: Response, next: NextFunction): void {
-        const contentType = req.get('content-type') || '';
+        const contentType = req.get('content-type') ?? '';
 
         if (contentType.includes('application/json')) {
             bodyParser.json({

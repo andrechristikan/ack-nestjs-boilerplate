@@ -72,7 +72,7 @@ export class TermPolicyService implements ITermPolicyService {
                     : requiredTermPolicies;
 
             const termPolicyObj = JSON.parse(
-                (termPolicy as string) || '{}'
+                (termPolicy as string) ?? '{}'
             ) as UserTermPolicyDto;
             if (!requiredTermPolicies.every(type => termPolicyObj[type])) {
                 throw new ForbiddenException({

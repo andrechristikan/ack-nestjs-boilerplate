@@ -28,7 +28,7 @@ export class TermPolicyGuard implements CanActivate {
             this.reflector.get<ENUM_TERM_POLICY_TYPE[]>(
                 TERM_POLICY_REQUIRED_GUARD_META_KEY,
                 context.getHandler()
-            ) || [];
+            ) ?? [];
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
         await this.termPolicyService.validateTermPolicyGuard(
