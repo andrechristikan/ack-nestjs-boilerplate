@@ -43,7 +43,7 @@
         ".warmup",
         ".nyc_output",
         "src/metadata.ts",
-        "swagger.json",
+        "src/swagger.json",
         "**/**/templates/*"
     ]
 }

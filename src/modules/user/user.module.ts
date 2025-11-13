@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { UserService } from '@modules/user/services/user.service';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { VerificationModule } from '@modules/verification/verification.module';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { CountryModule } from '@modules/country/country.module';
 import { RoleModule } from '@modules/role/role.module';
@@ -10,12 +9,10 @@ import { AuthModule } from '@modules/auth/auth.module';
 import { FileModule } from '@common/file/file.module';
 import { SessionModule } from '@modules/session/session.module';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
-import { ResetPasswordModule } from '@modules/reset-password/reset-password.module';
 import { EmailModule } from '@modules/email/email.module';
 
 @Module({
     imports: [
-        VerificationModule,
         PasswordHistoryModule,
         CountryModule,
         RoleModule,
@@ -23,7 +20,6 @@ import { EmailModule } from '@modules/email/email.module';
         AuthModule,
         FileModule,
         SessionModule,
-        ResetPasswordModule,
         EmailModule,
     ],
     exports: [UserService, UserUtil, UserRepository],

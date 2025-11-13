@@ -28,6 +28,7 @@ import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { ApiKey, ENUM_API_KEY_TYPE } from '@prisma/client';
 import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
+import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -91,7 +92,10 @@ export class ApiKeyService implements IApiKeyService {
         };
     }
 
-    async active(id: string): Promise<IResponseReturn<ApiKeyDto>> {
+    async updateStatus(
+        id: string,
+        data: ApiKeyUpdateStatusRequestDto
+    ): Promise<IResponseReturn<ApiKeyDto>> {
         const today = this.helperService.dateCreate();
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
@@ -99,25 +103,15 @@ export class ApiKeyService implements IApiKeyService {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'apiKey.error.notFound',
             });
-        } else if (this.apiKeyUtil.isActive(apiKey)) {
-            throw new BadRequestException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.ACTIVE_ALREADY,
-                message: 'apiKey.error.activeAlready',
-            });
         } else if (this.apiKeyUtil.isExpired(apiKey, today)) {
             throw new BadRequestException({
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED,
                 message: 'apiKey.error.expired',
             });
-        } else if (this.apiKeyUtil.isNotYetActive(apiKey, today)) {
-            throw new BadRequestException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_YET_ACTIVE,
-                message: 'apiKey.error.notYetActive',
-            });
         }
 
         const [updated] = await Promise.all([
-            this.apiKeyRepository.updateActive(id, true),
+            this.apiKeyRepository.updateStatus(id, data),
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
@@ -125,24 +119,6 @@ export class ApiKeyService implements IApiKeyService {
             data: this.apiKeyUtil.mapOne(updated),
             metadataActivityLog:
                 this.apiKeyUtil.mapActivityLogMetadata(updated),
-        };
-    }
-
-    async inactive(id: string): Promise<IResponseReturn<ApiKeyDto>> {
-        const apiKey = await this.apiKeyRepository.findOneById(id);
-        this.validateApiKey(apiKey, true);
-
-        const [updated] = await Promise.all([
-            this.apiKeyRepository.updateActive(id, false),
-            this.apiKeyUtil.deleteCacheByKey(apiKey.key),
-        ]);
-
-        return {
-            data: this.apiKeyUtil.mapOne(updated),
-            metadataActivityLog: {
-                type: updated.type,
-                name: updated.name,
-            },
         };
     }
 

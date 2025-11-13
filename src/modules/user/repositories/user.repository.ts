@@ -13,7 +13,6 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import { IResetPasswordCreate } from '@modules/reset-password/interfaces/reset-password.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
@@ -23,10 +22,11 @@ import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.re
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import {
     IUser,
+    IUserForgotPasswordCreate,
     IUserLogin,
     IUserProfile,
+    IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
-import { IVerificationCreate } from '@modules/verification/interfaces/verification.interface';
 import { Injectable } from '@nestjs/common';
 import {
     Country,
@@ -40,8 +40,8 @@ import {
     ENUM_USER_SIGN_UP_WITH,
     ENUM_USER_STATUS,
     ENUM_VERIFICATION_TYPE,
+    ForgotPassword,
     Prisma,
-    ResetPassword,
     User,
     UserMobileNumber,
     Verification,
@@ -157,12 +157,12 @@ export class UserRepository {
         });
     }
 
-    async findOneActiveByResetPasswordToken(
+    async findOneActiveByForgotPasswordToken(
         token: string
-    ): Promise<(ResetPassword & { user: User }) | null> {
+    ): Promise<(ForgotPassword & { user: User }) | null> {
         const today = this.helperService.dateCreate();
 
-        return this.databaseService.resetPassword.findFirst({
+        return this.databaseService.forgotPassword.findFirst({
             where: {
                 token,
                 isUsed: false,
@@ -258,7 +258,7 @@ export class UserRepository {
             reference,
             token,
             type: verificationType,
-        }: IVerificationCreate,
+        }: IUserVerificationCreate,
         {
             id: roleId,
             type: roleType,
@@ -893,7 +893,7 @@ export class UserRepository {
             salt,
             passwordPeriodExpired,
         }: IAuthPassword,
-        { expiredAt, reference, token, type }: IVerificationCreate,
+        { expiredAt, reference, token, type }: IUserVerificationCreate,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<User> {
         const termPolicies = await this.databaseService.termPolicy.findMany({
@@ -991,7 +991,7 @@ export class UserRepository {
     async forgotPassword(
         userId: string,
         email: string,
-        { expiredAt, reference, token }: IResetPasswordCreate,
+        { expiredAt, reference, token }: IUserForgotPasswordCreate,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<void> {
         await this.databaseService.user.update({
@@ -1009,7 +1009,7 @@ export class UserRepository {
                         createdBy: userId,
                     },
                 },
-                resetPasswords: {
+                forgotPasswords: {
                     updateMany: {
                         where: { isUsed: false },
                         data: { isUsed: true },
@@ -1067,7 +1067,7 @@ export class UserRepository {
     async requestVerificationEmail(
         userId: string,
         userEmail: string,
-        { expiredAt, reference, token, type }: IVerificationCreate
+        { expiredAt, reference, token, type }: IUserVerificationCreate
     ): Promise<Verification> {
         const today = this.helperService.dateCreate();
 

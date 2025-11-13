@@ -8,7 +8,7 @@ import DocConfig from '@configs/doc.config';
 import MessageConfig from '@configs/message.config';
 import EmailConfig from '@configs/email.config';
 import RedisConfig from '@configs/redis.config';
-import ResetPasswordConfig from '@configs/reset-password.config';
+import ForgotPasswordConfig from '@configs/forgot-password.config';
 import VerificationConfig from '@configs/verification.config';
 import HomeConfig from '@configs/home.config';
 import LoggerConfig from '@configs/logger.config';
@@ -29,7 +29,7 @@ export default [
     EmailConfig,
     RedisConfig,
     LoggerConfig,
-    ResetPasswordConfig,
+    ForgotPasswordConfig,
     VerificationConfig,
     HomeConfig,
     SessionConfig,

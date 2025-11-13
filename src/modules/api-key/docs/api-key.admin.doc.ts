@@ -60,9 +60,9 @@ export function ApiKeyAdminCreateDoc(): MethodDecorator {
     );
 }
 
-export function ApiKeyAdminActiveDoc(): MethodDecorator {
+export function ApiKeyAdminUpdateStatusDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ summary: 'make api key be active' }),
+        Doc({ summary: 'update status of an api key' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),
@@ -70,46 +70,7 @@ export function ApiKeyAdminActiveDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponse('apiKey.active', {
-            dto: ApiKeyDto,
-        }),
-        DocGuard({ policy: true, role: true }),
-        DocErrorGroup([
-            DocDefault({
-                httpStatus: HttpStatus.NOT_FOUND,
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
-            }),
-            DocOneOf(
-                HttpStatus.BAD_REQUEST,
-                {
-                    statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.ACTIVE_ALREADY,
-                    messagePath: 'apiKey.error.activeAlready',
-                },
-                {
-                    statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED,
-                    messagePath: 'apiKey.error.expired',
-                },
-                {
-                    statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_YET_ACTIVE,
-                    messagePath: 'apiKey.error.notYetActive',
-                }
-            ),
-        ])
-    );
-}
-
-export function ApiKeyAdminInactiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({ summary: 'make api key be inactive' }),
-        DocRequest({
-            params: ApiKeyDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocResponse('apiKey.inactive', {
+        DocResponse('apiKey.updateStatus', {
             dto: ApiKeyDto,
         }),
         DocGuard({ policy: true, role: true }),
@@ -120,8 +81,8 @@ export function ApiKeyAdminInactiveDoc(): MethodDecorator {
                 messagePath: 'apiKey.error.notFound',
             }),
             DocOneOf(HttpStatus.BAD_REQUEST, {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.INACTIVE_ALREADY,
-                messagePath: 'apiKey.error.inactiveAlready',
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED,
+                messagePath: 'apiKey.error.expired',
             }),
         ])
     );

@@ -5,17 +5,40 @@ import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserDto } from '@modules/user/dtos/user.dto';
-import { IUserProfile } from '@modules/user/interfaces/user.interface';
+import {
+    IUserForgotPasswordCreate,
+    IUserProfile,
+    IUserVerificationCreate,
+} from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PasswordHistory, User } from '@prisma/client';
+import { ENUM_VERIFICATION_TYPE, PasswordHistory, User } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
+import { Duration } from 'luxon';
 
 @Injectable()
 export class UserUtil {
     private readonly usernamePrefix: string;
     private readonly usernamePattern: RegExp;
     private readonly uploadPhotoProfilePath: string;
+
+    private readonly homeUrl: string;
+
+    private readonly forgotPasswordReferencePrefix: string;
+    private readonly forgotPasswordReferenceLength: number;
+    private readonly forgotPasswordOtpLength: number;
+    private readonly forgotExpiredInMinutes: number;
+    private readonly forgotTokenLength: number;
+    private readonly forgotResendInMinutes: number;
+    private readonly forgotLinkBaseUrl: string;
+
+    private readonly verificationReferencePrefix: string;
+    private readonly verificationReferenceLength: number;
+    private readonly verificationOtpLength: number;
+    private readonly verificationExpiredInMinutes: number;
+    private readonly verificationTokenLength: number;
+    private readonly verificationResendInMinutes: number;
+    private readonly verificationLinkBaseUrl: string;
 
     constructor(
         private readonly configService: ConfigService,
@@ -30,6 +53,49 @@ export class UserUtil {
         );
         this.uploadPhotoProfilePath = this.configService.get<string>(
             'user.uploadPhotoProfilePath'
+        );
+
+        this.homeUrl = this.configService.get('app.homeUrl');
+
+        this.forgotPasswordReferencePrefix = this.configService.get(
+            'forgotPassword.reference.prefix'
+        );
+        this.forgotPasswordReferenceLength = this.configService.get(
+            'forgotPassword.reference.length'
+        );
+        this.forgotExpiredInMinutes = this.configService.get(
+            'forgotPassword.expiredInMinutes'
+        );
+        this.forgotTokenLength = this.configService.get(
+            'forgotPassword.tokenLength'
+        );
+        this.forgotResendInMinutes = this.configService.get(
+            'forgotPassword.resendInMinutes'
+        );
+        this.forgotLinkBaseUrl = this.configService.get(
+            'forgotPassword.linkBaseUrl'
+        );
+
+        this.verificationReferencePrefix = this.configService.get(
+            'verification.reference.prefix'
+        );
+        this.verificationReferenceLength = this.configService.get(
+            'verification.reference.length'
+        );
+        this.verificationOtpLength = this.configService.get(
+            'verification.otpLength'
+        );
+        this.verificationExpiredInMinutes = this.configService.get(
+            'verification.expiredInMinutes'
+        );
+        this.verificationTokenLength = this.configService.get(
+            'verification.tokenLength'
+        );
+        this.verificationResendInMinutes = this.configService.get(
+            'verification.resendInMinutes'
+        );
+        this.verificationLinkBaseUrl = this.configService.get(
+            'verification.linkBaseUrl'
         );
     }
 
@@ -99,5 +165,87 @@ export class UserUtil {
         }
 
         return null;
+    }
+
+    forgotPasswordCreateReference(): string {
+        const random = this.helperService.randomString(
+            this.forgotPasswordReferenceLength
+        );
+
+        return `${this.forgotPasswordReferencePrefix}-${random}`;
+    }
+
+    forgotPasswordCreateToken(): string {
+        return this.helperService.randomString(this.forgotTokenLength);
+    }
+
+    forgotPasswordSetExpiredDate(): Date {
+        const now = new Date();
+
+        return this.helperService.dateForward(
+            now,
+            Duration.fromObject({ minutes: this.forgotExpiredInMinutes })
+        );
+    }
+
+    forgotPasswordCreate(): IUserForgotPasswordCreate {
+        const token = this.forgotPasswordCreateToken();
+
+        return {
+            reference: this.forgotPasswordCreateReference(),
+            expiredAt: this.forgotPasswordSetExpiredDate(),
+            token,
+            expiredInMinutes: this.forgotExpiredInMinutes,
+            resendInMinutes: this.forgotResendInMinutes,
+            link: `${this.homeUrl}/${this.forgotLinkBaseUrl}/${token}`,
+        };
+    }
+
+    verificationCreateReference(): string {
+        const random = this.helperService.randomString(
+            this.verificationReferenceLength
+        );
+
+        return `${this.verificationReferencePrefix}-${random}`;
+    }
+
+    verificationCreateOtp(): string {
+        return this.helperService.randomDigits(this.verificationOtpLength);
+    }
+
+    verificationCreateToken(): string {
+        return this.helperService.randomString(this.verificationTokenLength);
+    }
+
+    verificationSetExpiredDate(): Date {
+        const now = new Date();
+
+        return this.helperService.dateForward(
+            now,
+            Duration.fromObject({ minutes: this.verificationExpiredInMinutes })
+        );
+    }
+
+    verificationCreateVerification(
+        type: ENUM_VERIFICATION_TYPE
+    ): IUserVerificationCreate {
+        const token =
+            type === ENUM_VERIFICATION_TYPE.mobileNumber
+                ? this.verificationCreateOtp()
+                : this.verificationCreateToken();
+        const link =
+            type === ENUM_VERIFICATION_TYPE.mobileNumber
+                ? null
+                : `${this.homeUrl}/${this.verificationLinkBaseUrl}/${token}`;
+
+        return {
+            reference: this.verificationCreateReference(),
+            expiredAt: this.verificationSetExpiredDate(),
+            type,
+            token,
+            expiredInMinutes: this.verificationExpiredInMinutes,
+            link,
+            resendInMinutes: this.verificationResendInMinutes,
+        };
     }
 }

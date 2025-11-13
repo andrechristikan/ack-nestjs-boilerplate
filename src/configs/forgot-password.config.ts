@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-export interface IConfigResetPassword {
+export interface IConfigForgotPassword {
     expiredInMinutes: number;
     tokenLength: number;
     linkBaseUrl: string;
@@ -12,14 +12,14 @@ export interface IConfigResetPassword {
 }
 
 export default registerAs(
-    'resetPassword',
-    (): IConfigResetPassword => ({
+    'forgotPassword',
+    (): IConfigForgotPassword => ({
         expiredInMinutes: 5,
         tokenLength: 50,
-        linkBaseUrl: 'reset-password',
+        linkBaseUrl: 'forgot-password',
         resendInMinutes: 2,
         reference: {
-            prefix: 'RES',
+            prefix: 'FG',
             length: 25,
         },
     })

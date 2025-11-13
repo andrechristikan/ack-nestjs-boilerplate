@@ -29,14 +29,13 @@ import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.up
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import {
-    ApiKeyAdminActiveDoc,
     ApiKeyAdminCreateDoc,
     ApiKeyAdminDeleteDoc,
-    ApiKeyAdminInactiveDoc,
     ApiKeyAdminListDoc,
     ApiKeyAdminResetDoc,
     ApiKeyAdminUpdateDateDoc,
     ApiKeyAdminUpdateDoc,
+    ApiKeyAdminUpdateStatusDoc,
 } from '@modules/api-key/docs/api-key.admin.doc';
 import {
     IPaginationEqual,
@@ -64,6 +63,7 @@ import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
+import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 
 @ApiTags('modules.admin.apiKey')
 @Controller({
@@ -177,9 +177,9 @@ export class ApiKeyAdminController {
         return this.apiKeyService.updateDates(apiKeyId, body);
     }
 
-    @ApiKeyAdminInactiveDoc()
-    @Response('apiKey.inactive')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminApiKeyUpdateInactive)
+    @ApiKeyAdminUpdateStatusDoc()
+    @Response('apiKey.updateStatus')
+    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminApiKeyUpdateStatus)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -188,31 +188,13 @@ export class ApiKeyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/:apiKeyId/inactive')
-    async inactive(
+    @Patch('/update/:apiKeyId/status')
+    async updateStatus(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-        apiKeyId: string
+        apiKeyId: string,
+        @Body() body: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<ApiKeyDto>> {
-        return this.apiKeyService.inactive(apiKeyId);
-    }
-
-    @ApiKeyAdminActiveDoc()
-    @Response('apiKey.active')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminApiKeyUpdateActive)
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.API_KEY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Patch('/update/:apiKeyId/active')
-    async active(
-        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-        apiKeyId: string
-    ): Promise<IResponseReturn<ApiKeyDto>> {
-        return this.apiKeyService.active(apiKeyId);
+        return this.apiKeyService.updateStatus(apiKeyId, body);
     }
 
     @ApiKeyAdminDeleteDoc()

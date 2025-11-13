@@ -2,7 +2,7 @@
 /dist
 /node_modules
 .warmup/
-swagger.json
+src/swagger.json
 /src/metadata.ts
 
 # Logs

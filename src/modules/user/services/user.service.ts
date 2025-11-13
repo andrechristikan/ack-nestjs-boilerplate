@@ -33,7 +33,6 @@ import { CountryRepository } from '@modules/country/repositories/country.reposit
 import { EmailService } from '@modules/email/services/email.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
-import { ResetPasswordUtil } from '@modules/reset-password/utils/reset-password.util';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
@@ -47,6 +46,7 @@ import {
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
@@ -55,7 +55,6 @@ import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
-import { UserResetPasswordRequestDto } from '@modules/user/dtos/request/user.reset-password.request';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
@@ -71,7 +70,6 @@ import { IUser } from '@modules/user/interfaces/user.interface';
 import { IUserService } from '@modules/user/interfaces/user.service.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { VerificationUtil } from '@modules/verification/utils/verification.util';
 import {
     BadRequestException,
     ConflictException,
@@ -107,8 +105,6 @@ export class UserService implements IUserService {
         private readonly sessionUtil: SessionUtil,
         private readonly sessionRepository: SessionRepository,
         private readonly featureFlagService: FeatureFlagService,
-        private readonly verificationUtil: VerificationUtil,
-        private readonly resetPasswordUtil: ResetPasswordUtil,
         private readonly emailService: EmailService
     ) {}
 
@@ -244,9 +240,10 @@ export class UserService implements IUserService {
                     temporary: true,
                 }
             );
-            const emailVerification = this.verificationUtil.createVerification(
-                ENUM_VERIFICATION_TYPE.email
-            );
+            const emailVerification =
+                this.userUtil.verificationCreateVerification(
+                    ENUM_VERIFICATION_TYPE.email
+                );
             const randomUsername = this.userUtil.createRandomUsername();
             const created = await this.userRepository.createByAdmin(
                 randomUsername,
@@ -918,9 +915,10 @@ export class UserService implements IUserService {
                 message: 'auth.error.passwordExpired',
             });
         } else if (!user.isVerified) {
-            const emailVerification = this.verificationUtil.createVerification(
-                ENUM_VERIFICATION_TYPE.email
-            );
+            const emailVerification =
+                this.userUtil.verificationCreateVerification(
+                    ENUM_VERIFICATION_TYPE.email
+                );
 
             await this.userRepository.requestVerificationEmail(
                 user.id,
@@ -1154,9 +1152,10 @@ export class UserService implements IUserService {
         try {
             const password = this.authUtil.createPassword(passwordString);
             const randomUsername = this.userUtil.createRandomUsername();
-            const emailVerification = this.verificationUtil.createVerification(
-                ENUM_VERIFICATION_TYPE.email
-            );
+            const emailVerification =
+                this.userUtil.verificationCreateVerification(
+                    ENUM_VERIFICATION_TYPE.email
+                );
 
             const created = await this.userRepository.signUp(
                 randomUsername,
@@ -1260,7 +1259,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const resetPassword = this.resetPasswordUtil.createForgotPassword();
+            const resetPassword = this.userUtil.forgotPasswordCreate();
 
             await this.userRepository.forgotPassword(
                 user.id,
@@ -1296,11 +1295,11 @@ export class UserService implements IUserService {
     }
 
     async resetPassword(
-        { newPassword, token }: UserResetPasswordRequestDto,
+        { newPassword, token }: UserForgotPasswordResetRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         const resetPassword =
-            await this.userRepository.findOneActiveByResetPasswordToken(token);
+            await this.userRepository.findOneActiveByForgotPasswordToken(token);
         if (!resetPassword) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,

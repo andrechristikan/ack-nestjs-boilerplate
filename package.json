@@ -158,8 +158,5 @@
         "npm": "please-use-yarn",
         "yarn": ">= 1.22.22",
         "node": ">= 24.11.0"
-    },
-    "resolutions": {
-        "@opentelemetry/instrumentation-http": "0.53.0"
     }
 }

@@ -23,6 +23,7 @@ import {
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
@@ -31,7 +32,6 @@ import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
-import { UserResetPasswordRequestDto } from '@modules/user/dtos/request/user.reset-password.request';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
@@ -168,7 +168,7 @@ export interface IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
     resetPassword(
-        { newPassword, token }: UserResetPasswordRequestDto,
+        { newPassword, token }: UserForgotPasswordResetRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
 }

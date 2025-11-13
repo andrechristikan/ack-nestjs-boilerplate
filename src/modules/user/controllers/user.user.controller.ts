@@ -128,6 +128,9 @@ export class UserUserController {
         });
     }
 
+    // TODO: VERIFIED MOBILE NUMBER REQUIRED
+    // WHICH PROVIDER ?
+
     @UserUserClaimUsernameDoc()
     @Response('user.claimUsername')
     @TermPolicyAcceptanceProtected()

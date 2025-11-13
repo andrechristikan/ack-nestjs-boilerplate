@@ -143,7 +143,7 @@ model User {
   country           Country?                   @relation("UserCountry", fields: [countryId], references: [id])
   sessions          Session[]                  @relation("UserSessions")
   acceptances       TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
-  resetPasswords    ResetPassword[]            @relation("UserResetPassword")
+  forgotPasswords    ForgotPassword[]            @relation("UserForgotPassword")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -303,7 +303,7 @@ model FeatureFlag {
   @@map("FeatureFlags")
 }
 
-model ResetPassword {
+model ForgotPassword {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
   userId    String    @db.ObjectId
   to        String
@@ -319,12 +319,12 @@ model ResetPassword {
   updatedAt DateTime @updatedAt
   updatedBy String?
 
-  user User? @relation("UserResetPassword", fields: [userId], references: [id])
+  user User? @relation("UserForgotPassword", fields: [userId], references: [id])
 
   @@unique(fields: [reference])
   @@index(fields: [token, expiredAt, isUsed])
   @@index(fields: [token])
-  @@map("ResetPasswords")
+  @@map("ForgotPasswords")
 }
 
 enum ENUM_USER_GENDER {
@@ -425,8 +425,7 @@ enum ENUM_ACTIVITY_LOG_ACTION {
   adminApiKeyReset
   adminApiKeyUpdate
   adminApiKeyUpdateDate
-  adminApiKeyUpdateInactive
-  adminApiKeyUpdateActive
+  adminApiKeyUpdateStatus
   adminApiKeyDelete
   adminRoleCreate
   adminRoleUpdate

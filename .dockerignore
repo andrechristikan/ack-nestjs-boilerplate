@@ -2,7 +2,7 @@
 node_modules/
 coverage/
 dist/
-swagger.json
+src/swagger.json
 .husky/
 .github/
 assets/

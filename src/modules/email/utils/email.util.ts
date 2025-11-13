@@ -14,7 +14,7 @@ import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-passwor
 
 /**
  * Util for handling email operations using AWS SES
- * Provides methods to send various types of emails like welcome, password reset, verification, etc.
+ * Provides methods to send various types of emails like welcome, forgot password, verification, etc.
  */
 @Injectable()
 export class EmailUtil {
@@ -187,9 +187,9 @@ export class EmailUtil {
     }
 
     /**
-     * Send password reset email with reset link
+     * Send forgot password email with link
      * @param {EmailSendDto} emailData - Email and username data
-     * @param {EmailForgotPasswordDto} resetData - Reset password link and expiration data
+     * @param {EmailForgotPasswordDto} forgotPasswordData - Forgot password link and expiration data
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
     async sendForgotPassword(
