@@ -35,7 +35,7 @@
         "package:check": "npx npm-check-updates -i",
         "migration": "nest build migration --config nest-cli.json && node dist/migration.js",
         "migration:seed": "nest build migration --config nest-cli.json && node dist/migration.js apiKey --type seed && node dist/migration.js country --type seed && node dist/migration.js featureFlag --type seed && node dist/migration.js role --type seed && node dist/migration.js termPolicy --type seed && node dist/migration.js user --type seed",
-        "migration:rollback": "nest build migration --config nest-cli.json && node dist/migration.js apiKey --type rollback && node dist/migration.js country --type rollback && node dist/migration.js featureFlag --type rollback && node dist/migration.js role --type rollback && node dist/migration.js termPolicy --type rollback && node dist/migration.js user --type rollback",
+        "migration:remove": "nest build migration --config nest-cli.json && node dist/migration.js apiKey --type remove&& node dist/migration.js featureFlag --type remove && node dist/migration.js user --type remove && node dist/migration.js country --type remove && node dist/migration.js role --type remove && node dist/migration.js termPolicy --type remove",
         "db:migrate": "prisma db push",
         "db:generate": "prisma generate",
         "db:studio": "prisma studio",

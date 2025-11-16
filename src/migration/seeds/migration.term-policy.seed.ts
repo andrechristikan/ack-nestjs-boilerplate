@@ -12,7 +12,7 @@ import { Command } from 'nest-commander';
 
 @Command({
     name: 'termPolicy',
-    description: 'Seed/Rollback Term Policies',
+    description: 'Seed/Remove Term Policies',
     allowUnknownOptions: false,
 })
 export class MigrationTermPolicySeed
@@ -72,10 +72,10 @@ export class MigrationTermPolicySeed
         return;
     }
 
-    async rollback(): Promise<void> {
-        this.logger.log('Rolling back TermPolicies...');
+    async remove(): Promise<void> {
+        this.logger.log('Removing back TermPolicies...');
         this.logger.log(
-            `Found ${this.termPolicies.length} TermPolicies to rollback.`
+            `Found ${this.termPolicies.length} TermPolicies to remove.`
         );
 
         await this.databaseService.termPolicy.deleteMany({
@@ -86,7 +86,7 @@ export class MigrationTermPolicySeed
             },
         });
 
-        this.logger.log('TermPolicies rolled back successfully.');
+        this.logger.log('TermPolicies removed successfully.');
 
         return;
     }

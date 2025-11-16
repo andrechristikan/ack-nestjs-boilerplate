@@ -12,8 +12,8 @@ export abstract class MigrationSeedBase extends CommandRunner {
     ): Promise<void> {
         this._logger.log(`Running ${MigrationSeedBase.name} migration...`);
 
-        if (options?.type === ENUM_MIGRATION_TYPE.ROLLBACK) {
-            await this.rollback();
+        if (options?.type === ENUM_MIGRATION_TYPE.REMOVE) {
+            await this.remove();
         } else if (options?.type === ENUM_MIGRATION_TYPE.SEED) {
             await this.seed();
         } else {
@@ -25,7 +25,7 @@ export abstract class MigrationSeedBase extends CommandRunner {
 
     @Option({
         flags: '-t, --type <type>',
-        choices: [ENUM_MIGRATION_TYPE.SEED, ENUM_MIGRATION_TYPE.ROLLBACK],
+        choices: [ENUM_MIGRATION_TYPE.SEED, ENUM_MIGRATION_TYPE.REMOVE],
         defaultValue: null,
         required: true,
         name: 'type',
@@ -36,5 +36,5 @@ export abstract class MigrationSeedBase extends CommandRunner {
     }
 
     abstract seed(): Promise<void>;
-    abstract rollback(): Promise<void>;
+    abstract remove(): Promise<void>;
 }

@@ -10,7 +10,7 @@ import { Command } from 'nest-commander';
 
 @Command({
     name: 'featureFlag',
-    description: 'Seed/Rollback Feature Flags',
+    description: 'Seed/Remove Feature Flags',
     allowUnknownOptions: false,
 })
 export class MigrationFeatureFlagSeed
@@ -66,10 +66,10 @@ export class MigrationFeatureFlagSeed
         return;
     }
 
-    async rollback(): Promise<void> {
-        this.logger.log('Rolling back Feature Flags...');
+    async remove(): Promise<void> {
+        this.logger.log('Removing back Feature Flags...');
         this.logger.log(
-            `Found ${this.featureFlags.length} Feature Flags to rollback.`
+            `Found ${this.featureFlags.length} Feature Flags to remove.`
         );
 
         await this.databaseService.featureFlag.deleteMany({
@@ -80,7 +80,7 @@ export class MigrationFeatureFlagSeed
             },
         });
 
-        this.logger.log('Feature Flags rollback successfully.');
+        this.logger.log('Feature Flags removed successfully.');
 
         return;
     }

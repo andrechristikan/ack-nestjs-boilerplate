@@ -43,6 +43,7 @@ services:
             - ./ci/jwks-server/jwks.conf:/etc/nginx/conf.d/default.conf
         networks:
             - app-network
+        profiles: ["jwks", "full"]
         deploy:
             resources:
                 limits:

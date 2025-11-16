@@ -174,6 +174,9 @@ export class TermPolicyRepository {
                             userAgent:
                                 this.databaseUtil.toPlainObject(userAgent),
                             createdBy: userId,
+                            metadata: {
+                                termPolicyType: type,
+                            },
                         },
                     },
                 },

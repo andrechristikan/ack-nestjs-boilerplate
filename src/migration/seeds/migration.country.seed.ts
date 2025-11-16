@@ -10,7 +10,7 @@ import { Command } from 'nest-commander';
 
 @Command({
     name: 'country',
-    description: 'Seed/Rollback Countries',
+    description: 'Seed/Remove Countries',
     allowUnknownOptions: false,
 })
 export class MigrationCountrySeed
@@ -61,11 +61,9 @@ export class MigrationCountrySeed
         return;
     }
 
-    async rollback(): Promise<void> {
-        this.logger.log('Rolling back Countries...');
-        this.logger.log(
-            `Found ${this.countries.length} Countries to rollback.`
-        );
+    async remove(): Promise<void> {
+        this.logger.log('Removing back Countries...');
+        this.logger.log(`Found ${this.countries.length} Countries to remove.`);
 
         await this.databaseService.country.deleteMany({
             where: {
@@ -75,7 +73,7 @@ export class MigrationCountrySeed
             },
         });
 
-        this.logger.log('Countries rolled back successfully.');
+        this.logger.log('Countries removed successfully.');
 
         return;
     }

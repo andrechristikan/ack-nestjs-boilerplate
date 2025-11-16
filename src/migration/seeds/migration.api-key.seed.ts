@@ -11,7 +11,7 @@ import { Command } from 'nest-commander';
 
 @Command({
     name: 'apiKey',
-    description: 'Seed/Rollback Api Keys',
+    description: 'Seed/Remove Api Keys',
     allowUnknownOptions: false,
 })
 export class MigrationApiKeySeed
@@ -74,9 +74,9 @@ export class MigrationApiKeySeed
         return;
     }
 
-    async rollback(): Promise<void> {
-        this.logger.log('Rolling back Api Keys...');
-        this.logger.log(`Found ${this.apiKeys.length} Api Keys to rollback.`);
+    async remove(): Promise<void> {
+        this.logger.log('Removing back Api Keys...');
+        this.logger.log(`Found ${this.apiKeys.length} Api Keys to remove.`);
 
         await Promise.all([
             ...this.apiKeys
@@ -99,7 +99,7 @@ export class MigrationApiKeySeed
             }),
         ]);
 
-        this.logger.log('Api Keys rolled back successfully.');
+        this.logger.log('Api Keys removed successfully.');
 
         return;
     }

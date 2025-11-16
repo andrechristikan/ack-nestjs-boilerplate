@@ -11,7 +11,7 @@ import { Command } from 'nest-commander';
 
 @Command({
     name: 'role',
-    description: 'Seed/Rollback Roles',
+    description: 'Seed/Remove Roles',
     allowUnknownOptions: false,
 })
 export class MigrationRoleSeed
@@ -65,9 +65,9 @@ export class MigrationRoleSeed
         return;
     }
 
-    async rollback(): Promise<void> {
-        this.logger.log('Rolling back Roles...');
-        this.logger.log(`Found ${this.roles.length} Roles to rollback.`);
+    async remove(): Promise<void> {
+        this.logger.log('Removing back Roles...');
+        this.logger.log(`Found ${this.roles.length} Roles to remove.`);
 
         await this.databaseService.role.deleteMany({
             where: {
@@ -77,7 +77,7 @@ export class MigrationRoleSeed
             },
         });
 
-        this.logger.log('Roles rolled back successfully.');
+        this.logger.log('Roles removed successfully.');
 
         return;
     }

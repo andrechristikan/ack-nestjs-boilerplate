@@ -18,6 +18,7 @@ import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_SIGN_UP_WITH,
     ENUM_USER_STATUS,
+    ENUM_VERIFICATION_TYPE,
     Prisma,
 } from '@prisma/client';
 import { Command } from 'nest-commander';
@@ -25,7 +26,7 @@ import { UAParser } from 'ua-parser-js';
 
 @Command({
     name: 'user',
-    description: 'Seed/Rollback Users',
+    description: 'Seed/Remove Users',
     allowUnknownOptions: false,
 })
 export class MigrationUserSeed
@@ -126,6 +127,7 @@ export class MigrationUserSeed
             },
             select: {
                 id: true,
+                type: true,
             },
         });
         if (termPolicies.length !== 2) {
@@ -143,6 +145,10 @@ export class MigrationUserSeed
                 const userId = this.databaseUtil.createId();
                 const { passwordCreated, passwordExpired, passwordHash, salt } =
                     this.authUtil.createPassword(user.password);
+                const { reference, token, type } =
+                    this.userUtil.verificationCreateVerification(
+                        ENUM_VERIFICATION_TYPE.email
+                    );
 
                 return [
                     this.databaseService.user.create({
@@ -183,15 +189,53 @@ export class MigrationUserSeed
                                     createdBy: userId,
                                 },
                             },
-                            activityLogs: {
+                            verifications: {
                                 create: {
-                                    action: ENUM_ACTIVITY_LOG_ACTION.userCreated,
-                                    ipAddress: ip,
-                                    userAgent:
-                                        this.databaseUtil.toPlainObject(
-                                            userAgent
-                                        ),
+                                    expiredAt: this.helperService.dateCreate(),
+                                    verifiedAt: this.helperService.dateCreate(),
+                                    reference,
+                                    token,
+                                    type,
                                     createdBy: userId,
+                                    to: user.email,
+                                    isUsed: true,
+                                },
+                            },
+                            activityLogs: {
+                                createMany: {
+                                    data: [
+                                        {
+                                            action: ENUM_ACTIVITY_LOG_ACTION.userCreated,
+                                            ipAddress: ip,
+                                            userAgent:
+                                                this.databaseUtil.toPlainObject(
+                                                    userAgent
+                                                ),
+                                            createdBy: userId,
+                                        },
+                                        {
+                                            action: ENUM_ACTIVITY_LOG_ACTION.userVerifiedEmail,
+                                            ipAddress: ip,
+                                            userAgent:
+                                                this.databaseUtil.toPlainObject(
+                                                    userAgent
+                                                ),
+                                            createdBy: userId,
+                                        },
+                                        ...termPolicies.map(termPolicy => ({
+                                            action: ENUM_ACTIVITY_LOG_ACTION.userAcceptTermPolicy,
+                                            metadata: {
+                                                termPolicyType: termPolicy.type,
+                                                termPolicyId: termPolicy.id,
+                                            },
+                                            ipAddress: ip,
+                                            userAgent:
+                                                this.databaseUtil.toPlainObject(
+                                                    userAgent
+                                                ),
+                                            createdBy: userId,
+                                        })),
+                                    ],
                                 },
                             },
                         },
@@ -214,9 +258,9 @@ export class MigrationUserSeed
         return;
     }
 
-    async rollback(): Promise<void> {
-        this.logger.log('Rolling back Users...');
-        this.logger.log(`Found ${this.users.length} Users to rollback.`);
+    async remove(): Promise<void> {
+        this.logger.log('Removing back Users...');
+        this.logger.log(`Found ${this.users.length} Users to remove.`);
 
         const existingUsers = await this.databaseService.user.findMany({
             where: {
@@ -229,7 +273,7 @@ export class MigrationUserSeed
             },
         });
         if (existingUsers.length === 0) {
-            this.logger.warn('Users do not exist, skipping rollback.');
+            this.logger.warn('Users do not exist, skipping remove.');
             return;
         }
 
@@ -267,7 +311,7 @@ export class MigrationUserSeed
         await this.databaseService.$transaction(transaction);
         await this.databaseService.$transaction(postTransaction);
 
-        this.logger.log('Users rollback completed.');
+        this.logger.log('Users removed completed.');
 
         return;
     }
