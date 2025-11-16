@@ -7,7 +7,6 @@ import {
     IsNotEmpty,
     IsNumber,
     IsString,
-    IsUrl,
     Matches,
     Min,
     MinLength,
@@ -68,7 +67,6 @@ export class AppEnvDto {
      * The home/organization URL
      */
     @IsNotEmpty()
-    @IsUrl()
     @IsString()
     HOME_URL: string;
 
@@ -195,12 +193,11 @@ export class AppEnvDto {
     AUTH_JWT_ISSUER: string;
 
     /**
-     * JWKS URI endpoint for JWT key validation
+     * JWKS URI for access token verification
      */
     @IsString()
     @IsNotEmpty()
-    @IsUrl()
-    AUTH_JWT_JWKS_URI: string;
+    AUTH_JWT_ACCESS_TOKEN_JWKS_URI: string;
 
     /**
      * Key ID for the access token in JWKS
@@ -234,6 +231,13 @@ export class AppEnvDto {
         message: 'Must be a valid duration (e.g., 15m, 1h, 1d)',
     })
     AUTH_JWT_ACCESS_TOKEN_EXPIRED: string;
+
+    /**
+     * JWKS URI for refresh token verification
+     */
+    @IsString()
+    @IsNotEmpty()
+    AUTH_JWT_REFRESH_TOKEN_JWKS_URI: string;
 
     /**
      * Key ID for the refresh token in JWKS
@@ -303,7 +307,6 @@ export class AppEnvDto {
     )
     @IsNotEmpty()
     @IsString()
-    @IsUrl()
     AWS_S3_PUBLIC_CDN?: string;
 
     /**
@@ -321,7 +324,6 @@ export class AppEnvDto {
     )
     @IsNotEmpty()
     @IsString()
-    @IsUrl()
     AWS_S3_PRIVATE_CDN?: string;
 
     /**
@@ -413,6 +415,5 @@ export class AppEnvDto {
     @ValidateIf(o => o.SENTRY_DSN !== undefined && o.SENTRY_DSN !== '')
     @IsNotEmpty()
     @IsString()
-    @IsUrl()
     SENTRY_DSN?: string;
 }

@@ -1,4 +1,3 @@
-import { AuthModule } from '@modules/auth/auth.module';
 import { CountryPublicController } from '@modules/country/controllers/country.public.controller';
 import { CountryModule } from '@modules/country/country.module';
 import { HelloPublicController } from '@modules/hello/controllers/hello.public.controller';
@@ -23,6 +22,6 @@ import { Module } from '@nestjs/common';
     ],
     providers: [],
     exports: [],
-    imports: [CountryModule, HelloModule, UserModule, AuthModule],
+    imports: [CountryModule, HelloModule, UserModule],
 })
 export class RoutesPublicModule {}

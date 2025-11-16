@@ -1,22 +1,25 @@
 import { registerAs } from '@nestjs/config';
 import ms from 'ms';
+import { Algorithm } from 'jsonwebtoken';
 
 export interface IConfigAuth {
     jwt: {
         accessToken: {
+            jwksUri: string;
             kid: string;
+            algorithm: Algorithm;
             privateKey: string;
             publicKey: string;
             expirationTimeInSeconds: number;
         };
         refreshToken: {
+            jwksUri: string;
             kid: string;
+            algorithm: Algorithm;
             privateKey: string;
             publicKey: string;
             expirationTimeInSeconds: number;
         };
-        algorithm: string;
-        jwksUri: string;
         audience: string;
         issuer: string;
         header: string;
@@ -53,7 +56,9 @@ export default registerAs(
     (): IConfigAuth => ({
         jwt: {
             accessToken: {
+                jwksUri: process.env.AUTH_JWT_ACCESS_TOKEN_JWKS_URI,
                 kid: process.env.AUTH_JWT_ACCESS_TOKEN_KID,
+                algorithm: 'ES256',
                 privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY,
                 publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY,
                 expirationTimeInSeconds:
@@ -64,7 +69,9 @@ export default registerAs(
             },
 
             refreshToken: {
+                jwksUri: process.env.AUTH_JWT_REFRESH_TOKEN_JWKS_URI,
                 kid: process.env.AUTH_JWT_REFRESH_TOKEN_KID,
+                algorithm: 'ES512',
                 privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY,
                 publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY,
                 expirationTimeInSeconds:
@@ -73,9 +80,6 @@ export default registerAs(
                             .AUTH_JWT_REFRESH_TOKEN_EXPIRED as ms.StringValue
                     ) / 1000,
             },
-
-            algorithm: 'ES512',
-            jwksUri: process.env.AUTH_JWT_JWKS_URI,
 
             audience: process.env.AUTH_JWT_AUDIENCE,
             issuer: process.env.AUTH_JWT_ISSUER,

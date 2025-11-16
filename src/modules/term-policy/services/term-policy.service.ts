@@ -60,15 +60,16 @@ export class TermPolicyService implements ITermPolicyService {
             });
         }
 
-        const { termPolicy } = __user;
-
         try {
+            const { termPolicy } = __user;
+
+            const defaultTermPolicies = [
+                ENUM_TERM_POLICY_TYPE.termsOfService,
+                ENUM_TERM_POLICY_TYPE.privacy,
+            ];
             requiredTermPolicies =
                 requiredTermPolicies.length === 0
-                    ? [
-                          ENUM_TERM_POLICY_TYPE.termsOfService,
-                          ENUM_TERM_POLICY_TYPE.privacy,
-                      ]
+                    ? defaultTermPolicies
                     : requiredTermPolicies;
 
             const termPolicyObj = JSON.parse(

@@ -24,11 +24,9 @@ export class TermPolicyGuard implements CanActivate {
      * @returns {Promise<boolean>} Promise that resolves to true if all required term policies are accepted
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const requiredTermPolicies =
-            this.reflector.get<ENUM_TERM_POLICY_TYPE[]>(
-                TERM_POLICY_REQUIRED_GUARD_META_KEY,
-                context.getHandler()
-            ) ?? [];
+        const requiredTermPolicies = this.reflector.get<
+            ENUM_TERM_POLICY_TYPE[]
+        >(TERM_POLICY_REQUIRED_GUARD_META_KEY, context.getHandler());
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
         await this.termPolicyService.validateTermPolicyGuard(

@@ -32,9 +32,13 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
                 cache: true,
                 rateLimit: true,
                 jwksRequestsPerMinute: 5,
-                jwksUri: configService.get<string>('auth.jwt.jwksUri'),
+                jwksUri: configService.get<string>(
+                    'auth.jwt.accessToken.jwksUri'
+                ),
             }),
-            algorithms: [configService.get<Algorithm>('auth.jwt.algorithm')],
+            algorithms: [
+                configService.get<Algorithm>('auth.jwt.accessToken.algorithm'),
+            ],
         });
     }
 

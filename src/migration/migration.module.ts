@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { CommonModule } from '@common/common.module';
 import { MigrationApiKeySeed } from '@migration/seeds/migration.api-key.seed';
 import { CountryModule } from '@modules/country/country.module';
-import { AuthModule } from '@modules/auth/auth.module';
 import { UserModule } from '@modules/user/user.module';
 import { MigrationCountrySeed } from '@migration/seeds/migration.country.seed';
 import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-flag.seed';
@@ -15,7 +14,7 @@ import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
  * Contains seed providers for API keys, countries, roles, users, and feature flags.
  */
 @Module({
-    imports: [CommonModule, CountryModule, AuthModule, UserModule],
+    imports: [CommonModule, CountryModule, UserModule],
     providers: [
         MigrationApiKeySeed,
         MigrationCountrySeed,
