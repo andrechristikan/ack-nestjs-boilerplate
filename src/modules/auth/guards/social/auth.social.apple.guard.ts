@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { AuthService } from '@modules/auth/services/auth.service';
 
 /**
  * Guard for validating Apple social authentication tokens.
@@ -9,7 +9,7 @@ import { AuthUtil } from '@modules/auth/utils/auth.util';
  */
 @Injectable()
 export class AuthSocialAppleGuard implements CanActivate {
-    constructor(private readonly authUtil: AuthUtil) {}
+    constructor(private readonly authService: AuthService) {}
 
     /**
      * Validates Apple authentication token and attaches user payload to request.
@@ -22,6 +22,6 @@ export class AuthSocialAppleGuard implements CanActivate {
         const request = context
             .switchToHttp()
             .getRequest<IRequestApp<IAuthSocialPayload>>();
-        return this.authUtil.validateOAuthAppleGuard(request);
+        return this.authService.validateOAuthAppleGuard(request);
     }
 }

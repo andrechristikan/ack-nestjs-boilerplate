@@ -9,7 +9,6 @@ import {
 } from '@prisma/client';
 
 export class UserListResponseDto extends OmitType(UserDto, [
-    'password',
     'passwordExpired',
     'passwordCreated',
     'passwordAttempt',
@@ -23,10 +22,6 @@ export class UserListResponseDto extends OmitType(UserDto, [
     'lastLoginFrom',
     'lastLoginWith',
 ] as const) {
-    @ApiHideProperty()
-    @Exclude()
-    password?: string;
-
     @ApiHideProperty()
     @Exclude()
     passwordExpired?: Date;

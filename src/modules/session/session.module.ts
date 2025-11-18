@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { SessionService } from '@modules/session/services/session.service';
 import {
@@ -12,6 +12,7 @@ import { SessionCacheProvider } from '@modules/session/constants/session.constan
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 
+@Global()
 @Module({
     imports: [
         CacheManagerModule.registerAsync({
@@ -28,12 +29,7 @@ import { RedisClientCachedProvider } from '@common/redis/constants/redis.constan
             },
         }),
     ],
-    exports: [
-        SessionUtil,
-        SessionService,
-        SessionRepository,
-        SessionCacheProvider,
-    ],
+    exports: [SessionUtil, SessionService, SessionRepository],
     providers: [
         SessionUtil,
         SessionService,

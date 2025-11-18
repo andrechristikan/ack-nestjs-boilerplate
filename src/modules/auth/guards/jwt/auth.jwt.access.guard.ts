@@ -2,7 +2,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtAccessGuardKey } from '@modules/auth/constants/auth.constant';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { AuthService } from '@modules/auth/services/auth.service';
 
 /**
  * JWT Access Token Guard for protecting routes with access token authentication.
@@ -10,7 +10,7 @@ import { AuthUtil } from '@modules/auth/utils/auth.util';
  */
 @Injectable()
 export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
-    constructor(private readonly authUtil: AuthUtil) {
+    constructor(private readonly authService: AuthService) {
         super();
     }
 
@@ -30,6 +30,6 @@ export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
         user: IAuthJwtAccessTokenPayload,
         info: Error
     ): T {
-        return this.authUtil.validateJwtAccessGuard(err, user, info) as T;
+        return this.authService.validateJwtAccessGuard(err, user, info) as T;
     }
 }

@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { ApiHideProperty, ApiProperty, getSchemaPath } from '@nestjs/swagger';
+import { Exclude, Type } from 'class-transformer';
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import {
     ENUM_USER_GENDER,
@@ -61,11 +61,8 @@ export class UserDto extends DatabaseDto {
     @Type(() => RoleDto)
     role: RoleDto;
 
-    @ApiProperty({
-        required: false,
-        example: faker.internet.password(),
-        minLength: 6,
-    })
+    @ApiHideProperty()
+    @Exclude()
     password?: string;
 
     @ApiProperty({
@@ -103,10 +100,8 @@ export class UserDto extends DatabaseDto {
     })
     signUpWith: ENUM_USER_SIGN_UP_WITH;
 
-    @ApiProperty({
-        required: false,
-        example: faker.string.alpha(10),
-    })
+    @ApiHideProperty()
+    @Exclude()
     salt?: string;
 
     @ApiProperty({

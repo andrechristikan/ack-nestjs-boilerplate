@@ -29,7 +29,6 @@ import { ENUM_TERM_POLICY_STATUS_CODE_ERROR } from '@modules/term-policy/enums/t
 import { ITermPolicyService } from '@modules/term-policy/interfaces/term-policy.service.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
-import { UserTermPolicyDto } from '@modules/user/dtos/user.term-policy.dto';
 import {
     BadRequestException,
     ConflictException,
@@ -53,6 +52,7 @@ export class TermPolicyService implements ITermPolicyService {
         requiredTermPolicies: ENUM_TERM_POLICY_TYPE[]
     ): Promise<void> {
         const { __user, user } = request;
+
         if (!__user || !user) {
             throw new ForbiddenException({
                 statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
@@ -72,10 +72,7 @@ export class TermPolicyService implements ITermPolicyService {
                     ? defaultTermPolicies
                     : requiredTermPolicies;
 
-            const termPolicyObj = JSON.parse(
-                (termPolicy as string) ?? '{}'
-            ) as UserTermPolicyDto;
-            if (!requiredTermPolicies.every(type => termPolicyObj[type])) {
+            if (!requiredTermPolicies.every(type => termPolicy[type])) {
                 throw new ForbiddenException({
                     statusCode:
                         ENUM_TERM_POLICY_STATUS_CODE_ERROR.REQUIRED_INVALID,

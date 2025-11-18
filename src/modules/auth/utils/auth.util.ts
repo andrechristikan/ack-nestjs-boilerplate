@@ -1,6 +1,5 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import verifyAppleToken from 'verify-apple-id-token';
 import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
 import { Algorithm } from 'jsonwebtoken';
 import {
@@ -12,22 +11,21 @@ import {
 } from '@modules/auth/interfaces/auth.interface';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { HelperService } from '@common/helper/services/helper.service';
-import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import {
     ENUM_USER_LOGIN_FROM,
     ENUM_USER_SIGN_UP_WITH,
     User,
 } from '@prisma/client';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { IUser } from '@modules/user/interfaces/user.interface';
 import { KeyObject, createPrivateKey } from 'crypto';
+import verifyAppleToken, {
+    VerifyAppleIdTokenResponse,
+} from 'verify-apple-id-token';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 
 /**
- * Authentication util providing JWT token management, password operations,
- * and social authentication integration. Handles access and refresh token
- * generation, validation, and payload management for user authentication
- * across the application.
+ * Authentication utility service for JWT token management, password operations,
+ * and social authentication (Google, Apple). Provides secure token generation,
+ * validation, password hashing, and social provider integration.
  */
 @Injectable()
 export class AuthUtil {
@@ -35,16 +33,16 @@ export class AuthUtil {
     private readonly jwtAccessTokenKid: string;
     private readonly jwtAccessTokenPrivateKey: KeyObject;
     private readonly jwtAccessTokenPublicKey: Buffer;
-    private readonly jwtAccessTokenExpirationTimeInSeconds: number;
+    readonly jwtAccessTokenExpirationTimeInSeconds: number;
     private readonly jwtAccessTokenAlgorithm: Algorithm;
 
     private readonly jwtRefreshTokenKid: string;
     private readonly jwtRefreshTokenPrivateKey: KeyObject;
     private readonly jwtRefreshTokenPublicKey: Buffer;
-    private readonly jwtRefreshTokenExpirationTimeInSeconds: number;
+    readonly jwtRefreshTokenExpirationTimeInSeconds: number;
     private readonly jwtRefreshTokenAlgorithm: Algorithm;
 
-    private readonly jwtPrefix: string;
+    readonly jwtPrefix: string;
     private readonly jwtAudience: string;
     private readonly jwtIssuer: string;
 
@@ -411,253 +409,36 @@ export class AuthUtil {
         return today > passwordExpired;
     }
 
-    /**
-     * Creates both access and refresh tokens for a user session.
-     * Generates JWT tokens with current timestamp and returns complete token response.
-     * @param user - The user entity containing profile and role information
-     * @param sessionId - The unique session identifier for this login session
-     * @param loginFrom - The source/platform of the login (website, mobile, etc.)
-     * @param loginWith - The authentication method used for sign-up (email, google, apple, etc.)
-     * @returns Token response object containing access token, refresh token, expiration time and metadata
-     */
-    createTokens(
-        user: IUser,
-        sessionId: string,
-        loginFrom: ENUM_USER_LOGIN_FROM,
-        loginWith: ENUM_USER_SIGN_UP_WITH
-    ): AuthTokenResponseDto {
-        const loginDate = this.helperService.dateCreate();
-
-        const payloadAccessToken: IAuthJwtAccessTokenPayload =
-            this.createPayloadAccessToken(
-                user,
-                sessionId,
-                loginDate,
-                loginFrom,
-                loginWith
-            );
-        const accessToken: string = this.createAccessToken(
-            user.id,
-            payloadAccessToken
-        );
-
-        const payloadRefreshToken: IAuthJwtRefreshTokenPayload =
-            this.createPayloadRefreshToken(payloadAccessToken);
-        const refreshToken: string = this.createRefreshToken(
-            user.id,
-            payloadRefreshToken
-        );
-
-        return {
-            tokenType: this.jwtPrefix,
-            roleType: user.role.type,
-            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
-            accessToken,
-            refreshToken,
-        };
-    }
-
-    /**
-     * Refreshes an access token using a valid refresh token.
-     * Extracts session information from refresh token to generate new access token.
-     * @param user - The user entity containing profile and role information
-     * @param refreshTokenFromRequest - The existing refresh token to extract session data from
-     * @returns Token response object containing new access token and the same refresh token
-     */
-    refreshToken(
-        user: IUser,
-        refreshTokenFromRequest: string
-    ): AuthTokenResponseDto {
-        const payloadRefreshToken =
-            this.payloadToken<IAuthJwtRefreshTokenPayload>(
-                refreshTokenFromRequest
-            );
-
-        const payloadAccessToken: IAuthJwtAccessTokenPayload =
-            this.createPayloadAccessToken(
-                user,
-                payloadRefreshToken.sessionId,
-                payloadRefreshToken.loginAt,
-                payloadRefreshToken.loginFrom,
-                payloadRefreshToken.loginWith
-            );
-        const accessToken: string = this.createAccessToken(
-            user.id,
-            payloadAccessToken
-        );
-
-        return {
-            tokenType: this.jwtPrefix,
-            roleType: user.role.type,
-            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
-            accessToken,
-            refreshToken: refreshTokenFromRequest,
-        };
-    }
-
-    /**
-     * Validates the JWT access token and ensures it contains a valid string subject (sub) claim.
-     * Used by JWT guard to verify access token authenticity and extract user information.
-     * @param err - Any error that occurred during JWT authentication process
-     * @param user - The authenticated user payload extracted from JWT token
-     * @param info - Additional information or errors from the JWT strategy
-     * @returns The validated user payload if authentication succeeds
-     * @throws {UnauthorizedException} When authentication fails, user data is invalid, or subject claim is missing/invalid
-     */
-    async validateJwtAccessGuard(
-        err: Error,
-        user: IAuthJwtAccessTokenPayload,
-        info: Error
-    ): Promise<IAuthJwtAccessTokenPayload> {
-        if (err || !user) {
-            throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
-                message: 'auth.error.accessTokenUnauthorized',
-                _error: err ? err : info,
-            });
-        }
-
-        const { sub } = user;
-        if (!sub) {
-            throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
-        } else if (typeof sub !== 'string') {
-            throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
-        }
-
-        return user;
-    }
-
-    /**
-     * Validates the JWT refresh token and ensures it contains a valid string subject (sub) claim.
-     * Used by JWT refresh guard to verify refresh token authenticity and extract user information.
-     * @param err - Any error that occurred during JWT authentication process
-     * @param user - The authenticated user payload extracted from JWT refresh token
-     * @param info - Additional information or errors from the JWT strategy
-     * @returns The validated refresh token payload if authentication succeeds
-     * @throws {UnauthorizedException} When authentication fails, user data is invalid, or subject claim is missing/invalid
-     */
-    async validateJwtRefreshGuard(
-        err: Error,
-        user: IAuthJwtRefreshTokenPayload,
-        info: Error
-    ): Promise<IAuthJwtRefreshTokenPayload> {
-        if (err || !user) {
-            throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN,
-                message: 'auth.error.refreshTokenUnauthorized',
-                _error: err ? err : info,
-            });
-        }
-
-        const { sub } = user as IAuthJwtAccessTokenPayload;
-        if (!sub) {
-            throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
-        } else if (typeof sub !== 'string') {
-            throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
-        }
-
-        return user;
-    }
-
-    /**
-     * Validates the Apple social authentication token from the request headers.
-     * Extracts the Apple ID token, verifies it with Apple's servers, and attaches user data to the request.
-     * @param request - The HTTP request object containing Authorization header with Apple ID token
-     * @returns Promise<boolean> - Resolves to true if authentication is successful
-     * @throws {UnauthorizedException} When token is missing, malformed, or verification with Apple fails
-     */
-    async validateOAuthAppleGuard(
-        request: IRequestApp<IAuthSocialPayload>
-    ): Promise<boolean> {
-        const requestHeader =
-            (
-                request.headers[`${this.appleHeader?.toLowerCase()}`] as string
-            )?.split(`${this.applePrefix} `) ?? [];
-
-        if (!requestHeader || requestHeader.length !== 2) {
-            throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_REQUIRED,
-                message: 'auth.error.socialAppleRequired',
-            });
-        }
-
-        try {
-            const idToken: string = requestHeader[1];
-
-            const payload = await verifyAppleToken({
-                idToken,
-                clientId: [this.appleClientId, this.appleSignInClientId],
-            });
-
-            request.user = {
-                email: payload.email,
-                emailVerified: payload.email_verified,
-            };
-
-            return true;
-        } catch (err: unknown) {
-            throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_INVALID,
-                message: 'auth.error.socialAppleInvalid',
-                _error: err,
-            });
-        }
-    }
-
-    /**
-     * Validates the Google social authentication token from the request headers.
-     * Extracts the Google ID token, verifies it using Google's OAuth2 client, and attaches user data to the request.
-     * @param request - The HTTP request object containing Authorization header with Google ID token
-     * @returns Promise<boolean> - Resolves to true if authentication is successful
-     * @throws {UnauthorizedException} When token is missing, malformed, or verification with Google fails
-     */
-    async validateOAuthGoogleGuard(
-        request: IRequestApp<IAuthSocialPayload>
-    ): Promise<boolean> {
-        const requestHeader =
+    extractHeaderGoogle(request: IRequestApp<IAuthSocialPayload>): string[] {
+        return (
             (
                 request.headers[`${this.googleHeader?.toLowerCase()}`] as string
-            )?.split(`${this.googlePrefix} `) ?? [];
+            )?.split(`${this.googlePrefix} `) ?? []
+        );
+    }
 
-        if (!requestHeader || requestHeader.length !== 2) {
-            throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_REQUIRED,
-                message: 'auth.error.socialGoogleRequired',
-            });
-        }
+    async verifyGoogle(token: string): Promise<TokenPayload> {
+        const login: LoginTicket = await this.googleClient.verifyIdToken({
+            idToken: token,
+        });
 
-        try {
-            const idToken: string = requestHeader[1];
+        const payload: TokenPayload = login.getPayload();
 
-            const login: LoginTicket = await this.googleClient.verifyIdToken({
-                idToken,
-            });
-            const payload: TokenPayload = login.getPayload();
+        return payload;
+    }
 
-            request.user = {
-                email: payload.email,
-                emailVerified: payload.email_verified,
-            };
+    extractHeaderApple(request: IRequestApp<IAuthSocialPayload>): string[] {
+        return (
+            (
+                request.headers[`${this.appleHeader?.toLowerCase()}`] as string
+            )?.split(`${this.applePrefix} `) ?? []
+        );
+    }
 
-            return true;
-        } catch (err: unknown) {
-            throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_INVALID,
-                message: 'auth.error.socialGoogleInvalid',
-                _error: err,
-            });
-        }
+    async verifyApple(token: string): Promise<VerifyAppleIdTokenResponse> {
+        return verifyAppleToken({
+            idToken: token,
+            clientId: [this.appleClientId, this.appleSignInClientId],
+        });
     }
 }

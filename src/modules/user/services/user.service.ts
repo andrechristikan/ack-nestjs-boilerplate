@@ -23,10 +23,8 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
-import {
-    IAuthJwtRefreshTokenPayload,
-    IAuthPassword,
-} from '@modules/auth/interfaces/auth.interface';
+import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { AuthService } from '@modules/auth/services/auth.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
 import { CountryRepository } from '@modules/country/repositories/country.repository';
@@ -35,7 +33,6 @@ import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
-import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
@@ -55,6 +52,7 @@ import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
+import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
@@ -101,6 +99,7 @@ export class UserService implements IUserService {
         private readonly helperService: HelperService,
         private readonly fileService: FileService,
         private readonly authUtil: AuthUtil,
+        private readonly authService: AuthService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly sessionUtil: SessionUtil,
         private readonly sessionRepository: SessionRepository,
@@ -884,14 +883,14 @@ export class UserService implements IUserService {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'user.error.inactive',
             });
-        }
-
-        if (!user.password) {
+        } else if (!user.password) {
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_SET,
                 message: 'auth.error.passwordNotSet',
             });
-        } else if (this.authUtil.checkPasswordAttempt(user)) {
+        }
+
+        if (this.authUtil.checkPasswordAttempt(user)) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
                 message: 'auth.error.passwordAttemptMax',
@@ -915,32 +914,6 @@ export class UserService implements IUserService {
                 message: 'auth.error.passwordExpired',
             });
         } else if (!user.isVerified) {
-            const emailVerification =
-                this.userUtil.verificationCreateVerification(
-                    ENUM_VERIFICATION_TYPE.email
-                );
-
-            await this.userRepository.requestVerificationEmail(
-                user.id,
-                user.email,
-                emailVerification
-            );
-
-            // @note: send email after all creation
-            await this.emailService.sendVerification(
-                user.id,
-                {
-                    email: user.email,
-                    username: user.username,
-                },
-                {
-                    expiredAt: emailVerification.expiredAt,
-                    reference: emailVerification.reference,
-                    link: emailVerification.link,
-                    expiredInMinutes: emailVerification.expiredInMinutes,
-                }
-            );
-
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_NOT_VERIFIED,
                 message: 'user.error.emailNotVerified',
@@ -949,7 +922,7 @@ export class UserService implements IUserService {
 
         try {
             const sessionId = this.databaseUtil.createId();
-            const tokens = this.authUtil.createTokens(
+            const tokens = this.authService.createTokens(
                 user,
                 sessionId,
                 from,
@@ -1046,7 +1019,7 @@ export class UserService implements IUserService {
             }
 
             const sessionId = this.databaseUtil.createId();
-            const tokens = this.authUtil.createTokens(
+            const tokens = this.authService.createTokens(
                 user,
                 sessionId,
                 from,
@@ -1090,21 +1063,8 @@ export class UserService implements IUserService {
         user: IUser,
         refreshToken: string
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
-        const { sessionId, userId } =
-            this.authUtil.payloadToken<IAuthJwtRefreshTokenPayload>(
-                refreshToken
-            );
-
-        const checkActive = this.sessionUtil.getLogin(userId, sessionId);
-        if (!checkActive) {
-            throw new UnauthorizedException({
-                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.FORBIDDEN,
-                message: 'session.error.forbidden',
-            });
-        }
-
         try {
-            const tokens = this.authUtil.refreshToken(user, refreshToken);
+            const tokens = this.authService.refreshToken(user, refreshToken);
 
             return {
                 data: tokens,
@@ -1233,6 +1193,60 @@ export class UserService implements IUserService {
                 },
                 {
                     reference: verification.reference,
+                }
+            );
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async sendEmail(
+        { email }: UserSendEmailVerificationRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const user = await this.userRepository.findOneActiveByEmail(email);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'user.error.notFound',
+            });
+        } else if (user.isVerified) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_ALREADY_VERIFIED,
+                message: 'user.error.emailAlreadyVerified',
+            });
+        }
+
+        try {
+            const emailVerification =
+                this.userUtil.verificationCreateVerification(
+                    ENUM_VERIFICATION_TYPE.email
+                );
+
+            await this.userRepository.requestVerificationEmail(
+                user.id,
+                user.email,
+                emailVerification,
+                requestLog
+            );
+
+            await this.emailService.sendVerification(
+                user.id,
+                {
+                    email: user.email,
+                    username: user.username,
+                },
+                {
+                    expiredAt: emailVerification.expiredAt,
+                    reference: emailVerification.reference,
+                    link: emailVerification.link,
+                    expiredInMinutes: emailVerification.expiredInMinutes,
                 }
             );
 

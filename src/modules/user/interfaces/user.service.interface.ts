@@ -32,6 +32,7 @@ import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
+import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
@@ -161,6 +162,10 @@ export interface IUserService {
     ): Promise<void>;
     verifyEmail(
         { token }: UserVerifyEmailRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
+    sendEmail(
+        { email }: UserSendEmailVerificationRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
     forgotPassword(

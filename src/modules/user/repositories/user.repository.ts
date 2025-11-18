@@ -332,12 +332,27 @@ export class UserRepository {
                         },
                     },
                     activityLogs: {
-                        create: {
-                            action: ENUM_ACTIVITY_LOG_ACTION.userCreated,
-                            ipAddress,
-                            userAgent:
-                                this.databaseUtil.toPlainObject(userAgent),
-                            createdBy: createdBy,
+                        createMany: {
+                            data: [
+                                {
+                                    action: ENUM_ACTIVITY_LOG_ACTION.userCreated,
+                                    ipAddress,
+                                    userAgent:
+                                        this.databaseUtil.toPlainObject(
+                                            userAgent
+                                        ),
+                                    createdBy: createdBy,
+                                },
+                                {
+                                    action: ENUM_ACTIVITY_LOG_ACTION.userSendVerificationEmail,
+                                    ipAddress,
+                                    userAgent:
+                                        this.databaseUtil.toPlainObject(
+                                            userAgent
+                                        ),
+                                    createdBy: userId,
+                                },
+                            ],
                         },
                     },
                 },
@@ -951,12 +966,27 @@ export class UserRepository {
                     createdBy: userId,
                     deletedAt: null,
                     activityLogs: {
-                        create: {
-                            action: ENUM_ACTIVITY_LOG_ACTION.userSignedUp,
-                            ipAddress,
-                            userAgent:
-                                this.databaseUtil.toPlainObject(userAgent),
-                            createdBy: userId,
+                        createMany: {
+                            data: [
+                                {
+                                    action: ENUM_ACTIVITY_LOG_ACTION.userSignedUp,
+                                    ipAddress,
+                                    userAgent:
+                                        this.databaseUtil.toPlainObject(
+                                            userAgent
+                                        ),
+                                    createdBy: userId,
+                                },
+                                {
+                                    action: ENUM_ACTIVITY_LOG_ACTION.userSendVerificationEmail,
+                                    ipAddress,
+                                    userAgent:
+                                        this.databaseUtil.toPlainObject(
+                                            userAgent
+                                        ),
+                                    createdBy: userId,
+                                },
+                            ],
                         },
                     },
                     verifications: {
@@ -1067,55 +1097,56 @@ export class UserRepository {
     async requestVerificationEmail(
         userId: string,
         userEmail: string,
-        { expiredAt, reference, token, type }: IUserVerificationCreate
-    ): Promise<Verification> {
+        { expiredAt, reference, token, type }: IUserVerificationCreate,
+        requestLog: IRequestLog
+    ): Promise<User> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.$transaction(
             async (tx: Prisma.TransactionClient) => {
-                const activeVerification = await tx.verification.findFirst({
-                    where: {
-                        userId,
-                        type,
-                        isUsed: false,
-                        expiredAt: {
-                            gt: today,
-                        },
-                    },
-                    select: {
-                        id: true,
-                    },
-                });
-
-                const promises = [
-                    this.databaseService.verification.create({
-                        data: {
-                            expiredAt,
-                            reference,
-                            token,
-                            type,
+                const [_, newVerification] = await Promise.all([
+                    tx.verification.updateMany({
+                        where: {
                             userId,
-                            to: userEmail,
-                            createdBy: reference,
-                            createdAt: today,
+                            type,
+                            isUsed: false,
+                            expiredAt: {
+                                gt: today,
+                            },
+                        },
+                        data: {
+                            expiredAt: today,
                         },
                     }),
-                ];
-
-                if (activeVerification) {
-                    promises.push(
-                        tx.verification.update({
-                            where: {
-                                id: activeVerification.id,
+                    tx.user.update({
+                        where: {
+                            id: userId,
+                        },
+                        data: {
+                            verifications: {
+                                create: {
+                                    expiredAt,
+                                    reference,
+                                    token,
+                                    type,
+                                    to: userEmail,
+                                    createdBy: reference,
+                                    createdAt: today,
+                                },
                             },
-                            data: {
-                                expiredAt: today,
+                            activityLogs: {
+                                create: {
+                                    action: ENUM_ACTIVITY_LOG_ACTION.userSendVerificationEmail,
+                                    ipAddress: requestLog.ipAddress,
+                                    userAgent: this.databaseUtil.toPlainObject(
+                                        requestLog.userAgent
+                                    ),
+                                    createdBy: userId,
+                                },
                             },
-                        })
-                    );
-                }
-
-                const [newVerification] = await Promise.all(promises);
+                        },
+                    }),
+                ]);
 
                 return newVerification;
             }
