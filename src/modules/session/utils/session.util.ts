@@ -69,10 +69,12 @@ export class SessionUtil {
         sessions: { id: string }[]
     ): Promise<void> {
         if (sessions.length > 0) {
-            const key = this.keyPattern.replace('{userId}', userId);
-            await this.cacheManager.mdel(
-                sessions.map(session => key.replace('{sessionId}', session.id))
+            const keys = sessions.map(session =>
+                this.keyPattern
+                    .replace('{userId}', userId)
+                    .replace('{sessionId}', session.id)
             );
+            await this.cacheManager.mdel(keys);
         }
 
         return;

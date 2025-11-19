@@ -520,14 +520,23 @@ export class UserService implements IUserService {
             });
         }
 
-        const checkValidMobileNumber = this.userUtil.checkMobileNumber(
-            checkCountry.phoneCode,
-            phoneCode
-        );
+        const [checkValidMobileNumber, checkExist] = await Promise.all([
+            this.userUtil.checkMobileNumber(checkCountry.phoneCode, phoneCode),
+            this.userRepository.existMobileNumber(userId, {
+                number,
+                countryId: checkCountry.id,
+                phoneCode,
+            }),
+        ]);
         if (!checkValidMobileNumber) {
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_INVALID,
                 message: 'user.error.mobileNumberInvalid',
+            });
+        } else if (checkExist) {
+            throw new ConflictException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_EXIST,
+                message: 'user.error.mobileNumberExist',
             });
         }
 
@@ -564,7 +573,7 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         const [checkMobileNumberExist, checkCountry] = await Promise.all([
-            this.userRepository.existMobileNumber(userId, mobileNumberId),
+            this.userRepository.findOneMobileNumber(userId, mobileNumberId),
             this.countryRepository.findOneById(countryId),
         ]);
         if (!checkMobileNumberExist) {
@@ -576,6 +585,18 @@ export class UserService implements IUserService {
             throw new NotFoundException({
                 statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'country.error.notFound',
+            });
+        }
+
+        const checkExist = await this.userRepository.existMobileNumber(
+            userId,
+            { number, countryId, phoneCode },
+            mobileNumberId
+        );
+        if (checkExist) {
+            throw new ConflictException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_EXIST,
+                message: 'user.error.mobileNumberExist',
             });
         }
 
@@ -617,7 +638,7 @@ export class UserService implements IUserService {
         mobileNumberId: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        const checkExist = await this.userRepository.existMobileNumber(
+        const checkExist = await this.userRepository.findOneMobileNumber(
             userId,
             mobileNumberId
         );

@@ -204,7 +204,7 @@ export class UserRepository {
         });
     }
 
-    async existMobileNumber(
+    async findOneMobileNumber(
         userId: string,
         mobileNumberId: string
     ): Promise<{
@@ -469,6 +469,31 @@ export class UserRepository {
                         data: { isRevoked: true },
                     },
                 },
+            },
+        });
+    }
+
+    async existMobileNumber(
+        userId: string,
+        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
+        excludeId?: string
+    ): Promise<{ id: string } | null> {
+        return this.databaseService.userMobileNumber.findFirst({
+            where: {
+                number,
+                countryId,
+                phoneCode,
+                user: {
+                    id: userId,
+                },
+                ...(excludeId
+                    ? {
+                          id: { not: excludeId },
+                      }
+                    : {}),
+            },
+            select: {
+                id: true,
             },
         });
     }

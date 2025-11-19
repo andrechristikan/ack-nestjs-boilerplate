@@ -94,7 +94,7 @@ model UserMobileNumber {
   user          User?          @relation("UserMobileNumberUser", fields: [userId], references: [id])
   verifications Verification[] @relation("UserMobileNumberVerification")
 
-  @@unique(fields: [number])
+  @@unique(fields: [userId, countryId, phoneCode, number])
   @@index(fields: [userId])
   @@index(fields: [isVerified])
   @@index(fields: [createdAt])
