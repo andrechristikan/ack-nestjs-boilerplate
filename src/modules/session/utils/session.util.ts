@@ -1,7 +1,10 @@
 import { HelperService } from '@common/helper/services/helper.service';
 import { SessionCacheProvider } from '@modules/session/constants/session.constant';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
-import { ISession } from '@modules/session/interfaces/session.interface';
+import {
+    ISession,
+    ISessionCache,
+} from '@modules/session/interfaces/session.interface';
 import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -20,18 +23,22 @@ export class SessionUtil {
         this.keyPattern = this.configService.get<string>('session.keyPattern')!;
     }
 
-    async getLogin(userId: string, sessionId: string): Promise<boolean> {
+    async getLogin(
+        userId: string,
+        sessionId: string
+    ): Promise<ISessionCache | null> {
         const key = this.keyPattern
             .replace('{userId}', userId)
             .replace('{sessionId}', sessionId);
-        const cached = await this.cacheManager.get<string>(key);
+        const cached = await this.cacheManager.get<ISessionCache>(key);
 
-        return !!cached;
+        return cached ?? null;
     }
 
     async setLogin(
         userId: string,
         sessionId: string,
+        fingerprint: string,
         expiredAt: Date
     ): Promise<void> {
         const key = this.keyPattern
@@ -41,19 +48,47 @@ export class SessionUtil {
             expiredAt.getTime() - this.helperService.dateCreate().getTime()
         );
 
-        await this.cacheManager.set(
+        await this.cacheManager.set<ISessionCache>(
             key,
             {
                 userId,
                 sessionId,
-                createdAt: this.helperService.dateCreate(),
                 expiredAt,
+                fingerprint,
             },
             ttl
         );
 
         return;
     }
+
+    // TODO: UPDATE SESSION INFO IN CACHE WHEN USER REFRESH TOKEN
+    // async updateLogin(
+    //     userId: string,
+    //     sessionId: string,
+    //     session: ISessionCache,
+    //     fingerprint: string
+    // ): Promise<void> {
+    //     const key = this.keyPattern
+    //         .replace('{userId}', userId)
+    //         .replace('{sessionId}', sessionId);
+    //     const ttl = Math.floor(
+    //         expiredAt.getTime() - this.helperService.dateCreate().getTime()
+    //     );
+
+    //     await this.cacheManager.set<ISessionCache>(
+    //         key,
+    //         {
+    //             userId,
+    //             sessionId,
+    //             expiredAt,
+    //             fingerprint,
+    //         },
+    //         ttl
+    //     );
+
+    //     return;
+    // }
 
     async deleteOneLogin(userId: string, sessionId: string): Promise<void> {
         const key = this.keyPattern

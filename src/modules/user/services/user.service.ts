@@ -23,7 +23,10 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
-import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import {
+    IAuthJwtRefreshTokenPayload,
+    IAuthPassword,
+} from '@modules/auth/interfaces/auth.interface';
 import { AuthService } from '@modules/auth/services/auth.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
@@ -114,7 +117,8 @@ export class UserService implements IUserService {
     ): Promise<IUser> {
         if (!request.user) {
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }
@@ -952,27 +956,33 @@ export class UserService implements IUserService {
         }
 
         try {
-            const sessionId = this.databaseUtil.createId();
-            const tokens = this.authService.createTokens(
-                user,
-                sessionId,
-                from,
-                ENUM_USER_LOGIN_WITH.credential
-            );
+            const { tokens, sessionId, fingerprint } =
+                this.authService.createTokens(
+                    user,
+                    from,
+                    ENUM_USER_LOGIN_WITH.credential
+                );
             const expiredAt = this.helperService.dateForward(
                 this.helperService.dateCreate(),
                 Duration.fromObject({
-                    seconds: tokens.expiresIn,
+                    seconds:
+                        this.authUtil.jwtRefreshTokenExpirationTimeInSeconds,
                 })
             );
 
             await Promise.all([
-                this.sessionUtil.setLogin(user.id, sessionId, expiredAt),
-                this.userRepository.updateLoginInfo(
+                this.sessionUtil.setLogin(
+                    user.id,
+                    sessionId,
+                    fingerprint,
+                    expiredAt
+                ),
+                this.userRepository.login(
                     user.id,
                     {
                         loginFrom: from,
                         loginWith: ENUM_USER_LOGIN_WITH.credential,
+                        fingerprint,
                         sessionId,
                         expiredAt,
                     },
@@ -1049,27 +1059,29 @@ export class UserService implements IUserService {
                 promises.push(this.userRepository.verify(user.id, requestLog));
             }
 
-            const sessionId = this.databaseUtil.createId();
-            const tokens = this.authService.createTokens(
-                user,
-                sessionId,
-                from,
-                loginWith
-            );
+            const { tokens, fingerprint, sessionId } =
+                this.authService.createTokens(user, from, loginWith);
             const expiredAt = this.helperService.dateForward(
                 this.helperService.dateCreate(),
                 Duration.fromObject({
-                    seconds: tokens.expiresIn,
+                    seconds:
+                        this.authUtil.jwtRefreshTokenExpirationTimeInSeconds,
                 })
             );
 
             await Promise.all([
                 ...promises,
-                this.sessionUtil.setLogin(user.id, sessionId, expiredAt),
-                this.userRepository.updateLoginInfo(
+                this.sessionUtil.setLogin(
+                    user.id,
+                    sessionId,
+                    fingerprint,
+                    expiredAt
+                ),
+                this.userRepository.login(
                     user.id,
                     {
                         loginFrom: from,
+                        fingerprint,
                         loginWith,
                         sessionId,
                         expiredAt,
@@ -1095,7 +1107,25 @@ export class UserService implements IUserService {
         refreshToken: string
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         try {
-            const tokens = this.authService.refreshToken(user, refreshToken);
+            const { sessionId, userId, fingerprint } =
+                this.authUtil.payloadToken<IAuthJwtRefreshTokenPayload>(
+                    refreshToken
+                );
+            const session = await this.sessionUtil.getLogin(userId, sessionId);
+            if (session.fingerprint !== fingerprint) {
+                throw new UnauthorizedException({
+                    statusCode:
+                        ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN_INVALID,
+                    message: 'auth.error.refreshTokenInvalid',
+                });
+            }
+
+            const { fingerprint: newFingerprint, tokens } =
+                this.authService.refreshToken(user, refreshToken);
+
+            // TODO: UPDATE DB AND UPDATE CACHE SESSION INFO
+            // this.sessionUtil.updateLogin(userId, sessionId, newFingerprint, ...)
+            // this.userRepository.refresh(....)
 
             return {
                 data: tokens,

@@ -384,7 +384,8 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
             errors: [
                 {
                     messagePath: 'auth.error.refreshTokenUnauthorized',
-                    statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN,
+                    statusCode:
+                        ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN_INVALID,
                 },
             ],
         },
@@ -394,7 +395,8 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
             errors: [
                 {
                     messagePath: 'auth.error.accessTokenUnauthorized',
-                    statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                    statusCode:
+                        ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
                 },
             ],
         },

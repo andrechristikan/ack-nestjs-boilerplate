@@ -55,7 +55,8 @@ export class TermPolicyService implements ITermPolicyService {
 
         if (!__user || !user) {
             throw new ForbiddenException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }
@@ -81,7 +82,8 @@ export class TermPolicyService implements ITermPolicyService {
             }
         } catch {
             throw new ForbiddenException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }

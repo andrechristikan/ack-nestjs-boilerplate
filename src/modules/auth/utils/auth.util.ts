@@ -198,16 +198,18 @@ export class AuthUtil {
      * Uses ES512 algorithm with private key from configuration.
      * @param subject - The unique subject identifier for the token (usually user ID)
      * @param payload - The refresh token payload data to include in the token
+     * @param expiresIn - Optional custom expiration time in seconds. If not provided, uses default from configuration
      * @returns The signed JWT refresh token string
      * @throws {Error} When token signing fails
      */
     createRefreshToken(
         subject: string,
-        payload: IAuthJwtRefreshTokenPayload
+        payload: IAuthJwtRefreshTokenPayload,
+        expiresIn?: number
     ): string {
         return this.jwtService.sign(payload, {
             privateKey: this.jwtRefreshTokenPrivateKey,
-            expiresIn: this.jwtRefreshTokenExpirationTimeInSeconds,
+            expiresIn: expiresIn ?? this.jwtRefreshTokenExpirationTimeInSeconds,
             audience: this.jwtAudience,
             issuer: this.jwtIssuer,
             subject,
@@ -275,6 +277,7 @@ export class AuthUtil {
     /**
      * Creates the payload for an access token from user data and login information.
      * @param data - The user entity from database containing profile and role information
+     * @param fingerprint - The unique device/session fingerprint for security tracking
      * @param sessionId - The unique session identifier for this login session
      * @param loginAt - The date and time when the login occurred
      * @param loginFrom - The source/platform of the login (e.g., website, mobile)
@@ -283,6 +286,7 @@ export class AuthUtil {
      */
     createPayloadAccessToken(
         data: User,
+        fingerprint: string,
         sessionId: string,
         loginAt: Date,
         loginFrom: ENUM_USER_LOGIN_FROM,
@@ -291,6 +295,7 @@ export class AuthUtil {
         return {
             userId: data.id,
             roleId: data.roleId,
+            fingerprint,
             username: data.username,
             email: data.email,
             sessionId,
@@ -306,19 +311,22 @@ export class AuthUtil {
      * @param payload - The access token payload containing session and user information
      * @param payload.sessionId - The unique session identifier
      * @param payload.userId - The user's unique identifier
+     * @param payload.fingerprint - The unique device/session fingerprint
      * @param payload.loginFrom - The source/platform of the login
      * @param payload.loginAt - The date and time when the login occurred
      * @param payload.loginWith - The authentication method used
-     * @returns The formatted refresh token payload with minimal required data
+     * @returns The formatted refresh token payload with minimal required data for token refresh
      */
     createPayloadRefreshToken({
         sessionId,
         userId,
+        fingerprint,
         loginFrom,
         loginAt,
         loginWith,
     }: IAuthJwtAccessTokenPayload): IAuthJwtRefreshTokenPayload {
         return {
+            fingerprint,
             loginAt,
             loginFrom,
             loginWith,
@@ -409,6 +417,12 @@ export class AuthUtil {
         return today > passwordExpired;
     }
 
+    /**
+     * Extracts Google OAuth token from request headers.
+     * Looks for the configured Google header and splits by the configured prefix.
+     * @param request - The incoming HTTP request containing Google OAuth headers
+     * @returns Array of strings from the header split by prefix, or empty array if header not found
+     */
     extractHeaderGoogle(request: IRequestApp<IAuthSocialPayload>): string[] {
         return (
             (
@@ -417,6 +431,13 @@ export class AuthUtil {
         );
     }
 
+    /**
+     * Verifies a Google OAuth ID token and extracts the payload.
+     * Uses the Google OAuth2Client to validate the token signature and claims.
+     * @param token - The Google OAuth ID token to verify
+     * @returns Promise resolving to the verified token payload containing user information
+     * @throws {Error} When token verification fails or token is invalid/expired
+     */
     async verifyGoogle(token: string): Promise<TokenPayload> {
         const login: LoginTicket = await this.googleClient.verifyIdToken({
             idToken: token,
@@ -427,6 +448,12 @@ export class AuthUtil {
         return payload;
     }
 
+    /**
+     * Extracts Apple Sign-In token from request headers.
+     * Looks for the configured Apple header and splits by the configured prefix.
+     * @param request - The incoming HTTP request containing Apple Sign-In headers
+     * @returns Array of strings from the header split by prefix, or empty array if header not found
+     */
     extractHeaderApple(request: IRequestApp<IAuthSocialPayload>): string[] {
         return (
             (
@@ -435,10 +462,27 @@ export class AuthUtil {
         );
     }
 
+    /**
+     * Verifies an Apple Sign-In ID token and extracts the payload.
+     * Uses the verify-apple-id-token library to validate the token against Apple's public keys.
+     * Supports both regular Apple ID and Sign-In with Apple client IDs.
+     * @param token - The Apple ID token to verify
+     * @returns Promise resolving to the verified token response containing user information
+     * @throws {Error} When token verification fails or token is invalid/expired
+     */
     async verifyApple(token: string): Promise<VerifyAppleIdTokenResponse> {
         return verifyAppleToken({
             idToken: token,
             clientId: [this.appleClientId, this.appleSignInClientId],
         });
+    }
+
+    /**
+     * Generates a unique fingerprint string for device/session identification.
+     * Creates a 32-character random string used to track unique sessions or devices.
+     * @returns A 32-character random alphanumeric string
+     */
+    generateFingerprint(): string {
+        return this.helperService.randomString(32);
     }
 }

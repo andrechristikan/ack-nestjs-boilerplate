@@ -23,7 +23,8 @@ export class PolicyService implements IPolicyService {
 
         if (!__user || !user) {
             throw new ForbiddenException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN,
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }

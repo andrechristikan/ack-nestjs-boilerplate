@@ -216,13 +216,14 @@ model ActivityLog {
 }
 
 model Session {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String    @db.ObjectId
-  ipAddress String
-  userAgent Json
-  expiredAt DateTime
-  revokedAt DateTime?
-  isRevoked Boolean   @default(false)
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  fingerprint String
+  ipAddress   String
+  userAgent   Json
+  expiredAt   DateTime
+  revokedAt   DateTime?
+  isRevoked   Boolean   @default(false)
 
   user User? @relation("UserSessions", fields: [userId], references: [id])
 

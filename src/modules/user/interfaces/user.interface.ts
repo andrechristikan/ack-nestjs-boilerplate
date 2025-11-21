@@ -25,6 +25,7 @@ export interface IUserLogin {
     loginFrom: ENUM_USER_LOGIN_FROM;
     loginWith: ENUM_USER_LOGIN_WITH;
     expiredAt: Date;
+    fingerprint: string;
     sessionId: string;
 }
 
