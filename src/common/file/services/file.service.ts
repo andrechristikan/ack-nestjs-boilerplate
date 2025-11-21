@@ -179,7 +179,7 @@ export class FileService implements IFileService {
         randomLength,
     }: IFileRandomFilenameOptions): string {
         const randomPath = this.helperService.randomString(randomLength ?? 10);
-        let fullPath: string = `${path}/${prefix}${prefix ? '-' : ''}${randomPath}.${extension.toLowerCase()}`;
+        let fullPath: string = `${path}/${prefix ? `${prefix}-` : ''}${randomPath}.${extension.toLowerCase()}`;
 
         if (fullPath.startsWith('/')) {
             fullPath = fullPath.replace('/', '');
@@ -196,7 +196,7 @@ export class FileService implements IFileService {
      * @returns {string} The extracted file extension in lowercase, or an empty string if none exists
      */
     extractExtensionFromFilename(filename: string): string {
-        return Mime.getExtension(filename).toLowerCase();
+        return filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
     }
 
     /**
@@ -207,7 +207,9 @@ export class FileService implements IFileService {
      * @returns {string} The extracted MIME type, or 'application/octet-stream' if undetermined
      */
     extractMimeFromFilename(filename: string): string {
-        return Mime.getType(filename).toLowerCase();
+        return Mime.getType(
+            filename.slice(filename.lastIndexOf('.'))
+        ).toLowerCase();
     }
 
     /**

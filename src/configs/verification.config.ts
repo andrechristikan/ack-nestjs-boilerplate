@@ -17,7 +17,7 @@ export default registerAs(
     (): IConfigVerification => ({
         expiredInMinutes: 5,
         otpLength: 6,
-        tokenLength: 50,
+        tokenLength: 100,
         linkBaseUrl: 'verify-email',
         resendInMinutes: 2,
         reference: {

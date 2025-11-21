@@ -2,6 +2,7 @@ import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import {
     IPaginationCursorReturn,
     IPaginationEqual,
@@ -132,7 +133,11 @@ export class UserRepository {
             include: {
                 role: true,
                 country: true,
-                mobileNumbers: true,
+                mobileNumbers: {
+                    include: {
+                        country: true,
+                    },
+                },
             },
         });
     }
@@ -143,7 +148,11 @@ export class UserRepository {
             include: {
                 role: true,
                 country: true,
-                mobileNumbers: true,
+                mobileNumbers: {
+                    include: {
+                        country: true,
+                    },
+                },
             },
         });
     }
@@ -180,6 +189,23 @@ export class UserRepository {
         });
     }
 
+    async findOneLatestByForgotPassword(
+        userId: string
+    ): Promise<ForgotPassword | null> {
+        return this.databaseService.forgotPassword.findFirst({
+            where: {
+                userId,
+                user: {
+                    deletedAt: null,
+                    status: ENUM_USER_STATUS.active,
+                },
+            },
+            orderBy: {
+                createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+            },
+        });
+    }
+
     async findOneActiveByVerificationEmailToken(
         token: string
     ): Promise<(Verification & { user: User }) | null> {
@@ -200,6 +226,24 @@ export class UserRepository {
             },
             include: {
                 user: true,
+            },
+        });
+    }
+
+    async findOneLatestByVerificationEmail(
+        userId: string
+    ): Promise<Verification | null> {
+        return this.databaseService.verification.findFirst({
+            where: {
+                userId,
+                type: ENUM_VERIFICATION_TYPE.email,
+                user: {
+                    deletedAt: null,
+                    status: ENUM_USER_STATUS.active,
+                },
+            },
+            orderBy: {
+                createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
             },
         });
     }
@@ -586,9 +630,7 @@ export class UserRepository {
             include: {
                 mobileNumbers: {
                     where: {
-                        countryId,
-                        number,
-                        phoneCode,
+                        id: mobileNumber.id,
                     },
                     take: 1,
                     include: {
@@ -605,8 +647,8 @@ export class UserRepository {
         userId: string,
         mobileNumberId: string,
         { ipAddress, userAgent }: IRequestLog
-    ): Promise<User> {
-        return this.databaseService.user.update({
+    ): Promise<UserMobileNumber & { country: Country }> {
+        const user = await this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 mobileNumbers: {
@@ -622,7 +664,20 @@ export class UserRepository {
                     },
                 },
             },
+            include: {
+                mobileNumbers: {
+                    where: {
+                        id: mobileNumberId,
+                    },
+                    take: 1,
+                    include: {
+                        country: true,
+                    },
+                },
+            },
         });
+
+        return user.mobileNumbers[0];
     }
 
     async claimUsername(

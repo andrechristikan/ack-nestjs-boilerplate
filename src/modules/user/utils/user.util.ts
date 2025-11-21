@@ -5,8 +5,10 @@ import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserDto } from '@modules/user/dtos/user.dto';
+import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import {
     IUserForgotPasswordCreate,
+    IUserMobileNumber,
     IUserProfile,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
@@ -15,6 +17,7 @@ import { ConfigService } from '@nestjs/config';
 import { ENUM_VERIFICATION_TYPE, PasswordHistory, User } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { Duration } from 'luxon';
+import { Profanity } from '@2toad/profanity';
 
 @Injectable()
 export class UserUtil {
@@ -26,19 +29,20 @@ export class UserUtil {
 
     private readonly forgotPasswordReferencePrefix: string;
     private readonly forgotPasswordReferenceLength: number;
-    private readonly forgotPasswordOtpLength: number;
     private readonly forgotExpiredInMinutes: number;
     private readonly forgotTokenLength: number;
-    private readonly forgotResendInMinutes: number;
+    readonly forgotResendInMinutes: number;
     private readonly forgotLinkBaseUrl: string;
 
     private readonly verificationReferencePrefix: string;
     private readonly verificationReferenceLength: number;
     private readonly verificationOtpLength: number;
-    private readonly verificationExpiredInMinutes: number;
+    readonly verificationExpiredInMinutes: number;
     private readonly verificationTokenLength: number;
     private readonly verificationResendInMinutes: number;
     private readonly verificationLinkBaseUrl: string;
+
+    private readonly profanity: Profanity;
 
     constructor(
         private readonly configService: ConfigService,
@@ -97,6 +101,16 @@ export class UserUtil {
         this.verificationLinkBaseUrl = this.configService.get(
             'verification.linkBaseUrl'
         );
+
+        const availableLanguages = this.configService.get<string[]>(
+            'message.availableLanguage'
+        );
+        this.profanity = new Profanity({
+            languages: availableLanguages,
+            wholeWord: false,
+            grawlix: '*****',
+            grawlixChar: '*',
+        });
     }
 
     createRandomFilenamePhotoProfileWithPath(
@@ -104,7 +118,7 @@ export class UserUtil {
         { extension }: IFileRandomFilenameOptions
     ): string {
         const path: string = this.uploadPhotoProfilePath.replace(
-            '{user}',
+            '{userId}',
             user
         );
         return this.fileService.createRandomFilename({
@@ -125,9 +139,7 @@ export class UserUtil {
     }
 
     async checkBadWord(str: string): Promise<boolean> {
-        const filterBadWordModule = await import('bad-words');
-        const filterBadWord = new filterBadWordModule.Filter();
-        return filterBadWord.isProfane(str);
+        return this.profanity.exists(str);
     }
 
     mapList(users: User[]): UserListResponseDto[] {
@@ -140,6 +152,12 @@ export class UserUtil {
 
     mapProfile(user: IUserProfile): UserProfileResponseDto {
         return plainToInstance(UserProfileResponseDto, user);
+    }
+
+    mapMobileNumber(
+        mobileNumber: IUserMobileNumber
+    ): UserMobileNumberResponseDto {
+        return plainToInstance(UserMobileNumberResponseDto, mobileNumber);
     }
 
     checkMobileNumber(phoneCodes: string[], phoneCode: string): boolean {

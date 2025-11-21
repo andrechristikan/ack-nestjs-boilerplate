@@ -26,32 +26,45 @@ import {
     UserProtected,
 } from '@modules/user/decorators/user.decorator';
 import {
+    UserSharedAddMobileNumberDoc,
     UserSharedChangePasswordDoc,
+    UserSharedClaimUsernameDoc,
+    UserSharedDeleteMobileNumberDoc,
     UserSharedGeneratePhotoProfileDoc,
     UserSharedProfileDoc,
     UserSharedRefreshDoc,
+    UserSharedUpdateMobileNumberDoc,
     UserSharedUpdatePhotoProfileDoc,
     UserSharedUpdateProfileDoc,
     UserSharedUploadPhotoProfileDoc,
 } from '@modules/user/docs/user.shared.doc';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
+import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
+import {
+    UserAddMobileNumberRequestDto,
+    UserUpdateMobileNumberRequestDto,
+} from '@modules/user/dtos/request/user.mobile-number.request.dto';
 import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { UserService } from '@modules/user/services/user.service';
 import {
     Body,
     Controller,
+    Delete,
     Get,
     HttpCode,
     HttpStatus,
+    Param,
     Patch,
     Post,
     Put,
+    UploadedFile,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -157,12 +170,12 @@ export class UserSharedController {
     @ApiKeyProtected()
     @FileUploadSingle()
     @RequestTimeout('1m')
+    @HttpCode(HttpStatus.OK)
     @Post('/profile/upload/photo')
     async uploadPhotoProfile(
         @AuthJwtPayload('userId')
         userId: string,
-        @Body(
-            'file',
+        @UploadedFile(
             FileExtensionPipe([
                 ENUM_FILE_EXTENSION_IMAGE.JPEG,
                 ENUM_FILE_EXTENSION_IMAGE.PNG,
@@ -194,6 +207,95 @@ export class UserSharedController {
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.changePassword(userId, body, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @UserSharedAddMobileNumberDoc()
+    @Response('user.addMobileNumber')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/mobile-number/add')
+    async addMobileNumber(
+        @AuthJwtPayload('userId') userId: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto,
+        @Body()
+        body: UserAddMobileNumberRequestDto
+    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+        return this.userService.addMobileNumber(userId, body, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @UserSharedUpdateMobileNumberDoc()
+    @Response('user.updateMobileNumber')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Put('/mobile-number/update/:mobileNumberId')
+    async updateMobileNumber(
+        @AuthJwtPayload('userId') userId: string,
+        @Param('mobileNumberId') mobileNumberId: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto,
+        @Body()
+        body: UserUpdateMobileNumberRequestDto
+    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+        return this.userService.updateMobileNumber(
+            userId,
+            mobileNumberId,
+            body,
+            {
+                ipAddress,
+                userAgent,
+            }
+        );
+    }
+
+    @UserSharedDeleteMobileNumberDoc()
+    @Response('user.deleteMobileNumber')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Delete('/mobile-number/delete/:mobileNumberId')
+    async deleteMobileNumber(
+        @AuthJwtPayload('userId') userId: string,
+        @Param('mobileNumberId') mobileNumberId: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+        return this.userService.deleteMobileNumber(userId, mobileNumberId, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    // TODO: VERIFIED MOBILE NUMBER REQUIRED
+    // WHICH PROVIDER ?
+
+    @UserSharedClaimUsernameDoc()
+    @Response('user.claimUsername')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/username/claim')
+    async claimUsername(
+        @AuthJwtPayload('userId') userId: string,
+        @Body()
+        body: UserClaimUsernameRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.claimUsername(userId, body, {
             ipAddress,
             userAgent,
         });

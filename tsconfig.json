@@ -30,7 +30,8 @@
             "@routes/*": ["src/router/routes/*"],
             "@router": ["src/router/router.module.ts"],
             "@migration/*": ["src/migration/*"],
-            "@test/*": ["test/*"]
+            "@test/*": ["test/*"],
+            "@generated/*": ["generated/*"]
         }
     },
     "include": ["src/**/*", "test/**/*"],
@@ -42,6 +43,7 @@
         "keys",
         ".warmup",
         ".nyc_output",
+        "generated",
         "src/metadata.ts",
         "src/swagger.json",
         "**/**/templates/*"

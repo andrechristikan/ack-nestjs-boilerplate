@@ -64,6 +64,7 @@ export default [
             'docs/*',
             'node_modules/*',
             'src/metadata.ts',
+            'generated/*',
             'logs/*',
             'keys/*',
             '.warmup/*',

@@ -1,8 +1,9 @@
 # compiled output
-/dist
-/node_modules
+dist/
+node_modules/
 .warmup/
-src/swagger.json
+generated/
+/src/swagger.json
 /src/metadata.ts
 
 # Logs

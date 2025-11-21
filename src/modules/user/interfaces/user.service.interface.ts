@@ -43,6 +43,7 @@ import {
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
+import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { ENUM_USER_LOGIN_WITH } from '@prisma/client';
 
@@ -110,18 +111,18 @@ export interface IUserService {
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<DatabaseIdDto>>;
+    ): Promise<IResponseReturn<UserMobileNumberResponseDto>>;
     updateMobileNumber(
         userId: string,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<IResponseReturn<UserMobileNumberResponseDto>>;
     deleteMobileNumber(
         userId: string,
         mobileNumberId: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<IResponseReturn<UserMobileNumberResponseDto>>;
     claimUsername(
         userId: string,
         { username }: UserClaimUsernameRequestDto,

@@ -12,8 +12,12 @@ export interface IUser extends User {
     role: Role;
 }
 
+export interface IUserMobileNumber extends UserMobileNumber {
+    country: Country;
+}
+
 export interface IUserProfile extends IUser {
-    mobileNumbers: UserMobileNumber[];
+    mobileNumbers: IUserMobileNumber[];
     country: Country;
 }
 

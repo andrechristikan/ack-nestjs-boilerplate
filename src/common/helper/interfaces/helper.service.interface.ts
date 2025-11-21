@@ -53,4 +53,5 @@ export interface IHelperService {
     dateForward(date: Date, duration: Duration): Date;
     dateBackward(date: Date, duration: Duration): Date;
     dateCreateDuration(duration: DurationLikeObject): Duration;
+    dateDiff(dateOne: Date, dateTwo: Date): Duration;
 }

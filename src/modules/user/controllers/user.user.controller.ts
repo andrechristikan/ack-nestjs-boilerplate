@@ -1,4 +1,3 @@
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import {
     RequestIPAddress,
     RequestUserAgent,
@@ -12,31 +11,10 @@ import {
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import {
-    UserUserAddMobileNumberDoc,
-    UserUserClaimUsernameDoc,
-    UserUserDeleteMobileNumberDoc,
-    UserUserDeleteSelfDoc,
-    UserUserUpdateMobileNumberDoc,
-} from '@modules/user/docs/user.user.doc';
-import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import {
-    UserAddMobileNumberRequestDto,
-    UserUpdateMobileNumberRequestDto,
-} from '@modules/user/dtos/request/user.mobile-number.request.dto';
+import { UserUserDeleteSelfDoc } from '@modules/user/docs/user.user.doc';
 import { UserService } from '@modules/user/services/user.service';
-import {
-    Body,
-    Controller,
-    Delete,
-    HttpCode,
-    HttpStatus,
-    Param,
-    Post,
-    Put,
-} from '@nestjs/common';
+import { Controller, Delete } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_ROLE_TYPE } from '@prisma/client';
 
@@ -61,99 +39,6 @@ export class UserUserController {
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.deleteSelf(userId, {
-            ipAddress,
-            userAgent,
-        });
-    }
-
-    @UserUserAddMobileNumberDoc()
-    @Response('user.addMobileNumber')
-    @TermPolicyAcceptanceProtected()
-    @RoleProtected(ENUM_ROLE_TYPE.user)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Post('/mobile-number/add')
-    async addMobileNumber(
-        @AuthJwtPayload('userId') userId: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto,
-        @Body()
-        body: UserAddMobileNumberRequestDto
-    ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.userService.addMobileNumber(userId, body, {
-            ipAddress,
-            userAgent,
-        });
-    }
-
-    @UserUserUpdateMobileNumberDoc()
-    @Response('user.updateMobileNumber')
-    @TermPolicyAcceptanceProtected()
-    @RoleProtected(ENUM_ROLE_TYPE.user)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Put('/mobile-number/update/:mobileNumberId')
-    async updateMobileNumber(
-        @AuthJwtPayload('userId') userId: string,
-        @Param('mobileNumberId') mobileNumberId: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto,
-        @Body()
-        body: UserUpdateMobileNumberRequestDto
-    ): Promise<IResponseReturn<void>> {
-        return this.userService.updateMobileNumber(
-            userId,
-            mobileNumberId,
-            body,
-            {
-                ipAddress,
-                userAgent,
-            }
-        );
-    }
-
-    @UserUserDeleteMobileNumberDoc()
-    @Response('user.deleteMobileNumber')
-    @TermPolicyAcceptanceProtected()
-    @RoleProtected(ENUM_ROLE_TYPE.user)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Delete('/mobile-number/delete/:mobileNumberId')
-    async deleteMobileNumber(
-        @AuthJwtPayload('userId') userId: string,
-        @Param('mobileNumberId') mobileNumberId: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<void>> {
-        return this.userService.deleteMobileNumber(userId, mobileNumberId, {
-            ipAddress,
-            userAgent,
-        });
-    }
-
-    // TODO: VERIFIED MOBILE NUMBER REQUIRED
-    // WHICH PROVIDER ?
-
-    @UserUserClaimUsernameDoc()
-    @Response('user.claimUsername')
-    @TermPolicyAcceptanceProtected()
-    @RoleProtected(ENUM_ROLE_TYPE.user)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/username/claim')
-    async claimUsername(
-        @AuthJwtPayload('userId') userId: string,
-        @Body()
-        body: UserClaimUsernameRequestDto,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<void>> {
-        return this.userService.claimUsername(userId, body, {
             ipAddress,
             userAgent,
         });

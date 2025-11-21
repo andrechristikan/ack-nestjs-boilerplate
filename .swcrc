@@ -13,7 +13,8 @@
         ".warmup",
         ".nyc_output",
         "src/metadata.ts",
-        "src/swagger.json"
+        "src/swagger.json",
+        "generated"
     ],
     "jsc": {
         "baseUrl": "./",

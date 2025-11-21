@@ -15,7 +15,7 @@ export default registerAs(
     'forgotPassword',
     (): IConfigForgotPassword => ({
         expiredInMinutes: 5,
-        tokenLength: 50,
+        tokenLength: 100,
         linkBaseUrl: 'forgot-password',
         resendInMinutes: 2,
         reference: {

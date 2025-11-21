@@ -40,5 +40,6 @@
 
     // Disable auto-updating header/title in Markdown
     "markdown.extension.toc.updateOnSave": true,
-    "markdown.extension.toc.slugifyMode": "github"
+    "markdown.extension.toc.slugifyMode": "github",
+    "prisma.pinToPrisma6": true
 }

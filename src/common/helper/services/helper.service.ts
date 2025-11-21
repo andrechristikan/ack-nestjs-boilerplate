@@ -720,4 +720,17 @@ export class HelperService implements IHelperService {
     dateCreateDuration(duration: DurationLikeObject): Duration {
         return Duration.fromObject(duration);
     }
+
+    /**
+     * Calculates difference between two dates.
+     * @param {Date} dateOne - First date
+     * @param {Date} dateTwo - Second date
+     * @returns {Duration} Duration representing difference between dates
+     */
+    dateDiff(dateOne: Date, dateTwo: Date): Duration {
+        const dOne = DateTime.fromJSDate(dateOne).setZone(this.defTz);
+        const dTwo = DateTime.fromJSDate(dateTwo).setZone(this.defTz);
+
+        return dOne.diff(dTwo);
+    }
 }

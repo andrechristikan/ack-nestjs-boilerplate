@@ -115,12 +115,16 @@ export class AwsS3Service implements IAwsS3Service {
         });
 
         this.config.set(ENUM_AWS_S3_ACCESSIBILITY.PUBLIC, {
-            ...this.configService.get<IAwsS3ConfigBucket>('aws.s3.public'),
+            ...this.configService.get<IAwsS3ConfigBucket>(
+                'aws.s3.config.public'
+            ),
             access: ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
         });
 
         this.config.set(ENUM_AWS_S3_ACCESSIBILITY.PRIVATE, {
-            ...this.configService.get<IAwsS3ConfigBucket>('aws.s3.private'),
+            ...this.configService.get<IAwsS3ConfigBucket>(
+                'aws.s3.config.private'
+            ),
             access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
         });
     }
@@ -341,9 +345,11 @@ export class AwsS3Service implements IAwsS3Service {
         const config = this.config.get(
             options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
         );
+
         const { pathWithFilename, extension, mime } = this.getFileInfoFromKey(
             file.key
         );
+
         const content: Buffer = file.file;
         const command: PutObjectCommand = new PutObjectCommand({
             Bucket: config.bucket,
@@ -817,6 +823,7 @@ export class AwsS3Service implements IAwsS3Service {
         }
 
         const { extension, mime } = this.getFileInfoFromKey(key);
+
         const command = new PutObjectCommand({
             Bucket: config.bucket,
             Key: key,

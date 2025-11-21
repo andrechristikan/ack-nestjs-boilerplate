@@ -120,8 +120,8 @@ export function FileExtensionPipe(
          */
         private validateFileArray(files: IFile[]): void {
             for (const file of files) {
-                if (file?.filename) {
-                    this.validateExtension(file.filename);
+                if (file?.originalname) {
+                    this.validateExtension(file.originalname);
                 } else {
                     throw new UnsupportedMediaTypeException({
                         statusCode:
@@ -143,8 +143,8 @@ export function FileExtensionPipe(
          * @throws {UnsupportedMediaTypeException} When the file has an invalid extension
          */
         private validateSingleFile(file: IFile): void {
-            if (file?.filename) {
-                this.validateExtension(file.mimetype);
+            if (file?.originalname) {
+                this.validateExtension(file.originalname);
             } else {
                 throw new UnsupportedMediaTypeException({
                     statusCode: ENUM_FILE_STATUS_CODE_ERROR.EXTENSION_INVALID,
@@ -158,17 +158,16 @@ export function FileExtensionPipe(
         /**
          * Validates a file extension against the allowed extensions.
          *
-         * This method extracts the extension from a filename and checks
+         * This method extracts the extension from a originalname and checks
          * if it's in the set of allowed extensions.
          *
          * @private
-         * @param {string} filename - The filename to extract and validate the extension from
+         * @param {string} originalname - The originalname to extract and validate the extension from
          * @throws {UnsupportedMediaTypeException} When the extension is not allowed
          */
-        private validateExtension(filename: string): void {
+        private validateExtension(originalname: string): void {
             const extension =
-                this.fileService.extractExtensionFromFilename(filename);
-
+                this.fileService.extractExtensionFromFilename(originalname);
             if (!this.extensions.has(extension)) {
                 throw new UnsupportedMediaTypeException({
                     statusCode: ENUM_FILE_STATUS_CODE_ERROR.EXTENSION_INVALID,

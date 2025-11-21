@@ -54,12 +54,16 @@ export default async function (app: NestApplication): Promise<void> {
             deepScanRoutes: true,
         });
 
-        writeFileSync('src/swagger.json', JSON.stringify(document));
+        try {
+            writeFileSync('src/swagger.json', JSON.stringify(document));
+        } catch {}
+
         SwaggerModule.setup(docPrefix, app, document, {
             jsonDocumentUrl: `${docPrefix}/json`,
-            yamlDocumentUrl: `${docPrefix}/yaml`,
             explorer: true,
             customSiteTitle: docName,
+            ui: env !== ENUM_APP_ENVIRONMENT.PRODUCTION,
+            raw: ['json'],
             swaggerOptions: {
                 docExpansion: 'none',
                 persistAuthorization: true,

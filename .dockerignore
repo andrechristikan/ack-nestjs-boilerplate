@@ -2,10 +2,11 @@
 node_modules/
 coverage/
 dist/
-src/swagger.json
 .husky/
 .github/
 assets/
+generated/
+src/swagger.json
 src/metadata.ts
 keys/*
 .warmup/
