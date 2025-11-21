@@ -86,7 +86,6 @@ export default registerAs(
                 'x-repo-version',
                 'X-Response-Time',
                 'user-agent',
-                'x-two-fa-token',
             ],
         },
         throttle: {

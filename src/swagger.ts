@@ -43,11 +43,6 @@ export default async function (app: NestApplication): Promise<void> {
                 { type: 'apiKey', in: 'header', name: 'x-api-key' },
                 'xApiKey'
             )
-            .addSecurity('twoFactor', {
-                type: 'apiKey',
-                in: 'header',
-                name: 'x-two-factor',
-            })
             .build();
 
         const document = SwaggerModule.createDocument(app, documentBuild, {

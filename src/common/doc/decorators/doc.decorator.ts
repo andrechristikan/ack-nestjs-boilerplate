@@ -323,48 +323,24 @@ export function DocRequestFile(
  * @param {IDocGuardOptions} [options] - Optional configuration for guard documentation
  * @returns {MethodDecorator} A method decorator that applies Swagger guard documentation
  */
-export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
+export function DocGuard(options?: IDocGuardOptions) {
     const oneOfForbidden: IDocOfOptions[] = [];
-    const docs: Array<ClassDecorator | MethodDecorator> = [];
 
-    const guardErrors = [
-        {
-            condition: options?.role,
-            error: {
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.FORBIDDEN,
-                messagePath: 'role.error.forbidden',
-            },
-        },
-        {
-            condition: options?.policy,
-            error: {
-                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.FORBIDDEN,
-                messagePath: 'policy.error.forbidden',
-            },
-        },
-        {
-            condition: options?.twoFactor,
-            error: {
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.TWO_FACTOR_FORBIDDEN,
-                messagePath: 'auth.error.twoFactorForbidden',
-            },
-            decorator: ApiBearerAuth('twoFactor'),
-        },
-    ];
+    if (options?.role) {
+        oneOfForbidden.push({
+            statusCode: ENUM_ROLE_STATUS_CODE_ERROR.FORBIDDEN,
+            messagePath: 'role.error.forbidden',
+        });
+    }
 
-    guardErrors.forEach(({ condition, error, decorator }) => {
-        if (condition) {
-            oneOfForbidden.push(error);
-            if (decorator) {
-                docs.push(decorator);
-            }
-        }
-    });
+    if (options?.policy) {
+        oneOfForbidden.push({
+            statusCode: ENUM_POLICY_STATUS_CODE_ERROR.FORBIDDEN,
+            messagePath: 'policy.error.forbidden',
+        });
+    }
 
-    return applyDecorators(
-        ...docs,
-        DocOneOf(HttpStatus.FORBIDDEN, ...oneOfForbidden)
-    );
+    return applyDecorators(DocOneOf(HttpStatus.FORBIDDEN, ...oneOfForbidden));
 }
 
 /**
@@ -377,95 +353,71 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
     const oneOfUnauthorized: IDocOfOptions[] = [];
 
-    const authConfigs = [
-        {
-            condition: options?.jwtRefreshToken,
-            decorator: ApiBearerAuth('refreshToken'),
-            errors: [
-                {
-                    messagePath: 'auth.error.refreshTokenUnauthorized',
-                    statusCode:
-                        ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN_INVALID,
-                },
-            ],
-        },
-        {
-            condition: options?.jwtAccessToken,
-            decorator: ApiBearerAuth('accessToken'),
-            errors: [
-                {
-                    messagePath: 'auth.error.accessTokenUnauthorized',
-                    statusCode:
-                        ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
-                },
-            ],
-        },
-        {
-            condition: options?.google,
-            decorator: ApiBearerAuth('google'),
-            errors: [
-                {
-                    messagePath: 'auth.error.socialGoogleInvalid',
-                    statusCode:
-                        ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_INVALID,
-                },
-                {
-                    messagePath: 'auth.error.socialGoogleRequired',
-                    statusCode:
-                        ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_REQUIRED,
-                },
-            ],
-        },
-        {
-            condition: options?.apple,
-            decorator: ApiBearerAuth('apple'),
-            errors: [
-                {
-                    messagePath: 'auth.error.socialAppleInvalid',
-                    statusCode:
-                        ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE_INVALID,
-                },
-                {
-                    messagePath: 'auth.error.socialAppleRequired',
-                    statusCode:
-                        ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE_REQUIRED,
-                },
-            ],
-        },
-        {
-            condition: options?.xApiKey,
-            decorator: ApiSecurity('xApiKey'),
-            errors: [
-                {
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED,
-                    messagePath: 'apiKey.error.xApiKey.required',
-                },
-                {
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND,
-                    messagePath: 'apiKey.error.xApiKey.notFound',
-                },
-                {
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID,
-                    messagePath: 'apiKey.error.xApiKey.invalid',
-                },
-                {
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
-                    messagePath: 'apiKey.error.xApiKey.forbidden',
-                },
-            ],
-        },
-    ];
+    if (options?.jwtRefreshToken) {
+        docs.push(ApiBearerAuth('refreshToken'));
+        oneOfUnauthorized.push({
+            messagePath: 'auth.error.refreshTokenUnauthorized',
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN_INVALID,
+        });
+    }
 
-    authConfigs.forEach(({ condition, decorator, errors }) => {
-        if (condition) {
-            docs.push(decorator);
-            oneOfUnauthorized.push(...errors);
-        }
-    });
+    if (options?.jwtAccessToken) {
+        docs.push(ApiBearerAuth('accessToken'));
+        oneOfUnauthorized.push({
+            messagePath: 'auth.error.accessTokenUnauthorized',
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
+        });
+    }
+
+    if (options?.google) {
+        docs.push(ApiBearerAuth('google'));
+        oneOfUnauthorized.push(
+            {
+                messagePath: 'auth.error.socialGoogleInvalid',
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_INVALID,
+            },
+            {
+                messagePath: 'auth.error.socialGoogleRequired',
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_REQUIRED,
+            }
+        );
+    }
+
+    if (options?.apple) {
+        docs.push(ApiBearerAuth('apple'));
+        oneOfUnauthorized.push(
+            {
+                messagePath: 'auth.error.socialAppleInvalid',
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE_INVALID,
+            },
+            {
+                messagePath: 'auth.error.socialAppleRequired',
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE_REQUIRED,
+            }
+        );
+    }
+
+    if (options?.xApiKey) {
+        docs.push(ApiSecurity('xApiKey'));
+        oneOfUnauthorized.push(
+            {
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED,
+                messagePath: 'apiKey.error.xApiKey.required',
+            },
+            {
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND,
+                messagePath: 'apiKey.error.xApiKey.notFound',
+            },
+            {
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID,
+                messagePath: 'apiKey.error.xApiKey.invalid',
+            },
+            {
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
+                messagePath: 'apiKey.error.xApiKey.forbidden',
+            }
+        );
+    }
 
     return applyDecorators(
         ...docs,
