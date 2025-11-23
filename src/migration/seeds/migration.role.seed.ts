@@ -67,15 +67,8 @@ export class MigrationRoleSeed
 
     async remove(): Promise<void> {
         this.logger.log('Removing back Roles...');
-        this.logger.log(`Found ${this.roles.length} Roles to remove.`);
 
-        await this.databaseService.role.deleteMany({
-            where: {
-                name: {
-                    in: this.roles.map(role => role.name.toLowerCase().trim()),
-                },
-            },
-        });
+        await this.databaseService.role.deleteMany({});
 
         this.logger.log('Roles removed successfully.');
 

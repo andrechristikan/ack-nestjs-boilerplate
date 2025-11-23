@@ -1234,55 +1234,38 @@ export class UserRepository {
         );
     }
 
-    // TODO: UPDATE SESSION INFO IN CACHE WHEN REFRESH TOKEN IS CALLED
-    // async refresh(
-    //     userId: string,
-    //     { loginFrom, loginWith, sessionId, expiredAt, fingerprint }: IUserLogin,
-    //     { ipAddress, userAgent }: IRequestLog
-    // ): Promise<User> {
-    //     let action: ENUM_ACTIVITY_LOG_ACTION =
-    //         ENUM_ACTIVITY_LOG_ACTION.userLoginCredential;
-    //     switch (loginWith) {
-    //         case ENUM_USER_LOGIN_WITH.socialApple:
-    //             action = ENUM_ACTIVITY_LOG_ACTION.userLoginApple;
-    //             break;
-    //         case ENUM_USER_LOGIN_WITH.socialGoogle:
-    //             action = ENUM_ACTIVITY_LOG_ACTION.userLoginGoogle;
-    //             break;
-    //         case ENUM_USER_LOGIN_WITH.credential:
-    //         default:
-    //             action = ENUM_ACTIVITY_LOG_ACTION.userLoginCredential;
-    //             break;
-    //     }
-
-    //     return this.databaseService.user.update({
-    //         where: { id: userId, deletedAt: null },
-    //         data: {
-    //             lastLoginAt: this.helperService.dateCreate(),
-    //             lastIPAddress: ipAddress,
-    //             lastLoginFrom: loginFrom,
-    //             lastLoginWith: loginWith,
-    //             updatedBy: userId,
-    //             sessions: {
-    //                 create: {
-    //                     id: sessionId,
-    //                     fingerprint,
-    //                     expiredAt,
-    //                     isRevoked: false,
-    //                     ipAddress,
-    //                     userAgent: this.databaseUtil.toPlainObject(userAgent),
-    //                     createdBy: userId,
-    //                 },
-    //             },
-    //             activityLogs: {
-    //                 create: {
-    //                     action,
-    //                     ipAddress,
-    //                     userAgent: this.databaseUtil.toPlainObject(userAgent),
-    //                     createdBy: userId,
-    //                 },
-    //             },
-    //         },
-    //     });
-    // }
+    async refresh(
+        userId: string,
+        { loginFrom, loginWith, sessionId, fingerprint }: IUserLogin,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                lastLoginAt: this.helperService.dateCreate(),
+                lastIPAddress: ipAddress,
+                lastLoginFrom: loginFrom,
+                lastLoginWith: loginWith,
+                updatedBy: userId,
+                sessions: {
+                    update: {
+                        where: {
+                            id: sessionId,
+                        },
+                        data: {
+                            fingerprint,
+                        },
+                    },
+                },
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.userRefreshToken,
+                        ipAddress,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        createdBy: userId,
+                    },
+                },
+            },
+        });
+    }
 }

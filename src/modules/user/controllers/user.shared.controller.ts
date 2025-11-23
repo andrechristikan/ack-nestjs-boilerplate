@@ -76,7 +76,6 @@ import { ApiTags } from '@nestjs/swagger';
 export class UserSharedController {
     constructor(private readonly userService: UserService) {}
 
-    // TODO: IMPLEMENT ROTATING REFRESH TOKEN LATER
     @UserSharedRefreshDoc()
     @Response('user.refresh')
     @TermPolicyAcceptanceProtected()
@@ -87,9 +86,14 @@ export class UserSharedController {
     @Post('/refresh')
     async refresh(
         @UserCurrent() user: IUser,
-        @AuthJwtToken() refreshToken: string
+        @AuthJwtToken() refreshToken: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
-        return this.userService.refreshToken(user, refreshToken);
+        return this.userService.refreshToken(user, refreshToken, {
+            ipAddress,
+            userAgent,
+        });
     }
 
     @UserSharedProfileDoc()

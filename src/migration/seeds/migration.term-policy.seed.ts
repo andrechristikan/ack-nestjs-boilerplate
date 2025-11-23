@@ -74,17 +74,8 @@ export class MigrationTermPolicySeed
 
     async remove(): Promise<void> {
         this.logger.log('Removing back TermPolicies...');
-        this.logger.log(
-            `Found ${this.termPolicies.length} TermPolicies to remove.`
-        );
 
-        await this.databaseService.termPolicy.deleteMany({
-            where: {
-                type: {
-                    in: this.termPolicies.map(termPolicy => termPolicy.type),
-                },
-            },
-        });
+        await this.databaseService.termPolicy.deleteMany({});
 
         this.logger.log('TermPolicies removed successfully.');
 

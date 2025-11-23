@@ -68,17 +68,8 @@ export class MigrationFeatureFlagSeed
 
     async remove(): Promise<void> {
         this.logger.log('Removing back Feature Flags...');
-        this.logger.log(
-            `Found ${this.featureFlags.length} Feature Flags to remove.`
-        );
 
-        await this.databaseService.featureFlag.deleteMany({
-            where: {
-                key: {
-                    in: this.featureFlags.map(featureFlag => featureFlag.key),
-                },
-            },
-        });
+        await this.databaseService.featureFlag.deleteMany({});
 
         this.logger.log('Feature Flags removed successfully.');
 

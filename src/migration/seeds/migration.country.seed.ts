@@ -63,14 +63,9 @@ export class MigrationCountrySeed
 
     async remove(): Promise<void> {
         this.logger.log('Removing back Countries...');
-        this.logger.log(`Found ${this.countries.length} Countries to remove.`);
 
         await this.databaseService.country.deleteMany({
-            where: {
-                alpha2Code: {
-                    in: this.countries.map(country => country.alpha2Code),
-                },
-            },
+            where: {},
         });
 
         this.logger.log('Countries removed successfully.');

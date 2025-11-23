@@ -1104,28 +1104,51 @@ export class UserService implements IUserService {
 
     async refreshToken(
         user: IUser,
-        refreshToken: string
+        refreshToken: string,
+        requestLog: IRequestLog
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
-        try {
-            const { sessionId, userId, fingerprint } =
-                this.authUtil.payloadToken<IAuthJwtRefreshTokenPayload>(
-                    refreshToken
-                );
-            const session = await this.sessionUtil.getLogin(userId, sessionId);
-            if (session.fingerprint !== fingerprint) {
-                throw new UnauthorizedException({
-                    statusCode:
-                        ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN_INVALID,
-                    message: 'auth.error.refreshTokenInvalid',
-                });
-            }
+        const {
+            sessionId,
+            userId,
+            fingerprint: oldFingerprint,
+            loginFrom,
+            loginWith,
+        } = this.authUtil.payloadToken<IAuthJwtRefreshTokenPayload>(
+            refreshToken
+        );
 
+        const session = await this.sessionUtil.getLogin(userId, sessionId);
+        if (session.fingerprint !== oldFingerprint) {
+            throw new UnauthorizedException({
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN_INVALID,
+                message: 'auth.error.refreshTokenInvalid',
+            });
+        }
+
+        try {
             const { fingerprint: newFingerprint, tokens } =
                 this.authService.refreshToken(user, refreshToken);
 
-            // TODO: UPDATE DB AND UPDATE CACHE SESSION INFO
-            // this.sessionUtil.updateLogin(userId, sessionId, newFingerprint, ...)
-            // this.userRepository.refresh(....)
+            await Promise.all([
+                this.sessionUtil.updateLogin(
+                    userId,
+                    sessionId,
+                    session,
+                    newFingerprint
+                ),
+                this.userRepository.refresh(
+                    userId,
+                    {
+                        sessionId,
+                        fingerprint: newFingerprint,
+                        expiredAt: session.expiredAt,
+                        loginFrom: loginFrom,
+                        loginWith: loginWith,
+                    },
+                    requestLog
+                ),
+            ]);
 
             return {
                 data: tokens,

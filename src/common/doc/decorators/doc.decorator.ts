@@ -323,7 +323,7 @@ export function DocRequestFile(
  * @param {IDocGuardOptions} [options] - Optional configuration for guard documentation
  * @returns {MethodDecorator} A method decorator that applies Swagger guard documentation
  */
-export function DocGuard(options?: IDocGuardOptions) {
+export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
     const oneOfForbidden: IDocOfOptions[] = [];
 
     if (options?.role) {

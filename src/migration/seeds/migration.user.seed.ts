@@ -19,7 +19,6 @@ import {
     ENUM_USER_SIGN_UP_WITH,
     ENUM_USER_STATUS,
     ENUM_VERIFICATION_TYPE,
-    Prisma,
 } from '@prisma/client';
 import { Command } from 'nest-commander';
 import { UAParser } from 'ua-parser-js';
@@ -260,56 +259,17 @@ export class MigrationUserSeed
 
     async remove(): Promise<void> {
         this.logger.log('Removing back Users...');
-        this.logger.log(`Found ${this.users.length} Users to remove.`);
 
-        const existingUsers = await this.databaseService.user.findMany({
-            where: {
-                email: {
-                    in: this.users.map(user => user.email),
-                },
-            },
-            select: {
-                id: true,
-            },
-        });
-        if (existingUsers.length === 0) {
-            this.logger.warn('Users do not exist, skipping remove.');
-            return;
-        }
-
-        const transaction: Prisma.PrismaPromise<unknown>[] = [];
-        const postTransaction: Prisma.PrismaPromise<unknown>[] = [];
-
-        for (const user of existingUsers) {
-            postTransaction.push(
-                this.databaseService.user.deleteMany({
-                    where: { id: user.id },
-                })
-            );
-            transaction.push(
-                this.databaseService.session.deleteMany({
-                    where: { userId: user.id },
-                }),
-                this.databaseService.userMobileNumber.deleteMany({
-                    where: { userId: user.id },
-                }),
-                this.databaseService.verification.deleteMany({
-                    where: { userId: user.id },
-                }),
-                this.databaseService.passwordHistory.deleteMany({
-                    where: { userId: user.id },
-                }),
-                this.databaseService.activityLog.deleteMany({
-                    where: { userId: user.id },
-                }),
-                this.databaseService.termPolicyUserAcceptance.deleteMany({
-                    where: { userId: user.id },
-                })
-            );
-        }
-
-        await this.databaseService.$transaction(transaction);
-        await this.databaseService.$transaction(postTransaction);
+        await this.databaseService.$transaction([
+            this.databaseService.session.deleteMany({}),
+            this.databaseService.userMobileNumber.deleteMany({}),
+            this.databaseService.verification.deleteMany({}),
+            this.databaseService.passwordHistory.deleteMany({}),
+            this.databaseService.forgotPassword.deleteMany({}),
+            this.databaseService.activityLog.deleteMany({}),
+            this.databaseService.termPolicyUserAcceptance.deleteMany({}),
+            this.databaseService.user.deleteMany({}),
+        ]);
 
         this.logger.log('Users removed completed.');
 

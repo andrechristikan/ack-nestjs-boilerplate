@@ -62,33 +62,28 @@ export class SessionUtil {
         return;
     }
 
-    // TODO: UPDATE SESSION INFO IN CACHE WHEN USER REFRESH TOKEN
-    // async updateLogin(
-    //     userId: string,
-    //     sessionId: string,
-    //     session: ISessionCache,
-    //     fingerprint: string
-    // ): Promise<void> {
-    //     const key = this.keyPattern
-    //         .replace('{userId}', userId)
-    //         .replace('{sessionId}', sessionId);
-    //     const ttl = Math.floor(
-    //         expiredAt.getTime() - this.helperService.dateCreate().getTime()
-    //     );
+    async updateLogin(
+        userId: string,
+        sessionId: string,
+        session: ISessionCache,
+        fingerprint: string
+    ): Promise<void> {
+        const key = this.keyPattern
+            .replace('{userId}', userId)
+            .replace('{sessionId}', sessionId);
+        const ttl = await this.cacheManager.ttl(key);
 
-    //     await this.cacheManager.set<ISessionCache>(
-    //         key,
-    //         {
-    //             userId,
-    //             sessionId,
-    //             expiredAt,
-    //             fingerprint,
-    //         },
-    //         ttl
-    //     );
+        await this.cacheManager.set<ISessionCache>(
+            key,
+            {
+                ...session,
+                fingerprint,
+            },
+            ttl
+        );
 
-    //     return;
-    // }
+        return;
+    }
 
     async deleteOneLogin(userId: string, sessionId: string): Promise<void> {
         const key = this.keyPattern

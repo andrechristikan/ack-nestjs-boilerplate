@@ -76,7 +76,6 @@ export class MigrationApiKeySeed
 
     async remove(): Promise<void> {
         this.logger.log('Removing back Api Keys...');
-        this.logger.log(`Found ${this.apiKeys.length} Api Keys to remove.`);
 
         await Promise.all([
             ...this.apiKeys
@@ -88,15 +87,7 @@ export class MigrationApiKeySeed
                     ];
                 })
                 .flat(),
-            this.databaseService.apiKey.deleteMany({
-                where: {
-                    key: {
-                        in: this.apiKeys.map(apiKey =>
-                            this.apiKeyUtil.createKey(apiKey.key)
-                        ),
-                    },
-                },
-            }),
+            this.databaseService.apiKey.deleteMany({}),
         ]);
 
         this.logger.log('Api Keys removed successfully.');

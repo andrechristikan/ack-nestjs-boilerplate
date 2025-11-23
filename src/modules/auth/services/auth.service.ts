@@ -172,14 +172,14 @@ export class AuthService implements IAuthService {
             });
         }
 
-        const { sub, sessionId } = user;
-        if (!sub || !sessionId) {
-            throw new UnauthorizedException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
-        } else if (typeof sub !== 'string') {
+        const { sub, sessionId, fingerprint } = user;
+        if (
+            !sub ||
+            !sessionId ||
+            typeof sub !== 'string' ||
+            !fingerprint ||
+            typeof fingerprint !== 'string'
+        ) {
             throw new UnauthorizedException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
@@ -188,7 +188,7 @@ export class AuthService implements IAuthService {
         }
 
         const isValidSession = await this.sessionUtil.getLogin(sub, sessionId);
-        if (!isValidSession) {
+        if (!isValidSession || fingerprint !== isValidSession.fingerprint) {
             throw new UnauthorizedException({
                 statusCode: ENUM_SESSION_STATUS_CODE_ERROR.FORBIDDEN,
                 message: 'session.error.forbidden',
@@ -221,23 +221,24 @@ export class AuthService implements IAuthService {
             });
         }
 
-        const { sub, sessionId } = user as IAuthJwtAccessTokenPayload;
-        if (!sub || !sessionId) {
+        const { sub, sessionId, fingerprint } =
+            user as IAuthJwtAccessTokenPayload;
+        if (
+            !sub ||
+            !sessionId ||
+            typeof sub !== 'string' ||
+            !fingerprint ||
+            typeof fingerprint !== 'string'
+        ) {
             throw new UnauthorizedException({
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
-        } else if (typeof sub !== 'string') {
-            throw new UnauthorizedException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
-                message: 'auth.error.accessTokenUnauthorized',
+                    ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN_INVALID,
+                message: 'auth.error.refreshTokenUnauthorized',
             });
         }
 
         const isValidSession = await this.sessionUtil.getLogin(sub, sessionId);
-        if (!isValidSession) {
+        if (!isValidSession || fingerprint !== isValidSession.fingerprint) {
             throw new UnauthorizedException({
                 statusCode: ENUM_SESSION_STATUS_CODE_ERROR.FORBIDDEN,
                 message: 'session.error.forbidden',

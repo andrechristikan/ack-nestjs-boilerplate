@@ -414,6 +414,7 @@ enum ENUM_ACTIVITY_LOG_ACTION {
   userLoginCredential
   userLoginGoogle
   userLoginApple
+  userRefreshToken
   userVerifiedEmail
   userSendVerificationEmail
   userSignedUp
