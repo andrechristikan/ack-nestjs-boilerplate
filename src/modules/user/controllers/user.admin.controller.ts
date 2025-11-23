@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
     Response,
@@ -191,7 +191,7 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/:userId/password')
+    @Put('/update/:userId/password')
     async updatePassword(
         @Param('userId', RequestRequiredPipe)
         userId: string,

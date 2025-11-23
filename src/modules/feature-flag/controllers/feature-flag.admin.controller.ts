@@ -28,7 +28,7 @@ import {
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Body, Controller, Get, Param, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_ROLE_TYPE } from '@prisma/client';
 
@@ -70,7 +70,7 @@ export class FeatureFlagAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/update/:featureFlagId/status')
+    @Patch('/update/:featureFlagId/status')
     async updateStatus(
         @Param('featureFlagId', RequestRequiredPipe)
         featureFlagId: string,

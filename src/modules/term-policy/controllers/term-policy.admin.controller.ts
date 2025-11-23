@@ -58,6 +58,7 @@ import {
     HttpCode,
     HttpStatus,
     Param,
+    Patch,
     Post,
     Put,
 } from '@nestjs/common';
@@ -252,7 +253,7 @@ export class TermPolicyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Post('/publish/:termPolicyId')
+    @Patch('/publish/:termPolicyId')
     async publish(
         @Param('termPolicyId', RequestRequiredPipe)
         termPolicyId: string,

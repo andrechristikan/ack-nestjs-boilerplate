@@ -4,9 +4,11 @@ import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { writeFileSync } from 'fs';
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { MessageService } from '@common/message/services/message.service';
 
 export default async function (app: NestApplication): Promise<void> {
     const configService = app.get(ConfigService);
+    const messageService = app.get(MessageService);
 
     const env: string = configService.get<string>('app.env')!;
     const appName: string = configService.get<string>('app.name');
@@ -14,6 +16,10 @@ export default async function (app: NestApplication): Promise<void> {
     const docDesc: string = configService.get<string>('doc.description')!;
     const docVersion: string = configService.get<string>('app.version')!;
     const docPrefix: string = configService.get<string>('doc.prefix')!;
+    const docUrl: string = configService.get<string>('app.url')!;
+    const docAuthorName: string = configService.get<string>('app.author.name')!;
+    const docAuthorEmail: string =
+        configService.get<string>('app.author.email')!;
 
     const logger = new Logger(`${appName}-Doc`);
 
@@ -22,6 +28,14 @@ export default async function (app: NestApplication): Promise<void> {
             .setTitle(docName)
             .setDescription(docDesc)
             .setVersion(docVersion)
+            .setDescription(
+                messageService.setMessage('app.description.swagger', {
+                    properties: {
+                        appName,
+                    },
+                })
+            )
+            .setContact(docAuthorName, docUrl, docAuthorEmail)
             .addServer('/')
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },

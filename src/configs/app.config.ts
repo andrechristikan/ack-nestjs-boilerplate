@@ -1,12 +1,17 @@
 import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
 import { registerAs } from '@nestjs/config';
-import { version } from 'package.json';
+import { author, repository, version } from 'package.json';
 
 export interface IConfigApp {
     name: string;
     env: ENUM_APP_ENVIRONMENT;
     timezone: string;
     version: string;
+    author: {
+        name: string;
+        email: string;
+    };
+    url: string;
     globalPrefix: string;
     http: {
         host: string;
@@ -28,6 +33,11 @@ export default registerAs(
             ENUM_APP_ENVIRONMENT.LOCAL,
         timezone: process.env.APP_TIMEZONE ?? 'Asia/Jakarta',
         version,
+        author: author as {
+            name: string;
+            email: string;
+        },
+        url: repository.url,
         globalPrefix: '/api',
 
         http: {
