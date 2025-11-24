@@ -12,7 +12,7 @@ import {
     AuthSocialGoogleProtected,
 } from '@modules/auth/decorators/auth.social.decorator';
 import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
-import { FeatureFlag } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import {
     AuthPublicLoginSocialAppleDoc,
     AuthPublicLoginSocialGoogleDoc,
@@ -56,7 +56,7 @@ export class UserPublicController {
     @Response('user.loginCredential')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @FeatureFlag('loginWithCredential')
+    @FeatureFlagProtected('loginWithCredential')
     @Post('/login/credential')
     async loginWithCredential(
         @Body() body: UserLoginRequestDto,
@@ -72,7 +72,7 @@ export class UserPublicController {
     @AuthPublicLoginSocialGoogleDoc()
     @Response('user.loginWithSocialGoogle')
     @AuthSocialGoogleProtected()
-    @FeatureFlag('loginWithGoogle')
+    @FeatureFlagProtected('loginWithGoogle')
     @Post('/login/social/google')
     async loginWithGoogle(
         @AuthJwtPayload<IAuthSocialPayload>('email')
@@ -95,7 +95,7 @@ export class UserPublicController {
     @AuthPublicLoginSocialAppleDoc()
     @Response('user.loginWithSocialApple')
     @AuthSocialAppleProtected()
-    @FeatureFlag('loginWithApple')
+    @FeatureFlagProtected('loginWithApple')
     @Post('/login/social/apple')
     async loginWithApple(
         @AuthJwtPayload<IAuthSocialPayload>('email')
@@ -117,7 +117,7 @@ export class UserPublicController {
 
     @UserPublicSignUpDoc()
     @Response('user.signUp')
-    @FeatureFlag('signUp')
+    @FeatureFlagProtected('signUp')
     @ApiKeyProtected()
     @Post('/sign-up')
     async signUp(
@@ -165,7 +165,7 @@ export class UserPublicController {
 
     @UserPublicForgotPasswordDoc()
     @Response('user.forgotPassword')
-    @FeatureFlag('changePassword.forgotAllowed')
+    @FeatureFlagProtected('changePassword.forgotAllowed')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/password/forgot')
@@ -182,7 +182,7 @@ export class UserPublicController {
 
     @UserPublicResetPasswordDoc()
     @Response('user.resetPassword')
-    @FeatureFlag('changePassword.forgotAllowed')
+    @FeatureFlagProtected('changePassword.forgotAllowed')
     @ApiKeyProtected()
     @Put('/password/reset')
     async reset(

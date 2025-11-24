@@ -1,8 +1,8 @@
-[![Contributors][ack-contributors-shield]][ack-contributors]
-[![Forks][ack-forks-shield]][ack-forks]
-[![Stargazers][ack-stars-shield]][ack-stars]
-[![Issues][ack-issues-shield]][ack-issues]
-[![MIT License][ack-license-shield]][license]
+[![Contributors][ack-contributors-shield]][ref-ack-contributors]
+[![Forks][ack-forks-shield]][ref-ack-forks]
+[![Stargazers][ack-stars-shield]][ref-ack-stars]
+[![Issues][ack-issues-shield]][ref-ack-issues]
+[![MIT License][ack-license-shield]][ref-license]
 
 [![NestJs][nestjs-shield]][ref-nestjs]
 [![NodeJs][nodejs-shield]][ref-nodejs]
@@ -15,24 +15,20 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-> This repo will representative of authentication service and authorization service
+> This repository serves as a comprehensive authentication and authorization service boilerplate
 
-[ACK NestJs][ack] is a [Http NestJs v11.x][ref-nestjs] boilerplate. Best uses for backend service.
+[ACK NestJs][ref-ack] is a [NestJs v11.x][ref-nestjs] boilerplate designed for backend services.
 
-_You can [request feature][ack-issues] or [report bug][ack-issues] with following this link_
+_You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with following this link_
 
 ## Table of contents
 
-- [ACK NestJs Boilerplate 🔥 🚀](#ack-nestjs-boilerplate--)
-  - [Table of contents](#table-of-contents)
   - [Important](#important)
   - [TODO](#todo)
-  - [Support me](#support-me)
   - [Prerequisites](#prerequisites)
   - [Build with](#build-with)
   - [Objective](#objective)
   - [Features](#features)
-    - [Main Features](#main-features)
   - [Installation](#installation)
   - [Migration](#migration)
   - [License](#license)
@@ -41,37 +37,158 @@ _You can [request feature][ack-issues] or [report bug][ack-issues] with followin
 
 ## Important
 
--   Stateful Authorization, using `redis-session` and `JWT`.
--   Must run MongoDB as a `replication set` for `database transactions`.
--   If you change the environment value of `APP_ENV` to `production`, it will disable Documentation.
--   For monitoring, this project will use `sentry.io`, and sent unhandled error and/or `internal server error`.
--   Since version `7.4.0`, the project uses the `ES512` algorithm for JWT authentication.
--   When using multiple protection decorators, they must be applied in the correct order:
+- Stateful Authorization, using `redis-session` and `JWT`.
+- Must run MongoDB as a `replication set` for `database transactions`.
+- If you change the environment value of `APP_ENV` to `production`, it will disable Documentation.
+- When using multiple protection decorators, they must be applied in the correct order:
     ```typescript
     @ExampleDoc()
     @PolicyAbilityProtected({...})
-    @PolicyRoleProtected(...)
+    @RoleProtected(...)
+    @TermPolicyAcceptanceProtected(...)
     @UserProtected()     
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected(...)
     @ApiKeyProtected()
     @Get('/some-endpoint')
     ```
+- Since version `8.0.0`, the project uses the `ES256` algorithm for Access Token, and `ES512` for Refresh Token.
+- Since version `8.0.0`, the project uses prisma for handle database.
 
 ## TODO
 
-- [ ] Improve eslint rule for better code quality (high priority, in v8)
-- [ ] Move some function in service layer into repository module, because a bit wrong implementation (high priority, in v8)
-- [ ] 2FA Feats (high priority, in v8)
-- [ ] Reset password (medium priority, in v8)
-- [ ] Export Module in Background using bullmq (medium priority, in v8)
 - [ ] Unit test (medium priority)
 - [ ] Add Github SSO (low priority)
-- [ ] Privacy Policy Module (versioning, lowest priority)
-- [ ] Term and Condition Module (versioning, lowest priority)
 
-## Support me
+## Prerequisites
 
-If you find this project helpful and would like to support its development, you can buy me a coffee
+I assume that everyone who comes here is a **`programmer with intermediate knowledge`**. To get the most out of this project, here's what you should understand:
+
+1. **[NestJs Fundamentals][ref-nestjs]** - Main framework with decorators, modules, services, and dependency injection
+2. **[TypeScript][ref-typescript]** - Strong typing, interfaces, generics, and advanced TypeScript features
+3. **[Prisma ORM][ref-prisma]** - Modern database toolkit for schema design, migrations, and type-safe queries
+4. **[MongoDB][ref-mongodb]** - NoSQL database concepts, especially **replication sets** for transactions
+5. **[Redis][ref-redis]** - Caching strategies, session storage, and queue management
+6. **Repository Design Pattern** - Data access layer abstraction for maintainable code
+7. **SOLID Principles** - Clean code architecture and dependency management
+8. **Queue Systems** - Background job processing with [BullMQ][ref-bullmq]
+9. **Optional. [Docker][ref-docker]** - Containerization for running the project
+10. **Optional. Microservice Architecture** - Understanding distributed systems concepts
+
+## Build with
+
+The project is built using the following technologies and versions. We always strive to use the latest stable versions to ensure security, performance, and access to modern features:
+
+| Name           | Version  |
+| -------------- | -------- |
+| NestJs         | v11.x    |
+| NodeJs         | v24.11.x |
+| TypeScript     | v5.9.x   |
+| Prisma         | v6.19.x  |
+| MongoDB        | v8.0.x   |
+| Redis          | v8.0.x   |
+| Docker         | v28.5.x  |
+| Docker Compose | v2.40.x  |
+
+For more information see [package.json][ref-package-json]
+
+## Objective
+
+- Easy to maintain
+- NestJs Habit
+- Component based / modular folder structure
+- Stateful authentication and authorization
+- Repository Design Pattern
+- Follow Community Guidelines
+- Follow The Twelve-Factor App
+
+## Features
+
+- **NestJS 11.x** - Latest framework version 🥳
+- **TypeScript** - Full type safety 🚀
+- **Production Ready** - Enterprise-grade architecture 🔥
+- **Stateful Authorization** - Redis session with revokable tokens
+- **JWT Authentication** - ES256 for Access Token, ES512 for Refresh Token
+- **Role-Based Access Control (RBAC)** - Fine-grained permission system
+- **Policy Management** - Flexible authorization rules and permissions
+- **API Key Protection** - Secure API access control
+- **Social Authentication** - Google Auth and Apple ID integration
+- **Prisma ORM** - Modern type-safe database toolkit 🎉
+- **MongoDB Integration** - NoSQL with transaction support
+- **Redis Caching** - High-performance cache layer
+- **Cache Manager** - Multi-level caching strategies
+- **Background Jobs** - BullMQ queue system for async processing
+- **Swagger/OpenAPI 3** - Interactive API documentation
+- **API Versioning** - URL-based versioning (default v1)
+- **Request Validation** - class-validator integration
+- **Server-side Pagination** - Efficient data handling
+- **SWC Compiler** - Lightning-fast compilation
+- **Response Compression** - Optimized payload delivery
+- **Rate Limiting** - Throttling and DDoS protection
+- **Sentry Integration** - Error tracking and performance monitoring
+- **Health Checks** - System monitoring endpoints
+- **Multi-language Support** - i18n with header control (`x-custom-lang`) 🗣
+- **CSV Export** - Decorator-based data export
+- **Excel Processing** - XLSX import/export capabilities
+- **AWS Integration** - S3 file storage and SES email services
+- **Database Seeding** - Commander-based data population
+- **Repository Pattern** - Clean data access layer
+- **Docker Support** - Complete containerization
+- **Code Quality** - ESLint, Prettier, Husky git hooks 🐶
+- **Testing Framework** - Jest with comprehensive setup
+- **Dead Code Detection** - Automated cleanup tools
+
+## Installation
+
+For detailed installation instructions (both default and Docker-based), please refer to the [Installation](docs/installation.md).
+
+## Migration
+
+The project includes a migration and seeder system to populate the database with initial data using `commander`. Migration functions include:
+
+- Seeding default API keys, countries, roles, users, term policies, dan feature flags.
+- Managing email templates for the notification system
+
+For complete documentation and instructions on using migrations, see the [Migration](docs/migration.md).
+
+## License
+
+This project is licensed under the [MIT License][ref-license].
+
+## Contribute
+
+We welcome contributions to this project! To contribute, follow these steps:
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/your-feature-name`
+3. **Make your changes** and ensure they follow our coding standards
+4. **Run tests**: `yarn test` and `yarn lint` to verify your changes
+5. **Commit your changes**: `git commit -m 'feat: add some feature'`
+6. **Push to your branch**: `git push origin feature/your-feature-name`
+7. **Open a Pull Request** with a clear description of your changes
+
+### **Contribution Guidelines**
+- Follow the existing code style and conventions
+- Write or update tests for any new functionality
+- Ensure all tests pass before submitting
+- Use conventional commit messages (feat, fix, docs, etc.)
+- Keep PRs focused and atomic
+
+If your branch is behind the `origin/main` branch, please rebase and resolve any conflicts before opening a pull request.
+
+## Contact
+
+**Andre Christikan**  
+📧 [andrechristikan@gmail.com][ref-author-email]
+
+[![Github][github-shield]][ref-author-github]
+[![LinkedIn][linkedin-shield]][ref-author-linkedin]
+
+### Support This Project
+
+If you find this project helpful and would like to support its development, you can:
+
+**Buy me a coffee** ☕
 
 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
   <a href='https://ko-fi.com/andrechristikan' target='_blank'>
@@ -79,118 +196,13 @@ If you find this project helpful and would like to support its development, you 
   </a>
 </div>
 
-or support via PayPal
+**Or support via PayPal** 💳
 
 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
   <a href='https://www.paypal.me/andrechristikan' target='_blank'>
     <img src='https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg' alt='Donate with PayPal' />
   </a>
 </div>
-
-## Prerequisites
-
-I assume that everyone who comes here is a **`programmer with intermediate knowledge`**. To get the most out of this project, here's what you should understand:
-
-1. [NestJs Fundamentals][ref-nestjs], as the main Framework. A NodeJs Framework with full TypeScript support.
-2. [Typescript Fundamentals][ref-typescript], as the main Programming Language. This will help you read and write the code.
-3. [ExpressJs Fundamentals][ref-nodejs], as the base NodeJs Framework. This will help you understand how the NestJs Framework works.
-4. Understanding of databases, especially NoSQL and [MongoDB][ref-mongodb].
-5. Repository Design Pattern or Data Access Object Design Pattern. This will help in reading and writing the source code.
-6. The SOLID Principle for better code writing.
-7. Optional. Microservice Architecture. This can help you understand this project more deeply.
-8. Optional. [The Twelve Factor Apps][ref-12factor]. This can help with project deployment.
-9. Optional. [Docker][ref-docker].
-
-## Build with
-
-The project is built using the following technologies and versions:
-
-| Name           | Version  |
-| -------------- | -------- |
-| NestJs         | v11.x    |
-| NestJs Swagger | v11.0.x  |
-| Node           | v22.13.x |
-| Typescript     | v5.8.x   |
-| Mongoose       | v8.12.x  |
-| MongoDB        | v8.x     |
-| Yarn           | v1.22.x  |
-| Docker         | v27.4.x  |
-| Docker Compose | v2.31.x  |
-
-## Objective
-
--   Easy to maintenance
--   NestJs Habit
--   Component based / modular folder structure
--   Stateful authentication and authorization
--   Repository Design Pattern
--   Follow Community Guide Line
--   Follow The Twelve-Factor App
-
-## Features
-
-### Main Features
-
--   NestJs 11.x 🥳
--   Typescript 🚀
--   Production ready 🔥
--   MongoDB integrate by using [mongoose][ref-mongoose] 🎉
--   Cached response with redis.
--   Queue bullmq with redis.
--   Logger with pino 🌲
--   SWC (Speedy Web Compiler) Compiler, fast compiler.
--   Authorization, Role, and session Management (can revoke).
--   Repository Design Pattern.
--   Authentication (`Access Token`, `Refresh Token`, `API Key`, `Google SSO`, `Apple SSO`)
--   Export data with CSV or Excel by using `decorator`.
--   Support multi-language `i18n` 🗣, can controllable with request header `x-custom-lang`
--   Request validation for all request params, query, dan body with `class-validation`
--   Swagger / OpenAPI 3 included.
--   Url Versioning, default version is `1`.
--   Server Side Pagination.
--   Sentry.io for Monitoring Tools.
--   Support Docker installation.
--   Husky GitHook for run linter before commit 🐶.
--   Linter with EsLint for Typescript.
-
-## Installation
-
-For detailed installation instructions (both standard and Docker-based), please refer to the [Installation](docs/installation.md).
-
-## Migration
-
-The project includes a migration system for populating the database with initial data using `nestjs-command`. Migration functions include:
-
-- Seeding default API keys, countries, roles, and users
-- Managing email templates for the notification system
-- Commands for adding or removing seed data
-
-For complete documentation and instructions on using migrations, see the [Migration](docs/migration.md).
-
-## License
-
-Distributed under [MIT licensed][license].
-
-## Contribute
-
-I welcome contributions to this project! To contribute, follow these steps:
-
-1. Fork the repository.
-2. Create a new branch: `git checkout -b feature/your-feature-name`.
-3. Make your changes and commit them: `git commit -m 'Add some feature'`.
-4. Push to the branch: `git push origin feature/your-feature-name`.
-5. Open a pull request.
-
-Please ensure your code follows the project's coding standards and includes appropriate tests.
-
-If your branch is behind the `origin/main` branch, please update your branch and resolve any conflicts before opening a pull request.
-
-## Contact
-
-[Andre Christi kan][author-email]
-
-[![Github][github-shield]][author-github]
-[![LinkedIn][linkedin-shield]][author-linkedin]
 
 
 <!-- BADGE LINKS -->
@@ -213,37 +225,39 @@ If your branch is behind the `origin/main` branch, please update your branch and
 
 <!-- CONTACTS -->
 
-[author-linkedin]: https://linkedin.com/in/andrechristikan
-[author-email]: mailto:andrechristikan@gmail.com
-[author-github]: https://github.com/andrechristikan
-[author-paypal]: https://www.paypal.me/andrechristikan
-[author-kofi]: https://ko-fi.com/andrechristikan
+[ref-author-linkedin]: https://linkedin.com/in/andrechristikan
+[ref-author-email]: mailto:andrechristikan@gmail.com
+[ref-author-github]: https://github.com/andrechristikan
+[ref-author-paypal]: https://www.paypal.me/andrechristikan
+[ref-author-kofi]: https://ko-fi.com/andrechristikan
 
 <!-- Repo LINKS -->
 
-[ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
-[ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate/issues
-[ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
-[ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
-[ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
+[ref-ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
+[ref-ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate/issues
+[ref-ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
+[ref-ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
+[ref-ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
 
 <!-- license -->
 
-[license]: LICENSE.md
+[ref-license]: LICENSE.md
 
 <!-- Reference -->
 
 [ref-nestjs]: http://nestjs.com
-[ref-mongoose]: https://mongoosejs.com
+[ref-prisma]: https://www.prisma.io
 [ref-mongodb]: https://docs.mongodb.com/
+[ref-redis]: https://redis.io
+[ref-bullmq]: https://bullmq.io
 [ref-nodejs]: https://nodejs.org/
 [ref-typescript]: https://www.typescriptlang.org/
 [ref-docker]: https://docs.docker.com
 [ref-dockercompose]: https://docs.docker.com/compose/
 [ref-yarn]: https://yarnpkg.com
 [ref-12factor]: https://12factor.net
-[ref-nestjscommand]: https://gitlab.com/aa900031/nestjs-command
+[ref-commander]: https://nest-commander.jaymcdoniel.dev
+[ref-package-json]: package.json
 [ref-jwt]: https://jwt.io
 [ref-jest]: https://jestjs.io/docs/getting-started
 [ref-git]: https://git-scm.com
-[ref-redis]: https://redis.io

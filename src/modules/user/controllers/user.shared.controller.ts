@@ -19,7 +19,7 @@ import {
     AuthJwtToken,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { FeatureFlag } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
     UserCurrent,
@@ -202,7 +202,7 @@ export class UserSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlag('changePassword')
+    @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
     @Patch('/change-password')
     async changePassword(

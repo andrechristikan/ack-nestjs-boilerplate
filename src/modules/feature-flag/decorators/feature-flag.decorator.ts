@@ -9,7 +9,7 @@ import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
  * @param {string} keyPath - The feature flag key path to check
  * @returns {MethodDecorator} Method decorator function
  */
-export function FeatureFlag(keyPath: string): MethodDecorator {
+export function FeatureFlagProtected(keyPath: string): MethodDecorator {
     return applyDecorators(
         UseGuards(FeatureFlagGuard),
         SetMetadata(FEATURE_FLAG_KEY_PATH_META_KEY, keyPath)
