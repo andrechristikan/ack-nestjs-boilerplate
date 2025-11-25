@@ -52,6 +52,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
             optionsSuccessStatus: HttpStatus.NO_CONTENT,
         };
 
+        // TODO: Review if custom handling is needed for preflight requests and support subdomains wildcard origins
         cors(corsOptions)(req, res, next);
     }
 }

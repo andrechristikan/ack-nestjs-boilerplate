@@ -2,7 +2,7 @@
 [![Forks][ack-forks-shield]][ref-ack-forks]
 [![Stargazers][ack-stars-shield]][ref-ack-stars]
 [![Issues][ack-issues-shield]][ref-ack-issues]
-[![MIT License][ack-license-shield]][ref-license]
+[![MIT License][ack-license-shield]][ref-ack-license]
 
 [![NestJs][nestjs-shield]][ref-nestjs]
 [![NodeJs][nodejs-shield]][ref-nodejs]
@@ -149,11 +149,11 @@ The project includes a migration and seeder system to populate the database with
 - Seeding default API keys, countries, roles, users, term policies, dan feature flags.
 - Managing email templates for the notification system
 
-For complete documentation and instructions on using migrations, see the [Migration](docs/migration.md).
+For complete documentation and instructions on using migrations, see the [Migration](docs/database.md).
 
 ## License
 
-This project is licensed under the [MIT License][ref-license].
+This project is licensed under the [MIT License][ref-ack-license].
 
 ## Contribute
 
@@ -205,6 +205,8 @@ If you find this project helpful and would like to support its development, you 
 </div>
 
 
+<!-- REFERENCES -->
+
 <!-- BADGE LINKS -->
 
 [ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
@@ -238,12 +240,9 @@ If you find this project helpful and would like to support its development, you 
 [ref-ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
 [ref-ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
 [ref-ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
+[ref-ack-license]: LICENSE.md
 
-<!-- license -->
-
-[ref-license]: LICENSE.md
-
-<!-- Reference -->
+<!-- THIRD PARTY -->
 
 [ref-nestjs]: http://nestjs.com
 [ref-prisma]: https://www.prisma.io
@@ -261,3 +260,15 @@ If you find this project helpful and would like to support its development, you 
 [ref-jwt]: https://jwt.io
 [ref-jest]: https://jestjs.io/docs/getting-started
 [ref-git]: https://git-scm.com
+
+<!-- DOCUMENTS -->
+
+[ref-doc-root]: readme.md
+[ref-doc-authorization]: docs/authorization.md
+[ref-doc-authentication]: docs/authentication.md
+[ref-doc-database]: docs/database.md
+[ref-doc-environment]: docs/environment.md
+[ref-doc-configuration]: docs/configuration.md
+[ref-doc-installation]: docs/installation.md
+[ref-doc-queue]: docs/queue.md
+[ref-doc-cache]: docs/cache.md

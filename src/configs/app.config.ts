@@ -27,7 +27,7 @@ export interface IConfigApp {
 export default registerAs(
     'app',
     (): IConfigApp => ({
-        name: process.env.APP_NAME ?? 'NestJsACK',
+        name: process.env.APP_NAME ?? 'ACKNestJs',
         env:
             ENUM_APP_ENVIRONMENT[process.env.APP_ENV] ??
             ENUM_APP_ENVIRONMENT.LOCAL,
