@@ -1,673 +1,150 @@
-# Overview
+# Database
 
-> TODO: (v8) In the future will replace `nestjs-command` with `commander`
+> Since version `8.0.0`, This project now uses **Prisma ORM** as the primary database toolkit, replacing the previous Mongoose ODM approach. Prisma provides type-safe database access, modern query builder, and automatic migrations.
 
-This documentation explains the features and usage of:
-- **Migration Module**: Located at `src/migration/**`
+Before working with the database, ensure you have completed the basic setup:
 
-This document covers the migration and seed functionality in the ACK NestJS Boilerplate project, explaining how database seeding works and how to use the migration commands.
+📖 **Required Reading:**
+- **[Installation Document][ref-doc-installation]** - Complete project setup and dependencies
+- **[Environment Document][ref-doc-environment]** - Database connection and environment variables  
+- **[Configuration Document][ref-doc-configuration]** - Understanding the config module structure
+
+## Overview
+
+This documentation explains the database architecture and features in the ACK NestJS Boilerplate project:
+
 
 # Table of Contents
+
 - [Overview](#overview)
-- [Table of Contents](#table-of-contents)
-  - [Modules](#modules)
-    - [Migration Module](#migration-module)
-    - [Seed Modules](#seed-modules)
-  - [Data Seed](#data-seed)
-    - [API Key Seed](#api-key-seed)
-    - [Country Seed](#country-seed)
-    - [Role Seed](#role-seed)
-    - [User Seed](#user-seed)
-  - [Template Seed](#template-seed)
-    - [Purpose](#purpose)
-    - [Supported Templates](#supported-templates)
-    - [Implementation](#implementation)
-    - [Commands](#commands)
-    - [Usage](#usage)
-  - [Running Migrations](#running-migrations)
-  - [Creating Custom Seeds](#creating-custom-seeds)
-    - [Testing Seeds](#testing-seeds)
+- [Prerequisites](#prerequisites)
+- [Migration](#migration)
+- [Generate Database Client](#generate-database-client)
+- [Seeding](#seeding)
+	- [Database Seeds](#database-seeds)
+	- [Template Seeds](#template-seeds)
+- [Database Tools](#database-tools)
+	- [Prisma ORM](#prisma-orm)
+	- [Why Prisma for Repository Design Pattern?](#why-prisma-for-repository-design-pattern)
+	- [Database Flexibility & Project-Specific Adjustments](#database-flexibility--project-specific-adjustments)
 
 
-## Modules 
+## Prerequisites
 
-The system uses `nestjs-command` to create CLI commands that can be executed to seed or remove data from the database.
+- **MongoDB 8.0.x** running as a **replica set** (required for transactions)
+- **Application running well** - Ensure the project starts without errors
 
-Each seed module is responsible for a specific domain area and can be executed independently or as part of the full migration process. Seeds can also be reversed, allowing you to clean up the database as needed.
+> **💡 Tip:** Use Docker setup from the installation guide for automatic MongoDB replica set configuration.
 
-The entry point for all migrations is the `src/cli.ts` file, which creates a NestJS application context specifically for migration operations:
 
-```typescript
-async function bootstrap() {
-    process.env.APP_ENV = ENUM_APP_ENVIRONMENT.MIGRATION;
+## Migration
 
-    const app = await NestFactory.createApplicationContext(MigrationModule, {
-        logger: ['error', 'fatal'],
-        abortOnError: true,
-        bufferLogs: false,
-    });
+Prisma does not support migrations for MongoDB. Instead, use `prisma db push` to sync your Prisma schema with the MongoDB database.
 
-    const logger = new Logger('NestJs-Seed');
+In this project, you can use the `yarn db:migrate` script to quickly sync your schema to MongoDB.
 
-    try {
-        await app.select(CommandModule).get(CommandService).exec();
-        process.exit(0);
-    } catch (err: unknown) {
-        logger.error(err);
-        process.exit(1);
-    }
-}
-```
+For details, see the official Prisma documentation: [Prisma for MongoDB](https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-providers)
 
-### Migration Module
 
-The Migration Module (`src/migration/migration.module.ts`) serves as the entry point for all migration operations. It imports all necessary modules and registers seed providers:
+## Generate Database Client
 
-```typescript
-@Module({
-    imports: [
-        CommonModule,
-        CommandModule,
-        ApiKeyModule,
-        CountryModule,
-        EmailModule,
-        AuthModule,
-        RoleModule,
-        UserModule,
-        ActivityModule,
-        PasswordHistoryModule,
-        SessionModule,
-        CountryModule,
-    ],
-    providers: [
-        MigrationApiKeySeed,
-        MigrationCountrySeed,
-        MigrationUserSeed,
-        MigrationRoleSeed,
-        MigrationTemplateSeed,
-    ],
-    exports: [],
-})
-export class MigrationModule {}
-```
+Prisma uses a generated client to provide type-safe database access and query building. You must generate the Prisma Client every time you change your Prisma schema (`prisma/schema.prisma`).
 
-This module integrates with the `CommandModule` from `nestjs-command` to provide command-line functionality and imports all required service modules to perform the seeding operations.
+**Why Generate Prisma Client?**
+- The Prisma Client is an auto-generated library that lets your application interact with the database using the models and types defined in your Prisma schema.
+- It ensures type safety and up-to-date queries for your database operations.
 
-### Seed Modules
+**When to Run This Command?**
+- After any change to your Prisma schema (e.g., adding, removing, or updating models/fields).
+- After pulling schema changes from version control.
 
-Seed modules are responsible for populating the database with initial data. Each seed module focuses on a specific domain area and follows a consistent pattern:
-
-1. An `@Injectable()` class that accepts relevant services via dependency injection
-2. Methods decorated with `@Command()` that execute seeding operations
-3. Typically includes both a `seeds()` method to add data and a `remove()` method to clean up data
-
-All seed modules are registered in the `MigrationModule` as providers, allowing them to be executed via the command line.
-
-The seed process follows a logical progression where dependent data is seeded first. The typical order is:
-1. API Keys
-2. Countries
-3. Roles
-4. Users
-5. Templates (handled separately)
-
-## Data Seed
-
-### API Key Seed
-
-**File**: `src/migration/seeds/migration.api-key.seed.ts`
-
-Seeds the database with default API keys for different types of access:
-
-- Default API Key: Used for general access
-  - Key: `v8VB0yY887lMpTA2VJMV`
-  - Secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
-- System API Key: Used for system-level operations or service-to-service
-  - Key: `OgXYkQyOtP7Zl5uCbKd8`
-  - Secret: `3kh0hW7pIAH3wW9DwUGrP8Y5RW9Ywv`
-
-Commands:
-- `seed:apikey` - Creates API keys
-- `remove:apikey` - Removes all API keys
-
-Implementation:
-
-```typescript
-@Injectable()
-export class MigrationApiKeySeed {
-    constructor(private readonly apiKeyService: ApiKeyService) {}
-
-    @Command({
-        command: 'seed:apikey',
-        describe: 'seeds apikeys',
-    })
-    async seeds(): Promise<void> {
-        try {
-            const apiKeyDefaultKey = 'v8VB0yY887lMpTA2VJMV';
-            const apiKeyDefaultSecret = 'zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg';
-            await this.apiKeyService.createRaw({
-                name: 'Api Key Default Migration',
-                type: ENUM_API_KEY_TYPE.DEFAULT,
-                key: apiKeyDefaultKey,
-                secret: apiKeyDefaultSecret,
-            });
-
-            // Additional API key for system use
-            const apiKeyPrivateKey = 'OgXYkQyOtP7Zl5uCbKd8';
-            const apiKeyPrivateSecret = '3kh0hW7pIAH3wW9DwUGrP8Y5RW9Ywv';
-            await this.apiKeyService.createRaw({
-                name: 'Api Key System Migration',
-                type: ENUM_API_KEY_TYPE.SYSTEM,
-                key: apiKeyPrivateKey,
-                secret: apiKeyPrivateSecret,
-            });
-        } catch (err: any) {
-            throw new Error(err.message);
-        }
-    }
-    
-    @Command({
-        command: 'remove:apikey',
-        describe: 'remove apikeys',
-    })
-    async remove(): Promise<void> {
-        try {
-            await this.apiKeyService.deleteMany({});
-        } catch (err: any) {
-            throw new Error(err.message);
-        }
-    }
-}
-```
-
-### Country Seed
-
-**File**: `src/migration/seeds/migration.country.seed.ts`
-
-Seeds the database with country information. By default, it adds Indonesia with all its related data.
-
-Implementation:
-
-```typescript
-@Injectable()
-export class MigrationCountrySeed {
-    constructor(private readonly countryService: CountryService) {}
-
-    @Command({
-        command: 'seed:country',
-        describe: 'seed countries',
-    })
-    async seeds(): Promise<void> {
-        try {
-            const countries = [
-                {
-                    iso2: 'ID',
-                    iso3: 'IDN',
-                    name: 'Indonesia',
-                    dialCode: '+62',
-                    provinces: [
-                        // List of provinces for Indonesia
-                        { name: 'Aceh' },
-                        { name: 'Bali' },
-                        { name: 'Banten' },
-                        // Additional provinces...
-                    ],
-                    cities: [
-                        // List of cities for Indonesia
-                        { name: 'Jakarta', province: 'DKI Jakarta' },
-                        { name: 'Surabaya', province: 'Jawa Timur' },
-                        { name: 'Bandung', province: 'Jawa Barat' },
-                        // Additional cities...
-                    ],
-                    languages: [
-                        // List of languages for Indonesia
-                        { name: 'Indonesian (Bahasa Indonesia)', iso2: 'id' },
-                        { name: 'Javanese', iso2: 'jv' },
-                        { name: 'Sundanese', iso2: 'su' },
-                        // Additional languages...
-                    ],
-                    timezones: [
-                        // List of timezones for Indonesia
-                        { name: 'Western Indonesian Time', offset: '+07:00' },
-                        { name: 'Central Indonesian Time', offset: '+08:00' },
-                        { name: 'Eastern Indonesian Time', offset: '+09:00' },
-                    ],
-                    currencies: [
-                        // Currency for Indonesia
-                        { name: 'Indonesian Rupiah', symbol: 'Rp', iso: 'IDR' },
-                    ],
-                },
-                // Additional countries can be added here
-            ];
-            
-            await Promise.all(
-                countries.map(async country => {
-                    await this.countryService.create(country);
-                })
-            );
-        } catch (err: any) {
-            throw new Error(err.message);
-        }
-    }
-
-    @Command({
-        command: 'remove:country',
-        describe: 'remove countries',
-    })
-    async remove(): Promise<void> {
-        try {
-            await this.countryService.deleteMany({});
-        } catch (err: any) {
-            throw new Error(err.message);
-        }
-    }
-}
-```
-
-Commands:
-- `seed:country` - Adds countries
-- `remove:country` - Removes all countries
-
-### Role Seed
-
-**File**: `src/migration/seeds/migration.role.seed.ts`
-
-Seeds the database with predefined roles and their permissions:
-
-- `superadmin` - Has all system permissions
-- `admin` - Has administrative permissions
-- `individual` - Standard user role
-- `premium` - Premium user role
-- `business` - Business user role
-
-Implementation:
-
-```typescript
-@Injectable()
-export class MigrationRoleSeed {
-    constructor(private readonly roleService: RoleService) {}
-
-    @Command({
-        command: 'seed:role',
-        describe: 'seed roles',
-    })
-    async seeds(): Promise<void> {
-        const data: RoleCreateRequestDto[] = [
-            {
-                name: 'superadmin',
-                type: ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN,
-                permissions: [],
-            },
-            {
-                name: 'admin',
-                type: ENUM_POLICY_ROLE_TYPE.ADMIN,
-                permissions: Object.values(ENUM_POLICY_SUBJECT)
-                    .filter(e => e !== ENUM_POLICY_SUBJECT.API_KEY)
-                    .map(val => ({
-                        subject: val,
-                        action: [ENUM_POLICY_ACTION.MANAGE],
-                    })),
-            },
-            {
-                name: 'individual',
-                type: ENUM_POLICY_ROLE_TYPE.USER,
-                permissions: [],
-            },
-            // Additional roles...
-        ];
-
-        try {
-            await this.roleService.createMany(data);
-        } catch (err: any) {
-            throw new Error(err);
-        }
-    }
-
-    // Remove method...
-}
-```
-
-Commands:
-- `seed:role` - Creates roles
-- `remove:role` - Removes all roles
-
-### User Seed
-
-**File**: `src/migration/seeds/migration.user.seed.ts`
-
-Seeds the database with default users for each role type. It also creates corresponding password history and activity records for each user.
-
-Implementation:
-
-```typescript
-@Injectable()
-export class MigrationUserSeed {
-    constructor(
-        private readonly authService: AuthService,
-        private readonly userService: UserService,
-        private readonly roleService: RoleService,
-        private readonly countryService: CountryService,
-        private readonly passwordHistoryService: PasswordHistoryService,
-        private readonly activityService: ActivityService,
-        private readonly messageService: MessageService,
-        private readonly sessionService: SessionService
-    ) {}
-
-    @Command({
-        command: 'seed:user',
-        describe: 'seed users',
-    })
-    async seeds(): Promise<void> {
-        const password = 'aaAA@123';
-        const passwordHash = this.authService.createPassword(password);
-        const superAdminRole: RoleDoc =
-            await this.roleService.findOneByName('superadmin');
-        const adminRole: RoleDoc =
-            await this.roleService.findOneByName('admin');
-
-        const country: CountryDoc =
-            await this.countryService.findOneByAlpha2('ID');
-
-        // Get other roles by name...
-
-        try {
-            // Create all users in parallel
-            const [superAdmin, admin, individual, premium, business] =
-                await Promise.all([
-                    this.userService.create(
-                        {
-                            role: superAdminRole._id,
-                            name: 'superadmin',
-                            email: 'superadmin@mail.com',
-                            // Additional user properties...
-                        },
-                        passwordHash
-                    ),
-                    // Additional user creations...
-                ]);
-
-            // Create password histories for each user
-            await Promise.all([
-                this.passwordHistoryService.create({
-                    user: superAdmin._id,
-                    password: passwordHash,
-                    type: ENUM_PASSWORD_HISTORY_TYPE.CREATED,
-                }),
-                // Additional password histories...
-            ]);
-
-            // Create activities for each user
-            await Promise.all([
-                this.activityService.create({
-                    user: superAdmin._id,
-                    message: this.messageService.get('activity.createUser', {
-                        properties: {
-                            email: superAdmin.email,
-                        },
-                    }),
-                }),
-                // Additional activities...
-            ]);
-        } catch (err: any) {
-            throw new Error(err.message);
-        }
-    }
-
-    // Remove method...
-}
-```
-
-Commands:
-- `seed:user` - Creates users
-- `remove:user` - Removes all users, activities, password histories, and sessions
-
-Default seeded users include:
-- `superadmin@mail.com`
-- `admin@mail.com`
-- `individual@mail.com`
-- `premium@mail.com`
-- `business@mail.com`
-
-All with the default password: `aaAA@123`
-
-## Template Seed
-
-**File**: `src/migration/seeds/migration.template.seed.ts`
-
-Unlike other seed modules that populate database records, the Template Seed module is responsible for importing and registering email templates used by the application's notification system. These templates are registered with AWS Simple Email Service (SES) for email delivery.
-
-### Purpose
-Email templates are essential for consistent communication with users across various application events such as registration, password resets, and account verifications. Using AWS SES templates allows for standardized and scalable email communications with proper formatting and branding.
-
-### Supported Templates
-The Template Seed imports templates for:
-
-- Welcome emails
-- Account creation notifications
-- Password change notifications
-- Temporary password issuance
-- Reset password instructions
-- Email verification
-- Email verification confirmation
-- Mobile number verification
-- Mobile verification confirmation
-
-Each template is stored as a Handlebars (HBS) file in the `/src/templates/` directory and processed by the EmailService which registers them with AWS SES.
-
-### Implementation
-The MigrationTemplateSeed uses the EmailService to import templates:
-
-```typescript
-@Injectable()
-export class MigrationTemplateSeed {
-    constructor(private readonly emailService: EmailService) {}
-
-    @Command({
-        command: 'migrate:template',
-        describe: 'migrate templates',
-    })
-    async migrate(): Promise<void> {
-        try {
-            await this.emailService.importWelcome();
-        } catch (err: any) {
-            throw new Error(err);
-        }
-
-        try {
-            await this.emailService.importCreate();
-        } catch (err: any) {
-            throw new Error(err);
-        }
-
-        // Additional template imports for:
-        // - Change password
-        // - Temporary password
-        // - Reset password
-        // - Verification
-        // - Email verified
-        // - Mobile number verified
-    }
-
-    @Command({
-        command: 'rollback:template',
-        describe: 'rollback templates',
-    })
-    async rollback(): Promise<void> {
-        try {
-            await this.emailService.deleteWelcome();
-        } catch (err: any) {
-            throw new Error(err);
-        }
-
-        // Additional template deletion methods
-        // for all template types
-    }
-}
-```
-
-Behind the scenes, the EmailService reads the template file and uses the AWS SES service to create or update the template in your AWS account:
-
-```typescript
-async importWelcome(): Promise<boolean> {
-    try {
-        const templatePath = join(
-            process.cwd(),
-            'src/templates/welcome.template.hbs'
-        );
-
-        await this.awsSESService.createTemplate({
-            name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
-            subject: `Welcome to ${this.homeName}`,
-            htmlBody: readFileSync(templatePath, 'utf8'),
-        });
-
-        return true;
-    } catch (err: unknown) {
-        this.logger.error(err);
-        return false;
-    }
-}
-```
-
-### Commands
-- `migrate:template` - Imports all email templates to AWS SES
-- `rollback:template` - Removes all email templates from AWS SES
-
-### Usage
-Templates are processed separately from database seeds and can be managed independently:
-
+**How to Generate Prisma Client:**
 ```bash
-# Import all templates to AWS SES
-yarn migrate:template
-
-# Remove all templates from AWS SES
-yarn rollback:template
+yarn db:generate
 ```
 
-## Running Migrations
-
-The project includes npm scripts to simplify migration operations:
-
-```bash
-# Run all data migrations
-yarn migrate:seed
-
-# Run migrations in reverse (clean up the database)
-yarn migrate:remove
-
-# Only migrate email templates
-yarn migrate:template
-
-# Remove email templates
-yarn rollback:template
-
-# Complete reset and rebuild of the database
-yarn migrate:fresh
-```
-
-These commands are defined in the `package.json` file:
-
-```json
-"scripts": {
-    "migrate:fresh": "yarn migrate:remove && yarn migrate:seed",
-    "migrate:seed": "nestjs-command seed:country && nestjs-command seed:apikey && nestjs-command seed:role && nestjs-command seed:user",
-    "migrate:remove": "nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apikey  && nestjs-command remove:role",
-    "migrate:template": "nestjs-command migrate:template",
-    "rollback:template": "nestjs-command rollback:template"
-}
-```
-
-Note that the scripts handle the ordering of operations automatically. For example, the `migrate:seed` script ensures that countries are seeded before users since users depend on countries being available in the database.
+This command will read your Prisma schema and generate the client code in `node_modules/@prisma/client`. The generated client is required for your application to interact with the database using Prisma.
 
 
-## Creating Custom Seeds
+## Seeding
 
-To create a custom seed module:
+Seeding in this project is handled using [Commander.js](https://nest-commander.jaymcdoniel.dev/). All seed commands are implemented in `src/migration/seeds.*`.
 
-1. Create a new file in `src/migration/seeds/` with a meaningful name like `migration.your-entity.seed.ts`
-2. Implement the seed class with `@Injectable()` decorator
-3. Inject required services in the constructor
-4. Add `@Command()` methods for seed and remove operations
-5. Register your seed class in `src/migration/migration.module.ts`
-6. Update the npm scripts in `package.json` to include your new commands
+### Database Seeds
 
-Example of a custom seed:
 
-```typescript
-import { Command } from 'nestjs-command';
-import { Injectable } from '@nestjs/common';
-import { YourService } from '@modules/your-module/services/your.service';
+This project provides ready-to-use seed scripts to help you quickly initialize or remove data for development and testing. Database seeding is used to populate the database with initial or test data, making development and testing easier.
 
-@Injectable()
-export class MigrationYourSeed {
-    constructor(private readonly yourService: YourService) {}
+**Seed Data Location:**
+- All seed data is stored in `src/migration/data/*`.
 
-    @Command({
-        command: 'seed:your-command',
-        describe: 'seeds your data',
-    })
-    async seeds(): Promise<void> {
-        try {
-            const data = [
-                // Your data here
-            ];
-            
-            await this.yourService.createMany(data);
-        } catch (err: any) {
-            throw new Error(err.message);
-        }
-        
-        return;
-    }
+**How to Run All Seeds:**
+- `yarn migration:seed` — runs all seed commands to populate initial data.
+- `yarn migration:remove` — removes all seeded data from the database.
 
-    @Command({
-        command: 'remove:your-command',
-        describe: 'remove your data',
-    })
-    async remove(): Promise<void> {
-        try {
-            await this.yourService.deleteMany({});
-        } catch (err: any) {
-            throw new Error(err.message);
-        }
-        
-        return;
-    }
-}
-```
+**How to Seed/Remove a Specific Module:**
+Run the command:
+   - Seed: `yarn migration {module} --type seed`
+   - Remove: `yarn migration {module} --type remove`
 
-Then add your new seed to the `MigrationModule`:
+**Available Types:**
+- `seed` (add data)
+- `remove` (delete data)
 
-```typescript
-@Module({
-    // ...imports
-    providers: [
-        // ...existing seeds
-        MigrationYourSeed,
-    ],
-})
-export class MigrationModule {}
-```
+**Available Modules:**
 
-Finally, update the npm scripts in `package.json` to include your new commands:
+- `apiKey`: Inserts default and system API keys for authentication and service access.
+- `country`: Inserts country data (name, codes, phone code, continent, timezone).
+- `featureFlag`: Inserts feature flags to enable/disable features (e.g., login methods, sign up, change password).
+- `role`: Inserts user roles (superadmin, admin, user) with abilities and permissions.
+- `termPolicy`: Inserts term policy documents (cookie, marketing, privacy, terms of service) with version and content.
+- `user`: Inserts initial user accounts (Super Admin, Admin, User) with country, role, and credentials.
 
-```json
-"scripts": {
-    "migrate:seed": "nestjs-command seed:country && nestjs-command seed:apikey && nestjs-command seed:role && nestjs-command seed:user && nestjs-command seed:your-command",
-    "migrate:remove": "nestjs-command remove:user && nestjs-command remove:country && nestjs-command remove:apikey && nestjs-command remove:role && nestjs-command remove:your-command",
-}
-```
 
-### Testing Seeds
+### Template Seeds
 
-Before committing your new seed, test it with:
+> ⚠️ Note: Template seeding is ongoing and only supports the `email` module for now.
 
-```bash
-# Test seeding the data
-yarn nestjs-command seed:your-command
+Template seeding uses the **same script and commands as Database Seeds**, but is specifically for email templates.
 
-# Test removal
-yarn nestjs-command remove:your-command
-```
+Every time you run the email template seed, the templates will be inserted into AWS SES automatically.
+
+**How to Run Template Seeds:**
+- Seed: `yarn migration email --type seed`
+- Remove: `yarn migration email --type remove`
+
+**Available Types:**
+- `seed` (add email template data)
+- `remove` (delete email template data)
+
+
+## Database Tools
+
+### **Prisma ORM**
+
+This project uses **[Prisma][ref-prisma] v6.19.x** as the primary database toolkit. Prisma is not just an ORM - it's a complete database toolkit that provides the foundation for implementing clean architecture patterns.
+
+### **Why Prisma for Repository Design Pattern?**
+
+Prisma perfectly enables this project's **Repository Design Pattern** implementation:
+
+- **Type-Safe Repository Layer**: Auto-generated TypeScript types ensure compile-time validation throughout repositories
+- **Clean Architecture**: PrismaClient provides foundation for clean separation between database and business logic  
+- **Easy Implementation**: Consistent query API and transaction support simplify repository development
+- **Database Agnostic**: Switch between MongoDB, PostgreSQL, MySQL, SQLite without changing repository code
+
+### Database Flexibility & Project-Specific Adjustments
+
+With Prisma and the Repository Pattern, switching databases is straightforward. For example, to move from MongoDB to PostgreSQL, update the datasource configuration and regenerate the Prisma Client. Repository and business logic code do not need changes.
+
+
+In this project, some adjustments are needed:
+- `DatabaseService`: May require updates for database-specific features (e.g., connection management, health checks, logging) when switching from MongoDB to PostgreSQL.
+- `DatabaseUtil`: Contains utilities for MongoDB-specific needs (such as ObjectID handling and data conversion) and will need to be updated or replaced with PostgreSQL-specific utilities if you switch databases.
+
+For details on switching databases, see: [Prisma: Switching databases](https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases)
+
+
 
 <!-- REFERENCES -->
 

@@ -30,7 +30,6 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
   - [Objective](#objective)
   - [Features](#features)
   - [Installation](#installation)
-  - [Migration](#migration)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
@@ -141,15 +140,6 @@ For more information see [package.json][ref-package-json]
 ## Installation
 
 For detailed installation instructions (both default and Docker-based), please refer to the [Installation](docs/installation.md).
-
-## Migration
-
-The project includes a migration and seeder system to populate the database with initial data using `commander`. Migration functions include:
-
-- Seeding default API keys, countries, roles, users, term policies, dan feature flags.
-- Managing email templates for the notification system
-
-For complete documentation and instructions on using migrations, see the [Migration](docs/database.md).
 
 ## License
 

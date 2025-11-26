@@ -10,7 +10,6 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
 
 - [Environment Configuration](#environment-configuration)
 - [Overview](#overview)
-- [Getting Started](#getting-started)
 - [Environment Validation](#environment-validation)
 - [Example Configuration](#example-configuration)
 - [Environment Variables](#environment-variables)
@@ -26,25 +25,6 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
   - [AWS Settings](#aws-settings)
   - [Redis Settings](#redis-settings)
   - [Debug Settings](#debug-settings)
-
-
-## Getting Started
-
-To set up your environment configuration:
-
-1. **Copy the example file:**
-   ```bash
-   cp .env.example .env
-   ```
-
-2. **Update the values** in your `.env` file according to your environment
-
-3. **Generate JWT keys** (required for authentication):
-   ```bash
-   yarn generate:keys --direct-insert
-   ```
-
-> **Note**: The application validates all environment variables on startup using `AppEnvDto`. If any required variables are missing or invalid, the application will not start and will show validation errors.
 
 ## Environment Validation
 

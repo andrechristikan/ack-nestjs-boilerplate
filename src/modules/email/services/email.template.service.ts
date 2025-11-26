@@ -43,12 +43,18 @@ export class EmailTemplateService implements IEmailTemplateService {
 
     /**
      * Get change password email template from AWS SES
-     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput | null>} Template data from AWS SES
      */
-    async getChangePassword(): Promise<GetTemplateCommandOutput> {
-        return this.awsSESService.getTemplate({
-            name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
-        });
+    async getChangePassword(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            return this.awsSESService.getTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
+            });
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return null;
+        }
     }
 
     /**
@@ -96,12 +102,18 @@ export class EmailTemplateService implements IEmailTemplateService {
 
     /**
      * Get welcome email template from AWS SES
-     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput | null>} Template data from AWS SES
      */
-    async getWelcome(): Promise<GetTemplateCommandOutput> {
-        return this.awsSESService.getTemplate({
-            name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
-        });
+    async getWelcome(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            return this.awsSESService.getTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.WELCOME,
+            });
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return null;
+        }
     }
 
     /**
@@ -149,12 +161,18 @@ export class EmailTemplateService implements IEmailTemplateService {
 
     /**
      * Get create by admin email template from AWS SES
-     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput | null>} Template data from AWS SES
      */
-    async getCreateByAdmin(): Promise<GetTemplateCommandOutput> {
-        return this.awsSESService.getTemplate({
-            name: ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN,
-        });
+    async getCreateByAdmin(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            return this.awsSESService.getTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN,
+            });
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return null;
+        }
     }
 
     /**
@@ -202,19 +220,17 @@ export class EmailTemplateService implements IEmailTemplateService {
 
     /**
      * Get temporary password email template from AWS SES
-     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput | null>} Template data from AWS SES
      */
-    async getTempPassword(): Promise<GetTemplateCommandOutput> {
+    async getTempPassword(): Promise<GetTemplateCommandOutput | null> {
         try {
-            const template = await this.awsSESService.getTemplate({
+            return this.awsSESService.getTemplate({
                 name: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
             });
-
-            return template;
         } catch (err: unknown) {
             this.logger.error(err);
 
-            return;
+            return null;
         }
     }
 
@@ -263,12 +279,18 @@ export class EmailTemplateService implements IEmailTemplateService {
 
     /**
      * Get forgot password email template from AWS SES
-     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput | null>} Template data from AWS SES
      */
-    async getForgotPassword(): Promise<GetTemplateCommandOutput> {
-        return this.awsSESService.getTemplate({
-            name: ENUM_SEND_EMAIL_PROCESS.FORGOT_PASSWORD,
-        });
+    async getForgotPassword(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            return this.awsSESService.getTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.FORGOT_PASSWORD,
+            });
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return null;
+        }
     }
 
     /**
@@ -316,12 +338,18 @@ export class EmailTemplateService implements IEmailTemplateService {
 
     /**
      * Get email verification template from AWS SES
-     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput | null>} Template data from AWS SES
      */
-    async getVerification(): Promise<GetTemplateCommandOutput> {
-        return this.awsSESService.getTemplate({
-            name: ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
-        });
+    async getVerification(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            return this.awsSESService.getTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+            });
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return null;
+        }
     }
 
     /**
@@ -369,12 +397,18 @@ export class EmailTemplateService implements IEmailTemplateService {
 
     /**
      * Get email verified confirmation template from AWS SES
-     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput | null>} Template data from AWS SES
      */
-    async getEmailVerified(): Promise<GetTemplateCommandOutput> {
-        return this.awsSESService.getTemplate({
-            name: ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED,
-        });
+    async getEmailVerified(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            return this.awsSESService.getTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED,
+            });
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return null;
+        }
     }
 
     /**
@@ -422,12 +456,18 @@ export class EmailTemplateService implements IEmailTemplateService {
 
     /**
      * Get mobile number verified confirmation template from AWS SES
-     * @returns {Promise<GetTemplateCommandOutput>} Template data from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput | null>} Template data from AWS SES
      */
-    async getMobileNumberVerified(): Promise<GetTemplateCommandOutput> {
-        return this.awsSESService.getTemplate({
-            name: ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED,
-        });
+    async getMobileNumberVerified(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            return this.awsSESService.getTemplate({
+                name: ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED,
+            });
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return null;
+        }
     }
 
     /**

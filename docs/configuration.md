@@ -9,33 +9,31 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
 This documentation explains the features and usage of:
 - **Config Module**: Located at `src/configs`
 - **Interface Definitions**: Type-safe configuration interfaces
-- **Environment Integration**: How environment variables map to configuration. For detailed environment variable configuration and validation, see [environment.md](environment.md).
+- **Environment Integration**: How environment variables map to configuration. For detailed environment variable configuration and validation, see [Environment Documentation](environment.md).
 
 # Table of Contents
 
-- [Configuration](#configuration)
 - [Overview](#overview)
-- [Configuration Structure](#configuration-structure)
-  - [App Configuration](#app-configuration)
-  - [Auth Configuration](#auth-configuration)
-  - [Database Configuration](#database-configuration)
-  - [AWS Configuration](#aws-configuration)
-  - [Logger Configuration](#logger-configuration)
-  - [Request Configuration](#request-configuration)
-  - [Redis Configuration](#redis-configuration)
-  - [User Configuration](#user-configuration)
-  - [Documentation Configuration](#documentation-configuration)
-  - [Message Configuration](#message-configuration)
-  - [Email Configuration](#email-configuration)
-  - [Verification Configuration](#verification-configuration)
-  - [Forgot Password Configuration](#forgot-password-configuration)
-  - [Home Configuration](#home-configuration)
-  - [Session Configuration](#session-configuration)
-  - [Term Policy Configuration](#term-policy-configuration)
-  - [Feature Flag Configuration](#feature-flag-configuration)
-  - [Response Configuration](#response-configuration)
+- [Configuration Principles](#configuration-principles)
+- [App Configuration](#app-configuration)
+- [Auth Configuration](#auth-configuration)
+- [Database Configuration](#database-configuration)
+- [AWS Configuration](#aws-configuration)
+- [Logger Configuration](#logger-configuration)
+- [Request Configuration](#request-configuration)
+- [Redis Configuration](#redis-configuration)
+- [User Configuration](#user-configuration)
+- [Documentation Configuration](#documentation-configuration)
+- [Message Configuration](#message-configuration)
+- [Email Configuration](#email-configuration)
+- [Verification Configuration](#verification-configuration)
+- [Forgot Password Configuration](#forgot-password-configuration)
+- [Home Configuration](#home-configuration)
+- [Session Configuration](#session-configuration)
+- [Term Policy Configuration](#term-policy-configuration)
+- [Feature Flag Configuration](#feature-flag-configuration)
+- [Response Configuration](#response-configuration)
 - [Conclusion](#conclusion)
-
 
 ## Configuration Structure
 
@@ -68,7 +66,7 @@ export class CommonModule {}
 
 This configuration handles the core application settings including environment details, versioning, and server configuration.
 
-> **Environment Variables**: See [environment.md](environment.md) for detailed environment variable configuration.
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -134,7 +132,7 @@ urlVersion: {
 
 This configuration manages JWT authentication settings including token configuration, password policies, and social authentication.
 
-> **Environment Variables**: See [environment.md](environment.md) for detailed environment variable configuration.
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -211,7 +209,7 @@ xApiKey: {
 
 This configuration manages database connection settings for MongoDB.
 
-> **Environment Variables**: See [environment.md](environment.md) for detailed environment variable configuration.
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -232,7 +230,7 @@ debug: boolean                  // Enable/disable database query logging
 
 This configuration handles AWS service integration including S3 and SES services.
 
-> **Environment Variables**: See [environment.md](environment.md) for detailed environment variable configuration.
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -278,7 +276,7 @@ ses: {
 
 This configuration manages logging settings using Pino logger with customizable log levels and formatting.
 
-> **Environment Variables**: See [environment.md](environment.md) for detailed environment variable configuration.
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -327,7 +325,7 @@ sentry: {
 
 This configuration handles HTTP request settings including body size limits, CORS, and rate limiting.
 
-> **Environment Variables**: See [environment.md](environment.md) for detailed environment variable configuration.
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -381,7 +379,7 @@ throttle: {
 
 This configuration manages Redis connection settings for caching and queue operations.
 
-> **Environment Variables**: See [environment.md](environment.md) for detailed environment variable configuration.
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -433,7 +431,7 @@ uploadPhotoProfilePath: string  // Path template for user profile photo uploads
 
 This configuration manages API documentation settings for Swagger/OpenAPI.
 
-> **Environment Variables**: See [environment.md](environment.md) for detailed environment variable configuration.
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -459,7 +457,7 @@ prefix: string                  // URL prefix for API documentation (default: '/
 
 This configuration handles application messaging and internationalization settings.
 
-> **Environment Variables**: See [environment.md](environment.md) for detailed environment variable configuration.
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -583,7 +581,7 @@ reference: {
 
 This configuration handles home page and organization information.
 
-> **Environment Variables**: See [environment.md](environment.md) for detailed environment variable configuration.
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 

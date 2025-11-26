@@ -2,27 +2,27 @@ import { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 
 export interface IEmailTemplateService {
     importChangePassword(): Promise<boolean>;
-    getChangePassword(): Promise<GetTemplateCommandOutput>;
+    getChangePassword(): Promise<GetTemplateCommandOutput | null>;
     deleteChangePassword(): Promise<boolean>;
     importWelcome(): Promise<boolean>;
-    getWelcome(): Promise<GetTemplateCommandOutput>;
+    getWelcome(): Promise<GetTemplateCommandOutput | null>;
     deleteWelcome(): Promise<boolean>;
     importCreateByAdmin(): Promise<boolean>;
-    getCreateByAdmin(): Promise<GetTemplateCommandOutput>;
+    getCreateByAdmin(): Promise<GetTemplateCommandOutput | null>;
     deleteCreateByAdmin(): Promise<boolean>;
     importTempPassword(): Promise<boolean>;
-    getTempPassword(): Promise<GetTemplateCommandOutput>;
+    getTempPassword(): Promise<GetTemplateCommandOutput | null>;
     deleteTempPassword(): Promise<boolean>;
     importForgotPassword(): Promise<boolean>;
-    getForgotPassword(): Promise<GetTemplateCommandOutput>;
+    getForgotPassword(): Promise<GetTemplateCommandOutput | null>;
     deleteForgotPassword(): Promise<boolean>;
     importVerification(): Promise<boolean>;
-    getVerification(): Promise<GetTemplateCommandOutput>;
+    getVerification(): Promise<GetTemplateCommandOutput | null>;
     deleteVerification(): Promise<boolean>;
     importEmailVerified(): Promise<boolean>;
-    getEmailVerified(): Promise<GetTemplateCommandOutput>;
+    getEmailVerified(): Promise<GetTemplateCommandOutput | null>;
     deleteEmailVerified(): Promise<boolean>;
     importMobileNumberVerified(): Promise<boolean>;
-    getMobileNumberVerified(): Promise<GetTemplateCommandOutput>;
+    getMobileNumberVerified(): Promise<GetTemplateCommandOutput | null>;
     deleteMobileNumberVerified(): Promise<boolean>;
 }

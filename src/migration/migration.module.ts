@@ -8,13 +8,15 @@ import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-fla
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
+import { MigrationEmailSeed } from '@migration/seeds/migration.email.seed';
+import { EmailModule } from '@modules/email/email.module';
 
 /**
  * Migration module that provides database seeding functionality.
  * Contains seed providers for API keys, countries, roles, users, and feature flags.
  */
 @Module({
-    imports: [CommonModule, CountryModule, UserModule],
+    imports: [CommonModule, CountryModule, UserModule, EmailModule],
     providers: [
         MigrationApiKeySeed,
         MigrationCountrySeed,
@@ -22,6 +24,7 @@ import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
         MigrationRoleSeed,
         MigrationTermPolicySeed,
         MigrationUserSeed,
+        MigrationEmailSeed,
     ],
     exports: [],
 })
