@@ -216,7 +216,7 @@ export function PaginationQueryFilterEqualPipe<T>(
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationFilterEqualPipe implements PipeTransform {
-        constructor(@Inject(REQUEST) protected readonly request: IRequestApp) {}
+        constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
         /**
          * Transforms string value into pagination filter object with equality operator.
@@ -309,7 +309,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationFilterEqualPipe implements PipeTransform {
-        constructor(@Inject(REQUEST) protected readonly request: IRequestApp) {}
+        constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
         /**
          * Transforms string value into pagination filter object with not equal operator.
