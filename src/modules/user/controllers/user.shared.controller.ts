@@ -282,8 +282,7 @@ export class UserSharedController {
         });
     }
 
-    // TODO: VERIFIED MOBILE NUMBER REQUIRED
-    // WHICH PROVIDER ?
+    // TODO: verify number implementation, but which provider?
 
     @UserSharedClaimUsernameDoc()
     @Response('user.claimUsername')

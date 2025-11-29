@@ -1268,4 +1268,24 @@ export class UserRepository {
             },
         });
     }
+
+    async reachMaxPasswordAttempt(
+        userId: string,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                status: ENUM_USER_STATUS.inactive,
+                activityLogs: {
+                    create: {
+                        action: ENUM_ACTIVITY_LOG_ACTION.userReachMaxPasswordAttempt,
+                        ipAddress,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        createdBy: userId,
+                    },
+                },
+            },
+        });
+    }
 }

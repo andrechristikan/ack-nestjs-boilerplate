@@ -67,7 +67,7 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
 - [ ] Unit test
 - [ ] Integration Test
 - [ ] E2E Test
-- [ ] Stress Test and Load Test
+- [ ] Stress Test and Load Test For Benchmark
 
 ## Prerequisites
 
