@@ -1,4 +1,221 @@
-<!-- TODO: NEXT -->
+# Cache Documentation
+
+## Overview
+
+This application uses **Redis** as the cache storage backend to improve performance and reduce database load. The cache is implemented using a global module pattern, making it accessible throughout the application without repeated imports.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Stack](#stack)
+- [Why Keyv?](#why-keyv)
+- [Principles & Patterns](#principles--patterns)
+- [Architecture](#architecture)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Use Cases](#use-cases)
+
+## Stack
+
+- **Redis**: In-memory data store for cache storage
+- **@nestjs/cache-manager**: NestJS cache management library
+- **cache-manager**: Core caching library
+- **@keyv/redis**: Redis adapter for Keyv
+- **Keyv**: Universal key-value storage interface
+
+## Why Keyv?
+
+This application uses **cache-manager v6** which migrated to **Keyv** as the unified storage interface. We use `@keyv/redis` as the Redis adapter.
+
+## Principles & Patterns
+
+### DRY & Singleton Pattern
+
+- **Single Redis Connection**: Only ONE Redis connection created and shared across all services
+- **Single Configuration**: Defined once in `redis.config.ts`
+- **Reusable Providers**: `CacheMainProvider` and `SessionCacheProvider` share the same Redis client
+
+**Example:**
+
+```
+❌ Without DRY:
+UserService → Creates Redis connection 1
+ProductService → Creates Redis connection 2
+OrderService → Creates Redis connection 3
+
+✅ With DRY:
+RedisCacheModule → Creates ONE Redis connection
+All services → Inject and reuse the same connection
+```
+
+### Global Module Pattern
+
+`RedisCacheModule` and `CacheMainModule` are marked as `@Global()`:
+- Providers automatically available everywhere
+- No need to import in feature modules
+
+## Architecture
+
+### Module Dependency Flow
+
+```
+CommonModule
+    ├── RedisCacheModule (Global)
+    │   └── Creates: RedisClientCachedProvider
+    │
+    ├── CacheMainModule (Global)
+    │   └── Uses: RedisClientCachedProvider
+    │   └── Provides: CacheMainProvider
+    │
+    └── SessionModule
+        └── Uses: RedisClientCachedProvider
+        └── Provides: SessionCacheProvider (Scoped)
+```
+
+### RedisCacheModule
+
+**Purpose:** Provides Redis client instance
+
+**Provider:** `RedisClientCachedProvider`
+
+**Scope:** Global (available everywhere)
+
+**Configuration:**
+```typescript
+createKeyv(
+    { url: 'redis://localhost:6379' },
+    {
+        connectionTimeout: 30000,
+        namespace: 'cache',
+        useUnlink: true,
+        keyPrefixSeparator: ':'
+    }
+)
+```
+
+### CacheMainModule
+
+**Purpose:** Provides cache manager for application-wide caching
+
+**Provider:** `CacheMainProvider`
+
+**Scope:** Global (available everywhere)
+
+**Depends on:** `RedisClientCachedProvider`
+
+**Usage:**
+```typescript
+export class UserService {
+    constructor(
+        @Inject(CacheMainProvider) readonly cache: Cache,
+    ) {}
+}
+```
+
+### SessionModule
+
+**Purpose:** Provides cache for session management only
+
+**Provider:** `SessionCacheProvider`
+
+**Scope:** Module-scoped (only within SessionModule)
+
+**Depends on:** `RedisClientCachedProvider` (shares same Redis connection)
+
+**Usage:**
+```typescript
+export class SessionService {
+    constructor(
+        @Inject(SessionCacheProvider) private cache: Cache,
+    ) {}
+}
+```
+
+**Why Scoped?**
+- Sessions are domain-specific
+- Prevents accidental usage outside session context
+- Still uses shared Redis connection (resource efficient)
+
+## Configuration
+
+### Redis Configuration
+
+**File:** `src/configs/redis.config.ts`
+
+```typescript
+{
+    cache: {
+        url: process.env.CACHE_REDIS_URL ?? 'redis://localhost:6379',
+        namespace: 'cache',
+        ttlInMs: 5 * 60 * 1000  // Default TTL: 5 minutes
+    }
+}
+```
+
+**Default TTL:** Cache entries expire after **5 minutes** (300,000 milliseconds) by default. This can be overridden per cache operation.
+
+### Module Import Order
+
+**File:** `src/common/common.module.ts`
+
+```typescript
+@Module({
+    imports: [
+        ConfigModule.forRoot(),
+        RedisCacheModule.forRoot(),    // 1. First
+        CacheMainModule.forRoot(),      // 2. Second
+        SessionModule,                  // 3. Then feature modules
+    ]
+})
+export class CommonModule {}
+```
+
+**Why this order?** `CacheMainModule` depends on `RedisClientCachedProvider` from `RedisCacheModule`.
+
+## Usage
+
+### Injecting Cache Providers
+
+**Global cache:**
+```typescript
+import { Inject } from '@nestjs/common';
+import { Cache } from '@nestjs/cache-manager';
+import { CacheMainProvider } from '@common/cache/constants/cache.constant';
+
+@Injectable()
+export class UserService {
+    constructor(
+        @Inject(CacheMainProvider) readonly cache: Cache,
+    ) {}
+}
+```
+
+**Session cache:**
+```typescript
+import { Inject } from '@nestjs/common';
+import { Cache } from '@nestjs/cache-manager';
+import { SessionCacheProvider } from '@modules/session/constants/session.constant';
+
+@Injectable()
+export class SessionService {
+    constructor(
+        @Inject(SessionCacheProvider) private cache: Cache,
+    ) {}
+}
+```
+
+### Cache Operations
+
+For cache operations (set, get, delete, etc.), see:
+- [NestJS Caching][ref-nestjs-caching]
+- [cache-manager][ref-cache-manager]
+
+## Use Cases
+
+- **Response Cache:** See [Response Documentation][ref-doc-response]
+- **API Key Authentication:** See [Authentication Documentation][ref-doc-authentication] (section: `API Key Authentication`)
+- **Feature Flag:** See [Feature Flag Documentation][ref-doc-feature-flag]
+- **Session Management:** See [Authentication Documentation][ref-doc-authentication] (section: `Session Management`)
 
 <!-- REFERENCES -->
 
@@ -40,6 +257,8 @@
 <!-- THIRD PARTY -->
 
 [ref-nestjs]: http://nestjs.com
+[ref-nestjs-caching]: https://docs.nestjs.com/techniques/caching
+[ref-cache-manager]: https://www.npmjs.com/package/cache-manager
 [ref-prisma]: https://www.prisma.io
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-redis]: https://redis.io
@@ -76,7 +295,7 @@
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response-structure]: docs/response-structure.md
+[ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-service-side-pagination]: docs/service-side-pagination.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md

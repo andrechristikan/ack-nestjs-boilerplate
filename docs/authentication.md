@@ -1,4 +1,4 @@
-# Authentication
+# Authentication Documentation
 
 ## Overview
 
@@ -13,7 +13,7 @@ This document provides a comprehensive overview of authentication and session ma
 
 Configuration for tokens, sessions, password, social providers, and API keys is managed di `src/configs/auth.config.ts`.
 
-# Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Password](#password)
@@ -1618,7 +1618,7 @@ sequenceDiagram
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response-structure]: docs/response-structure.md
+[ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-service-side-pagination]: docs/service-side-pagination.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md

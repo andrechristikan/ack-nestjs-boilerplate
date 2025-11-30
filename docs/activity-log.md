@@ -1,4 +1,4 @@
-# Activity Log
+# Activity Log Documentation
 
 > `Future Plan:` Will support decorator-based logging for all endpoints (admin and user).
 
@@ -10,7 +10,7 @@ Activity Log is a system to record successful user activities in the application
 - Activity logs are **only recorded for successful requests**. Failed requests are not logged.
 - **Current Implementation:** Only admin endpoints use `@ActivityLog` decorator. All user endpoints handle logging manually in service/repository layer.
 
-# Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Types](#types)
@@ -317,7 +317,7 @@ metadata: {
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response-structure]: docs/response-structure.md
+[ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-service-side-pagination]: docs/service-side-pagination.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md

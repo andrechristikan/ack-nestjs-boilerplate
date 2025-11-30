@@ -1,4 +1,4 @@
-# Environment Configuration
+# Environment Documentation
 
 ## Overview
 
@@ -6,7 +6,7 @@ This document provides a comprehensive guide to configuring the ACK NestJS Boile
 
 All environment variables are validated using the `AppEnvDto` class to ensure required variables are present and properly formatted before the application starts.
 
-# Table of Contents
+## Table of Contents
 
 - [Environment Configuration](#environment-configuration)
 - [Overview](#overview)
@@ -553,7 +553,7 @@ SENTRY_DSN=
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response-structure]: docs/response-structure.md
+[ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-service-side-pagination]: docs/service-side-pagination.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md

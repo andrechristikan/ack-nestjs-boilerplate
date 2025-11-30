@@ -1,6 +1,4 @@
-# Database
-
-> Since version `8.0.0`, This project now uses **Prisma ORM** as the primary database toolkit, replacing the previous Mongoose ODM approach. Prisma provides type-safe database access, modern query builder, and automatic migrations.
+# Database Documentation
 
 Before working with the database, ensure you have completed the basic setup:
 
@@ -14,7 +12,7 @@ Before working with the database, ensure you have completed the basic setup:
 This documentation explains the database architecture and features in the ACK NestJS Boilerplate project:
 
 
-# Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
@@ -222,7 +220,7 @@ For details on switching databases, see: [Prisma: Switching databases](https://w
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response-structure]: docs/response-structure.md
+[ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-service-side-pagination]: docs/service-side-pagination.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md

@@ -1,10 +1,10 @@
-# Installation
+# Installation Documentation
 
 ## Overview
 
 This document provides step-by-step instructions for setting up the ACK NestJS Boilerplate on your development environment.
 
-# Table of Contents
+## Table of Contents
 
 - [Installation](#installation)
 - [Overview](#overview)
@@ -133,7 +133,7 @@ AUTH_JWT_REFRESH_TOKEN_JWKS_URI="https://your-domain.com/.well-known/refresh-jwk
 
 ### Generate Keys
 
-Since version `8.0.0`, this project uses **ES256** algorithm for Access Tokens and **ES512** for Refresh Tokens. You need to generate cryptographic key pairs for JWT authentication.
+This project uses **ES256** algorithm for Access Tokens and **ES512** for Refresh Tokens. You need to generate cryptographic key pairs for JWT authentication.
 
 #### Generate Key Pairs
 
@@ -504,7 +504,7 @@ To verify everything is working correctly:
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response-structure]: docs/response-structure.md
+[ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-service-side-pagination]: docs/service-side-pagination.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md

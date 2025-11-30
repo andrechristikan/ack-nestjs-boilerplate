@@ -1,4 +1,4 @@
-# Configuration
+# Configuration Documentation
 
 ## Overview
 
@@ -11,7 +11,7 @@ This documentation explains the features and usage of:
 - **Interface Definitions**: Type-safe configuration interfaces
 - **Environment Integration**: How environment variables map to configuration. For detailed environment variable configuration and validation, see [Environment Documentation](environment.md).
 
-# Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Configuration Principles](#configuration-principles)
@@ -743,7 +743,7 @@ cachePrefix: string             // Cache prefix for API response data
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response-structure]: docs/response-structure.md
+[ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-service-side-pagination]: docs/service-side-pagination.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
