@@ -4,6 +4,7 @@
 
 This application uses **Redis** as the cache storage backend to improve performance and reduce database load. The cache is implemented using a global module pattern, making it accessible throughout the application without repeated imports.
 
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -11,8 +12,16 @@ This application uses **Redis** as the cache storage backend to improve performa
 - [Why Keyv?](#why-keyv)
 - [Principles & Patterns](#principles--patterns)
 - [Architecture](#architecture)
+    - [Module Dependency Flow](#module-dependency-flow)
+    - [RedisCacheModule](#rediscachemodule)
+    - [CacheMainModule](#cachemainmodule)
+    - [SessionModule](#sessionmodule)
 - [Configuration](#configuration)
+    - [Redis Configuration](#redis-configuration)
+    - [Module Import Order](#module-import-order)
 - [Usage](#usage)
+    - [Injecting Cache Providers](#injecting-cache-providers)
+    - [Cache Operations](#cache-operations)
 - [Use Cases](#use-cases)
 
 ## Stack
@@ -290,7 +299,7 @@ For cache operations (set, get, delete, etc.), see:
 [ref-doc-feature-flag]: docs/feature-flag.md
 [ref-doc-handling-error]: docs/handling-error.md
 [ref-doc-installation]: docs/installation.md
-[ref-doc-internationalization]: docs/internationalization.md
+[ref-doc-message]: docs/message.md
 [ref-doc-logger]: docs/logger.md
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md

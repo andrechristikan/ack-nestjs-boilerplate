@@ -312,7 +312,7 @@ metadata: {
 [ref-doc-feature-flag]: docs/feature-flag.md
 [ref-doc-handling-error]: docs/handling-error.md
 [ref-doc-installation]: docs/installation.md
-[ref-doc-internationalization]: docs/internationalization.md
+[ref-doc-message]: docs/message.md
 [ref-doc-logger]: docs/logger.md
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md

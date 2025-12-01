@@ -165,5 +165,6 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
         response.setHeader('x-version', xVersion);
         response.setHeader('x-repo-version', xRepoVersion);
         response.setHeader('x-request-id', String(request.id));
+        response.setHeader('x-correlation-id', String(request.correlationId));
     }
 }

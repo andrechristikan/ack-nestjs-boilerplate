@@ -7,6 +7,7 @@ import { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 
 export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
+    correlationId: string;
     user?: T;
 
     __apiKey?: ApiKey;

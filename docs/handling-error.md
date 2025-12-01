@@ -1,3 +1,287 @@
+# Handling Error
+
+## Overview
+
+The error handling system in ACK NestJS Boilerplate provides a comprehensive way to handle exceptions throughout the application. It uses NestJS's exception filter mechanism to catch and transform all errors into standardized HTTP responses with proper formatting, internationalization support, and monitoring integration.
+
+**Prerequisites**: Before reading this documentation, please review:
+- [Response Structure][ref-doc-response]
+- [Request Validation][ref-doc-request-validation]
+- [Security and Middleware][ref-doc-security-and-middleware]
+- [Message System][ref-doc-message]
+
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Exception Filters](#exception-filters)
+  - [AppGeneralFilter](#appgeneralfilter)
+  - [AppHttpFilter](#apphttpfilter)
+  - [AppValidationFilter](#appvalidationfilter)
+  - [AppValidationImportFilter](#appvalidationimportfilter)
+- [Error Response Structure](#error-response-structure)
+- [Response Metadata](#response-metadata)
+- [Response Headers](#response-headers)
+- [Message Resolution](#message-resolution)
+- [Throwing Custom Errors](#throwing-custom-errors)
+- [Sentry Integration](#sentry-integration)
+- [Examples](#examples)
+  - [Custom Error with Properties](#custom-error-with-properties)
+  - [Standard HTTP Exception](#standard-http-exception)
+  - [Validation Error](#validation-error)
+
+## Exception Filters
+
+The boilerplate provides 4 specialized exception filters located in `src/app/filters/*`:
+
+### AppGeneralFilter
+
+Catches all unhandled exceptions that don't match other filters. Converts any unhandled error into a standardized `500 Internal Server Error` response.
+```typescript
+@Catch()
+export class AppGeneralFilter implements ExceptionFilter {
+  async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
+    // Catches everything not handled by other filters
+    // Always returns HTTP 500
+  }
+}
+```
+
+**Use case**: Fallback for unexpected errors (database crashes, unhandled promise rejections, etc.)
+
+### AppHttpFilter
+
+Handles all `HttpException` instances thrown by NestJS or your application code.
+```typescript
+@Catch(HttpException)
+export class AppHttpFilter implements ExceptionFilter {
+  async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
+    // Handles standard HTTP exceptions
+  }
+}
+```
+
+**Features**:
+- Path validation (redirects invalid paths to `/public/hello`)
+- Extracts custom error metadata from exception responses
+- Only sends errors with status ≥ 500 to Sentry
+
+### AppValidationFilter
+
+Handles `RequestValidationException` for request body, query parameters, and path parameters validation using [class-validator][ref-class-validator].
+```typescript
+@Catch(RequestValidationException)
+export class AppValidationFilter implements ExceptionFilter {
+  async catch(exception: RequestValidationException, host: ArgumentsHost): Promise<void> {
+    // Handles request validation errors
+  }
+}
+```
+
+See [Request Validation][ref-doc-request-validation] for more details.
+
+### AppValidationImportFilter
+
+Handles `FileImportException` specifically for Excel file import validation using [class-validator][ref-class-validator].
+```typescript
+@Catch(FileImportException)
+export class AppValidationImportFilter implements ExceptionFilter {
+  async catch(exception: FileImportException, host: ArgumentsHost): Promise<void> {
+    // Handles file import validation errors
+  }
+}
+```
+
+See [Request Validation][ref-doc-request-validation] for more details.
+
+
+## Error Response Structure
+
+All errors are formatted into `ResponseErrorDto`:
+```typescript
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "metadata": {
+    "language": "en",
+    "timestamp": 1660190937231,
+    "timezone": "Asia/Jakarta",
+    "path": "/api/v1/users",
+    "version": "1",
+    "repoVersion": "1.0.0"
+  },
+  "errors": [...], // Optional: validation errors
+  "data": {...}    // Optional: additional error context
+}
+```
+
+**Fields**:
+- `statusCode`: Custom status code (not HTTP status)
+- `message`: Localized error message
+- `metadata`: Request/response metadata (see [Response Metadata](#response-metadata))
+- `errors`: Validation error details (only for validation exceptions)
+- `data`: Additional error context (optional)
+
+## Response Metadata
+
+`ResponseMetadataDto` provides contextual information about the request/response:
+
+| Field | Description | Source |
+|-------|-------------|--------|
+| `language` | Response language | `request.__language` or config default |
+| `timestamp` | Unix timestamp | Generated from current date |
+| `timezone` | Server timezone | Generated from current date |
+| `path` | Request path | `request.path` |
+| `version` | API version | `request.__version` or config default |
+| `repoVersion` | Application version | Config `app.version` |
+
+**Custom metadata**: You can pass additional metadata through exception's `_metadata` property (see [Throwing Custom Errors](#throwing-custom-errors)).
+
+## Response Headers
+
+All exception filters automatically set these response headers:
+```
+x-custom-lang: en
+x-timestamp: 1660190937231
+x-timezone: Asia/Jakarta
+x-version: 1
+x-repo-version: 1.0.0
+```
+
+## Message Resolution
+
+The `message` field contains a message path that gets resolved by `MessageService` using [nestjs-i18n][ref-nestjs-i18n]. The service:
+
+1. Takes the message path (e.g., `user.error.statusInvalid`)
+2. Resolves it based on `x-custom-lang` header
+3. Interpolates any `messageProperties` if provided
+4. Returns the localized message string
+
+See [Message System][ref-doc-message] for more details.
+
+## Throwing Custom Errors
+
+Use NestJS built-in exceptions with custom properties:
+```typescript
+throw new BadRequestException({
+  statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
+  message: 'user.error.statusInvalid',
+  _metadata: {
+    customProperty: {
+      messageProperties: {
+        status: user.status.toLowerCase(),
+      },
+    },
+  },
+});
+```
+
+**Parameters**:
+- `statusCode`: Custom status code (not HTTP status)
+- `message`: Message path for i18n resolution
+- `_metadata.customProperty.messageProperties`: Variables for message interpolation
+- `_metadata`: Any additional metadata to merge with `ResponseMetadataDto`
+
+## Sentry Integration
+
+**AppGeneralFilter**: Sends all unhandled exceptions to Sentry
+
+**AppHttpFilter**: Sends only server errors (status ≥ 500) to Sentry
+
+Both filters include error handling for Sentry failures to prevent cascade errors.
+
+## Examples
+
+### Custom Error with Properties
+```typescript
+// Throwing exception
+throw new BadRequestException({
+  statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
+  message: 'user.error.statusInvalid',
+  _metadata: {
+    customProperty: {
+      messageProperties: {
+        status: user.status.toLowerCase(),
+      },
+    },
+  },
+});
+
+// Message
+{
+  "error": {
+    "statusInvalid": "User status {status} is invalid"
+  }
+}
+
+// Response
+{
+  "statusCode": 5100,
+  "message": "User status active is invalid",
+  "metadata": {
+    "language": "en",
+    "timestamp": 1660190937231,
+    "timezone": "Asia/Jakarta",
+    "path": "/api/v1/users/123",
+    "version": "1",
+    "repoVersion": "1.0.0"
+  }
+}
+```
+
+### Standard HTTP Exception
+```typescript
+// Throwing exception
+throw new NotFoundException();
+
+// Response
+{
+  "statusCode": 404,
+  "message": "Not Found",
+  "metadata": {
+    "language": "en",
+    "timestamp": 1660190937231,
+    "timezone": "Asia/Jakarta",
+    "path": "/api/v1/users/999",
+    "version": "1",
+    "repoVersion": "1.0.0"
+  }
+}
+```
+
+### Validation Error
+```typescript
+// Request body
+{
+  "email": "invalid-email",
+  "password": "123"
+}
+
+// Response
+{
+  "statusCode": 422,
+  "message": "Validation error",
+  "errors": [
+    {
+      "property": "email",
+      "message": "Email must be a valid email address"
+    },
+    {
+      "property": "password",
+      "message": "Password must be at least 8 characters"
+    }
+  ],
+  "metadata": {
+    "language": "en",
+    "timestamp": 1660190937231,
+    "timezone": "Asia/Jakarta",
+    "path": "/api/v1/users",
+    "version": "1",
+    "repoVersion": "1.0.0"
+  }
+}
+```
+
 <!-- REFERENCES -->
 
 <!-- BADGE LINKS -->
@@ -38,6 +322,9 @@
 <!-- THIRD PARTY -->
 
 [ref-nestjs]: http://nestjs.com
+[ref-nestjs-exception-filters]: https://docs.nestjs.com/exception-filters#built-in-http-exceptions
+[ref-nestjs-i18n]: https://nestjs-i18n.com/
+[ref-class-validator]: https://github.com/typestack/class-validator
 [ref-prisma]: https://www.prisma.io
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-redis]: https://redis.io
@@ -69,7 +356,7 @@
 [ref-doc-feature-flag]: docs/feature-flag.md
 [ref-doc-handling-error]: docs/handling-error.md
 [ref-doc-installation]: docs/installation.md
-[ref-doc-internationalization]: docs/internationalization.md
+[ref-doc-message]: docs/message.md
 [ref-doc-logger]: docs/logger.md
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
@@ -78,216 +365,3 @@
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-service-side-pagination]: docs/service-side-pagination.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
-
-<!-- # Overview
-
-The error handling system in ACK NestJS Boilerplate provides a consistent way to handle exceptions throughout the application. It uses NestJS's built-in exception filter mechanism to catch and transform exceptions into standardized HTTP responses.
-
-This documentation explains the features and usage of:
-- **Error Handling Core**: Located at `src/app/filters`
-
-Key features of the error handling system:
-
-1. **Standardized Error Responses**: All errors follow a consistent structure with appropriate HTTP status codes, messages, and metadata.
-2. **Internationalization Support**: Error messages can be localized based on the user's preferred language.
-3. **Detailed Validation Errors**: Input validation errors include detailed information about which fields failed validation and why.
-4. **Sentry Integration**: Critical errors are automatically reported to Sentry for monitoring and troubleshooting.
-5. **Metadata Enrichment**: Each error response includes metadata such as timestamp, timezone, API version, and more.
-
-# Table of Contents
-- [Overview](#overview)
-- [Table of Contents](#table-of-contents)
-  - [Filters](#filters)
-    - [General Filter](#general-filter)
-    - [HTTP Filter](#http-filter)
-    - [Validation Filter](#validation-filter)
-    - [Import Validation Filter](#import-validation-filter)
-  - [Internationalization Integration](#internationalization-integration)
-  - [Error Response Structure](#error-response-structure)
-  - [Examples](#examples)
-    - [HTTP Exception](#http-exception)
-    - [Validation Exception](#validation-exception)
-
-## Filters
-
-The error handling system consists of several specialized exception filters, each responsible for handling specific types of exceptions.
-
-### General Filter
-
-The `AppGeneralFilter` is a catch-all filter that handles any unhandled exceptions, including those that don't extend from `HttpException`. It ensures that even unexpected errors return a properly formatted response.
-
-```typescript
-@Catch()
-export class AppGeneralFilter implements ExceptionFilter {
-    // Log errors and send to Sentry for monitoring
-    async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
-        // Log the exception
-        this.logger.error(exception);
-        
-        // Send to Sentry
-        this.sendToSentry(exception);
-        
-        // Handle response formatting
-        // ...
-    }
-}
-```
-
-### HTTP Filter
-
-The `AppHttpFilter` specifically handles all HTTP exceptions thrown by the application.
-
-```typescript
-@Catch(HttpException)
-export class AppHttpFilter implements ExceptionFilter {
-    async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
-        // Get language from request for message translation
-        const xLanguage: string = request.__language ?? 
-            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
-            
-        // Prepare standardized response
-        // ...
-    }
-}
-```
-
-### Validation Filter
-
-The `AppValidationFilter` handles validation exceptions that occur during request validation.
-
-```typescript
-@Catch(RequestValidationException)
-export class AppValidationFilter implements ExceptionFilter {
-    async catch(exception: RequestValidationException, host: ArgumentsHost): Promise<void> {
-        // Format validation errors with detailed messages
-        const validationErrors: IMessageValidationError[] = exception.errors.map(
-            (error: any) => {
-                // Process each validation error
-                // ...
-            }
-        );
-        
-        // Build structured response
-        // ...
-    }
-}
-```
-
-### Import Validation Filter
-
-The `AppValidationImportFilter` is a specialized filter for handling validation errors during file imports.
-
-```typescript
-@Catch(FileImportException)
-export class AppValidationImportFilter implements ExceptionFilter {
-    async catch(exception: FileImportException, host: ArgumentsHost): Promise<void> {
-        // Process file import errors by row and column
-        // ...
-    }
-}
-```
-
-## Internationalization Integration
-
-The error handling system is integrated with the application's internationalization system:
-
-1. **Language Detection**: The language is detected from the request context.
-2. **Message Translation**: Error messages are translated using the `MessageService`.
-3. **Response Metadata**: The detected message is included in the response metadata.
-
-```typescript
-// Language detection example (from HTTP filter)
-const xLanguage: string = request.__language ?? 
-    this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
-
-// Translate error message
-const message = this.messageService.get(messageData.message, {
-    property,
-    language: xLanguage,
-});
-```
-
-## Error Response Structure
-
-All error responses follow a consistent structure:
-
-```json
-{
-  "statusCode": 400,
-  "message": "Validation error occurred",
-  "errors": [
-    {
-      "property": "email",
-      "message": "Email is not valid"
-    }
-  ],
-  "_metadata": {
-    "language": "en",
-    "timestamp": 1635739200,
-    "timezone": "UTC",
-    "path": "/api/v1/users",
-    "version": "1",
-    "repoVersion": "1.0.0"
-  }
-}
-```
-
-## Examples
-
-### HTTP Exception
-
-Example of throwing and handling an HTTP exception:
-
-```typescript
-// Throwing an exception
-throw new NotFoundException({
-  statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
-  message: 'user.error.notFound',
-});
-
-// Response:
-{
-  "statusCode": 404,
-  "message": "User not found",
-  "_metadata": {
-    "language": "en",
-    "timestamp": 1635739200,
-    "timezone": "UTC",
-    "path": "/api/v1/users/123",
-    "version": "1",
-    "repoVersion": "1.0.0"
-  }
-}
-```
-
-### Validation Exception
-
-When a request with a validation error is processed:
-
-```typescript
-// DTO with validation
-export class CreateUserDto {
-  @IsEmail()
-  email: string;
-
-  @IsString()
-  @MinLength(8)
-  password: string;
-}
-
-// Response from Validation filter
-{
-  "statusCode": 400,
-  "message": "Validation error occurred",
-  "errors": [
-    {
-      "property": "email",
-      "message": "Email must be a valid email address"
-    }
-  ],
-  "_metadata": {
-    // ...metadata
-  }
-}
-```
- -->

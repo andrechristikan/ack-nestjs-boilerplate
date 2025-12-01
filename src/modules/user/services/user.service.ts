@@ -104,7 +104,6 @@ export class UserService implements IUserService {
         private readonly fileService: FileService,
         private readonly authUtil: AuthUtil,
         private readonly authService: AuthService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly sessionUtil: SessionUtil,
         private readonly sessionRepository: SessionRepository,
         private readonly featureFlagService: FeatureFlagService,

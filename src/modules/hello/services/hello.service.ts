@@ -3,11 +3,12 @@ import { HelperService } from '@common/helper/services/helper.service';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
+import { IHelloService } from '@modules/hello/interfaces/hello.service.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class HelloService {
+export class HelloService implements IHelloService {
     constructor(
         private readonly helperService: HelperService,
         private readonly configService: ConfigService

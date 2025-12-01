@@ -12,7 +12,6 @@ import {
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { Response } from 'express';
 import { LoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
-import { randomUUID } from 'crypto';
 
 /**
  * Service responsible for configuring logger options for the application.
@@ -102,7 +101,7 @@ export class LoggerOptionService {
     private getReqId(request: IRequestApp): string {
         const headers = request.headers;
         if (!headers) {
-            return (request.id as string) ?? randomUUID();
+            return request.id as string;
         }
 
         for (const header of LOGGER_REQUEST_ID_HEADERS) {
@@ -112,7 +111,7 @@ export class LoggerOptionService {
             }
         }
 
-        return (request.id as string) ?? randomUUID();
+        return request.id as string;
     }
 
     /**

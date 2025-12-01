@@ -81,6 +81,8 @@ export class AppHttpFilter implements ExceptionFilter {
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');
         const xRepoVersion = this.configService.get<string>('app.version');
+        const xRequestId = String(request.id);
+        const xCorrelationId = String(request.correlationId);
         let metadata: ResponseMetadataDto = {
             language: xLanguage,
             timestamp: xTimestamp,
@@ -88,6 +90,8 @@ export class AppHttpFilter implements ExceptionFilter {
             path: request.path,
             version: xVersion,
             repoVersion: xRepoVersion,
+            requestId: xRequestId,
+            correlationId: xCorrelationId,
         };
 
         const responseException = exception.getResponse();
@@ -125,6 +129,8 @@ export class AppHttpFilter implements ExceptionFilter {
             .setHeader('x-timezone', xTimezone)
             .setHeader('x-version', xVersion)
             .setHeader('x-repo-version', xRepoVersion)
+            .setHeader('x-request-id', xRequestId)
+            .setHeader('x-correlation-id', xCorrelationId)
             .status(statusHttp)
             .json(responseBody);
 

@@ -13,8 +13,6 @@ import { isMongoId } from 'class-validator';
  */
 @Injectable()
 export class RequestIsValidObjectIdPipe implements PipeTransform {
-    constructor(private readonly databaseUtil: DatabaseUtil) {}
-
     /**
      * Validates and transforms the input value to ensure it's a valid MongoDB ObjectId
      * @param {string} value - The input value to validate

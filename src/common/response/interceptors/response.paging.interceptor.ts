@@ -191,6 +191,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
             version: xVersion,
             repoVersion: this.configService.get<string>('app.version'),
             requestId: String(request.id),
+            correlationId: String(request.correlationId),
 
             totalPage: 0,
             count: 0,
@@ -256,5 +257,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         response.setHeader('x-version', metadata.version);
         response.setHeader('x-repo-version', metadata.repoVersion);
         response.setHeader('x-request-id', String(metadata.requestId));
+        response.setHeader('x-correlation-id', String(metadata.correlationId));
     }
 }

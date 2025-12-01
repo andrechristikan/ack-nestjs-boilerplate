@@ -16,7 +16,7 @@ export class ResponseCacheInterceptor extends CacheBaseInterceptor {
     constructor(
         @Inject(CacheMainProvider) readonly cache: Cache,
         private readonly configService: ConfigService,
-        readonly reflector: Reflector
+        protected readonly reflector: Reflector
     ) {
         super(cache, reflector);
 

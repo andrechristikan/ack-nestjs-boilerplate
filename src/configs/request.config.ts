@@ -82,6 +82,7 @@ export default registerAs(
                 'x-api-key',
                 'x-timezone',
                 'x-request-id',
+                'x-correlation-id',
                 'x-version',
                 'x-repo-version',
                 'X-Response-Time',

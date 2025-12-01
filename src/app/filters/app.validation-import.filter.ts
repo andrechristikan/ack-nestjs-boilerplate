@@ -48,6 +48,8 @@ export class AppValidationImportFilter implements ExceptionFilter {
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');
         const xRepoVersion = this.configService.get<string>('app.version');
+        const xRequestId = String(request.id);
+        const xCorrelationId = String(request.correlationId);
         const metadata: ResponseMetadataDto = {
             language: xLanguage,
             timestamp: xTimestamp,
@@ -55,6 +57,8 @@ export class AppValidationImportFilter implements ExceptionFilter {
             path: request.path,
             version: xVersion,
             repoVersion: xRepoVersion,
+            requestId: xRequestId,
+            correlationId: xCorrelationId,
         };
 
         const message = this.messageService.setMessage(exception.message, {
@@ -78,6 +82,8 @@ export class AppValidationImportFilter implements ExceptionFilter {
             .setHeader('x-timezone', xTimezone)
             .setHeader('x-version', xVersion)
             .setHeader('x-repo-version', xRepoVersion)
+            .setHeader('x-request-id', xRequestId)
+            .setHeader('x-correlation-id', xCorrelationId)
             .status(exception.httpStatus)
             .json(responseBody);
 
