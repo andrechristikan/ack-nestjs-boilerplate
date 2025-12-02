@@ -1,3 +1,279 @@
+# Message
+
+## Prerequisite
+
+Before using Message Service, it's recommended to understand:
+
+- [Response Documentation][ref-doc-response] - For response integration
+- [Error Handling Documentation][ref-doc-handling-error] - For exception filter integration
+- [Request Validation Documentation][ref-doc-request-validation] - For validation pipe integration
+
+## Overview
+
+Message Service provides internationalization (i18n) support using [nestjs-i18n][ref-nestjs-i18n] to manage multi-language messages. All message files are stored in `src/languages/{language}` directory in JSON format. Currently, only English (`en`) is available.
+
+The `MessageModule` is imported globally via `CommonModule` in `src/common/common.module.ts`, making `MessageService` available throughout the application without additional imports.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Configuration](#configuration)
+- [Message Files](#message-files)
+- [Usage](#usage)
+  - [Basic Translation](#basic-translation)
+  - [Translation with Variables](#translation-with-variables)
+  - [Custom Language](#custom-language)
+- [Integration](#integration)
+  - [Exception Filters](#exception-filters)
+  - [Response Decorator](#response-decorator)
+  - [Validation Pipe](#validation-pipe)
+- [Adding New Language](#adding-new-language)
+
+## Configuration
+
+Default language is configured via environment variable:
+
+```bash
+APP_LANGUAGE=en
+```
+
+Configuration structure:
+
+```typescript
+// src/config/message.config.ts
+export default registerAs(
+    'message',
+    (): IConfigMessage => ({
+        availableLanguage: Object.values(ENUM_MESSAGE_LANGUAGE),
+        language: process.env.APP_LANGUAGE ?? ENUM_MESSAGE_LANGUAGE.EN,
+    })
+);
+```
+
+Language options are defined in the enum:
+
+```typescript
+export enum ENUM_MESSAGE_LANGUAGE {
+    EN = 'en',
+}
+```
+
+## Message Files
+
+Message files use JSON format with nested structure. Key paths follow the pattern: `filename.field.nested`.
+
+Example structure:
+
+```json
+// src/languages/en/auth.json
+{
+    "login": {
+        "success": "Login successful",
+        "error": {
+            "notFound": "Email not found",
+            "passwordNotMatch": "Password does not match"
+        }
+    }
+}
+```
+
+Access pattern:
+
+```typescript
+// Key path: auth.login.success
+// Output: "Login successful"
+
+// Key path: auth.login.error.notFound
+// Output: "Email not found"
+```
+
+## Usage
+
+### Basic Translation
+
+Inject `MessageService` and use `setMessage` method:
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { MessageService } from '@common/message/services/message.service';
+
+@Injectable()
+export class UserService {
+    constructor(private readonly messageService: MessageService) {}
+
+    getWelcomeMessage(): string {
+        return this.messageService.setMessage('user.welcome');
+    }
+}
+```
+
+### Translation with Variables
+
+Pass variables through the `properties` option:
+
+```json
+// src/languages/en/user.json
+{
+    "greeting": "Hello, {name}!",
+    "itemCount": "You have {count} items"
+}
+```
+
+```typescript
+const greeting = this.messageService.setMessage('user.greeting', {
+    properties: { name: 'John' }
+});
+// Output: "Hello, John!"
+
+const itemCount = this.messageService.setMessage('user.itemCount', {
+    properties: { count: 5 }
+});
+// Output: "You have 5 items"
+```
+
+### Custom Language
+
+Override default language using the `customLanguage` option:
+
+```typescript
+const message = this.messageService.setMessage('user.welcome', {
+    customLanguage: 'id' // Indonesian
+});
+```
+
+Request-specific language can be set via the `x-custom-lang` header:
+
+```typescript
+await axios.get('http://localhost:3000/api/users', {
+    headers: {
+        'x-custom-lang': 'id'
+    }
+});
+```
+
+## Integration
+
+### Exception Filters
+
+Exception filters automatically translate message paths. See [Error Handling Documentation][ref-doc-handling-error] for details.
+
+```typescript
+throw new BadRequestException({
+    statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS,
+    message: 'user.error.emailExists', // Will be translated
+});
+```
+
+With variables:
+
+```typescript
+throw new NotFoundException({
+    statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND,
+    message: 'user.error.notFoundWithId',
+    _metadata: {
+        customProperty: {
+            messageProperties: { id: userId }
+        }
+    }
+});
+```
+
+### Response Decorator
+
+The `@Response` decorator translates success message paths. See [Response Documentation][ref-doc-response] for details.
+
+```typescript
+@Response('user.create')
+@Post('/')
+async create(@Body() dto: CreateUserDto): Promise<IResponse> {
+    const user = await this.userService.create(dto);
+    return { data: user };
+}
+```
+
+With variables:
+
+```typescript
+@Response('user.update')
+@Patch('/:id')
+async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto
+): Promise<IResponse> {
+    const user = await this.userService.update(id, dto);
+    return {
+        data: user,
+        _metadata: {
+            customProperty: {
+                messageProperties: { name: user.name }
+            }
+        }
+    };
+}
+```
+
+### Validation Pipe
+
+Validation errors are automatically translated by `MessageService`. See [Request Validation Documentation][ref-doc-request-validation] for details.
+
+```json
+// src/languages/en/request.json
+{
+    "error": {
+        "isNotEmpty": "{property} should not be empty",
+        "isEmail": "{property} must be a valid email",
+        "minLength": "{property} must be at least {min} characters"
+    }
+}
+```
+
+The validation pipe transforms class-validator errors into localized messages:
+
+```typescript
+// Automatic transformation
+{
+    "statusCode": 400,
+    "message": "Validation error",
+    "errors": [
+        {
+            "key": "isNotEmpty",
+            "property": "email",
+            "message": "email should not be empty"
+        },
+        {
+            "key": "isEmail",
+            "property": "email",
+            "message": "email must be a valid email"
+        }
+    ]
+}
+```
+
+## Adding New Language
+
+1. Create a new language directory:
+
+```bash
+mkdir -p src/languages/id
+```
+
+2. Copy and translate JSON files:
+
+```bash
+cp src/languages/en/*.json src/languages/id/
+```
+
+3. Update the enum:
+
+```typescript
+export enum ENUM_MESSAGE_LANGUAGE {
+    EN = 'en',
+    ID = 'id', // Add new language
+}
+```
+
+4. Restart the application to load new language files.
+
 <!-- REFERENCES -->
 
 <!-- BADGE LINKS -->
@@ -38,6 +314,7 @@
 <!-- THIRD PARTY -->
 
 [ref-nestjs]: http://nestjs.com
+[ref-nestjs-i18n]: https://nestjs-i18n.com
 [ref-prisma]: https://www.prisma.io
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-redis]: https://redis.io
@@ -78,281 +355,3 @@
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-service-side-pagination]: docs/service-side-pagination.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
-
-<!-- # Overview
-
-The ACK NestJS Boilerplate provides a robust internationalization (i18n) system that enables your application to support multiple languages. The system is built using NestJS's i18n module with a custom implementation that integrates seamlessly with the application's error handling and response mechanisms.
-
-This documentation explains the features and usage of:
-- **Message Module**: Located at `src/common/message`
-- **Language Files**: Located at `src/languages`
-
-Internationalization is handled through the `MessageModule` which provides translation services throughout the application. Language detection is primarily done through the `x-custom-lang` header, and all messages are stored in JSON files within the `src/languages` directory.
-
-# Table of Contents
-
-- [Overview](#overview)
-- [Table of Contents](#table-of-contents)
-  - [Structure](#structure)
-  - [Configuration](#configuration)
-  - [Language Files](#language-files)
-  - [Service](#service)
-    - [Basic Translation](#basic-translation)
-    - [Translation with Variables](#translation-with-variables)
-    - [Request Validation](#request-validation)
-    - [Import Validation Messages](#import-validation-messages)
-  - [Integration with Error Handling](#integration-with-error-handling)
-  - [Integration with Response Decorator](#integration-with-response-decorator)
-  - [Custom Properties](#custom-properties)
-    - [in Error Filters](#in-error-filters)
-    - [in Response Decorators](#in-response-decorators)
-  - [Adding a New Language](#adding-a-new-language)
-  - [Examples](#examples)
-    - [Translating Simple Messages](#translating-simple-messages)
-    - [Working with Error Messages](#working-with-error-messages)
-    - [Using with Response Decorator](#using-with-response-decorator)
-
-## Structure
-
-The internationalization system consists of:
-
-- **MessageModule**: Global module that sets up the i18n system
-- **MessageService**: Service that provides translation methods
-- **Language Files**: JSON files containing translations for each supported language
-- **Custom Language Middleware**: Extracts the preferred language from request headers
-
-## Configuration
-
-Internationalization configuration is defined in the application's configuration files:
-
-```typescript
-export default (): AppLanguage => ({
-    message: {
-        language: ENUM_MESSAGE_LANGUAGE.EN,
-        availableLanguage: Object.values(ENUM_MESSAGE_LANGUAGE),
-    },
-});
-```
-
-The `MessageModule` is set up as a global module:
-
-```typescript
-@Global()
-@Module({})
-export class MessageModule {
-    static forRoot(): DynamicModule {
-        return {
-            module: MessageModule,
-            providers: [MessageService],
-            exports: [MessageService],
-            imports: [
-                I18nModule.forRootAsync({
-                    loader: I18nJsonLoader,
-                    inject: [ConfigService],
-                    resolvers: [new HeaderResolver(['x-custom-lang'])],
-                    useFactory: (configService: ConfigService) => ({
-                        fallbackLanguage: configService
-                            .get<string[]>('message.availableLanguage')
-                            .join(','),
-                        fallbacks: Object.values(ENUM_MESSAGE_LANGUAGE).reduce(
-                            (a, v) => ({ ...a, [`${v}-*`]: v }),
-                            {}
-                        ),
-                        loaderOptions: {
-                            path: path.join(__dirname, '../../languages'),
-                            watch: true,
-                        },
-                    }),
-                }),
-            ],
-        };
-    }
-}
-```
-
-## Language Files
-
-Language files are stored in the `src/languages` directory, organized by language code:
-
-- `src/languages/en/` - English translations
-- `src/languages/id/` - Indonesian translations
-
-Key language files include:
-
-```json
-// src/languages/en/auth.json
-{
-    "login": {
-        "success": "Login success",
-        "error": {
-            "notFound": "Email not found",
-            "passwordNotMatch": "Password not match"
-        }
-    }
-}
-
-// src/languages/en/request.json
-{
-    "validationInvalid": "Request validation error",
-    "file": {
-        "maxFiles": "Files must be less than {max}"
-    }
-}
-```
-
-## Service
-
-The `MessageService` provides several methods for translating messages:
-
-### Basic Translation
-
-```typescript
-@Injectable()
-export class SampleService {
-    constructor(private readonly messageService: MessageService) {}
-
-    getWelcomeMessage(): string {
-        return this.messageService.get('welcome.message');
-    }
-}
-```
-
-### Translation with Variables
-
-```typescript
-// If 'hello.user' is defined as 'Hello, {name}!' 
-const message = this.messageService.get('hello.user', { name: 'John' });
-// Output: "Hello, John!"
-```
-
-### Request Validation
-
-Transform validation errors to localized messages:
-
-```typescript
-const validationErrors = this.messageService.getValidationMessage(errors);
-```
-
-### Import Validation Messages
-
-Handle file import validation errors:
-
-```typescript
-const importErrors = this.messageService.setValidationImportMessage(errors, {
-    customLanguage: 'en'
-});
-```
-
-## Integration with Error Handling
-
-Exception filters use the `MessageService` to translate error messages:
-
-```typescript
-// Example from AppHttpFilter
-async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
-    // Get language from request
-    const xLanguage: string = request.__language ?? 
-        this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
-    
-    // Translate error message
-    const message: string = this.messageService.setMessage(messagePath, {
-        customLanguage: xLanguage,
-        properties: messageProperties,
-    });
-    
-    // Return localized response
-    const responseBody = {
-        statusCode,
-        message,
-        _metadata: metadata,
-    };
-}
-```
-
-## Integration with Response Decorator
-
-The Response decorator supports i18n message keys:
-
-```typescript
-@Response('user.create') // Key from language files
-@Post('/')
-async create(@Body() dto: CreateUserDto): Promise<IResponse> {
-    const user = await this.userService.create(dto);
-    return { data: user };
-}
-```
-
-## Custom Properties
-
-### in Error Filters
-
-```typescript
-throw new BadRequestException({
-    statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS,
-    message: 'user.error.emailExists',
-    _metadata: {
-        customProperty: {
-            messageProperties: { email: 'test@example.com' }
-        },
-    }
-});
-```
-
-### in Response Decorators
-
-```typescript
-return {
-    data: user,
-    _metadata: {
-        customProperty: {
-            messageProperties: { /* variables */ }
-        },
-    }
-};
-```
-
-## Adding a New Language
-
-To add a new language:
-
-1. Create a directory under `src/languages/` with the language code (e.g., `fr`)
-2. Copy and translate JSON files from an existing language directory
-3. Add the language code to `ENUM_MESSAGE_LANGUAGE` enum
-4. Restart the application
-
-## Examples
-
-### Translating Simple Messages
-
-```typescript
-// Language file (en/common.json)
-{
-    "welcome": "Welcome to our application",
-    "greeting": "Hello, {name}!"
-}
-
-// Usage
-const welcome = this.messageService.get('common.welcome');
-const greeting = this.messageService.get('common.greeting', { name: 'User' });
-```
-
-### Working with Error Messages
-
-```typescript
-// When throwing an exception
-throw new NotFoundException({
-    message: 'user.error.notFound', // Will be translated
-    statusCode: ENUM_USER_STATUS_CODE.USER_NOT_FOUND
-});
-```
-
-### Using with Response Decorator
-
-```typescript
-@Response('user.create') // Will be translated to "User successfully created"
-@Post('/')
-async create(@Body() dto: CreateUserDto): Promise<IResponse> {
-    const user = await this.userService.create(dto);
-    return { data: user };
-}
-``` -->

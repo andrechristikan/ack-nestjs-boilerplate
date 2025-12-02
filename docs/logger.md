@@ -1,18 +1,10 @@
 # Logger
 
+## Overview
+
 Comprehensive logging system using Pino with file rotation, sensitive data redaction, and custom serializers for request/response logging.
 
-## Table of Contents
-
-- [Features](#features)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Sensitive Data Redaction](#sensitive-data-redaction)
-- [File Logging](#file-logging)
-- [Auto Logging](#auto-logging)
-- [Console Output](#console-output)
-
-## Features
+### Features
 
 - HTTP request/response logging with [Pino][ref-pino]
 - Automatic sensitive data redaction
@@ -22,6 +14,18 @@ Comprehensive logging system using Pino with file rotation, sensitive data redac
 - Route exclusion for health checks
 - Request ID tracking across services
 - Memory usage and uptime debugging (non-production)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Sensitive Data Redaction](#sensitive-data-redaction)
+- [File Logging](#file-logging)
+- [Auto Logging](#auto-logging)
+- [Console Output](#console-output)
+
 
 ## Configuration
 

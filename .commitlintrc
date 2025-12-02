@@ -29,10 +29,8 @@
                 "fix",
                 "hotfix",
                 "chore",
-                "perf",
                 "refactor",
                 "revert",
-                "style",
                 "test"
             ]
         ]
