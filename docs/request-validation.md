@@ -1,3 +1,602 @@
+# Request Validation Documentation
+
+## Overview
+
+Request validation uses NestJS's built-in [ValidationPipe][ref-nestjs-validation-pipe] with [class-validator][ref-class-validator] decorators to validate request body, query parameters, and path parameters.
+
+## Related Documents
+
+- [Message System][ref-doc-message] - For internationalization and error message translation
+- [Handling Error][ref-doc-handling-error] - For exception handling and response formatting
+- [Swagger Documentation][ref-doc-swagger] - For API documentation integration with DTOs
+- [File Upload][ref-doc-file-upload] - For file validation pipes
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Related Documents](#related-documents)
+- [How It Works](#how-it-works)
+- [Basic Usage](#basic-usage)
+  - [Request Body Validation](#request-body-validation)
+  - [Query Parameters Validation](#query-parameters-validation)
+  - [Path Parameters Validation](#path-parameters-validation)
+- [DTO with Swagger](#dto-with-swagger)
+- [Extending DTOs](#extending-dtos)
+  - [Direct Extension](#direct-extension)
+  - [PartialType](#partialtype)
+  - [OmitType](#omittype)
+  - [IntersectionType](#intersectiontype)
+- [Custom Validators](#custom-validators)
+  - [Available Custom Validators](#available-custom-validators)
+  - [Creating Custom Validator](#creating-custom-validator)
+- [Validation Pipes](#validation-pipes)
+- [Error Message Mapping](#error-message-mapping)
+- [Error Message Translation](#error-message-translation)
+
+## How It Works
+
+The validation system is configured globally in `RequestModule`:
+
+```typescript
+new ValidationPipe({
+  transform: true,
+  skipMissingProperties: false,
+  skipNullProperties: false,
+  skipUndefinedProperties: false,
+  forbidUnknownValues: false,
+  whitelist: true,
+  forbidNonWhitelisted: true,
+  errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+  exceptionFactory: async (errors: ValidationError[]) => 
+    new RequestValidationException(errors),
+})
+```
+
+**Processing flow**:
+```
+Request received
+    ↓
+ValidationPipe validates DTO
+    ↓
+Valid? → Continue to controller
+    ↓ No
+RequestValidationException thrown
+    ↓
+AppValidationFilter catches exception
+    ↓
+MessageService formats errors with i18n
+    ↓
+Standardized error response (HTTP 422)
+```
+
+## Basic Usage
+
+### Request Body Validation
+
+Apply DTO as type parameter in `@Body()` decorator:
+
+```typescript
+import { Body, Controller, Post } from '@nestjs/common';
+import { CreateUserDto } from './dtos/create-user.dto';
+
+@Controller('users')
+export class UserController {
+  @Post()
+  create(@Body() body: CreateUserDto) {
+    // body is validated and transformed
+    return this.userService.create(body);
+  }
+}
+```
+
+**DTO example**:
+```typescript
+import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength } from 'class-validator';
+
+export class CreateUserDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(50)
+  password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+```
+
+### Query Parameters Validation
+
+```typescript
+import { Controller, Get, Query } from '@nestjs/common';
+import { UserListDto } from './dtos/user-list.dto';
+
+@Controller('users')
+export class UserController {
+  @Get()
+  list(@Query() query: UserListDto) {
+    return this.userService.findAll(query);
+  }
+}
+```
+
+**DTO example**:
+```typescript
+import { IsOptional, IsNumber, Min, Max } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class UserListDto {
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(10)
+  @Max(100)
+  limit?: number = 20;
+}
+```
+
+### Path Parameters Validation
+
+```typescript
+import { Controller, Get, Param } from '@nestjs/common';
+import { UserParamDto } from './dtos/user-param.dto';
+
+@Controller('users')
+export class UserController {
+  @Get(':userId')
+  findOne(@Param() param: UserParamDto) {
+    return this.userService.findById(param.userId);
+  }
+}
+```
+
+**DTO example**:
+```typescript
+import { IsMongoId, IsNotEmpty } from 'class-validator';
+
+export class UserParamDto {
+  @IsMongoId()
+  @IsNotEmpty()
+  userId: string;
+}
+```
+
+## DTO with Swagger
+
+Combine [class-validator][ref-class-validator] decorators with `@ApiProperty` from [@nestjs/swagger][ref-nestjs-swagger]:
+
+```typescript
+import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { faker } from '@faker-js/faker';
+
+export class CreateUserDto {
+  @ApiProperty({
+    description: 'User email address',
+    example: faker.internet.email(),
+    required: true,
+  })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({
+    description: 'User password',
+    example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string.alphanumeric(5).toUpperCase()}@@!123`,
+    required: true,
+    minLength: 8,
+    maxLength: 50,
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(50)
+  password: string;
+
+  @ApiProperty({
+    description: 'User full name',
+    example: faker.person.fullName(),
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+```
+
+See [Swagger Documentation][ref-doc-swagger] for complete guide.
+
+## Extending DTOs
+
+Use type helpers from [@nestjs/swagger][ref-nestjs-swagger] to maintain `@ApiProperty` validity when extending DTOs. See [@nestjs/swagger documentation][ref-nestjs-swagger-mapped-types] for details.
+
+### Direct Extension
+
+```typescript
+export class UpdateUserDto extends CreateUserDto {
+  @ApiProperty({
+    description: 'User status',
+    example: 'active',
+  })
+  @IsString()
+  @IsOptional()
+  status?: string;
+}
+```
+
+### PartialType
+
+Makes all properties optional:
+
+```typescript
+import { PartialType } from '@nestjs/swagger';
+
+export class UpdateUserDto extends PartialType(CreateUserDto) {}
+```
+
+### OmitType
+
+Excludes specific properties:
+
+```typescript
+import { OmitType } from '@nestjs/swagger';
+
+export class UpdateUserDto extends OmitType(CreateUserDto, ['password'] as const) {}
+```
+
+### IntersectionType
+
+Combines multiple DTOs:
+
+```typescript
+import { IntersectionType } from '@nestjs/swagger';
+
+export class UserWithProfileDto extends IntersectionType(
+  CreateUserDto,
+  ProfileDto
+) {}
+```
+
+## Custom Validators
+
+### Available Custom Validators
+
+Located in `src/common/request/validations/*`:
+
+**IsCustomEmail**
+Enhanced email validation with detailed error messages:
+```typescript
+import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
+
+export class CreateUserDto {
+  @IsCustomEmail()
+  @IsNotEmpty()
+  email: string;
+}
+```
+
+**IsPassword**
+Strong password validation:
+```typescript
+import { IsPassword } from '@common/request/validations/request.is-password.validation';
+
+export class ChangePasswordDto {
+  @IsPassword()
+  @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(50)
+  newPassword: string;
+}
+```
+
+**IsAfterNow**
+Validates date is after current time:
+```typescript
+import { IsAfterNow } from '@common/request/validations/request.is-after-now.validation';
+
+export class CreateEventDto {
+  @IsAfterNow()
+  @IsNotEmpty()
+  startDate: Date;
+}
+```
+
+**GreaterThanOtherProperty**
+Validates field is greater than another field:
+```typescript
+import { GreaterThanOtherProperty } from '@common/request/validations/request.greater-than-other-property.validation';
+
+export class CreateRangeDto {
+  @IsNumber()
+  minValue: number;
+
+  @GreaterThanOtherProperty('minValue')
+  @IsNumber()
+  maxValue: number;
+}
+```
+
+**GreaterThanEqualOtherProperty**
+Validates field is greater than or equal to another field:
+```typescript
+import { GreaterThanEqualOtherProperty } from '@common/request/validations/request.greater-than-other-property.validation';
+
+export class CreateRangeDto {
+  @IsNumber()
+  minValue: number;
+
+  @GreaterThanEqualOtherProperty('minValue')
+  @IsNumber()
+  maxValue: number;
+}
+```
+
+**LessThanOtherProperty**
+Validates field is less than another field:
+```typescript
+import { LessThanOtherProperty } from '@common/request/validations/request.less-than-other-property.validation';
+
+export class CreateDiscountDto {
+  @IsNumber()
+  maxDiscount: number;
+
+  @LessThanOtherProperty('maxDiscount')
+  @IsNumber()
+  minDiscount: number;
+}
+```
+
+**LessThanEqualOtherProperty**
+Validates field is less than or equal to another field:
+```typescript
+import { LessThanEqualOtherProperty } from '@common/request/validations/request.less-than-other-property.validation';
+
+export class CreateDiscountDto {
+  @IsNumber()
+  maxDiscount: number;
+
+  @LessThanEqualOtherProperty('maxDiscount')
+  @IsNumber()
+  minDiscount: number;
+}
+```
+
+### Creating Custom Validator
+
+For module-specific validators, create in module's `/validations` folder. For global validators, add to `src/common/request/validations`:
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import {
+  ValidationArguments,
+  ValidationOptions,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+  registerDecorator,
+} from 'class-validator';
+
+@ValidatorConstraint({ async: false })
+@Injectable()
+export class IsStrongPasswordConstraint implements ValidatorConstraintInterface {
+  validate(value: string, args: ValidationArguments): boolean {
+    // Validation logic
+    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(value);
+  }
+
+  defaultMessage(args: ValidationArguments): string {
+    return 'request.error.passwordWeak';
+  }
+}
+
+export function IsStrongPassword(validationOptions?: ValidationOptions) {
+  return function (object: unknown, propertyName: string): void {
+    registerDecorator({
+      name: 'IsStrongPassword',
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      constraints: [],
+      validator: IsStrongPasswordConstraint,
+    });
+  };
+}
+```
+
+**Register in module**:
+```typescript
+@Module({
+  providers: [IsStrongPasswordConstraint],
+})
+export class RequestModule {}
+```
+
+## Validation Pipes
+
+Pipes validate single fields for body, param, or query. For multiple fields, use DTO with class-validator.
+
+**RequestRequiredPipe**
+Validates required parameters:
+```typescript
+import { Controller, Get, Param } from '@nestjs/common';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+
+@Controller('users')
+export class UserController {
+  @Get(':userId')
+  findOne(@Param('userId', RequestRequiredPipe) userId: string) {
+    return this.userService.findById(userId);
+  }
+}
+```
+
+**RequestParseObjectIdPipe**
+Validates MongoDB ObjectId:
+```typescript
+import { RequestParseObjectIdPipe } from '@common/request/pipes/request.parse-object-id.pipe';
+
+@Get(':userId')
+findOne(@Param('userId', RequestParseObjectIdPipe) userId: string) {
+  return this.userService.findById(userId);
+}
+```
+
+**File validation pipes**
+See [File Upload][ref-doc-file-upload] for file extension and Excel validation pipes.
+
+## Error Message Mapping
+
+When validation fails, `MessageService` processes errors through `setValidationMessage()`:
+
+**Process**:
+1. Extract constraint keys from `ValidationError`
+2. Handle nested validation errors (e.g., `user.profile.email`)
+3. Create localized message for each constraint
+4. Format into `IMessageValidationError[]`
+
+**Implementation** (from `MessageService`):
+```typescript
+setValidationMessage(
+  errors: ValidationError[],
+  options?: IMessageErrorOptions
+): IMessageValidationError[] {
+  const messages: IMessageValidationError[] = [];
+
+  for (const error of errors) {
+    let property = error.property;
+    const constraints: string[] = Object.keys(error.constraints ?? []);
+
+    // Handle nested errors
+    if (constraints.length === 0) {
+      const nestedResult = this.processNestedValidationError(error);
+      property = nestedResult.property;
+      constraints.push(...nestedResult.constraints);
+    }
+
+    // Create message for each constraint
+    for (const constraint of constraints) {
+      messages.push(
+        this.createValidationMessage(
+          constraint,
+          error.value,
+          property,
+          options
+        )
+      );
+    }
+  }
+
+  return messages;
+}
+```
+
+**Error structure**:
+```typescript
+interface IMessageValidationError {
+  key: string;        // Constraint name (e.g., 'isEmail')
+  property: string;   // Property path (e.g., 'user.email')
+  message: string;    // Localized message
+}
+```
+
+## Error Message Translation
+
+Error messages are translated using [nestjs-i18n][ref-nestjs-i18n] through [Message System][ref-doc-message].
+
+**Message path pattern**: `request.error.{constraintName}`
+
+**Example message file** (`en/request.json`):
+```json
+{
+  "error": {
+    "isEmail": "{property} must be a valid email address",
+    "isNotEmpty": "{property} is required",
+    "minLength": "{property} must be at least {min} characters",
+    "isPassword": "{property} must contain uppercase, lowercase, number and special character"
+  }
+}
+```
+
+**Custom validator message** (from `IsCustomEmailConstraint`):
+```typescript
+defaultMessage(validationArguments?: ValidationArguments): string {
+  if (!validationArguments?.value) {
+    return 'request.error.email.required';
+  }
+
+  const validationResult = this.helperService.checkEmail(
+    validationArguments.value
+  );
+  return validationResult.messagePath ?? 'request.error.email.invalid';
+}
+```
+
+**Message properties interpolation**:
+```typescript
+private createValidationMessage(
+  constraint: string,
+  value: unknown,
+  property?: string,
+  options?: IMessageErrorOptions
+): IMessageValidationError {
+  const message = this.setMessage(`request.error.${constraint}`, {
+    customLanguage: options?.customLanguage,
+    properties: {
+      property: property?.split('.').pop(),  // Get last part of nested property
+      value: value as string | number,
+    },
+  });
+
+  return {
+    key: constraint,
+    property: property ?? 'Unknown',
+    message,
+  };
+}
+```
+
+**Final response** (handled by `AppValidationFilter`):
+```json
+{
+  "statusCode": 422,
+  "message": "Validation error",
+  "errors": [
+    {
+      "key": "isEmail",
+      "property": "email",
+      "message": "email must be a valid email address"
+    },
+    {
+      "key": "minLength",
+      "property": "password",
+      "message": "password must be at least 8 characters"
+    }
+  ],
+  "metadata": {
+    "language": "en",
+    "timestamp": 1660190937231,
+    "timezone": "Asia/Jakarta",
+    "path": "/api/v1/users",
+    "version": "1",
+    "repoVersion": "1.0.0",
+    "requestId": "550e8400-e29b-41d4-a716-446655440000",
+    "correlationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+  }
+}
+```
+
+See [Handling Error][ref-doc-handling-error] for complete error handling flow.
+
 <!-- REFERENCES -->
 
 <!-- BADGE LINKS -->
@@ -38,6 +637,12 @@
 <!-- THIRD PARTY -->
 
 [ref-nestjs]: http://nestjs.com
+[ref-nestjs-exception-filters]: https://docs.nestjs.com/exception-filters
+[ref-nestjs-i18n]: https://nestjs-i18n.com/
+[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
+[ref-nestjs-swagger-mapped-types]: https://docs.nestjs.com/openapi/mapped-types
+[ref-nestjs-validation-pipe]: https://docs.nestjs.com/techniques/validation
+[ref-class-validator]: https://github.com/typestack/class-validator
 [ref-prisma]: https://www.prisma.io
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-redis]: https://redis.io
@@ -76,180 +681,7 @@
 [ref-doc-request-validation]: docs/request-validation.md
 [ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-service-side-pagination]: docs/service-side-pagination.md
+[ref-doc-pagination]: docs/pagination.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
-
-<!-- # Overview
-
-Request validation is a critical part of any robust API, ensuring that incoming data meets specified requirements before processing. This documentation covers the request validation system in the ACK NestJS Boilerplate, specifically focusing on the implementation in the `/common/request` directory.
-
-The boilerplate uses [class-validator](https://github.com/typestack/class-validator) and [class-transformer](https://github.com/typestack/class-transformer) libraries to implement validation, with custom validators extending the basic functionality to handle complex business rules.
-
-This documentation explains the features and usage of:
-- **Request Module**: Located at `src/common/request`
-
-# Table of Contents
-
-- [Overview](#overview)
-- [Table of Contents](#table-of-contents)
-  - [Components](#components)
-  - [Custom Validators](#custom-validators)
-  - [Validation Exception Handling](#validation-exception-handling)
-  - [Request Timeout](#request-timeout)
-  - [Usage Examples](#usage-examples)
-    - [Using Custom Validators](#using-custom-validators)
-    - [Setting Custom Timeout](#setting-custom-timeout)
-    - [Using Required Pipe](#using-required-pipe)
-
-## Components
-
-The request validation system in `/common/request` consists of several key components:
-
-1. **Custom Validators**: Located in `src/common/request/validations/` folder, these validators extend the basic validators from class-validator to handle complex validation scenarios
-2. **Validation Exception**: The `RequestValidationException` in `src/common/request/exceptions/request.validation.exception.ts` is thrown when validation fails
-3. **Request Pipes**: The `RequestRequiredPipe` in `src/common/request/pipes/request.required.pipe.ts` ensures that required parameters are present
-4. **Request Decorators**: The `@RequestTimeout()` decorator in `src/common/request/decorators/request.decorator.ts` allows for custom timeout settings
-5. **Request Timeout Interceptor**: The interceptor in `src/common/request/interceptors/request.timeout.interceptor.ts` handles request timeouts
-
-## Custom Validators
-
-The `/common/request/validations/` directory contains custom validators for complex validation scenarios:
-
-| Validator | Description | File Path |
-|-----------|-------------|------|
-| `@IsPassword()` | Validates password strength using HelperStringService | `request.is-password.validation.ts` |
-| `@IsCustomEmail()` | Validates emails with custom business rules | `request.custom-email.validation.ts` |
-| `@DateGreaterThan()` | Validates that a date is greater than another date | `request.date-greater-than.validation.ts` |
-| `@DateGreaterThanEqual()` | Validates that a date is greater than or equal to another date | `request.date-greater-than.validation.ts` |
-| `@DateLessThan()` | Validates that a date is less than another date | `request.date-less-than.validation.ts` |
-| `@DateLessThanEqual()` | Validates that a date is less than or equal to another date | `request.date-less-than.validation.ts` |
-| `@GreaterThanOtherProperty()` | Validates that a value is greater than another property | `request.greater-than-other-property.validation.ts` |
-| `@GreaterThanEqualOtherProperty()` | Validates that a value is greater than or equal to another property | `request.greater-than-other-property.validation.ts` |
-| `@LessThanOtherProperty()` | Validates that a value is less than another property | `request.less-than-other-property.validation.ts` |
-| `@LessThanEqualOtherProperty()` | Validates that a value is less than or equal to another property | `request.less-than-other-property.validation.ts` |
-
-Example of custom validator implementation (IsPassword):
-
-```typescript
-@ValidatorConstraint({ async: true })
-@Injectable()
-export class IsPasswordConstraint implements ValidatorConstraintInterface {
-    constructor(protected readonly helperStringService: HelperStringService) {}
-
-    validate(value: string): boolean {
-        return value
-            ? this.helperStringService.checkPasswordStrength(value)
-            : false;
-    }
-}
-
-export function IsPassword(validationOptions?: ValidationOptions) {
-    return function (object: Record<string, any>, propertyName: string): void {
-        registerDecorator({
-            name: 'IsPassword',
-            target: object.constructor,
-            propertyName: propertyName,
-            options: validationOptions,
-            constraints: [],
-            validator: IsPasswordConstraint,
-        });
-    };
-}
-```
-
-## Validation Exception Handling
-
-When validation fails, the `RequestValidationException` is thrown:
-
-```typescript
-export class RequestValidationException extends Error {
-    readonly httpStatus: HttpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
-    readonly statusCode: number = ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION;
-    readonly errors: ValidationError[];
-
-    constructor(errors: ValidationError[]) {
-        super('request.validation');
-
-        this.errors = errors;
-    }
-}
-```
-
-The exception is caught by the `AppValidationFilter` in `src/app/filters/app.validation.filter.ts`, which formats the error response with detailed validation errors for each invalid property. The response includes:
-
-- HTTP status code (422 Unprocessable Entity)
-- Error message based on the language setting
-- Detailed validation errors for each invalid property
-- Metadata including language, timestamp, timezone, and version information
-
-## Request Timeout
-
-The request timeout system in the `/common/request` directory includes:
-
-1. **RequestTimeout Decorator**: 
-   ```typescript
-   export function RequestTimeout(seconds: string): MethodDecorator {
-       return applyDecorators(
-           SetMetadata(REQUEST_CUSTOM_TIMEOUT_META_KEY, true),
-           SetMetadata(REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY, seconds)
-       );
-   }
-   ```
-
-2. **RequestTimeoutInterceptor**: Intercepts requests and applies a timeout based on configuration or the custom timeout from the decorator. If a request exceeds the time limit, a `RequestTimeoutException` is thrown with appropriate error details.
-
-## Usage Examples
-
-### Using Custom Validators
-
-```typescript
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, MaxLength, MinLength } from 'class-validator';
-import { IsPassword } from '@common/request/validations/request.is-password.validation';
-
-export class UserCreateDto {
-    @ApiProperty({
-        description: 'User password',
-        example: 'Password123@@!',
-        required: true,
-    })
-    @IsNotEmpty()
-    @IsPassword()
-    @MinLength(8)
-    @MaxLength(50)
-    password: string;
-}
-```
-
-### Setting Custom Timeout
-
-```typescript
-import { Controller, Get } from '@nestjs/common';
-import { RequestTimeout } from '@common/request/decorators/request.decorator';
-
-@Controller('users')
-export class UserController {
-    @Get()
-    @RequestTimeout('30s')  // Sets a custom timeout of 30 seconds for this route
-    findAll() {
-        // This operation now has 30 seconds to complete
-        return this.userService.findAll();
-    }
-}
-```
-
-### Using Required Pipe
-
-```typescript
-import { Controller, Get, Param } from '@nestjs/common';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
-
-@Controller('users')
-export class UserController {
-    @Get(':id')
-    findOne(@Param('id', RequestRequiredPipe) id: string) {
-        // The RequestRequiredPipe ensures that the id parameter is present
-        return this.userService.findOne(id);
-    }
-}
-``` -->
+[ref-doc-file-upload]: docs/file-upload.md
+[ref-doc-doc]: docs/doc.md

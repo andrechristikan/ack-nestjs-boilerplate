@@ -1,286 +1,383 @@
-# Handling Error
+# Handling Error Documentation
 
 ## Overview
 
-The error handling system in ACK NestJS Boilerplate provides a comprehensive way to handle exceptions throughout the application. It uses NestJS's exception filter mechanism to catch and transform all errors into standardized HTTP responses with proper formatting, internationalization support, and monitoring integration.
+The error handling system provides comprehensive exception management using NestJS's exception filter mechanism. All errors are transformed into standardized HTTP responses with proper formatting, internationalization, and monitoring integration.
 
-**Prerequisites**: Before reading this documentation, please review:
-- [Response Structure][ref-doc-response]
-- [Request Validation][ref-doc-request-validation]
-- [Security and Middleware][ref-doc-security-and-middleware]
-- [Message System][ref-doc-message]
+## Related Documents
 
+- [Response][ref-doc-response] - For standardized response structure
+- [Request Validation][ref-doc-request-validation] - For validation error handling
+- [Message][ref-doc-message] - For error message internationalization
+- [Logger][ref-doc-logger] - For error logging and monitoring
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Related Documents](#related-documents)
+- [How It Works](#how-it-works)
+- [Error Response Structure](#error-response-structure)
+- [Response Metadata](#response-metadata)
+- [Response Headers](#response-headers)
 - [Exception Filters](#exception-filters)
   - [AppGeneralFilter](#appgeneralfilter)
   - [AppHttpFilter](#apphttpfilter)
   - [AppValidationFilter](#appvalidationfilter)
   - [AppValidationImportFilter](#appvalidationimportfilter)
-- [Error Response Structure](#error-response-structure)
-- [Response Metadata](#response-metadata)
-- [Response Headers](#response-headers)
-- [Message Resolution](#message-resolution)
-- [Throwing Custom Errors](#throwing-custom-errors)
-- [Sentry Integration](#sentry-integration)
-- [Examples](#examples)
-  - [Custom Error with Properties](#custom-error-with-properties)
+- [Usage](#usage)
   - [Standard HTTP Exception](#standard-http-exception)
-  - [Validation Error](#validation-error)
+  - [Custom Error with Message Properties](#custom-error-with-message-properties)
+  - [Custom Error with Additional Data](#custom-error-with-additional-data)
+  - [Custom Error with Metadata](#custom-error-with-metadata)
 
-## Exception Filters
+## How It Works
 
-The boilerplate provides 4 specialized exception filters located in `src/app/filters/*`:
+The boilerplate uses 4 specialized exception filters registered globally in hierarchical order:
 
-### AppGeneralFilter
+1. **AppValidationImportFilter** - Handles `FileImportException`
+2. **AppValidationFilter** - Handles `RequestValidationException`
+3. **AppHttpFilter** - Handles `HttpException`
+4. **AppGeneralFilter** - Catches all unhandled exceptions
 
-Catches all unhandled exceptions that don't match other filters. Converts any unhandled error into a standardized `500 Internal Server Error` response.
-```typescript
-@Catch()
-export class AppGeneralFilter implements ExceptionFilter {
-  async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
-    // Catches everything not handled by other filters
-    // Always returns HTTP 500
-  }
-}
+**Processing flow**:
+```
+Exception thrown
+    ↓
+Match specific filter? (validation import/request, HTTP)
+    ↓ No
+AppGeneralFilter (fallback)
+    ↓
+Standardized error response + Sentry (if applicable)
 ```
 
-**Use case**: Fallback for unexpected errors (database crashes, unhandled promise rejections, etc.)
-
-### AppHttpFilter
-
-Handles all `HttpException` instances thrown by NestJS or your application code.
-```typescript
-@Catch(HttpException)
-export class AppHttpFilter implements ExceptionFilter {
-  async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
-    // Handles standard HTTP exceptions
-  }
-}
-```
-
-**Features**:
-- Path validation (redirects invalid paths to `/public/hello`)
-- Extracts custom error metadata from exception responses
-- Only sends errors with status ≥ 500 to Sentry
-
-### AppValidationFilter
-
-Handles `RequestValidationException` for request body, query parameters, and path parameters validation using [class-validator][ref-class-validator].
-```typescript
-@Catch(RequestValidationException)
-export class AppValidationFilter implements ExceptionFilter {
-  async catch(exception: RequestValidationException, host: ArgumentsHost): Promise<void> {
-    // Handles request validation errors
-  }
-}
-```
-
-See [Request Validation][ref-doc-request-validation] for more details.
-
-### AppValidationImportFilter
-
-Handles `FileImportException` specifically for Excel file import validation using [class-validator][ref-class-validator].
-```typescript
-@Catch(FileImportException)
-export class AppValidationImportFilter implements ExceptionFilter {
-  async catch(exception: FileImportException, host: ArgumentsHost): Promise<void> {
-    // Handles file import validation errors
-  }
-}
-```
-
-See [Request Validation][ref-doc-request-validation] for more details.
-
+**Common behavior**:
+- Extract metadata from request (language, version, requestId, correlationId)
+- Generate timestamp and timezone information
+- Resolve localized error message using [Message System][ref-doc-message]
+- Set response headers
+- Format into `ResponseErrorDto`
+- Send to Sentry (conditions vary by filter)
 
 ## Error Response Structure
 
 All errors are formatted into `ResponseErrorDto`:
+
 ```typescript
 {
-  "statusCode": 400,
-  "message": "Validation failed",
-  "metadata": {
-    "language": "en",
-    "timestamp": 1660190937231,
-    "timezone": "Asia/Jakarta",
-    "path": "/api/v1/users",
-    "version": "1",
-    "repoVersion": "1.0.0"
-  },
-  "errors": [...], // Optional: validation errors
-  "data": {...}    // Optional: additional error context
+  "statusCode": number,        // Custom status code (not HTTP status)
+  "message": string,           // Localized error message
+  "metadata": { ... },         // Request/response metadata
+  "errors": [ ... ],          // Optional: validation errors
+  "data": { ... }             // Optional: additional error context
 }
 ```
 
-**Fields**:
-- `statusCode`: Custom status code (not HTTP status)
-- `message`: Localized error message
-- `metadata`: Request/response metadata (see [Response Metadata](#response-metadata))
-- `errors`: Validation error details (only for validation exceptions)
-- `data`: Additional error context (optional)
+**Field descriptions**:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `statusCode` | `number` | Yes | Custom status code for error identification |
+| `message` | `string` | Yes | Localized message from [Message System][ref-doc-message] |
+| `metadata` | `ResponseMetadataDto` | Yes | Request/response metadata |
+| `errors` | `array` | No | Validation error details (validation exceptions only) |
+| `data` | `unknown` | No | Additional error context (custom exceptions only) |
 
 ## Response Metadata
 
-`ResponseMetadataDto` provides contextual information about the request/response:
+`ResponseMetadataDto` provides contextual information:
 
-| Field | Description | Source |
-|-------|-------------|--------|
-| `language` | Response language | `request.__language` or config default |
-| `timestamp` | Unix timestamp | Generated from current date |
-| `timezone` | Server timezone | Generated from current date |
-| `path` | Request path | `request.path` |
-| `version` | API version | `request.__version` or config default |
-| `repoVersion` | Application version | Config `app.version` |
+```typescript
+{
+  "language": "en",
+  "timestamp": 1660190937231,
+  "timezone": "Asia/Jakarta",
+  "path": "/api/v1/users",
+  "version": "1",
+  "repoVersion": "1.0.0",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  "correlationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+}
+```
 
-**Custom metadata**: You can pass additional metadata through exception's `_metadata` property (see [Throwing Custom Errors](#throwing-custom-errors)).
+**Field sources**:
+
+| Field | Source | Fallback |
+|-------|--------|----------|
+| `language` | `request.__language` | Config `message.language` |
+| `timestamp` | `HelperService.dateGetTimestamp()` | - |
+| `timezone` | `HelperService.dateGetZone()` | - |
+| `path` | `request.path` | - |
+| `version` | `request.__version` | Config `app.urlVersion.version` |
+| `repoVersion` | Config `app.version` | - |
+| `requestId` | `request.id` | - |
+| `correlationId` | `request.correlationId` | - |
 
 ## Response Headers
 
-All exception filters automatically set these response headers:
+All filters set these headers automatically:
+
 ```
 x-custom-lang: en
 x-timestamp: 1660190937231
 x-timezone: Asia/Jakarta
 x-version: 1
 x-repo-version: 1.0.0
+x-request-id: 550e8400-e29b-41d4-a716-446655440000
+x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 ```
 
-## Message Resolution
+## Exception Filters
 
-The `message` field contains a message path that gets resolved by `MessageService` using [nestjs-i18n][ref-nestjs-i18n]. The service:
+### AppGeneralFilter
 
-1. Takes the message path (e.g., `user.error.statusInvalid`)
-2. Resolves it based on `x-custom-lang` header
-3. Interpolates any `messageProperties` if provided
-4. Returns the localized message string
+**Location**: `src/app/filters/app.general.filter.ts`
 
-See [Message System][ref-doc-message] for more details.
+**Catches**: `@Catch()` - all unhandled exceptions
 
-## Throwing Custom Errors
+**Use case**: Fallback for unexpected errors (database crashes, unhandled promise rejections, runtime errors)
 
-Use NestJS built-in exceptions with custom properties:
-```typescript
-throw new BadRequestException({
-  statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
-  message: 'user.error.statusInvalid',
-  _metadata: {
-    customProperty: {
-      messageProperties: {
-        status: user.status.toLowerCase(),
-      },
-    },
-  },
-});
-```
+**Behavior**:
+- Always returns HTTP 500
+- Uses message path `http.500`
+- Sends all exceptions to Sentry
 
-**Parameters**:
-- `statusCode`: Custom status code (not HTTP status)
-- `message`: Message path for i18n resolution
-- `_metadata.customProperty.messageProperties`: Variables for message interpolation
-- `_metadata`: Any additional metadata to merge with `ResponseMetadataDto`
-
-## Sentry Integration
-
-**AppGeneralFilter**: Sends all unhandled exceptions to Sentry
-
-**AppHttpFilter**: Sends only server errors (status ≥ 500) to Sentry
-
-Both filters include error handling for Sentry failures to prevent cascade errors.
-
-## Examples
-
-### Custom Error with Properties
-```typescript
-// Throwing exception
-throw new BadRequestException({
-  statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
-  message: 'user.error.statusInvalid',
-  _metadata: {
-    customProperty: {
-      messageProperties: {
-        status: user.status.toLowerCase(),
-      },
-    },
-  },
-});
-
-// Message
+**Response example**:
+```json
 {
-  "error": {
-    "statusInvalid": "User status {status} is invalid"
-  }
-}
-
-// Response
-{
-  "statusCode": 5100,
-  "message": "User status active is invalid",
-  "metadata": {
-    "language": "en",
-    "timestamp": 1660190937231,
-    "timezone": "Asia/Jakarta",
-    "path": "/api/v1/users/123",
-    "version": "1",
-    "repoVersion": "1.0.0"
-  }
+  "statusCode": 500,
+  "message": "Internal Server Error",
+  "metadata": { ... }
 }
 ```
 
-### Standard HTTP Exception
-```typescript
-// Throwing exception
-throw new NotFoundException();
+### AppHttpFilter
 
-// Response
+**Location**: `src/app/filters/app.http.filter.ts`
+
+**Catches**: `@Catch(HttpException)` - all HTTP exceptions
+
+**Use case**: Standard and custom HTTP exceptions from application code
+
+**Path validation**: Redirects invalid paths (not starting with `globalPrefix` or `docPrefix`) to `{globalPrefix}/public/hello` with HTTP 308
+
+**Custom exception support**: Extracts custom properties if exception response implements `IAppException`:
+```typescript
+interface IAppException<T = unknown> {
+  statusCode: number;           // Custom status code
+  message: string;              // Message path for i18n
+  messageProperties?: object;   // Variables for message interpolation
+  data?: T;                     // Additional error context
+  metadata?: object;            // Additional metadata to merge
+}
+```
+
+**Sentry integration**: Only sends exceptions with HTTP status ≥ 500
+
+**Response example** (standard):
+```json
 {
   "statusCode": 404,
   "message": "Not Found",
-  "metadata": {
-    "language": "en",
-    "timestamp": 1660190937231,
-    "timezone": "Asia/Jakarta",
-    "path": "/api/v1/users/999",
-    "version": "1",
-    "repoVersion": "1.0.0"
-  }
+  "metadata": { ... }
 }
 ```
 
-### Validation Error
-```typescript
-// Request body
+**Response example** (custom):
+```json
 {
-  "email": "invalid-email",
-  "password": "123"
+  "statusCode": 5100,
+  "message": "User status active is invalid",
+  "data": { "userId": "123" },
+  "metadata": { ... }
 }
+```
 
-// Response
+### AppValidationFilter
+
+**Location**: `src/app/filters/app.validation.filter.ts`
+
+**Catches**: `@Catch(RequestValidationException)` - request validation errors
+
+**Use case**: Request body, query parameters, and path parameters validation failures using [class-validator][ref-class-validator]
+
+**Behavior**:
+- Formats field-specific validation errors
+- Uses `MessageService.setValidationMessage()`
+- Does not send to Sentry
+
+**Response example**:
+```json
 {
   "statusCode": 422,
   "message": "Validation error",
   "errors": [
     {
+      "key": "isEmail",
       "property": "email",
       "message": "Email must be a valid email address"
-    },
-    {
-      "property": "password",
-      "message": "Password must be at least 8 characters"
     }
   ],
-  "metadata": {
-    "language": "en",
-    "timestamp": 1660190937231,
-    "timezone": "Asia/Jakarta",
-    "path": "/api/v1/users",
-    "version": "1",
-    "repoVersion": "1.0.0"
+  "metadata": { ... }
+}
+```
+
+See [Request Validation][ref-doc-request-validation] for details.
+
+### AppValidationImportFilter
+
+**Location**: `src/app/filters/app.validation-import.filter.ts`
+
+**Catches**: `@Catch(FileImportException)` - file import validation errors
+
+**Use case**: Excel file import validation failures using [class-validator][ref-class-validator]
+
+**Behavior**:
+- Formats row-level validation errors with file/sheet information
+- Uses `MessageService.setValidationImportMessage()`
+- Does not send to Sentry
+
+**Response example**:
+```json
+{
+  "statusCode": 422,
+  "message": "File import validation failed",
+  "errors": [
+    {
+      "row": 2,
+      "file": "users.xlsx",
+      "sheet": "Sheet1",
+      "key": "isEmail",
+      "property": "email",
+      "message": "Email must be a valid email address"
+    }
+  ],
+  "metadata": { ... }
+}
+```
+
+See [Request Validation][ref-doc-request-validation] for details.
+
+## Usage
+
+### Standard HTTP Exception
+
+For standard HTTP errors:
+
+```typescript
+import { NotFoundException } from '@nestjs/common';
+
+throw new NotFoundException();
+// HTTP 404, statusCode: 404, message: "Not Found"
+```
+
+See [NestJS Exception Filters][ref-nestjs-exception-filters] for available exceptions.
+
+### Custom Error with Message Properties
+
+Use message properties for dynamic message interpolation:
+
+```typescript
+import { BadRequestException } from '@nestjs/common';
+
+throw new BadRequestException({
+  statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
+  message: 'user.error.statusInvalid',
+  messageProperties: {
+    status: user.status.toLowerCase(),
+  },
+});
+```
+
+**Message file** (`en/user.json`):
+```json
+{
+  "error": {
+    "statusInvalid": "User status {status} is invalid"
   }
 }
 ```
+
+**Response**:
+```json
+{
+  "statusCode": 5100,
+  "message": "User status active is invalid",
+  "metadata": { ... }
+}
+```
+
+### Custom Error with Additional Data
+
+Add contextual data to help debugging:
+
+```typescript
+throw new BadRequestException({
+  statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
+  message: 'user.error.statusInvalid',
+  messageProperties: {
+    status: user.status.toLowerCase(),
+  },
+  data: {
+    userId: user._id,
+    currentStatus: user.status,
+    allowedStatuses: ['active', 'inactive'],
+  },
+});
+```
+
+**Response**:
+```json
+{
+  "statusCode": 5100,
+  "message": "User status active is invalid",
+  "data": {
+    "userId": "507f1f77bcf86cd799439011",
+    "currentStatus": "active",
+    "allowedStatuses": ["active", "inactive"]
+  },
+  "metadata": { ... }
+}
+```
+
+### Custom Error with Metadata
+
+Add custom properties to metadata:
+
+```typescript
+throw new BadRequestException({
+  statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
+  message: 'user.error.statusInvalid',
+  messageProperties: {
+    status: user.status.toLowerCase(),
+  },
+  metadata: {
+    attemptedOperation: 'statusChange',
+    resourceType: 'user',
+  },
+});
+```
+
+**Response**:
+```json
+{
+  "statusCode": 5100,
+  "message": "User status active is invalid",
+  "metadata": {
+    "attemptedOperation": "statusChange",
+    "resourceType": "user",
+    "language": "en",
+    "timestamp": 1660190937231,
+    "timezone": "Asia/Jakarta",
+    "path": "/api/v1/users/123/status",
+    "version": "1",
+    "repoVersion": "1.0.0",
+    "requestId": "550e8400-e29b-41d4-a716-446655440000",
+    "correlationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+  }
+}
+```
+
+**Note**: Custom metadata is merged first, then default metadata (default takes precedence for same keys).
 
 <!-- REFERENCES -->
 
@@ -346,7 +443,7 @@ throw new NotFoundException();
 <!-- DOCUMENTS -->
 
 [ref-doc-root]: readme.md
-[ref-doc-audit-activity-log]: docs/audit-activity-log.md
+[ref-doc-activity-log]: docs/activity-log.md
 [ref-doc-authentication]: docs/authentication.md
 [ref-doc-authorization]: docs/authorization.md
 [ref-doc-cache]: docs/cache.md
@@ -354,14 +451,16 @@ throw new NotFoundException();
 [ref-doc-database]: docs/database.md
 [ref-doc-environment]: docs/environment.md
 [ref-doc-feature-flag]: docs/feature-flag.md
+[ref-doc-file-upload]: docs/file-upload.md
 [ref-doc-handling-error]: docs/handling-error.md
 [ref-doc-installation]: docs/installation.md
-[ref-doc-message]: docs/message.md
 [ref-doc-logger]: docs/logger.md
+[ref-doc-message]: docs/message.md
+[ref-doc-pagination]: docs/pagination.md
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
 [ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-service-side-pagination]: docs/service-side-pagination.md
+[ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md

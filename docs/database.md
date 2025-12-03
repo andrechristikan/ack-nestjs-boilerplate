@@ -1,20 +1,19 @@
 # Database Documentation
 
-Before working with the database, ensure you have completed the basic setup:
-
-📖 **Required Reading:**
-- **[Installation Document][ref-doc-installation]** - Complete project setup and dependencies
-- **[Environment Document][ref-doc-environment]** - Database connection and environment variables  
-- **[Configuration Document][ref-doc-configuration]** - Understanding the config module structure
-
 ## Overview
 
 This documentation explains the database architecture and features in the ACK NestJS Boilerplate project:
 
+## Related Documents
+
+- [Installation][ref-doc-installation] - For complete project setup and dependencies
+- [Environment][ref-doc-environment] - For database connection and environment variables
+- [Configuration][ref-doc-configuration] - For understanding the config module structure
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Related Documents](#related-documents)
 - [Prerequisites](#prerequisites)
 - [Migration](#migration)
 - [Generate Database Client](#generate-database-client)
@@ -205,7 +204,7 @@ For details on switching databases, see: [Prisma: Switching databases](https://w
 <!-- DOCUMENTS -->
 
 [ref-doc-root]: readme.md
-[ref-doc-audit-activity-log]: docs/audit-activity-log.md
+[ref-doc-activity-log]: docs/activity-log.md
 [ref-doc-authentication]: docs/authentication.md
 [ref-doc-authorization]: docs/authorization.md
 [ref-doc-cache]: docs/cache.md
@@ -213,14 +212,16 @@ For details on switching databases, see: [Prisma: Switching databases](https://w
 [ref-doc-database]: docs/database.md
 [ref-doc-environment]: docs/environment.md
 [ref-doc-feature-flag]: docs/feature-flag.md
+[ref-doc-file-upload]: docs/file-upload.md
 [ref-doc-handling-error]: docs/handling-error.md
 [ref-doc-installation]: docs/installation.md
-[ref-doc-message]: docs/message.md
 [ref-doc-logger]: docs/logger.md
+[ref-doc-message]: docs/message.md
+[ref-doc-pagination]: docs/pagination.md
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
 [ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-service-side-pagination]: docs/service-side-pagination.md
+[ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md

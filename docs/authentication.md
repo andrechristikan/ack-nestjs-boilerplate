@@ -13,13 +13,16 @@ This document provides a comprehensive overview of authentication and session ma
 
 Configuration for tokens, sessions, password, social providers, and API keys is managed di `src/configs/auth.config.ts`.
 
-## Prerequisite
+## Related Documents
 
-Before reading this documentation, it is recommended to read the [Cache Documentation][ref-doc-cache] first to understand how `Cache` works.
+- [Cache][ref-doc-cache] - For understanding session storage and caching mechanisms
+- [Configuration][ref-doc-configuration] - For auth configuration details
+- [Environment][ref-doc-environment] - For JWT and OAuth environment variables
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Related Documents](#related-documents)
 - [Password](#password)
     - [Configuration](#configuration)
     - [Password Features](#password-features)
@@ -1607,7 +1610,7 @@ sequenceDiagram
 <!-- DOCUMENTS -->
 
 [ref-doc-root]: readme.md
-[ref-doc-audit-activity-log]: docs/audit-activity-log.md
+[ref-doc-activity-log]: docs/activity-log.md
 [ref-doc-authentication]: docs/authentication.md
 [ref-doc-authorization]: docs/authorization.md
 [ref-doc-cache]: docs/cache.md
@@ -1615,14 +1618,16 @@ sequenceDiagram
 [ref-doc-database]: docs/database.md
 [ref-doc-environment]: docs/environment.md
 [ref-doc-feature-flag]: docs/feature-flag.md
+[ref-doc-file-upload]: docs/file-upload.md
 [ref-doc-handling-error]: docs/handling-error.md
 [ref-doc-installation]: docs/installation.md
-[ref-doc-message]: docs/message.md
 [ref-doc-logger]: docs/logger.md
+[ref-doc-message]: docs/message.md
+[ref-doc-pagination]: docs/pagination.md
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
 [ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-service-side-pagination]: docs/service-side-pagination.md
+[ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md

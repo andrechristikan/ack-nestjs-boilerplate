@@ -6,10 +6,17 @@ This document provides a comprehensive guide to configuring the ACK NestJS Boile
 
 All environment variables are validated using the `AppEnvDto` class to ensure required variables are present and properly formatted before the application starts.
 
+## Related Documents
+
+- [Configuration][ref-doc-configuration] - For understanding how environment variables map to configurations
+- [Installation][ref-doc-installation] - For initial setup and environment file creation
+- [Database][ref-doc-database] - For database connection details
+- [Authentication][ref-doc-authentication] - For JWT and OAuth configuration
+
 ## Table of Contents
 
-- [Environment Configuration](#environment-configuration)
 - [Overview](#overview)
+- [Related Documents](#related-documents)
 - [Environment Validation](#environment-validation)
 - [Example Configuration](#example-configuration)
 - [Environment Variables](#environment-variables)
@@ -538,7 +545,7 @@ SENTRY_DSN=
 <!-- DOCUMENTS -->
 
 [ref-doc-root]: readme.md
-[ref-doc-audit-activity-log]: docs/audit-activity-log.md
+[ref-doc-activity-log]: docs/activity-log.md
 [ref-doc-authentication]: docs/authentication.md
 [ref-doc-authorization]: docs/authorization.md
 [ref-doc-cache]: docs/cache.md
@@ -546,14 +553,16 @@ SENTRY_DSN=
 [ref-doc-database]: docs/database.md
 [ref-doc-environment]: docs/environment.md
 [ref-doc-feature-flag]: docs/feature-flag.md
+[ref-doc-file-upload]: docs/file-upload.md
 [ref-doc-handling-error]: docs/handling-error.md
 [ref-doc-installation]: docs/installation.md
-[ref-doc-message]: docs/message.md
 [ref-doc-logger]: docs/logger.md
+[ref-doc-message]: docs/message.md
+[ref-doc-pagination]: docs/pagination.md
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
 [ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-service-side-pagination]: docs/service-side-pagination.md
+[ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md

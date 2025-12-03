@@ -10,9 +10,15 @@ Activity Log is a system to record successful user activities in the application
 - Activity logs are **only recorded for successful requests**. Failed requests are not logged.
 - **Current Implementation:** Only admin endpoints use `@ActivityLog` decorator. All user endpoints handle logging manually in service/repository layer.
 
+## Related Documents
+
+- [Authentication][ref-doc-authentication] - For understanding user context and session management
+- [Authorization][ref-doc-authorization] - For role-based access control in activity logging
+
 ## Table of Contents
 
 - [Overview](#overview)
+- [Related Documents](#related-documents)
 - [Types](#types)
 - [Flow](#flow)
 - [Recorded Contains](#recorded-contains)
@@ -302,7 +308,7 @@ metadata: {
 <!-- DOCUMENTS -->
 
 [ref-doc-root]: readme.md
-[ref-doc-audit-activity-log]: docs/audit-activity-log.md
+[ref-doc-activity-log]: docs/activity-log.md
 [ref-doc-authentication]: docs/authentication.md
 [ref-doc-authorization]: docs/authorization.md
 [ref-doc-cache]: docs/cache.md
@@ -310,14 +316,16 @@ metadata: {
 [ref-doc-database]: docs/database.md
 [ref-doc-environment]: docs/environment.md
 [ref-doc-feature-flag]: docs/feature-flag.md
+[ref-doc-file-upload]: docs/file-upload.md
 [ref-doc-handling-error]: docs/handling-error.md
 [ref-doc-installation]: docs/installation.md
-[ref-doc-message]: docs/message.md
 [ref-doc-logger]: docs/logger.md
+[ref-doc-message]: docs/message.md
+[ref-doc-pagination]: docs/pagination.md
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
 [ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-service-side-pagination]: docs/service-side-pagination.md
+[ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
