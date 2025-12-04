@@ -10,7 +10,6 @@ The boilerplate implements a comprehensive security and middleware layer for HTT
 - [Authorization][ref-doc-authorization]
 - [Configuration][ref-doc-configuration]
 - [Environment][ref-doc-environment]
-- [Handling Error][ref-doc-handling-error]
 
 ## Table of Contents
 
