@@ -1,4 +1,321 @@
-// TODO: DOC
+# Security and Middleware Documentation
+
+## Overview
+
+The boilerplate implements a comprehensive security and middleware layer for HTTP request/response processing. All middleware is centrally managed through `RequestMiddlewareModule` and applied globally to all routes using the wildcard pattern `{*wildcard}`.
+
+## Related Documents
+
+- [Authentication][ref-doc-authentication]
+- [Authorization][ref-doc-authorization]
+- [Configuration][ref-doc-configuration]
+- [Environment][ref-doc-environment]
+- [Handling Error][ref-doc-handling-error]
+
+## Table of Contents
+
+- [Middleware](#middleware)
+- [Security](#security)
+    - [Authentication & Authorization](#authentication--authorization)
+    - [Helmet](#helmet)
+    - [Rate Limiting](#rate-limiting)
+    - [CORS](#cors)
+    - [Environment Protection](#environment-protection)
+    - [Request & Correlation IDs](#request--correlation-ids)
+    - [Body Parser](#body-parser)
+    - [URL Versioning](#url-versioning)
+    - [Custom Language](#custom-language)
+    - [Response Compression](#response-compression)
+    - [Response Time](#response-time)
+    - [Request Timeout](#request-timeout)
+- [Decorators](#decorators)
+    - [@RequestTimeout](#requesttimeout)
+    - [@RequestEnvProtected](#requestenvprotected)
+    - [@RequestIPAddress](#requestipaddress)
+    - [@RequestUserAgent](#requestuseragent)
+
+## Middleware
+
+All middleware is configured in `RequestMiddlewareModule` and executes in the following order:
+
+```typescript
+consumer
+  .apply(
+    RequestRequestIdMiddleware,      // 1. Request & Correlation IDs
+    RequestHelmetMiddleware,         // 2. Security headers
+    RequestBodyParserMiddleware,     // 3. Body parsing
+    RequestCorsMiddleware,           // 4. CORS handling
+    RequestUrlVersionMiddleware,     // 5. API version extraction
+    RequestResponseTimeMiddleware,   // 6. Response time tracking
+    RequestCustomLanguageMiddleware, // 7. Language detection
+    RequestCompressionMiddleware     // 8. Response compression
+  )
+  .forRoutes('{*wildcard}');
+```
+
+## Security
+
+### Authentication & Authorization
+
+The boilerplate includes comprehensive authentication and authorization systems. See dedicated documentation:
+
+- [Authentication][ref-doc-authentication] - JWT, OAuth, API Keys, sessions, password management
+- [Authorization][ref-doc-authorization] - RBAC, policy abilities, user protection
+
+### Helmet
+
+Applies protective HTTP headers using [Helmet][ref-helmet].
+
+**Implementation:** `RequestHelmetMiddleware`
+
+**Usage:** Automatically applied to all routes.
+
+### Rate Limiting
+
+Prevents abuse using [Throttler][ref-throttler].
+
+**Implementation:**
+```typescript
+ThrottlerModule.forRootAsync({
+  useFactory: (config: ConfigService) => ({
+    throttlers: [{
+      ttl: config.get<number>('request.throttle.ttlInMs'),
+      limit: config.get<number>('request.throttle.limit'),
+    }],
+  }),
+})
+```
+
+**Skip Rate Limiting:**
+```typescript
+@SkipThrottle()
+@Get('/unlimited')
+async endpoint() {}
+```
+
+**Configuration:** See [Configuration][ref-doc-configuration]
+
+### CORS
+
+Manages cross-origin resource sharing.
+
+**Implementation:** `RequestCorsMiddleware`
+
+**Features:**
+- Dynamic origin validation
+- Automatic credential handling
+- Configurable methods and headers
+- Preflight request support
+
+**Configuration:** See [Configuration][ref-doc-configuration]
+
+### Environment Protection
+
+Restricts endpoint access based on environment.
+
+**Implementation:** `RequestEnvGuard`
+
+**Usage:**
+```typescript
+@RequestEnvProtected(ENUM_APP_ENVIRONMENT.DEVELOPMENT)
+@Get('/debug')
+async debugEndpoint() {}
+```
+
+**Configuration:** See [Configuration][ref-doc-configuration]
+
+### Request & Correlation IDs
+
+Generates unique identifiers for request tracking.
+
+**Implementation:** `RequestRequestIdMiddleware`
+
+**Request Properties:**
+```typescript
+interface IRequestApp extends Request {
+  id: string;            // UUID v7 request ID
+  correlationId: string; // Correlation ID for distributed tracing
+  __version: string;     // API version
+  __language: string;    // Language preference
+}
+```
+
+### Body Parser
+
+Parses request bodies based on content-type.
+
+**Implementation:** `RequestBodyParserMiddleware`
+
+**Supported Content Types:**
+- `application/json`
+- `application/x-www-form-urlencoded`
+- `text/*`
+- `application/octet-stream`
+- `multipart/form-data` (skipped, handled by Multer)
+
+**Configuration:** See [Configuration][ref-doc-configuration]
+
+### URL Versioning
+
+Extracts API version from URLs.
+
+**Implementation:** `RequestUrlVersionMiddleware`
+
+**URL Pattern:**
+```
+/{globalPrefix}/{versionPrefix}{version}/resource
+Example: /api/v1/users
+```
+
+**Request Property:**
+```typescript
+req.__version  // Extracted version number
+```
+
+**Configuration:** See [Configuration][ref-doc-configuration]
+
+### Custom Language
+
+Processes `x-custom-lang` header for internationalization.
+
+**Implementation:** `RequestCustomLanguageMiddleware`
+
+**Usage:**
+```bash
+# Request header
+x-custom-lang: id
+```
+
+**Request Property:**
+```typescript
+req.__language  // Validated language code
+```
+
+**Configuration:** See [Configuration][ref-doc-configuration]
+
+### Response Compression
+
+Applies gzip/deflate compression using [compression][ref-compression].
+
+**Implementation:** `RequestCompressionMiddleware`
+
+**Usage:** Automatically applied to all responses.
+
+### Response Time
+
+Measures request duration using [response-time][ref-response-time].
+
+**Implementation:** `RequestResponseTimeMiddleware`
+
+**Header Example:**
+```
+X-Response-Time: 123.456ms
+```
+
+### Request Timeout
+
+Prevents long-running requests.
+
+**Implementation:** `RequestTimeoutInterceptor`
+
+**Global Registration:**
+```typescript
+app.useGlobalInterceptors(new RequestTimeoutInterceptor(configService, reflector));
+```
+
+**Custom Timeout:**
+```typescript
+@RequestTimeout('60s')
+@Get('/long-running')
+async operation() {}
+```
+
+**Supported Formats:** [ms][ref-ms] format (`'2s'`, `'1m'`, `'5h'`)
+
+**Configuration:** See [Configuration][ref-doc-configuration]
+
+## Decorators
+
+### @RequestTimeout
+
+Sets custom timeout for specific endpoints.
+
+**Signature:**
+```typescript
+RequestTimeout(seconds: ms.StringValue): MethodDecorator
+```
+
+**Example:**
+```typescript
+@RequestTimeout('2m')
+@Post('/process')
+async processData() {}
+```
+
+### @RequestEnvProtected
+
+Restricts endpoint access based on environment.
+
+**Signature:**
+```typescript
+RequestEnvProtected(...envs: ENUM_APP_ENVIRONMENT[]): MethodDecorator
+```
+
+**Example:**
+```typescript
+@RequestEnvProtected(ENUM_APP_ENVIRONMENT.DEVELOPMENT)
+@Get('/admin/clear-cache')
+async clearCache() {}
+```
+
+### @RequestIPAddress
+
+Extracts real client IP address from request using [nestjs-real-ip][ref-nestjs-real-ip].
+
+**Signature:**
+```typescript
+RequestIPAddress(): ParameterDecorator
+```
+
+**Example:**
+```typescript
+@Get('/check-ip')
+async checkIP(@RequestIPAddress() ip: string) {
+  return { ip };
+}
+```
+
+### @RequestUserAgent
+
+Parses User-Agent information using [ua-parser-js][ref-ua-parser-js].
+
+**Signature:**
+```typescript
+RequestUserAgent(): ParameterDecorator
+```
+
+**Example:**
+```typescript
+@Get('/device-info')
+async getDeviceInfo(@RequestUserAgent() userAgent: UAParser.IResult) {
+  return {
+    browser: userAgent.browser,
+    os: userAgent.os,
+    device: userAgent.device
+  };
+}
+```
+
+**Response Structure:**
+```typescript
+interface IResult {
+  browser: { name?: string; version?: string };
+  os: { name?: string; version?: string };
+  device: { model?: string; type?: string; vendor?: string };
+  engine: { name?: string; version?: string };
+  cpu: { architecture?: string };
+}
+```
 
 <!-- REFERENCES -->
 
@@ -57,6 +374,13 @@
 [ref-git]: https://git-scm.com
 [ref-google-console]: https://console.cloud.google.com/
 [ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
+[ref-helmet]: https://helmetjs.github.io/
+[ref-throttler]: https://docs.nestjs.com/security/rate-limiting
+[ref-compression]: https://github.com/expressjs/compression
+[ref-response-time]: https://github.com/expressjs/response-time
+[ref-ms]: https://github.com/vercel/ms
+[ref-nestjs-real-ip]: https://github.com/p-j/nestjs-real-ip
+[ref-ua-parser-js]: https://github.com/faisalman/ua-parser-js
 
 <!-- DOCUMENTS -->
 

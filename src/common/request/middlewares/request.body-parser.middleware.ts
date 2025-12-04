@@ -20,7 +20,6 @@ import { ConfigService } from '@nestjs/config';
 export class RequestBodyParserMiddleware implements NestMiddleware {
     private readonly jsonLimitInBytes: number;
     private readonly textLimitInBytes: number;
-    private readonly rawLimitInBytes: number;
     private readonly urlencodedLimitInBytes: number;
     private readonly applicationOctetStreamLimitInBytes: number;
 
@@ -30,9 +29,6 @@ export class RequestBodyParserMiddleware implements NestMiddleware {
         );
         this.textLimitInBytes = this.configService.get<number>(
             'request.body.text.limitInBytes'
-        );
-        this.rawLimitInBytes = this.configService.get<number>(
-            'request.body.raw.limitInBytes'
         );
         this.urlencodedLimitInBytes = this.configService.get<number>(
             'request.body.urlencoded.limitInBytes'

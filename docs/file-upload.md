@@ -1,4 +1,4 @@
-# File Upload
+# File Upload Documentation
 
 > This documentation explains the features and usage of **File Module**: Located at `src/common/file`
 
@@ -31,7 +31,18 @@ The file upload module provides a comprehensive solution for handling file uploa
   - [Multiple Files Upload](#multiple-files-upload)
   - [Excel Import with Validation](#excel-import-with-validation)
   - [Multiple Field Upload](#multiple-field-upload)
+- [AWS S3 Presigned URL Upload](#aws-s3-presigned-url-upload)
+  - [How It Works](#how-it-works)
+  - [Example](#example)
+    - [Step 1: Request DTO](#step-1-request-dto)
+    - [Step 2: Generate Presigned URL Endpoint](#step-2-generate-presigned-url-endpoint)
+    - [Step 3: Service Implementation](#step-3-service-implementation)
+    - [Step 4: Client-Side Upload](#step-4-client-side-upload)
+  - [Configuration Options](#configuration-options)
+  - [Response Structure](#response-structure)
 - [Error Handling](#error-handling)
+  - [FileImportException](#fileimportexception)
+  - [Error Response Examples](#error-response-examples)
 - [Message Translation](#message-translation)
 
 
@@ -382,6 +393,251 @@ async uploadCompleteProfile(
   }
   
   return result;
+}
+```
+
+## AWS S3 Presigned URL Upload
+
+AWS S3 presigned URLs provide a secure way to allow client-side direct uploads to S3 without exposing AWS credentials. This approach is ideal for large file uploads and reduces server load by bypassing the backend server.
+
+### How It Works
+
+1. **Generate Presigned URL**: Client requests a presigned URL from the backend
+2. **Client Upload**: Client uploads the file directly to S3 using the presigned URL
+3. **Update Reference**: Client notifies the backend of the successful upload
+
+### Example
+
+#### Step 1: Request DTO
+
+```typescript
+import { ApiProperty, PickType } from '@nestjs/swagger';
+import { IsEnum, IsNotEmpty, IsString, IsInt, IsNumber } from 'class-validator';
+import { ENUM_FILE_EXTENSION_IMAGE } from '@common/file/enums/file.enum';
+
+export class UserGeneratePhotoProfileRequestDto {
+  @ApiProperty({
+    type: 'string',
+    enum: ENUM_FILE_EXTENSION_IMAGE,
+    default: ENUM_FILE_EXTENSION_IMAGE.JPG,
+  })
+  @IsString()
+  @IsEnum(ENUM_FILE_EXTENSION_IMAGE)
+  @IsNotEmpty()
+  extension: ENUM_FILE_EXTENSION_IMAGE;
+
+  @ApiProperty({
+    required: true,
+    description: 'File size in bytes',
+  })
+  @IsNumber({
+    allowInfinity: false,
+    allowNaN: false,
+    maxDecimalPlaces: 0,
+  })
+  @IsInt()
+  @IsNotEmpty()
+  size: number;
+}
+
+export class UserUpdateProfilePhotoRequestDto {
+  @ApiProperty({
+    required: true,
+    description: 'Photo path key from S3',
+    example: 'user/profile/unique-photo-key.jpg',
+  })
+  @IsString()
+  @IsNotEmpty()
+  photo: string;
+
+  @ApiProperty({
+    required: true,
+    description: 'File size in bytes',
+  })
+  @IsNumber({
+    allowInfinity: false,
+    allowNaN: false,
+    maxDecimalPlaces: 0,
+  })
+  @IsInt()
+  @IsNotEmpty()
+  size: number;
+}
+```
+
+#### Step 2: Generate Presigned URL Endpoint
+
+```typescript
+@Controller('users')
+export class UserController {
+  constructor(
+    private readonly userService: UserService,
+  ) {}
+
+  @Response('user.generatePhotoProfilePresign')
+  @UserProtected()
+  @AuthJwtAccessProtected()
+  @Post('/profile/generate-presign/photo')
+  @HttpCode(HttpStatus.OK)
+  async generatePhotoProfilePresign(
+    @AuthJwtPayload('userId') userId: string,
+    @Body() body: UserGeneratePhotoProfileRequestDto
+  ): Promise<IResponseReturn<AwsS3PresignDto>> {
+    return this.userService.generatePhotoProfilePresign(userId, body);
+  }
+
+  @Response('user.updatePhotoProfile')
+  @UserProtected()
+  @AuthJwtAccessProtected()
+  @Put('/profile/update/photo')
+  async updatePhotoProfile(
+    @AuthJwtPayload('userId') userId: string,
+    @Body() body: UserUpdateProfilePhotoRequestDto,
+    @RequestIPAddress() ipAddress: string,
+    @RequestUserAgent() userAgent: RequestUserAgentDto
+  ): Promise<IResponseReturn<void>> {
+    return this.userService.updatePhotoProfile(userId, body, {
+      ipAddress,
+      userAgent,
+    });
+  }
+}
+```
+
+#### Step 3: Service Implementation
+
+```typescript
+@Injectable()
+export class UserService {
+  constructor(
+    private readonly awsS3Service: AwsS3Service,
+    private readonly userRepository: UserRepository,
+    private readonly fileService: FileService
+  ) {}
+
+  async generatePhotoProfilePresign(
+    userId: string,
+    { extension, size }: UserGeneratePhotoProfileRequestDto
+  ): Promise<IResponseReturn<AwsS3PresignDto>> {
+    // Generate unique filename with path
+    const key: string = this.fileService.createRandomFilename({
+      path: `user/${userId}/profile`,
+      prefix: 'photo',
+      extension,
+    });
+
+    // Generate presigned URL
+    const presign: AwsS3PresignDto = await this.awsS3Service.presignPutItem(
+      { key, size },
+      { 
+        forceUpdate: true,
+        access: ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
+        expired: 3600 // 1 hour
+      }
+    );
+
+    return { data: presign };
+  }
+
+  async updatePhotoProfile(
+    userId: string,
+    { photo, size }: UserUpdateProfilePhotoRequestDto,
+    requestLog: IRequestLog
+  ): Promise<IResponseReturn<void>> {
+    try {
+      // Map presigned data to AwsS3Dto
+      const aws: AwsS3Dto = this.awsS3Service.mapPresign({
+        key: photo,
+        size,
+      });
+
+      // Update user profile with photo reference
+      await this.userRepository.updatePhotoProfile(userId, aws, requestLog);
+
+      return;
+    } catch (err: unknown) {
+      throw new InternalServerErrorException({
+        statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+        message: 'http.serverError.internalServerError',
+        _error: err,
+      });
+    }
+  }
+}
+```
+
+#### Step 4: Client-Side Upload
+
+```typescript
+// Frontend example (React/Angular/Vue)
+async function uploadPhotoWithPresign(file: File) {
+  try {
+    // Step 1: Request presigned URL
+    const response = await fetch('/api/users/profile/generate-presign/photo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({
+        extension: file.name.split('.').pop(),
+        size: file.size
+      })
+    });
+
+    const { data: presignData } = await response.json();
+    // presignData contains: { presignUrl, key, extension, mime, expiredIn }
+
+    // Step 2: Upload directly to S3
+    await fetch(presignData.presignUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': presignData.mime,
+        'Content-Length': file.size.toString(),
+        'x-amz-checksum-algorithm': 'SHA256'
+      },
+      body: file
+    });
+
+    // Step 3: Notify backend of successful upload
+    await fetch('/api/users/profile/update/photo', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({
+        photo: presignData.key,
+        size: file.size
+      })
+    });
+
+    console.log('Photo uploaded successfully!');
+  } catch (error) {
+    console.error('Upload failed:', error);
+  }
+}
+```
+
+### Configuration Options
+
+```typescript
+interface IAwsS3PresignOptions {
+  access?: ENUM_AWS_S3_ACCESSIBILITY; // PUBLIC or PRIVATE
+  expired?: number; // Expiration time in seconds (default from config)
+  forceUpdate?: boolean; // Allow overwriting existing files
+}
+```
+
+### Response Structure
+
+```typescript
+interface AwsS3PresignDto {
+  presignUrl: string;    // The presigned URL for upload
+  key: string;           // S3 object key
+  extension: string;     // File extension
+  mime: string;          // MIME type
+  expiredIn: number;     // URL expiration time in seconds
 }
 ```
 

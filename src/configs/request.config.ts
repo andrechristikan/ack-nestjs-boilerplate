@@ -9,7 +9,6 @@ import ms from 'ms';
 export interface IConfigRequest {
     body: {
         json: { limitInBytes: number };
-        raw: { limitInBytes: number };
         text: { limitInBytes: number };
         urlencoded: { limitInBytes: number };
         applicationOctetStream: { limitInBytes: number };
@@ -32,10 +31,6 @@ export default registerAs(
         body: {
             json: {
                 limitInBytes: bytes('500kb'),
-            },
-            raw: {
-                limitInBytes:
-                    FILE_SIZE_IN_BYTES * FILE_MAX_MULTIPLE + bytes('500kb'),
             },
             text: {
                 limitInBytes: bytes('1mb'),
