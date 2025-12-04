@@ -3,7 +3,6 @@ import {
     Doc,
     DocAuth,
     DocDefault,
-    DocErrorGroup,
     DocGuard,
     DocOneOf,
     DocRequest,
@@ -74,17 +73,15 @@ export function ApiKeyAdminUpdateStatusDoc(): MethodDecorator {
             dto: ApiKeyDto,
         }),
         DocGuard({ policy: true, role: true }),
-        DocErrorGroup([
-            DocDefault({
-                httpStatus: HttpStatus.NOT_FOUND,
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
-            }),
-            DocOneOf(HttpStatus.BAD_REQUEST, {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED,
-                messagePath: 'apiKey.error.expired',
-            }),
-        ])
+        DocDefault({
+            httpStatus: HttpStatus.NOT_FOUND,
+            statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
+            messagePath: 'apiKey.error.notFound',
+        }),
+        DocOneOf(HttpStatus.BAD_REQUEST, {
+            statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED,
+            messagePath: 'apiKey.error.expired',
+        })
     );
 }
 
@@ -102,17 +99,22 @@ export function ApiKeyAdminResetDoc(): MethodDecorator {
         DocResponse<ApiKeyCreateResponseDto>('apiKey.reset', {
             dto: ApiKeyCreateResponseDto,
         }),
-        DocErrorGroup([
-            DocDefault({
-                httpStatus: HttpStatus.NOT_FOUND,
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
-            }),
-            DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocDefault({
+            httpStatus: HttpStatus.NOT_FOUND,
+            statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
+            messagePath: 'apiKey.error.notFound',
+        }),
+        DocOneOf(
+            HttpStatus.BAD_REQUEST,
+            {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.INACTIVE,
                 messagePath: 'apiKey.error.inactive',
-            }),
-        ])
+            },
+            {
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED,
+                messagePath: 'apiKey.error.expired',
+            }
+        )
     );
 }
 
@@ -132,17 +134,22 @@ export function ApiKeyAdminUpdateDoc(): MethodDecorator {
         DocResponse('apiKey.update', {
             dto: ApiKeyDto,
         }),
-        DocErrorGroup([
-            DocDefault({
-                httpStatus: HttpStatus.NOT_FOUND,
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
-            }),
-            DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocDefault({
+            httpStatus: HttpStatus.NOT_FOUND,
+            statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
+            messagePath: 'apiKey.error.notFound',
+        }),
+        DocOneOf(
+            HttpStatus.BAD_REQUEST,
+            {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.INACTIVE,
                 messagePath: 'apiKey.error.inactive',
-            }),
-        ])
+            },
+            {
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED,
+                messagePath: 'apiKey.error.expired',
+            }
+        )
     );
 }
 
@@ -162,17 +169,22 @@ export function ApiKeyAdminUpdateDateDoc(): MethodDecorator {
         DocResponse('apiKey.updateDate', {
             dto: ApiKeyDto,
         }),
-        DocErrorGroup([
-            DocDefault({
-                httpStatus: HttpStatus.NOT_FOUND,
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
-            }),
-            DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocDefault({
+            httpStatus: HttpStatus.NOT_FOUND,
+            statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
+            messagePath: 'apiKey.error.notFound',
+        }),
+        DocOneOf(
+            HttpStatus.BAD_REQUEST,
+            {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.INACTIVE,
                 messagePath: 'apiKey.error.inactive',
-            }),
-        ])
+            },
+            {
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED,
+                messagePath: 'apiKey.error.expired',
+            }
+        )
     );
 }
 
@@ -190,12 +202,10 @@ export function ApiKeyAdminDeleteDoc(): MethodDecorator {
         DocResponse('apiKey.delete', {
             dto: ApiKeyDto,
         }),
-        DocErrorGroup([
-            DocDefault({
-                httpStatus: HttpStatus.NOT_FOUND,
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
-            }),
-        ])
+        DocDefault({
+            httpStatus: HttpStatus.NOT_FOUND,
+            statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
+            messagePath: 'apiKey.error.notFound',
+        })
     );
 }

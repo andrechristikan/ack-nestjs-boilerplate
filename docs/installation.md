@@ -6,9 +6,9 @@ This document provides step-by-step instructions for setting up the ACK NestJS B
 
 ## Related Documents
 
-- [Environment][ref-doc-environment] - For complete environment variable configuration
-- [Database][ref-doc-database] - For database setup and migration details
-- [Configuration][ref-doc-configuration] - For understanding configuration structure
+- [Environment Documentation][ref-doc-environment] - For complete environment variable configuration
+- [Database Documentation][ref-doc-database] - For database setup and migration details
+- [Configuration Documentation][ref-doc-configuration] - For understanding configuration structure
 
 ## Table of Contents
 
@@ -94,49 +94,6 @@ cp .env.example .env
 
 > **For comprehensive environment configuration details**, refer to the [Environment Documentation][ref-doc-environment].
 
-#### Essential Configuration
-
-Open the `.env` file in your preferred text editor and configure these critical settings:
-
-**Database Configuration:**
-```bash
-# MongoDB connection string
-# For local MongoDB replica set:
-DATABASE_URL=mongodb://localhost:27017,localhost:27018,localhost:27019/ack-nestjs-boilerplate?replicaSet=rs0
-
-# For MongoDB Atlas:
-# DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/ack-nestjs-boilerplate
-```
-
-> **For detailed database setup and configuration**, see the [Database Documentation][ref-doc-database].
-
-**Redis Configuration:**
-```bash
-# Redis for caching
-CACHE_REDIS_URL="redis://localhost:6379/0"
-
-# Redis for queues and background jobs
-QUEUE_REDIS_URL="redis://localhost:6379/1"
-```
-
-> **For detailed configuration**: See [Cache Documentation][ref-doc-cache] for caching setup and [Queue Documentation][ref-doc-queue] for background job configuration.
-
-**JWT Configuration (will be updated after key generation):**
-
-Some values will be automatically updated during the key generation step. You can leave the JWT-related fields with placeholder values for now.
-
-```bash
-# These will be automatically updated by yarn generate:keys
-AUTH_JWT_ACCESS_TOKEN_KID="your-access-token-kid"
-AUTH_JWT_REFRESH_TOKEN_KID="your-refresh-token-kid"
-
-# JWKS URLs (update after hosting your jwks.json files)
-AUTH_JWT_ACCESS_TOKEN_JWKS_URI="https://your-domain.com/.well-known/access-jwks.json"
-AUTH_JWT_REFRESH_TOKEN_JWKS_URI="https://your-domain.com/.well-known/refresh-jwks.json"
-```
-
-> **For comprehensive authentication and authorization setup**, see the [Authorization Documentation][ref-doc-authorization].
-
 ### Generate Keys
 
 This project uses **ES256** algorithm for Access Tokens and **ES512** for Refresh Tokens. You need to generate cryptographic key pairs for JWT authentication.
@@ -170,8 +127,6 @@ Upload the JWKS files to your S3 bucket and make them publicly accessible.
 Upload the files to any publicly accessible URL and note the URLs for your `.env` configuration.
 
 #### Update Environment
-
-> **Note**: Skip this step if you used the `--direct-insert` option when generating keys, as the URLs will be automatically updated.
 
 After hosting your JWKS files, update your `.env` file:
 
@@ -272,8 +227,6 @@ Unlike standard installation, Docker automatically serves your JWKS files throug
 
 The Docker setup includes a JWKS server that automatically hosts the generated key files, eliminating the need for external hosting.
 
-> **For detailed authentication and authorization setup**, see the [Authorization Documentation][ref-doc-authorization].
-
 ### Run Containers
 
 Now you're ready to start the complete Docker environment with all services.
@@ -353,11 +306,6 @@ Congratulations! You're now ready to start the project. Make sure all your servi
 # Start in development mode with hot reload
 yarn start:dev
 ```
-
-**Expected output**: You should see the application starting with logs showing:
-- Database connection established
-- Redis connection successful  
-- Server running on http://localhost:3000
 
 Production Commands
 

@@ -1,5 +1,7 @@
 # Doc Documentation
 
+> This documentation explains the features and usage of **Doc Module**: Located at `src/common/doc`
+
 ## Overview
 
 This module provides decorators for API documentation using [Swagger/OpenAPI][ref-nestjs-swagger]. It creates standardized, consistent API documentation with minimal boilerplate code.
@@ -15,16 +17,16 @@ Features:
 
 ## Related Documents
 
-- [Request Validation][ref-doc-request-validation] - For DTO validation and request documentation
-- [Response][ref-doc-response] - For response structure and formatting
-- [Authentication][ref-doc-authentication] - For authentication decorator usage
-- [Authorization][ref-doc-authorization] - For authorization guard documentation
+- [Request Validation Documentation][ref-doc-request-validation] - For DTO validation and request documentation
+- [Response Documentation][ref-doc-response] - For response structure and formatting
+- [Authentication Documentation][ref-doc-authentication] - For authentication decorator usage
+- [Authorization Documentation][ref-doc-authorization] - For authorization guard documentation
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
-- [Core Decorators](#core-decorators)
+- [Decorators](#decorators)
   - [Doc](#doc)
   - [DocRequest](#docrequest)
   - [DocRequestFile](#docrequestfile)
@@ -38,7 +40,6 @@ Features:
   - [DocOneOf](#doconeof)
   - [DocAnyOf](#docanyof)
   - [DocAllOf](#docallof)
-  - [DocErrorGroup](#docerrorgroup)
 - [DTO Documentation](#dto-documentation)
   - [ApiProperty](#apiproperty)
   - [Params Constants](#params-constants)
@@ -51,7 +52,7 @@ Features:
   - [File Upload Endpoint](#file-upload-endpoint)
 
 
-## Core Decorators
+## Decorators
 
 ### Doc
 
@@ -67,9 +68,20 @@ Basic API documentation decorator that sets up common operation metadata.
 
 **Auto-includes:**
 
-- Custom language header (`x-custom-lang`)
-- Internal server error response (500)
-- Request timeout response (408)
+- Custom headers:
+  - `x-custom-lang` - Custom language header (default: EN)
+  - `x-timestamp` - Timestamp in milliseconds
+  - `x-timezone` - Timezone (e.g., Asia/Jakarta)
+  - `x-version` - API version
+  - `x-repo-version` - Repository version
+  - `x-request-id` - Unique request identifier (UUID)
+  - `x-correlation-id` - Correlation identifier for tracking requests across services
+- Standard error responses:
+  - Internal server error (500)
+  - Request timeout (408)
+  - Validation error (422)
+  - Environment forbidden error
+  - Parameter required error
 
 **Usage:**
 
@@ -111,8 +123,7 @@ enum ENUM_DOC_REQUEST_BODY_TYPE {
 
 **Auto-includes:**
 
-- Content-Type header based on bodyType
-- Validation error response (422) when bodyType is specified
+- Content-Type header based on bodyType (or 'none' if not specified)
 
 **Usage:**
 
@@ -152,6 +163,10 @@ Documents file upload endpoints with multipart/form-data.
 **Auto-includes:**
 
 - Content-Type: multipart/form-data
+- File-related error responses:
+  - File extension invalid error
+  - File required error
+  - File required extract first error
 
 **Usage:**
 
@@ -367,125 +382,95 @@ async createResource() {
 
 ### DocOneOf
 
-Documents endpoint that returns one of several possible response types.
+Documents endpoint that returns **one of** several possible response types using OpenAPI's `oneOf`. Useful for documenting endpoints that can return different error types with the same HTTP status.
 
 **Parameters:**
 
-- `httpStatus: HttpStatus` - HTTP status
-- `...documents: IDocOfOptions[]` - Possible response schemas
+- `httpStatus: HttpStatus` - HTTP status code
+- `...documents: IDocOfOptions[]` - One or more possible response schemas
+  - `statusCode: number` - Status code
+  - `messagePath: string` - Message path for i18n
+  - `dto?: ClassConstructor` - Optional DTO class
 
-**Usage:**
+**Basic Usage:**
 
 ```typescript
-@DocOneOf(
-    HttpStatus.OK,
+DocOneOf(
+    HttpStatus.BAD_REQUEST,
     {
-        statusCode: HttpStatus.OK,
-        messagePath: 'user.found',
-        dto: UserDto
+        statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_EXIST,
+        messagePath: 'user.error.emailExist',
     },
     {
-        statusCode: HttpStatus.NOT_FOUND,
-        messagePath: 'user.notFound'
+        statusCode: ENUM_USER_STATUS_CODE_ERROR.USERNAME_EXIST,
+        messagePath: 'user.error.usernameExist',
     }
 )
-@Get('/:id')
-async getUser() {
-    // implementation
-}
 ```
+
+**Detailed Examples:**
+
+For complete examples of `DocOneOf` usage in combination with other decorators, see:
+- [ApiKey Admin Documentation](../src/modules/api-key/docs/api-key.admin.doc.ts)
 
 ### DocAnyOf
 
-Documents endpoint that can match any combination of provided schemas.
+Documents endpoint that can match **any combination** of provided schemas using OpenAPI's `anyOf`. Useful when response can satisfy one or more schemas simultaneously.
 
 **Parameters:**
 
-- `httpStatus: HttpStatus` - HTTP status
+- `httpStatus: HttpStatus` - HTTP status code
 - `...documents: IDocOfOptions[]` - Possible response schemas
+  - `statusCode: number` - Status code
+  - `messagePath: string` - Message path for i18n
+  - `dto?: ClassConstructor` - Optional DTO class
 
-**Usage:**
+**Basic Usage:**
 
 ```typescript
-@DocAnyOf(
+DocAnyOf(
     HttpStatus.OK,
     {
         statusCode: HttpStatus.OK,
-        messagePath: 'data.partial',
-        dto: PartialDataDto
+        messagePath: 'user.partial',
+        dto: UserPartialDto,
     },
     {
         statusCode: HttpStatus.OK,
-        messagePath: 'data.full',
-        dto: FullDataDto
+        messagePath: 'user.full',
+        dto: UserFullDto,
     }
 )
-@Get('/data')
-async getData() {
-    // implementation
-}
 ```
 
 ### DocAllOf
 
-Documents endpoint that must satisfy all provided schema definitions.
+Documents endpoint that must satisfy **all** provided schema definitions using OpenAPI's `allOf`. Useful for documenting responses that combine multiple schemas.
 
 **Parameters:**
 
-- `httpStatus: HttpStatus` - HTTP status
-- `...documents: IDocOfOptions[]` - Required response schemas
+- `httpStatus: HttpStatus` - HTTP status code
+- `...documents: IDocOfOptions[]` - Required response schemas (all must be satisfied)
+  - `statusCode: number` - Status code
+  - `messagePath: string` - Message path for i18n
+  - `dto?: ClassConstructor` - Optional DTO class
 
-**Usage:**
+**Basic Usage:**
 
 ```typescript
-@DocAllOf(
+DocAllOf(
     HttpStatus.OK,
     {
         statusCode: HttpStatus.OK,
-        messagePath: 'response.base',
-        dto: BaseDto
+        messagePath: 'user.base',
+        dto: UserBaseDto,
     },
     {
         statusCode: HttpStatus.OK,
-        messagePath: 'response.extended',
-        dto: ExtendedDto
+        messagePath: 'user.extended',
+        dto: UserExtendedDto,
     }
 )
-@Get('/combined')
-async getCombinedData() {
-    // implementation
-}
-```
-
-### DocErrorGroup
-
-Groups multiple error documentation decorators.
-
-**Parameters:**
-
-- `docs: MethodDecorator[]` - Array of error decorators
-
-**Usage:**
-
-```typescript
-const CommonErrors = DocErrorGroup([
-    DocDefault({
-        httpStatus: HttpStatus.BAD_REQUEST,
-        messagePath: 'error.badRequest',
-        statusCode: HttpStatus.BAD_REQUEST
-    }),
-    DocDefault({
-        httpStatus: HttpStatus.NOT_FOUND,
-        messagePath: 'error.notFound',
-        statusCode: HttpStatus.NOT_FOUND
-    })
-]);
-
-@CommonErrors
-@Get('/:id')
-async getResource() {
-    // implementation
-}
 ```
 
 ## DTO Documentation

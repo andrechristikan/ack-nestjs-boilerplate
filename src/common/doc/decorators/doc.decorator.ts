@@ -13,6 +13,7 @@ import {
     ApiSecurity,
     getSchemaPath,
 } from '@nestjs/swagger';
+import { faker } from '@faker-js/faker';
 import {
     IDocAuthOptions,
     IDocDefaultOptions,
@@ -35,6 +36,8 @@ import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import {
     DOC_CONTENT_TYPE_MAPPING,
+    DOC_FILE_ERROR_RESPONSES,
+    DOC_PAGINATION_ERROR_RESPONSES,
     DOC_PAGINATION_QUERIES,
     DOC_STANDARD_ERROR_RESPONSES,
 } from '@common/doc/constants/doc.constant';
@@ -251,9 +254,67 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                     type: 'string',
                 },
             },
+            {
+                name: 'x-timestamp',
+                description: 'Timestamp in milliseconds',
+                required: false,
+                schema: {
+                    example: 1732118400000,
+                    type: 'number',
+                },
+            },
+            {
+                name: 'x-timezone',
+                description: 'Timezone',
+                required: false,
+                schema: {
+                    example: 'Asia/Jakarta',
+                    type: 'string',
+                },
+            },
+            {
+                name: 'x-version',
+                description: 'API version',
+                required: false,
+                schema: {
+                    example: '1',
+                    type: 'string',
+                },
+            },
+            {
+                name: 'x-repo-version',
+                description: 'Repository version',
+                required: false,
+                schema: {
+                    example: '1.0.0',
+                    type: 'string',
+                },
+            },
+            {
+                name: 'x-request-id',
+                description: 'Unique request identifier',
+                required: false,
+                schema: {
+                    example: faker.string.uuid(),
+                    type: 'string',
+                },
+            },
+            {
+                name: 'x-correlation-id',
+                description:
+                    'Correlation identifier for tracking requests across services',
+                required: false,
+                schema: {
+                    example: faker.string.uuid(),
+                    type: 'string',
+                },
+            },
         ]),
         DOC_STANDARD_ERROR_RESPONSES.INTERNAL_SERVER_ERROR,
-        DOC_STANDARD_ERROR_RESPONSES.REQUEST_TIMEOUT
+        DOC_STANDARD_ERROR_RESPONSES.REQUEST_TIMEOUT,
+        DOC_STANDARD_ERROR_RESPONSES.VALIDATION_ERROR,
+        DOC_STANDARD_ERROR_RESPONSES.ENV_FORBIDDEN,
+        DOC_STANDARD_ERROR_RESPONSES.PARAM_REQUIRED
     );
 }
 
@@ -270,10 +331,6 @@ export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
         docs.push(ApiConsumes(DOC_CONTENT_TYPE_MAPPING[options.bodyType]));
     } else {
         docs.push(ApiConsumes('none'));
-    }
-
-    if (options?.bodyType) {
-        docs.push(DOC_STANDARD_ERROR_RESPONSES.VALIDATION_ERROR);
     }
 
     if (options?.params?.length) {
@@ -300,7 +357,11 @@ export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
 export function DocRequestFile(
     options?: IDocRequestFileOptions
 ): MethodDecorator {
-    const docs: Array<ClassDecorator | MethodDecorator> = [];
+    const docs: Array<ClassDecorator | MethodDecorator> = [
+        DOC_FILE_ERROR_RESPONSES.EXTENSION_INVALID,
+        DOC_FILE_ERROR_RESPONSES.REQUIRED,
+        DOC_FILE_ERROR_RESPONSES.REQUIRED_EXTRACT_FIRST,
+    ];
 
     if (options?.params?.length) {
         docs.push(...options.params.map(param => ApiParam(param)));
@@ -451,16 +512,6 @@ export function DocResponse<T = void>(
 }
 
 /**
- * Groups multiple error documentation decorators into a single decorator.
- * This is useful for combining common error responses that apply to multiple endpoints.
- * @param {MethodDecorator[]} docs - Array of method decorators representing different error scenarios
- * @returns {MethodDecorator} A method decorator that applies all the provided error documentation
- */
-export function DocErrorGroup(docs: MethodDecorator[]): MethodDecorator {
-    return applyDecorators(...docs);
-}
-
-/**
  * Creates an API documentation decorator for paginated response endpoints.
  * This decorator automatically includes pagination query parameters and sets up the response schema
  * for paginated data with metadata about total count, current page, etc.
@@ -505,6 +556,8 @@ export function DocResponsePaging<T>(
                 },
             },
         }),
+        DOC_PAGINATION_ERROR_RESPONSES.ORDER_BY_NOT_ALLOWED,
+        DOC_PAGINATION_ERROR_RESPONSES.FILTER_INVALID_VALUE,
     ];
 
     if (options.availableSearch) {

@@ -1,5 +1,11 @@
 # Authorization Documentation
 
+> This documentation explains the features and usage of **Authorization Module**: 
+> - **UserProtected**: Located at `src/modules/user/decorators`
+> - **RoleProtected**: Located at `src/modules/role/decorators`
+> - **PolicyAbilityProtected**: Located at `src/modules/policy/decorators`
+> - **TermPolicyAcceptanceProtected**: Located at `src/modules/term-policy/decorators`
+
 ## Overview
 
 This authorization system provides a comprehensive, layered security approach for ACK NestJs Boilerplate. It implements multiple protection levels including user authentication, role-based access control, policy-based permissions, and terms acceptance verification.
@@ -8,17 +14,40 @@ The system is built using NestJS guards and decorators, making it easy to apply 
 
 ## Related Documents
 
-- [Authentication][ref-doc-authentication] - Required reading for understanding `@AuthJwtAccessProtected()` decorator
-- [Activity Log][ref-doc-activity-log] - For tracking authorization-related user activities
+- [Configuration Documentation][ref-doc-configuration] - For Redis configuration settings
+- [Environment Documentation][ref-doc-environment] - For Redis environment variables
+- [Authentication Documentation][ref-doc-authentication] - Required reading for understanding `@AuthJwtAccessProtected()` decorator
+- [Activity Log Documentation][ref-doc-activity-log] - For tracking authorization-related user activities
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [User Protected](#user-protected)
+  - [Purpose](#purpose)
+  - [Decorators](#decorators)
+  - [Guards](#guards)
+  - [Important Notes](#important-notes)
 - [Role Protected](#role-protected)
+  - [Purpose](#purpose-1)
+  - [Decorators](#decorators-1)
+  - [Getting Current Role](#getting-current-role)
+  - [Important Notes](#important-notes-1)
+  - [Guards](#guards-1)
+  - [Special Behavior](#special-behavior)
 - [Policy Ability Protected](#policy-ability-protected)
+  - [Purpose](#purpose-2)
+  - [Decorators](#decorators-2)
+  - [Important Notes](#important-notes-2)
+  - [Guards](#guards-2)
+  - [CASL Integration](#casl-integration)
+  - [Special Behavior](#special-behavior-1)
 - [Term Policy Acceptance Protected](#term-policy-acceptance-protected)
+  - [Purpose](#purpose-3)
+  - [Decorators](#decorators-3)
+  - [Important Notes](#important-notes-3)
+  - [Guards](#guards-3)
+  - [Special Behavior](#special-behavior-2)
 
 ## User Protected
 
@@ -38,16 +67,16 @@ The system is built using NestJS guards and decorators, making it easy to apply 
 **Usage:**
 
 ```typescript
-@AuthJwtAccessProtected()
 @UserProtected()
+@AuthJwtAccessProtected()
 @Get('profile')
 getProfile(@UserCurrent() user: IUser) {
   return user;
 }
 
 // Allow unverified users
-@AuthJwtAccessProtected()
 @UserProtected(false)
+@AuthJwtAccessProtected()
 @Get('dashboard')
 getDashboard(@UserCurrent() user: IUser) {
   return { user };
@@ -63,8 +92,8 @@ Extracts the authenticated user object from the request context.
 **Usage:**
 
 ```typescript
-@AuthJwtAccessProtected()
 @UserProtected()
+@AuthJwtAccessProtected()
 @Get('me')
 getCurrentUser(@UserCurrent() user: IUser) {
   return {
@@ -94,7 +123,7 @@ The `UserProtected` decorator follows this validation sequence:
 
 ```mermaid
 flowchart TD
-    Start([Request Received]) --> JwtGuard[@AuthJwtAccessProtected<br/>Extract JWT and populate request.user]
+    Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT and populate request.user]
     JwtGuard --> CheckAuth{request.user exists?}
     CheckAuth -->|No| ErrorAuth[Throw UnauthorizedException<br/>JWT_ACCESS_TOKEN_INVALID]
     CheckAuth -->|Yes| LookupUser[Retrieve user from database<br/>with role information]
@@ -124,7 +153,6 @@ flowchart TD
 ### Important Notes
 
 - `@UserProtected()` **requires** `@AuthJwtAccessProtected()` to be applied first (above in code)
-- `@UserProtected()` must be placed **below** (after) `@RoleProtected()` decorator in code
 - `@AuthJwtAccessProtected()` populates `request.user` from JWT token. See [Authentication Documentation][ref-doc-authentication] for details
 - This decorator populates `request.__user` which is required by downstream guards
 
@@ -152,18 +180,18 @@ flowchart TD
 
 ```typescript
 // Single role requirement
-@AuthJwtAccessProtected()
 @RoleProtected(ENUM_ROLE_TYPE.admin)
 @UserProtected()
+@AuthJwtAccessProtected()
 @Get('admin/dashboard')
 getAdminDashboard(@UserCurrent() user: IUser) {
   return this.dashboardService.getAdminData();
 }
 
 // Multiple role requirements (user must have one of the specified roles)
-@AuthJwtAccessProtected()
 @RoleProtected(ENUM_ROLE_TYPE.admin, ENUM_ROLE_TYPE.superAdmin)
 @UserProtected()
+@AuthJwtAccessProtected()
 @Delete('users/:id')
 deleteUser(@Param('id') id: string) {
   return this.userService.delete(id);
@@ -175,9 +203,9 @@ deleteUser(@Param('id') id: string) {
 To access the current user's role, use the `@UserCurrent()` decorator and access the `role` property:
 
 ```typescript
-@AuthJwtAccessProtected()
 @RoleProtected(ENUM_ROLE_TYPE.admin)
 @UserProtected()
+@AuthJwtAccessProtected()
 @Get('role-info')
 getRoleInfo(@UserCurrent() user: IUser) {
   return {
@@ -191,8 +219,7 @@ getRoleInfo(@UserCurrent() user: IUser) {
 ### Important Notes
 
 - `@RoleProtected()` **requires** `@AuthJwtAccessProtected()` and `@UserProtected()` to be applied
-- `@AuthJwtAccessProtected()` must be placed at the top, followed by `@RoleProtected()`, then `@UserProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
-- This decorator must be applied **before** (above in code) `@PolicyAbilityProtected()` decorator
+- `@AuthJwtAccessProtected()` must be placed at the bottom, followed by `@RoleProtected()`, then `@UserProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
 - This decorator populates `request.__abilities` which is required by policy guards
 - Incorrect ordering will result in runtime errors
 
@@ -285,33 +312,32 @@ Users with `superAdmin` role type have unrestricted access to all `@RoleProtecte
 
 ```typescript
 // Single ability requirement
-@AuthJwtAccessProtected()
 @PolicyAbilityProtected({
   subject: ENUM_POLICY_SUBJECT.USER,
   action: [ENUM_POLICY_ACTION.READ]
 })
 @RoleProtected(ENUM_ROLE_TYPE.admin)
 @UserProtected()
+@AuthJwtAccessProtected()
 @Get('users')
 getUsers() {
   return this.userService.findAll();
 }
 
 // Multiple actions on single subject
-@AuthJwtAccessProtected()
 @PolicyAbilityProtected({
   subject: ENUM_POLICY_SUBJECT.USER,
   action: [ENUM_POLICY_ACTION.UPDATE, ENUM_POLICY_ACTION.DELETE]
 })
 @RoleProtected(ENUM_ROLE_TYPE.admin)
 @UserProtected()
+@AuthJwtAccessProtected()
 @Put('users/:id')
 updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
   return this.userService.update(id, dto);
 }
 
 // Multiple ability requirements (different subjects)
-@AuthJwtAccessProtected()
 @PolicyAbilityProtected(
   {
     subject: ENUM_POLICY_SUBJECT.ROLE,
@@ -324,6 +350,7 @@ updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
 )
 @RoleProtected(ENUM_ROLE_TYPE.admin)
 @UserProtected()
+@AuthJwtAccessProtected()
 @Post('users/:id/assign-role')
 assignRole(@Param('id') id: string, @Body() dto: AssignRoleDto) {
   return this.userService.assignRole(id, dto.roleId);
@@ -333,7 +360,7 @@ assignRole(@Param('id') id: string, @Body() dto: AssignRoleDto) {
 ### Important Notes
 
 - `@PolicyAbilityProtected()` **requires** `@AuthJwtAccessProtected()`, `@RoleProtected()`, and `@UserProtected()` to be applied
-- Decorators must be stacked in this order from top to bottom: `@AuthJwtAccessProtected()` → `@PolicyAbilityProtected()` → `@RoleProtected()` → `@UserProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- Decorators must be stacked in this order from bottom to top: `@PolicyAbilityProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
 - Incorrect ordering will result in runtime errors
 
 ### Guards
@@ -430,31 +457,31 @@ All actions in a required ability must be present in the user's abilities. For e
 
 ```typescript
 // Default: requires termsOfService and privacy acceptance
-@AuthJwtAccessProtected()
 @TermPolicyAcceptanceProtected()
 @UserProtected()
+@AuthJwtAccessProtected()
 @Get('premium-features')
 getPremiumFeatures() {
   return this.featureService.getPremiumFeatures();
 }
 
 // Single term policy requirement
-@AuthJwtAccessProtected()
 @TermPolicyAcceptanceProtected(ENUM_TERM_POLICY_TYPE.marketing)
 @UserProtected()
+@AuthJwtAccessProtected()
 @Post('subscribe-newsletter')
 subscribeNewsletter(@Body() dto: SubscribeDto) {
   return this.newsletterService.subscribe(dto);
 }
 
 // Multiple term policy requirements
-@AuthJwtAccessProtected()
 @TermPolicyAcceptanceProtected(
   ENUM_TERM_POLICY_TYPE.termsOfService,
   ENUM_TERM_POLICY_TYPE.privacy,
   ENUM_TERM_POLICY_TYPE.cookie
 )
 @UserProtected()
+@AuthJwtAccessProtected()
 @Post('data-processing')
 processUserData(@Body() dto: ProcessDataDto) {
   return this.dataService.process(dto);
@@ -464,7 +491,7 @@ processUserData(@Body() dto: ProcessDataDto) {
 ### Important Notes
 
 - `@TermPolicyAcceptanceProtected()` **requires** `@AuthJwtAccessProtected()` and `@UserProtected()` to be applied
-- Decorator order from top to bottom: `@AuthJwtAccessProtected()` → `@TermPolicyAcceptanceProtected()` → `@UserProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- Decorator order from top to bottom:`@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
 - If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
 - All specified term policies must be accepted by the user for access to be granted
 - Incorrect ordering will result in runtime errors

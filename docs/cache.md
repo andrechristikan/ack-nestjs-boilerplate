@@ -1,15 +1,19 @@
 # Cache Documentation
 
+> This documentation explains the features and usage of:
+> - **Cache Module**: Located at `src/common/cache`
+> - **Redis Module**: Located at `src/common/redis`
+
 ## Overview
 
 This application uses **Redis** as the cache storage backend to improve performance and reduce database load. The cache is implemented using a global module pattern, making it accessible throughout the application without repeated imports.
 
 ## Related Documents
 
-- [Configuration][ref-doc-configuration] - For Redis configuration settings
-- [Environment][ref-doc-environment] - For Redis environment variables
-- [Authentication][ref-doc-authentication] - For session cache usage examples
-- [Response][ref-doc-response] - For response caching implementation
+- [Configuration Documentation][ref-doc-configuration] - For Redis configuration settings
+- [Environment Documentation][ref-doc-environment] - For Redis environment variables
+- [Authentication Documentation][ref-doc-authentication] - For session cache usage examples
+- [Response Documentation][ref-doc-response] - For response caching implementation
 
 ## Table of Contents
 
@@ -18,17 +22,19 @@ This application uses **Redis** as the cache storage backend to improve performa
 - [Stack](#stack)
 - [Why Keyv?](#why-keyv)
 - [Principles & Patterns](#principles--patterns)
+  - [DRY & Singleton Pattern](#dry--singleton-pattern)
+  - [Global Module Pattern](#global-module-pattern)
 - [Architecture](#architecture)
-    - [Module Dependency Flow](#module-dependency-flow)
-    - [RedisCacheModule](#rediscachemodule)
-    - [CacheMainModule](#cachemainmodule)
-    - [SessionModule](#sessionmodule)
+  - [Module Dependency Flow](#module-dependency-flow)
+  - [RedisCacheModule](#rediscachemodule)
+  - [CacheMainModule](#cachemainmodule)
+  - [SessionModule](#sessionmodule)
 - [Configuration](#configuration)
-    - [Redis Configuration](#redis-configuration)
-    - [Module Import Order](#module-import-order)
+  - [Redis Configuration](#redis-configuration)
+  - [Module Import Order](#module-import-order)
 - [Usage](#usage)
-    - [Injecting Cache Providers](#injecting-cache-providers)
-    - [Cache Operations](#cache-operations)
+  - [Injecting Cache Providers](#injecting-cache-providers)
+  - [Cache Operations](#cache-operations)
 - [Use Cases](#use-cases)
 
 ## Stack

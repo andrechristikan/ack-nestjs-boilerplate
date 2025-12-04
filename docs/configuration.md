@@ -1,27 +1,25 @@
 # Configuration Documentation
 
+> This documentation explains the features and usage of **Config Module**: Located at `src/configs`
+
 ## Overview
 
 This document provides a detailed explanation of how configuration works in the ACK NestJS Boilerplate project, including the configuration files structure and their interfaces.
 
 The project uses a modular configuration approach through the NestJS `ConfigModule`. Configuration is split into multiple dedicated files for different aspects of the application, making it easier to maintain and understand.
 
-This documentation explains the features and usage of:
-- **Config Module**: Located at `src/configs`
-- **Interface Definitions**: Type-safe configuration interfaces
-- **Environment Integration**: How environment variables map to configuration. For detailed environment variable configuration and validation, see [Environment Documentation](environment.md).
-
 ## Related Documents
 
-- [Environment][ref-doc-environment] - For detailed environment variable configuration and validation
-- [Database][ref-doc-database] - For database configuration usage
-- [Cache][ref-doc-cache] - For Redis configuration usage
+- [Environment Documentation][ref-doc-environment] - For detailed environment variable configuration and validation
+- [Database Documentation][ref-doc-database] - For database configuration usage
+- [Cache Documentation][ref-doc-cache] - For Redis configuration usage
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Configuration Principles](#configuration-principles)
+- [Configuration Structure](#configuration-structure)
 - [App Configuration](#app-configuration)
 - [Auth Configuration](#auth-configuration)
 - [Database Configuration](#database-configuration)

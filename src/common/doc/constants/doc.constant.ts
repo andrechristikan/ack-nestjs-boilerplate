@@ -1,6 +1,8 @@
 import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
 import { DocDefault } from '@common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { ENUM_FILE_STATUS_CODE_ERROR } from '@common/file/enums/file.status-code.enum';
+import { ENUM_PAGINATION_STATUS_CODE_ERROR } from '@common/pagination/enums/pagination.status-code.enum';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
 import { HttpStatus } from '@nestjs/common';
 
@@ -27,7 +29,48 @@ export const DOC_STANDARD_ERROR_RESPONSES = {
         statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
         messagePath: 'request.error.validation',
     }),
+    PARAM_REQUIRED: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.PARAM_REQUIRED,
+        messagePath: 'request.error.paramRequired',
+    }),
+    ENV_FORBIDDEN: DocDefault({
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.ENV_FORBIDDEN,
+        messagePath: 'http.clientError.forbidden',
+    }),
 } as const;
+
+export const DOC_PAGINATION_ERROR_RESPONSES = {
+    ORDER_BY_NOT_ALLOWED: DocDefault({
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        statusCode: ENUM_PAGINATION_STATUS_CODE_ERROR.ORDER_BY_NOT_ALLOWED,
+        messagePath: 'pagination.error.orderByNotAllowed',
+    }),
+    FILTER_INVALID_VALUE: DocDefault({
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        statusCode: ENUM_PAGINATION_STATUS_CODE_ERROR.FILTER_INVALID_VALUE,
+        messagePath: 'pagination.error.filterInvalidValue',
+    }),
+};
+
+export const DOC_FILE_ERROR_RESPONSES = {
+    REQUIRED: DocDefault({
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        messagePath: 'file.error.required',
+        statusCode: ENUM_FILE_STATUS_CODE_ERROR.REQUIRED,
+    }),
+    EXTENSION_INVALID: DocDefault({
+        httpStatus: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+        messagePath: 'file.error.extensionInvalid',
+        statusCode: ENUM_FILE_STATUS_CODE_ERROR.EXTENSION_INVALID,
+    }),
+    REQUIRED_EXTRACT_FIRST: DocDefault({
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        messagePath: 'file.error.requiredParseFirst',
+        statusCode: ENUM_FILE_STATUS_CODE_ERROR.REQUIRED_EXTRACT_FIRST,
+    }),
+};
 
 export const DOC_PAGINATION_QUERIES = [
     {

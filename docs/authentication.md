@@ -1,23 +1,28 @@
 # Authentication Documentation
 
+> This documentation explains the features and usage of:
+> - **Authentication Module**: Located at `src/modules/auth`
+> - **Session Module**: Located at `src/modules/session`
+> - **ApiKeyModule Module**: Located at `src/modules/api-key`
+
 ## Overview
 
-This document provides a comprehensive overview of authentication and session management in the ACK NestJS Boilerplate. It covers:
+This document provides a comprehensive overview of authentication and session management in the ACK NestJS Boilerplate. 
 
-- **Password Security**: Passwords are securely hashed (bcrypt), have configurable expiration and rotation, login attempt limits, history tracking, and support for reset/change/temporary password with session invalidation.
+It covers:
+- **Password**: Passwords are securely hashed (bcrypt), have configurable expiration and rotation, login attempt limits, history tracking, and support for reset/change/temporary password with session invalidation.
 - **JWT Authentication**: Stateless authentication using access and refresh tokens, with configurable expiration and security mechanisms such as fingerprint validation.
 - **Session Management**: Dual storage strategy using Redis for high-performance validation and automatic expiration, and a database for session listing, management, and audit trail. Sessions are validated on every API request and can be revoked instantly.
 - **Social Authentication**: Integration with Google OAuth 2.0 and Apple Sign In, allowing users to authenticate using third-party providers. The backend validates OAuth tokens and manages sessions similarly to credential-based authentication.
 - **API Key Authentication**: Stateless authentication for machine-to-machine and system integrations, supporting both default and system API keys with caching for performance.
-- **Session Lifecycle and Validation**: Detailed flows for login, token refresh, session revocation, and validation, ensuring secure and manageable user sessions across devices and integrations.
 
 Configuration for tokens, sessions, password, social providers, and API keys is managed di `src/configs/auth.config.ts`.
 
 ## Related Documents
 
-- [Cache][ref-doc-cache] - For understanding session storage and caching mechanisms
-- [Configuration][ref-doc-configuration] - For auth configuration details
-- [Environment][ref-doc-environment] - For JWT and OAuth environment variables
+- [Cache Documentation][ref-doc-cache] - For understanding session storage and caching mechanisms
+- [Configuration Documentation][ref-doc-configuration] - For auth configuration details
+- [Environment Documentation][ref-doc-environment] - For JWT and OAuth environment variables
 
 ## Table of Contents
 
@@ -103,19 +108,20 @@ Secures passwords with bcrypt hashing, enforces expiration and rotation, tracks 
 - **Password Expiration:** Default expiration is 182 days.
 - **Password Rotation Period:** A password cannot be reused for 90 days.
 - **Max Login Attempts:** 5 failed attempts before user is inactivated (configurable in `src/configs/auth.config.ts`).
-- **Password History:** All passwords are stored in a history table for audit purposes.
-- **Temporary Passwords:** Admins can set temporary passwords with a 3-day lifetime.
+- **Password History:** All hashed passwords are stored in a history table for audit purposes.
+- **Temporary Passwords:** Admins can set temporary passwords with a 3-day lifetime. System will send the password to user email.
 - **Forgot Password Token:** Expires in 5 minutes, can be resent every 2 minutes.
 
 ### Password Features
 
 #### Password Expiration
 - Passwords expire after 182 days by default.
-- Expiration is configurable.
+- Configurable via `src/configs/auth.config.ts`.
 
 #### Password Period (Rotation)
 - Users cannot reuse the same password within 90 days.
 - Enforced via password history table.
+- Configurable via `src/configs/auth.config.ts`.
 
 #### Attempt Limiting
 - Users are allowed up to 5 failed login attempts.
@@ -125,24 +131,24 @@ Secures passwords with bcrypt hashing, enforces expiration and rotation, tracks 
 ### Password Lifecycle
 ```mermaid
 graph TD
-    A[User Registration/Password Set] --> B[Password Hashed with Bcrypt]
-    B --> C[Password Stored in LevelDB]
-    C --> D[Password History Updated]
-    D --> E[Password Expiration Timer Started]
+    A[User Registration<br/>Password Set] --> B[Password Hashed<br/>with Bcrypt]
+    B --> C[Password Updated<br/>in LevelDB]
+    C --> D[Password History<br/>Stored]
+    D --> E[Password Expiration<br/>Timer Started]
     E --> F{Login Attempt}
     F -->|Success| G[Session Created]
-    F -->|Fail| H[Attempt Counter Incremented]
+    F -->|Fail| H[Attempt Counter<br/>Incremented]
     H --> I{Max Attempts Reached?}
     I -->|No| F
     I -->|Yes| J[User Inactivated]
     G --> K{Password Expired?}
     K -->|No| G
-    K -->|Yes| L[Prompt Password Change]
+    K -->|Yes| L[Prompt<br/>Password Change]
     L --> M[Update Password]
-    M --> D
-    G --> N{Password Change/Forgot/Temporary}
+    M --> C
+    G --> N{Password <br/>Change/Forgot/Temporary}
     N -->|Change/Forgot| O[Invalidate All Sessions]
-    N -->|Temporary| P[Admin Sets Temporary Password]
+    N -->|Temporary| P[Admin Send<br/>Temporary Password]
     P --> O
 ```
 
@@ -167,7 +173,7 @@ graph TD
 
 #### Admin Temporary Password
 - **Endpoint:** `PUT /admin/user/update/:userId/password`
-- **Behavior:** Admin sets a temporary password (valid for 3 days). All sessions invalidated.
+- **Behavior:** Admin send a temporary password via email (valid for 3 days). All sessions invalidated.
 
 ## JWT (JSON Web Token) Authentication
 
@@ -1252,7 +1258,7 @@ Used for high-speed session validation for **both access and refresh tokens**.
 
 **Redis Key Pattern:**
 ```
-session:{sessionId}
+user:{userId}:session:{sessionId}
 ```
 
 **TTL Behavior:**
@@ -1265,15 +1271,6 @@ session:{sessionId}
 - If `AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d`, Redis TTL = 30 days
 - If `AUTH_JWT_REFRESH_TOKEN_EXPIRED=7d`, Redis TTL = 7 days
 - Token refresh does NOT reset the TTL
-
-**Key Benefits:**
-- **High Performance**: In-memory operations for fast validation
-- **Instant Validation**: Every API call validates against Redis
-- **Fingerprint Check**: Every access token validates fingerprint match
-- **Auto Expiration**: TTL automatically removes expired sessions
-- **Configurable Lifetime**: Session lifetime configured via `AUTH_JWT_REFRESH_TOKEN_EXPIRED`
-- **Fixed Duration**: Session expires based on config, not extended on refresh
-- **Instant Revocation**: Deleting from Redis immediately invalidates all tokens
 
 #### Database (Secondary - Management)
 Used for session listing and management purposes.

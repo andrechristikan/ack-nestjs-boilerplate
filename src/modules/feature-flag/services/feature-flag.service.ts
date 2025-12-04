@@ -58,17 +58,17 @@ export class FeatureFlagService implements IFeatureFlagService {
             } else if (keys.length > 1) {
                 const metadata: boolean | number | string | null =
                     featureFlag.metadata[keys[1]];
-                if (typeof metadata === 'boolean' && !metadata) {
-                    throw new ServiceUnavailableException({
-                        statusCode:
-                            ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.SERVICE_UNAVAILABLE,
-                        message: 'featureFlag.error.serviceUnavailable',
-                    });
-                } else if (typeof metadata !== 'boolean') {
+                if (typeof metadata !== 'boolean') {
                     throw new InternalServerErrorException({
                         statusCode:
                             ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.PREDEFINED_KEY_TYPE_INVALID,
                         message: 'featureFlag.error.predefinedKeyTypeInvalid',
+                    });
+                } else if (!metadata) {
+                    throw new ServiceUnavailableException({
+                        statusCode:
+                            ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.SERVICE_UNAVAILABLE,
+                        message: 'featureFlag.error.serviceUnavailable',
                     });
                 }
             }

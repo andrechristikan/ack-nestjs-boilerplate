@@ -1,14 +1,16 @@
 # Database Documentation
 
+> This documentation explains the features and usage of **Database Module**: Located at `src/common/database`
+
 ## Overview
 
 This documentation explains the database architecture and features in the ACK NestJS Boilerplate project:
 
 ## Related Documents
 
-- [Installation][ref-doc-installation] - For complete project setup and dependencies
-- [Environment][ref-doc-environment] - For database connection and environment variables
-- [Configuration][ref-doc-configuration] - For understanding the config module structure
+- [Installation Documentation][ref-doc-installation] - For complete project setup and dependencies
+- [Environment Documentation][ref-doc-environment] - For database connection and environment variables
+- [Configuration Documentation][ref-doc-configuration] - For understanding the config module structure
 
 ## Table of Contents
 
@@ -20,6 +22,12 @@ This documentation explains the database architecture and features in the ACK Ne
 - [Seeding](#seeding)
 	- [Database Seeds](#database-seeds)
 	- [Template Seeds](#template-seeds)
+- [Initial Seeded Data](#initial-seeded-data)
+	- [API Keys](#api-keys)
+	- [Roles](#roles)
+	- [Users](#users)
+	- [Feature Flags](#feature-flags)
+	- [Term Policies](#term-policies)
 - [Database Tools](#database-tools)
 	- [Prisma ORM](#prisma-orm)
 	- [Why Prisma for Repository Design Pattern?](#why-prisma-for-repository-design-pattern)
@@ -29,7 +37,6 @@ This documentation explains the database architecture and features in the ACK Ne
 ## Prerequisites
 
 - **MongoDB 8.0.x** running as a **replica set** (required for transactions)
-- **Application running well** - Ensure the project starts without errors
 
 > **💡 Tip:** Use Docker setup from the installation guide for automatic MongoDB replica set configuration.
 
@@ -40,7 +47,7 @@ Prisma does not support migrations for MongoDB. Instead, use `prisma db push` to
 
 In this project, you can use the `yarn db:migrate` script to quickly sync your schema to MongoDB.
 
-For details, see the official Prisma documentation: [Prisma for MongoDB](https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-providers)
+For details, see the official Prisma documentation: [Prisma for MongoDB][ref-prisma-mongodb]
 
 
 ## Generate Database Client
@@ -65,7 +72,7 @@ This command will read your Prisma schema and generate the client code in `node_
 
 ## Seeding
 
-Seeding in this project is handled using [Commander.js](https://nest-commander.jaymcdoniel.dev/). All seed commands are implemented in `src/migration/seeds.*`.
+Seeding in this project is handled using [Commander.js][ref-commander]. All seed commands are implemented in `src/migration/seeds.*`.
 
 ### Database Seeds
 
@@ -100,8 +107,6 @@ Run the command:
 
 ### Template Seeds
 
-> ⚠️ Note: Template seeding is ongoing and only supports the `email` module for now.
-
 Template seeding uses the **same script and commands as Database Seeds**, but is specifically for email templates.
 
 Every time you run the email template seed, the templates will be inserted into AWS SES automatically.
@@ -115,11 +120,82 @@ Every time you run the email template seed, the templates will be inserted into 
 - `remove` (delete email template data)
 
 
+## Initial Seeded Data
+
+When you run `yarn migration:seed`, the following initial data will be created in your database. This data is essential for testing and development purposes.
+
+### API Keys
+
+Two API keys are created for authentication and service access:
+
+| Name | Type | Key | Secret | Usage |
+|------|------|-----|--------|-------|
+| Api Key Default | `default` | `fyFGb7ywyM37TqDY8nuhAmGW5` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For general API access |
+| Api Key System | `system` | `UTDH0fuDMAbd1ZVnwnyrQJd8Q` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For system-level operations |
+
+> **Security Note**: These are development keys. Always regenerate API keys for production environments.
+
+### Roles
+
+Three user roles are created with different permission levels:
+
+| Role | Type | Description | Abilities |
+|------|------|-------------|-----------|
+| superadmin | `superAdmin` | Super Admin Role | Full system access (unrestricted) |
+| admin | `admin` | Admin Role | All CRUD operations on all subjects |
+| user | `user` | User Role | Limited access (no special abilities) |
+
+**Admin Role Abilities**: The admin role has full CRUD permissions (`create`, `read`, `update`, `delete`) on all policy subjects defined in the system.
+
+### Users
+
+Three test users are created, one for each role:
+
+| Email | Name | Role | Password | Country |
+|-------|------|------|----------|---------|
+| superadmin@mail.com | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) |
+| admin@mail.com | Admin | admin | `aaAA@123` | ID (Indonesia) |
+| user@mail.com | User | user | `aaAA@123` | ID (Indonesia) |
+
+> **Security Warning**: These are test accounts with default passwords. Change or remove these accounts in production environments.
+
+### Feature Flags
+
+Five feature flags are created to control authentication and user features:
+
+| Key | Description | Enabled | Rollout | Metadata |
+|-----|-------------|---------|---------|----------|
+| `loginWithGoogle` | Enable login with Google | ✅ Yes | 100% | `signUpAllowed: true` |
+| `loginWithApple` | Enable login with Apple | ✅ Yes | 100% | `signUpAllowed: true` |
+| `loginWithCredential` | Enable login with Credential | ✅ Yes | 100% | - |
+| `signUp` | Enable user sign up | ✅ Yes | 100% | - |
+| `changePassword` | Enable change password feature | ✅ Yes | 100% | `forgotAllowed: true` |
+
+All features are enabled by default with 100% rollout for development convenience.
+
+### Term Policies
+
+Four term policy documents are created:
+
+| Type | Version | Language | Description |
+|------|---------|----------|-------------|
+| `cookie` | 1 | EN | Cookie policy document |
+| `marketing` | 1 | EN | Marketing terms document |
+| `privacy` | 1 | EN | Privacy policy document |
+| `termsOfService` | 1 | EN | Terms of Service document |
+
+> **Note**: The actual content for these policies is stored as file references. You need to upload the actual policy documents to your storage service and update the content keys accordingly.
+
+**Data Location**: All seed data configurations can be found in `src/migration/data/*` directory.
+
+
 ## Database Tools
 
 ### **Prisma ORM**
 
 This project uses **[Prisma][ref-prisma] v6.19.x** as the primary database toolkit. Prisma is not just an ORM - it's a complete database toolkit that provides the foundation for implementing clean architecture patterns.
+
+> **Note**: This project currently uses Prisma v6
 
 ### **Why Prisma for Repository Design Pattern?**
 
@@ -139,7 +215,7 @@ In this project, some adjustments are needed:
 - `DatabaseService`: May require updates for database-specific features (e.g., connection management, health checks, logging) when switching from MongoDB to PostgreSQL.
 - `DatabaseUtil`: Contains utilities for MongoDB-specific needs (such as ObjectID handling and data conversion) and will need to be updated or replaced with PostgreSQL-specific utilities if you switch databases.
 
-For details on switching databases, see: [Prisma: Switching databases](https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases)
+For details on switching databases, see: [Prisma: Switching databases][ref-prisma-setup]
 
 
 
@@ -184,6 +260,8 @@ For details on switching databases, see: [Prisma: Switching databases](https://w
 
 [ref-nestjs]: http://nestjs.com
 [ref-prisma]: https://www.prisma.io
+[ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
+[ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-redis]: https://redis.io
 [ref-bullmq]: https://bullmq.io

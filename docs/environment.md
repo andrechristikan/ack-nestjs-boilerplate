@@ -1,5 +1,7 @@
 # Environment Documentation
 
+> This documentation explains **Environment**: Located at `.env.example`
+
 ## Overview
 
 This document provides a comprehensive guide to configuring the ACK NestJS Boilerplate using environment variables. The project uses a `.env` file to store all configuration settings including database connections, authentication, AWS services, and other application settings.
@@ -8,10 +10,10 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
 
 ## Related Documents
 
-- [Configuration][ref-doc-configuration] - For understanding how environment variables map to configurations
-- [Installation][ref-doc-installation] - For initial setup and environment file creation
-- [Database][ref-doc-database] - For database connection details
-- [Authentication][ref-doc-authentication] - For JWT and OAuth configuration
+- [Configuration Documentation][ref-doc-configuration] - For understanding how environment variables map to configurations
+- [Installation Documentation][ref-doc-installation] - For initial setup and environment file creation
+- [Database Documentation][ref-doc-database] - For database connection details
+- [Authentication Documentation][ref-doc-authentication] - For JWT and OAuth configuration
 
 ## Table of Contents
 

@@ -1,15 +1,17 @@
 # Handling Error Documentation
 
+> This documentation explains the features and usage of **Exception Filter Module**: Located at `src/app/filters`
+
 ## Overview
 
 The error handling system provides comprehensive exception management using NestJS's exception filter mechanism. All errors are transformed into standardized HTTP responses with proper formatting, internationalization, and monitoring integration.
 
 ## Related Documents
 
-- [Response][ref-doc-response] - For standardized response structure
-- [Request Validation][ref-doc-request-validation] - For validation error handling
-- [Message][ref-doc-message] - For error message internationalization
-- [Logger][ref-doc-logger] - For error logging and monitoring
+- [Response Documentation][ref-doc-response] - For standardized response structure
+- [Request Validation Documentation][ref-doc-request-validation] - For validation error handling
+- [Message Documentation][ref-doc-message] - For error message internationalization
+- [Logger Documentation][ref-doc-logger] - For error logging and monitoring
 
 ## Table of Contents
 

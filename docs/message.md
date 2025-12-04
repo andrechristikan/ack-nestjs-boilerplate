@@ -1,5 +1,7 @@
 # Message Documentation
 
+> This documentation explains the features and usage of **Message Module**: Located at `src/common/message`
+
 ## Overview
 
 Message Service provides internationalization (i18n) support using [nestjs-i18n][ref-nestjs-i18n] to manage multi-language messages. All message files are stored in `src/languages/{language}` directory in JSON format. Currently, only English (`en`) is available.
@@ -8,9 +10,9 @@ The `MessageModule` is imported globally via `CommonModule` in `src/common/commo
 
 ## Related Documents
 
-- [Response][ref-doc-response] - For response integration with message service
-- [Handling Error][ref-doc-handling-error] - For exception filter integration
-- [Request Validation][ref-doc-request-validation] - For validation message translation
+- [Response Documentation][ref-doc-response] - For response integration with message service
+- [Handling Error Documentation][ref-doc-handling-error] - For exception filter integration
+- [Request Validation Documentation][ref-doc-request-validation] - For validation message translation
 
 ## Table of Contents
 

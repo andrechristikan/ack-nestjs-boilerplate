@@ -1,6 +1,234 @@
-// TODO: DOC NEXT
+# Feature Flag Documentation
+
+> This documentation explains the features and usage of **Feature Flag Module**: Located at `src/modules/feature-flag`
+
+## Overview
+
+Feature flag module provides dynamic feature management for controlling application functionality. Supports gradual rollouts, A/B testing, and metadata-based feature configuration with caching for optimal performance.
+
+Features:
+- Dynamic feature enable/disable
+- Metadata support for granular control
+- Rollout percentage for gradual feature deployment
+- Cache-based performance optimization
+- Guard-based route protection
+- Consistent schema enforcement
+
+## Related Documents
+
+- [Cache Documentation][ref-doc-cache]
+
+## Table of Contents
+
+- [Related Documents](#related-documents)
+- [Initial Data](#initial-data)
+- [Flow](#flow)
+- [Usage](#usage)
+  - [With Decorators](#with-decorators)
+  - [With Service](#with-service)
+- [Metadata](#metadata)
+- [Rollout Percentage](#rollout-percentage)
+- [Caching](#caching)
+- [Restrictions](#restrictions)
+
+## Initial Data
+
+Default feature flags provided in `src/migration/feature-flag.ts`:
+
+| Key | Description | Rollout | Metadata |
+|-----|-------------|---------|----------|
+| `loginWithGoogle` | Enable login with Google | 100% | `signUpAllowed: true` |
+| `loginWithApple` | Enable login with Apple | 100% | `signUpAllowed: true` |
+| `loginWithCredential` | Enable login with Credential | 100% | - |
+| `signUp` | Enable user sign up | 100% | - |
+| `changePassword` | Enable change password feature | 100% | `forgotAllowed: true` |
+
+## Flow
+
+The `FeatureFlagGuard` validates feature flag status before allowing route access.
+
+```mermaid
+flowchart TD
+    A[Request arrives] --> B[FeatureFlagGuard activated]
+    B --> C[Extract keyPath from metadata]
+    C --> D{Split keyPath by '.'}
+    D --> E{Keys length = 0?}
+    E -->|Yes| F[Throw: PREDEFINED_KEY_EMPTY]
+    E -->|No| G{Keys length > 2?}
+    G -->|Yes| H[Throw: PREDEFINED_KEY_LENGTH_EXCEEDED]
+    G -->|No| I[Get feature flag by key with cache]
+    I --> J{Feature flag exists?}
+    J -->|No| K[Throw: SERVICE_UNAVAILABLE]
+    J -->|Yes| L{isEnable = true?}
+    L -->|No| K
+    L -->|Yes| M{Keys length > 1?}
+    M -->|No| N[Check rollout percentage]
+    M -->|Yes| O[Get metadata value by key]
+    O --> P{Metadata type = boolean?}
+    P -->|No| Q[Throw: PREDEFINED_KEY_TYPE_INVALID]
+    P -->|Yes| R{Metadata value = true?}
+    R -->|No| K
+    R -->|Yes| N
+    N --> S{User exists in request?}
+    S -->|No| T[Allow access]
+    S -->|Yes| U[Hash userId with MD5]
+    U --> V[Calculate percentage from hash]
+    V --> W{Percentage < rolloutPercent?}
+    W -->|No| K
+    W -->|Yes| T
+    T --> X[Return true - Access granted]
+    K --> Y[Return 503 Service Unavailable]
+    F --> Z[Return 500 Internal Server Error]
+    H --> Z
+    Q --> Z
+```
+
+## Usage
+
+## With Decorators
+
+**Important:** `@FeatureFlagProtected()` does NOT provide authentication. Apply authentication guards separately if required.
+
+Use `@FeatureFlagProtected()` decorator to protect routes:
+
+```typescript
+import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+
+@Controller('auth')
+export class AuthController {
+  // Simple feature check
+  @FeatureFlagProtected('loginWithGoogle')
+  @Post('google')
+  async loginWithGoogle() {
+    // Route accessible only if loginWithGoogle is enabled
+  }
+
+  // Nested metadata check
+  @FeatureFlagProtected('changePassword.forgotAllowed')
+  @Post('forgot-password')
+  async forgotPassword() {
+    // Route accessible only if changePassword is enabled 
+    // AND forgotAllowed metadata is true
+  }
+}
+```
+
+### With Service
+
+```typescript
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+
+@Injectable()
+export class YourService {
+  constructor(
+    private readonly featureFlagService: FeatureFlagService
+  ) {}
+
+  async example() {
+    // Get feature flag with cache
+    const flag = await this.featureFlagService.findOneByKeyAndCache('loginWithGoogle');
+    
+    // Get metadata only
+    const metadata = await this.featureFlagService.findOneMetadataByKeyAndCache('changePassword');
+  }
+}
+```
+
+## Metadata
+
+Metadata provides granular control within a single feature flag:
+
+```typescript
+// Feature flag with metadata
+{
+  key: 'changePassword',
+  isEnable: true,
+  metadata: {
+    forgotAllowed: true,  // Can be toggled independently
+    resetAllowed: false
+  }
+}
+```
+
+**Constraints:**
+- No nested objects allowed
+- Supports types: `boolean`, `number`, `string`
+- Metadata keys cannot be added/removed (schema consistency)
+- Only values can be modified
+
+**Nested Key Access:**
+```typescript
+// Check both feature AND metadata
+@FeatureFlagProtected('changePassword.forgotAllowed')
+```
+
+When using nested keys, metadata value **must** be boolean.
+
+## Rollout Percentage
+
+Controls gradual feature deployment using deterministic hashing:
+```typescript
+{
+  key: 'newFeature',
+  rolloutPercent: 30  // 30% of users get access
+}
+```
+
+**How it works:**
+1. User identifier (userId) is hashed using MD5
+2. Hash converted to percentage (0-99)
+3. Compared against `rolloutPercent`
+4. Same user always gets same result (deterministic)
+
+**Use cases:**
+- A/B testing
+- Gradual rollouts
+- Canary deployments
+
+## Caching
+
+Feature flags are cached for performance. Configuration in `src/configs/feature-flag.config.ts`:
+```typescript
+{
+  cachePrefixKey: 'FeatureFlag',
+  cacheTtlMs: 3600  // 1 hour
+}
+```
+
+**Cache operations:**
+- Automatic cache on first read
+- Cache invalidation on updates
+- Key format: `FeatureFlag:{key}`
+
+See [Cache Documentation][ref-doc-cache] for cache system details.
+
+## Restrictions
+
+- Feature flags cannot be added via admin API
+- Feature flags cannot be deleted
+- Metadata keys cannot be modified (add/remove)
+- Only values can be updated: `isEnable`, `rolloutPercent`, metadata values
+
+**Update operations:**
+```typescript
+// Status update
+PUT /admin/feature-flags/:id/status
+{
+  "isEnable": false,
+  "rolloutPercent": 25
+}
+
+// Metadata update
+PUT /admin/feature-flags/:id/metadata
+{
+  "metadata": {
+    "forgotAllowed": false
+  }
+}
+```
 
 <!-- REFERENCES -->
+
 
 <!-- BADGE LINKS -->
 
@@ -82,202 +310,3 @@
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
-
-
-<!-- # Overview
-
-The Setting Feature module in ACK NestJS Boilerplate provides a comprehensive system for managing dynamic configuration settings that can be stored in the database and cached for optimal performance. Unlike the config module that reads from application configuration, the Setting Feature module allows for runtime modification of feature flags and configuration values.
-
-This documentation explains the features and usage of:
-- **Setting Feature Module**: Located at `src/modules/setting`
-
-# Table of Contents
-
-- [Overview](#overview)
-- [Table of Contents](#table-of-contents)
-  - [Module](#module)
-    - [Services](#services)
-    - [Entities](#entities)
-    - [DTOs](#dtos)
-    - [Decorators](#decorators)
-    - [Guards](#guards)
-  - [Using Setting Feature](#using-setting-feature)
-    - [Decorator Usage](#decorator-usage)
-      - [Error Handling](#error-handling)
-    - [Direct Access](#direct-access)
-  - [Cache Management](#cache-management)
-
-## Module
-
-The Setting Feature module provides dynamic configuration management with built-in caching and administrative interfaces. It consists of services for business logic, controllers for HTTP endpoints, entities for data modeling, and DTOs for data transfer.
-
-### Services
-
-- **SettingFeatureService**: Main service that handles feature configuration management with integrated caching.
-  - `getAndCache(key)`: Retrieves feature value with automatic Redis caching
-  - `update(repository, dto, options?)`: Updates feature settings and manages cache invalidation
-  - `findOneByKey(key, options?)`: Finds a specific feature by its unique key
-  - `findAll(find?, options?)`: Lists all features with optional filtering and pagination
-  - `createMany(entries)`: Bulk creates multiple feature configurations
-  - `delete(key)`: Removes a feature configuration by key
-  - `deleteMany(find?, options?)`: Bulk deletes features based on criteria
-  - `getTotal(find?, options?)`: Gets total count of features for pagination
-  - `flush()`: Clears all cached feature values from Redis
-  - `deleteCache(key)`: Removes specific feature from cache
-  - `mapList(entities)`: Transforms entities to list response DTOs
-  - `mapGet(entity)`: Transforms entity to detailed response DTO
-
-### Entities
-
-- **SettingFeatureEntity**: Database entity representing feature configurations
-  - `key`: Unique string identifier for the feature (indexed)
-  - `description`: Human-readable description of the feature
-  - `value`: JSON configuration value with flexible structure
-
-**SettingJson Interface Structure:**
-```typescript
-export interface SettingJson {
-    enabled: boolean;                    // Feature enable/disable flag
-    [key: string]: SettingValue;        // Additional configuration properties
-}
-
-export type SettingValue =
-    | boolean
-    | string  
-    | number
-    | SettingValue[]
-    | { [key: string]: SettingValue };
-```
-
-### DTOs
-
-- **SettingFeatureUpdateRequestDto**: Request DTO for updating feature configurations
-  - `description`: Updated description text
-  - `value`: New configuration value (SettingJson format)
-
-- **SettingFeatureGetResponseDto**: Detailed response DTO for single feature retrieval
-  - Extends `DatabaseUUIDDto` for UUID and timestamp fields
-  - `key`: Feature identifier
-  - `description`: Feature description  
-  - `value`: Feature configuration value
-
-- **SettingFeatureListResponseDto**: List response DTO for feature listings
-  - Same structure as `SettingFeatureGetResponseDto`
-  - Used in paginated list responses
-
-### Decorators
-
-- **@SettingFeatureFlag(key: string)**: 
-  - Protects endpoints based on feature flag status
-  - Automatically checks if the specified feature key is enabled
-  - Combines `@UseGuards(SettingFeatureGuard)` and metadata setting
-
-### Guards
-
-- **SettingFeatureGuard**: 
-  - Implements the logic for `@SettingFeatureFlag` decorator
-  - Uses `SettingFeatureService.getAndCache()` for feature status checking
-  - Leverages caching for optimal performance
-  - Throws `ForbiddenException` when feature is disabled
-  - Uses Reflector to get feature key from metadata
-
-## Using Setting Feature
-
-### Decorator Usage
-
-The Setting Feature module provides decorators for endpoint feature control:
-
-Apply feature flags to specific endpoints using the `@SettingFeatureFlag` decorator:
-
-```typescript
-import { SettingFeatureFlag } from '@modules/setting/decorators/setting.decorator';
-
-// Method-level protection (specific endpoints)
-@Controller('auth')
-export class AuthController {
-  @SettingFeatureFlag('auth.social.google')
-  @Post('google/login')
-  async googleLogin(@Body() body: GoogleLoginDto) {
-    // This endpoint is only accessible when auth.social.google is enabled
-    return this.socialAuthService.initiateGoogleLogin(body);
-  }
-
-  @SettingFeatureFlag('auth.social.apple')
-  @Post('apple/callback')
-  async appleCallback(@Body() body: AppleCallbackDto) {
-    // This endpoint requires auth.social.apple to be enabled
-    return this.authService.handleAppleCallback(body);
-  }
-
-  @Post('login')
-  async regularLogin(@Body() body: LoginDto) {
-    // This endpoint is not protected by any feature flag
-    return this.authService.login(body);
-  }
-}
-```
-
-#### Error Handling
-
-When a feature is disabled, the guard throws a `ForbiddenException` with specific error details:
-
-```json
-// If feature is disabled, returns:
-{
-  "statusCode": "ENUM_SETTING_FEATURE_STATUS_CODE_ERROR.INACTIVE",
-  "message": "settingFeature.error.inactive"
-}
-```
-
-### Direct Access
-
-For direct access to setting features in your services:
-
-1. Import the required service and interfaces:
-```typescript
-import { SettingFeatureService } from '@modules/setting/services/setting-feature.service';
-import { SettingJson } from '@modules/setting/interfaces/setting.interface';
-```
-
-2. Inject the SettingFeatureService in your service or controller:
-```typescript
-constructor(
-  private readonly settingFeatureService: SettingFeatureService
-) {}
-```
-
-3. Retrieve feature configurations with caching:
-```typescript
-async checkFeatureEnabled(featureKey: string): Promise<boolean> {
-  const feature = await this.settingFeatureService.getAndCache(featureKey);
-  return feature.enabled;
-}
-
-async getFeatureConfig(featureKey: string): Promise<SettingJson> {
-  return this.settingFeatureService.getAndCache(featureKey);
-}
-```
-
-## Cache Management
-
-The setting feature module uses Redis for caching with automatic cache management:
-
-**Cache Key Format**: `{keyPrefix}:{feature.key}`
-- Example: `"setting:auth.social.google"`
-
-**Automatic Caching**: Features are automatically cached on first access through `getAndCache()` method.
-
-**Manual Cache Operations**:
-```typescript
-// Clear specific feature cache
-await this.settingFeatureService.deleteCache('auth.social.google');
-
-// Clear all feature cache (useful during maintenance)
-await this.settingFeatureService.flush();
-
-// Cache is automatically updated when features are modified
-const updated = await this.settingFeatureService.update(feature, updateDto);
-// Cache for this feature is automatically invalidated
-```
-
-**Cache Configuration**: The cache uses a configurable key prefix from application configuration (`setting.keyPrefix`). -->

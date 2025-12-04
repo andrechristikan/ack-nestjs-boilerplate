@@ -120,10 +120,12 @@ export class PaginationService implements IPaginationService {
         const decodedCursor = cursor ? this.decodeCursor(cursor) : undefined;
         if (decodedCursor) {
             if (
-                JSON.stringify(decodedCursor.orderBy) !==
-                    JSON.stringify(orderBy) ||
-                JSON.stringify(decodedCursor.where) !== JSON.stringify(where)
+                JSON.stringify(decodedCursor.orderBy).toLowerCase() !==
+                    JSON.stringify(orderBy).toLowerCase() ||
+                JSON.stringify(decodedCursor.where).toLowerCase() !==
+                    JSON.stringify(where).toLowerCase()
             ) {
+                // Invalidate the cursor if orderBy or where conditions do not match, will reset to first page
                 cursor = undefined;
             }
         }
@@ -180,11 +182,12 @@ export class PaginationService implements IPaginationService {
         }
 
         try {
+            // url-safe base64 encoding
             return Buffer.from(JSON.stringify(data))
                 .toString('base64')
-                .replace(/\+/g, '-')
-                .replace(/\//g, '_')
-                .replace(/=/g, '');
+                .replaceAll(/\+/g, '-')
+                .replaceAll(/\//g, '_')
+                .replaceAll(/=/g, '');
         } catch {
             throw new Error('Failed to encode cursor');
         }
@@ -196,11 +199,11 @@ export class PaginationService implements IPaginationService {
         }
 
         try {
-            // Add padding back
+            // url-safe base64 encoding
             const padded = cursor + '='.repeat((4 - (cursor.length % 4)) % 4);
-            const base64 = padded.replace(/-/g, '+').replace(/_/g, '/');
+            const base64 = padded.replaceAll(/-/g, '+').replaceAll(/_/g, '/');
             return JSON.parse(Buffer.from(base64, 'base64').toString());
-        } catch (_) {
+        } catch {
             throw new Error(`Failed to decode cursor`);
         }
     }
