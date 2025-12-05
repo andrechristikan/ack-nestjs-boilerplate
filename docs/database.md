@@ -4,7 +4,7 @@
 
 ## Overview
 
-This documentation explains the database architecture and features in the ACK NestJS Boilerplate project:
+This documentation explains the database architecture and features in ACK NestJS Boilerplate:
 
 ## Related Documents
 
@@ -45,7 +45,7 @@ This documentation explains the database architecture and features in the ACK Ne
 
 Prisma does not support migrations for MongoDB. Instead, use `prisma db push` to sync your Prisma schema with the MongoDB database.
 
-In this project, you can use the `yarn db:migrate` script to quickly sync your schema to MongoDB.
+In ACK NestJS Boilerplate, you can use the `yarn db:migrate` script to quickly sync your schema to MongoDB.
 
 For details, see the official Prisma documentation: [Prisma for MongoDB][ref-prisma-mongodb]
 
@@ -72,12 +72,12 @@ This command will read your Prisma schema and generate the client code in `node_
 
 ## Seeding
 
-Seeding in this project is handled using [Commander.js][ref-commander]. All seed commands are implemented in `src/migration/seeds.*`.
+Seeding in ACK NestJS Boilerplate is handled using [Commander.js][ref-commander]. All seed commands are implemented in `src/migration/seeds.*`.
 
 ### Database Seeds
 
 
-This project provides ready-to-use seed scripts to help you quickly initialize or remove data for development and testing. Database seeding is used to populate the database with initial or test data, making development and testing easier.
+ACK NestJS Boilerplate provides ready-to-use seed scripts to help you quickly initialize or remove data for development and testing. Database seeding is used to populate the database with initial or test data, making development and testing easier.
 
 **Seed Data Location:**
 - All seed data is stored in `src/migration/data/*`.
@@ -193,13 +193,13 @@ Four term policy documents are created:
 
 ### **Prisma ORM**
 
-This project uses **[Prisma][ref-prisma] v6.19.x** as the primary database toolkit. Prisma is not just an ORM - it's a complete database toolkit that provides the foundation for implementing clean architecture patterns.
+ACK NestJS Boilerplate uses **[Prisma][ref-prisma] v6.19.x** as the primary database toolkit. Prisma is not just an ORM - it's a complete database toolkit that provides the foundation for implementing clean architecture patterns.
 
-> **Note**: This project currently uses Prisma v6
+> **Note**: ACK NestJS Boilerplate currently uses Prisma v6
 
 ### **Why Prisma for Repository Design Pattern?**
 
-Prisma perfectly enables this project's **Repository Design Pattern** implementation:
+Prisma perfectly enables ACK NestJS Boilerplate's **Repository Design Pattern** implementation:
 
 - **Type-Safe Repository Layer**: Auto-generated TypeScript types ensure compile-time validation throughout repositories
 - **Clean Architecture**: PrismaClient provides foundation for clean separation between database and business logic  
@@ -211,7 +211,7 @@ Prisma perfectly enables this project's **Repository Design Pattern** implementa
 With Prisma and the Repository Pattern, switching databases is straightforward. For example, to move from MongoDB to PostgreSQL, update the datasource configuration and regenerate the Prisma Client. Repository and business logic code do not need changes.
 
 
-In this project, some adjustments are needed:
+In ACK NestJS Boilerplate, some adjustments are needed:
 - `DatabaseService`: May require updates for database-specific features (e.g., connection management, health checks, logging) when switching from MongoDB to PostgreSQL.
 - `DatabaseUtil`: Contains utilities for MongoDB-specific needs (such as ObjectID handling and data conversion) and will need to be updated or replaced with PostgreSQL-specific utilities if you switch databases.
 

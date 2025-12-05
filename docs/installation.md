@@ -37,7 +37,7 @@ This document provides step-by-step instructions for setting up the ACK NestJS B
 
 ## Prerequisites
 
-> **Note**: This project uses Yarn for package management. All documentation examples will use Yarn commands.
+> **Note**: ACK NestJS Boilerplate uses Yarn for package management. All documentation examples will use Yarn commands.
 
 Before starting, install the following tools and packages. We recommend using the LTS (Long Term Support) versions for stability and compatibility.
 
@@ -96,7 +96,7 @@ cp .env.example .env
 
 ### Generate Keys
 
-This project uses **ES256** algorithm for Access Tokens and **ES512** for Refresh Tokens. You need to generate cryptographic key pairs for JWT authentication.
+ACK NestJS Boilerplate uses **ES256** algorithm for Access Tokens and **ES512** for Refresh Tokens. You need to generate cryptographic key pairs for JWT authentication.
 
 #### Generate Key Pairs
 

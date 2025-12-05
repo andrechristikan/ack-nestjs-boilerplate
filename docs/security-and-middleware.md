@@ -2,7 +2,7 @@
 
 ## Overview
 
-The boilerplate implements a comprehensive security and middleware layer for HTTP request/response processing. All middleware is centrally managed through `RequestMiddlewareModule` and applied globally to all routes using the wildcard pattern `{*wildcard}`.
+ACK NestJS Boilerplate implements a comprehensive security and middleware layer for HTTP request/response processing. All middleware is centrally managed through `RequestMiddlewareModule` and applied globally to all routes using the wildcard pattern `{*wildcard}`.
 
 ## Related Documents
 
@@ -56,7 +56,7 @@ consumer
 
 ### Authentication & Authorization
 
-The boilerplate includes comprehensive authentication and authorization systems. See dedicated documentation:
+ACK NestJS Boilerplate includes comprehensive authentication and authorization systems. See dedicated documentation:
 
 - [Authentication][ref-doc-authentication] - JWT, OAuth, API Keys, sessions, password management
 - [Authorization][ref-doc-authorization] - RBAC, policy abilities, user protection

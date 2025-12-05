@@ -127,32 +127,6 @@ export class ResponsePagingDto<T> extends PickType(ResponseDto, [
         required: true,
         description: 'Contain metadata about API',
         type: ResponsePagingMetadataDto,
-        example: {
-            language: 'en',
-            timestamp: 1660190937231,
-            timezone: 'Asia/Jakarta',
-            path: '/api/v1/test/hello',
-            version: '1',
-            repoVersion: '1.0.0',
-            search: faker.person.fullName(),
-            filters: {
-                status: 'active',
-                category: ['electronics', 'furniture'],
-            },
-            page: 1,
-            perPage: 20,
-            orderBy: 'createdAt',
-            orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
-            availableSearch: ['name'],
-            availableOrderBy: {
-                createdAt: [
-                    ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
-                    ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
-                ],
-            },
-            count: 100,
-            totalPage: 5,
-        },
     })
     metadata: ResponsePagingMetadataDto;
 

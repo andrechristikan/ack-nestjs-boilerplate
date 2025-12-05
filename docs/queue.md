@@ -330,7 +330,7 @@ export class EmailProcessor extends QueueProcessorBase {
 
 ## Bull Board Dashboard
 
-This project includes Bull Board for queue monitoring and management.
+ACK NestJS Boilerplate includes Bull Board for queue monitoring and management.
 
 Access the dashboard:
 ```bash

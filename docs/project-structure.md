@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is a comprehensive NestJS boilerplate designed for scalable, maintainable, and enterprise-grade applications. It is built with a strong focus on the `repository design pattern` and a fully `modular architecture`. By leveraging these patterns, the codebase achieves clear separation of concerns, high testability, and easy extensibility for new features. 
+ACK NestJS Boilerplate is a comprehensive NestJS application designed for scalable, maintainable, and enterprise-grade development. It is built with a strong focus on the `repository design pattern` and a fully `modular architecture`. By leveraging these patterns, the codebase achieves clear separation of concerns, high testability, and easy extensibility for new features. 
 
 ## Table of Contents
 
