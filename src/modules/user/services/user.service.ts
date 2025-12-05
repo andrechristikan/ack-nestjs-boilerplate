@@ -3,7 +3,6 @@ import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { ENUM_FILE_EXTENSION_IMAGE } from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';

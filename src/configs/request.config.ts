@@ -1,7 +1,4 @@
-import {
-    FILE_MAX_MULTIPLE,
-    FILE_SIZE_IN_BYTES,
-} from '@common/file/constants/file.constant';
+import { FILE_SIZE_IN_BYTES } from '@common/file/constants/file.constant';
 import { registerAs } from '@nestjs/config';
 import bytes from 'bytes';
 import ms from 'ms';

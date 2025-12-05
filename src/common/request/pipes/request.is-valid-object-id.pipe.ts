@@ -1,4 +1,3 @@
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
 import {
     ArgumentMetadata,
