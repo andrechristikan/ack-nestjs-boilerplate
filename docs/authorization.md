@@ -1,10 +1,10 @@
 # Authorization Documentation
 
-> This documentation explains the features and usage of **Authorization Module**: 
-> - **UserProtected**: Located at `src/modules/user/decorators`
-> - **RoleProtected**: Located at `src/modules/role/decorators`
-> - **PolicyAbilityProtected**: Located at `src/modules/policy/decorators`
-> - **TermPolicyAcceptanceProtected**: Located at `src/modules/term-policy/decorators`
+This documentation explains the features and usage of: 
+- **UserProtected**: Located at `src/modules/user/decorators`
+- **RoleProtected**: Located at `src/modules/role/decorators`
+- **PolicyAbilityProtected**: Located at `src/modules/policy/decorators`
+- **TermPolicyAcceptanceProtected**: Located at `src/modules/term-policy/decorators`
 
 ## Overview
 
@@ -16,7 +16,7 @@ The system is built using NestJS guards and decorators, making it easy to apply 
 
 - [Configuration Documentation][ref-doc-configuration] - For Redis configuration settings
 - [Environment Documentation][ref-doc-environment] - For Redis environment variables
-- [Authentication Documentation][ref-doc-authentication] - Required reading for understanding `@AuthJwtAccessProtected()` decorator
+- [Authentication Documentation][ref-doc-authentication] - For understand authentication system
 - [Activity Log Documentation][ref-doc-activity-log] - For tracking authorization-related user activities
 
 ## Table of Contents
@@ -24,42 +24,42 @@ The system is built using NestJS guards and decorators, making it easy to apply 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [User Protected](#user-protected)
-  - [Purpose](#purpose)
   - [Decorators](#decorators)
+    - [UserProtected() Decorator](#userprotected-decorator)
+    - [UserCurrent() Parameter Decorator](#usercurrent-parameter-decorator)
   - [Guards](#guards)
+    - [UserGuard](#userguard)
   - [Important Notes](#important-notes)
 - [Role Protected](#role-protected)
-  - [Purpose](#purpose-1)
   - [Decorators](#decorators-1)
+    - [RoleProtected() Decorator](#roleprotected-decorator)
   - [Getting Current Role](#getting-current-role)
-  - [Important Notes](#important-notes-1)
   - [Guards](#guards-1)
-  - [Special Behavior](#special-behavior)
+    - [RoleGuard](#roleguard)
+  - [Important Notes](#important-notes-1)
 - [Policy Ability Protected](#policy-ability-protected)
-  - [Purpose](#purpose-2)
   - [Decorators](#decorators-2)
-  - [Important Notes](#important-notes-2)
+    - [PolicyAbilityProtected() Decorator](#policyabilityprotected-decorator)
   - [Guards](#guards-2)
+    - [PolicyAbilityGuard](#policyabilityguard)
   - [CASL Integration](#casl-integration)
-  - [Special Behavior](#special-behavior-1)
+  - [Important Notes](#important-notes-2)
 - [Term Policy Acceptance Protected](#term-policy-acceptance-protected)
-  - [Purpose](#purpose-3)
   - [Decorators](#decorators-3)
-  - [Important Notes](#important-notes-3)
+    - [TermPolicyAcceptanceProtected() Decorator](#termpolicyacceptanceprotected-decorator)
   - [Guards](#guards-3)
-  - [Special Behavior](#special-behavior-2)
+    - [TermPolicyGuard](#termpolicyguard)
+  - [Important Notes](#important-notes-3)
 
 ## User Protected
-
-### Purpose
 
 `UserProtected` provides basic user authentication and verification. It ensures that only authenticated users can access protected routes and optionally validates whether the user's email has been verified.
 
 ### Decorators
 
-#### 1. `@UserProtected()` Decorator
+#### UserProtected Decorator
 
-**Method decorator** that applies user authentication guard to route handlers.
+**Method decorator** that applies `UserGuard` to route handlers.
 
 **Parameters:**
 - `isVerified` (boolean, optional): Whether to require email verification. Default: `true`
@@ -83,7 +83,7 @@ getDashboard(@UserCurrent() user: IUser) {
 }
 ```
 
-#### 2. `@UserCurrent()` Parameter Decorator
+#### UserCurrent Parameter Decorator
 
 Extracts the authenticated user object from the request context.
 
@@ -158,15 +158,13 @@ flowchart TD
 
 ## Role Protected
 
-### Purpose
-
 `RoleProtected` implements role-based access control (RBAC) to restrict route access based on user roles. It ensures that only users with specific role types can access protected endpoints.
 
 ### Decorators
 
-#### `@RoleProtected()` Decorator
+#### RoleProtected Decorator
 
-**Method decorator** that applies role-based authorization guard to route handlers.
+**Method decorator** that applies `RoleGuard` to route handlers.
 
 **Parameters:**
 - `...requiredRoles` (ENUM_ROLE_TYPE[]): One or more role types required to access the route
@@ -216,13 +214,6 @@ getRoleInfo(@UserCurrent() user: IUser) {
 }
 ```
 
-### Important Notes
-
-- `@RoleProtected()` **requires** `@AuthJwtAccessProtected()` and `@UserProtected()` to be applied
-- `@AuthJwtAccessProtected()` must be placed at the bottom, followed by `@RoleProtected()`, then `@UserProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
-- This decorator populates `request.__abilities` which is required by policy guards
-- Incorrect ordering will result in runtime errors
-
 ### Guards
 
 #### `RoleGuard`
@@ -265,24 +256,24 @@ flowchart TD
     ErrorForbidden --> End
 ```
 
-### Special Behavior
+### Important Notes
 
-**Super Admin Privilege:**
-
-Users with `superAdmin` role type have unrestricted access to all `@RoleProtected` routes, regardless of the specified required roles. The guard returns an empty abilities array for super admins, as they bypass ability checks.
+- `@RoleProtected()` **requires** `@AuthJwtAccessProtected()` and `@UserProtected()` to be applied
+- `@AuthJwtAccessProtected()` must be placed at the bottom, followed by `@RoleProtected()`, then `@UserProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- This decorator populates `request.__abilities` which is required by policy guards
+- Incorrect ordering will result in runtime errors
+- Users with `superAdmin` role type have unrestricted access to all `@RoleProtected` routes, regardless of the specified required roles. The guard returns an empty abilities array for super admins, as they bypass ability checks.
 
 
 ## Policy Ability Protected
-
-### Purpose
 
 `PolicyAbilityProtected` implements fine-grained, permission-based access control using CASL (an isomorphic authorization library). It allows you to define specific actions (read, create, update, delete, manage) that users can perform on specific subjects (resources like users, roles, settings, etc.).
 
 ### Decorators
 
-#### `@PolicyAbilityProtected()` Decorator
+#### PolicyAbilityProtected Decorator
 
-**Method decorator** that applies policy ability-based authorization guard to route handlers.
+**Method decorator** that applies `PolicyAbilityGuard` to route handlers.
 
 **Parameters:**
 - `...requiredAbilities` (RoleAbilityRequestDto[]): One or more policy ability objects defining required permissions
@@ -357,12 +348,6 @@ assignRole(@Param('id') id: string, @Body() dto: AssignRoleDto) {
 }
 ```
 
-### Important Notes
-
-- `@PolicyAbilityProtected()` **requires** `@AuthJwtAccessProtected()`, `@RoleProtected()`, and `@UserProtected()` to be applied
-- Decorators must be stacked in this order from bottom to top: `@PolicyAbilityProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
-- Incorrect ordering will result in runtime errors
-
 ### Guards
 
 #### `PolicyAbilityGuard`
@@ -422,27 +407,23 @@ The system uses [CASL][casl] (Code Access Security Library) to handle complex pe
 
 The factory creates a CASL ability instance that can check if a user can perform specific actions on specific subjects. Every required ability must be satisfied for access to be granted.
 
-### Special Behavior
+### Important Notes
 
-**Super Admin Privilege:**
-
-Users with `superAdmin` role type have unrestricted access to all `@PolicyAbilityProtected` routes, bypassing all ability checks.
-
-**Permission Matching:**
-
-All actions in a required ability must be present in the user's abilities. For example, if you require `[UPDATE, DELETE]` on `USER` subject, the user must have both actions, not just one.
+- `@PolicyAbilityProtected()` **requires** `@AuthJwtAccessProtected()`, `@RoleProtected()`, and `@UserProtected()` to be applied
+- Decorators must be stacked in this order from bottom to top: `@PolicyAbilityProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- Incorrect ordering will result in runtime errors
+- Users with `superAdmin` role type have unrestricted access to all `@PolicyAbilityProtected` routes, bypassing all ability checks.
+- All actions in a required ability must be present in the user's abilities. For example, if you require `[UPDATE, DELETE]` on `USER` subject, the user must have both actions, not just one.
 
 ## Term Policy Acceptance Protected
-
-### Purpose
 
 `TermPolicyAcceptanceProtected` validates that users have accepted required legal terms and policies (such as Terms of Service, Privacy Policy, etc.) before allowing access to protected routes. This ensures legal compliance and user consent management.
 
 ### Decorators
 
-#### `@TermPolicyAcceptanceProtected()` Decorator
+#### TermPolicyAcceptanceProtected Decorator
 
-**Method decorator** that applies term policy acceptance validation guard to route handlers.
+**Method decorator** that applies `TermPolicyGuard` to route handlers.
 
 **Parameters:**
 - `...requiredTermPolicies` (ENUM_TERM_POLICY_TYPE[], optional): One or more term policy types that must be accepted. If not provided, defaults to `termsOfService` and `privacy`
@@ -488,14 +469,6 @@ processUserData(@Body() dto: ProcessDataDto) {
 }
 ```
 
-### Important Notes
-
-- `@TermPolicyAcceptanceProtected()` **requires** `@AuthJwtAccessProtected()` and `@UserProtected()` to be applied
-- Decorator order from top to bottom:`@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
-- If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
-- All specified term policies must be accepted by the user for access to be granted
-- Incorrect ordering will result in runtime errors
-
 ### Guards
 
 #### `TermPolicyGuard`
@@ -538,15 +511,15 @@ flowchart TD
     ErrorRequired --> End
 ```
 
-### Special Behavior
+### Important Notes
 
-**Default Term Policies:**
-
-When `@TermPolicyAcceptanceProtected()` is used without parameters, it automatically requires acceptance of both `termsOfService` and `privacy` policies. This ensures baseline legal compliance for most features.
-
-**All-or-Nothing Validation:**
-
-All specified term policies must be accepted. If even one required policy is not accepted, access is denied.
+- `@TermPolicyAcceptanceProtected()` **requires** `@AuthJwtAccessProtected()` and `@UserProtected()` to be applied
+- Decorator order from top to bottom:`@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
+- All specified term policies must be accepted by the user for access to be granted
+- Incorrect ordering will result in runtime errors
+- When `@TermPolicyAcceptanceProtected()` is used without parameters, it automatically requires acceptance of both `termsOfService` and `privacy` policies. This ensures baseline legal compliance for most features.
+- All specified term policies must be accepted. If even one required policy is not accepted, access is denied.
 
 
 <!-- REFERENCES -->

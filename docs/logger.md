@@ -1,6 +1,6 @@
 # Logger Documentation
 
-> This documentation explains the features and usage of **Logger Module**: Located at `src/common/logger`
+This documentation explains the features and usage of **Logger Module**: Located at `src/common/logger`
 
 ## Overview
 

@@ -1,6 +1,6 @@
 # File Upload Documentation
 
-> This documentation explains the features and usage of **File Module**: Located at `src/common/file`
+This documentation explains the features and usage of **File Module**: Located at `src/common/file`
 
 ## Overview
 

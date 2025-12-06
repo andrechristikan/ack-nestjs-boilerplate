@@ -1,6 +1,6 @@
 # Handling Error Documentation
 
-> This documentation explains the features and usage of **Exception Filter Module**: Located at `src/app/filters`
+This documentation explains the features and usage of **Exception Filter Module**: Located at `src/app/filters`
 
 ## Overview
 

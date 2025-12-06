@@ -1,9 +1,9 @@
 # Authentication Documentation
 
-> This documentation explains the features and usage of:
-> - **Authentication Module**: Located at `src/modules/auth`
-> - **Session Module**: Located at `src/modules/session`
-> - **ApiKeyModule Module**: Located at `src/modules/api-key`
+This documentation explains the features and usage of:
+- **Authentication Module**: Located at `src/modules/auth`
+- **Session Module**: Located at `src/modules/session`
+- **ApiKey Module**: Located at `src/modules/api-key`
 
 ## Overview
 
@@ -29,63 +29,44 @@ Configuration for tokens, sessions, password, social providers, and API keys is 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Password](#password)
-    - [Configuration](#configuration)
-    - [Password Features](#password-features)
-        - [Password Expiration](#password-expiration)
-        - [Password Period (Rotation)](#password-period-rotation)
-        - [Attempt Limiting](#attempt-limiting)
-    - [Password Lifecycle](#password-lifecycle)
-    - [Implementation](#implementation)
-    - [Password Endpoints](#password-endpoints)
-        - [Forgot Password](#forgot-password)
-        - [Reset Password](#reset-password)
-        - [Change Password](#change-password)
-        - [Admin Temporary Password](#admin-temporary-password)
-- [JWT (JSON Web Token) Authentication](#jwt-json-web-token-authentication)
-    - [Configuration](#configuration-1)
-    - [Tokens](#tokens)
-        - [Access Token](#access-token)
-        - [Refresh Token](#refresh-token)
-    - [Payload Structure](#payload-structure)
-        - [Access Token Payload](#access-token-payload)
-        - [Refresh Token Payload](#refresh-token-payload)
-    - [Authentication Endpoints](#authentication-endpoints)
-        - [Login](#login)
-        - [Refresh Token](#refresh-token-1)
-        - [Profile](#profile)
-    - [Implementation](#implementation-1)
+    - [Password Configuration](#password-configuration)
+    - [Password Flow](#password-flow)
+- [JWT Authentication](#jwt-authentication)
+    - [Jwt Configuration](#jwt-configuration)
+    - [Jwt Flow](#jwt-flow)
+        - [Jwt Access Token Flow](#jwt-access-token-flow)
+        - [Jwt Refresh Token Flow](#jwt-refresh-token-flow)
+    - [Jwt Tokens](#jwt-tokens)
+        - [Jwt Access Token](#jwt-access-token)
+        - [Jwt Refresh Token](#jwt-refresh-token)
+    - [Jwt Payload Structure](#jwt-payload-structure)
+        - [Jwt Access Token Payload](#jwt-access-token-payload)
+        - [Jwt Refresh Token Payload](#jwt-refresh-token-payload)
+    - [Usage](#usage)
         - [Protecting Endpoints](#protecting-endpoints)
         - [Getting JWT Payload](#getting-jwt-payload)
         - [Getting Raw Token](#getting-raw-token)
-    - [Access Token Flow](#access-token-flow)
-    - [Refresh Token Flow](#refresh-token-flow)
     - [Security: Fingerprint](#security-fingerprint)
+        - [How it Works](#how-it-works)
 - [Social Authentication](#social-authentication)
-    - [Google Authentication](#google-authentication)
-        - [Configuration](#configuration-2)
-        - [Setup Google OAuth 2.0](#setup-google-oauth-20)
-        - [Endpoint](#endpoint-1)
-        - [Request Header](#request-header-1)
-        - [Response Structure](#response-structure-1)
-        - [Implementation](#implementation-2)
-    - [Apple Authentication](#apple-authentication)
-        - [Configuration](#configuration-3)
-        - [Setup Apple Sign In](#setup-apple-sign-in)
-        - [Endpoint](#endpoint-2)
-        - [Request Header](#request-header-2)
-        - [Response Structure](#response-structure-2)
-        - [Implementation](#implementation-3)
     - [Social Authentication Flow](#social-authentication-flow)
+    - [Google Authentication](#google-authentication)
+        - [Configuration](#configuration)
+        - [Setup Google OAuth 2.0](#setup-google-oauth-20)
+        - [Usage](#usage-1)
+    - [Apple Authentication](#apple-authentication)
+        - [Configuration](#configuration-1)
+        - [Setup Apple Sign In](#setup-apple-sign-in)
+        - [Usage](#usage-2)
 - [API Key Authentication](#api-key-authentication)
-    - [Configuration](#configuration-4)
+    - [Configuration](#configuration-2)
     - [API Key Types](#api-key-types)
         - [Default API Key](#default-api-key)
         - [System API Key](#system-api-key)
     - [Request Format](#request-format)
-    - [Implementation](#implementation-4)
+    - [Usage](#usage-3)
         - [Protecting Endpoints](#protecting-endpoints-1)
         - [Getting API Key Payload](#getting-api-key-payload)
-        - [API Key Schema](#api-key-schema)
     - [Api Key Authentication Flow](#api-key-authentication-flow)
 - [Session Management](#session-management)
     - [Session Storage](#session-storage)
@@ -103,32 +84,40 @@ Configuration for tokens, sessions, password, social providers, and API keys is 
 
 Secures passwords with bcrypt hashing, enforces expiration and rotation, tracks history, limits login attempts, and supports reset, change, and temporary password creation with session invalidation.
 
-### Configuration
-- **Password Hashing:** Uses bcrypt with salt length of 8.
-- **Password Expiration:** Default expiration is 182 days.
-- **Password Rotation Period:** A password cannot be reused for 90 days.
-- **Max Login Attempts:** 5 failed attempts before user is inactivated (configurable in `src/configs/auth.config.ts`).
-- **Password History:** All hashed passwords are stored in a history table for audit purposes.
-- **Temporary Passwords:** Admins can set temporary passwords with a 3-day lifetime. System will send the password to user email.
-- **Forgot Password Token:** Expires in 5 minutes, can be resent every 2 minutes.
+### Password Configuration
 
-### Password Features
+All password settings are configured in `src/configs/auth.config.ts`:
 
-#### Password Expiration
-- Passwords expire after 182 days by default.
-- Configurable via `src/configs/auth.config.ts`.
+```typescript
+export default registerAs(
+    'auth',
+    (): IConfigAuth => ({
+        password: {
+            // Enable/disable login attempt limiting feature
+            attempt: true,
+            
+            // Maximum number of failed login attempts before user is inactivated
+            maxAttempt: 5,
+            
+            // Length of salt used in bcrypt password hashing
+            saltLength: 8,
+            
+            // Password expiration time in seconds (182 days = 15724800 seconds)
+            expiredInSeconds: 15724800,
+            
+            // Temporary password expiration time in seconds (3 days = 259200 seconds)
+            expiredTemporaryInSeconds: 259200,
+            
+            // Password rotation period in seconds (90 days = 7776000 seconds)
+            // Users are prompted to change password after this period
+            periodInSeconds: 7776000,
+        },
+    })
+);
+```
 
-#### Password Period (Rotation)
-- Users cannot reuse the same password within 90 days.
-- Enforced via password history table.
-- Configurable via `src/configs/auth.config.ts`.
 
-#### Attempt Limiting
-- Users are allowed up to 5 failed login attempts.
-- Exceeding this limit sets the user to inactive.
-- Configurable via `src/configs/auth.config.ts`.
-
-### Password Lifecycle
+### Password Flow
 ```mermaid
 graph TD
     A[User Registration<br/>Password Set] --> B[Password Hashed<br/>with Bcrypt]
@@ -152,30 +141,7 @@ graph TD
     P --> O
 ```
 
-### Implementation
-- Passwords are hashed and stored in LevelDB.
-- Password history is maintained in a dedicated table for audit and rotation enforcement.
-- All password-related configurations are dynamic and can be adjusted in `src/configs/auth.config.ts`.
-- On password change, forgot password, or temporary password set, all user sessions are invalidated.
-
-### Password Endpoints
-#### Forgot Password
-- **Endpoint:** `POST /public/user/password/forgot`
-- **Behavior:** Sends a reset link to the user's email. Token expires in 5 minutes. Resend allowed every 2 minutes.
-
-#### Reset Password
-- **Endpoint:** `PUT /public/user/password/reset`
-- **Behavior:** If token is valid and not expired, password is updated. All sessions invalidated.
-
-#### Change Password
-- **Endpoint:** `PATCH /shared/user/change-password`
-- **Behavior:** If old password matches, password is updated. All sessions invalidated.
-
-#### Admin Temporary Password
-- **Endpoint:** `PUT /admin/user/update/:userId/password`
-- **Behavior:** Admin send a temporary password via email (valid for 3 days). All sessions invalidated.
-
-## JWT (JSON Web Token) Authentication
+## JWT Authentication
 
 JWT (JSON Web Token) is an open standard ([RFC 7519][ref-jwt]) that defines a compact and self-contained way for securely transmitting information between parties as a JSON object. This information can be verified and trusted because it is digitally signed.
 
@@ -184,9 +150,9 @@ JWTs can be signed using a secret (with the HMAC algorithm) or a public/private 
 For more detailed information about JWT, please visit the official [JWT website][ref-jwt].
 
 
-### Configuration
+### Jwt Configuration
 
-All authentication settings are configured in `src/configs/auth.config.ts`:
+All jwt settings are configured in `src/configs/auth.config.ts`:
 
 ```typescript
 export default registerAs(
@@ -194,40 +160,181 @@ export default registerAs(
     (): IConfigAuth => ({
         jwt: {
             accessToken: {
+                // JWKS URI for token validation (optional, from environment)
                 jwksUri: process.env.AUTH_JWT_ACCESS_TOKEN_JWKS_URI,
+                
+                // Key ID for JWKS (optional, from environment)
                 kid: process.env.AUTH_JWT_ACCESS_TOKEN_KID,
+                
+                // Algorithm for signing and verifying access tokens
                 algorithm: 'ES256',  // ECDSA using P-256 and SHA-256
+                
+                // Private key for signing access tokens (from environment)
                 privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY,
+                
+                // Public key for verifying access tokens (from environment)
                 publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY,
-                expirationTimeInSeconds:
-                    ms(process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED) / 1000,
-                // Default: '1h' = 3600 seconds
+                
+                // Access token expiration time in seconds (1 hour = 3600 seconds)
+                expirationTimeInSeconds: 3600,
             },
 
             refreshToken: {
+                // JWKS URI for token validation (optional, from environment)
                 jwksUri: process.env.AUTH_JWT_REFRESH_TOKEN_JWKS_URI,
+                
+                // Key ID for JWKS (optional, from environment)
                 kid: process.env.AUTH_JWT_REFRESH_TOKEN_KID,
+                
+                // Algorithm for signing and verifying refresh tokens
                 algorithm: 'ES512',  // ECDSA using P-521 and SHA-512
+                
+                // Private key for signing refresh tokens (from environment)
                 privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY,
+                
+                // Public key for verifying refresh tokens (from environment)
                 publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY,
-                expirationTimeInSeconds:
-                    ms(process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED) / 1000,
-                // Default: '30d' = 2592000 seconds
+                
+                // Refresh token expiration time in seconds (30 days = 2592000 seconds)
                 // This value also determines Redis session TTL
+                expirationTimeInSeconds: 2592000,
             },
 
+            // JWT audience claim (identifies intended recipients)
             audience: process.env.AUTH_JWT_AUDIENCE,
+            
+            // JWT issuer claim (identifies who issued the token)
             issuer: process.env.AUTH_JWT_ISSUER,
+            
+            // HTTP header name for token transmission
             header: 'Authorization',
+            
+            // Token prefix (e.g., 'Bearer' in 'Bearer <token>')
             prefix: 'Bearer',
         },
     })
 );
 ```
 
-### Tokens
+### Jwt Flow
 
-#### Access Token
+#### Jwt Access Token Flow
+
+The following diagram illustrates the complete authentication flow from login to token generation:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant API
+    participant Redis
+    participant Database
+
+    User->>Client: Enter email & password
+    Client->>API: POST /public/user/login/credential
+    API->>Database: Validate credentials
+    Database-->>API: User validated
+    
+    API->>API: Generate fingerprint
+    
+    par Store in Database
+        API->>Database: Create session record
+        Database-->>API: Session created
+    and Store in Redis
+        API->>Redis: Store session with TTL
+        Note over Redis: Key: session:{sessionId}<br/>Value: {userId, fingerprint, loginAt, etc}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
+        Redis-->>API: Session cached
+    end
+    
+    API->>API: Generate Access Token (ES256, configured expiry)
+    API->>API: Generate Refresh Token (ES512, configured expiry)
+    
+    API-->>Client: Response with tokens
+    Note over Client: tokenType: Bearer<br/>roleType: user/admin/superAdmin<br/>expiresIn: 3600<br/>accessToken: string<br/>refreshToken: string
+    
+    Client->>Client: Store tokens securely
+    
+    Note over Client,Redis: Every API request validates session in Redis
+    
+    Client->>API: API Request with Access Token
+    API->>API: Verify token signature (ES256)
+    API->>API: Extract sessionId & fingerprint from token
+    API->>Redis: Validate session & compare fingerprint
+    
+    alt Session exists and fingerprint matches
+        Redis-->>API: Session valid
+        API-->>Client: Response
+    else Session not found or fingerprint mismatch
+        Redis-->>API: Validation failed
+        API-->>Client: 401 Unauthorized
+        Note over API: Token valid but session invalid/revoked<br/>or fingerprint doesn't match
+    end
+```
+
+#### Jwt Refresh Token Flow
+
+When the access token expires, the refresh token is used to obtain a new access token. The fingerprint validation ensures additional security:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Redis
+    participant Database
+
+    Client->>API: API Request with expired Access Token
+    API->>API: Verify token signature (ES256)
+    API-->>Client: 401 Unauthorized (Token expired)
+    
+    Client->>API: POST /shared/user/refresh
+    Note over Client,API: Authorization: Bearer <refresh_token>
+    
+    API->>API: Verify Refresh Token (ES512)
+    API->>API: Extract sessionId & fingerprint from token
+    
+    API->>Redis: Get session data
+    
+    alt Session found in Redis
+        Redis-->>API: Session data returned
+        
+        alt Fingerprint matches
+            API->>API: Generate new fingerprint
+            
+            API->>Redis: Update session with new fingerprint<br/>(TTL unchanged - stays at initial value)
+            Note over Redis: Fingerprint updated<br/>TTL NOT extended (follows config)
+            Redis-->>API: Session updated
+            
+            API->>API: Generate new Access Token (ES256, configured expiry)
+            API->>API: Generate new Refresh Token (ES512, configured expiry)<br/>with new fingerprint
+            
+            API-->>Client: New Access Token + New Refresh Token
+            Note over Client,API: Session ID remains the same<br/>Fingerprint rotated<br/>TTL remains at initial value from login
+            
+            Client->>API: Retry API Request with new Access Token
+            API->>API: Verify token signature (ES256)
+            API->>API: Extract sessionId & fingerprint
+            API->>Redis: Validate session & fingerprint
+            Redis-->>API: Valid
+            API-->>Client: Response
+            
+        else Fingerprint mismatch
+            API-->>Client: 401 Unauthorized (Invalid fingerprint)
+            Note over API,Redis: Potential security breach detected
+            Client->>User: Redirect to login
+        end
+        
+    else Session not found in Redis (expired)
+        Redis-->>API: Session not found
+        API-->>Client: 401 Unauthorized (Session expired)
+        Client->>User: Redirect to login
+    end
+    
+    Note over Database: Database session remains unchanged<br/>Only used for session listing
+```
+
+### Jwt Tokens
+
+#### Jwt Access Token
 A short-lived token used to authenticate API requests. 
 
 - **Algorithm**: ES256 (ECDSA using P-256 and SHA-256)
@@ -235,7 +342,7 @@ A short-lived token used to authenticate API requests.
 - **Config**: `AUTH_JWT_ACCESS_TOKEN_EXPIRED` environment variable
 - **Purpose**: Authenticate API requests
 
-#### Refresh Token
+#### Jwt Refresh Token
 A long-lived token used to obtain new access tokens without requiring the user to log in again.
 
 - **Algorithm**: ES512 (ECDSA using P-521 and SHA-512)
@@ -244,9 +351,9 @@ A long-lived token used to obtain new access tokens without requiring the user t
 - **Redis TTL**: Session TTL in Redis follows this expiration time
 - **Purpose**: Generate new access tokens without re-authentication
 
-### Payload Structure
+### Jwt Payload Structure
 
-#### Access Token Payload
+#### Jwt Access Token Payload
 
 Interface `IAuthJwtAccessTokenPayload`
 
@@ -272,7 +379,7 @@ Interface `IAuthJwtAccessTokenPayload`
 }
 ```
 
-#### Refresh Token Payload
+#### Jwt Refresh Token Payload
 
 Interface `IAuthJwtRefreshTokenPayload`
 
@@ -295,148 +402,7 @@ Interface `IAuthJwtRefreshTokenPayload`
 }
 ```
 
-### Authentication Endpoints
-
-#### Login
-
-##### Endpoint
-```
-POST /public/user/login/credential
-```
-
-##### Request Body
-```json
-{
-    "email": "user@example.com",
-    "password": "password123"
-}
-```
-
-##### Response Structure
-```typescript
-{
-    tokenType: "Bearer";
-    roleType: "superAdmin" | "admin" | "user";
-    expiresIn: 3600;  // timestamp in seconds
-    accessToken: string;
-    refreshToken: string;
-}
-```
-
-#### Refresh Token
-
-##### Endpoint
-```
-POST /shared/user/refresh
-```
-
-##### Request Header
-```
-Authorization: Bearer <refresh_token>
-```
-
-##### Response Structure
-Same as login response structure with new tokens generated.
-
-
-#### Profile
-
-##### Endpoint
-```
-GET /shared/user/profile
-```
-
-##### Request Header
-```
-Authorization: Bearer <access_token>
-```
-
-##### Response Structure
-```typescript
-const userProfile: UserProfileResponseDto = {
-  id: "65f1c2e4b7a1a2b3c4d5e6f7",
-  createdAt: "2025-11-29T12:00:00.000Z",
-  updatedAt: "2025-11-29T12:00:00.000Z",
-  name: "John Doe",
-  username: "johndoe",
-  isVerified: true,
-  verifiedAt: "2025-11-28T10:00:00.000Z",
-  email: "johndoe@example.com",
-  roleId: "65f1c2e4b7a1a2b3c4d5e6f8",
-  role: {
-    id: "65f1c2e4b7a1a2b3c4d5e6f8",
-    createdAt: "2025-11-29T12:00:00.000Z",
-    updatedAt: "2025-11-29T12:00:00.000Z",
-    name: "Admin",
-    description: "Administrator role",
-    type: "admin",
-    abilities: [
-      { subject: "user", action: ["manage", "read", "update"] },
-      { subject: "role", action: ["read"] }
-    ]
-  },
-  passwordExpired: "2025-12-29T12:00:00.000Z",
-  passwordCreated: "2025-11-01T12:00:00.000Z",
-  passwordAttempt: 0,
-  signUpDate: "2025-11-01T12:00:00.000Z",
-  signUpFrom: "admin",
-  signUpWith: "credential",
-  status: "active",
-  countryId: "65f1c2e4b7a1a2b3c4d5e6f9",
-  gender: "male",
-  lastLoginAt: "2025-11-29T11:00:00.000Z",
-  lastIPAddress: "192.168.1.1",
-  lastLoginFrom: "website",
-  lastLoginWith: "credential",
-  termPolicy: {
-    termsOfService: true,
-    privacy: true,
-    cookie: true,
-    marketing: false
-  },
-  photo: {
-    bucket: "USER-PHOTOS",
-    key: "profile/johndoe.jpg",
-    cdnUrl: "https://cdn.example.com/profile/johndoe.jpg",
-    completedUrl: "https://s3.amazonaws.com/user-photos/profile/johndoe.jpg",
-    mime: "image/jpeg",
-    extension: "jpg",
-    access: "public",
-    size: 204800
-  },
-  country: {
-    id: "65f1c2e4b7a1a2b3c4d5e6f9",
-    createdAt: "2025-11-29T12:00:00.000Z",
-    updatedAt: "2025-11-29T12:00:00.000Z",
-    name: "Indonesia",
-    alpha2Code: "ID",
-    alpha3Code: "IDN",
-    phoneCode: ["62"],
-    continent: "Asia",
-    timezone: "Asia/Jakarta"
-  },
-  mobileNumber: {
-    id: "mobile1",
-    createdAt: "2025-11-29T12:00:00.000Z",
-    updatedAt: "2025-11-29T12:00:00.000Z",
-    number: "81234567890",
-    phoneCode: "62",
-    country: {
-      id: "65f1c2e4b7a1a2b3c4d5e6f9",
-      createdAt: "2025-11-29T12:00:00.000Z",
-      updatedAt: "2025-11-29T12:00:00.000Z",
-      name: "Indonesia",
-      alpha2Code: "ID",
-      alpha3Code: "IDN",
-      phoneCode: ["62"],
-      continent: "Asia",
-      timezone: "Asia/Jakarta"
-    }
-  }
-};
-```
-
-### Implementation
+### Usage
 
 #### Protecting Endpoints
 
@@ -498,21 +464,6 @@ async getUserId(
 }
 ```
 
-**Decorator Implementation:**
-```typescript
-export const AuthJwtPayload = createParamDecorator(
-    <T = IAuthJwtAccessTokenPayload>(
-        data: string,
-        ctx: ExecutionContext
-    ): T | undefined => {
-        const { user } = ctx
-            .switchToHttp()
-            .getRequest<IRequestApp & { user: T }>();
-        return data ? user[data] : user;
-    }
-);
-```
-
 #### Getting Raw Token
 
 To access the raw JWT token string, use the `@AuthJwtToken()` decorator:
@@ -526,134 +477,6 @@ async verifyToken(
     // Access raw token for additional processing
     return { token };
 }
-```
-
-**Decorator Implementation:**
-```typescript
-export const AuthJwtToken = createParamDecorator(
-    (_: unknown, ctx: ExecutionContext): string | undefined => {
-        const { headers } = ctx.switchToHttp().getRequest<IRequestApp>();
-        const { authorization } = headers;
-        const authorizations: string[] = authorization?.split(' ') ?? [];
-
-        return authorizations.length >= 2 ? authorizations[1] : undefined;
-    }
-);
-```
-
-### Access Token Flow
-
-The following diagram illustrates the complete authentication flow from login to token generation:
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Client
-    participant API
-    participant Redis
-    participant Database
-
-    User->>Client: Enter email & password
-    Client->>API: POST /public/user/login/credential
-    API->>Database: Validate credentials
-    Database-->>API: User validated
-    
-    API->>API: Generate fingerprint
-    
-    par Store in Database
-        API->>Database: Create session record
-        Database-->>API: Session created
-    and Store in Redis
-        API->>Redis: Store session with TTL
-        Note over Redis: Key: session:{sessionId}<br/>Value: {userId, fingerprint, loginAt, etc}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
-        Redis-->>API: Session cached
-    end
-    
-    API->>API: Generate Access Token (ES256, configured expiry)
-    API->>API: Generate Refresh Token (ES512, configured expiry)
-    
-    API-->>Client: Response with tokens
-    Note over Client: tokenType: Bearer<br/>roleType: user/admin/superAdmin<br/>expiresIn: 3600<br/>accessToken: string<br/>refreshToken: string
-    
-    Client->>Client: Store tokens securely
-    
-    Note over Client,Redis: Every API request validates session in Redis
-    
-    Client->>API: API Request with Access Token
-    API->>API: Verify token signature (ES256)
-    API->>API: Extract sessionId & fingerprint from token
-    API->>Redis: Validate session & compare fingerprint
-    
-    alt Session exists and fingerprint matches
-        Redis-->>API: Session valid
-        API-->>Client: Response
-    else Session not found or fingerprint mismatch
-        Redis-->>API: Validation failed
-        API-->>Client: 401 Unauthorized
-        Note over API: Token valid but session invalid/revoked<br/>or fingerprint doesn't match
-    end
-```
-
-
-### Refresh Token Flow
-
-When the access token expires, the refresh token is used to obtain a new access token. The fingerprint validation ensures additional security:
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant Redis
-    participant Database
-
-    Client->>API: API Request with expired Access Token
-    API->>API: Verify token signature (ES256)
-    API-->>Client: 401 Unauthorized (Token expired)
-    
-    Client->>API: POST /shared/user/refresh
-    Note over Client,API: Authorization: Bearer <refresh_token>
-    
-    API->>API: Verify Refresh Token (ES512)
-    API->>API: Extract sessionId & fingerprint from token
-    
-    API->>Redis: Get session data
-    
-    alt Session found in Redis
-        Redis-->>API: Session data returned
-        
-        alt Fingerprint matches
-            API->>API: Generate new fingerprint
-            
-            API->>Redis: Update session with new fingerprint<br/>(TTL unchanged - stays at initial value)
-            Note over Redis: Fingerprint updated<br/>TTL NOT extended (follows config)
-            Redis-->>API: Session updated
-            
-            API->>API: Generate new Access Token (ES256, configured expiry)
-            API->>API: Generate new Refresh Token (ES512, configured expiry)<br/>with new fingerprint
-            
-            API-->>Client: New Access Token + New Refresh Token
-            Note over Client,API: Session ID remains the same<br/>Fingerprint rotated<br/>TTL remains at initial value from login
-            
-            Client->>API: Retry API Request with new Access Token
-            API->>API: Verify token signature (ES256)
-            API->>API: Extract sessionId & fingerprint
-            API->>Redis: Validate session & fingerprint
-            Redis-->>API: Valid
-            API-->>Client: Response
-            
-        else Fingerprint mismatch
-            API-->>Client: 401 Unauthorized (Invalid fingerprint)
-            Note over API,Redis: Potential security breach detected
-            Client->>User: Redirect to login
-        end
-        
-    else Session not found in Redis (expired)
-        Redis-->>API: Session not found
-        API-->>Client: 401 Unauthorized (Session expired)
-        Client->>User: Redirect to login
-    end
-    
-    Note over Database: Database session remains unchanged<br/>Only used for session listing
 ```
 
 ### Security: Fingerprint
@@ -690,6 +513,7 @@ A unique identifier generated during login and stored in both the token payload 
    - New tokens contain the new fingerprint
    - **Important**: Session TTL remains unchanged (stays at initial value from login based on `AUTH_JWT_REFRESH_TOKEN_EXPIRED` config)
 
+
 ## Social Authentication
 
 Social authentication allows users to sign in using their Google or Apple accounts. The backend validates the OAuth tokens provided by the client and extracts user information to create a session, similar to credential-based authentication.
@@ -698,194 +522,6 @@ Social authentication allows users to sign in using their Google or Apple accoun
 - Google OAuth 2.0
 - Apple Sign In
 
-**Authentication Flow:**
-1. Client obtains OAuth token from Google/Apple
-2. Client sends token to backend via Authorization header
-3. Backend validates token using `AuthUtil` service
-4. Backend extracts user email from validated token
-5. Backend creates/updates user account
-6. Backend generates JWT tokens and session (same as credential auth)
-
-### Google Authentication
-
-#### Configuration
-
-Google authentication is configured in `auth.config.ts`:
-
-```typescript
-google: {
-    header: 'Authorization',
-    prefix: 'Bearer',
-    clientId: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID,
-    clientSecret: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_SECRET,
-}
-```
-
-**Environment Variables:**
-- `AUTH_SOCIAL_GOOGLE_CLIENT_ID`: Google OAuth 2.0 client ID
-- `AUTH_SOCIAL_GOOGLE_CLIENT_SECRET`: Google OAuth 2.0 client secret
-
-
-#### Setup Google OAuth 2.0
-
-To obtain Google OAuth credentials:
-
-1. Go to [Google Cloud Console][ref-google-console]
-2. Create a new project or select existing project
-3. Enable Google+ API
-4. Create OAuth 2.0 credentials (Web application)
-5. Configure authorized redirect URIs
-6. Copy Client ID and Client Secret to your `.env` file
-
-**For detailed setup instructions**, visit [Google OAuth 2.0 Documentation][ref-google-client-secret]
-
-#### Endpoint
-
-```
-POST /public/user/login/social/google
-```
-
-#### Request Header
-
-```
-Authorization: Bearer <google_oauth_token>
-```
-
-#### Response Structure
-
-Same as credential login response:
-
-```typescript
-{
-    tokenType: "Bearer";
-    roleType: "superAdmin" | "admin" | "user";
-    expiresIn: 3600;
-    accessToken: string;
-    refreshToken: string;
-}
-```
-
-#### Implementation
-
-**Protecting the Endpoint:**
-
-```typescript
-@AuthSocialGoogleProtected()
-@Post('/login/social/google')
-async loginGoogle(@AuthJwtPayload() payload: IAuthSocialPayload) {
-    const { email, emailVerified } = payload;
-    
-    // Find or create user
-    // Generate session
-    // Return JWT tokens
-}
-```
-
-**Token Validation (`auth.util.ts`):**
-
-```typescript
-/**
- * Verifies a Google OAuth ID token and extracts the payload.
- */
-async verifyGoogle(token: string): Promise<TokenPayload> {
-    const login: LoginTicket = await this.googleClient.verifyIdToken({
-        idToken: token,
-    });
-
-    const payload: TokenPayload = login.getPayload();
-
-    return payload;
-}
-```
-
-### Apple Authentication
-
-#### Configuration
-
-Apple authentication is configured in `auth.config.ts`:
-
-```typescript
-apple: {
-    header: 'Authorization',
-    prefix: 'Bearer',
-    clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID,
-    signInClientId: process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID,
-}
-```
-
-**Environment Variables:**
-- `AUTH_SOCIAL_APPLE_CLIENT_ID`: Apple service ID
-- `AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID`: Apple sign-in client ID
-
-#### Setup Apple Sign In
-
-To obtain Apple credentials:
-
-1. Go to [Apple Developer Portal](https://developer.apple.com/)
-2. Create an App ID with Sign in with Apple capability
-3. Create a Services ID for web authentication
-4. Configure return URLs
-5. Download and configure private key
-6. Copy Service ID (Client ID) to your `.env` file
-
-**For detailed setup instructions**, visit [Apple Sign In Documentation](https://developer.apple.com/sign-in-with-apple/get-started/)
-
-#### Endpoint
-
-```
-POST /public/user/login/social/apple
-```
-
-#### Request Header
-
-```
-Authorization: Bearer <apple_id_token>
-```
-
-#### Response Structure
-
-Same as credential login response:
-
-```typescript
-{
-    tokenType: "Bearer";
-    roleType: "superAdmin" | "admin" | "user";
-    expiresIn: 3600;
-    accessToken: string;
-    refreshToken: string;
-}
-```
-
-
-#### Implementation
-
-**Protecting the Endpoint:**
-
-```typescript
-@AuthSocialAppleProtected()
-@Post('/login/social/apple')
-async loginApple(@AuthJwtPayload() payload: IAuthSocialPayload) {
-    const { email, emailVerified } = payload;
-    
-    // Find or create user
-    // Generate session
-    // Return JWT tokens
-}
-```
-
-**Token Validation (`auth.util.ts`):**
-
-```typescript
-/**
- * Verifies an Apple Sign-In ID token and extracts the payload.
- */
-async verifyApple(token: string): Promise<VerifyAppleIdTokenResponse> {
-    return verifyAppleToken({
-        idToken: token,
-        clientId: [this.appleClientId, this.appleSignInClientId],
-    });
-}
-```
 
 ### Social Authentication Flow
 
@@ -956,16 +592,116 @@ sequenceDiagram
     end
 ```
 
+### Google Authentication
+
+#### Configuration
+
+Google authentication is configured in `auth.config.ts`:
+
+```typescript
+export default registerAs(
+    'auth',
+    (): IConfigAuth => ({
+        google: {
+            header: 'Authorization',
+            prefix: 'Bearer',
+            clientId: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID,
+            clientSecret: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_SECRET,
+        }
+    })
+);
+```
+
+**Environment Variables:**
+- `AUTH_SOCIAL_GOOGLE_CLIENT_ID`: Google OAuth 2.0 client ID
+- `AUTH_SOCIAL_GOOGLE_CLIENT_SECRET`: Google OAuth 2.0 client secret
+
+
+#### Setup Google OAuth 2.0
+
+To obtain Google OAuth credentials:
+
+1. Go to [Google Cloud Console][ref-google-console]
+2. Create a new project or select existing project
+3. Enable Google+ API
+4. Create OAuth 2.0 credentials (Web application)
+5. Configure authorized redirect URIs
+6. Copy Client ID and Client Secret to your `.env` file
+
+**For detailed setup instructions**, visit [Google OAuth 2.0 Documentation][ref-google-client-secret]
+
+#### Usage
+
+**Protecting the Endpoint:**
+
+```typescript
+@AuthSocialGoogleProtected()
+@Post('/login/social/google')
+async loginGoogle(@AuthJwtPayload() payload: IAuthSocialPayload) {
+    const { email, emailVerified } = payload;
+    
+    // Find or create user
+    // Generate session
+    // Return JWT tokens
+}
+```
+
+### Apple Authentication
+
+#### Configuration
+
+Apple authentication is configured in `auth.config.ts`:
+
+```typescript
+export default registerAs(
+    'auth',
+    (): IConfigAuth => ({
+        apple: {
+            header: 'Authorization',
+            prefix: 'Bearer',
+            clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID,
+            signInClientId: process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID,
+        }
+    })
+);
+```
+
+**Environment Variables:**
+- `AUTH_SOCIAL_APPLE_CLIENT_ID`: Apple service ID
+- `AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID`: Apple sign-in client ID
+
+#### Setup Apple Sign In
+
+To obtain Apple credentials:
+
+1. Go to [Apple Developer Portal](https://developer.apple.com/)
+2. Create an App ID with Sign in with Apple capability
+3. Create a Services ID for web authentication
+4. Configure return URLs
+5. Download and configure private key
+6. Copy Service ID (Client ID) to your `.env` file
+
+**For detailed setup instructions**, visit [Apple Sign In Documentation](https://developer.apple.com/sign-in-with-apple/get-started/)
+
+#### Usage
+
+**Protecting the Endpoint:**
+
+```typescript
+@AuthSocialAppleProtected()
+@Post('/login/social/apple')
+async loginApple(@AuthJwtPayload() payload: IAuthSocialPayload) {
+    const { email, emailVerified } = payload;
+    
+    // Find or create user
+    // Generate session
+    // Return JWT tokens
+}
+```
+
 ## API Key Authentication
 
 API Key authentication provides a simple, stateless authentication mechanism for machine-to-machine communication and system integrations. Unlike JWT tokens, API keys don't require session management and are validated directly against the database/cache.
-
-**Key Features:**
-- Stateless authentication
-- No session management required
-- Two types: Default and System
-- Cached for high performance
-- Simple `key:secret` format
 
 **Use Cases:**
 - External system integrations
@@ -994,6 +730,63 @@ export default registerAs(
 - `header`: Header name for API key (`x-api-key`)
 - `cachePrefixKey`: Redis cache prefix for API key caching
 
+
+### Api Key Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Guard
+    participant Cache
+    participant Database
+
+    Client->>API: Request with x-api-key header
+    Note over Client,API: x-api-key: key:secret
+
+    API->>Guard: ApiKeyXApiKeyGuard
+    Guard->>Guard: Extract x-api-key header
+    Guard->>Guard: Parse key:secret format
+
+    alt Invalid Format
+        Guard-->>Client: 401 Unauthorized (Invalid format)
+    else Valid Format
+        Guard->>Guard: Split into [key, secret]
+        Guard->>Cache: Check cache for API key
+        
+        alt Cache Hit
+            Cache-->>Guard: API Key data
+        else Cache Miss
+            Guard->>Database: Find API key by key
+            Database-->>Guard: API Key data
+            Guard->>Cache: Store in cache
+        end
+
+        alt API Key Not Found
+            Guard-->>Client: 403 Forbidden (Not found)
+        else API Key Found
+            Guard->>Guard: Validate secret against hash
+            Guard->>Guard: Check isActive status
+            Guard->>Guard: Check startDate/endDate
+
+            alt Invalid Credentials or Inactive
+                Guard-->>Client: 401 Unauthorized (Invalid)
+            else Valid
+                Guard->>API: Attach apiKey to request.__apiKey
+                API->>Guard: ApiKeyXApiKeyTypeGuard
+                Guard->>Guard: Check API key type matches decorator
+
+                alt Type Mismatch
+                    Guard-->>Client: 403 Forbidden (Wrong type)
+                else Type Match
+                    Guard-->>API: Validation success
+                    API->>API: Process request with API key context
+                    API-->>Client: Response
+                end
+            end
+        end
+    end
+```
 
 ### API Key Types
 
@@ -1065,7 +858,7 @@ x-api-key: ${key}:${secret}
 - No spaces allowed
 - Case-sensitive
 
-### Implementation
+### Usage
 
 #### Protecting Endpoints
 
@@ -1136,93 +929,6 @@ async getResource(
 }
 ```
 
-**Decorator Implementation:**
-
-```typescript
-export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
-    <T = ApiKey>(data: string, ctx: ExecutionContext): T => {
-        const { __apiKey } = ctx.switchToHttp().getRequest<IRequestApp>();
-        return data ? __apiKey[data] : (__apiKey as T);
-    }
-);
-```
-
-**API Key Schema:**
-
-The `@ApiKeyPayload()` decorator provides access to the complete `ApiKey` schema:
-
-```typescript
-interface ApiKey {
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    name: string;           // API key name/description
-    key: string;            // Public key part
-    hash: string;           // Hashed secret
-    isActive: boolean;      // Active status
-    startDate?: Date;       // Optional start date
-    endDate?: Date;         // Optional end date
-    type: ENUM_API_KEY_TYPE; // 'default' | 'system'
-}
-```
-
-### Api Key Authentication Flow
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant Guard
-    participant Cache
-    participant Database
-
-    Client->>API: Request with x-api-key header
-    Note over Client,API: x-api-key: key:secret
-
-    API->>Guard: ApiKeyXApiKeyGuard
-    Guard->>Guard: Extract x-api-key header
-    Guard->>Guard: Parse key:secret format
-
-    alt Invalid Format
-        Guard-->>Client: 401 Unauthorized (Invalid format)
-    else Valid Format
-        Guard->>Guard: Split into [key, secret]
-        Guard->>Cache: Check cache for API key
-        
-        alt Cache Hit
-            Cache-->>Guard: API Key data
-        else Cache Miss
-            Guard->>Database: Find API key by key
-            Database-->>Guard: API Key data
-            Guard->>Cache: Store in cache
-        end
-
-        alt API Key Not Found
-            Guard-->>Client: 403 Forbidden (Not found)
-        else API Key Found
-            Guard->>Guard: Validate secret against hash
-            Guard->>Guard: Check isActive status
-            Guard->>Guard: Check startDate/endDate
-
-            alt Invalid Credentials or Inactive
-                Guard-->>Client: 401 Unauthorized (Invalid)
-            else Valid
-                Guard->>API: Attach apiKey to request.__apiKey
-                API->>Guard: ApiKeyXApiKeyTypeGuard
-                Guard->>Guard: Check API key type matches decorator
-
-                alt Type Mismatch
-                    Guard-->>Client: 403 Forbidden (Wrong type)
-                else Type Match
-                    Guard-->>API: Validation success
-                    API->>API: Process request with API key context
-                    API-->>Client: Response
-                end
-            end
-        end
-    end
-```
-
 ## Session Management
 
 Session management handles user authentication sessions across multiple devices and locations. It provides visibility and control over active sessions, allowing users and administrators to monitor and revoke access as needed.
@@ -1235,12 +941,6 @@ This implementation uses a **dual storage strategy**:
 
 #### Redis (Primary - Validation)
 Used for high-speed session validation for **both access and refresh tokens**.
-
-**Purpose:**
-- **Validate access tokens** on every API request
-- Fast token validation during refresh
-- Store session data with fingerprint
-- Automatic expiration with TTL
 
 **Critical Behavior**: Every API call with an access token will check Redis. If the session is not found in Redis, the request is rejected immediately, even if the token signature is valid.
 
@@ -1274,12 +974,6 @@ user:{userId}:session:{sessionId}
 
 #### Database (Secondary - Management)
 Used for session listing and management purposes.
-
-**Purpose:**
-- Display active sessions to users
-- Session management (view all devices/locations)
-- Session revocation tracking
-- Audit trail and history
 
 **When Updated:**
 - Created during login
@@ -1323,148 +1017,6 @@ graph TB
     U --> V[All Tokens Invalid Immediately]
 ```
 
-### Session API
-
-#### List User Sessions
-
-##### Get Current User Sessions
-
-**Endpoint:**
-```
-GET /shared/user/session/list
-```
-
-**Purpose**: User can view their own active sessions
-
-**Response:**
-```typescript
-{
-    sessions: [
-      {
-        id: "65f1c2e4b7a1a2b3c4d5e6fa",
-        createdAt: "2025-11-29T12:00:00.000Z",
-        updatedAt: "2025-11-29T12:00:00.000Z",
-        userId: "65f1c2e4b7a1a2b3c4d5e6f7",
-        user: {
-          id: "65f1c2e4b7a1a2b3c4d5e6f7",
-          createdAt: "2025-11-29T12:00:00.000Z",
-          updatedAt: "2025-11-29T12:00:00.000Z",
-          name: "John Doe",
-          username: "johndoe",
-          isVerified: true,
-          verifiedAt: "2025-11-28T10:00:00.000Z",
-          email: "johndoe@example.com",
-          roleId: "65f1c2e4b7a1a2b3c4d5e6f8",
-          role: {
-            id: "65f1c2e4b7a1a2b3c4d5e6f8",
-            createdAt: "2025-11-29T12:00:00.000Z",
-            updatedAt: "2025-11-29T12:00:00.000Z",
-            name: "Admin",
-            description: "Administrator role",
-            type: "admin",
-            abilities: [
-              { subject: "user", action: ["manage", "read", "update"] },
-              { subject: "role", action: ["read"] }
-            ]
-          },
-          status: "active",
-          countryId: "65f1c2e4b7a1a2b3c4d5e6f9",
-          termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            cookie: true,
-            marketing: false
-          },
-          photo: {
-            bucket: "USER-PHOTOS",
-            key: "profile/johndoe.jpg",
-            cdnUrl: "https://cdn.example.com/profile/johndoe.jpg",
-            completedUrl: "https://s3.amazonaws.com/user-photos/profile/johndoe.jpg",
-            mime: "image/jpeg",
-            extension: "jpg",
-            access: "public",
-            size: 204800
-          },
-          country: {
-            id: "65f1c2e4b7a1a2b3c4d5e6f9",
-            createdAt: "2025-11-29T12:00:00.000Z",
-            updatedAt: "2025-11-29T12:00:00.000Z",
-            name: "Indonesia",
-            alpha2Code: "ID",
-            alpha3Code: "IDN",
-            phoneCode: ["62"],
-            continent: "Asia",
-            timezone: "Asia/Jakarta"
-          }
-          // ...other field
-        },
-        ipAddress: "192.168.1.1",
-        userAgent: {
-          ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_3_1 like Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.49 Mobile Safari/537.36",
-          browser: {
-            name: "Chrome",
-            version: "112.0.5615.49",
-            major: "112",
-            type: "mobile"
-          },
-          cpu: {
-            architecture: "amd64"
-          },
-          device: {
-            type: "mobile",
-            vendor: "Apple",
-            model: "iPhone"
-          },
-          engine: {
-            name: "WebKit",
-            version: "537.36"
-          },
-          os: {
-            name: "iOS",
-            version: "16.3.1"
-          }
-        },
-        expiredAt: "2025-12-29T12:00:00.000Z",
-        revokedAt: null,
-        isRevoked: false
-      }
-    ]
-}
-```
-
-##### Get Any User Sessions (Admin)
-
-**Endpoint:**
-```
-GET /admin/user/:userId/session/list
-```
-
-**Purpose**: Admin can view any user's active sessions
-
-#### Revoke Session
-
-##### Revoke by User
-
-**Endpoint:**
-```
-DELETE /shared/session/revoke/:sessionId
-```
-
-**Purpose**: User can revoke their own sessions (e.g., logout from other devices)
-
-**Authorization**: User can only revoke their own sessions
-
-##### Revoke by Admin
-
-**Endpoint:**
-```
-DELETE /admin/session/revoke/:sessionId
-```
-
-**Purpose**: Admin can revoke any user's session
-
-**Authorization**: Admin can revoke sessions for any user
-
 #### What Happens on Revocation
 
 When a session is revoked:
@@ -1474,76 +1026,6 @@ When a session is revoked:
 3. **Access Tokens**: All access tokens for this session become invalid immediately
 4. **Refresh Tokens**: All refresh tokens for this session become invalid immediately
 5. **Active Requests**: Any subsequent API calls with tokens from this session will be rejected
-
-### Session Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> Created: User Login
-    Created --> Active: Session stored in Redis & DB
-    
-    Active --> Active: Token Refresh (fingerprint rotated)
-    Active --> Expired: 30 days from login
-    Active --> Revoked: User/Admin revokes
-    
-    Expired --> [*]: Auto-removed from Redis
-    Revoked --> [*]: Deleted from Redis
-    
-    note right of Active
-        Redis: TTL follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
-        Refresh does NOT extend TTL
-        Only fingerprint is updated
-    end note
-    
-    note right of Expired
-        Redis: Auto-deleted when TTL expires
-        Database: Marked expired
-    end note
-    
-    note right of Revoked
-        Redis: Deleted immediately
-        Database: Marked revoked
-    end note
-```
-
-### Session Validation Flow
-
-Every protected API endpoint follows this validation flow:
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant Redis
-    
-    Client->>API: Request with Access Token
-    API->>API: Verify token signature (ES256)
-    
-    alt Token signature valid
-        API->>API: Extract sessionId & fingerprint from token
-        API->>Redis: GET session:{sessionId}
-        
-        alt Session exists in Redis
-            Redis-->>API: Session data (with stored fingerprint)
-            API->>API: Compare token fingerprint vs stored fingerprint
-            
-            alt Fingerprint matches
-                API-->>Client: 200 OK (Process request)
-            else Fingerprint mismatch
-                API-->>Client: 401 Unauthorized
-                Note over API,Client: Token valid but fingerprint doesn't match
-            end
-        else Session not found
-            Redis-->>API: NULL
-            API-->>Client: 401 Unauthorized
-            Note over API,Client: Session expired or revoked
-        end
-    else Token signature invalid
-        API-->>Client: 401 Unauthorized
-        Note over API,Client: Invalid or tampered token
-    end
-```
-
 
 
 <!-- REFERENCES -->

@@ -1,5 +1,7 @@
 # Security and Middleware Documentation
 
+This documentation explains the features and usage of **Request Module**: Located at `src/common/request`
+
 ## Overview
 
 ACK NestJS Boilerplate implements a comprehensive security and middleware layer for HTTP request/response processing. All middleware is centrally managed through `RequestMiddlewareModule` and applied globally to all routes using the wildcard pattern `{*wildcard}`.

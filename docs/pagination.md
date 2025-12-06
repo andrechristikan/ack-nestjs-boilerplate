@@ -1,6 +1,6 @@
 # Pagination Documentation
 
-> This documentation explains the features and usage of **Pagination Module**: Located at `src/common/pagination`
+This documentation explains the features and usage of **Pagination Module**: Located at `src/common/pagination`
 
 ## Overview
 

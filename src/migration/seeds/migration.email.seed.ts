@@ -4,6 +4,7 @@ import { EmailTemplateService } from '@modules/email/services/email.template.ser
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
 
+// TODO: Change this to template and add term policy seed file
 @Command({
     name: 'email',
     description: 'Seed/Remove Emails',

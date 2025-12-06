@@ -1,6 +1,6 @@
 # Request Validation Documentation
 
-> This documentation explains the features and usage of **Request Module**: Located at `src/common/request`
+This documentation explains the features and usage of **Request Module**: Located at `src/common/request`
 
 ## Overview
 

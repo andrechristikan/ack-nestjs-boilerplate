@@ -1,6 +1,6 @@
 # Environment Documentation
 
-> This documentation explains **Environment**: Located at `.env.example`
+This documentation explains **Environment**: Located at `.env.example`
 
 ## Overview
 
@@ -40,10 +40,6 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
 Environment variables are validated using the `AppEnvDto` class with `class-validator` decorators. This validation occurs in `src/main.ts` during application bootstrap:
 
 ```typescript
-import { AppEnvDto } from '@app/dtos/app.env.dto';
-import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
-
 // Validate environment variables
 const classEnv = plainToInstance(AppEnvDto, process.env);
 const errors = await validate(classEnv);

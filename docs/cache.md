@@ -1,12 +1,14 @@
 # Cache Documentation
 
-> This documentation explains the features and usage of:
-> - **Cache Module**: Located at `src/common/cache`
-> - **Redis Module**: Located at `src/common/redis`
+This documentation explains the features and usage of:
+- **Cache Module**: Located at `src/common/cache`
+- **Redis Module**: Located at `src/common/redis`
 
 ## Overview
 
 This application uses **Redis** as the cache storage backend to improve performance and reduce database load. The cache is implemented using a global module pattern, making it accessible throughout the application without repeated imports.
+
+This application uses **cache-manager v6** which migrated to **Keyv** as the unified storage interface. We use `@keyv/redis` as the Redis adapter.
 
 ## Related Documents
 
@@ -19,8 +21,6 @@ This application uses **Redis** as the cache storage backend to improve performa
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
-- [Stack](#stack)
-- [Why Keyv?](#why-keyv)
 - [Principles & Patterns](#principles--patterns)
   - [DRY & Singleton Pattern](#dry--singleton-pattern)
   - [Global Module Pattern](#global-module-pattern)
@@ -35,19 +35,7 @@ This application uses **Redis** as the cache storage backend to improve performa
 - [Usage](#usage)
   - [Injecting Cache Providers](#injecting-cache-providers)
   - [Cache Operations](#cache-operations)
-- [Use Cases](#use-cases)
 
-## Stack
-
-- **Redis**: In-memory data store for cache storage
-- **@nestjs/cache-manager**: NestJS cache management library
-- **cache-manager**: Core caching library
-- **@keyv/redis**: Redis adapter for Keyv
-- **Keyv**: Universal key-value storage interface
-
-## Why Keyv?
-
-This application uses **cache-manager v6** which migrated to **Keyv** as the unified storage interface. We use `@keyv/redis` as the Redis adapter.
 
 ## Principles & Patterns
 
@@ -232,12 +220,6 @@ For cache operations (set, get, delete, etc.), see:
 - [NestJS Caching][ref-nestjs-caching]
 - [cache-manager][ref-cache-manager]
 
-## Use Cases
-
-- **Response Cache:** See [Response Documentation][ref-doc-response]
-- **API Key Authentication:** See [Authentication Documentation][ref-doc-authentication] (section: `API Key Authentication`)
-- **Feature Flag:** See [Feature Flag Documentation][ref-doc-feature-flag]
-- **Session Management:** See [Authentication Documentation][ref-doc-authentication] (section: `Session Management`)
 
 <!-- REFERENCES -->
 

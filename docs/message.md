@@ -1,6 +1,6 @@
 # Message Documentation
 
-> This documentation explains the features and usage of **Message Module**: Located at `src/common/message`
+This documentation explains the features and usage of **Message Module**: Located at `src/common/message`
 
 ## Overview
 

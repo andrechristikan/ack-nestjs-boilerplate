@@ -1,6 +1,6 @@
 # Queue Documentation
 
-> This documentation explains the features and usage of **Queue Module**: Located at `src/queues`
+This documentation explains the features and usage of **Queue Module**: Located at `src/queues`
 
 ## Overview
 

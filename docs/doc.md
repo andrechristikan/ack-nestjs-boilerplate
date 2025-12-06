@@ -1,6 +1,6 @@
 # Doc Documentation
 
-> This documentation explains the features and usage of **Doc Module**: Located at `src/common/doc`
+This documentation explains the features and usage of **Doc Module**: Located at `src/common/doc`
 
 ## Overview
 
@@ -42,10 +42,7 @@ Features:
   - [DocAllOf](#docallof)
 - [DTO Documentation](#dto-documentation)
   - [ApiProperty](#apiproperty)
-  - [Params Constants](#params-constants)
-  - [Queries Constants](#queries-constants)
-- [Constants](#constants)
-- [Usage Examples](#usage-examples)
+- [Usage](#usage)
   - [Complete Admin Endpoint](#complete-admin-endpoint)
   - [Complete Public Endpoint](#complete-public-endpoint)
   - [Paginated List Endpoint](#paginated-list-endpoint)
@@ -475,6 +472,8 @@ DocAllOf(
 
 ## DTO Documentation
 
+All decorators from `@nestjs/swagger` are fully supported in this module. This section provides an example using `@ApiProperty`, one of the most commonly used decorators for DTO documentation.
+
 ### ApiProperty
 
 The `@ApiProperty` decorator from `@nestjs/swagger` documents DTO properties. It supports all standard Swagger/OpenAPI property options.
@@ -505,9 +504,7 @@ Common options:
 export class UserChangePasswordRequestDto {
     @ApiProperty({
         description: "new string password, newPassword can't same with oldPassword",
-        example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
-            .alphanumeric(5)
-            .toUpperCase()}@@!123`,
+        example: 'aBcDe@Fgh!123',
         required: true,
         minLength: 8,
         maxLength: 50,
@@ -521,9 +518,7 @@ export class UserChangePasswordRequestDto {
 
     @ApiProperty({
         description: 'old string password',
-        example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
-            .alphanumeric(5)
-            .toUpperCase()}@@!123`,
+        example: 'xYzAb@Cde!456',
         required: true,
     })
     @IsString()
@@ -542,7 +537,7 @@ export class UserForgotPasswordResetRequestDto extends PickType(
     @ApiProperty({
         required: true,
         description: 'Forgot password token',
-        example: faker.string.alphanumeric(20),
+        example: 'AbCdEfGhIjKlMnOpQrSt',
     })
     @IsString()
     @IsNotEmpty()
@@ -550,197 +545,7 @@ export class UserForgotPasswordResetRequestDto extends PickType(
 }
 ```
 
-### Params Constants
-
-Define reusable parameter documentation using `ApiParamOptions[]`.
-
-**Structure:**
-
-```typescript
-const ParamName: ApiParamOptions[] = [
-    {
-        name: string;           // Parameter name (must match route param)
-        allowEmptyValue: boolean;  // Allow empty value
-        required: boolean;      // Mark as required
-        type: string;          // Parameter type
-        example?: any;         // Example value
-        description?: string;  // Parameter description
-    }
-];
-```
-
-**Usage:**
-
-```typescript
-import { faker } from '@faker-js/faker';
-import { ApiParamOptions } from '@nestjs/swagger';
-
-export const UserDocParamsId: ApiParamOptions[] = [
-    {
-        name: 'userId',
-        allowEmptyValue: false,
-        required: true,
-        type: 'string',
-        example: faker.database.mongodbObjectId(),
-    },
-];
-
-export const UserDocParamsMobileNumberId: ApiParamOptions[] = [
-    {
-        name: 'mobileNumberId',
-        allowEmptyValue: false,
-        required: true,
-        type: 'string',
-        example: faker.database.mongodbObjectId(),
-    },
-];
-
-// Use in decorator
-@DocRequest({
-    params: UserDocParamsId
-})
-@Get('/:userId')
-async getUser() {
-    // implementation
-}
-```
-
-### Queries Constants
-
-Define reusable query parameter documentation using `ApiQueryOptions[]`.
-
-**Structure:**
-
-```typescript
-const QueryName: ApiQueryOptions[] = [
-    {
-        name: string;           // Query parameter name
-        allowEmptyValue: boolean;  // Allow empty value
-        required: boolean;      // Mark as required
-        type: string;          // Parameter type
-        example?: any;         // Example value
-        description?: string;  // Parameter description
-        enum?: any[];          // Enum values
-    }
-];
-```
-
-**Usage:**
-
-```typescript
-import { faker } from '@faker-js/faker';
-import { ApiQueryOptions } from '@nestjs/swagger';
-import { ENUM_USER_STATUS } from '@prisma/client';
-
-export const UserDocQueryList: ApiQueryOptions[] = [
-    {
-        name: 'roleId',
-        allowEmptyValue: true,
-        required: false,
-        type: 'string',
-        example: faker.database.mongodbObjectId(),
-        description: 'Filter by roleId',
-    },
-    {
-        name: 'countryId',
-        allowEmptyValue: true,
-        required: false,
-        type: 'string',
-        example: faker.database.mongodbObjectId(),
-    },
-    {
-        name: 'status',
-        allowEmptyValue: true,
-        required: false,
-        type: 'string',
-        example: Object.values(ENUM_USER_STATUS).join(','),
-        description: "value with ',' delimiter",
-    },
-];
-
-// Use in decorator
-@DocRequest({
-    queries: UserDocQueryList
-})
-@Get('/list')
-async listUsers() {
-    // implementation
-}
-```
-
-**Best Practices for Params/Queries:**
-
-1. **Centralize definitions** - Keep all params/queries in a constants file
-2. **Use faker for examples** - Generate realistic example values
-3. **Add descriptions** - Explain special formats or constraints
-4. **Specify types** - Always include the parameter type
-5. **Enum documentation** - Show all possible values for enum fields
-
-## Constants
-
-### DOC_CONTENT_TYPE_MAPPING
-
-Maps body types to content-type headers.
-
-```typescript
-{
-    [ENUM_DOC_REQUEST_BODY_TYPE.FORM_DATA]: 'multipart/form-data',
-    [ENUM_DOC_REQUEST_BODY_TYPE.TEXT]: 'text/plain',
-    [ENUM_DOC_REQUEST_BODY_TYPE.JSON]: 'application/json',
-    [ENUM_DOC_REQUEST_BODY_TYPE.FORM_URLENCODED]: 'x-www-form-urlencoded',
-}
-```
-
-### DOC_STANDARD_ERROR_RESPONSES
-
-Pre-configured standard error responses.
-
-```typescript
-{
-    INTERNAL_SERVER_ERROR: DocDefault({
-        httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-        messagePath: 'http.serverError.internalServerError',
-        statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
-    }),
-    REQUEST_TIMEOUT: DocDefault({
-        httpStatus: HttpStatus.REQUEST_TIMEOUT,
-        messagePath: 'http.serverError.requestTimeout',
-        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT,
-    }),
-    VALIDATION_ERROR: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
-        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
-        messagePath: 'request.error.validation',
-    }),
-}
-```
-
-### DOC_PAGINATION_QUERIES
-
-Standard pagination query parameters.
-
-```typescript
-[
-    {
-        name: 'perPage',
-        required: false,
-        allowEmptyValue: true,
-        example: 20,
-        type: 'number',
-        description: 'Data per page, max 100',
-    },
-    {
-        name: 'page',
-        required: false,
-        allowEmptyValue: true,
-        example: 1,
-        type: 'number',
-        description: 'page number, max 20',
-    },
-]
-```
-
-## Usage Examples
+## Usage
 
 ### Complete Admin Endpoint
 
