@@ -66,7 +66,7 @@ export function UserAdminCreateDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: UserCreateRequestDto,
         }),
         DocGuard({ role: true, policy: true }),
@@ -84,7 +84,7 @@ export function UserAdminUpdateStatusDoc(): MethodDecorator {
         }),
         DocRequest({
             params: UserDocParamsId,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: UserUpdateStatusRequestDto,
         }),
         DocAuth({

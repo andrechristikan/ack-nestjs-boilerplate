@@ -6,7 +6,7 @@ export const migrationApiKeyData: Record<
     ENUM_APP_ENVIRONMENT,
     ApiKeyCreateRawRequestDto[]
 > = {
-    [ENUM_APP_ENVIRONMENT.LOCAL]: [
+    [ENUM_APP_ENVIRONMENT.local]: [
         {
             name: 'Api Key Default',
             type: ENUM_API_KEY_TYPE.default,
@@ -20,7 +20,7 @@ export const migrationApiKeyData: Record<
             secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
         },
     ],
-    [ENUM_APP_ENVIRONMENT.DEVELOPMENT]: [],
-    [ENUM_APP_ENVIRONMENT.STAGING]: [],
-    [ENUM_APP_ENVIRONMENT.PRODUCTION]: [],
+    [ENUM_APP_ENVIRONMENT.development]: [],
+    [ENUM_APP_ENVIRONMENT.staging]: [],
+    [ENUM_APP_ENVIRONMENT.production]: [],
 };

@@ -226,7 +226,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
             hasPrevious: false,
             nextCursor: undefined,
             previousCursor: undefined,
-            type: ENUM_PAGINATION_TYPE.OFFSET,
+            type: ENUM_PAGINATION_TYPE.offset,
         };
     }
 
@@ -251,8 +251,8 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         }
 
         if (
-            responseData.type !== ENUM_PAGINATION_TYPE.OFFSET &&
-            responseData.type !== ENUM_PAGINATION_TYPE.CURSOR
+            responseData.type !== ENUM_PAGINATION_TYPE.offset &&
+            responseData.type !== ENUM_PAGINATION_TYPE.cursor
         ) {
             throw new Error('Field type must be cursor or offset');
         }

@@ -16,8 +16,8 @@ export const migrationCountryData: Record<
     ENUM_APP_ENVIRONMENT,
     CountryRequestDto[]
 > = {
-    [ENUM_APP_ENVIRONMENT.LOCAL]: countryData,
-    [ENUM_APP_ENVIRONMENT.DEVELOPMENT]: countryData,
-    [ENUM_APP_ENVIRONMENT.STAGING]: countryData,
-    [ENUM_APP_ENVIRONMENT.PRODUCTION]: countryData,
+    [ENUM_APP_ENVIRONMENT.local]: countryData,
+    [ENUM_APP_ENVIRONMENT.development]: countryData,
+    [ENUM_APP_ENVIRONMENT.staging]: countryData,
+    [ENUM_APP_ENVIRONMENT.production]: countryData,
 };

@@ -21,7 +21,7 @@ export class UserTermPolicyDto {
         description: 'Cookie Policy acceptance',
         example: true,
     })
-    [ENUM_TERM_POLICY_TYPE.cookie]: boolean;
+    [ENUM_TERM_POLICY_TYPE.cookies]: boolean;
 
     @ApiProperty({
         required: true,

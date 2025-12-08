@@ -1,4 +1,4 @@
 export enum ENUM_PAGINATION_STATUS_CODE_ERROR {
-    ORDER_BY_NOT_ALLOWED = 5020,
-    FILTER_INVALID_VALUE = 5021,
+    orderByNotAllowed = 5020,
+    filterInvalidValue = 5021,
 }

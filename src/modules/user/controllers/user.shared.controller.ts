@@ -182,9 +182,9 @@ export class UserSharedController {
         userId: string,
         @UploadedFile(
             FileExtensionPipe([
-                ENUM_FILE_EXTENSION_IMAGE.JPEG,
-                ENUM_FILE_EXTENSION_IMAGE.PNG,
-                ENUM_FILE_EXTENSION_IMAGE.JPG,
+                ENUM_FILE_EXTENSION_IMAGE.jpeg,
+                ENUM_FILE_EXTENSION_IMAGE.png,
+                ENUM_FILE_EXTENSION_IMAGE.jpg,
             ])
         )
         file: IFile,

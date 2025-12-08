@@ -32,7 +32,7 @@ export function UserSystemListDoc(): MethodDecorator {
         }),
         DocResponsePaging<UserListResponseDto>('user.list', {
             dto: UserListResponseDto,
-            type: ENUM_PAGINATION_TYPE.CURSOR,
+            type: ENUM_PAGINATION_TYPE.cursor,
         })
     );
 }
@@ -44,7 +44,7 @@ export function UserSystemCheckUsernameDoc(): MethodDecorator {
         }),
         DocRequest({
             dto: UserCheckUsernameRequestDto,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
         }),
         DocAuth({
             xApiKey: true,
@@ -62,7 +62,7 @@ export function UserSystemCheckEmailDoc(): MethodDecorator {
         }),
         DocRequest({
             dto: UserCheckEmailRequestDto,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
         }),
         DocAuth({
             xApiKey: true,

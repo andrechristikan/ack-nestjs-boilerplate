@@ -431,7 +431,7 @@ The factory creates a CASL ability instance that can check if a user can perform
 **Available Term Policy Types:**
 - `ENUM_TERM_POLICY_TYPE.termsOfService` - Terms of Service acceptance
 - `ENUM_TERM_POLICY_TYPE.privacy` - Privacy Policy acceptance
-- `ENUM_TERM_POLICY_TYPE.cookie` - Cookie Policy acceptance
+- `ENUM_TERM_POLICY_TYPE.cookies` - Cookies Policy acceptance
 - `ENUM_TERM_POLICY_TYPE.marketing` - Marketing consent acceptance
 
 **Usage:**
@@ -459,7 +459,7 @@ subscribeNewsletter(@Body() dto: SubscribeDto) {
 @TermPolicyAcceptanceProtected(
   ENUM_TERM_POLICY_TYPE.termsOfService,
   ENUM_TERM_POLICY_TYPE.privacy,
-  ENUM_TERM_POLICY_TYPE.cookie
+  ENUM_TERM_POLICY_TYPE.cookies
 )
 @UserProtected()
 @AuthJwtAccessProtected()

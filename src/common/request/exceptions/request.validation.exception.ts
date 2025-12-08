@@ -8,7 +8,7 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.st
  */
 export class RequestValidationException extends Error {
     readonly httpStatus: HttpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
-    readonly statusCode: number = ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION;
+    readonly statusCode: number = ENUM_REQUEST_STATUS_CODE_ERROR.validation;
     readonly errors: ValidationError[];
 
     constructor(errors: ValidationError[]) {

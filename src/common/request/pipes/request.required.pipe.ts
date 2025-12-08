@@ -26,7 +26,7 @@ export class RequestRequiredPipe implements PipeTransform {
     ): Promise<string> {
         if (!value) {
             throw new BadRequestException({
-                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.PARAM_REQUIRED,
+                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.paramRequired,
                 message: 'request.error.paramRequired',
                 metadata: {
                     customProperty: {

@@ -18,7 +18,6 @@ import { plainToInstance } from 'class-transformer';
 export class TermPolicyUtil {
     private readonly uploadContentPath: string;
     private readonly contentPublicPath: string;
-    private readonly filenamePattern: string;
 
     constructor(
         private readonly configService: ConfigService,
@@ -30,9 +29,6 @@ export class TermPolicyUtil {
         );
         this.contentPublicPath = this.configService.get<string>(
             'termPolicy.contentPublicPath'
-        );
-        this.filenamePattern = this.configService.get<string>(
-            'termPolicy.filenamePattern'
         );
     }
 
@@ -65,13 +61,12 @@ export class TermPolicyUtil {
         language: ENUM_MESSAGE_LANGUAGE,
         { extension }: IFileRandomFilenameOptions
     ): string {
-        const path: string = this.uploadContentPath.replace('{type}', type);
-        const filenamePrefix = this.filenamePattern
-            .replace('{version}', version.toString())
-            .replace('{language}', language);
+        const path: string = this.uploadContentPath
+            .replace('{type}', type)
+            .replace('{version}', version.toString());
         return this.fileService.createRandomFilename({
             path,
-            prefix: filenamePrefix,
+            prefix: language,
             extension,
             randomLength: 20,
         });

@@ -204,7 +204,7 @@ export class LoggerOptionService {
                 ...(err && {
                     error: this.createErrorSerializer(err as Error),
                 }),
-                ...(this.env !== ENUM_APP_ENVIRONMENT.PRODUCTION && {
+                ...(this.env !== ENUM_APP_ENVIRONMENT.production && {
                     debug: this.addDebugInfo(),
                 }),
             };
@@ -378,7 +378,7 @@ export class LoggerOptionService {
      * @returns {LoggerDebugInfo | undefined} Debug information object or undefined in production
      */
     private addDebugInfo(): LoggerDebugInfo | undefined {
-        if (this.env === ENUM_APP_ENVIRONMENT.PRODUCTION) {
+        if (this.env === ENUM_APP_ENVIRONMENT.production) {
             return undefined;
         }
 

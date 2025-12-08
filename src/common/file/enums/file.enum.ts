@@ -1,27 +1,27 @@
 export enum ENUM_FILE_EXTENSION_IMAGE {
-    JPG = 'jpg',
-    JPEG = 'jpeg',
-    PNG = 'png',
+    jpg = 'jpg',
+    jpeg = 'jpeg',
+    png = 'png',
 }
 
 export enum ENUM_FILE_EXTENSION_DOCUMENT {
-    PDF = 'pdf',
-    HBS = 'hbs',
+    pdf = 'pdf',
+    hbs = 'hbs',
 }
 
 export enum ENUM_FILE_EXTENSION_EXCEL {
-    XLSX = 'xlsx',
-    CSV = 'csv',
+    xlsx = 'xlsx',
+    csv = 'csv',
 }
 
 export enum ENUM_FILE_EXTENSION_AUDIO {
-    MPEG = 'mpeg',
-    M4A = 'm4a',
-    MP3 = 'mp3',
+    mpeg = 'mpeg',
+    m4a = 'm4a',
+    mp3 = 'mp3',
 }
 
 export enum ENUM_FILE_EXTENSION_VIDEO {
-    MP4 = 'mp4',
+    mp4 = 'mp4',
 }
 
 export const ENUM_FILE_EXTENSION = {

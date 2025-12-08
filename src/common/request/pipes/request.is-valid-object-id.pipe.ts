@@ -24,7 +24,7 @@ export class RequestIsValidObjectIdPipe implements PipeTransform {
     ): Promise<string> {
         if (!value || typeof value !== 'string' || isMongoId(value)) {
             throw new BadRequestException({
-                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION,
+                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.validation,
                 message: 'request.error.isMongoId',
                 metadata: {
                     customProperty: {

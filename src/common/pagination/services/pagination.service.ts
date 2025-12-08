@@ -47,7 +47,7 @@ export class PaginationService implements IPaginationService {
             limit,
             skip,
             orderBy = {
-                createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+                createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.desc,
             },
             where,
             select,
@@ -96,7 +96,7 @@ export class PaginationService implements IPaginationService {
         const previousPage = hasPrevious ? currentPage - 1 : undefined;
 
         return {
-            type: ENUM_PAGINATION_TYPE.OFFSET,
+            type: ENUM_PAGINATION_TYPE.offset,
             count,
             perPage: limit,
             page: currentPage,
@@ -134,7 +134,7 @@ export class PaginationService implements IPaginationService {
         const {
             limit,
             orderBy = {
-                createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+                createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.desc,
             },
             where,
             select,
@@ -205,7 +205,7 @@ export class PaginationService implements IPaginationService {
         }
 
         return {
-            type: ENUM_PAGINATION_TYPE.CURSOR,
+            type: ENUM_PAGINATION_TYPE.cursor,
             cursor: nextCursor,
             perPage: limit,
             hasNext,

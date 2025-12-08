@@ -112,7 +112,7 @@ export interface IPaginationDate {
 }
 
 export interface IPaginationOffsetReturn<T = unknown> {
-    type: ENUM_PAGINATION_TYPE.OFFSET;
+    type: ENUM_PAGINATION_TYPE.offset;
     count: number;
     perPage: number;
     hasNext: boolean;
@@ -125,7 +125,7 @@ export interface IPaginationOffsetReturn<T = unknown> {
 }
 
 export interface IPaginationCursorReturn<T = unknown> {
-    type: ENUM_PAGINATION_TYPE.CURSOR;
+    type: ENUM_PAGINATION_TYPE.cursor;
     count?: number;
     perPage: number;
     hasNext: boolean;

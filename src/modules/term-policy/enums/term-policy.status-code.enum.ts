@@ -1,8 +1,8 @@
 export enum ENUM_TERM_POLICY_STATUS_CODE_ERROR {
-    NOT_FOUND = 6100,
-    EXIST = 6101,
-    LANGUAGE_DUPLICATE = 6102,
-    ALREADY_ACCEPTED = 6103,
-    REQUIRED_INVALID = 6104,
-    STATUS_INVALID = 6105,
+    notFound = 6100,
+    exist = 6101,
+    languageDuplicate = 6102,
+    alreadyAccepted = 6103,
+    requiredInvalid = 6104,
+    statusInvalid = 6105,
 }

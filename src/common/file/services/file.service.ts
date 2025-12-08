@@ -76,7 +76,7 @@ export class FileService implements IFileService {
 
         const buff: Buffer = write(workbook, {
             type: 'buffer',
-            bookType: ENUM_FILE_EXTENSION_EXCEL.XLSX,
+            bookType: ENUM_FILE_EXTENSION_EXCEL.xlsx,
         });
 
         return buff;
@@ -99,7 +99,7 @@ export class FileService implements IFileService {
 
         const buff: Buffer = write(workbook, {
             type: 'buffer',
-            bookType: ENUM_FILE_EXTENSION_EXCEL.XLSX,
+            bookType: ENUM_FILE_EXTENSION_EXCEL.xlsx,
         });
 
         return buff;

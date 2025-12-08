@@ -71,13 +71,13 @@ export class ApiKeyService implements IApiKeyService {
                 startAt:
                     startAt && endAt
                         ? this.helperService.dateCreate(startAt, {
-                              dayOf: ENUM_HELPER_DATE_DAY_OF.START,
+                              dayOf: ENUM_HELPER_DATE_DAY_OF.start,
                           })
                         : null,
                 endAt:
                     startAt && endAt
                         ? this.helperService.dateCreate(endAt, {
-                              dayOf: ENUM_HELPER_DATE_DAY_OF.END,
+                              dayOf: ENUM_HELPER_DATE_DAY_OF.end,
                           })
                         : null,
             },
@@ -100,12 +100,12 @@ export class ApiKeyService implements IApiKeyService {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new NotFoundException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.notFound,
                 message: 'apiKey.error.notFound',
             });
         } else if (this.apiKeyUtil.isExpired(apiKey, today)) {
             throw new BadRequestException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.expired,
                 message: 'apiKey.error.expired',
             });
         }
@@ -151,10 +151,10 @@ export class ApiKeyService implements IApiKeyService {
         const [updated] = await Promise.all([
             this.apiKeyRepository.updateDates(id, {
                 startAt: this.helperService.dateCreate(startAt, {
-                    dayOf: ENUM_HELPER_DATE_DAY_OF.START,
+                    dayOf: ENUM_HELPER_DATE_DAY_OF.start,
                 }),
                 endAt: this.helperService.dateCreate(endAt, {
-                    dayOf: ENUM_HELPER_DATE_DAY_OF.END,
+                    dayOf: ENUM_HELPER_DATE_DAY_OF.end,
                 }),
             }),
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
@@ -189,7 +189,7 @@ export class ApiKeyService implements IApiKeyService {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new NotFoundException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.notFound,
                 message: 'apiKey.error.notFound',
             });
         }
@@ -209,12 +209,12 @@ export class ApiKeyService implements IApiKeyService {
     validateApiKey(apiKey: ApiKey, includeActive: boolean = false): void {
         if (!apiKey) {
             throw new NotFoundException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.notFound,
                 message: 'apiKey.error.notFound',
             });
         } else if (includeActive && !this.apiKeyUtil.isActive(apiKey)) {
             throw new BadRequestException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.INACTIVE,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.inactive,
                 message: 'apiKey.error.inactive',
             });
         }
@@ -242,7 +242,7 @@ export class ApiKeyService implements IApiKeyService {
             ?.trim();
         if (!xApiKeyHeader) {
             throw new UnauthorizedException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.xApiKeyRequired,
                 message: 'apiKey.error.xApiKey.required',
             });
         }
@@ -254,7 +254,7 @@ export class ApiKeyService implements IApiKeyService {
             !xApiKey[1]?.trim()
         ) {
             throw new UnauthorizedException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.xApiKeyInvalid,
                 message: 'apiKey.error.xApiKey.invalid',
             });
         }
@@ -265,7 +265,7 @@ export class ApiKeyService implements IApiKeyService {
 
         if (!apiKey) {
             throw new ForbiddenException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.xApiKeyNotFound,
                 message: 'apiKey.error.xApiKey.notFound',
             });
         } else if (
@@ -273,7 +273,7 @@ export class ApiKeyService implements IApiKeyService {
             !this.apiKeyUtil.isValid(apiKey, today)
         ) {
             throw new UnauthorizedException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.xApiKeyInvalid,
                 message: 'apiKey.error.xApiKey.invalid',
             });
         }
@@ -288,7 +288,7 @@ export class ApiKeyService implements IApiKeyService {
         if (apiKeyTypes.length === 0) {
             throw new InternalServerErrorException({
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_PREDEFINED_NOT_FOUND,
+                    ENUM_API_KEY_STATUS_CODE_ERROR.xApiKeyPredefinedNotFound,
                 message: 'apiKey.error.xApiKey.predefinedNotFound',
             });
         }
@@ -296,7 +296,7 @@ export class ApiKeyService implements IApiKeyService {
         const { __apiKey } = request;
         if (!this.apiKeyUtil.validateType(__apiKey, apiKeyTypes)) {
             throw new ForbiddenException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.xApiKeyForbidden,
                 message: 'apiKey.error.xApiKey.forbidden',
             });
         }

@@ -40,8 +40,8 @@ export const migrationUserData: Record<
         password: string;
     }[]
 > = {
-    [ENUM_APP_ENVIRONMENT.LOCAL]: userData,
-    [ENUM_APP_ENVIRONMENT.DEVELOPMENT]: userData,
-    [ENUM_APP_ENVIRONMENT.STAGING]: userData,
-    [ENUM_APP_ENVIRONMENT.PRODUCTION]: userData,
+    [ENUM_APP_ENVIRONMENT.local]: userData,
+    [ENUM_APP_ENVIRONMENT.development]: userData,
+    [ENUM_APP_ENVIRONMENT.staging]: userData,
+    [ENUM_APP_ENVIRONMENT.production]: userData,
 };

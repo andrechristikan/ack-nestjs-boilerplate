@@ -23,7 +23,7 @@ export default async function (app: NestApplication): Promise<void> {
 
     const logger = new Logger(`${appName}-Doc`);
 
-    if (env !== ENUM_APP_ENVIRONMENT.PRODUCTION) {
+    if (env !== ENUM_APP_ENVIRONMENT.production) {
         const documentBuild = new DocumentBuilder()
             .setTitle(docName)
             .setDescription(docDesc)
@@ -71,7 +71,7 @@ export default async function (app: NestApplication): Promise<void> {
             jsonDocumentUrl: `${docPrefix}/json`,
             explorer: true,
             customSiteTitle: docName,
-            ui: env !== ENUM_APP_ENVIRONMENT.PRODUCTION,
+            ui: env !== ENUM_APP_ENVIRONMENT.production,
             raw: ['json'],
             swaggerOptions: {
                 docExpansion: 'none',

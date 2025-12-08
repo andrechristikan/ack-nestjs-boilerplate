@@ -35,7 +35,7 @@ export class ApiKeyRepository {
                     ...type,
                 },
                 orderBy: {
-                    createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+                    createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.desc,
                 },
             }
         );

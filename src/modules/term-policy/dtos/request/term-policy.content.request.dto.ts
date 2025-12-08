@@ -17,7 +17,7 @@ export class TermPolicyContentRequestDto extends PickType(
     @ApiProperty({
         required: true,
         description: 'Key of the term document in storage',
-        example: 'terms/privacy/en/terms_privacy_en_v1.pdf',
+        example: 'terms/privacy/en/terms_privacy_en_v1.hbs',
     })
     @IsString()
     @IsNotEmpty()

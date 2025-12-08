@@ -22,7 +22,7 @@ export function RoleAdminCreateDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: RoleCreateRequestDto,
         }),
         DocGuard({ role: true, policy: true }),
@@ -40,7 +40,7 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
         }),
         DocRequest({
             params: RoleDocParamsId,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: RoleUpdateRequestDto,
         }),
         DocAuth({

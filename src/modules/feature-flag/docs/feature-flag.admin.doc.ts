@@ -40,7 +40,7 @@ export function FeatureFlagAdminUpdateStatusDoc(): MethodDecorator {
         Doc({}),
         DocRequest({
             params: FeatureFlagDocParamsId,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: FeatureFlagUpdateStatusRequestDto,
         }),
         DocAuth({
@@ -59,7 +59,7 @@ export function FeatureFlagAdminUpdateMetadataDoc(): MethodDecorator {
         Doc({}),
         DocRequest({
             params: FeatureFlagDocParamsId,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: FeatureFlagUpdateMetadataRequestDto,
         }),
         DocAuth({

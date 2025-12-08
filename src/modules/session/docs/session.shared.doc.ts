@@ -21,7 +21,7 @@ export function SessionSharedListDoc(): MethodDecorator {
         }),
         DocResponsePaging<SessionResponseDto>('session.list', {
             dto: SessionResponseDto,
-            type: ENUM_PAGINATION_TYPE.CURSOR,
+            type: ENUM_PAGINATION_TYPE.cursor,
         })
     );
 }

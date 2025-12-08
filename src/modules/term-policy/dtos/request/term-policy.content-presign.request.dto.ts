@@ -11,7 +11,7 @@ export class TermPolicyContentPresignRequestDto extends IntersectionType(
     @ApiProperty({
         required: true,
         description: 'Language of the term document',
-        example: ENUM_MESSAGE_LANGUAGE.EN,
+        example: ENUM_MESSAGE_LANGUAGE.en,
         enum: ENUM_MESSAGE_LANGUAGE,
     })
     @IsString()

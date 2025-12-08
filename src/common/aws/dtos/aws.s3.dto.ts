@@ -81,7 +81,7 @@ export class AwsS3Dto {
      */
     @ApiProperty({
         required: false,
-        example: ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
+        example: ENUM_AWS_S3_ACCESSIBILITY.public,
         enum: ENUM_AWS_S3_ACCESSIBILITY,
         description: 'Access level for the S3 object',
         type: 'string',

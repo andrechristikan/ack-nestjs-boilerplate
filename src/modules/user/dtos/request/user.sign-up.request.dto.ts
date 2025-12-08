@@ -40,13 +40,13 @@ export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     marketing: boolean;
 
     @ApiProperty({
-        description: 'boolean cookie',
+        description: 'boolean cookies',
         example: true,
         required: true,
     })
     @IsNotEmpty()
     @IsBoolean()
-    cookie: boolean;
+    cookies: boolean;
 
     @ApiProperty({
         description: 'enum user sign up from',

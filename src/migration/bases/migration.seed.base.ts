@@ -12,24 +12,24 @@ export abstract class MigrationSeedBase extends CommandRunner {
     ): Promise<void> {
         this._logger.log(`Running ${MigrationSeedBase.name} migration...`);
 
-        if (options?.type === ENUM_MIGRATION_TYPE.REMOVE) {
+        if (options?.type === ENUM_MIGRATION_TYPE.remove) {
             await this.remove();
-        } else if (options?.type === ENUM_MIGRATION_TYPE.SEED) {
+        } else if (options?.type === ENUM_MIGRATION_TYPE.seed) {
             await this.seed();
         } else {
             this._logger.warn(
-                `Please specify --type ${ENUM_MIGRATION_TYPE.SEED} or ${ENUM_MIGRATION_TYPE.SEED}`
+                `Please specify --type ${ENUM_MIGRATION_TYPE.seed} or ${ENUM_MIGRATION_TYPE.seed}`
             );
         }
     }
 
     @Option({
         flags: '-t, --type <type>',
-        choices: [ENUM_MIGRATION_TYPE.SEED, ENUM_MIGRATION_TYPE.REMOVE],
+        choices: [ENUM_MIGRATION_TYPE.seed, ENUM_MIGRATION_TYPE.remove],
         defaultValue: null,
         required: true,
         name: 'type',
-        description: `Migration type: ${ENUM_MIGRATION_TYPE.SEED} or ${ENUM_MIGRATION_TYPE.SEED}`,
+        description: `Migration type: ${ENUM_MIGRATION_TYPE.seed} or ${ENUM_MIGRATION_TYPE.seed}`,
     })
     parseType(val: ENUM_MIGRATION_TYPE): ENUM_MIGRATION_TYPE | null {
         return val;

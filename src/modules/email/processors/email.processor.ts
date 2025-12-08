@@ -31,50 +31,50 @@ export class EmailProcessor
         try {
             const jobName = job.name;
             switch (jobName) {
-                case ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD:
+                case ENUM_SEND_EMAIL_PROCESS.changePassword:
                     await this.processChangePassword(job.data.send);
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.WELCOME:
+                case ENUM_SEND_EMAIL_PROCESS.welcome:
                     await this.processWelcome(job.data.send);
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN:
+                case ENUM_SEND_EMAIL_PROCESS.createByAdmin:
                     await this.processCreateByAdmin(
                         job.data.send,
                         job.data.data as EmailTempPasswordDto
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD:
+                case ENUM_SEND_EMAIL_PROCESS.temporaryPassword:
                     await this.processTempPassword(
                         job.data.send,
                         job.data.data as EmailTempPasswordDto
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.FORGOT_PASSWORD:
+                case ENUM_SEND_EMAIL_PROCESS.forgotPassword:
                     await this.processForgotPassword(
                         job.data.send,
                         job.data.data as EmailForgotPasswordDto
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.VERIFICATION:
+                case ENUM_SEND_EMAIL_PROCESS.verification:
                     await this.processVerification(
                         job.data.send,
                         job.data.data as EmailVerificationDto
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED:
+                case ENUM_SEND_EMAIL_PROCESS.emailVerified:
                     await this.processEmailVerified(
                         job.data.send,
                         job.data.data as EmailVerifiedDto
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED:
+                case ENUM_SEND_EMAIL_PROCESS.mobileNumberVerified:
                     await this.processMobileNumberVerified(
                         job.data.send,
                         job.data.data as EmailMobileNumberVerifiedDto

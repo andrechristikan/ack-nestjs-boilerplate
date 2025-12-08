@@ -277,7 +277,7 @@ Use message properties for dynamic message interpolation:
 
 ```typescript
 throw new BadRequestException({
-  statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
+  statusCode: ENUM_USER_STATUS_CODE_ERROR.statusInvalid,
   message: 'user.error.statusInvalid',
   messageProperties: {
     status: user.status.toLowerCase(),
@@ -309,7 +309,7 @@ Add contextual data to help debugging:
 
 ```typescript
 throw new BadRequestException({
-  statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
+  statusCode: ENUM_USER_STATUS_CODE_ERROR.statusInvalid,
   message: 'user.error.statusInvalid',
   messageProperties: {
     status: user.status.toLowerCase(),

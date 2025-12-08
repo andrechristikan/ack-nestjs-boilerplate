@@ -67,7 +67,7 @@ export class SessionService implements ISessionService {
         );
         if (!checkActive) {
             throw new NotFoundException({
-                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.NOT_FOUND,
+                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.notFound,
                 message: 'session.error.notFound',
             });
         }
@@ -92,7 +92,7 @@ export class SessionService implements ISessionService {
         );
         if (!checkActive) {
             throw new NotFoundException({
-                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.NOT_FOUND,
+                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.notFound,
                 message: 'session.error.notFound',
             });
         }

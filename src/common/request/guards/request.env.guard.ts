@@ -40,7 +40,7 @@ export class RequestEnvGuard implements CanActivate {
 
         if (!required || !required.includes(this.env)) {
             throw new ForbiddenException({
-                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.ENV_FORBIDDEN,
+                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.envForbidden,
                 message: 'http.clientError.forbidden',
             });
         }

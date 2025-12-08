@@ -60,7 +60,7 @@ export class FileExcelParsePipe<T> implements PipeTransform {
     async validate(value: IFile): Promise<void> {
         if (!value.buffer || value.buffer.length === 0) {
             throw new UnprocessableEntityException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.REQUIRED,
+                statusCode: ENUM_FILE_STATUS_CODE_ERROR.required,
                 message: 'file.error.required',
             });
         }
@@ -72,13 +72,13 @@ export class FileExcelParsePipe<T> implements PipeTransform {
 
             if (!this.allowedExtensions.has(extension)) {
                 throw new UnsupportedMediaTypeException({
-                    statusCode: ENUM_FILE_STATUS_CODE_ERROR.EXTENSION_INVALID,
+                    statusCode: ENUM_FILE_STATUS_CODE_ERROR.extensionInvalid,
                     message: 'file.error.extensionInvalid',
                 });
             }
         } else {
             throw new UnsupportedMediaTypeException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.EXTENSION_INVALID,
+                statusCode: ENUM_FILE_STATUS_CODE_ERROR.extensionInvalid,
                 message: 'file.error.extensionInvalid',
             });
         }
@@ -100,7 +100,7 @@ export class FileExcelParsePipe<T> implements PipeTransform {
         const extension = this.fileService.extractExtensionFromFilename(
             value.filename
         );
-        if (extension === ENUM_FILE_EXTENSION_EXCEL.CSV) {
+        if (extension === ENUM_FILE_EXTENSION_EXCEL.csv) {
             return this.parseCsv(value);
         }
 

@@ -1,8 +1,8 @@
 export enum ENUM_FEATURE_FLAG_STATUS_CODE_ERROR {
-    NOT_FOUND = 5080,
-    SERVICE_UNAVAILABLE = 5081,
-    INVALID_METADATA = 5082,
-    PREDEFINED_KEY_LENGTH_EXCEEDED = 5083,
-    PREDEFINED_KEY_EMPTY = 5084,
-    PREDEFINED_KEY_TYPE_INVALID = 5085,
+    notFound = 5080,
+    serviceUnavailable = 5081,
+    invalidMetadata = 5082,
+    predefinedKeyLengthExceeded = 5083,
+    predefinedKeyEmpty = 5084,
+    predefinedKeyTypeInvalid = 5085,
 }

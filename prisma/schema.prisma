@@ -377,7 +377,7 @@ enum ENUM_API_KEY_TYPE {
 enum ENUM_TERM_POLICY_TYPE {
   termsOfService
   privacy
-  cookie
+  cookies
   marketing
 }
 

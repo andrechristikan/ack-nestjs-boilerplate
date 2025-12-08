@@ -24,7 +24,7 @@ export function TermPolicySharedListAcceptedDoc(): MethodDecorator {
             'termPolicy.accepted',
             {
                 dto: TermPolicyUserAcceptanceResponseDto,
-                type: ENUM_PAGINATION_TYPE.CURSOR,
+                type: ENUM_PAGINATION_TYPE.cursor,
             }
         )
     );
@@ -40,7 +40,7 @@ export function TermPolicySharedAcceptDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: TermPolicyAcceptRequestDto,
         }),
         DocResponse('termPolicy.accept')

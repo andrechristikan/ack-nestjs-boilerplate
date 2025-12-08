@@ -23,7 +23,7 @@ export function UserPublicLoginCredentialDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: UserLoginRequestDto,
         }),
         DocResponse('user.loginCredential', {
@@ -62,7 +62,7 @@ export function UserPublicSignUpDoc(): MethodDecorator {
             summary: 'User sign up',
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: UserSignUpRequestDto,
         }),
         DocAuth({
@@ -83,7 +83,7 @@ export function UserPublicSendEmailVerificationDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: UserSendEmailVerificationRequestDto,
         }),
         DocResponse('user.sendEmailVerification')
@@ -99,7 +99,7 @@ export function UserPublicVerifyEmailDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: UserVerifyEmailRequestDto,
         }),
         DocResponse('user.verifyEmail')
@@ -112,7 +112,7 @@ export function UserPublicForgotPasswordDoc(): MethodDecorator {
             summary: 'User forgot password',
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: UserForgotPasswordRequestDto,
         }),
         DocAuth({
@@ -128,7 +128,7 @@ export function UserPublicResetPasswordDoc(): MethodDecorator {
             summary: 'User reset password',
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: UserForgotPasswordResetRequestDto,
         }),
         DocAuth({

@@ -102,7 +102,7 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
         required: true,
         type: String,
         enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-        example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
+        example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.asc,
     })
     orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
 
@@ -122,7 +122,7 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
         required: true,
         type: String,
         enum: ENUM_PAGINATION_TYPE,
-        example: ENUM_PAGINATION_TYPE.OFFSET,
+        example: ENUM_PAGINATION_TYPE.offset,
     })
     type: ENUM_PAGINATION_TYPE;
 }

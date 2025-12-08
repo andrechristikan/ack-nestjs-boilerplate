@@ -1,5 +1,5 @@
 export enum ENUM_FILE_STATUS_CODE_ERROR {
-    REQUIRED = 5010,
-    EXTENSION_INVALID = 5011,
-    REQUIRED_EXTRACT_FIRST = 5012,
+    required = 5010,
+    extensionInvalid = 5011,
+    requiredExtractFirst = 5012,
 }

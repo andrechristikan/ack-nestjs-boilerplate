@@ -81,7 +81,7 @@ export function PaginationQueryFilterInEnumPipe<T>(
             if (!validated) {
                 throw new UnprocessableEntityException({
                     statusCode:
-                        ENUM_PAGINATION_STATUS_CODE_ERROR.FILTER_INVALID_VALUE,
+                        ENUM_PAGINATION_STATUS_CODE_ERROR.filterInvalidValue,
                     message: `pagination.error.filterInvalidValue`,
                     messageProperties: {
                         property: metadata.data,
@@ -170,7 +170,7 @@ export function PaginationQueryFilterNinEnumPipe<T>(
             if (!validated) {
                 throw new UnprocessableEntityException({
                     statusCode:
-                        ENUM_PAGINATION_STATUS_CODE_ERROR.FILTER_INVALID_VALUE,
+                        ENUM_PAGINATION_STATUS_CODE_ERROR.filterInvalidValue,
                     message: `pagination.error.filterInvalidValue`,
                     messageProperties: {
                         property: metadata.data,
@@ -238,7 +238,7 @@ export function PaginationQueryFilterEqualPipe<T>(
                 if (booleanString !== 'true' && booleanString !== 'false') {
                     throw new UnprocessableEntityException({
                         statusCode:
-                            ENUM_PAGINATION_STATUS_CODE_ERROR.FILTER_INVALID_VALUE,
+                            ENUM_PAGINATION_STATUS_CODE_ERROR.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
                         messageProperties: {
                             property: metadata.data,
@@ -253,7 +253,7 @@ export function PaginationQueryFilterEqualPipe<T>(
                 if (isNaN(finalValue as number)) {
                     throw new UnprocessableEntityException({
                         statusCode:
-                            ENUM_PAGINATION_STATUS_CODE_ERROR.FILTER_INVALID_VALUE,
+                            ENUM_PAGINATION_STATUS_CODE_ERROR.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
                         messageProperties: {
                             property: metadata.data,
@@ -331,7 +331,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
                 if (booleanString !== 'true' && booleanString !== 'false') {
                     throw new UnprocessableEntityException({
                         statusCode:
-                            ENUM_PAGINATION_STATUS_CODE_ERROR.FILTER_INVALID_VALUE,
+                            ENUM_PAGINATION_STATUS_CODE_ERROR.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
                         messageProperties: {
                             property: metadata.data,
@@ -346,7 +346,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
                 if (isNaN(finalValue as number)) {
                     throw new UnprocessableEntityException({
                         statusCode:
-                            ENUM_PAGINATION_STATUS_CODE_ERROR.FILTER_INVALID_VALUE,
+                            ENUM_PAGINATION_STATUS_CODE_ERROR.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
                         messageProperties: {
                             property: metadata.data,
@@ -423,7 +423,7 @@ export function PaginationQueryFilterDatePipe(
             if (!this.helperService.dateCheckIso(value)) {
                 throw new UnprocessableEntityException({
                     statusCode:
-                        ENUM_PAGINATION_STATUS_CODE_ERROR.FILTER_INVALID_VALUE,
+                        ENUM_PAGINATION_STATUS_CODE_ERROR.filterInvalidValue,
                     message: `pagination.error.filterInvalidValue`,
                     messageProperties: {
                         property: metadata.data,
@@ -440,7 +440,7 @@ export function PaginationQueryFilterDatePipe(
             const customField = options?.customField ?? metadata.data;
             const operation = options?.type
                 ? options.type ===
-                  ENUM_PAGINATION_FILTER_DATE_BETWEEN_TYPE.START
+                  ENUM_PAGINATION_FILTER_DATE_BETWEEN_TYPE.start
                     ? 'gte'
                     : 'lte'
                 : 'equal';

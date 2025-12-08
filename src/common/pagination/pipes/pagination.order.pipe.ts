@@ -53,7 +53,7 @@ export function PaginationOrderPipe(
                 return {
                     ...value,
                     orderBy: {
-                        createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+                        createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.desc,
                     },
                 };
             }
@@ -65,7 +65,7 @@ export function PaginationOrderPipe(
             if (!defaultAvailableOrder.includes(finalOrderBy)) {
                 throw new UnprocessableEntityException({
                     statusCode:
-                        ENUM_PAGINATION_STATUS_CODE_ERROR.ORDER_BY_NOT_ALLOWED,
+                        ENUM_PAGINATION_STATUS_CODE_ERROR.orderByNotAllowed,
                     message: `pagination.error.orderByNotAllowed`,
                 });
             }

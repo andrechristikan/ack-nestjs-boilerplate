@@ -18,7 +18,7 @@ export function ActivityLogSharedListDoc(): MethodDecorator {
         }),
         DocResponsePaging<ActivityLogResponseDto>('activityLog.list', {
             dto: ActivityLogResponseDto,
-            type: ENUM_PAGINATION_TYPE.CURSOR,
+            type: ENUM_PAGINATION_TYPE.cursor,
         })
     );
 }

@@ -33,7 +33,7 @@ class HelloAppResponseDto {
 
     @ApiProperty({
         required: true,
-        example: ENUM_APP_ENVIRONMENT.DEVELOPMENT,
+        example: ENUM_APP_ENVIRONMENT.development,
         enum: ENUM_APP_ENVIRONMENT,
     })
     env: ENUM_APP_ENVIRONMENT;
@@ -88,7 +88,7 @@ class HelloMessageResponseDto {
 
     @ApiProperty({
         required: true,
-        example: ENUM_MESSAGE_LANGUAGE.EN,
+        example: ENUM_MESSAGE_LANGUAGE.en,
         enum: ENUM_MESSAGE_LANGUAGE,
     })
     defaultLanguage: ENUM_MESSAGE_LANGUAGE;

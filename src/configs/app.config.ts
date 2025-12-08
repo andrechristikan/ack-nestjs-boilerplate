@@ -30,7 +30,7 @@ export default registerAs(
         name: process.env.APP_NAME ?? 'ACKNestJs',
         env:
             ENUM_APP_ENVIRONMENT[process.env.APP_ENV] ??
-            ENUM_APP_ENVIRONMENT.LOCAL,
+            ENUM_APP_ENVIRONMENT.local,
         timezone: process.env.APP_TIMEZONE ?? 'Asia/Jakarta',
         version,
         author: author as {

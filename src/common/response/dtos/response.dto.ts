@@ -10,7 +10,7 @@ export class ResponseMetadataDto {
     @ApiProperty({
         required: true,
         description: 'Language of the response message',
-        example: ENUM_MESSAGE_LANGUAGE.EN,
+        example: ENUM_MESSAGE_LANGUAGE.en,
         type: String,
     })
     language: ENUM_MESSAGE_LANGUAGE;

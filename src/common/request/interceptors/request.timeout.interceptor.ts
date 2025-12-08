@@ -83,7 +83,7 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
             catchError(err => {
                 if (err instanceof TimeoutError) {
                     throw new RequestTimeoutException({
-                        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT,
+                        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.timeout,
                         message: 'http.clientError.requestTimeOut',
                     });
                 }

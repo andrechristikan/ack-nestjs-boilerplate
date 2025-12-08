@@ -51,7 +51,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: termsOfServiceKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
+                            language: ENUM_MESSAGE_LANGUAGE.en,
                             size: termsOfServiceKey.size,
                         },
                     ],
@@ -60,7 +60,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: termsOfServiceKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
+                            language: ENUM_MESSAGE_LANGUAGE.en,
                             size: termsOfServiceKey.size,
                         },
                     ],
@@ -80,7 +80,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: privacyKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
+                            language: ENUM_MESSAGE_LANGUAGE.en,
                             size: privacyKey.size,
                         },
                     ],
@@ -89,7 +89,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: privacyKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
+                            language: ENUM_MESSAGE_LANGUAGE.en,
                             size: privacyKey.size,
                         },
                     ],
@@ -98,18 +98,18 @@ export class MigrationTemplateTermPolicySeed
             this.databaseService.termPolicy.upsert({
                 where: {
                     type_version: {
-                        type: ENUM_TERM_POLICY_TYPE.cookie,
+                        type: ENUM_TERM_POLICY_TYPE.cookies,
                         version: 1,
                     },
                 },
                 create: {
-                    type: ENUM_TERM_POLICY_TYPE.cookie,
+                    type: ENUM_TERM_POLICY_TYPE.cookies,
                     version: 1,
                     status: ENUM_TERM_POLICY_STATUS.published,
                     contents: [
                         {
                             key: cookieKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
+                            language: ENUM_MESSAGE_LANGUAGE.en,
                             size: cookieKey.size,
                         },
                     ],
@@ -118,7 +118,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: cookieKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
+                            language: ENUM_MESSAGE_LANGUAGE.en,
                             size: cookieKey.size,
                         },
                     ],
@@ -138,7 +138,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: marketingKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
+                            language: ENUM_MESSAGE_LANGUAGE.en,
                             size: marketingKey.size,
                         },
                     ],
@@ -147,7 +147,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: marketingKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
+                            language: ENUM_MESSAGE_LANGUAGE.en,
                             size: marketingKey.size,
                         },
                     ],

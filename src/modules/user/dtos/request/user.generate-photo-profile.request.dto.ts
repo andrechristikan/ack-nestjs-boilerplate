@@ -10,7 +10,7 @@ export class UserGeneratePhotoProfileRequestDto extends PickType(
     @ApiProperty({
         type: 'string',
         enum: ENUM_FILE_EXTENSION_IMAGE,
-        default: ENUM_FILE_EXTENSION_IMAGE.JPG,
+        default: ENUM_FILE_EXTENSION_IMAGE.jpg,
     })
     @IsString()
     @IsEnum(ENUM_FILE_EXTENSION_IMAGE)

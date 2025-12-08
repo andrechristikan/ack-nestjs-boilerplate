@@ -22,14 +22,14 @@ export class EmailService implements IEmailService {
         { email, username }: EmailSendDto
     ): Promise<void> {
         await this.emailQueue.add(
-            ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
+            ENUM_SEND_EMAIL_PROCESS.changePassword,
             {
                 send: { email: email, name: username },
             },
             {
                 priority: ENUM_QUEUE_PRIORITY.MEDIUM,
                 deduplication: {
-                    id: `${ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD}-${userId}`,
+                    id: `${ENUM_SEND_EMAIL_PROCESS.changePassword}-${userId}`,
                     ttl: 1000,
                 },
             }
@@ -46,7 +46,7 @@ export class EmailService implements IEmailService {
         }: EmailCreateByAdminDto
     ): Promise<void> {
         await this.emailQueue.add(
-            ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN,
+            ENUM_SEND_EMAIL_PROCESS.createByAdmin,
             {
                 send: {
                     email,
@@ -59,7 +59,7 @@ export class EmailService implements IEmailService {
                 },
             },
             {
-                jobId: `${ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN}-${userId}`,
+                jobId: `${ENUM_SEND_EMAIL_PROCESS.createByAdmin}-${userId}`,
                 priority: ENUM_QUEUE_PRIORITY.LOW,
             }
         );
@@ -71,7 +71,7 @@ export class EmailService implements IEmailService {
         { expiredAt, expiredInMinutes, link, reference }: EmailVerificationDto
     ): Promise<void> {
         await this.emailQueue.add(
-            ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
+            ENUM_SEND_EMAIL_PROCESS.verification,
             {
                 send: {
                     email,
@@ -80,7 +80,7 @@ export class EmailService implements IEmailService {
                 data: { expiredAt, expiredInMinutes, link, reference },
             },
             {
-                jobId: `${ENUM_SEND_EMAIL_PROCESS.VERIFICATION}-${userId}`,
+                jobId: `${ENUM_SEND_EMAIL_PROCESS.verification}-${userId}`,
                 priority: ENUM_QUEUE_PRIORITY.HIGH,
             }
         );
@@ -92,14 +92,14 @@ export class EmailService implements IEmailService {
         { password, passwordCreatedAt, passwordExpiredAt }: EmailTempPasswordDto
     ): Promise<void> {
         await this.emailQueue.add(
-            ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
+            ENUM_SEND_EMAIL_PROCESS.temporaryPassword,
             {
                 send: { email, username },
                 data: { password, passwordCreatedAt, passwordExpiredAt },
             },
             {
                 deduplication: {
-                    id: `${ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD}-${userId}`,
+                    id: `${ENUM_SEND_EMAIL_PROCESS.temporaryPassword}-${userId}`,
                     ttl: 1000,
                 },
                 priority: ENUM_QUEUE_PRIORITY.HIGH,
@@ -112,12 +112,12 @@ export class EmailService implements IEmailService {
         { email, username }: EmailSendDto
     ): Promise<void> {
         await this.emailQueue.add(
-            ENUM_SEND_EMAIL_PROCESS.WELCOME,
+            ENUM_SEND_EMAIL_PROCESS.welcome,
             {
                 send: { email, username },
             },
             {
-                jobId: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${userId}`,
+                jobId: `${ENUM_SEND_EMAIL_PROCESS.welcome}-${userId}`,
                 priority: ENUM_QUEUE_PRIORITY.LOW,
             }
         );
@@ -129,7 +129,7 @@ export class EmailService implements IEmailService {
         { reference }: EmailVerifiedDto
     ): Promise<void> {
         await this.emailQueue.add(
-            ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED,
+            ENUM_SEND_EMAIL_PROCESS.emailVerified,
             {
                 send: {
                     email,
@@ -140,7 +140,7 @@ export class EmailService implements IEmailService {
                 },
             },
             {
-                jobId: `${ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED}-${userId}`,
+                jobId: `${ENUM_SEND_EMAIL_PROCESS.emailVerified}-${userId}`,
                 priority: ENUM_QUEUE_PRIORITY.MEDIUM,
             }
         );
@@ -158,7 +158,7 @@ export class EmailService implements IEmailService {
         resendInMinutes: number
     ): Promise<void> {
         await this.emailQueue.add(
-            ENUM_SEND_EMAIL_PROCESS.FORGOT_PASSWORD,
+            ENUM_SEND_EMAIL_PROCESS.forgotPassword,
             {
                 send: {
                     email,
@@ -168,7 +168,7 @@ export class EmailService implements IEmailService {
             },
             {
                 deduplication: {
-                    id: `${ENUM_SEND_EMAIL_PROCESS.FORGOT_PASSWORD}-${userId}`,
+                    id: `${ENUM_SEND_EMAIL_PROCESS.forgotPassword}-${userId}`,
                     ttl: resendInMinutes * 60 * 1000,
                 },
                 priority: ENUM_QUEUE_PRIORITY.HIGH,

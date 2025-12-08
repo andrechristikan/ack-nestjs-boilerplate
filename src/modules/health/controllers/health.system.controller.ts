@@ -53,12 +53,12 @@ export class HealthSystemController {
             () =>
                 this.awsS3BucketIndicator.isHealthy(
                     's3PublicBucket',
-                    ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
+                    ENUM_AWS_S3_ACCESSIBILITY.public
                 ),
             () =>
                 this.awsS3BucketIndicator.isHealthy(
                     's3PrivateBucket',
-                    ENUM_AWS_S3_ACCESSIBILITY.PRIVATE
+                    ENUM_AWS_S3_ACCESSIBILITY.private
                 ),
             () => this.awsSESIndicator.isHealthy('ses'),
         ]);

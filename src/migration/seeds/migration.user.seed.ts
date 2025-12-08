@@ -160,7 +160,7 @@ export class MigrationUserSeed
                         signUpFrom: ENUM_USER_SIGN_UP_FROM.system,
                         status: ENUM_USER_STATUS.active,
                         termPolicy: {
-                            [ENUM_TERM_POLICY_TYPE.cookie]: false,
+                            [ENUM_TERM_POLICY_TYPE.cookies]: false,
                             [ENUM_TERM_POLICY_TYPE.marketing]: false,
                             [ENUM_TERM_POLICY_TYPE.privacy]: true,
                             [ENUM_TERM_POLICY_TYPE.termsOfService]: true,

@@ -6,12 +6,12 @@ import { ENUM_TERM_POLICY_TYPE } from '@prisma/client';
 
 const termPolicyData: TermPolicyCreateRequestDto[] = [
     {
-        type: ENUM_TERM_POLICY_TYPE.cookie,
+        type: ENUM_TERM_POLICY_TYPE.cookies,
         version: 1,
         contents: [
             {
                 key: faker.system.filePath(),
-                language: ENUM_MESSAGE_LANGUAGE.EN,
+                language: ENUM_MESSAGE_LANGUAGE.en,
                 size: faker.number.int({ min: 1000, max: 5000 }),
             },
         ],
@@ -22,7 +22,7 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
         contents: [
             {
                 key: faker.system.filePath(),
-                language: ENUM_MESSAGE_LANGUAGE.EN,
+                language: ENUM_MESSAGE_LANGUAGE.en,
                 size: faker.number.int({ min: 1000, max: 5000 }),
             },
         ],
@@ -33,7 +33,7 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
         contents: [
             {
                 key: faker.system.filePath(),
-                language: ENUM_MESSAGE_LANGUAGE.EN,
+                language: ENUM_MESSAGE_LANGUAGE.en,
                 size: faker.number.int({ min: 1000, max: 5000 }),
             },
         ],
@@ -44,7 +44,7 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
         contents: [
             {
                 key: faker.system.filePath(),
-                language: ENUM_MESSAGE_LANGUAGE.EN,
+                language: ENUM_MESSAGE_LANGUAGE.en,
                 size: faker.number.int({ min: 1000, max: 5000 }),
             },
         ],
@@ -55,8 +55,8 @@ export const migrationTermPolicyData: Record<
     ENUM_APP_ENVIRONMENT,
     TermPolicyCreateRequestDto[]
 > = {
-    [ENUM_APP_ENVIRONMENT.LOCAL]: termPolicyData,
-    [ENUM_APP_ENVIRONMENT.DEVELOPMENT]: termPolicyData,
-    [ENUM_APP_ENVIRONMENT.STAGING]: termPolicyData,
-    [ENUM_APP_ENVIRONMENT.PRODUCTION]: termPolicyData,
+    [ENUM_APP_ENVIRONMENT.local]: termPolicyData,
+    [ENUM_APP_ENVIRONMENT.development]: termPolicyData,
+    [ENUM_APP_ENVIRONMENT.staging]: termPolicyData,
+    [ENUM_APP_ENVIRONMENT.production]: termPolicyData,
 };

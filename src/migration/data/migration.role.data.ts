@@ -34,8 +34,8 @@ export const migrationRoleData: Record<
     ENUM_APP_ENVIRONMENT,
     RoleCreateRequestDto[]
 > = {
-    [ENUM_APP_ENVIRONMENT.LOCAL]: roleData,
-    [ENUM_APP_ENVIRONMENT.DEVELOPMENT]: roleData,
-    [ENUM_APP_ENVIRONMENT.STAGING]: roleData,
-    [ENUM_APP_ENVIRONMENT.PRODUCTION]: roleData,
+    [ENUM_APP_ENVIRONMENT.local]: roleData,
+    [ENUM_APP_ENVIRONMENT.development]: roleData,
+    [ENUM_APP_ENVIRONMENT.staging]: roleData,
+    [ENUM_APP_ENVIRONMENT.production]: roleData,
 };

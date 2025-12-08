@@ -6,7 +6,7 @@ export class TermContentDto extends AwsS3Dto {
     @ApiProperty({
         required: true,
         description: 'Language of the term document',
-        example: ENUM_MESSAGE_LANGUAGE.EN,
+        example: ENUM_MESSAGE_LANGUAGE.en,
         enum: ENUM_MESSAGE_LANGUAGE,
     })
     readonly language: ENUM_MESSAGE_LANGUAGE;

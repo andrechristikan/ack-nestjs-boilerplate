@@ -18,7 +18,7 @@ export function PasswordHistorySharedListDoc(): MethodDecorator {
         }),
         DocResponsePaging<PasswordHistoryResponseDto>('passwordHistory.list', {
             dto: PasswordHistoryResponseDto,
-            type: ENUM_PAGINATION_TYPE.CURSOR,
+            type: ENUM_PAGINATION_TYPE.cursor,
         })
     );
 }

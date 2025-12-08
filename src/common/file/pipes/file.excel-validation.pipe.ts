@@ -61,7 +61,7 @@ export class FileExcelValidationPipe<
     private validate(value: IFileSheet<TRaw>[]): void {
         if (!value || value.length === 0) {
             throw new UnprocessableEntityException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.REQUIRED_EXTRACT_FIRST,
+                statusCode: ENUM_FILE_STATUS_CODE_ERROR.requiredExtractFirst,
                 message: 'file.error.requiredParseFirst',
             });
         }

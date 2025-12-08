@@ -64,7 +64,7 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
                     this.validateFileResponse(responseData);
 
                     const file: Buffer =
-                        responseData.extension === ENUM_FILE_EXTENSION_EXCEL.CSV
+                        responseData.extension === ENUM_FILE_EXTENSION_EXCEL.csv
                             ? this.fileService.writeCsv(responseData.data[0])
                             : this.fileService.writeExcel(responseData.data);
                     const timestamp = this.createTimestamp();

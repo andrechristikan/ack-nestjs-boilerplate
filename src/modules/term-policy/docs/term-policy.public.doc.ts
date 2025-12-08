@@ -22,7 +22,7 @@ export function TermPolicyPublicListDoc(): MethodDecorator {
         }),
         DocResponsePaging<TermPolicyResponseDto>('termPolicy.list', {
             dto: TermPolicyResponseDto,
-            type: ENUM_PAGINATION_TYPE.CURSOR,
+            type: ENUM_PAGINATION_TYPE.cursor,
         })
     );
 }

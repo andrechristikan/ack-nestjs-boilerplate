@@ -1,4 +1,4 @@
 export enum ENUM_POLICY_STATUS_CODE_ERROR {
-    FORBIDDEN = 5180,
-    PREDEFINED_NOT_FOUND = 5182,
+    forbidden = 5180,
+    predefinedNotFound = 5182,
 }

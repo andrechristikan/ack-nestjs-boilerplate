@@ -52,7 +52,7 @@ export class RoleService implements IRoleService {
         const role = await this.roleRepository.findOneById(id);
         if (!role) {
             throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.notFound,
                 message: 'role.error.notFound',
             });
         }
@@ -67,7 +67,7 @@ export class RoleService implements IRoleService {
         const exist = await this.roleRepository.existByName(name);
         if (exist) {
             throw new ConflictException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.EXIST,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.exist,
                 message: 'role.error.exist',
             });
         }
@@ -86,7 +86,7 @@ export class RoleService implements IRoleService {
         const role = await this.roleRepository.existById(id);
         if (!role) {
             throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.notFound,
                 message: 'role.error.notFound',
             });
         }
@@ -106,12 +106,12 @@ export class RoleService implements IRoleService {
 
         if (!role) {
             throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.notFound,
                 message: 'role.error.notFound',
             });
         } else if (roleUsed) {
             throw new ConflictException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.USED,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.used,
                 message: 'role.error.used',
             });
         }
@@ -130,8 +130,7 @@ export class RoleService implements IRoleService {
         const { __user, user } = request;
         if (!__user || !user) {
             throw new ForbiddenException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_INVALID,
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.jwtAccessTokenInvalid,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }
@@ -142,12 +141,12 @@ export class RoleService implements IRoleService {
             return [];
         } else if (requiredRoles.length === 0) {
             throw new InternalServerErrorException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.PREDEFINED_NOT_FOUND,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.predefinedNotFound,
                 message: 'role.error.predefinedNotFound',
             });
         } else if (!requiredRoles.includes(role.type)) {
             throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.FORBIDDEN,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.forbidden,
                 message: 'role.error.forbidden',
             });
         }

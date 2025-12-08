@@ -55,7 +55,7 @@ export function TermPolicyAdminCreateDoc(): MethodDecorator {
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: TermPolicyCreateRequestDto,
         }),
         DocResponse<TermPolicyResponseDto>('termPolicy.create', {
@@ -101,7 +101,7 @@ export function TermPolicyAdminGenerateContentPresignDoc(): MethodDecorator {
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: TermPolicyContentPresignRequestDto,
         }),
         DocResponse<AwsS3PresignDto>('termPolicy.generateContentPresign', {
@@ -124,7 +124,7 @@ export function TermPolicyAdminUpdateContentDoc(): MethodDecorator {
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: TermPolicyContentRequestDto,
             params: TermPolicyDocParamsId,
         }),
@@ -146,7 +146,7 @@ export function TermPolicyAdminAddContentDoc(): MethodDecorator {
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: TermPolicyContentRequestDto,
             params: TermPolicyDocParamsId,
         }),
@@ -168,7 +168,7 @@ export function TermPolicyAdminRemoveContentDoc(): MethodDecorator {
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
             dto: TermPolicyRemoveContentRequestDto,
             params: TermPolicyDocParamsId,
         }),

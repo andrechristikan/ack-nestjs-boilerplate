@@ -1,6 +1,6 @@
 export enum ENUM_REQUEST_STATUS_CODE_ERROR {
-    VALIDATION = 5030,
-    TIMEOUT = 5031,
-    PARAM_REQUIRED = 5032,
-    ENV_FORBIDDEN = 5034,
+    validation = 5030,
+    timeout = 5031,
+    paramRequired = 5032,
+    envForbidden = 5034,
 }

@@ -95,7 +95,7 @@ Run the command:
 - `country`: Inserts country data (name, codes, phone code, continent, timezone).
 - `featureFlag`: Inserts feature flags to enable/disable features (e.g., login methods, sign up, change password).
 - `role`: Inserts user roles (superadmin, admin, user) with abilities and permissions.
-- `termPolicy`: Inserts term policy documents (cookie, marketing, privacy, terms of service) with version and content.
+- `termPolicy`: Inserts term policy documents (cookies, marketing, privacy, terms of service) with version and content.
 - `user`: Inserts initial user accounts (Super Admin, Admin, User) with country, role, and credentials.
 
 
@@ -199,7 +199,7 @@ Four term policy documents are created:
 
 | Type | Version | Language | Description |
 |------|---------|----------|-------------|
-| `cookie` | 1 | EN | Cookie policy document |
+| `cookies` | 1 | EN | Cookie policy document |
 | `marketing` | 1 | EN | Marketing terms document |
 | `privacy` | 1 | EN | Privacy policy document |
 | `termsOfService` | 1 | EN | Terms of Service document |
