@@ -17,14 +17,14 @@ Request validation uses NestJS's built-in [ValidationPipe][ref-nestjs-validation
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
-- [How It Works](#how-it-works)
-- [Basic Usage](#basic-usage)
+- [Request Module](#request-module)
+- [Usage](#usage)
   - [Request Body Validation](#request-body-validation)
   - [Query Parameters Validation](#query-parameters-validation)
   - [Path Parameters Validation](#path-parameters-validation)
 - [DTO with Doc](#dto-with-doc)
 - [Extending DTOs](#extending-dtos)
-  - [Direct](#direct-extension)
+  - [Direct](#direct)
   - [PartialType](#partialtype)
   - [OmitType](#omittype)
   - [IntersectionType](#intersectiontype)
@@ -35,7 +35,7 @@ Request validation uses NestJS's built-in [ValidationPipe][ref-nestjs-validation
 - [Error Message Mapping](#error-message-mapping)
 - [Error Message Translation](#error-message-translation)
 
-## How It Works
+## Request Module
 
 The validation system is configured globally in `RequestModule`:
 
@@ -80,16 +80,13 @@ MessageService formats errors with i18n
 Standardized error response (HTTP 422)
 ```
 
-## Basic Usage
+## Usage
 
 ### Request Body Validation
 
 Apply DTO as type parameter in `@Body()` decorator:
 
 ```typescript
-import { Body, Controller, Post } from '@nestjs/common';
-import { CreateUserDto } from './dtos/create-user.dto';
-
 @Controller('users')
 export class UserController {
   @Post()
@@ -101,9 +98,8 @@ export class UserController {
 ```
 
 **DTO example**:
-```typescript
-import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength } from 'class-validator';
 
+```typescript
 export class CreateUserDto {
   @IsEmail()
   @IsNotEmpty()
@@ -124,9 +120,6 @@ export class CreateUserDto {
 ### Query Parameters Validation
 
 ```typescript
-import { Controller, Get, Query } from '@nestjs/common';
-import { UserListDto } from './dtos/user-list.dto';
-
 @Controller('users')
 export class UserController {
   @Get()
@@ -137,10 +130,8 @@ export class UserController {
 ```
 
 **DTO example**:
-```typescript
-import { IsOptional, IsNumber, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
 
+```typescript
 export class UserListDto {
   @IsOptional()
   @IsNumber()
@@ -160,9 +151,6 @@ export class UserListDto {
 ### Path Parameters Validation
 
 ```typescript
-import { Controller, Get, Param } from '@nestjs/common';
-import { UserParamDto } from './dtos/user-param.dto';
-
 @Controller('users')
 export class UserController {
   @Get(':userId')
@@ -173,9 +161,8 @@ export class UserController {
 ```
 
 **DTO example**:
-```typescript
-import { IsMongoId, IsNotEmpty } from 'class-validator';
 
+```typescript
 export class UserParamDto {
   @IsMongoId()
   @IsNotEmpty()
@@ -188,10 +175,6 @@ export class UserParamDto {
 Combine [class-validator][ref-class-validator] decorators with `@ApiProperty` from [@nestjs/swagger][ref-nestjs-swagger]:
 
 ```typescript
-import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { faker } from '@faker-js/faker';
-
 export class CreateUserDto {
   @ApiProperty({
     description: 'User email address',
@@ -251,8 +234,6 @@ export class UpdateUserDto extends CreateUserDto {
 Makes all properties optional:
 
 ```typescript
-import { PartialType } from '@nestjs/swagger';
-
 export class UpdateUserDto extends PartialType(CreateUserDto) {}
 ```
 
@@ -261,8 +242,6 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {}
 Excludes specific properties:
 
 ```typescript
-import { OmitType } from '@nestjs/swagger';
-
 export class UpdateUserDto extends OmitType(CreateUserDto, ['password'] as const) {}
 ```
 
@@ -271,8 +250,6 @@ export class UpdateUserDto extends OmitType(CreateUserDto, ['password'] as const
 Combines multiple DTOs:
 
 ```typescript
-import { IntersectionType } from '@nestjs/swagger';
-
 export class UserWithProfileDto extends IntersectionType(
   CreateUserDto,
   ProfileDto
@@ -287,9 +264,8 @@ Located in `src/common/request/validations/*`:
 
 **IsCustomEmail**
 Enhanced email validation with detailed error messages:
-```typescript
-import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
 
+```typescript
 export class CreateUserDto {
   @IsCustomEmail()
   @IsNotEmpty()
@@ -299,9 +275,8 @@ export class CreateUserDto {
 
 **IsPassword**
 Strong password validation:
-```typescript
-import { IsPassword } from '@common/request/validations/request.is-password.validation';
 
+```typescript
 export class ChangePasswordDto {
   @IsPassword()
   @IsNotEmpty()
@@ -313,9 +288,8 @@ export class ChangePasswordDto {
 
 **IsAfterNow**
 Validates date is after current time:
-```typescript
-import { IsAfterNow } from '@common/request/validations/request.is-after-now.validation';
 
+```typescript
 export class CreateEventDto {
   @IsAfterNow()
   @IsNotEmpty()
@@ -325,9 +299,8 @@ export class CreateEventDto {
 
 **GreaterThanOtherProperty**
 Validates field is greater than another field:
-```typescript
-import { GreaterThanOtherProperty } from '@common/request/validations/request.greater-than-other-property.validation';
 
+```typescript
 export class CreateRangeDto {
   @IsNumber()
   minValue: number;
@@ -340,9 +313,8 @@ export class CreateRangeDto {
 
 **GreaterThanEqualOtherProperty**
 Validates field is greater than or equal to another field:
-```typescript
-import { GreaterThanEqualOtherProperty } from '@common/request/validations/request.greater-than-other-property.validation';
 
+```typescript
 export class CreateRangeDto {
   @IsNumber()
   minValue: number;
@@ -356,8 +328,6 @@ export class CreateRangeDto {
 **LessThanOtherProperty**
 Validates field is less than another field:
 ```typescript
-import { LessThanOtherProperty } from '@common/request/validations/request.less-than-other-property.validation';
-
 export class CreateDiscountDto {
   @IsNumber()
   maxDiscount: number;
@@ -370,9 +340,8 @@ export class CreateDiscountDto {
 
 **LessThanEqualOtherProperty**
 Validates field is less than or equal to another field:
-```typescript
-import { LessThanEqualOtherProperty } from '@common/request/validations/request.less-than-other-property.validation';
 
+```typescript
 export class CreateDiscountDto {
   @IsNumber()
   maxDiscount: number;
@@ -388,15 +357,6 @@ export class CreateDiscountDto {
 For module-specific validators, create in module's `/validations` folder. For global validators, add to `src/common/request/validations`:
 
 ```typescript
-import { Injectable } from '@nestjs/common';
-import {
-  ValidationArguments,
-  ValidationOptions,
-  ValidatorConstraint,
-  ValidatorConstraintInterface,
-  registerDecorator,
-} from 'class-validator';
-
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class IsStrongPasswordConstraint implements ValidatorConstraintInterface {
@@ -425,6 +385,7 @@ export function IsStrongPassword(validationOptions?: ValidationOptions) {
 ```
 
 **Register in module**:
+
 ```typescript
 @Module({
   providers: [IsStrongPasswordConstraint],
@@ -438,10 +399,8 @@ Pipes validate single fields for body, param, or query. For multiple fields, use
 
 **RequestRequiredPipe**
 Validates required parameters:
-```typescript
-import { Controller, Get, Param } from '@nestjs/common';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 
+```typescript
 @Controller('users')
 export class UserController {
   @Get(':userId')
@@ -453,9 +412,8 @@ export class UserController {
 
 **RequestParseObjectIdPipe**
 Validates MongoDB ObjectId:
-```typescript
-import { RequestParseObjectIdPipe } from '@common/request/pipes/request.parse-object-id.pipe';
 
+```typescript
 @Get(':userId')
 findOne(@Param('userId', RequestParseObjectIdPipe) userId: string) {
   return this.userService.findById(userId);
@@ -476,6 +434,7 @@ When validation fails, `MessageService` processes errors through `setValidationM
 4. Format into `IMessageValidationError[]`
 
 **Implementation** (from `MessageService`):
+
 ```typescript
 setValidationMessage(
   errors: ValidationError[],
@@ -512,6 +471,7 @@ setValidationMessage(
 ```
 
 **Error structure**:
+
 ```typescript
 interface IMessageValidationError {
   key: string;        // Constraint name (e.g., 'isEmail')
@@ -539,6 +499,7 @@ Error messages are translated using [nestjs-i18n][ref-nestjs-i18n] through [Mess
 ```
 
 **Custom validator message** (from `IsCustomEmailConstraint`):
+
 ```typescript
 defaultMessage(validationArguments?: ValidationArguments): string {
   if (!validationArguments?.value) {
@@ -549,30 +510,6 @@ defaultMessage(validationArguments?: ValidationArguments): string {
     validationArguments.value
   );
   return validationResult.messagePath ?? 'request.error.email.invalid';
-}
-```
-
-**Message properties interpolation**:
-```typescript
-private createValidationMessage(
-  constraint: string,
-  value: unknown,
-  property?: string,
-  options?: IMessageErrorOptions
-): IMessageValidationError {
-  const message = this.setMessage(`request.error.${constraint}`, {
-    customLanguage: options?.customLanguage,
-    properties: {
-      property: property?.split('.').pop(),  // Get last part of nested property
-      value: value as string | number,
-    },
-  });
-
-  return {
-    key: constraint,
-    property: property ?? 'Unknown',
-    message,
-  };
 }
 ```
 

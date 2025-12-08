@@ -21,7 +21,7 @@ export class MigrationApiKeySeed
     private readonly logger = new Logger(MigrationApiKeySeed.name);
 
     private readonly env: ENUM_APP_ENVIRONMENT;
-    private apiKeys: ApiKeyCreateRawRequestDto[] = [];
+    private readonly apiKeys: ApiKeyCreateRawRequestDto[] = [];
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -38,36 +38,26 @@ export class MigrationApiKeySeed
         this.logger.log('Seeding Api Keys...');
         this.logger.log(`Found ${this.apiKeys.length} Api Keys to seed.`);
 
-        const existingApiKeys = await this.databaseService.apiKey.findMany({
-            where: {
-                key: {
-                    in: this.apiKeys.map(apiKey =>
-                        this.apiKeyUtil.createKey(apiKey.key)
-                    ),
-                },
-            },
-            select: {
-                id: true,
-            },
-        });
-        if (existingApiKeys.length > 0) {
-            this.logger.warn('Api Keys already exist, skipping seed.');
-            return;
-        }
-
-        await this.databaseService.apiKey.createMany({
-            data: this.apiKeys.map(apiKey => {
+        await this.databaseService.$transaction(
+            this.apiKeys.map(apiKey => {
                 const key = this.apiKeyUtil.createKey(apiKey.key);
                 const hashed = this.apiKeyUtil.createHash(key, apiKey.secret);
-                return {
-                    hash: hashed,
-                    key: key,
-                    type: apiKey.type,
-                    name: apiKey.name,
-                    isActive: true,
-                };
-            }),
-        });
+
+                return this.databaseService.apiKey.upsert({
+                    where: {
+                        key: apiKey.key,
+                    },
+                    create: {
+                        hash: hashed,
+                        key: key,
+                        type: apiKey.type,
+                        name: apiKey.name,
+                        isActive: true,
+                    },
+                    update: {},
+                });
+            })
+        );
 
         this.logger.log('Api Keys seeded successfully.');
 

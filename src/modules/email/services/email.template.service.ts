@@ -13,6 +13,10 @@ import { AwsSESService } from '@common/aws/services/aws.ses.service';
 @Injectable()
 export class EmailTemplateService implements IEmailTemplateService {
     private readonly logger = new Logger(EmailTemplateService.name);
+    private readonly templatesDir = join(
+        process.cwd(),
+        'src/modules/email/templates'
+    );
 
     constructor(private readonly awsSESService: AwsSESService) {}
 
@@ -23,8 +27,8 @@ export class EmailTemplateService implements IEmailTemplateService {
     async importChangePassword(): Promise<boolean> {
         try {
             const templatePath = join(
-                process.cwd(),
-                'src/modules/email/templates/change-password.template.hbs'
+                this.templatesDir,
+                'email.change-password.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -82,8 +86,8 @@ export class EmailTemplateService implements IEmailTemplateService {
     async importWelcome(): Promise<boolean> {
         try {
             const templatePath = join(
-                process.cwd(),
-                'src/modules/email/templates/welcome.template.hbs'
+                this.templatesDir,
+                'email.welcome.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -141,8 +145,8 @@ export class EmailTemplateService implements IEmailTemplateService {
     async importCreateByAdmin(): Promise<boolean> {
         try {
             const templatePath = join(
-                process.cwd(),
-                'src/modules/email/templates/create-by-admin.template.hbs'
+                this.templatesDir,
+                'email.create-by-admin.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -200,8 +204,8 @@ export class EmailTemplateService implements IEmailTemplateService {
     async importTempPassword(): Promise<boolean> {
         try {
             const templatePath = join(
-                process.cwd(),
-                'src/modules/email/templates/temp-password.template.hbs'
+                this.templatesDir,
+                'email.temp-password.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -259,8 +263,8 @@ export class EmailTemplateService implements IEmailTemplateService {
     async importForgotPassword(): Promise<boolean> {
         try {
             const templatePath = join(
-                process.cwd(),
-                'src/modules/email/templates/forgot-password.template.hbs'
+                this.templatesDir,
+                'email.forgot-password.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -318,8 +322,8 @@ export class EmailTemplateService implements IEmailTemplateService {
     async importVerification(): Promise<boolean> {
         try {
             const templatePath = join(
-                process.cwd(),
-                'src/modules/email/templates/email-verification.template.hbs'
+                this.templatesDir,
+                'email.verification.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -377,8 +381,8 @@ export class EmailTemplateService implements IEmailTemplateService {
     async importEmailVerified(): Promise<boolean> {
         try {
             const templatePath = join(
-                process.cwd(),
-                'src/modules/email/templates/email-verified.template.hbs'
+                this.templatesDir,
+                'email.verified.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
@@ -436,8 +440,8 @@ export class EmailTemplateService implements IEmailTemplateService {
     async importMobileNumberVerified(): Promise<boolean> {
         try {
             const templatePath = join(
-                process.cwd(),
-                'src/modules/email/templates/mobile-number-verified.template.hbs'
+                this.templatesDir,
+                'email.mobile-number-verified.template.hbs'
             );
 
             await this.awsSESService.createTemplate({

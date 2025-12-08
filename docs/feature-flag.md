@@ -6,14 +6,6 @@ This documentation explains the features and usage of **Feature Flag Module**: L
 
 Feature flag module provides dynamic feature management for controlling application functionality. Supports gradual rollouts, A/B testing, and metadata-based feature configuration with caching for optimal performance.
 
-Features:
-- Dynamic feature enable/disable
-- Metadata support for granular control
-- Rollout percentage for gradual feature deployment
-- Cache-based performance optimization
-- Guard-based route protection
-- Consistent schema enforcement
-
 ## Related Documents
 
 - [Cache Documentation][ref-doc-cache]
@@ -21,7 +13,7 @@ Features:
 ## Table of Contents
 
 - [Related Documents](#related-documents)
-- [Initial Data](#initial-data)
+- [Features](#features)
 - [Flow](#flow)
 - [Usage](#usage)
   - [With Decorators](#with-decorators)
@@ -31,9 +23,9 @@ Features:
 - [Caching](#caching)
 - [Restrictions](#restrictions)
 
-## Initial Data
+## Features
 
-Default feature flags provided in `src/migration/feature-flag.ts`:
+Feature flags provided in `src/migration/feature-flag.ts`:
 
 | Key | Description | Rollout | Metadata |
 |-----|-------------|---------|----------|
@@ -92,8 +84,6 @@ flowchart TD
 Use `@FeatureFlagProtected()` decorator to protect routes:
 
 ```typescript
-import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-
 @Controller('auth')
 export class AuthController {
   // Simple feature check
@@ -116,8 +106,6 @@ export class AuthController {
 ### With Service
 
 ```typescript
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-
 @Injectable()
 export class YourService {
   constructor(
@@ -209,23 +197,6 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 - Metadata keys cannot be modified (add/remove)
 - Only values can be updated: `isEnable`, `rolloutPercent`, metadata values
 
-**Update operations:**
-```typescript
-// Status update
-PUT /admin/feature-flags/:id/status
-{
-  "isEnable": false,
-  "rolloutPercent": 25
-}
-
-// Metadata update
-PUT /admin/feature-flags/:id/metadata
-{
-  "metadata": {
-    "forgotAllowed": false
-  }
-}
-```
 
 <!-- REFERENCES -->
 

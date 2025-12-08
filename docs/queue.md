@@ -17,18 +17,22 @@ All queue configurations are centralized in `src/config/redis.config.ts`, with r
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
-- [Table of Contents](#table-of-contents)
 - [Configuration](#configuration)
 - [Queue Structure](#queue-structure)
 - [Available Queues](#available-queues)
 - [Usage](#usage)
-- [Adding Jobs to Queue](#adding-jobs-to-queue)
-- [Job Options](#job-options)
+  - [Adding Jobs to Queue](#adding-jobs-to-queue)
+  - [Job Options](#job-options)
 - [Creating New Queue](#creating-new-queue)
 - [Creating New Processor](#creating-new-processor)
+- [QueueProcessorBase](#queueprocessorbase)
+  - [Implementation](#implementation)
+  - [Behavior](#behavior)
 - [QueueException](#queueexception)
+  - [Usage](#usage-1)
+  - [Properties](#properties)
+  - [Behavior](#behavior-1)
 - [Bull Board Dashboard](#bull-board-dashboard)
-- [Important Notes](#important-notes)
 
 ## Configuration
 
@@ -75,10 +79,6 @@ Queue priorities:
 Inject the queue into your service:
 
 ```typescript
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import { ENUM_QUEUE } from 'src/queues/enums/queue.enum';
-
 export class YourService {
     constructor(
         @InjectQueue(ENUM_QUEUE.EMAIL) 
@@ -169,12 +169,6 @@ static forRoot(): DynamicModule {
 1. Create processor class extending `QueueProcessorBase`:
 
 ```typescript
-import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
-import { QueueProcessorBase } from 'src/queues/bases/queue.processor.base';
-import { QueueProcessor } from 'src/queues/decorators/queue.decorator';
-import { ENUM_QUEUE } from 'src/queues/enums/queue.enum';
-
 @QueueProcessor(ENUM_QUEUE.NOTIFICATION)
 export class NotificationProcessor extends QueueProcessorBase {
     private readonly logger = new Logger(NotificationProcessor.name);
@@ -219,10 +213,6 @@ export class NotificationProcessor extends QueueProcessorBase {
 2. Register processor in `src/queues/queue.module.ts`:
 
 ```typescript
-import { NotificationModule } from '@modules/notification/notification.module';
-import { NotificationProcessor } from '@modules/notification/processors/notification.processor';
-import { Module } from '@nestjs/common';
-
 @Module({
     imports: [
         EmailModule,
@@ -236,11 +226,47 @@ import { Module } from '@nestjs/common';
 export class QueueModule {}
 ```
 
-The `QueueProcessorBase` provides:
-- Automatic error handling
-- Sentry integration for fatal errors
-- Failed job event handling
-- Retry logic support
+## QueueProcessorBase
+
+`QueueProcessorBase` is the base class for all queue processors, extending `WorkerHost` from BullMQ with additional error handling, Sentry integration for monitoring fatal errors, retry logic support, and automatic failed job event handling.
+
+### Implementation
+
+Location: `src/queues/bases/queue.processor.base.ts`
+
+```typescript
+export abstract class QueueProcessorBase extends WorkerHost {
+    @OnWorkerEvent('failed')
+    onFailed(job: Job<unknown, null, string> | undefined, error: Error): void {
+        const maxAttempts = job.opts.attempts ?? 1;
+        const isLastAttempt = job.attemptsMade >= maxAttempts - 1;
+
+        if (isLastAttempt) {
+            let isFatal = true;
+
+            if (error instanceof QueueException) {
+                isFatal = !!error.isFatal;
+            }
+
+            if (isFatal) {
+                try {
+                    Sentry.captureException(error);
+                } catch (_) {}
+            }
+        }
+    }
+}
+```
+
+### Behavior
+
+1. **On Job Failure**: The `onFailed` method is automatically triggered
+2. **Retry Check**: Determines if this is the last retry attempt
+3. **Error Classification**:
+   - `QueueException` with `isFatal: true` → Reports to Sentry
+   - `QueueException` with `isFatal: false` → Does not report to Sentry
+   - Other exceptions → Reports to Sentry (treated as fatal)
+4. **Sentry Reporting**: Only reports on the final retry attempt to avoid duplicate alerts
 
 ## QueueException
 
@@ -249,8 +275,6 @@ The `QueueProcessorBase` provides:
 ### Usage
 
 ```typescript
-import { QueueException } from 'src/queues/exceptions/queue.exception';
-
 // Fatal error - will be reported to Sentry on last retry
 throw new QueueException('Critical payment processing failed', true);
 
@@ -276,69 +300,13 @@ When a job fails:
    - If error is any other exception → Reports to Sentry (treated as fatal)
 3. On non-last retry attempts → Never reports to Sentry
 
-### Example in Processor
-
-```typescript
-@QueueProcessor(ENUM_QUEUE.EMAIL)
-export class EmailProcessor extends QueueProcessorBase {
-    async process(job: Job<EmailWorkerDto<unknown>, unknown, string>): Promise<void> {
-        try {
-            const jobName = job.name;
-            
-            switch (jobName) {
-                case ENUM_SEND_EMAIL_PROCESS.WELCOME:
-                    await this.processWelcome(job.data.send);
-                    break;
-                default:
-                    // Non-fatal: unknown job type, likely config issue
-                    throw new QueueException(
-                        `Unknown job type: ${jobName}`,
-                        false
-                    );
-            }
-        } catch (error: unknown) {
-            this.logger.error(error);
-            
-            // Re-throw for retry mechanism
-            if (error instanceof QueueException) {
-                throw error;
-            }
-            
-            // Fatal: unexpected error
-            throw new QueueException(
-                `Unexpected error processing email: ${error.message}`,
-                true
-            );
-        }
-    }
-
-    async processWelcome(data: EmailSendDto): Promise<boolean> {
-        const result = await this.emailUtil.sendWelcome(data);
-        
-        if (!result) {
-            // Fatal: email service failure
-            throw new QueueException(
-                'Failed to send welcome email',
-                true
-            );
-        }
-        
-        return result;
-    }
-}
-```
-
 ## Bull Board Dashboard
 
 ACK NestJS Boilerplate includes Bull Board for queue monitoring and management.
 
 Access the dashboard:
 ```bash
-# Start with docker-compose
-docker-compose --profile bullboard up
-
-# Or start full stack
-docker-compose --profile full up
+docker-compose up
 ```
 
 Dashboard URL: `http://localhost:3010`

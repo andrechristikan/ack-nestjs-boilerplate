@@ -54,10 +54,10 @@ import {
     IAwsS3DeleteDirOptions,
     IAwsS3FileInfo,
     IAwsS3GetItemsOptions,
-    IAwsS3MultipartOptions,
     IAwsS3Options,
     IAwsS3PresignOptions,
     IAwsS3PutItem,
+    IAwsS3PutItemOptions,
     IAwsS3PutItemWithAclOptions,
 } from '@common/aws/interfaces/aws.interface';
 import {
@@ -329,12 +329,12 @@ export class AwsS3Service implements IAwsS3Service {
     /**
      * Uploads a file to S3 using a simple PUT operation.
      * @param {IAwsS3PutItem} file - The file object containing key, file data, and optional size
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
+     * @param {IAwsS3PutItemOptions} [options] - Optional configuration including force update and access level
      * @returns {Promise<AwsS3Dto>} Promise that resolves to an AwsS3Dto with upload information
      */
     async putItem(
         file: IAwsS3PutItem,
-        options?: IAwsS3Options
+        options?: IAwsS3PutItemOptions
     ): Promise<AwsS3Dto> {
         if (file.key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
@@ -345,6 +345,26 @@ export class AwsS3Service implements IAwsS3Service {
         const config = this.config.get(
             options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
         );
+
+        if (!options?.forceUpdate) {
+            const headCommand = new HeadObjectCommand({
+                Bucket: config.bucket,
+                Key: file.key,
+            });
+
+            try {
+                await this.client.send<
+                    HeadObjectCommandInput,
+                    HeadObjectCommandOutput
+                >(headCommand);
+
+                throw new Error(`Key ${file.key} is already exist.`);
+            } catch (error: unknown) {
+                if (!(error instanceof NotFound)) {
+                    throw error;
+                }
+            }
+        }
 
         const { pathWithFilename, extension, mime } = this.getFileInfoFromKey(
             file.key
@@ -379,7 +399,7 @@ export class AwsS3Service implements IAwsS3Service {
     /**
      * Uploads a file to S3 with specified Access Control List (ACL) permissions.
      * @param {IAwsS3PutItem} file - The file object containing key, file data, and optional size
-     * @param {IAwsS3PutItemWithAclOptions} [options] - Optional configuration including ACL settings and access level
+     * @param {IAwsS3PutItemWithAclOptions} [options] - Optional configuration including force update, ACL settings and access level
      * @returns {Promise<AwsS3Dto>} Promise that resolves to an AwsS3Dto with upload information
      */
     async putItemWithAcl(
@@ -395,6 +415,27 @@ export class AwsS3Service implements IAwsS3Service {
         const config = this.config.get(
             options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
         );
+
+        if (!options?.forceUpdate) {
+            const headCommand = new HeadObjectCommand({
+                Bucket: config.bucket,
+                Key: file.key,
+            });
+
+            try {
+                await this.client.send<
+                    HeadObjectCommandInput,
+                    HeadObjectCommandOutput
+                >(headCommand);
+
+                throw new Error(`Key ${file.key} is already exist.`);
+            } catch (error: unknown) {
+                if (!(error instanceof NotFound)) {
+                    throw error;
+                }
+            }
+        }
+
         const { pathWithFilename, extension, mime } = this.getFileInfoFromKey(
             file.key
         );
@@ -535,13 +576,13 @@ export class AwsS3Service implements IAwsS3Service {
      * Initiates a multipart upload for large files in S3.
      * @param {IAwsS3CreateMultiplePart} file - The file object containing key, and optional size
      * @param {number} maxPartNumber - The maximum number of parts for the multipart upload
-     * @param {IAwsS3MultipartOptions} [options] - Optional configuration including force update and access level
+     * @param {IAwsS3PutItemOptions} [options] - Optional configuration including force update and access level
      * @returns {Promise<AwsS3MultipartDto>} Promise that resolves to an AwsS3MultipartDto with upload information
      */
     async createMultiPart(
         file: IAwsS3CreateMultiplePart,
         maxPartNumber: number,
-        options?: IAwsS3MultipartOptions
+        options?: IAwsS3PutItemOptions
     ): Promise<AwsS3MultipartDto> {
         if (file.key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
@@ -555,12 +596,12 @@ export class AwsS3Service implements IAwsS3Service {
             options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
         );
 
-        const headCommand = new HeadObjectCommand({
-            Bucket: config.bucket,
-            Key: file.key,
-        });
-
         if (!options?.forceUpdate) {
+            const headCommand = new HeadObjectCommand({
+                Bucket: config.bucket,
+                Key: file.key,
+            });
+
             try {
                 await this.client.send<
                     HeadObjectCommandInput,
@@ -865,12 +906,12 @@ export class AwsS3Service implements IAwsS3Service {
             options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.PUBLIC
         );
 
-        const headCommand = new HeadObjectCommand({
-            Bucket: config.bucket,
-            Key: key,
-        });
-
         if (!options?.forceUpdate) {
+            const headCommand = new HeadObjectCommand({
+                Bucket: config.bucket,
+                Key: key,
+            });
+
             try {
                 await this.client.send<
                     HeadObjectCommandInput,

@@ -4,23 +4,15 @@ This documentation explains the features and usage of **Logger Module**: Located
 
 ## Overview
 
-Comprehensive logging system using Pino with file rotation, sensitive data redaction, and custom serializers for request/response logging.
-
-Features:
-- HTTP request/response logging with [Pino][ref-pino]
-- Automatic sensitive data redaction
-- File rotation with compression
-- Configurable log levels
-- Pretty printing for development
-- Route exclusion for health checks
-- Request ID tracking across services
-- Memory usage and uptime debugging (non-production)
+Comprehensive logging system using Pino with file rotation, sensitive data redaction, and custom serializers for request/response logging. The system includes HTTP request/response logging, automatic sensitive data redaction, file rotation with compression, configurable log levels, pretty printing for development, route exclusion for health checks, request ID tracking across services, and memory usage and uptime debugging for non-production environments.
 
 ## Related Documents
 
 - [Configuration Documentation][ref-doc-configuration] - For logger configuration settings
 - [Environment Documentation][ref-doc-environment] - For logger environment variables
 - [Handling Error Documentation][ref-doc-handling-error] - For error logging integration
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - For logger middleware and security features
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - For request ID tracking across services 
 
 ## Table of Contents
 
@@ -28,10 +20,16 @@ Features:
 - [Related Documents](#related-documents)
 - [Configuration](#configuration)
 - [Usage](#usage)
+  - [Log Levels](#log-levels)
 - [Sensitive Data Redaction](#sensitive-data-redaction)
+  - [Example](#example)
 - [File Logging](#file-logging)
 - [Auto Logging](#auto-logging)
+  - [Excluded Routes](#excluded-routes)
 - [Console Output](#console-output)
+  - [Pretty Mode](#pretty-mode-logger_prettiertrue)
+  - [JSON Mode](#json-mode-logger_prettierfalse)
+  - [Debug Information](#debug-information-non-production)
 - [Request ID Tracking](#request-id-tracking)
 
 
@@ -51,9 +49,8 @@ Configuration is managed in `src/configs/logger.config.ts`. For environment vari
 ## Usage
 
 Use [NestJS][ref-nestjs] Logger throughout the application:
-```typescript
-import { Logger } from '@nestjs/common';
 
+```typescript
 export class UserService {
     private readonly logger = new Logger(UserService.name);
 
@@ -73,6 +70,7 @@ export class UserService {
 ```
 
 ### Log Levels
+
 ```typescript
 this.logger.error('Error message');   // error level
 this.logger.warn('Warning message');  // warn level
@@ -83,6 +81,7 @@ this.logger.debug('Debug message');   // debug level
 ## Sensitive Data Redaction
 
 The logger automatically redacts sensitive fields defined in `src/common/logger/constants/logger.constant.ts`:
+
 ```typescript
 export const LOGGER_SENSITIVE_FIELDS: string[] = [
     'password',
@@ -108,6 +107,7 @@ export const LOGGER_SENSITIVE_FIELDS: string[] = [
 ```
 
 Sensitive fields in these paths are automatically replaced with `[REDACTED]`:
+
 ```typescript
 export const LOGGER_SENSITIVE_PATHS = [
     'req.body',
@@ -121,9 +121,10 @@ export const LOGGER_SENSITIVE_PATHS = [
 ];
 ```
 
-### Example Output
+### Example
 
 **Request with sensitive data:**
+
 ```json
 {
   "username": "john",
@@ -133,6 +134,7 @@ export const LOGGER_SENSITIVE_PATHS = [
 ```
 
 **Logged as:**
+
 ```json
 {
   "username": "john",
@@ -141,9 +143,10 @@ export const LOGGER_SENSITIVE_PATHS = [
 }
 ```
 
-### Array Truncation
+**Array Truncation:**
 
 Arrays longer than 10 items are automatically truncated:
+
 ```json
 {
   "items": [
@@ -165,6 +168,7 @@ Enable file logging by setting `LOGGER_INTO_FILE=true`. Logs are written to `./l
 - **Retention**: Maximum 10 files, older than 7 days removed
 
 **File structure:**
+
 ```
 logs/
 ├── api.log              # Current log file
@@ -180,6 +184,7 @@ Enable automatic HTTP request/response logging with `LOGGER_AUTO=true`.
 ### Excluded Routes
 
 Routes excluded from auto-logging (defined in `logger.constant.ts`):
+
 ```typescript
 export const LOGGER_EXCLUDED_ROUTES: string[] = [
     '/api/health*',
@@ -189,23 +194,6 @@ export const LOGGER_EXCLUDED_ROUTES: string[] = [
     '/',
 ];
 ```
-
-### Logged Information
-
-**Request:**
-- Request ID (from `x-correlation-id` or `x-request-id` headers)
-- HTTP method and URL
-- Query parameters and route params
-- Headers (with sensitive data redacted)
-- Client IP address
-- User agent
-- Authenticated user ID
-
-**Response:**
-- HTTP status code
-- Response headers
-- Content length
-- Response time
 
 ## Console Output
 

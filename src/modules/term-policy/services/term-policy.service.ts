@@ -308,7 +308,7 @@ export class TermPolicyService implements ITermPolicyService {
                 version,
                 language,
                 {
-                    extension: ENUM_FILE_EXTENSION_DOCUMENT.PDF,
+                    extension: ENUM_FILE_EXTENSION_DOCUMENT.HBS,
                 }
             );
 

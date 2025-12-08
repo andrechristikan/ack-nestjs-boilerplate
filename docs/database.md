@@ -112,16 +112,16 @@ Template seeding uses the same script and commands as Database Seeds, but is spe
 Every time you run the email template seed, the templates will be inserted into AWS SES automatically.
 
 **How to Run Email Template Seeds:**
-- Seed: `yarn migration template email --type seed`
-- Remove: `yarn migration template email --type remove`
+- Seed: `yarn migration template-email --type seed`
+- Remove: `yarn migration template-email --type remove`
 
 #### Term Policy Templates
 
 Every time you run the term policy template seed, the policy documents will be linked to the database records automatically.
 
 **How to Run Term Policy Template Seeds:**
-- Seed: `yarn migration template termPolicy --type seed`
-- Remove: `yarn migration template termPolicy --type remove`
+- Seed: `yarn migration template-termPolicy --type seed`
+- Remove: `yarn migration template-termPolicy --type remove`
 
 
 ## Initial Seeded Data
@@ -138,6 +138,22 @@ Two API keys are created for authentication and service access:
 |------|------|-----|--------|-------|
 | Api Key Default | `default` | `fyFGb7ywyM37TqDY8nuhAmGW5` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For general API access |
 | Api Key System | `system` | `UTDH0fuDMAbd1ZVnwnyrQJd8Q` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For system-level operations |
+
+**API Key Prefix Convention:**
+
+All generated API keys automatically include an environment prefix to help identify which environment they belong to. The format is:
+
+```
+{environment}_{random_string}
+```
+
+**Examples:**
+- `local_abc123xyz` - API key for local/development environment
+- `development_def456uvw` - API key for development environment
+- `staging_ghi789rst` - API key for staging environment
+- `production_jkl012mno` - API key for production environment
+
+This prefix is automatically added based on the `APP_ENV` environment variable when creating new API keys, ensuring easy identification and preventing accidental cross-environment usage.
 
 ### Roles
 

@@ -27,6 +27,7 @@ export class EmailService implements IEmailService {
                 send: { email: email, name: username },
             },
             {
+                priority: ENUM_QUEUE_PRIORITY.MEDIUM,
                 deduplication: {
                     id: `${ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD}-${userId}`,
                     ttl: 1000,
@@ -59,6 +60,7 @@ export class EmailService implements IEmailService {
             },
             {
                 jobId: `${ENUM_SEND_EMAIL_PROCESS.CREATE_BY_ADMIN}-${userId}`,
+                priority: ENUM_QUEUE_PRIORITY.LOW,
             }
         );
     }
@@ -116,6 +118,7 @@ export class EmailService implements IEmailService {
             },
             {
                 jobId: `${ENUM_SEND_EMAIL_PROCESS.WELCOME}-${userId}`,
+                priority: ENUM_QUEUE_PRIORITY.LOW,
             }
         );
     }
@@ -138,6 +141,7 @@ export class EmailService implements IEmailService {
             },
             {
                 jobId: `${ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED}-${userId}`,
+                priority: ENUM_QUEUE_PRIORITY.MEDIUM,
             }
         );
     }
@@ -153,7 +157,7 @@ export class EmailService implements IEmailService {
         }: EmailForgotPasswordDto,
         resendInMinutes: number
     ): Promise<void> {
-        this.emailQueue.add(
+        await this.emailQueue.add(
             ENUM_SEND_EMAIL_PROCESS.FORGOT_PASSWORD,
             {
                 send: {

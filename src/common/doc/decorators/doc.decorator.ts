@@ -13,7 +13,6 @@ import {
     ApiSecurity,
     getSchemaPath,
 } from '@nestjs/swagger';
-import { faker } from '@faker-js/faker';
 import {
     IDocAuthOptions,
     IDocDefaultOptions,
@@ -251,61 +250,6 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 schema: {
                     default: ENUM_MESSAGE_LANGUAGE.EN,
                     example: ENUM_MESSAGE_LANGUAGE.EN,
-                    type: 'string',
-                },
-            },
-            {
-                name: 'x-timestamp',
-                description: 'Timestamp in milliseconds',
-                required: false,
-                schema: {
-                    example: 1732118400000,
-                    type: 'number',
-                },
-            },
-            {
-                name: 'x-timezone',
-                description: 'Timezone',
-                required: false,
-                schema: {
-                    example: 'Asia/Jakarta',
-                    type: 'string',
-                },
-            },
-            {
-                name: 'x-version',
-                description: 'API version',
-                required: false,
-                schema: {
-                    example: '1',
-                    type: 'string',
-                },
-            },
-            {
-                name: 'x-repo-version',
-                description: 'Repository version',
-                required: false,
-                schema: {
-                    example: '1.0.0',
-                    type: 'string',
-                },
-            },
-            {
-                name: 'x-request-id',
-                description: 'Unique request identifier',
-                required: false,
-                schema: {
-                    example: faker.string.uuid(),
-                    type: 'string',
-                },
-            },
-            {
-                name: 'x-correlation-id',
-                description:
-                    'Correlation identifier for tracking requests across services',
-                required: false,
-                schema: {
-                    example: faker.string.uuid(),
                     type: 'string',
                 },
             },

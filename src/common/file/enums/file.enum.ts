@@ -6,6 +6,7 @@ export enum ENUM_FILE_EXTENSION_IMAGE {
 
 export enum ENUM_FILE_EXTENSION_DOCUMENT {
     PDF = 'pdf',
+    HBS = 'hbs',
 }
 
 export enum ENUM_FILE_EXTENSION_EXCEL {

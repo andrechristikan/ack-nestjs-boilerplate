@@ -48,7 +48,6 @@ import {
     Verification,
 } from '@prisma/client';
 
-// TODO: Check activityLogs and move to the decorator for self-actions
 @Injectable()
 export class UserRepository {
     constructor(

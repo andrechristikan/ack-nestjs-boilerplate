@@ -5,7 +5,7 @@ export interface IAwsS3Options {
     access?: ENUM_AWS_S3_ACCESSIBILITY;
 }
 
-export interface IAwsS3MultipartOptions extends IAwsS3Options {
+export interface IAwsS3PutItemOptions extends IAwsS3Options {
     forceUpdate?: boolean;
 }
 
@@ -15,11 +15,11 @@ export interface IAwsS3GetItemsOptions extends IAwsS3Options {
 
 export type IAwsS3DeleteDirOptions = IAwsS3GetItemsOptions;
 
-export interface IAwsS3PutItemWithAclOptions extends IAwsS3Options {
+export interface IAwsS3PutItemWithAclOptions extends IAwsS3PutItemOptions {
     acl?: ObjectCannedACL;
 }
 
-export interface IAwsS3PresignOptions extends IAwsS3MultipartOptions {
+export interface IAwsS3PresignOptions extends IAwsS3PutItemOptions {
     expired?: number;
 }
 

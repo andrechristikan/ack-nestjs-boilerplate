@@ -8,7 +8,8 @@ import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-fla
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
-import { MigrationEmailSeed } from '@migration/seeds/migration.email.seed';
+import { MigrationTemplateEmailSeed } from '@migration/seeds/migration.template-email.seed';
+import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
 import { EmailModule } from '@modules/email/email.module';
 
 /**
@@ -24,7 +25,8 @@ import { EmailModule } from '@modules/email/email.module';
         MigrationRoleSeed,
         MigrationTermPolicySeed,
         MigrationUserSeed,
-        MigrationEmailSeed,
+        MigrationTemplateEmailSeed,
+        MigrationTemplateTermPolicySeed,
     ],
     exports: [],
 })

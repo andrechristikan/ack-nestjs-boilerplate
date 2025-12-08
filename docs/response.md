@@ -1,6 +1,10 @@
 # Response Documentation
 
-This documentation explains the features and usage of **Exception Filter Module**: Located at `src/app/filters`
+This documentation explains the features and usage of **Response Module**: Located at `src/common/response`
+
+## Overview
+
+ACK NestJS Boilerplate standardizes API responses through decorators that automatically format responses, handle pagination, manage file downloads, and set custom headers. Each decorator uses an interceptor to transform data into consistent structures with metadata, status codes, and localized messages.
 
 ## Table of Contents
 
@@ -10,12 +14,10 @@ This documentation explains the features and usage of **Exception Filter Module*
   - [@ResponsePaging](#responsepaging)
   - [@ResponseFile](#responsefile)
 - [Response Structure](#response-structure)
+  - [Standard](#standard)
+  - [Paginated](#paginated)
 - [Caching](#caching)
 - [Custom Headers](#custom-headers)
-
-## Overview
-
-ACK NestJS Boilerplate standardizes API responses through decorators that automatically format responses, handle pagination, manage file downloads, and set custom headers. Each decorator uses an interceptor to transform data into consistent structures with metadata, status codes, and localized messages.
 
 ## Response Decorators
 
@@ -33,9 +35,6 @@ Standard API response decorator with optional caching.
 **Usage:**
 
 ```typescript
-import { Response } from '@common/response/decorators/response.decorator';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-
 @Response('user.get')
 @Get('/:id')
 async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
@@ -51,13 +50,27 @@ async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
 @Response('user.create')
 @Post('/')
 async createUser(@Body() dto: CreateUserDto): Promise<IResponseReturn<UserDto>> {
-  return {
-    data: await this.userService.create(dto),
-    metadata: {
-      statusCode: 201,
-      httpStatus: HttpStatus.CREATED
-    }
-  };
+  try {
+    const data = await this.userService.create(dto);
+    
+    // Response: { statusCode: 201, message: "...", data: {...}, metadata: {...} }
+    return {
+      data,
+      metadata: {
+        statusCode: 201,
+        httpStatus: HttpStatus.CREATED
+      }
+    };
+  } catch {
+    // Response: { statusCode: 200, message: "...", data: {...}, metadata: {...} }
+    return {
+      data,
+      metadata: {
+        statusCode: 200,
+        httpStatus: HttpStatus.OK
+      }
+    };
+  }
 }
 ```
 
@@ -97,10 +110,6 @@ Paginated API response decorator with optional caching.
 **Offset-based Pagination:**
 
 ```typescript
-import { ResponsePaging } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { PaginationQuery } from '@common/pagination/decorators/pagination.decorator';
-
 @ResponsePaging('user.list')
 @Get('/list')
 async listUsers(
@@ -165,10 +174,6 @@ File download response decorator for CSV and Excel files.
 **CSV Export (Single Sheet):**
 
 ```typescript
-import { ResponseFile } from '@common/response/decorators/response.decorator';
-import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
-import { ENUM_FILE_EXTENSION_EXCEL } from '@common/file/enums/file.enum';
-
 @ResponseFile()
 @Get('/export')
 async exportUsers(): Promise<IResponseFileReturn<UserDto>> {
@@ -215,7 +220,7 @@ async exportAllData(): Promise<IResponseFileReturn<any>> {
 
 ## Response Structure
 
-### Standard Response
+### Standard
 
 ```typescript
 {
@@ -235,7 +240,7 @@ async exportAllData(): Promise<IResponseFileReturn<any>> {
 }
 ```
 
-### Paginated Response
+### Paginated
 
 ```typescript
 {

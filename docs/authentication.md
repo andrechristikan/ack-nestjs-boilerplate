@@ -143,11 +143,15 @@ graph TD
 
 ## JWT Authentication
 
+> 
+
 JWT (JSON Web Token) is an open standard ([RFC 7519][ref-jwt]) that defines a compact and self-contained way for securely transmitting information between parties as a JSON object. This information can be verified and trusted because it is digitally signed.
 
 JWTs can be signed using a secret (with the HMAC algorithm) or a public/private key pair using RSA or ECDSA.
 
 For more detailed information about JWT, please visit the official [JWT website][ref-jwt].
+
+> **Note**: Before using JWT authentication, you must generate cryptographic key pairs. See the [Installation Documentation - Generate Keys][ref-doc-installation] section for detailed instructions on key generation.
 
 
 ### Jwt Configuration

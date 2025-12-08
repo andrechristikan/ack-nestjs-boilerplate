@@ -226,10 +226,10 @@ export class UserSharedController {
     @Post('/mobile-number/add')
     async addMobileNumber(
         @AuthJwtPayload('userId') userId: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto,
         @Body()
-        body: UserAddMobileNumberRequestDto
+        body: UserAddMobileNumberRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
         return this.userService.addMobileNumber(userId, body, {
             ipAddress,
@@ -247,10 +247,10 @@ export class UserSharedController {
     async updateMobileNumber(
         @AuthJwtPayload('userId') userId: string,
         @Param('mobileNumberId') mobileNumberId: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto,
         @Body()
-        body: UserUpdateMobileNumberRequestDto
+        body: UserUpdateMobileNumberRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
         return this.userService.updateMobileNumber(
             userId,
@@ -282,7 +282,7 @@ export class UserSharedController {
         });
     }
 
-    // TODO: verify number implementation, but which provider?
+    // TODO: Verify number implementation, but which provider?
 
     @UserSharedClaimUsernameDoc()
     @Response('user.claimUsername')

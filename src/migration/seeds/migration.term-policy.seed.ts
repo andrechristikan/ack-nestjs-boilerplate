@@ -41,31 +41,26 @@ export class MigrationTermPolicySeed
             `Found ${this.termPolicies.length} TermPolicies to seed.`
         );
 
-        const existingTermPolicies =
-            await this.databaseService.termPolicy.findMany({
-                where: {
-                    type: {
-                        in: this.termPolicies.map(
-                            termPolicy => termPolicy.type
-                        ),
+        await this.databaseService.$transaction(
+            this.termPolicies.map(termPolicy =>
+                this.databaseService.termPolicy.upsert({
+                    where: {
+                        type_version: {
+                            type: termPolicy.type,
+                            version: termPolicy.version,
+                        },
                     },
-                },
-                select: {
-                    id: true,
-                },
-            });
-        if (existingTermPolicies.length > 0) {
-            this.logger.warn('TermPolicies already exist, skipping seed.');
-            return;
-        }
-
-        await this.databaseService.termPolicy.createMany({
-            data: this.termPolicies.map(termPolicy => ({
-                ...termPolicy,
-                contents: this.databaseUtil.toPlainArray(termPolicy.contents),
-                status: ENUM_TERM_POLICY_STATUS.published,
-            })),
-        });
+                    create: {
+                        ...termPolicy,
+                        contents: this.databaseUtil.toPlainArray(
+                            termPolicy.contents
+                        ),
+                        status: ENUM_TERM_POLICY_STATUS.published,
+                    },
+                    update: {},
+                })
+            )
+        );
 
         this.logger.log('TermPolicies seeded successfully.');
 

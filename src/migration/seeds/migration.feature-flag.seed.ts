@@ -38,28 +38,17 @@ export class MigrationFeatureFlagSeed
             `Found ${this.featureFlags.length} Feature Flags to seed.`
         );
 
-        const existingFeatureFlags =
-            await this.databaseService.featureFlag.findMany({
-                where: {
-                    key: {
-                        in: this.featureFlags.map(
-                            featureFlag => featureFlag.key
-                        ),
+        await this.databaseService.$transaction(
+            this.featureFlags.map(featureFlag =>
+                this.databaseService.featureFlag.upsert({
+                    where: {
+                        key: featureFlag.key,
                     },
-                },
-                select: {
-                    id: true,
-                },
-            });
-
-        if (existingFeatureFlags.length > 0) {
-            this.logger.warn('Feature Flags already exist, skipping seed.');
-            return;
-        }
-
-        await this.databaseService.featureFlag.createMany({
-            data: this.featureFlags,
-        });
+                    create: featureFlag,
+                    update: {},
+                })
+            )
+        );
 
         this.logger.log('Feature Flags seeded successfully.');
 

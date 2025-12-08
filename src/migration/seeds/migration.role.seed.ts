@@ -38,27 +38,23 @@ export class MigrationRoleSeed
         this.logger.log('Seeding Roles...');
         this.logger.log(`Found ${this.roles.length} Roles to seed.`);
 
-        const existingRoles = await this.databaseService.role.findMany({
-            where: {
-                name: {
-                    in: this.roles.map(role => role.name),
-                },
-            },
-            select: {
-                id: true,
-            },
-        });
-        if (existingRoles.length > 0) {
-            this.logger.warn('Roles already exist, skipping seed.');
-            return;
-        }
-
-        await this.databaseService.role.createMany({
-            data: this.roles.map(role => ({
-                ...role,
-                abilities: this.databaseUtil.toPlainArray(role.abilities),
-            })),
-        });
+        await this.databaseService.$transaction(
+            this.roles.map(role =>
+                this.databaseService.role.upsert({
+                    where: {
+                        name: role.name.toLowerCase(),
+                    },
+                    create: {
+                        ...role,
+                        name: role.name.toLowerCase(),
+                        abilities: this.databaseUtil.toPlainArray(
+                            role.abilities
+                        ),
+                    },
+                    update: {},
+                })
+            )
+        );
 
         this.logger.log('Roles seeded successfully.');
 

@@ -20,7 +20,7 @@ export class MigrationCountrySeed
     private readonly logger = new Logger(MigrationCountrySeed.name);
 
     private readonly env: ENUM_APP_ENVIRONMENT;
-    private countries: CountryRequestDto[] = [];
+    private readonly countries: CountryRequestDto[] = [];
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -36,25 +36,17 @@ export class MigrationCountrySeed
         this.logger.log('Seeding Countries...');
         this.logger.log(`Found ${this.countries.length} Countries to seed.`);
 
-        const existingCountries = await this.databaseService.country.findMany({
-            where: {
-                alpha2Code: {
-                    in: this.countries.map(country => country.alpha2Code),
-                },
-            },
-            select: {
-                id: true,
-            },
-        });
-
-        if (existingCountries.length > 0) {
-            this.logger.warn('Countries already exist, skipping seed.');
-            return;
-        }
-
-        await this.databaseService.country.createMany({
-            data: this.countries,
-        });
+        await this.databaseService.$transaction(
+            this.countries.map(country =>
+                this.databaseService.country.upsert({
+                    where: {
+                        alpha2Code: country.alpha2Code,
+                    },
+                    create: country,
+                    update: {},
+                })
+            )
+        );
 
         this.logger.log('Countries seeded successfully.');
 

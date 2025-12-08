@@ -16,10 +16,10 @@ import {
     IAwsS3CreateMultiplePart,
     IAwsS3DeleteDirOptions,
     IAwsS3GetItemsOptions,
-    IAwsS3MultipartOptions,
     IAwsS3Options,
     IAwsS3PresignOptions,
     IAwsS3PutItem,
+    IAwsS3PutItemOptions,
     IAwsS3PutItemWithAclOptions,
 } from '@common/aws/interfaces/aws.interface';
 
@@ -32,7 +32,10 @@ export interface IAwsS3Service {
         options?: IAwsS3GetItemsOptions
     ): Promise<AwsS3Dto[]>;
     getItem(key: string, options?: IAwsS3Options): Promise<AwsS3Dto>;
-    putItem(file: IAwsS3PutItem, options?: IAwsS3Options): Promise<AwsS3Dto>;
+    putItem(
+        file: IAwsS3PutItem,
+        options?: IAwsS3PutItemOptions
+    ): Promise<AwsS3Dto>;
     putItemWithAcl(
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemWithAclOptions
@@ -46,7 +49,7 @@ export interface IAwsS3Service {
     createMultiPart(
         file: IAwsS3CreateMultiplePart,
         maxPartNumber: number,
-        options?: IAwsS3MultipartOptions
+        options?: IAwsS3PutItemOptions
     ): Promise<AwsS3MultipartDto>;
     createMultiPartWithAcl(
         file: IAwsS3CreateMultiplePart,

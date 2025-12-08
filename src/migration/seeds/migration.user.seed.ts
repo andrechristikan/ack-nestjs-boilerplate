@@ -61,21 +61,6 @@ export class MigrationUserSeed
         this.logger.log('Seeding Users...');
         this.logger.log(`Found ${this.users.length} Users to seed.`);
 
-        const existingUsers = await this.databaseService.user.findMany({
-            where: {
-                email: {
-                    in: this.users.map(user => user.email),
-                },
-            },
-            select: {
-                id: true,
-            },
-        });
-        if (existingUsers.length > 0) {
-            this.logger.warn('Users already exist, skipping seed.');
-            return;
-        }
-
         const uniqueRoles = this.helperService.arrayUnique(
             this.users.map(user => user.role)
         );
@@ -90,6 +75,7 @@ export class MigrationUserSeed
                 name: true,
             },
         });
+
         if (roles.length !== uniqueRoles.length) {
             this.logger.warn('Roles not found for users, cannot seed.');
             return;
@@ -109,6 +95,7 @@ export class MigrationUserSeed
                 alpha2Code: true,
             },
         });
+
         if (countries.length !== uniqueCountries.length) {
             this.logger.error('Countries not found for users, cannot seed.');
             return;
@@ -129,6 +116,7 @@ export class MigrationUserSeed
                 type: true,
             },
         });
+
         if (termPolicies.length !== 2) {
             this.logger.error('TermPolicies not found for users, cannot seed.');
             return;
@@ -139,8 +127,8 @@ export class MigrationUserSeed
         const userAgent = UAParser(faker.internet.userAgent());
         const ip = faker.internet.ip();
 
-        await this.databaseService.$transaction([
-            ...this.users.flatMap(user => {
+        await this.databaseService.$transaction(
+            this.users.map(user => {
                 const userId = this.databaseUtil.createId();
                 const { passwordCreated, passwordExpired, passwordHash, salt } =
                     this.authUtil.createPassword(user.password);
@@ -149,108 +137,108 @@ export class MigrationUserSeed
                         ENUM_VERIFICATION_TYPE.email
                     );
 
-                return [
-                    this.databaseService.user.create({
-                        data: {
-                            id: userId,
-                            email: user.email.toLowerCase(),
-                            name: user.name,
-                            countryId: countries.find(
-                                country => country.alpha2Code === user.country
-                            ).id,
-                            roleId: roles.find(role => role.name === user.role)
-                                .id,
-                            salt,
-                            password: passwordHash,
-                            passwordCreated,
-                            passwordExpired,
-                            passwordAttempt: 0,
-                            signUpAt: today,
-                            isVerified: true,
-                            signUpWith: ENUM_USER_SIGN_UP_WITH.credential,
-                            signUpFrom: ENUM_USER_SIGN_UP_FROM.system,
-                            status: ENUM_USER_STATUS.active,
-                            termPolicy: {
-                                [ENUM_TERM_POLICY_TYPE.cookie]: false,
-                                [ENUM_TERM_POLICY_TYPE.marketing]: false,
-                                [ENUM_TERM_POLICY_TYPE.privacy]: true,
-                                [ENUM_TERM_POLICY_TYPE.termsOfService]: true,
-                            },
-                            username: this.userUtil.createRandomUsername(),
-                            deletedAt: null,
-                            passwordHistories: {
-                                create: {
-                                    password: passwordHash,
-                                    salt,
-                                    type: ENUM_PASSWORD_HISTORY_TYPE.admin,
-                                    expiredAt: passwordExpired,
-                                    createdAt: passwordCreated,
-                                    createdBy: userId,
-                                },
-                            },
-                            verifications: {
-                                create: {
-                                    expiredAt: this.helperService.dateCreate(),
-                                    verifiedAt: this.helperService.dateCreate(),
-                                    reference,
-                                    token,
-                                    type,
-                                    createdBy: userId,
-                                    to: user.email,
-                                    isUsed: true,
-                                },
-                            },
-                            activityLogs: {
-                                createMany: {
-                                    data: [
-                                        {
-                                            action: ENUM_ACTIVITY_LOG_ACTION.userCreated,
-                                            ipAddress: ip,
-                                            userAgent:
-                                                this.databaseUtil.toPlainObject(
-                                                    userAgent
-                                                ),
-                                            createdBy: userId,
-                                        },
-                                        {
-                                            action: ENUM_ACTIVITY_LOG_ACTION.userVerifiedEmail,
-                                            ipAddress: ip,
-                                            userAgent:
-                                                this.databaseUtil.toPlainObject(
-                                                    userAgent
-                                                ),
-                                            createdBy: userId,
-                                        },
-                                        ...termPolicies.map(termPolicy => ({
-                                            action: ENUM_ACTIVITY_LOG_ACTION.userAcceptTermPolicy,
-                                            metadata: {
-                                                termPolicyType: termPolicy.type,
-                                                termPolicyId: termPolicy.id,
-                                            },
-                                            ipAddress: ip,
-                                            userAgent:
-                                                this.databaseUtil.toPlainObject(
-                                                    userAgent
-                                                ),
-                                            createdBy: userId,
-                                        })),
-                                    ],
-                                },
-                            },
+                return this.databaseService.user.upsert({
+                    where: {
+                        email: user.email.toLowerCase(),
+                    },
+                    create: {
+                        id: userId,
+                        email: user.email.toLowerCase(),
+                        name: user.name,
+                        countryId: countries.find(
+                            country => country.alpha2Code === user.country
+                        ).id,
+                        roleId: roles.find(role => role.name === user.role).id,
+                        salt,
+                        password: passwordHash,
+                        passwordCreated,
+                        passwordExpired,
+                        passwordAttempt: 0,
+                        signUpAt: today,
+                        isVerified: true,
+                        signUpWith: ENUM_USER_SIGN_UP_WITH.credential,
+                        signUpFrom: ENUM_USER_SIGN_UP_FROM.system,
+                        status: ENUM_USER_STATUS.active,
+                        termPolicy: {
+                            [ENUM_TERM_POLICY_TYPE.cookie]: false,
+                            [ENUM_TERM_POLICY_TYPE.marketing]: false,
+                            [ENUM_TERM_POLICY_TYPE.privacy]: true,
+                            [ENUM_TERM_POLICY_TYPE.termsOfService]: true,
                         },
-                    }),
-                    ...termPolicies.map(termPolicy =>
-                        this.databaseService.termPolicyUserAcceptance.create({
-                            data: {
-                                userId: userId,
-                                termPolicyId: termPolicy.id,
+                        username: this.userUtil.createRandomUsername(),
+                        deletedAt: null,
+                        passwordHistories: {
+                            create: {
+                                password: passwordHash,
+                                salt,
+                                type: ENUM_PASSWORD_HISTORY_TYPE.admin,
+                                expiredAt: passwordExpired,
+                                createdAt: passwordCreated,
                                 createdBy: userId,
                             },
-                        })
-                    ),
-                ];
-            }),
-        ]);
+                        },
+                        verifications: {
+                            create: {
+                                expiredAt: this.helperService.dateCreate(),
+                                verifiedAt: this.helperService.dateCreate(),
+                                reference,
+                                token,
+                                type,
+                                createdBy: userId,
+                                to: user.email,
+                                isUsed: true,
+                            },
+                        },
+                        activityLogs: {
+                            createMany: {
+                                data: [
+                                    {
+                                        action: ENUM_ACTIVITY_LOG_ACTION.userCreated,
+                                        ipAddress: ip,
+                                        userAgent:
+                                            this.databaseUtil.toPlainObject(
+                                                userAgent
+                                            ),
+                                        createdBy: userId,
+                                    },
+                                    {
+                                        action: ENUM_ACTIVITY_LOG_ACTION.userVerifiedEmail,
+                                        ipAddress: ip,
+                                        userAgent:
+                                            this.databaseUtil.toPlainObject(
+                                                userAgent
+                                            ),
+                                        createdBy: userId,
+                                    },
+                                    ...termPolicies.map(termPolicy => ({
+                                        action: ENUM_ACTIVITY_LOG_ACTION.userAcceptTermPolicy,
+                                        metadata: {
+                                            termPolicyType: termPolicy.type,
+                                            termPolicyId: termPolicy.id,
+                                        },
+                                        ipAddress: ip,
+                                        userAgent:
+                                            this.databaseUtil.toPlainObject(
+                                                userAgent
+                                            ),
+                                        createdBy: userId,
+                                    })),
+                                ],
+                            },
+                        },
+                        acceptances: {
+                            createMany: {
+                                data: termPolicies.map(termPolicy => ({
+                                    termPolicyId: termPolicy.id,
+                                    createdBy: userId,
+                                })),
+                            },
+                        },
+                    },
+                    update: {},
+                });
+            })
+        );
 
         this.logger.log('Users seeded successfully.');
 

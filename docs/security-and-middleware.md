@@ -1,43 +1,10 @@
 # Security and Middleware Documentation
 
-This documentation explains the features and usage of **Request Module**: Located at `src/common/request`
+This documentation explains the features and usage of **Request Middleware Module**: Located at `src/common/request/middlewares`
 
 ## Overview
 
 ACK NestJS Boilerplate implements a comprehensive security and middleware layer for HTTP request/response processing. All middleware is centrally managed through `RequestMiddlewareModule` and applied globally to all routes using the wildcard pattern `{*wildcard}`.
-
-## Related Documents
-
-- [Authentication][ref-doc-authentication]
-- [Authorization][ref-doc-authorization]
-- [Configuration][ref-doc-configuration]
-- [Environment][ref-doc-environment]
-
-## Table of Contents
-
-- [Middleware](#middleware)
-- [Security](#security)
-    - [Authentication & Authorization](#authentication--authorization)
-    - [Helmet](#helmet)
-    - [Rate Limiting](#rate-limiting)
-    - [CORS](#cors)
-    - [Environment Protection](#environment-protection)
-    - [Request & Correlation IDs](#request--correlation-ids)
-    - [Body Parser](#body-parser)
-    - [URL Versioning](#url-versioning)
-    - [Custom Language](#custom-language)
-    - [Response Compression](#response-compression)
-    - [Response Time](#response-time)
-    - [Request Timeout](#request-timeout)
-- [Decorators](#decorators)
-    - [@RequestTimeout](#requesttimeout)
-    - [@RequestEnvProtected](#requestenvprotected)
-    - [@RequestIPAddress](#requestipaddress)
-    - [@RequestUserAgent](#requestuseragent)
-
-## Middleware
-
-All middleware is configured in `RequestMiddlewareModule` and executes in the following order:
 
 ```typescript
 consumer
@@ -54,16 +21,44 @@ consumer
   .forRoutes('{*wildcard}');
 ```
 
-## Security
+## Related Documents
 
-### Authentication & Authorization
+- [Authentication][ref-doc-authentication]
+- [Authorization][ref-doc-authorization]
+- [Configuration][ref-doc-configuration]
+- [Environment][ref-doc-environment]
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Related Documents](#related-documents)
+- [Authentication & Authorization](#authentication--authorization)
+- [Helmet](#helmet)
+- [Rate Limiting](#rate-limiting)
+- [CORS](#cors)
+- [Environment Protection](#environment-protection)
+- [Request & Correlation IDs](#request--correlation-ids)
+- [Body Parser](#body-parser)
+- [URL Versioning](#url-versioning)
+- [Custom Language](#custom-language)
+- [Response Compression](#response-compression)
+- [Response Time](#response-time)
+- [Request Timeout](#request-timeout)
+- [Decorators](#decorators)
+  - [@RequestTimeout](#requesttimeout)
+  - [@RequestEnvProtected](#requestenvprotected)
+  - [@RequestIPAddress](#requestipaddress)
+  - [@RequestUserAgent](#requestuseragent)
+
+
+## Authentication & Authorization
 
 ACK NestJS Boilerplate includes comprehensive authentication and authorization systems. See dedicated documentation:
 
 - [Authentication][ref-doc-authentication] - JWT, OAuth, API Keys, sessions, password management
 - [Authorization][ref-doc-authorization] - RBAC, policy abilities, user protection
 
-### Helmet
+## Helmet
 
 Applies protective HTTP headers using [Helmet][ref-helmet].
 
@@ -71,7 +66,7 @@ Applies protective HTTP headers using [Helmet][ref-helmet].
 
 **Usage:** Automatically applied to all routes.
 
-### Rate Limiting
+## Rate Limiting
 
 Prevents abuse using [Throttler][ref-throttler].
 
@@ -96,7 +91,7 @@ async endpoint() {}
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
-### CORS
+## CORS
 
 Manages cross-origin resource sharing.
 
@@ -110,7 +105,7 @@ Manages cross-origin resource sharing.
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
-### Environment Protection
+## Environment Protection
 
 Restricts endpoint access based on environment.
 
@@ -125,7 +120,7 @@ async debugEndpoint() {}
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
-### Request & Correlation IDs
+## Request & Correlation IDs
 
 Generates unique identifiers for request tracking.
 
@@ -141,7 +136,7 @@ interface IRequestApp extends Request {
 }
 ```
 
-### Body Parser
+## Body Parser
 
 Parses request bodies based on content-type.
 
@@ -156,7 +151,7 @@ Parses request bodies based on content-type.
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
-### URL Versioning
+## URL Versioning
 
 Extracts API version from URLs.
 
@@ -175,7 +170,7 @@ req.__version  // Extracted version number
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
-### Custom Language
+## Custom Language
 
 Processes `x-custom-lang` header for internationalization.
 
@@ -194,7 +189,7 @@ req.__language  // Validated language code
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
-### Response Compression
+## Response Compression
 
 Applies gzip/deflate compression using [compression][ref-compression].
 
@@ -202,7 +197,7 @@ Applies gzip/deflate compression using [compression][ref-compression].
 
 **Usage:** Automatically applied to all responses.
 
-### Response Time
+## Response Time
 
 Measures request duration using [response-time][ref-response-time].
 
@@ -213,7 +208,7 @@ Measures request duration using [response-time][ref-response-time].
 X-Response-Time: 123.456ms
 ```
 
-### Request Timeout
+## Request Timeout
 
 Prevents long-running requests.
 

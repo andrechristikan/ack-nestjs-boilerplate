@@ -3,11 +3,22 @@ import { TermPolicyService } from '@modules/term-policy/services/term-policy.ser
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { AwsModule } from '@common/aws/aws.module';
+import { TermPolicyTemplateService } from '@modules/term-policy/services/term-policy.template.service';
 
 @Global()
 @Module({
     imports: [AwsModule],
-    providers: [TermPolicyService, TermPolicyRepository, TermPolicyUtil],
-    exports: [TermPolicyService, TermPolicyRepository, TermPolicyUtil],
+    providers: [
+        TermPolicyService,
+        TermPolicyTemplateService,
+        TermPolicyRepository,
+        TermPolicyUtil,
+    ],
+    exports: [
+        TermPolicyService,
+        TermPolicyTemplateService,
+        TermPolicyRepository,
+        TermPolicyUtil,
+    ],
 })
 export class TermPolicyModule {}

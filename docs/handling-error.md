@@ -17,22 +17,21 @@ The error handling system provides comprehensive exception management using Nest
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
-- [How It Works](#how-it-works)
-- [Error Response Structure](#error-response-structure)
-- [Response Metadata](#response-metadata)
-- [Response Headers](#response-headers)
 - [Exception Filters](#exception-filters)
   - [AppGeneralFilter](#appgeneralfilter)
   - [AppHttpFilter](#apphttpfilter)
   - [AppValidationFilter](#appvalidationfilter)
   - [AppValidationImportFilter](#appvalidationimportfilter)
+- [Error Response Structure](#error-response-structure)
+- [Response Metadata](#response-metadata)
+- [Response Headers](#response-headers)
 - [Usage](#usage)
   - [Standard HTTP Exception](#standard-http-exception)
   - [Custom Error with Message Properties](#custom-error-with-message-properties)
   - [Custom Error with Additional Data](#custom-error-with-additional-data)
   - [Custom Error with Metadata](#custom-error-with-metadata)
 
-## How It Works
+## Exception Filters
 
 ACK NestJS Boilerplate uses 4 specialized exception filters registered globally in hierarchical order:
 
@@ -261,26 +260,22 @@ See [Request Validation][ref-doc-request-validation] for details.
 
 ## Usage
 
-### Standard HTTP Exception
+### Error with Default HTTP Exception
 
 For standard HTTP errors:
 
 ```typescript
-import { NotFoundException } from '@nestjs/common';
-
 throw new NotFoundException();
 // HTTP 404, statusCode: 404, message: "Not Found"
 ```
 
 See [NestJS Exception Filters][ref-nestjs-exception-filters] for available exceptions.
 
-### Custom Error with Message Properties
+### Error with Message Properties
 
 Use message properties for dynamic message interpolation:
 
 ```typescript
-import { BadRequestException } from '@nestjs/common';
-
 throw new BadRequestException({
   statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
   message: 'user.error.statusInvalid',
@@ -308,7 +303,7 @@ throw new BadRequestException({
 }
 ```
 
-### Custom Error with Additional Data
+### Error with Additional Data
 
 Add contextual data to help debugging:
 
@@ -340,46 +335,6 @@ throw new BadRequestException({
   "metadata": { ... }
 }
 ```
-
-### Custom Error with Metadata
-
-Add custom properties to metadata:
-
-```typescript
-throw new BadRequestException({
-  statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
-  message: 'user.error.statusInvalid',
-  messageProperties: {
-    status: user.status.toLowerCase(),
-  },
-  metadata: {
-    attemptedOperation: 'statusChange',
-    resourceType: 'user',
-  },
-});
-```
-
-**Response**:
-```json
-{
-  "statusCode": 5100,
-  "message": "User status active is invalid",
-  "metadata": {
-    "attemptedOperation": "statusChange",
-    "resourceType": "user",
-    "language": "en",
-    "timestamp": 1660190937231,
-    "timezone": "Asia/Jakarta",
-    "path": "/api/v1/users/123/status",
-    "version": "1",
-    "repoVersion": "1.0.0",
-    "requestId": "550e8400-e29b-41d4-a716-446655440000",
-    "correlationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
-  }
-}
-```
-
-**Note**: Custom metadata is merged first, then default metadata (default takes precedence for same keys).
 
 <!-- REFERENCES -->
 

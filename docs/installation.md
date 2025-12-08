@@ -81,8 +81,6 @@ This step will install all the required Node.js packages and dependencies for th
 yarn install
 ```
 
-**Expected output**: You should see Yarn downloading and installing packages. This may take a few minutes depending on your internet connection.
-
 ### Create Environment
 
 The environment file contains all configuration settings for your application including database connections, JWT settings, and external service configurations.
@@ -180,21 +178,21 @@ For Docker installation, ensure these specific values in your `.env` file:
 **Database Configuration:**
 ```bash
 # MongoDB (Docker containers)
-DATABASE_URL="mongodb://localhost:27017,localhost:27018,localhost:27019/ack-nestjs-boilerplate?replicaSet=rs0"
+DATABASE_URL=mongodb://localhost:27017,localhost:27018,localhost:27019/ack-nestjs-boilerplate?replicaSet=rs0
 ```
 
 **Redis Configuration:**
 ```bash
 # Redis (Docker containers)
-CACHE_REDIS_URL="redis://localhost:6379/0"
-QUEUE_REDIS_URL="redis://localhost:6379/1"
+CACHE_REDIS_URL=redis://localhost:6379/0
+QUEUE_REDIS_URL=redis://localhost:6379/1
 ```
 
 **JWKS Configuration (Docker-hosted):**
 ```bash
 # JWKS server URLs (hosted by Docker container)
-AUTH_JWT_ACCESS_TOKEN_JWKS_URI="http://localhost:3011/.well-known/access-jwks.json"
-AUTH_JWT_REFRESH_TOKEN_JWKS_URI="http://localhost:3011/.well-known/refresh-jwks.json"
+AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://localhost:3011/.well-known/access-jwks.json
+AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://localhost:3011/.well-known/refresh-jwks.json
 ```
 
 > **For comprehensive environment configuration details**, refer to the [Environment Documentation][ref-doc-environment].
@@ -233,7 +231,7 @@ Now you're ready to start the complete Docker environment with all services.
 
 ```bash
 # Start all services in detached mode (runs in background)
-docker-compose --profile full up -d
+docker-compose --profile init up -d
 ```
 
 **What this command does:**
@@ -257,8 +255,6 @@ The Docker setup includes comprehensive health checks for all services, ensuring
 
 
 ### Troubleshooting
-
-**Common Issues:**
 
 - **Port conflicts**: Ensure ports 27017, 6379, 3010, 3011 are not in use by other applications
 - **Host resolution issues**: Add `127.0.0.1 host.docker.internal` to your `/etc/hosts` file if needed
@@ -292,7 +288,15 @@ yarn migration:seed
 Use this to seed email data for testing email sending features.
 
 ```bash
-yarn migration email --type seed
+yarn migration template-email --type seed
+```
+
+**Seed term policies:**
+
+Use this to seed term policies data.
+
+```bash
+yarn migration template-termPolicy --type seed
 ```
 
 For a complete guide and module details, see [Database Documentation][ref-doc-database].
