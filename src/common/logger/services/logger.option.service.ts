@@ -484,7 +484,7 @@ export class LoggerOptionService {
         return this.autoLogger === true
             ? {
                   ignore: (req: IRequestApp) =>
-                      this.helperService.checkUrlContainWildcard(
+                      this.helperService.checkUrlMatchesPatterns(
                           req.url,
                           LOGGER_EXCLUDED_ROUTES
                       ),

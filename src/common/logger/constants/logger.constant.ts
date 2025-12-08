@@ -1,12 +1,23 @@
 /**
- * Array of route patterns excluded from logging.
- * Contains health checks, metrics, documentation, and static asset routes.
+ * Routes excluded from Sentry monitoring and detailed logging.
+ * Supports wildcard patterns (*) for flexible matching.
+ *
+ * Pattern rules:
+ * - Exact match: "/api/health" - matches only this exact path
+ * - Trailing wildcard: "/api/health*" - matches /api/health and /api/health/anything
+ * - Path wildcard: "/api/health/*" - matches only /api/health/something (requires slash)
+ * - Full wildcard: "*" - matches everything (use with caution!)
+ *
+ * All patterns are case-insensitive and work with both full URLs and paths.
  */
 export const LOGGER_EXCLUDED_ROUTES: string[] = [
-    '/api/health*',
-    '/metrics*',
+    '/api/health',
+    '/api/health/*',
+    '/metrics',
+    '/metrics/*',
     '/favicon.ico',
-    '/docs*',
+    '/docs',
+    '/docs/*',
     '/',
 ] as const;
 

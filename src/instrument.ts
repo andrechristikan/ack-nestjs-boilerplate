@@ -26,10 +26,10 @@ if (loggerConfigs.sentry.dsn) {
             appConfigs.env === ENUM_APP_ENVIRONMENT.PRODUCTION ? 0.1 : 0.5,
         normalizeDepth: 3,
         maxValueLength: 1000,
-        attachStacktrace: false,
+        attachStacktrace: true,
         sendDefaultPii: false,
         maxBreadcrumbs: 30,
-        beforeSend(event) {
+        beforeSend(event, hint) {
             if (event.exception?.values) {
                 const exception = event.exception.values[0];
                 const isWorkerException = exception?.type === 'WorkerException';
@@ -48,7 +48,7 @@ if (loggerConfigs.sentry.dsn) {
                 const url = event.request.url;
 
                 if (
-                    helperService.checkUrlContainWildcard(
+                    helperService.checkUrlMatchesPatterns(
                         url,
                         LOGGER_EXCLUDED_ROUTES
                     )
@@ -70,10 +70,29 @@ if (loggerConfigs.sentry.dsn) {
                 return null;
             }
 
+            if (appConfigs.env !== ENUM_APP_ENVIRONMENT.PRODUCTION && hint) {
+                event.extra = {
+                    ...event.extra,
+                    originalException: hint.originalException,
+                };
+            }
+
             return event;
         },
         tracesSampler: samplingContext => {
             const transaction = samplingContext?.transactionContext;
+            const transactionName = transaction?.name;
+
+            // Never sample excluded routes
+            if (
+                transactionName &&
+                helperService.checkUrlMatchesPatterns(
+                    transactionName,
+                    LOGGER_EXCLUDED_ROUTES as string[]
+                )
+            ) {
+                return 0;
+            }
 
             if (
                 appConfigs.env === ENUM_APP_ENVIRONMENT.PRODUCTION &&

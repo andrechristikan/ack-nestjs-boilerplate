@@ -441,30 +441,80 @@ export class HelperService implements IHelperService {
     }
 
     /**
-     * Checks if URL matches any of the provided wildcard patterns.
-     * @param {string} url - URL to check
-     * @param {string[]} patterns - Array of patterns, may include wildcards (*)
-     * @returns {boolean} True if URL matches any pattern
+     * Checks if a URL path matches any of the provided wildcard patterns.
+     * Supports both full URLs and paths, with case-insensitive matching.
+     *
+     * Pattern rules:
+     * - Exact: "/api/health" matches only "/api/health"
+     * - Trailing wildcard: "/api/health*" matches "/api/health" and "/api/health/anything"
+     * - Path wildcard: "/api/health/*" matches only "/api/health/something" (requires slash)
+     * - Full wildcard: "/*" or "*" matches everything
+     *
+     * @param url - URL or path to check (e.g., "http://example.com/api/health" or "/api/health")
+     * @param patterns - Array of patterns with optional wildcards (e.g., ["/api/health*", "/metrics"])
+     * @returns True if URL matches any pattern
      */
-    checkUrlContainWildcard(url: string, patterns: string[]): boolean {
-        if (patterns.includes(url)) {
-            return true;
+    checkUrlMatchesPatterns(url: string, patterns: string[]): boolean {
+        if (!url || !patterns?.length) {
+            return false;
         }
 
-        return patterns.some(pattern => {
-            if (pattern.includes('*')) {
-                try {
-                    const regexPattern = pattern
-                        .replace(/\./g, '\\.')
-                        .replace(/\*/g, '.*');
+        let pathname: string;
+        try {
+            const urlObj = new URL(url);
+            pathname = urlObj.pathname;
+        } catch {
+            pathname = url.split('?')[0].split('#')[0];
+        }
 
-                    const regex = new RegExp(`^${regexPattern}$`);
-                    return regex.test(url);
-                } catch {
-                    return false;
-                }
+        const normalizedPath = pathname.toLowerCase();
+
+        return patterns.some(pattern => {
+            if (!pattern) {
+                return false;
             }
-            return false;
+
+            const normalizedPattern = pattern.toLowerCase();
+
+            if (normalizedPath === normalizedPattern) {
+                return true;
+            }
+
+            if (!pattern.includes('*')) {
+                return false;
+            }
+
+            try {
+                if (normalizedPattern === '*') {
+                    return true;
+                }
+
+                if (normalizedPattern.endsWith('*')) {
+                    const basePattern = normalizedPattern.slice(0, -1);
+
+                    if (!basePattern) {
+                        return true;
+                    }
+
+                    if (basePattern.endsWith('/')) {
+                        return normalizedPath.startsWith(basePattern);
+                    }
+
+                    return (
+                        normalizedPath === basePattern ||
+                        normalizedPath.startsWith(basePattern + '/')
+                    );
+                }
+
+                const regexPattern = normalizedPattern
+                    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+                    .replace(/\*/g, '.*');
+
+                const regex = new RegExp(`^${regexPattern}$`);
+                return regex.test(normalizedPath);
+            } catch {
+                return false;
+            }
         });
     }
 

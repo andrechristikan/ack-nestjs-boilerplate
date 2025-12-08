@@ -31,7 +31,7 @@ export interface IHelperService {
         options?: IHelperPasswordOptions
     ): boolean;
     checkEmail(value: string): IHelperEmailValidation;
-    checkUrlContainWildcard(url: string, patterns: string[]): boolean;
+    checkUrlMatchesPatterns(url: string, patterns: string[]): boolean;
     calculateAge(dateOfBirth: Date, fromYear?: number): Duration;
     dateCheckIso(date: string): boolean;
     dateCheckTimestamp(timestamp: number): boolean;
