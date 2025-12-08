@@ -224,13 +224,11 @@ export class ApiKeyService implements IApiKeyService {
 
     async findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null> {
         const cached = await this.apiKeyUtil.getCacheByKey(key);
-        console.log('cached', cached);
         if (cached) {
             return cached;
         }
 
         const apiKey = await this.apiKeyRepository.findOneByKey(key);
-        console.log('apiKey from db', apiKey);
         if (apiKey) {
             await this.apiKeyUtil.setCacheByKey(key, apiKey);
         }
@@ -262,10 +260,8 @@ export class ApiKeyService implements IApiKeyService {
         }
 
         const [key, secret] = xApiKey;
-        console.log('key, secret', key, secret);
         const today = this.helperService.dateCreate();
         const apiKey: ApiKey = await this.findOneActiveByKeyAndCache(key);
-        console.log('apiKey', apiKey);
 
         if (!apiKey) {
             throw new ForbiddenException({

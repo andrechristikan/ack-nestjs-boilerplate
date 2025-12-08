@@ -47,7 +47,7 @@ export interface IPaginationQueryReturn {
     };
     orderBy?: IPaginationOrderBy;
     limit: number;
-    includes: unknown;
+    include: unknown;
 }
 
 export interface IPaginationQueryOffsetParams extends IPaginationQueryReturn {

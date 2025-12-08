@@ -4,11 +4,18 @@ import {
     ResponseDto,
     ResponseMetadataDto,
 } from '@common/response/dtos/response.dto';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import {
+    ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+    ENUM_PAGINATION_TYPE,
+} from '@common/pagination/enums/pagination.enum';
 
 /**
  * Pagination metadata DTO extending base response metadata with pagination information.
  * Provides comprehensive pagination details including search, filtering, sorting, and page statistics.
+ *
+ * **Pagination Types:**
+ * - `OFFSET`: Traditional page-based pagination with page numbers
+ * - `CURSOR`: Cursor-based pagination for efficient traversal of large datasets
  */
 export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
@@ -110,6 +117,14 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
         example: ['createdAt', 'updatedAt'],
     })
     availableOrderBy: string[];
+
+    @ApiProperty({
+        required: true,
+        type: String,
+        enum: ENUM_PAGINATION_TYPE,
+        example: ENUM_PAGINATION_TYPE.OFFSET,
+    })
+    type: ENUM_PAGINATION_TYPE;
 }
 
 /**

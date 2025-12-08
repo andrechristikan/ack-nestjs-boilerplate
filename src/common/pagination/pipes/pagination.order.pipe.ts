@@ -50,7 +50,12 @@ export function PaginationOrderPipe(
                 !defaultAvailableOrder ||
                 defaultAvailableOrder.length === 0
             ) {
-                return value;
+                return {
+                    ...value,
+                    orderBy: {
+                        createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+                    },
+                };
             }
 
             const finalOrderBy = value.orderBy.trim();

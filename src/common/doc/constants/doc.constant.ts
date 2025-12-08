@@ -72,7 +72,7 @@ export const DOC_FILE_ERROR_RESPONSES = {
     }),
 };
 
-export const DOC_PAGINATION_QUERIES = [
+export const DOC_PAGINATION_OFFSET_QUERIES = [
     {
         name: 'perPage',
         required: false,
@@ -88,5 +88,24 @@ export const DOC_PAGINATION_QUERIES = [
         example: 1,
         type: 'number',
         description: 'page number, max 20',
+    },
+];
+
+export const DOC_PAGINATION_CURSOR_QUERIES = [
+    {
+        name: 'perPage',
+        required: false,
+        allowEmptyValue: true,
+        example: 20,
+        type: 'number',
+        description: 'Data per page, max 100',
+    },
+    {
+        name: 'cursor',
+        required: false,
+        allowEmptyValue: true,
+        example: 'eyJpZCI6IjE2In0=',
+        type: 'string',
+        description: 'The pagination cursor returned from the previous request',
     },
 ];

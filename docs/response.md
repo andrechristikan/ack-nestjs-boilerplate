@@ -94,7 +94,7 @@ async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto): Promise<I
 
 ### @ResponsePaging
 
-Paginated API response decorator with optional caching.
+Paginated API response decorator with optional caching. Supports both offset-based and cursor-based pagination.
 
 **Parameters:**
 - `messagePath` (string): Path to response message for localization
@@ -104,6 +104,7 @@ Paginated API response decorator with optional caching.
 **Requirements:**
 - Request must include pagination parameters (see [Pagination Documentation][ref-doc-pagination])
 - Response must implement `IResponsePagingReturn<T>` interface
+- Must specify pagination `type`: `'offset'` or `'cursor'`
 
 **Interceptor:** `ResponsePagingInterceptor` - validates pagination data, supports offset and cursor-based pagination, includes search/filter/sort metadata
 
@@ -258,18 +259,26 @@ async exportAllData(): Promise<IResponseFileReturn<any>> {
     correlationId: string;
     
     // Pagination metadata
+    type: 'offset' | 'cursor'; // Pagination type
     search?: string;
     filters?: Record<string, any>;
     perPage: number;
+    
+    // Offset-specific fields (when type = 'offset')
     page?: number;
     totalPage?: number;
     count?: number;
     nextPage?: number;
     previousPage?: number;
+    hasPrevious?: boolean;
+    
+    // Cursor-specific fields (when type = 'cursor')
     nextCursor?: string;
     previousCursor?: string;
+    count?: number; // Optional, included if requested
+    
+    // Common fields
     hasNext: boolean;
-    hasPrevious: boolean;
     orderBy: string;
     orderDirection: 'asc' | 'desc';
     availableSearch: string[];

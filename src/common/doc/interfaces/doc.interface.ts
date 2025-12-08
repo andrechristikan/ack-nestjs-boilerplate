@@ -3,6 +3,7 @@ import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { ClassConstructor } from 'class-transformer';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
+import { ENUM_PAGINATION_TYPE } from '@common/pagination/enums/pagination.enum';
 
 export interface IDocOptions {
     summary?: string;
@@ -56,6 +57,7 @@ export interface IDocResponsePagingOptions<T = unknown>
     extends IDocResponseOptions<T> {
     availableSearch?: string[];
     availableOrder?: string[];
+    type?: ENUM_PAGINATION_TYPE;
 }
 
 export interface IDocResponseFileOptions

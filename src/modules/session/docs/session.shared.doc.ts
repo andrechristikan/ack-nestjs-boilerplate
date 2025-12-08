@@ -8,6 +8,7 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { SessionDocParamsId } from '@modules/session/constants/session.doc.constant';
+import { ENUM_PAGINATION_TYPE } from '@common/pagination/enums/pagination.enum';
 
 export function SessionSharedListDoc(): MethodDecorator {
     return applyDecorators(
@@ -20,6 +21,7 @@ export function SessionSharedListDoc(): MethodDecorator {
         }),
         DocResponsePaging<SessionResponseDto>('session.list', {
             dto: SessionResponseDto,
+            type: ENUM_PAGINATION_TYPE.CURSOR,
         })
     );
 }

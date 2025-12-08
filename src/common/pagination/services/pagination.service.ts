@@ -3,7 +3,10 @@ import {
     PAGINATION_DEFAULT_MAX_PAGE,
     PAGINATION_DEFAULT_MAX_PER_PAGE,
 } from '@common/pagination/constants/pagination.constant';
-import { ENUM_PAGINATION_TYPE } from '@common/pagination/enums/pagination.enum';
+import {
+    ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+    ENUM_PAGINATION_TYPE,
+} from '@common/pagination/enums/pagination.enum';
 import {
     IPaginationCursorReturn,
     IPaginationCursorValue,
@@ -16,21 +19,40 @@ import { IPaginationService } from '@common/pagination/interfaces/pagination.ser
 import { Injectable } from '@nestjs/common';
 
 /**
- * Service for handling pagination operations with offset and cursor-based pagination
+ * Service for handling pagination operations with offset and cursor-based pagination.
+ *
+ * This service provides two pagination strategies:
+ * - **Offset-based pagination**: Traditional page number and limit approach
+ * - **Cursor-based pagination**: Uses cursor tokens for efficient traversal of large datasets
  */
 @Injectable()
 export class PaginationService implements IPaginationService {
     /**
-     * Performs offset-based pagination
+     * Performs offset-based pagination using page number and limit approach.
+     *
+     * **Default Values:**
+     * - orderBy: `{ createdAt: 'DESC' }` - Results are sorted by creation date in descending order
+     *
+     * @template TReturn - The type of items being paginated
      * @param {IPaginationRepository} repository - Repository instance that implements IPaginationRepository
-     * @param {IPaginationOffsetParams} args - Pagination parameters including limit, skip, orderBy, search, and select
-     * @returns {Promise<IPaginationOffsetReturn<TReturn>>} Promise that resolves to paginated result with items and pagination metadata
+     * @param {IPaginationQueryOffsetParams} args - Pagination parameters.
+     * @returns {Promise<IPaginationOffsetReturn<TReturn>>} Promise that resolves to paginated result with items, metadata (count, page, totalPage, hasNext, hasPrevious, nextPage, previousPage)
+     * @throws {Error} If validation constraints are violated
      */
     async offset<TReturn>(
         repository: IPaginationRepository,
         args: IPaginationQueryOffsetParams
     ): Promise<IPaginationOffsetReturn<TReturn>> {
-        const { limit, skip, orderBy, where, select, includes } = args;
+        const {
+            limit,
+            skip,
+            orderBy = {
+                createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+            },
+            where,
+            select,
+            include,
+        } = args;
         const currentPage = Math.floor(skip / limit) + 1;
 
         if (limit <= 0) {
@@ -63,7 +85,7 @@ export class PaginationService implements IPaginationService {
                 take: limit,
                 select,
                 orderBy,
-                includes,
+                include,
             }),
         ]);
 
@@ -88,10 +110,22 @@ export class PaginationService implements IPaginationService {
     }
 
     /**
-     * Performs cursor-based pagination
+     * Performs cursor-based pagination using cursor tokens for efficient traversal.
+     *
+     * **Default Values:**
+     * - orderBy: `{ createdAt: 'DESC' }` - Results are sorted by creation date in descending order
+     * - cursorField: `PAGINATION_DEFAULT_CURSOR_FIELD` - Field used for cursor positioning
+     *
+     * **Cursor Behavior:**
+     * - The cursor is encoded using URL-safe base64 encoding
+     * - If cursor is invalid or conditions changed, pagination resets to first page
+     * - Fetches `limit + 1` items to determine if there are more results
+     *
+     * @template TReturn - The type of items being paginated
      * @param {IPaginationRepository} repository - Repository instance that implements IPaginationRepository
-     * @param {IPaginationCursorParams} args - Cursor pagination parameters including limit, cursor, orderBy, search, select, cursorField, and includeCount
-     * @returns {Promise<IPaginationCursorReturn<TReturn>>} Promise that resolves to cursor paginated result with items and cursor metadata
+     * @param {IPaginationQueryCursorParams} args - Cursor pagination parameters
+     * @returns {Promise<IPaginationCursorReturn<TReturn>>} Promise that resolves to cursor paginated result with items, cursor token, hasNext flag, and optional count
+     * @throws {Error} If validation constraints are violated
      */
     async cursor<TReturn>(
         repository: IPaginationRepository,
@@ -99,12 +133,15 @@ export class PaginationService implements IPaginationService {
     ): Promise<IPaginationCursorReturn<TReturn>> {
         const {
             limit,
-            orderBy,
+            orderBy = {
+                createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
+            },
             where,
             select,
             cursorField = PAGINATION_DEFAULT_CURSOR_FIELD,
             includeCount,
         } = args;
+
         let { cursor } = args;
 
         if (limit <= 0) {
@@ -153,6 +190,7 @@ export class PaginationService implements IPaginationService {
             TReturn[],
             number,
         ];
+
         const hasNext = items.length > limit;
         const data = hasNext ? items.slice(0, limit) : items;
 
@@ -171,7 +209,7 @@ export class PaginationService implements IPaginationService {
             cursor: nextCursor,
             perPage: limit,
             hasNext,
-            data: items as TReturn[],
+            data: data as TReturn[],
             ...(includeCount && { count }),
         };
     }

@@ -33,7 +33,7 @@ export class SessionRepository {
                     ...where,
                     userId,
                 },
-                includes: {
+                include: {
                     user: true,
                 },
             }
@@ -52,7 +52,7 @@ export class SessionRepository {
                     ...where,
                     userId,
                 },
-                includes: {
+                include: {
                     user: true,
                 },
             }

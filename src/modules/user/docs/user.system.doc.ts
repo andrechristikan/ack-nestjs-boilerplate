@@ -6,6 +6,7 @@ import {
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { ENUM_PAGINATION_TYPE } from '@common/pagination/enums/pagination.enum';
 import { UserDocQueryList } from '@modules/user/constants/user.doc.constant';
 import {
     UserCheckEmailRequestDto,
@@ -31,6 +32,7 @@ export function UserSystemListDoc(): MethodDecorator {
         }),
         DocResponsePaging<UserListResponseDto>('user.list', {
             dto: UserListResponseDto,
+            type: ENUM_PAGINATION_TYPE.CURSOR,
         })
     );
 }

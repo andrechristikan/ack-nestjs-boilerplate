@@ -72,7 +72,7 @@ export class UserRepository {
                 ...role,
                 deletedAt: null,
             },
-            includes: {
+            include: {
                 role: true,
             },
         });
@@ -94,7 +94,7 @@ export class UserRepository {
                 deletedAt: null,
                 status: ENUM_USER_STATUS.active,
             },
-            includes: {
+            include: {
                 role: true,
             },
         });

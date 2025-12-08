@@ -30,7 +30,7 @@ export class PasswordHistoryRepository {
                     ...where,
                     userId,
                 },
-                includes: {
+                include: {
                     user: true,
                 },
             }
@@ -49,7 +49,7 @@ export class PasswordHistoryRepository {
                     ...where,
                     userId,
                 },
-                includes: {
+                include: {
                     user: true,
                 },
             }

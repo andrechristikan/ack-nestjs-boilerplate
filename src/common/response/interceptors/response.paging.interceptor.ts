@@ -51,10 +51,16 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
      * applies localization, sets custom headers, and returns a consistent paginated
      * response structure with pagination information.
      *
+     * **Pagination Type Handling:**
+     * - For **CURSOR** type: Extracts `cursor` field for next page navigation
+     * - For **OFFSET** type: Extracts `page`, `totalPage`, `nextPage`, `previousPage`, and `hasPrevious` fields
+     *
      * @param context - The execution context containing request/response information
      * @param next - The next handler in the chain
      * @returns Observable of the transformed paginated response promise
      * @throws Error when response data is not properly formatted for pagination
+     * @throws Error when type is not 'offset' or 'cursor'
+     * @throws Error when data field is not an array
      */
     intercept(
         context: ExecutionContext,
@@ -87,6 +93,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         count,
                         hasNext,
                         perPage,
+                        type,
                     } = responseData;
 
                     let nextCursor: string | undefined;
@@ -96,6 +103,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                     let nextPage: number | undefined;
                     let previousPage: number | undefined;
                     let page: number | undefined;
+                    let hasPrevious: boolean | undefined;
 
                     if (responseData.type === 'cursor') {
                         nextCursor = responseData.cursor;
@@ -104,6 +112,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         nextPage = responseData.nextPage;
                         previousPage = responseData.previousPage;
                         page = responseData.page;
+                        hasPrevious = responseData.hasPrevious;
                     }
 
                     data = rData;
@@ -125,8 +134,10 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
 
                     const finalMetadata: ResponsePagingMetadataDto = {
                         ...metadata,
+                        type,
                         count,
                         hasNext,
+                        hasPrevious,
                         totalPage,
                         nextCursor,
                         previousCursor,
@@ -169,8 +180,14 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
     /**
      * Creates standardized pagination response metadata from request information.
      *
+     * Initializes pagination metadata with default values including:
+     * - Request tracking information (language, timestamp, timezone, path, version, IDs)
+     * - Pagination defaults (type: OFFSET, page: 0, perPage: 0, count: 0)
+     * - Search and filter defaults (undefined)
+     * - Navigation flags (hasNext: false, hasPrevious: false)
+     *
      * @param request - The incoming HTTP request
-     * @returns ResponsePagingMetadataDto containing base metadata for the response
+     * @returns ResponsePagingMetadataDto containing base metadata for the response with default OFFSET type
      */
     private createPagingResponseMetadata(
         request: IRequestApp
@@ -209,14 +226,22 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
             hasPrevious: false,
             nextCursor: undefined,
             previousCursor: undefined,
+            type: ENUM_PAGINATION_TYPE.OFFSET,
         };
     }
 
     /**
      * Validates the pagination response data structure.
      *
+     * **Validations:**
+     * - Response data must be an instance of IResponsePaging
+     * - Type field must be either 'offset' or 'cursor'
+     * - Data field must be an array and cannot be empty
+     *
      * @param responseData - The response data to validate
      * @throws Error when response data is not properly formatted for pagination
+     * @throws Error when type is not 'offset' or 'cursor'
+     * @throws Error when data field is not an array
      */
     private validatePaginationResponse(
         responseData: IResponsePagingReturn<T>

@@ -32,16 +32,21 @@ import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-cod
 import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
 import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import {
+    ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+    ENUM_PAGINATION_TYPE,
+} from '@common/pagination/enums/pagination.enum';
 import {
     DOC_CONTENT_TYPE_MAPPING,
     DOC_FILE_ERROR_RESPONSES,
+    DOC_PAGINATION_CURSOR_QUERIES,
     DOC_PAGINATION_ERROR_RESPONSES,
-    DOC_PAGINATION_QUERIES,
+    DOC_PAGINATION_OFFSET_QUERIES,
     DOC_STANDARD_ERROR_RESPONSES,
 } from '@common/doc/constants/doc.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
+import { faker } from '@faker-js/faker';
 
 /**
  * Helper function to create a schema object with consistent structure.
@@ -253,6 +258,16 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                     type: 'string',
                 },
             },
+            {
+                name: 'x-correlation-id',
+                description:
+                    'Correlation identifier for tracking requests across services',
+                required: false,
+                schema: {
+                    example: faker.string.uuid(),
+                    type: 'string',
+                },
+            },
         ]),
         DOC_STANDARD_ERROR_RESPONSES.INTERNAL_SERVER_ERROR,
         DOC_STANDARD_ERROR_RESPONSES.REQUEST_TIMEOUT,
@@ -459,10 +474,16 @@ export function DocResponse<T = void>(
  * Creates an API documentation decorator for paginated response endpoints.
  * This decorator automatically includes pagination query parameters and sets up the response schema
  * for paginated data with metadata about total count, current page, etc.
+ *
+ * The decorator supports two pagination types:
+ * - **CURSOR**: Uses cursor-based pagination queries (cursor, nextCursor, previousCursor)
+ * - **OFFSET**: Uses offset-based pagination queries (page, perPage, limit, offset)
+ *
  * It also supports optional search and ordering functionality.
  * @template T - Type of the DTO for paginated response data
  * @param {string} messagePath - The message path/key for internationalization
  * @param {IDocResponsePagingOptions<T>} options - Configuration for paginated response documentation
+ * @param {ENUM_PAGINATION_TYPE} options.type - Pagination type (CURSOR or OFFSET) to determine which query parameters to include
  * @returns {MethodDecorator} A method decorator that applies Swagger paginated response documentation
  */
 export function DocResponsePaging<T>(
@@ -471,7 +492,6 @@ export function DocResponsePaging<T>(
 ): MethodDecorator {
     const docs = [
         ApiProduces('application/json'),
-        ...DOC_PAGINATION_QUERIES.map(query => ApiQuery(query)),
         ApiExtraModels(ResponsePagingDto),
         ApiExtraModels(options.dto),
         ApiResponse({
@@ -503,6 +523,16 @@ export function DocResponsePaging<T>(
         DOC_PAGINATION_ERROR_RESPONSES.ORDER_BY_NOT_ALLOWED,
         DOC_PAGINATION_ERROR_RESPONSES.FILTER_INVALID_VALUE,
     ];
+
+    if (options.type === ENUM_PAGINATION_TYPE.CURSOR) {
+        docs.push(
+            ...DOC_PAGINATION_CURSOR_QUERIES.map(query => ApiQuery(query))
+        );
+    } else {
+        docs.push(
+            ...DOC_PAGINATION_OFFSET_QUERIES.map(query => ApiQuery(query))
+        );
+    }
 
     if (options.availableSearch) {
         docs.push(

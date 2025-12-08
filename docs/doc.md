@@ -66,13 +66,13 @@ Basic API documentation decorator that sets up common operation metadata.
 **Auto-includes:**
 
 - Custom headers:
-  - `x-custom-lang` - Custom language header (default: EN)
-  - `x-timestamp` - Timestamp in milliseconds
-  - `x-timezone` - Timezone (e.g., Asia/Jakarta)
-  - `x-version` - API version
-  - `x-repo-version` - Repository version
-  - `x-request-id` - Unique request identifier (UUID)
-  - `x-correlation-id` - Correlation identifier for tracking requests across services
+  - `x-custom-lang` - **Customizable by frontend** - Custom language header (default: EN)
+  - `x-correlation-id` - **Customizable by frontend** - Correlation identifier for tracking requests across services
+  - `x-timestamp` - Auto-included - Timestamp in milliseconds
+  - `x-timezone` - Auto-included - Timezone (e.g., Asia/Jakarta)
+  - `x-version` - Auto-included - API version
+  - `x-repo-version` - Auto-included - Repository version
+  - `x-request-id` - Auto-included - Unique request identifier (UUID)
 - Standard error responses:
   - Internal server error (500)
   - Request timeout (408)
@@ -230,6 +230,7 @@ Documents paginated response with automatic pagination parameters.
 - `messagePath: string` - i18n message path
 - `options: IDocResponsePagingOptions<T>`
   - `dto: ClassConstructor<T>` - Response DTO class (required)
+  - `type?: ENUM_PAGINATION_TYPE` - Pagination type: `offset` or `cursor` (default: `offset`)
   - `statusCode?: number` - Custom status code
   - `httpStatus?: HttpStatus` - HTTP status
   - `availableSearch?: string[]` - Searchable fields
@@ -237,9 +238,13 @@ Documents paginated response with automatic pagination parameters.
 
 **Auto-includes:**
 
-- Standard pagination query parameters:
-  - `perPage` - Data per page (max: 100)
-  - `page` - Page number (max: 20)
+- Standard pagination query parameters (depends on type):
+  - **Offset type (default)**:
+    - `perPage` - Data per page (max: 100)
+    - `page` - Page number (max: 20)
+  - **Cursor type**:
+    - `perPage` - Data per page (max: 100)
+    - `cursor` - The pagination cursor returned from the previous request
 - Optional search query when `availableSearch` provided
 - Optional ordering queries when `availableOrder` provided:
   - `orderBy` - Field to order by
@@ -248,8 +253,21 @@ Documents paginated response with automatic pagination parameters.
 **Usage:**
 
 ```typescript
+// Offset pagination (default)
 @DocResponsePaging<UserListResponseDto>('user.list', {
     dto: UserListResponseDto,
+    availableSearch: ['name', 'email'],
+    availableOrder: ['createdAt', 'name']
+})
+@Get('/list')
+async getUsers() {
+    // implementation
+}
+
+// Cursor pagination
+@DocResponsePaging<UserListResponseDto>('user.list', {
+    dto: UserListResponseDto,
+    type: ENUM_PAGINATION_TYPE.CURSOR,
     availableSearch: ['name', 'email'],
     availableOrder: ['createdAt', 'name']
 })

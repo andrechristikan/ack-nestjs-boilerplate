@@ -11,7 +11,7 @@ export const PAGINATION_DEFAULT_MAX_PER_PAGE = 100;
 /**
  * Maximum allowed page number for pagination.
  */
-export const PAGINATION_DEFAULT_MAX_PAGE = 50;
+export const PAGINATION_DEFAULT_MAX_PAGE = 20;
 
 /**
  * Default field used for cursor-based pagination.

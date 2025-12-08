@@ -35,7 +35,7 @@ export class ActivityLogRepository {
                     ...where,
                     userId,
                 },
-                includes: {
+                include: {
                     user: true,
                 },
             }
@@ -54,7 +54,7 @@ export class ActivityLogRepository {
                     ...where,
                     userId,
                 },
-                includes: {
+                include: {
                     user: true,
                 },
             }
