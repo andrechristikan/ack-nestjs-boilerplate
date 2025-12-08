@@ -12,6 +12,7 @@ import {
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { Response } from 'express';
 import { LoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
+import stripAnsi from 'strip-ansi';
 
 /**
  * Service responsible for configuring logger options for the application.
@@ -159,13 +160,11 @@ export class LoggerOptionService {
      * @returns {string | unknown} Sanitized message or original if not a string
      */
     private sanitizeMessage(message: unknown): string | unknown {
-        if (typeof message === 'string' && !this.prettier) {
-            return message
-                .replace(/\x1B\[\d+m/g, '')
-                .replace(/^\s*→?\s*\d+\s+/gm, '')
-                .replace(/^\s+/gm, '')
-                .replace(/\n+/g, ' ')
-                .replace(/\s+/g, ' ')
+        if (typeof message === 'string') {
+            return stripAnsi(message)
+                .replaceAll(/[~→]/g, '')
+                .replaceAll(/^\s*\d+\s+/gm, '')
+                .replaceAll(/\s+/g, ' ')
                 .trim();
         }
 
@@ -452,7 +451,7 @@ export class LoggerOptionService {
     private createErrorSerializer(error: Error): Record<string, unknown> {
         const defaultError = {
             type: error.name,
-            message: error.message,
+            message: this.sanitizeMessage(error.message),
             code: (error as unknown as { status?: number })?.status,
             statusCode: (
                 error as unknown as { response?: { statusCode?: number } }
