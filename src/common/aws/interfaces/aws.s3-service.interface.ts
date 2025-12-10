@@ -16,8 +16,10 @@ import {
     IAwsS3CreateMultiplePart,
     IAwsS3DeleteDirOptions,
     IAwsS3GetItemsOptions,
+    IAwsS3MoveItemOptions,
     IAwsS3Options,
-    IAwsS3PresignOptions,
+    IAwsS3PresignGetItemOptions,
+    IAwsS3PresignPutItemOptions,
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
     IAwsS3PutItemWithAclOptions,
@@ -73,13 +75,17 @@ export interface IAwsS3Service {
         uploadId: string,
         options?: IAwsS3Options
     ): Promise<void>;
+    presignGetItem(
+        key: string,
+        options?: IAwsS3PresignGetItemOptions
+    ): Promise<AwsS3PresignDto>;
     presignPutItem(
         { key, size }: AwsS3PresignRequestDto,
-        options?: IAwsS3PresignOptions
+        options?: IAwsS3PresignPutItemOptions
     ): Promise<AwsS3PresignDto>;
     presignPutItemPart(
         { key, size, uploadId, partNumber }: AwsS3PresignPartRequestDto,
-        options?: IAwsS3PresignOptions
+        options?: IAwsS3PresignPutItemOptions
     ): Promise<AwsS3PresignPartDto>;
     mapPresign(
         { key, size }: AwsS3PresignRequestDto,
@@ -88,7 +94,7 @@ export interface IAwsS3Service {
     moveItem(
         source: AwsS3Dto,
         destinationKey: string,
-        options?: IAwsS3Options
+        options?: IAwsS3MoveItemOptions
     ): Promise<AwsS3Dto>;
     moveItems(
         sources: AwsS3Dto[],

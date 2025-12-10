@@ -1,6 +1,7 @@
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { faker } from '@faker-js/faker';
 import { ENUM_TERM_POLICY_STATUS, ENUM_TERM_POLICY_TYPE } from '@prisma/client';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 
 export const TermPolicyDocParamsId: ApiParamOptions[] = [
     {
@@ -8,7 +9,19 @@ export const TermPolicyDocParamsId: ApiParamOptions[] = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
+    },
+];
+
+export const TermPolicyDocParamsGetContent: ApiParamOptions[] = [
+    ...TermPolicyDocParamsId,
+    {
+        name: 'language',
+        allowEmptyValue: false,
+        enum: Object.values(ENUM_MESSAGE_LANGUAGE),
+        required: true,
+        type: 'string',
+        example: ENUM_MESSAGE_LANGUAGE.en,
     },
 ];
 
@@ -18,7 +31,6 @@ export const TermPolicyListPublicDocQuery: ApiQueryOptions[] = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        enum: Object.values(ENUM_TERM_POLICY_TYPE),
         example: Object.values(ENUM_TERM_POLICY_TYPE).join(','),
         description: "value with ',' delimiter",
     },
@@ -31,7 +43,6 @@ export const TermPolicyListAdminDocQuery: ApiQueryOptions[] = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        enum: Object.values(ENUM_TERM_POLICY_STATUS),
         example: Object.values(ENUM_TERM_POLICY_STATUS).join(','),
         description: "value with ',' delimiter",
     },

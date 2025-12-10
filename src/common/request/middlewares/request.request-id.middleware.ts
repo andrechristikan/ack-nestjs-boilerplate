@@ -31,8 +31,10 @@ export class RequestRequestIdMiddleware implements NestMiddleware {
             req.correlationId = correlationId;
             req.headers['x-correlation-id'] = correlationId;
         } else {
-            req.correlationId = uuid();
-            req.headers['x-correlation-id'] = req.correlationId;
+            const newCorrelationId = uuid();
+
+            req.correlationId = newCorrelationId;
+            req.headers['x-correlation-id'] = newCorrelationId;
         }
 
         next();

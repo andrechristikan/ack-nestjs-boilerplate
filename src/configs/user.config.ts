@@ -11,6 +11,6 @@ export default registerAs(
     (): IUserConfig => ({
         usernamePrefix: 'user',
         usernamePattern: /^[a-zA-Z0-9-_]+$/,
-        uploadPhotoProfilePath: '/users/{userId}/profile',
+        uploadPhotoProfilePath: 'users/{userId}/profile',
     })
 );

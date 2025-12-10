@@ -54,8 +54,10 @@ import {
     IAwsS3DeleteDirOptions,
     IAwsS3FileInfo,
     IAwsS3GetItemsOptions,
+    IAwsS3MoveItemOptions,
     IAwsS3Options,
-    IAwsS3PresignOptions,
+    IAwsS3PresignGetItemOptions,
+    IAwsS3PresignPutItemOptions,
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
     IAwsS3PutItemWithAclOptions,
@@ -826,14 +828,68 @@ export class AwsS3Service implements IAwsS3Service {
     }
 
     /**
+     * Generates a presigned URL for getting an object from S3.
+     * @param {string} key - The S3 object key to download
+     * @param {IAwsS3PresignGetItemOptions} [options] - Optional configuration including expiration time and access level
+     * @returns {Promise<AwsS3PresignDto>} Promise that resolves to a presigned URL and metadata
+     */
+    async presignGetItem(
+        key: string,
+        options?: IAwsS3PresignGetItemOptions
+    ): Promise<AwsS3PresignDto> {
+        if (key.startsWith('/')) {
+            throw new Error('Key should not start with "/"');
+        }
+
+        const config = this.config.get(
+            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.public
+        );
+
+        const headCommand = new HeadObjectCommand({
+            Bucket: config.bucket,
+            Key: key,
+        });
+
+        try {
+            await this.client.send<
+                HeadObjectCommandInput,
+                HeadObjectCommandOutput
+            >(headCommand);
+        } catch (error: unknown) {
+            if (!(error instanceof NotFound)) {
+                throw error;
+            }
+        }
+
+        const { extension, mime } = this.getFileInfoFromKey(key);
+        const command: GetObjectCommand = new GetObjectCommand({
+            Bucket: config.bucket,
+            Key: key,
+        });
+        const expiresIn = options?.expired ?? this.presignExpired;
+
+        const presignUrl = await getSignedUrl(this.client, command, {
+            expiresIn,
+        });
+
+        return {
+            expiredIn: expiresIn,
+            presignUrl: presignUrl,
+            key,
+            mime,
+            extension,
+        };
+    }
+
+    /**
      * Generates a presigned URL for uploading an object to S3.
      * @param {AwsS3PresignRequestDto} request - Object containing key and size information for the upload
-     * @param {IAwsS3PresignOptions} [options] - Optional configuration including expiration time, force update, and access level
+     * @param {IAwsS3PresignPutItemOptions} [options] - Optional configuration including expiration time, force update, and access level
      * @returns {Promise<AwsS3PresignDto>} Promise that resolves to a presigned URL and metadata
      */
     async presignPutItem(
         { key, size }: AwsS3PresignRequestDto,
-        options?: IAwsS3PresignOptions
+        options?: IAwsS3PresignPutItemOptions
     ): Promise<AwsS3PresignDto> {
         if (key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
@@ -864,7 +920,6 @@ export class AwsS3Service implements IAwsS3Service {
         }
 
         const { extension, mime } = this.getFileInfoFromKey(key);
-
         const command = new PutObjectCommand({
             Bucket: config.bucket,
             Key: key,
@@ -891,12 +946,12 @@ export class AwsS3Service implements IAwsS3Service {
     /**
      * Generates a presigned URL for uploading a part of a multipart upload to S3.
      * @param {AwsS3PresignPartRequestDto} request - Object containing key, size, uploadId, and partNumber information
-     * @param {IAwsS3PresignOptions} [options] - Optional configuration including expiration time, force update, and access level
+     * @param {IAwsS3PresignPutItemOptions} [options] - Optional configuration including expiration time, force update, and access level
      * @returns {Promise<AwsS3PresignPartDto>} Promise that resolves to a presigned URL and part metadata
      */
     async presignPutItemPart(
         { key, size, uploadId, partNumber }: AwsS3PresignPartRequestDto,
-        options?: IAwsS3PresignOptions
+        options?: IAwsS3PresignPutItemOptions
     ): Promise<AwsS3PresignPartDto> {
         if (key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
@@ -987,15 +1042,16 @@ export class AwsS3Service implements IAwsS3Service {
 
     /**
      * Moves an S3 object from its current location to a new destination path.
+     * Supports cross-bucket moves by specifying different source and destination buckets.
      * @param {AwsS3Dto} source - The source AwsS3Dto object containing the current file information
      * @param {string} destination - The destination path where the file should be moved
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
+     * @param {IAwsS3MoveItemOptions} [options] - Optional configuration for source and destination bucket access levels
      * @returns {Promise<AwsS3Dto>} Promise that resolves to an AwsS3Dto with the new file location
      */
     async moveItem(
         source: AwsS3Dto,
         destination: string,
-        options?: IAwsS3Options
+        options?: IAwsS3MoveItemOptions
     ): Promise<AwsS3Dto> {
         if (source.key.startsWith('/')) {
             throw new Error('Source key should not start with "/"');
@@ -1005,15 +1061,18 @@ export class AwsS3Service implements IAwsS3Service {
             throw new Error('Destination should not start with "/"');
         }
 
-        const config = this.config.get(
-            options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.public
+        const configTo = this.config.get(
+            options?.accessTo ?? ENUM_AWS_S3_ACCESSIBILITY.public
+        );
+        const configFrom = this.config.get(
+            options?.accessFrom ?? ENUM_AWS_S3_ACCESSIBILITY.public
         );
 
         const destinationKey = `${destination}/${source.key.split('/').pop()}`;
         const copyCommand = new CopyObjectCommand({
-            Bucket: config.bucket,
+            Bucket: configTo.bucket,
             Key: destinationKey,
-            CopySource: `${source.bucket}/${source.key}`,
+            CopySource: `${configFrom.bucket}/${source.key}`,
             MetadataDirective: 'COPY',
         });
 
@@ -1021,23 +1080,21 @@ export class AwsS3Service implements IAwsS3Service {
             copyCommand
         );
 
-        await this.deleteItem(source.key, { access: source.access });
-
         const { pathWithFilename, extension, mime } =
             this.getFileInfoFromKey(destinationKey);
 
         return {
-            bucket: config.bucket,
+            bucket: configTo.bucket,
             key: destinationKey,
-            completedUrl: `${config.baseUrl}${pathWithFilename}`,
+            completedUrl: `${configTo.baseUrl}${pathWithFilename}`,
             cdnUrl:
-                config.cdnUrl && config.cdnUrl !== ''
-                    ? `${config.cdnUrl}${pathWithFilename}`
+                configTo.cdnUrl && configTo.cdnUrl !== ''
+                    ? `${configTo.cdnUrl}${pathWithFilename}`
                     : undefined,
             extension,
             size: source.size,
             mime,
-            access: options?.access ?? ENUM_AWS_S3_ACCESSIBILITY.public,
+            access: configTo.access,
         };
     }
 
@@ -1064,7 +1121,12 @@ export class AwsS3Service implements IAwsS3Service {
         const promises = [];
 
         for (const source of sources) {
-            promises.push(this.moveItem(source, destination, options));
+            promises.push(
+                this.moveItem(source, destination, {
+                    accessTo: options?.access,
+                    accessFrom: source.access,
+                })
+            );
         }
 
         const movedItems: AwsS3Dto[] = await Promise.all(promises);

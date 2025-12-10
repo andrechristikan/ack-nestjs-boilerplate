@@ -3,6 +3,7 @@ import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { ENUM_AWS_S3_ACCESSIBILITY } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { ENUM_FILE_EXTENSION_DOCUMENT } from '@common/file/enums/file.enum';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -37,7 +38,11 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { ENUM_TERM_POLICY_STATUS, ENUM_TERM_POLICY_TYPE } from '@prisma/client';
+import {
+    ENUM_TERM_POLICY_STATUS,
+    ENUM_TERM_POLICY_TYPE,
+    TermPolicy,
+} from '@prisma/client';
 
 @Injectable()
 export class TermPolicyService implements ITermPolicyService {
@@ -214,10 +219,15 @@ export class TermPolicyService implements ITermPolicyService {
             const mappedContents: TermContentDto[] = contents.map(
                 ({ language, key, size }: TermPolicyContentRequestDto) => ({
                     language,
-                    ...this.awsS3Service.mapPresign({
-                        key,
-                        size,
-                    }),
+                    ...this.awsS3Service.mapPresign(
+                        {
+                            key,
+                            size,
+                        },
+                        {
+                            access: ENUM_AWS_S3_ACCESSIBILITY.private,
+                        }
+                    ),
                 })
             );
             const created = await this.termPolicyRepository.create(
@@ -244,7 +254,7 @@ export class TermPolicyService implements ITermPolicyService {
     async delete(
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicyResponseDto>> {
-        const termPolicy =
+        const termPolicy: TermPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
             throw new NotFoundException({
@@ -259,12 +269,18 @@ export class TermPolicyService implements ITermPolicyService {
         }
 
         try {
-            const deleted =
-                await this.termPolicyRepository.delete(termPolicyId);
-            const termPolicy = this.termPolicyUtil.mapOne(deleted);
+            const contentPath = this.termPolicyUtil.getPath(termPolicy);
+            const [deleted] = await Promise.all([
+                this.termPolicyRepository.delete(termPolicyId),
+                this.awsS3Service.deleteDir(contentPath, {
+                    access: ENUM_AWS_S3_ACCESSIBILITY.private,
+                }),
+            ]);
+
+            const mapped = this.termPolicyUtil.mapOne(deleted);
 
             return {
-                data: termPolicy,
+                data: mapped,
                 metadataActivityLog:
                     this.termPolicyUtil.mapActivityLogMetadata(deleted),
             };
@@ -346,7 +362,12 @@ export class TermPolicyService implements ITermPolicyService {
         try {
             const mappedContent: TermContentDto = {
                 language,
-                ...this.awsS3Service.mapPresign({ key, size }),
+                ...this.awsS3Service.mapPresign(
+                    { key, size },
+                    {
+                        access: ENUM_AWS_S3_ACCESSIBILITY.private,
+                    }
+                ),
             };
             const updated = await this.termPolicyRepository.updateContent(
                 termPolicyId,
@@ -387,10 +408,26 @@ export class TermPolicyService implements ITermPolicyService {
             });
         }
 
+        const existingContent = this.termPolicyUtil.getContentByLanguage(
+            termPolicy.contents as unknown as TermContentDto[],
+            language
+        );
+        if (existingContent) {
+            throw new ConflictException({
+                statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.contentExist,
+                message: 'termPolicy.error.contentExist',
+            });
+        }
+
         try {
             const mappedContent: TermContentDto = {
                 language,
-                ...this.awsS3Service.mapPresign({ key, size }),
+                ...this.awsS3Service.mapPresign(
+                    { key, size },
+                    {
+                        access: ENUM_AWS_S3_ACCESSIBILITY.private,
+                    }
+                ),
             };
             const updated = await this.termPolicyRepository.addContent(
                 termPolicyId,
@@ -430,6 +467,17 @@ export class TermPolicyService implements ITermPolicyService {
             });
         }
 
+        const existingContent = this.termPolicyUtil.getContentByLanguage(
+            termPolicy.contents as unknown as TermContentDto[],
+            language
+        );
+        if (!existingContent) {
+            throw new NotFoundException({
+                statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.contentNotFound,
+                message: 'termPolicy.error.contentNotFound',
+            });
+        }
+
         try {
             const updated = await this.termPolicyRepository.removeContent(
                 termPolicyId,
@@ -451,6 +499,40 @@ export class TermPolicyService implements ITermPolicyService {
         }
     }
 
+    async getContent(
+        termPolicyId: string,
+        language: ENUM_MESSAGE_LANGUAGE
+    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+        const termPolicy =
+            await this.termPolicyRepository.findOneById(termPolicyId);
+        if (!termPolicy) {
+            throw new NotFoundException({
+                statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.notFound,
+                message: 'termPolicy.error.notFound',
+            });
+        }
+
+        const existContent = this.termPolicyUtil.getContentByLanguage(
+            termPolicy.contents as unknown as TermContentDto[],
+            language
+        );
+        if (!existContent) {
+            throw new NotFoundException({
+                statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.contentNotFound,
+                message: 'termPolicy.error.contentNotFound',
+            });
+        }
+
+        const awsPresign = await this.awsS3Service.presignGetItem(
+            existContent.key,
+            {
+                access: ENUM_AWS_S3_ACCESSIBILITY.private,
+            }
+        );
+
+        return { data: awsPresign };
+    }
+
     async publish(
         termPolicyId: string,
         updatedBy: string
@@ -467,34 +549,43 @@ export class TermPolicyService implements ITermPolicyService {
                 statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.statusInvalid,
                 message: 'termPolicy.error.statusInvalid',
             });
+        } else if (
+            (termPolicy.contents as unknown as TermContentDto[]).length === 0
+        ) {
+            throw new BadRequestException({
+                statusCode: ENUM_TERM_POLICY_STATUS_CODE_ERROR.contentEmpty,
+                message: 'termPolicy.error.contentEmpty',
+            });
         }
 
         try {
-            const contentPublicPath = this.termPolicyUtil.getContentPublicPath(
-                termPolicy.type
-            );
+            const contentPublicPath =
+                this.termPolicyUtil.getContentPublicPath(termPolicy);
             const contents = termPolicy.contents as unknown as TermContentDto[];
+
             const newItems = await this.awsS3Service.moveItems(
-                contents.map(e => ({
-                    ...e,
-                    size: Number.parseFloat(e.size.toString()),
-                })),
+                contents,
                 contentPublicPath,
-                {
-                    access: ENUM_AWS_S3_ACCESSIBILITY.public,
-                }
+                {}
             );
 
             const newContents = this.termPolicyUtil.mapPublicContent(
                 newItems,
                 contents
             );
-            const updated = await this.termPolicyRepository.publish(
-                termPolicyId,
-                termPolicy.type,
-                newContents,
-                updatedBy
-            );
+
+            const contentPath = this.termPolicyUtil.getPath(termPolicy);
+            const [updated] = await Promise.all([
+                this.termPolicyRepository.publish(
+                    termPolicyId,
+                    termPolicy.type,
+                    newContents,
+                    updatedBy
+                ),
+                this.awsS3Service.deleteDir(contentPath, {
+                    access: ENUM_AWS_S3_ACCESSIBILITY.private,
+                }),
+            ]);
 
             return {
                 metadataActivityLog:

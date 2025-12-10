@@ -11,7 +11,7 @@ import { PaginationModule } from '@common/pagination/pagination.module';
 import { ApiKeyModule } from '@modules/api-key/api-key.module';
 import { RoleModule } from '@modules/role/role.module';
 import { FeatureFlagModule } from '@modules/feature-flag/feature-flag.module';
-import { RedisCacheModule, RedisQueueModule } from '@common/redis/redis.module';
+import { RedisCacheModule } from '@common/redis/redis.module';
 import { ConfigModule } from '@nestjs/config';
 import { CacheMainModule } from '@common/cache/cache.module';
 import { LoggerModule } from '@common/logger/logger.module';
@@ -38,7 +38,6 @@ import { SessionModule } from '@modules/session/session.module';
         MessageModule.forRoot(),
         LoggerModule.forRoot(),
         RedisCacheModule.forRoot(),
-        RedisQueueModule.forRoot(),
         QueueRegisterModule.forRoot(),
         CacheMainModule.forRoot(),
         DatabaseModule.forRoot(),

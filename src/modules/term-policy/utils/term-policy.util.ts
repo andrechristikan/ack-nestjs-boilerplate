@@ -55,6 +55,12 @@ export class TermPolicyUtil {
         return uniqueLanguages.length === languages.length;
     }
 
+    getPath(termPolicy: TermPolicy): string {
+        return this.uploadContentPath
+            .replace('{type}', termPolicy.type)
+            .replace('{version}', termPolicy.version.toString());
+    }
+
     createRandomFilenameContentWithPath(
         type: ENUM_TERM_POLICY_TYPE,
         version: number,
@@ -81,8 +87,10 @@ export class TermPolicyUtil {
         );
     }
 
-    getContentPublicPath(type: ENUM_TERM_POLICY_TYPE): string {
-        return this.contentPublicPath.replace('{type}', type);
+    getContentPublicPath(termPolicy: TermPolicy): string {
+        return this.contentPublicPath
+            .replace('{type}', termPolicy.type)
+            .replace('{version}', termPolicy.version.toString());
     }
 
     mapPublicContent(
@@ -107,5 +115,13 @@ export class TermPolicyUtil {
             termPolicyVersion: termPolicy.version,
             timestamp: termPolicy.updatedAt ?? termPolicy.createdAt,
         };
+    }
+
+    getContentByLanguage(
+        contents: TermContentDto[],
+        language: ENUM_MESSAGE_LANGUAGE
+    ): TermContentDto | null {
+        const content = contents.find(c => c.language === language);
+        return content || null;
     }
 }

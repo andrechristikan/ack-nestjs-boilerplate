@@ -5,4 +5,7 @@ export enum ENUM_TERM_POLICY_STATUS_CODE_ERROR {
     alreadyAccepted = 6103,
     requiredInvalid = 6104,
     statusInvalid = 6105,
+    contentNotFound = 6106,
+    contentExist = 6107,
+    contentEmpty = 6108,
 }

@@ -19,8 +19,17 @@ export interface IAwsS3PutItemWithAclOptions extends IAwsS3PutItemOptions {
     acl?: ObjectCannedACL;
 }
 
-export interface IAwsS3PresignOptions extends IAwsS3PutItemOptions {
+export interface IAwsS3PresignGetItemOptions extends IAwsS3Options {
     expired?: number;
+}
+
+export interface IAwsS3PresignPutItemOptions extends IAwsS3PutItemOptions {
+    expired?: number;
+}
+
+export interface IAwsS3MoveItemOptions {
+    accessFrom?: ENUM_AWS_S3_ACCESSIBILITY;
+    accessTo?: ENUM_AWS_S3_ACCESSIBILITY;
 }
 
 export interface IAwsS3CreateMultiplePart {

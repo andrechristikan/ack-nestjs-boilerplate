@@ -57,8 +57,8 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
 
 ## TODO
 
-- [ ] Test Migration Email and Send Email
-- [ ] Test Term Policy Flow at Admin Side
+- [x] Test Migration Email and Send Email
+- [x] Test Term Policy Flow at Admin Side
 - [ ] Rename all enum to CapitalCase
 - [ ] Migrate to PNPM and update document installation before release v8
 - [ ] Update doc related with yarn to pnpm

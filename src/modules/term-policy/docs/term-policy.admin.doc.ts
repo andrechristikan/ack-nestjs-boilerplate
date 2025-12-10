@@ -9,6 +9,7 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
 import {
+    TermPolicyDocParamsGetContent,
     TermPolicyDocParamsId,
     TermPolicyListAdminDocQuery,
 } from '@modules/term-policy/constants/term-policy.doc.constant';
@@ -173,6 +174,29 @@ export function TermPolicyAdminRemoveContentDoc(): MethodDecorator {
             params: TermPolicyDocParamsId,
         }),
         DocResponse('termPolicy.removeContent')
+    );
+}
+
+export function TermPolicyAdminGetContentDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'Get content of a term or policy by ID and language',
+        }),
+        DocAuth({
+            jwtAccessToken: true,
+            xApiKey: true,
+        }),
+        DocGuard({
+            policy: true,
+            role: true,
+        }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            params: TermPolicyDocParamsGetContent,
+        }),
+        DocResponse('termPolicy.getContent', {
+            dto: AwsS3PresignDto,
+        })
     );
 }
 

@@ -1,4 +1,5 @@
 import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
 import {
     PaginationOffsetQuery,
     PaginationQueryFilterInEnum,
@@ -38,6 +39,7 @@ import {
     TermPolicyAdminCreateDoc,
     TermPolicyAdminDeleteDoc,
     TermPolicyAdminGenerateContentPresignDoc,
+    TermPolicyAdminGetContentDoc,
     TermPolicyAdminListDoc,
     TermPolicyAdminPublishDoc,
     TermPolicyAdminRemoveContentDoc,
@@ -205,7 +207,7 @@ export class TermPolicyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Post('/update/:termPolicyId/content/add')
+    @Put('/update/:termPolicyId/content/add')
     async addContent(
         @Param('termPolicyId', RequestRequiredPipe)
         termPolicyId: string,
@@ -240,6 +242,26 @@ export class TermPolicyAdminController {
             body,
             updatedBy
         );
+    }
+
+    @TermPolicyAdminGetContentDoc()
+    @Response('termPolicy.getContent')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
+        action: [ENUM_POLICY_ACTION.READ],
+    })
+    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/get/:termPolicyId/content/:language')
+    async getContent(
+        @Param('termPolicyId', RequestRequiredPipe)
+        termPolicyId: string,
+        @Param('language', RequestRequiredPipe) language: ENUM_MESSAGE_LANGUAGE
+    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+        return this.termPolicyService.getContent(termPolicyId, language);
     }
 
     @TermPolicyAdminPublishDoc()

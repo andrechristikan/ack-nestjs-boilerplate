@@ -8,7 +8,7 @@ export interface IConfigTermPolicy {
 export default registerAs(
     'termPolicy',
     (): IConfigTermPolicy => ({
-        uploadContentPath: '/term-policies/{type}/v{version}',
-        contentPublicPath: '/term-policies/{type}/v{version}',
+        uploadContentPath: 'term-policies/{type}/v{version}',
+        contentPublicPath: 'term-policies/{type}/v{version}',
     })
 );
