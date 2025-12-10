@@ -1,4 +1,4 @@
-export enum ENUM_LOGGER_LEVEL {
+export enum EnumLoggerLevel {
     error = 'error',
     warn = 'warn',
     info = 'info',

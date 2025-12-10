@@ -1,3 +1,3 @@
-export enum ENUM_APP_STATUS_CODE_ERROR {
+export enum EnumAppStatusCodeError {
     unknown = 5000,
 }

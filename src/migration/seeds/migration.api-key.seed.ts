@@ -1,4 +1,4 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationApiKeyData } from '@migration/data/migration.api-key.data';
@@ -20,7 +20,7 @@ export class MigrationApiKeySeed
 {
     private readonly logger = new Logger(MigrationApiKeySeed.name);
 
-    private readonly env: ENUM_APP_ENVIRONMENT;
+    private readonly env: EnumAppEnvironment;
     private readonly apiKeys: ApiKeyCreateRawRequestDto[] = [];
 
     constructor(
@@ -30,7 +30,7 @@ export class MigrationApiKeySeed
     ) {
         super();
 
-        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env');
         this.apiKeys = migrationApiKeyData[this.env];
     }
 

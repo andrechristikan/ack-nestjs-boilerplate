@@ -1,14 +1,14 @@
-export enum ENUM_PAGINATION_FILTER_DATE_BETWEEN_TYPE {
+export enum EnumPaginationFilterDateBetweenType {
     start = 'start',
     end = 'end',
 }
 
-export enum ENUM_PAGINATION_ORDER_DIRECTION_TYPE {
+export enum EnumPaginationOrderDirectionType {
     asc = 'asc',
     desc = 'desc',
 }
 
-export enum ENUM_PAGINATION_TYPE {
+export enum EnumPaginationType {
     offset = 'offset',
     cursor = 'cursor',
 }

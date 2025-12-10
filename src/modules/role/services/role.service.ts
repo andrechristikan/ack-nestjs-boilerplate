@@ -7,7 +7,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
@@ -130,7 +130,7 @@ export class RoleService implements IRoleService {
         const { __user, user } = request;
         if (!__user || !user) {
             throw new ForbiddenException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.jwtAccessTokenInvalid,
+                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }

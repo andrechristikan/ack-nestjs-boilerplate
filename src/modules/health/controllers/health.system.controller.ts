@@ -20,7 +20,7 @@ import { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.
 import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3.indicator';
-import { ENUM_AWS_S3_ACCESSIBILITY } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
 import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
 import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
@@ -53,12 +53,12 @@ export class HealthSystemController {
             () =>
                 this.awsS3BucketIndicator.isHealthy(
                     's3PublicBucket',
-                    ENUM_AWS_S3_ACCESSIBILITY.public
+                    EnumAwsS3Accessibility.public
                 ),
             () =>
                 this.awsS3BucketIndicator.isHealthy(
                     's3PrivateBucket',
-                    ENUM_AWS_S3_ACCESSIBILITY.private
+                    EnumAwsS3Accessibility.private
                 ),
             () => this.awsSESIndicator.isHealthy('ses'),
         ]);

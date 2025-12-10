@@ -1,5 +1,5 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { faker } from '@faker-js/faker';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import { ENUM_TERM_POLICY_TYPE } from '@prisma/client';
@@ -11,7 +11,7 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
         contents: [
             {
                 key: faker.system.filePath(),
-                language: ENUM_MESSAGE_LANGUAGE.en,
+                language: EnumMessageLanguage.en,
                 size: faker.number.int({ min: 1000, max: 5000 }),
             },
         ],
@@ -22,7 +22,7 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
         contents: [
             {
                 key: faker.system.filePath(),
-                language: ENUM_MESSAGE_LANGUAGE.en,
+                language: EnumMessageLanguage.en,
                 size: faker.number.int({ min: 1000, max: 5000 }),
             },
         ],
@@ -33,7 +33,7 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
         contents: [
             {
                 key: faker.system.filePath(),
-                language: ENUM_MESSAGE_LANGUAGE.en,
+                language: EnumMessageLanguage.en,
                 size: faker.number.int({ min: 1000, max: 5000 }),
             },
         ],
@@ -44,7 +44,7 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
         contents: [
             {
                 key: faker.system.filePath(),
-                language: ENUM_MESSAGE_LANGUAGE.en,
+                language: EnumMessageLanguage.en,
                 size: faker.number.int({ min: 1000, max: 5000 }),
             },
         ],
@@ -52,11 +52,11 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
 ];
 
 export const migrationTermPolicyData: Record<
-    ENUM_APP_ENVIRONMENT,
+    EnumAppEnvironment,
     TermPolicyCreateRequestDto[]
 > = {
-    [ENUM_APP_ENVIRONMENT.local]: termPolicyData,
-    [ENUM_APP_ENVIRONMENT.development]: termPolicyData,
-    [ENUM_APP_ENVIRONMENT.staging]: termPolicyData,
-    [ENUM_APP_ENVIRONMENT.production]: termPolicyData,
+    [EnumAppEnvironment.local]: termPolicyData,
+    [EnumAppEnvironment.development]: termPolicyData,
+    [EnumAppEnvironment.staging]: termPolicyData,
+    [EnumAppEnvironment.production]: termPolicyData,
 };

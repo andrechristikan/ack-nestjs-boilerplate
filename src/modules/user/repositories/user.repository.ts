@@ -2,7 +2,7 @@ import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
     IPaginationCursorReturn,
     IPaginationEqual,
@@ -201,7 +201,7 @@ export class UserRepository {
                 },
             },
             orderBy: {
-                createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.desc,
+                createdAt: EnumPaginationOrderDirectionType.desc,
             },
         });
     }
@@ -243,7 +243,7 @@ export class UserRepository {
                 },
             },
             orderBy: {
-                createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.desc,
+                createdAt: EnumPaginationOrderDirectionType.desc,
             },
         });
     }

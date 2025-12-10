@@ -1,4 +1,4 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
@@ -34,7 +34,7 @@ export class MigrationUserSeed
 {
     private readonly logger = new Logger(MigrationUserSeed.name);
 
-    private readonly env: ENUM_APP_ENVIRONMENT;
+    private readonly env: EnumAppEnvironment;
     private readonly users: {
         country: string;
         email: string;
@@ -53,7 +53,7 @@ export class MigrationUserSeed
     ) {
         super();
 
-        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env');
         this.users = migrationUserData[this.env];
     }
 

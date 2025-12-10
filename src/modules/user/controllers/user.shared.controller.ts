@@ -1,6 +1,6 @@
 import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
-import { ENUM_FILE_EXTENSION_IMAGE } from '@common/file/enums/file.enum';
+import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import {
@@ -182,9 +182,9 @@ export class UserSharedController {
         userId: string,
         @UploadedFile(
             FileExtensionPipe([
-                ENUM_FILE_EXTENSION_IMAGE.jpeg,
-                ENUM_FILE_EXTENSION_IMAGE.png,
-                ENUM_FILE_EXTENSION_IMAGE.jpg,
+                EnumFileExtensionImage.jpeg,
+                EnumFileExtensionImage.png,
+                EnumFileExtensionImage.jpg,
             ])
         )
         file: IFile,

@@ -113,7 +113,7 @@ Restricts endpoint access based on environment.
 
 **Usage:**
 ```typescript
-@RequestEnvProtected(ENUM_APP_ENVIRONMENT.DEVELOPMENT)
+@RequestEnvProtected(EnumAppEnvironment.DEVELOPMENT)
 @Get('/debug')
 async debugEndpoint() {}
 ```
@@ -254,12 +254,12 @@ Restricts endpoint access based on environment.
 
 **Signature:**
 ```typescript
-RequestEnvProtected(...envs: ENUM_APP_ENVIRONMENT[]): MethodDecorator
+RequestEnvProtected(...envs: EnumAppEnvironment[]): MethodDecorator
 ```
 
 **Example:**
 ```typescript
-@RequestEnvProtected(ENUM_APP_ENVIRONMENT.DEVELOPMENT)
+@RequestEnvProtected(EnumAppEnvironment.DEVELOPMENT)
 @Get('/admin/clear-cache')
 async clearCache() {}
 ```

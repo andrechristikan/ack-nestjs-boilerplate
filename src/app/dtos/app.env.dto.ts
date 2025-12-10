@@ -12,10 +12,10 @@ import {
     MinLength,
     ValidateIf,
 } from 'class-validator';
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
-import { ENUM_REQUEST_TIMEZONE } from '@common/request/enums/request.enum';
-import { ENUM_LOGGER_LEVEL } from '@common/logger/enums/logger.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import { EnumRequestTimezone } from '@common/request/enums/request.enum';
+import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 
 /**
  * Data Transfer Object for application environment configuration.
@@ -36,24 +36,24 @@ export class AppEnvDto {
      */
     @IsString()
     @IsNotEmpty()
-    @IsEnum(ENUM_APP_ENVIRONMENT)
-    APP_ENV: ENUM_APP_ENVIRONMENT;
+    @IsEnum(EnumAppEnvironment)
+    APP_ENV: EnumAppEnvironment;
 
     /**
      * The default language for the application
      */
     @IsString()
     @IsNotEmpty()
-    @IsEnum(ENUM_MESSAGE_LANGUAGE)
-    APP_LANGUAGE: ENUM_MESSAGE_LANGUAGE;
+    @IsEnum(EnumMessageLanguage)
+    APP_LANGUAGE: EnumMessageLanguage;
 
     /**
      * The default timezone for the application
      */
     @IsString()
     @IsNotEmpty()
-    @IsEnum(ENUM_REQUEST_TIMEZONE)
-    APP_TIMEZONE: ENUM_REQUEST_TIMEZONE;
+    @IsEnum(EnumRequestTimezone)
+    APP_TIMEZONE: EnumRequestTimezone;
 
     /**
      * The name of the home/organization
@@ -104,7 +104,7 @@ export class AppEnvDto {
      */
     @IsString()
     @IsNotEmpty()
-    @IsEnum(ENUM_LOGGER_LEVEL)
+    @IsEnum(EnumLoggerLevel)
     LOGGER_LEVEL: string;
 
     /**

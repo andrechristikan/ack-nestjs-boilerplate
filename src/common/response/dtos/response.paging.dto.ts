@@ -5,8 +5,8 @@ import {
     ResponseMetadataDto,
 } from '@common/response/dtos/response.dto';
 import {
-    ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-    ENUM_PAGINATION_TYPE,
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
 
 /**
@@ -101,10 +101,10 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
         required: true,
         type: String,
-        enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-        example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.asc,
+        enum: EnumPaginationOrderDirectionType,
+        example: EnumPaginationOrderDirectionType.asc,
     })
-    orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
+    orderDirection: EnumPaginationOrderDirectionType;
 
     @ApiProperty({
         required: true,
@@ -121,10 +121,10 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
         required: true,
         type: String,
-        enum: ENUM_PAGINATION_TYPE,
-        example: ENUM_PAGINATION_TYPE.offset,
+        enum: EnumPaginationType,
+        example: EnumPaginationType.offset,
     })
-    type: ENUM_PAGINATION_TYPE;
+    type: EnumPaginationType;
 }
 
 /**

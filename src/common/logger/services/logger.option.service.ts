@@ -1,7 +1,7 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Params } from 'nestjs-pino';
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
     LOGGER_EXCLUDED_ROUTES,
@@ -22,7 +22,7 @@ import stripAnsi from 'strip-ansi';
  */
 @Injectable()
 export class LoggerOptionService {
-    private readonly env: ENUM_APP_ENVIRONMENT;
+    private readonly env: EnumAppEnvironment;
     private readonly name: string;
     private readonly version: string;
 
@@ -41,7 +41,7 @@ export class LoggerOptionService {
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {
-        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env');
         this.name = this.configService.get<string>('app.name');
         this.version = this.configService.get<string>('app.version');
 
@@ -204,7 +204,7 @@ export class LoggerOptionService {
                 ...(err && {
                     error: this.createErrorSerializer(err as Error),
                 }),
-                ...(this.env !== ENUM_APP_ENVIRONMENT.production && {
+                ...(this.env !== EnumAppEnvironment.production && {
                     debug: this.addDebugInfo(),
                 }),
             };
@@ -378,7 +378,7 @@ export class LoggerOptionService {
      * @returns {LoggerDebugInfo | undefined} Debug information object or undefined in production
      */
     private addDebugInfo(): LoggerDebugInfo | undefined {
-        if (this.env === ENUM_APP_ENVIRONMENT.production) {
+        if (this.env === EnumAppEnvironment.production) {
             return undefined;
         }
 

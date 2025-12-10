@@ -1,3 +1,3 @@
-export enum ENUM_REQUEST_TIMEZONE {
+export enum EnumRequestTimezone {
     asiaJakarta = 'Asia/Jakarta',
 }

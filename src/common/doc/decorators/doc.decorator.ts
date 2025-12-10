@@ -27,14 +27,14 @@ import {
 } from '@common/doc/interfaces/doc.interface';
 import { ResponseDto } from '@common/response/dtos/response.dto';
 import { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from '@modules/api-key/enums/api-key.status-code.enum';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
+import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
 import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
-    ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-    ENUM_PAGINATION_TYPE,
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
 import {
     DOC_CONTENT_TYPE_MAPPING,
@@ -253,8 +253,8 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 description: 'Custom language header',
                 required: false,
                 schema: {
-                    default: ENUM_MESSAGE_LANGUAGE.en,
-                    example: ENUM_MESSAGE_LANGUAGE.en,
+                    default: EnumMessageLanguage.en,
+                    example: EnumMessageLanguage.en,
                     type: 'string',
                 },
             },
@@ -377,7 +377,7 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
         docs.push(ApiBearerAuth('refreshToken'));
         oneOfUnauthorized.push({
             messagePath: 'auth.error.refreshTokenUnauthorized',
-            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.jwtRefreshTokenInvalid,
+            statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
         });
     }
 
@@ -385,7 +385,7 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
         docs.push(ApiBearerAuth('accessToken'));
         oneOfUnauthorized.push({
             messagePath: 'auth.error.accessTokenUnauthorized',
-            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.jwtAccessTokenInvalid,
+            statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
         });
     }
 
@@ -394,11 +394,11 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
         oneOfUnauthorized.push(
             {
                 messagePath: 'auth.error.socialGoogleInvalid',
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.socialGoogleInvalid,
+                statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
             },
             {
                 messagePath: 'auth.error.socialGoogleRequired',
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.socialGoogleRequired,
+                statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
             }
         );
     }
@@ -408,11 +408,11 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
         oneOfUnauthorized.push(
             {
                 messagePath: 'auth.error.socialAppleInvalid',
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.socialAppleInvalid,
+                statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
             },
             {
                 messagePath: 'auth.error.socialAppleRequired',
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.socialAppleRequired,
+                statusCode: EnumAuthStatusCodeError.socialAppleRequired,
             }
         );
     }
@@ -421,19 +421,19 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
         docs.push(ApiSecurity('xApiKey'));
         oneOfUnauthorized.push(
             {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.xApiKeyRequired,
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
                 messagePath: 'apiKey.error.xApiKey.required',
             },
             {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.xApiKeyNotFound,
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyNotFound,
                 messagePath: 'apiKey.error.xApiKey.notFound',
             },
             {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.xApiKeyInvalid,
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
                 messagePath: 'apiKey.error.xApiKey.invalid',
             },
             {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.xApiKeyForbidden,
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
                 messagePath: 'apiKey.error.xApiKey.forbidden',
             }
         );
@@ -483,7 +483,7 @@ export function DocResponse<T = void>(
  * @template T - Type of the DTO for paginated response data
  * @param {string} messagePath - The message path/key for internationalization
  * @param {IDocResponsePagingOptions<T>} options - Configuration for paginated response documentation
- * @param {ENUM_PAGINATION_TYPE} options.type - Pagination type (CURSOR or OFFSET) to determine which query parameters to include
+ * @param {EnumPaginationType} options.type - Pagination type (CURSOR or OFFSET) to determine which query parameters to include
  * @returns {MethodDecorator} A method decorator that applies Swagger paginated response documentation
  */
 export function DocResponsePaging<T>(
@@ -524,7 +524,7 @@ export function DocResponsePaging<T>(
         DOC_PAGINATION_ERROR_RESPONSES.FILTER_INVALID_VALUE,
     ];
 
-    if (options.type === ENUM_PAGINATION_TYPE.cursor) {
+    if (options.type === EnumPaginationType.cursor) {
         docs.push(
             ...DOC_PAGINATION_CURSOR_QUERIES.map(query => ApiQuery(query))
         );
@@ -561,10 +561,10 @@ export function DocResponsePaging<T>(
                 name: 'orderDirection',
                 required: false,
                 allowEmptyValue: true,
-                example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.asc,
-                enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+                example: EnumPaginationOrderDirectionType.asc,
+                enum: EnumPaginationOrderDirectionType,
                 type: 'string',
-                description: `Order direction, available values: ${Object.values(ENUM_PAGINATION_ORDER_DIRECTION_TYPE).join(', ')}.`,
+                description: `Order direction, available values: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
             })
         );
     }

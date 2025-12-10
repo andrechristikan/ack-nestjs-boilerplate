@@ -1,9 +1,9 @@
 import { HttpStatus } from '@nestjs/common';
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { ClassConstructor } from 'class-transformer';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
-import { ENUM_PAGINATION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 
 export interface IDocOptions {
     summary?: string;
@@ -33,7 +33,7 @@ export interface IDocAuthOptions {
 export interface IDocRequestOptions<T = unknown> {
     params?: ApiParamOptions[];
     queries?: ApiQueryOptions[];
-    bodyType?: ENUM_DOC_REQUEST_BODY_TYPE;
+    bodyType?: EnumDocRequestBodyType;
     dto?: ClassConstructor<T>;
 }
 
@@ -53,14 +53,17 @@ export interface IDocResponseOptions<T = unknown> {
     dto?: ClassConstructor<T>;
 }
 
-export interface IDocResponsePagingOptions<T = unknown>
-    extends IDocResponseOptions<T> {
+export interface IDocResponsePagingOptions<
+    T = unknown,
+> extends IDocResponseOptions<T> {
     availableSearch?: string[];
     availableOrder?: string[];
-    type?: ENUM_PAGINATION_TYPE;
+    type?: EnumPaginationType;
 }
 
-export interface IDocResponseFileOptions
-    extends Omit<IDocResponseOptions, 'dto' | 'statusCode'> {
+export interface IDocResponseFileOptions extends Omit<
+    IDocResponseOptions,
+    'dto' | 'statusCode'
+> {
     extension?: ENUM_FILE_EXTENSION;
 }

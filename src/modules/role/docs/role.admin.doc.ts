@@ -5,7 +5,7 @@ import {
     DocRequest,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { RoleDocParamsId } from '@modules/role/constants/role.doc.constant';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
@@ -22,7 +22,7 @@ export function RoleAdminCreateDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: RoleCreateRequestDto,
         }),
         DocGuard({ role: true, policy: true }),
@@ -40,7 +40,7 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
         }),
         DocRequest({
             params: RoleDocParamsId,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: RoleUpdateRequestDto,
         }),
         DocAuth({

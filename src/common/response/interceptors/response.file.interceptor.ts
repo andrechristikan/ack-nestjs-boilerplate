@@ -14,8 +14,8 @@ import { FileService } from '@common/file/services/file.service';
 import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ConfigService } from '@nestjs/config';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
-import { ENUM_FILE_EXTENSION_EXCEL } from '@common/file/enums/file.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import { EnumFileExtensionExcel } from '@common/file/enums/file.enum';
 
 /**
  * Global file response interceptor that handles file download responses
@@ -64,7 +64,7 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
                     this.validateFileResponse(responseData);
 
                     const file: Buffer =
-                        responseData.extension === ENUM_FILE_EXTENSION_EXCEL.csv
+                        responseData.extension === EnumFileExtensionExcel.csv
                             ? this.fileService.writeCsv(responseData.data[0])
                             : this.fileService.writeExcel(responseData.data);
                     const timestamp = this.createTimestamp();
@@ -122,7 +122,7 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
      */
     private setFileHeaders(
         response: Response,
-        extension: ENUM_FILE_EXTENSION_EXCEL,
+        extension: EnumFileExtensionExcel,
         file: Buffer,
         timestamp: number
     ): void {
@@ -151,7 +151,7 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
         const today = this.helperService.dateCreate();
         const xLanguage: string =
             request.__language ??
-            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
+            this.configService.get<EnumMessageLanguage>('message.language');
         const xTimestamp = this.helperService.dateGetTimestamp(today);
         const xTimezone = this.helperService.dateGetZone(today);
         const xVersion =

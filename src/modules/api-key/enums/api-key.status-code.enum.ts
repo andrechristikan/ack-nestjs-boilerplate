@@ -1,4 +1,4 @@
-export enum ENUM_API_KEY_STATUS_CODE_ERROR {
+export enum EnumApiKeyStatusCodeError {
     xApiKeyRequired = 5100,
     xApiKeyNotFound = 5101,
     xApiKeyInvalid = 5102,

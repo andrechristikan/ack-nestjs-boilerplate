@@ -1,4 +1,4 @@
-export enum ENUM_HELPER_DATE_DAY_OF {
+export enum EnumHelperDateDayOf {
     start = 'start',
     end = 'end',
 }

@@ -1,4 +1,4 @@
-export enum ENUM_DOC_REQUEST_BODY_TYPE {
+export enum EnumDocRequestBodyType {
     json = 'json',
     formData = 'formData',
     formUrlencoded = 'formUrlencoded',

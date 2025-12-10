@@ -99,24 +99,24 @@ File extension enums for validation. These enums are used with `FileExtensionPip
 
 ### Available Enums
 
-- `ENUM_FILE_EXTENSION_IMAGE`: Image files
+- `EnumFileExtensionImage`: Image files
   - `JPG`, `JPEG`, `PNG`
 
-- `ENUM_FILE_EXTENSION_DOCUMENT`: Document files
+- `EnumFileExtensionDocument`: Document files
   - `PDF`
 
-- `ENUM_FILE_EXTENSION_EXCEL`: Spreadsheet files
+- `EnumFileExtensionExcel`: Spreadsheet files
   - `XLSX`, `CSV`
 
-- `ENUM_FILE_EXTENSION_AUDIO`: Audio files
+- `EnumFileExtensionAudio`: Audio files
   - `MPEG`, `M4A`, `MP3`
 
-- `ENUM_FILE_EXTENSION_VIDEO`: Video files
+- `EnumFileExtensionVideo`: Video files
   - `MP4`
 
 **When to Use:**
 - Combine multiple enums for flexible validation: `[...IMAGE, ...DOCUMENT]`
-- Use specific enum for strict type control: only `ENUM_FILE_EXTENSION_IMAGE`
+- Use specific enum for strict type control: only `EnumFileExtensionImage`
 - Excel enums are typically used with `FileExcelParsePipe` for data import features
 
 ## Pipes
@@ -223,9 +223,9 @@ export class UserController {
   async uploadPhotoProfile(
     @UploadedFile(
       FileExtensionPipe([
-        ENUM_FILE_EXTENSION_IMAGE.JPEG,
-        ENUM_FILE_EXTENSION_IMAGE.PNG,
-        ENUM_FILE_EXTENSION_IMAGE.JPG
+        EnumFileExtensionImage.JPEG,
+        EnumFileExtensionImage.PNG,
+        EnumFileExtensionImage.JPG
       ])
     )
     file: IFile
@@ -251,8 +251,8 @@ export class UserController {
 async uploadDocuments(
   @UploadedFiles(
     FileExtensionPipe([
-      ENUM_FILE_EXTENSION_DOCUMENT.PDF,
-      ENUM_FILE_EXTENSION_EXCEL.XLSX
+      EnumFileExtensionDocument.PDF,
+      EnumFileExtensionExcel.XLSX
     ])
   )
   files: IFile[]
@@ -292,8 +292,8 @@ interface UserImportDto {
 async parseUsers(
   @UploadedFile(
     FileExtensionPipe([
-      ENUM_FILE_EXTENSION_EXCEL.XLSX,
-      ENUM_FILE_EXTENSION_EXCEL.CSV
+      EnumFileExtensionExcel.XLSX,
+      EnumFileExtensionExcel.CSV
     ]),
     FileExcelParsePipe<UserImportDto>
   )
@@ -331,8 +331,8 @@ class UserImportDto {
 async importUsers(
   @UploadedFile(
     FileExtensionPipe([
-      ENUM_FILE_EXTENSION_EXCEL.XLSX,
-      ENUM_FILE_EXTENSION_EXCEL.CSV
+      EnumFileExtensionExcel.XLSX,
+      EnumFileExtensionExcel.CSV
     ]),
     FileExcelParsePipe,
     new FileExcelValidationPipe([UserImportDto])
@@ -377,7 +377,7 @@ class ProductImportDto {
 @FileUploadSingle()
 async importComplex(
   @UploadedFile(
-    FileExtensionPipe([ENUM_FILE_EXTENSION_EXCEL.XLSX]),
+    FileExtensionPipe([EnumFileExtensionExcel.XLSX]),
     FileExcelParsePipe,
     new FileExcelValidationPipe([UserImportDto, ProductImportDto])
   )
@@ -468,13 +468,13 @@ AWS S3 presigned URLs enable secure client-side direct uploads to S3 without exp
 export class UserGeneratePhotoProfileRequestDto {
   @ApiProperty({
     type: 'string',
-    enum: ENUM_FILE_EXTENSION_IMAGE,
-    default: ENUM_FILE_EXTENSION_IMAGE.JPG,
+    enum: EnumFileExtensionImage,
+    default: EnumFileExtensionImage.JPG,
   })
   @IsString()
-  @IsEnum(ENUM_FILE_EXTENSION_IMAGE)
+  @IsEnum(EnumFileExtensionImage)
   @IsNotEmpty()
-  extension: ENUM_FILE_EXTENSION_IMAGE;
+  extension: EnumFileExtensionImage;
 
   @ApiProperty({
     required: true,
@@ -577,7 +577,7 @@ export class UserService {
       { key, size },
       { 
         forceUpdate: true,
-        access: ENUM_AWS_S3_ACCESSIBILITY.PUBLIC,
+        access: EnumAwsS3Accessibility.PUBLIC,
         expired: 3600 // 1 hour
       }
     );
@@ -652,7 +652,7 @@ async function uploadPhotoWithPresign(file: File) {
 
 ```typescript
 interface IAwsS3PresignOptions {
-  access?: ENUM_AWS_S3_ACCESSIBILITY; // PUBLIC or PRIVATE
+  access?: EnumAwsS3Accessibility; // PUBLIC or PRIVATE
   expired?: number; // Expiration time in seconds (default from config)
   forceUpdate?: boolean; // Allow overwriting existing files
 }

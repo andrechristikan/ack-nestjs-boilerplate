@@ -5,7 +5,7 @@ import {
     IPaginationCursorReturn,
     IPaginationOffsetReturn,
 } from '@common/pagination/interfaces/pagination.interface';
-import { ENUM_FILE_EXTENSION_EXCEL } from '@common/file/enums/file.enum';
+import { EnumFileExtensionExcel } from '@common/file/enums/file.enum';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 export interface IResponseMetadata {
@@ -28,8 +28,9 @@ export interface IResponseOptions {
     cache?: IResponseCacheOptions | boolean;
 }
 
-export interface IResponseReturn<T = unknown>
-    extends IResponseActivityLogReturn {
+export interface IResponseReturn<
+    T = unknown,
+> extends IResponseActivityLogReturn {
     metadata?: IResponseMetadata;
     data?: T;
 }
@@ -42,6 +43,6 @@ export type IResponsePagingReturn<T> = (
 } & IResponseActivityLogReturn;
 
 export interface IResponseFileReturn<T> extends IResponseActivityLogReturn {
-    extension: ENUM_FILE_EXTENSION_EXCEL;
+    extension: EnumFileExtensionExcel;
     data: IFileSheet<T>[];
 }

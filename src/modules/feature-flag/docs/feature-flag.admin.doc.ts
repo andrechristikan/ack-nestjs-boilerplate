@@ -6,7 +6,7 @@ import {
     DocResponse,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import {
     FeatureFlagDocParamsId,
     FeatureFlagDocQueryList,
@@ -40,7 +40,7 @@ export function FeatureFlagAdminUpdateStatusDoc(): MethodDecorator {
         Doc({}),
         DocRequest({
             params: FeatureFlagDocParamsId,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: FeatureFlagUpdateStatusRequestDto,
         }),
         DocAuth({
@@ -59,7 +59,7 @@ export function FeatureFlagAdminUpdateMetadataDoc(): MethodDecorator {
         Doc({}),
         DocRequest({
             params: FeatureFlagDocParamsId,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: FeatureFlagUpdateMetadataRequestDto,
         }),
         DocAuth({

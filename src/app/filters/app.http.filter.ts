@@ -16,7 +16,7 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
 import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import * as Sentry from '@sentry/nestjs';
 
 /**
@@ -72,9 +72,9 @@ export class AppHttpFilter implements ExceptionFilter {
         let data: unknown;
 
         const today = this.helperService.dateCreate();
-        const xLanguage: ENUM_MESSAGE_LANGUAGE =
-            (request.__language as ENUM_MESSAGE_LANGUAGE) ??
-            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
+        const xLanguage: EnumMessageLanguage =
+            (request.__language as EnumMessageLanguage) ??
+            this.configService.get<EnumMessageLanguage>('message.language');
         const xTimestamp = this.helperService.dateGetTimestamp(today);
         const xTimezone = this.helperService.dateGetZone(today);
         const xVersion =

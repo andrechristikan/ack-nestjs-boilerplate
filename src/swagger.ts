@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { writeFileSync } from 'fs';
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 export default async function (app: NestApplication): Promise<void> {
@@ -23,7 +23,7 @@ export default async function (app: NestApplication): Promise<void> {
 
     const logger = new Logger(`${appName}-Doc`);
 
-    if (env !== ENUM_APP_ENVIRONMENT.production) {
+    if (env !== EnumAppEnvironment.production) {
         const documentBuild = new DocumentBuilder()
             .setTitle(docName)
             .setDescription(docDesc)
@@ -71,7 +71,7 @@ export default async function (app: NestApplication): Promise<void> {
             jsonDocumentUrl: `${docPrefix}/json`,
             explorer: true,
             customSiteTitle: docName,
-            ui: env !== ENUM_APP_ENVIRONMENT.production,
+            ui: env !== EnumAppEnvironment.production,
             raw: ['json'],
             swaggerOptions: {
                 docExpansion: 'none',

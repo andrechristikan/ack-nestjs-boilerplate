@@ -14,7 +14,7 @@ import {
     REQUEST_CUSTOM_TIMEOUT_META_KEY,
     REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY,
 } from '@common/request/constants/request.constant';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 /**
  * Interceptor that handles request timeouts for HTTP requests.
@@ -83,7 +83,7 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
             catchError(err => {
                 if (err instanceof TimeoutError) {
                     throw new RequestTimeoutException({
-                        statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.timeout,
+                        statusCode: EnumRequestStatusCodeError.timeout,
                         message: 'http.clientError.requestTimeOut',
                     });
                 }

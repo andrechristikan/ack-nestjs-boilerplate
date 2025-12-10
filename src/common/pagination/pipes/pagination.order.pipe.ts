@@ -8,8 +8,8 @@ import {
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ENUM_PAGINATION_STATUS_CODE_ERROR } from '@common/pagination/enums/pagination.status-code.enum';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
     IPaginationOrderBy,
     IPaginationQueryCursorParams,
@@ -32,14 +32,14 @@ export function PaginationOrderPipe(
          * Transforms input value to add ordering functionality with validation
          * @param {Object} value - Input object containing order parameters and pagination params
          * @param {string} value.orderBy - Field to order by
-         * @param {ENUM_PAGINATION_ORDER_DIRECTION_TYPE} value.orderDirection - Direction of ordering (ASC/DESC)
+         * @param {EnumPaginationOrderDirectionType} value.orderDirection - Direction of ordering (ASC/DESC)
          * @returns {Promise<IPaginationQueryOffsetParams | IPaginationQueryCursorParams>} Transformed pagination params with ordering
          * @throws {UnprocessableEntityException} When orderBy field is not in allowed list
          */
         async transform(
             value: {
                 orderBy?: string;
-                orderDirection?: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
+                orderDirection?: EnumPaginationOrderDirectionType;
             } & (IPaginationQueryOffsetParams | IPaginationQueryCursorParams)
         ): Promise<
             IPaginationQueryOffsetParams | IPaginationQueryCursorParams
@@ -53,19 +53,18 @@ export function PaginationOrderPipe(
                 return {
                     ...value,
                     orderBy: {
-                        createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.desc,
+                        createdAt: EnumPaginationOrderDirectionType.desc,
                     },
                 };
             }
 
             const finalOrderBy = value.orderBy.trim();
             const finalOrderDirection =
-                value.orderDirection.trim() as ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
+                value.orderDirection.trim() as EnumPaginationOrderDirectionType;
 
             if (!defaultAvailableOrder.includes(finalOrderBy)) {
                 throw new UnprocessableEntityException({
-                    statusCode:
-                        ENUM_PAGINATION_STATUS_CODE_ERROR.orderByNotAllowed,
+                    statusCode: EnumPaginationStatusCodeError.orderByNotAllowed,
                     message: `pagination.error.orderByNotAllowed`,
                 });
             }
@@ -88,12 +87,12 @@ export function PaginationOrderPipe(
         /**
          * Builds order object for database query
          * @param {string} field - Field name to order by
-         * @param {ENUM_PAGINATION_ORDER_DIRECTION_TYPE} orderDirection - Order direction (ASC/DESC)
+         * @param {EnumPaginationOrderDirectionType} orderDirection - Order direction (ASC/DESC)
          * @returns {IPaginationOrderBy} Order object for query
          */
         private buildOrderObject(
             field: string,
-            orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE
+            orderDirection: EnumPaginationOrderDirectionType
         ): IPaginationOrderBy {
             return {
                 [field]: orderDirection,
@@ -103,13 +102,13 @@ export function PaginationOrderPipe(
         /**
          * Adds order information to request instance
          * @param {string} orderBy - Field to order by
-         * @param {ENUM_PAGINATION_ORDER_DIRECTION_TYPE} orderDirection - Order direction
+         * @param {EnumPaginationOrderDirectionType} orderDirection - Order direction
          * @param {string[]} availableOrderBy - Array of allowed order fields
          * @returns {void}
          */
         private addToRequestInstance(
             orderBy: string,
-            orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+            orderDirection: EnumPaginationOrderDirectionType,
             availableOrderBy: string[]
         ): void {
             this.request.__pagination = {

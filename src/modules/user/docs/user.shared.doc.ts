@@ -6,7 +6,7 @@ import {
     DocRequestFile,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { FileSingleDto } from '@common/file/dtos/file.single.dto';
 import { UserDocParamsMobileNumberId } from '@modules/user/constants/user.doc.constant';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
@@ -61,7 +61,7 @@ export function UserSharedUpdateProfileDoc(): MethodDecorator {
             summary: 'update profile',
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: UserUpdateProfileRequestDto,
         }),
         DocAuth({
@@ -82,7 +82,7 @@ export function UserSharedGeneratePhotoProfileDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: UserGeneratePhotoProfileRequestDto,
         }),
         DocResponse<AwsS3PresignDto>('user.generatePhotoProfilePresign', {
@@ -101,7 +101,7 @@ export function UserSharedUpdatePhotoProfileDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: UserUpdateProfilePhotoRequestDto,
         }),
         DocResponse('user.updatePhotoProfile')
@@ -134,7 +134,7 @@ export function UserSharedChangePasswordDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: UserChangePasswordRequestDto,
         }),
         DocResponse('user.changePassword')
@@ -147,7 +147,7 @@ export function UserSharedAddMobileNumberDoc(): MethodDecorator {
             summary: 'user add mobile number',
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: UserAddMobileNumberRequestDto,
         }),
         DocAuth({
@@ -167,7 +167,7 @@ export function UserSharedUpdateMobileNumberDoc(): MethodDecorator {
             summary: 'user update mobile number',
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: UserUpdateMobileNumberRequestDto,
             params: UserDocParamsMobileNumberId,
         }),
@@ -205,7 +205,7 @@ export function UserSharedClaimUsernameDoc(): MethodDecorator {
             summary: 'user claim username',
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: UserClaimUsernameRequestDto,
         }),
         DocAuth({

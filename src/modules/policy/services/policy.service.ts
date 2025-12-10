@@ -1,5 +1,5 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
@@ -23,7 +23,7 @@ export class PolicyService implements IPolicyService {
 
         if (!__user || !user) {
             throw new ForbiddenException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.jwtAccessTokenInvalid,
+                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }

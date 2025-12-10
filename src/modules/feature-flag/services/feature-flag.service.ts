@@ -7,7 +7,7 @@ import {
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
-import { ENUM_FEATURE_FLAG_STATUS_CODE_ERROR } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
+import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { IFeatureFlagService } from '@modules/feature-flag/interfaces/feature-flag.service.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
@@ -37,13 +37,13 @@ export class FeatureFlagService implements IFeatureFlagService {
             if (keys.length === 0) {
                 throw new InternalServerErrorException({
                     statusCode:
-                        ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.predefinedKeyEmpty,
+                        EnumFeatureFlagStatusCodeError.predefinedKeyEmpty,
                     message: 'featureFlag.error.predefinedKeyEmpty',
                 });
             } else if (keys.length > 2) {
                 throw new InternalServerErrorException({
                     statusCode:
-                        ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.predefinedKeyLengthExceeded,
+                        EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded,
                     message: 'featureFlag.error.predefinedKeyLengthExceeded',
                 });
             }
@@ -52,7 +52,7 @@ export class FeatureFlagService implements IFeatureFlagService {
             if (!featureFlag || !featureFlag.isEnable) {
                 throw new ServiceUnavailableException({
                     statusCode:
-                        ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.serviceUnavailable,
+                        EnumFeatureFlagStatusCodeError.serviceUnavailable,
                     message: 'featureFlag.error.serviceUnavailable',
                 });
             } else if (keys.length > 1) {
@@ -61,13 +61,13 @@ export class FeatureFlagService implements IFeatureFlagService {
                 if (typeof metadata !== 'boolean') {
                     throw new InternalServerErrorException({
                         statusCode:
-                            ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.predefinedKeyTypeInvalid,
+                            EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid,
                         message: 'featureFlag.error.predefinedKeyTypeInvalid',
                     });
                 } else if (!metadata) {
                     throw new ServiceUnavailableException({
                         statusCode:
-                            ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.serviceUnavailable,
+                            EnumFeatureFlagStatusCodeError.serviceUnavailable,
                         message: 'featureFlag.error.serviceUnavailable',
                     });
                 }
@@ -83,15 +83,14 @@ export class FeatureFlagService implements IFeatureFlagService {
                 if (!checkRollout) {
                     throw new ServiceUnavailableException({
                         statusCode:
-                            ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.serviceUnavailable,
+                            EnumFeatureFlagStatusCodeError.serviceUnavailable,
                         message: 'featureFlag.error.serviceUnavailable',
                     });
                 }
             }
         } catch {
             throw new ServiceUnavailableException({
-                statusCode:
-                    ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.serviceUnavailable,
+                statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
                 message: 'featureFlag.error.serviceUnavailable',
             });
         }
@@ -143,7 +142,7 @@ export class FeatureFlagService implements IFeatureFlagService {
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
             throw new NotFoundException({
-                statusCode: ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumFeatureFlagStatusCodeError.notFound,
                 message: 'featureFlag.error.notFound',
             });
         }
@@ -168,7 +167,7 @@ export class FeatureFlagService implements IFeatureFlagService {
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
             throw new NotFoundException({
-                statusCode: ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumFeatureFlagStatusCodeError.notFound,
                 message: 'featureFlag.error.notFound',
             });
         }
@@ -179,7 +178,7 @@ export class FeatureFlagService implements IFeatureFlagService {
         );
         if (!validated) {
             throw new BadRequestException({
-                statusCode: ENUM_FEATURE_FLAG_STATUS_CODE_ERROR.invalidMetadata,
+                statusCode: EnumFeatureFlagStatusCodeError.invalidMetadata,
                 message: 'featureFlag.error.invalidMetadata',
             });
         }

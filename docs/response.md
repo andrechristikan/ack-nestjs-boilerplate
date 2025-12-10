@@ -182,7 +182,7 @@ async exportUsers(): Promise<IResponseFileReturn<UserDto>> {
   
   return {
     data: [users], // Single array wrapped in array (CSV supports only 1 sheet)
-    extension: ENUM_FILE_EXTENSION_EXCEL.CSV
+    extension: EnumFileExtensionExcel.CSV
   };
 }
 ```
@@ -197,7 +197,7 @@ async exportUsersExcel(): Promise<IResponseFileReturn<UserDto>> {
   
   return {
     data: [users], // Single sheet
-    extension: ENUM_FILE_EXTENSION_EXCEL.XLSX
+    extension: EnumFileExtensionExcel.XLSX
   };
 }
 ```
@@ -214,7 +214,7 @@ async exportAllData(): Promise<IResponseFileReturn<any>> {
   
   return {
     data: [users, orders, products], // Multiple sheets (array of arrays)
-    extension: ENUM_FILE_EXTENSION_EXCEL.XLSX
+    extension: EnumFileExtensionExcel.XLSX
   };
 }
 ```

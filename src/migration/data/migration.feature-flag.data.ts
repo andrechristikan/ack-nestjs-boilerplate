@@ -1,4 +1,4 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { Prisma } from '@prisma/client';
 
 const featureFlagData: Prisma.FeatureFlagCreateInput[] = [
@@ -44,11 +44,11 @@ const featureFlagData: Prisma.FeatureFlagCreateInput[] = [
 ];
 
 export const migrationFeatureFlagData: Record<
-    ENUM_APP_ENVIRONMENT,
+    EnumAppEnvironment,
     Prisma.FeatureFlagCreateInput[]
 > = {
-    [ENUM_APP_ENVIRONMENT.local]: featureFlagData,
-    [ENUM_APP_ENVIRONMENT.development]: featureFlagData,
-    [ENUM_APP_ENVIRONMENT.staging]: featureFlagData,
-    [ENUM_APP_ENVIRONMENT.production]: featureFlagData,
+    [EnumAppEnvironment.local]: featureFlagData,
+    [EnumAppEnvironment.development]: featureFlagData,
+    [EnumAppEnvironment.staging]: featureFlagData,
+    [EnumAppEnvironment.production]: featureFlagData,
 };

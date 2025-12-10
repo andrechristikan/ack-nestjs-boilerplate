@@ -1,4 +1,4 @@
-export enum ENUM_REQUEST_STATUS_CODE_ERROR {
+export enum EnumRequestStatusCodeError {
     validation = 5030,
     timeout = 5031,
     paramRequired = 5032,

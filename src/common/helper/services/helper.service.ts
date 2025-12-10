@@ -10,7 +10,7 @@ import { compareSync, genSaltSync, hashSync } from 'bcryptjs';
 import { AES, MD5, SHA256, enc, mode, pad } from 'crypto-js';
 import { DateObjectUnits, DateTime, Duration, DurationLikeObject } from 'luxon';
 import _ from 'lodash';
-import { ENUM_HELPER_DATE_DAY_OF } from '@common/helper/enums/helper.enum';
+import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 
 /**
  * Comprehensive utility service providing helper functions for common operations.
@@ -646,14 +646,11 @@ export class HelperService implements IHelperService {
             ? DateTime.fromJSDate(date).setZone(this.defTz)
             : DateTime.now().setZone(this.defTz);
 
-        if (
-            options?.dayOf &&
-            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.start
-        ) {
+        if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
             mDate = mDate.startOf('day');
         } else if (
             options?.dayOf &&
-            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.end
+            options?.dayOf === EnumHelperDateDayOf.end
         ) {
             mDate = mDate.endOf('day');
         }
@@ -679,14 +676,11 @@ export class HelperService implements IHelperService {
     dateCreateFromIso(iso: string, options?: IHelperDateCreateOptions): Date {
         const date = DateTime.fromISO(iso).setZone(this.defTz);
 
-        if (
-            options?.dayOf &&
-            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.start
-        ) {
+        if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
             date.startOf('day');
         } else if (
             options?.dayOf &&
-            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.end
+            options?.dayOf === EnumHelperDateDayOf.end
         ) {
             date.endOf('day');
         }
@@ -708,14 +702,11 @@ export class HelperService implements IHelperService {
             ? DateTime.fromMillis(timestamp).setZone(this.defTz)
             : DateTime.now().setZone(this.defTz);
 
-        if (
-            options?.dayOf &&
-            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.start
-        ) {
+        if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
             date.startOf('day');
         } else if (
             options?.dayOf &&
-            options?.dayOf === ENUM_HELPER_DATE_DAY_OF.end
+            options?.dayOf === EnumHelperDateDayOf.end
         ) {
             date.endOf('day');
         }

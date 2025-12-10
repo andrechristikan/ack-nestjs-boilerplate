@@ -5,7 +5,7 @@ import {
     UnsupportedMediaTypeException,
     mixin,
 } from '@nestjs/common';
-import { ENUM_FILE_STATUS_CODE_ERROR } from '@common/file/enums/file.status-code.enum';
+import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { IFile, IFileInput } from '@common/file/interfaces/file.interface';
 import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
@@ -124,8 +124,7 @@ export function FileExtensionPipe(
                     this.validateExtension(file.originalname);
                 } else {
                     throw new UnsupportedMediaTypeException({
-                        statusCode:
-                            ENUM_FILE_STATUS_CODE_ERROR.extensionInvalid,
+                        statusCode: EnumFileStatusCodeError.extensionInvalid,
                         message: 'file.error.extensionInvalid',
                     });
                 }
@@ -147,7 +146,7 @@ export function FileExtensionPipe(
                 this.validateExtension(file.originalname);
             } else {
                 throw new UnsupportedMediaTypeException({
-                    statusCode: ENUM_FILE_STATUS_CODE_ERROR.extensionInvalid,
+                    statusCode: EnumFileStatusCodeError.extensionInvalid,
                     message: 'file.error.extensionInvalid',
                 });
             }
@@ -170,7 +169,7 @@ export function FileExtensionPipe(
                 this.fileService.extractExtensionFromFilename(originalname);
             if (!this.extensions.has(extension)) {
                 throw new UnsupportedMediaTypeException({
-                    statusCode: ENUM_FILE_STATUS_CODE_ERROR.extensionInvalid,
+                    statusCode: EnumFileStatusCodeError.extensionInvalid,
                     message: 'file.error.extensionInvalid',
                 });
             }

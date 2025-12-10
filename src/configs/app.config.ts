@@ -1,10 +1,10 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { registerAs } from '@nestjs/config';
 import { author, repository, version } from 'package.json';
 
 export interface IConfigApp {
     name: string;
-    env: ENUM_APP_ENVIRONMENT;
+    env: EnumAppEnvironment;
     timezone: string;
     version: string;
     author: {
@@ -29,8 +29,7 @@ export default registerAs(
     (): IConfigApp => ({
         name: process.env.APP_NAME ?? 'ACKNestJs',
         env:
-            ENUM_APP_ENVIRONMENT[process.env.APP_ENV] ??
-            ENUM_APP_ENVIRONMENT.local,
+            EnumAppEnvironment[process.env.APP_ENV] ?? EnumAppEnvironment.local,
         timezone: process.env.APP_TIMEZONE ?? 'Asia/Jakarta',
         version,
         author: author as {

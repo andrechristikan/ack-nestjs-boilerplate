@@ -21,7 +21,7 @@ import { ConfigService } from '@nestjs/config';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 /**
  * Global response interceptor that standardizes HTTP response format
@@ -122,9 +122,9 @@ export class ResponseInterceptor<T> implements NestInterceptor {
      */
     private createResponseMetadata(request: IRequestApp): ResponseMetadataDto {
         const today = this.helperService.dateCreate();
-        const xLanguage: ENUM_MESSAGE_LANGUAGE =
-            (request.__language as ENUM_MESSAGE_LANGUAGE) ??
-            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
+        const xLanguage: EnumMessageLanguage =
+            (request.__language as EnumMessageLanguage) ??
+            this.configService.get<EnumMessageLanguage>('message.language');
         const xVersion =
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');

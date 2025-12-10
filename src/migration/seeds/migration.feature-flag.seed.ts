@@ -1,4 +1,4 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationFeatureFlagData } from '@migration/data/migration.feature-flag.data';
@@ -19,7 +19,7 @@ export class MigrationFeatureFlagSeed
 {
     private readonly logger = new Logger(MigrationFeatureFlagSeed.name);
 
-    private readonly env: ENUM_APP_ENVIRONMENT;
+    private readonly env: EnumAppEnvironment;
     private readonly featureFlags: Prisma.FeatureFlagCreateInput[] = [];
 
     constructor(
@@ -28,7 +28,7 @@ export class MigrationFeatureFlagSeed
     ) {
         super();
 
-        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env');
         this.featureFlags = migrationFeatureFlagData[this.env];
     }
 

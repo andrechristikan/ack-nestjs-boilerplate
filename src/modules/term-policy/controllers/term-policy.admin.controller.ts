@@ -1,5 +1,5 @@
 import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     PaginationOffsetQuery,
     PaginationQueryFilterInEnum,
@@ -259,7 +259,7 @@ export class TermPolicyAdminController {
     async getContent(
         @Param('termPolicyId', RequestRequiredPipe)
         termPolicyId: string,
-        @Param('language', RequestRequiredPipe) language: ENUM_MESSAGE_LANGUAGE
+        @Param('language', RequestRequiredPipe) language: EnumMessageLanguage
     ): Promise<IResponseReturn<AwsS3PresignDto>> {
         return this.termPolicyService.getContent(termPolicyId, language);
     }

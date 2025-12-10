@@ -1,4 +1,4 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 
 const userData: {
     country: string;
@@ -31,7 +31,7 @@ const userData: {
 ];
 
 export const migrationUserData: Record<
-    ENUM_APP_ENVIRONMENT,
+    EnumAppEnvironment,
     {
         country: string;
         email: string;
@@ -40,8 +40,8 @@ export const migrationUserData: Record<
         password: string;
     }[]
 > = {
-    [ENUM_APP_ENVIRONMENT.local]: userData,
-    [ENUM_APP_ENVIRONMENT.development]: userData,
-    [ENUM_APP_ENVIRONMENT.staging]: userData,
-    [ENUM_APP_ENVIRONMENT.production]: userData,
+    [EnumAppEnvironment.local]: userData,
+    [EnumAppEnvironment.development]: userData,
+    [EnumAppEnvironment.staging]: userData,
+    [EnumAppEnvironment.production]: userData,
 };

@@ -1,5 +1,5 @@
-import { ENUM_MIGRATION_TYPE } from '@migration/enums/migration.enum';
+import { EnumMigrationType } from '@migration/enums/migration.enum';
 
 export interface IMigrationOptions {
-    type: ENUM_MIGRATION_TYPE;
+    type: EnumMigrationType;
 }

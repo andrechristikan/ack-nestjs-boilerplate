@@ -1,4 +1,4 @@
-export enum ENUM_AUTH_STATUS_CODE_ERROR {
+export enum EnumAuthStatusCodeError {
     jwtAccessTokenInvalid = 5120,
     jwtRefreshTokenInvalid = 5121,
     socialGoogleRequired = 5122,

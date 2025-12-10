@@ -5,8 +5,8 @@ import {
     DocResponse,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
-import { ENUM_PAGINATION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { UserDocQueryList } from '@modules/user/constants/user.doc.constant';
 import {
     UserCheckEmailRequestDto,
@@ -32,7 +32,7 @@ export function UserSystemListDoc(): MethodDecorator {
         }),
         DocResponsePaging<UserListResponseDto>('user.list', {
             dto: UserListResponseDto,
-            type: ENUM_PAGINATION_TYPE.cursor,
+            type: EnumPaginationType.cursor,
         })
     );
 }
@@ -44,7 +44,7 @@ export function UserSystemCheckUsernameDoc(): MethodDecorator {
         }),
         DocRequest({
             dto: UserCheckUsernameRequestDto,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({
             xApiKey: true,
@@ -62,7 +62,7 @@ export function UserSystemCheckEmailDoc(): MethodDecorator {
         }),
         DocRequest({
             dto: UserCheckEmailRequestDto,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({
             xApiKey: true,

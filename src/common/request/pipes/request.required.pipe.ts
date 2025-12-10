@@ -1,4 +1,4 @@
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import {
     ArgumentMetadata,
     BadRequestException,
@@ -26,7 +26,7 @@ export class RequestRequiredPipe implements PipeTransform {
     ): Promise<string> {
         if (!value) {
             throw new BadRequestException({
-                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.paramRequired,
+                statusCode: EnumRequestStatusCodeError.paramRequired,
                 message: 'request.error.paramRequired',
                 metadata: {
                     customProperty: {

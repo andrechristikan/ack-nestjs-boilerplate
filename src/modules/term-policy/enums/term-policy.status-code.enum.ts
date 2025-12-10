@@ -1,4 +1,4 @@
-export enum ENUM_TERM_POLICY_STATUS_CODE_ERROR {
+export enum EnumTermPolicyStatusCodeError {
     notFound = 6100,
     exist = 6101,
     languageDuplicate = 6102,

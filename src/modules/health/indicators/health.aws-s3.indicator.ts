@@ -1,4 +1,4 @@
-import { ENUM_AWS_S3_ACCESSIBILITY } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { Injectable } from '@nestjs/common';
 import {
@@ -15,7 +15,7 @@ export class HealthAwsS3BucketIndicator {
 
     async isHealthy(
         key: string,
-        access?: ENUM_AWS_S3_ACCESSIBILITY
+        access?: EnumAwsS3Accessibility
     ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 

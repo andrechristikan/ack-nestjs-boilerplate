@@ -1,4 +1,4 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationCountryData } from '@migration/data/migration.country.data';
@@ -19,7 +19,7 @@ export class MigrationCountrySeed
 {
     private readonly logger = new Logger(MigrationCountrySeed.name);
 
-    private readonly env: ENUM_APP_ENVIRONMENT;
+    private readonly env: EnumAppEnvironment;
     private readonly countries: CountryRequestDto[] = [];
 
     constructor(
@@ -28,7 +28,7 @@ export class MigrationCountrySeed
     ) {
         super();
 
-        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env');
         this.countries = migrationCountryData[this.env];
     }
 

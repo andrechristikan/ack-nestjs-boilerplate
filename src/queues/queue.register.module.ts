@@ -1,4 +1,4 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { BullModule } from '@nestjs/bullmq';
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -49,7 +49,7 @@ export class QueueRegisterModule {
                             url: configService.get<string>('redis.queue.url'),
                             connectionName: `${configService.get<string>(
                                 'app.name'
-                            )}-${configService.get<ENUM_APP_ENVIRONMENT>('app.env')}:queue`,
+                            )}-${configService.get<EnumAppEnvironment>('app.env')}:queue`,
                         },
                         prefix: configService.get<string>(
                             'redis.queue.namespace'
@@ -73,7 +73,7 @@ export class QueueRegisterModule {
                             url: configService.get<string>('redis.queue.url'),
                             connectionName: `${configService.get<string>(
                                 'app.name'
-                            )}-${configService.get<ENUM_APP_ENVIRONMENT>('app.env')}:processor`,
+                            )}-${configService.get<EnumAppEnvironment>('app.env')}:processor`,
                         },
                         prefix: configService.get<string>(
                             'redis.queue.namespace'

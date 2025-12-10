@@ -1,4 +1,4 @@
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -10,10 +10,10 @@ export class ResponseMetadataDto {
     @ApiProperty({
         required: true,
         description: 'Language of the response message',
-        example: ENUM_MESSAGE_LANGUAGE.en,
+        example: EnumMessageLanguage.en,
         type: String,
     })
-    language: ENUM_MESSAGE_LANGUAGE;
+    language: EnumMessageLanguage;
 
     @ApiProperty({
         required: true,

@@ -7,7 +7,7 @@ import {
 } from '@common/file/interfaces/file.interface';
 import { HelperService } from '@common/helper/services/helper.service';
 import Mime from 'mime';
-import { ENUM_FILE_EXTENSION_EXCEL } from '@common/file/enums/file.enum';
+import { EnumFileExtensionExcel } from '@common/file/enums/file.enum';
 
 /**
  * Service for handling file operations including CSV and Excel file creation and reading.
@@ -76,7 +76,7 @@ export class FileService implements IFileService {
 
         const buff: Buffer = write(workbook, {
             type: 'buffer',
-            bookType: ENUM_FILE_EXTENSION_EXCEL.xlsx,
+            bookType: EnumFileExtensionExcel.xlsx,
         });
 
         return buff;
@@ -99,7 +99,7 @@ export class FileService implements IFileService {
 
         const buff: Buffer = write(workbook, {
             type: 'buffer',
-            bookType: ENUM_FILE_EXTENSION_EXCEL.xlsx,
+            bookType: EnumFileExtensionExcel.xlsx,
         });
 
         return buff;

@@ -103,13 +103,13 @@ Documents request specifications including body, parameters, and queries.
 - `options?: IDocRequestOptions`
   - `params?: ApiParamOptions[]` - URL parameters
   - `queries?: ApiQueryOptions[]` - Query parameters
-  - `bodyType?: ENUM_DOC_REQUEST_BODY_TYPE` - Request body content type
+  - `bodyType?: EnumDocRequestBodyType` - Request body content type
   - `dto?: ClassConstructor<T>` - Request DTO class
 
 **Body Types:**
 
 ```typescript
-enum ENUM_DOC_REQUEST_BODY_TYPE {
+enum EnumDocRequestBodyType {
     JSON = 'json',
     FORM_DATA = 'formData',
     FORM_URLENCODED = 'formUrlencoded',
@@ -140,7 +140,7 @@ enum ENUM_DOC_REQUEST_BODY_TYPE {
             type: 'string'
         }
     ],
-    bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+    bodyType: EnumDocRequestBodyType.JSON,
     dto: UpdateUserDto
 })
 @Put('/:id')
@@ -230,7 +230,7 @@ Documents paginated response with automatic pagination parameters.
 - `messagePath: string` - i18n message path
 - `options: IDocResponsePagingOptions<T>`
   - `dto: ClassConstructor<T>` - Response DTO class (required)
-  - `type?: ENUM_PAGINATION_TYPE` - Pagination type: `offset` or `cursor` (default: `offset`)
+  - `type?: EnumPaginationType` - Pagination type: `offset` or `cursor` (default: `offset`)
   - `statusCode?: number` - Custom status code
   - `httpStatus?: HttpStatus` - HTTP status
   - `availableSearch?: string[]` - Searchable fields
@@ -267,7 +267,7 @@ async getUsers() {
 // Cursor pagination
 @DocResponsePaging<UserListResponseDto>('user.list', {
     dto: UserListResponseDto,
-    type: ENUM_PAGINATION_TYPE.CURSOR,
+    type: EnumPaginationType.CURSOR,
     availableSearch: ['name', 'email'],
     availableOrder: ['createdAt', 'name']
 })
@@ -603,7 +603,7 @@ export function UserPublicSignUpDoc(): MethodDecorator {
             summary: 'User sign up',
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: EnumDocRequestBodyType.JSON,
             dto: UserSignUpRequestDto,
         }),
         DocAuth({

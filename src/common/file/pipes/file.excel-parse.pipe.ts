@@ -4,10 +4,10 @@ import {
     UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common/interfaces';
-import { ENUM_FILE_STATUS_CODE_ERROR } from '@common/file/enums/file.status-code.enum';
+import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { IFile, IFileSheet } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
-import { ENUM_FILE_EXTENSION_EXCEL } from '@common/file/enums/file.enum';
+import { EnumFileExtensionExcel } from '@common/file/enums/file.enum';
 
 /**
  * Pipe for validating and parsing Excel files.
@@ -21,7 +21,7 @@ import { ENUM_FILE_EXTENSION_EXCEL } from '@common/file/enums/file.enum';
 @Injectable()
 export class FileExcelParsePipe<T> implements PipeTransform {
     private readonly allowedExtensions: ReadonlySet<string> = new Set(
-        Object.values(ENUM_FILE_EXTENSION_EXCEL)
+        Object.values(EnumFileExtensionExcel)
     );
 
     constructor(private readonly fileService: FileService) {}
@@ -60,7 +60,7 @@ export class FileExcelParsePipe<T> implements PipeTransform {
     async validate(value: IFile): Promise<void> {
         if (!value.buffer || value.buffer.length === 0) {
             throw new UnprocessableEntityException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.required,
+                statusCode: EnumFileStatusCodeError.required,
                 message: 'file.error.required',
             });
         }
@@ -72,13 +72,13 @@ export class FileExcelParsePipe<T> implements PipeTransform {
 
             if (!this.allowedExtensions.has(extension)) {
                 throw new UnsupportedMediaTypeException({
-                    statusCode: ENUM_FILE_STATUS_CODE_ERROR.extensionInvalid,
+                    statusCode: EnumFileStatusCodeError.extensionInvalid,
                     message: 'file.error.extensionInvalid',
                 });
             }
         } else {
             throw new UnsupportedMediaTypeException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.extensionInvalid,
+                statusCode: EnumFileStatusCodeError.extensionInvalid,
                 message: 'file.error.extensionInvalid',
             });
         }
@@ -100,7 +100,7 @@ export class FileExcelParsePipe<T> implements PipeTransform {
         const extension = this.fileService.extractExtensionFromFilename(
             value.filename
         );
-        if (extension === ENUM_FILE_EXTENSION_EXCEL.csv) {
+        if (extension === EnumFileExtensionExcel.csv) {
             return this.parseCsv(value);
         }
 

@@ -1,5 +1,5 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -33,10 +33,10 @@ class HelloAppResponseDto {
 
     @ApiProperty({
         required: true,
-        example: ENUM_APP_ENVIRONMENT.development,
-        enum: ENUM_APP_ENVIRONMENT,
+        example: EnumAppEnvironment.development,
+        enum: EnumAppEnvironment,
     })
-    env: ENUM_APP_ENVIRONMENT;
+    env: EnumAppEnvironment;
 
     @ApiProperty({
         required: true,
@@ -80,18 +80,18 @@ class HelloAuthResponseDto {
 class HelloMessageResponseDto {
     @ApiProperty({
         required: true,
-        example: Object.values(ENUM_MESSAGE_LANGUAGE),
+        example: Object.values(EnumMessageLanguage),
         isArray: true,
-        enum: ENUM_MESSAGE_LANGUAGE,
+        enum: EnumMessageLanguage,
     })
-    availableLanguage: ENUM_MESSAGE_LANGUAGE[];
+    availableLanguage: EnumMessageLanguage[];
 
     @ApiProperty({
         required: true,
-        example: ENUM_MESSAGE_LANGUAGE.en,
-        enum: ENUM_MESSAGE_LANGUAGE,
+        example: EnumMessageLanguage.en,
+        enum: EnumMessageLanguage,
     })
-    defaultLanguage: ENUM_MESSAGE_LANGUAGE;
+    defaultLanguage: EnumMessageLanguage;
 }
 
 class HelloRequestResponseDto {

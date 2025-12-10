@@ -7,7 +7,7 @@ import {
     DocResponse,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import {
     TermPolicyDocParamsGetContent,
     TermPolicyDocParamsId,
@@ -56,7 +56,7 @@ export function TermPolicyAdminCreateDoc(): MethodDecorator {
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: TermPolicyCreateRequestDto,
         }),
         DocResponse<TermPolicyResponseDto>('termPolicy.create', {
@@ -102,7 +102,7 @@ export function TermPolicyAdminGenerateContentPresignDoc(): MethodDecorator {
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: TermPolicyContentPresignRequestDto,
         }),
         DocResponse<AwsS3PresignDto>('termPolicy.generateContentPresign', {
@@ -125,7 +125,7 @@ export function TermPolicyAdminUpdateContentDoc(): MethodDecorator {
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: TermPolicyContentRequestDto,
             params: TermPolicyDocParamsId,
         }),
@@ -147,7 +147,7 @@ export function TermPolicyAdminAddContentDoc(): MethodDecorator {
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: TermPolicyContentRequestDto,
             params: TermPolicyDocParamsId,
         }),
@@ -169,7 +169,7 @@ export function TermPolicyAdminRemoveContentDoc(): MethodDecorator {
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: TermPolicyRemoveContentRequestDto,
             params: TermPolicyDocParamsId,
         }),
@@ -191,7 +191,7 @@ export function TermPolicyAdminGetContentDoc(): MethodDecorator {
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             params: TermPolicyDocParamsGetContent,
         }),
         DocResponse('termPolicy.getContent', {

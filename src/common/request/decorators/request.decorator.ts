@@ -12,7 +12,7 @@ import {
 } from '@common/request/constants/request.constant';
 import ms from 'ms';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { RealIp } from 'nestjs-real-ip';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { UAParser } from 'ua-parser-js';
@@ -33,11 +33,11 @@ export function RequestTimeout(seconds: ms.StringValue): MethodDecorator {
 /**
  * Environment protection decorator for route handlers.
  * Restricts access to endpoints based on the current application environment.
- * @param {...ENUM_APP_ENVIRONMENT[]} envs - Array of application environments where the route should be accessible
+ * @param {...EnumAppEnvironment[]} envs - Array of application environments where the route should be accessible
  * @returns {MethodDecorator} A method decorator that applies environment-based access control
  */
 export function RequestEnvProtected(
-    ...envs: ENUM_APP_ENVIRONMENT[]
+    ...envs: EnumAppEnvironment[]
 ): MethodDecorator {
     return applyDecorators(
         UseGuards(RequestEnvGuard),

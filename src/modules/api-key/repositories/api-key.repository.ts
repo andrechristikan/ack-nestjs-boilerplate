@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
     IPaginationEqual,
     IPaginationIn,
@@ -35,7 +35,7 @@ export class ApiKeyRepository {
                     ...type,
                 },
                 orderBy: {
-                    createdAt: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.desc,
+                    createdAt: EnumPaginationOrderDirectionType.desc,
                 },
             }
         );

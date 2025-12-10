@@ -1,8 +1,8 @@
-import { ENUM_HELPER_DATE_DAY_OF } from '@common/helper/enums/helper.enum';
+import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import {
-    ENUM_PAGINATION_FILTER_DATE_BETWEEN_TYPE,
-    ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-    ENUM_PAGINATION_TYPE,
+    EnumPaginationFilterDateBetweenType,
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
 
 export type IPaginationQueryFilter = Record<
@@ -17,7 +17,7 @@ export interface IPaginationQuery {
     perPage: number;
     cursor?: string;
     orderBy: string;
-    orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
+    orderDirection: EnumPaginationOrderDirectionType;
     availableSearch: string[];
     availableOrderBy: string[];
 }
@@ -37,7 +37,7 @@ export interface IPaginationQueryCursorOptions {
 
 export type IPaginationOrderBy = Record<
     string,
-    ENUM_PAGINATION_ORDER_DIRECTION_TYPE
+    EnumPaginationOrderDirectionType
 >;
 
 export interface IPaginationQueryReturn {
@@ -68,13 +68,11 @@ export interface IPaginationQueryFilterOptions {
 
 export type IPaginationQueryFilterEnumOptions = IPaginationQueryFilterOptions;
 
-export interface IPaginationQueryFilterNumberOptions
-    extends IPaginationQueryFilterOptions {
+export interface IPaginationQueryFilterNumberOptions extends IPaginationQueryFilterOptions {
     isNumber: true;
 }
 
-export interface IPaginationQueryFilterBooleanOptions
-    extends IPaginationQueryFilterOptions {
+export interface IPaginationQueryFilterBooleanOptions extends IPaginationQueryFilterOptions {
     isBoolean: true;
 }
 
@@ -83,10 +81,9 @@ export type IPaginationQueryFilterEqualOptions =
     | IPaginationQueryFilterBooleanOptions
     | IPaginationQueryFilterNumberOptions;
 
-export interface IPaginationQueryFilterDateOptions
-    extends IPaginationQueryFilterOptions {
-    dayOf?: ENUM_HELPER_DATE_DAY_OF;
-    type?: ENUM_PAGINATION_FILTER_DATE_BETWEEN_TYPE;
+export interface IPaginationQueryFilterDateOptions extends IPaginationQueryFilterOptions {
+    dayOf?: EnumHelperDateDayOf;
+    type?: EnumPaginationFilterDateBetweenType;
 }
 
 export interface IPaginationIn {
@@ -112,7 +109,7 @@ export interface IPaginationDate {
 }
 
 export interface IPaginationOffsetReturn<T = unknown> {
-    type: ENUM_PAGINATION_TYPE.offset;
+    type: EnumPaginationType.offset;
     count: number;
     perPage: number;
     hasNext: boolean;
@@ -125,7 +122,7 @@ export interface IPaginationOffsetReturn<T = unknown> {
 }
 
 export interface IPaginationCursorReturn<T = unknown> {
-    type: ENUM_PAGINATION_TYPE.cursor;
+    type: EnumPaginationType.cursor;
     count?: number;
     perPage: number;
     hasNext: boolean;

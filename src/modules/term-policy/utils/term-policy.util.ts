@@ -2,7 +2,7 @@ import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { HelperService } from '@common/helper/services/helper.service';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
@@ -64,7 +64,7 @@ export class TermPolicyUtil {
     createRandomFilenameContentWithPath(
         type: ENUM_TERM_POLICY_TYPE,
         version: number,
-        language: ENUM_MESSAGE_LANGUAGE,
+        language: EnumMessageLanguage,
         { extension }: IFileRandomFilenameOptions
     ): string {
         const path: string = this.uploadContentPath
@@ -80,7 +80,7 @@ export class TermPolicyUtil {
 
     checkContentExist(
         contents: Prisma.JsonArray,
-        language: ENUM_MESSAGE_LANGUAGE
+        language: EnumMessageLanguage
     ): boolean {
         return !!(contents as unknown as TermContentDto[]).find(
             c => c.language === language
@@ -102,7 +102,7 @@ export class TermPolicyUtil {
                 c =>
                     this.fileService.extractFilenameFromPath(c.key) ===
                     this.fileService.extractFilenameFromPath(item.key)
-            )?.language as ENUM_MESSAGE_LANGUAGE;
+            )?.language as EnumMessageLanguage;
 
             return { ...item, language };
         });
@@ -119,7 +119,7 @@ export class TermPolicyUtil {
 
     getContentByLanguage(
         contents: TermContentDto[],
-        language: ENUM_MESSAGE_LANGUAGE
+        language: EnumMessageLanguage
     ): TermContentDto | null {
         const content = contents.find(c => c.language === language);
         return content || null;

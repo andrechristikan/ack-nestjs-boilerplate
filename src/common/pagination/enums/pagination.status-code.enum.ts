@@ -1,4 +1,4 @@
-export enum ENUM_PAGINATION_STATUS_CODE_ERROR {
+export enum EnumPaginationStatusCodeError {
     orderByNotAllowed = 5020,
     filterInvalidValue = 5021,
 }

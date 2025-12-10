@@ -13,7 +13,7 @@ import {
     UserDocParamsId,
     UserDocQueryList,
 } from '@modules/user/constants/user.doc.constant';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
@@ -66,7 +66,7 @@ export function UserAdminCreateDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: UserCreateRequestDto,
         }),
         DocGuard({ role: true, policy: true }),
@@ -84,7 +84,7 @@ export function UserAdminUpdateStatusDoc(): MethodDecorator {
         }),
         DocRequest({
             params: UserDocParamsId,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.json,
+            bodyType: EnumDocRequestBodyType.json,
             dto: UserUpdateStatusRequestDto,
         }),
         DocAuth({

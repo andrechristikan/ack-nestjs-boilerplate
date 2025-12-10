@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { TermPolicyTemplateService } from '@modules/term-policy/services/term-policy.template.service';
@@ -51,7 +51,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: termsOfServiceKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.en,
+                            language: EnumMessageLanguage.en,
                             size: termsOfServiceKey.size,
                         },
                     ],
@@ -60,7 +60,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: termsOfServiceKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.en,
+                            language: EnumMessageLanguage.en,
                             size: termsOfServiceKey.size,
                         },
                     ],
@@ -80,7 +80,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: privacyKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.en,
+                            language: EnumMessageLanguage.en,
                             size: privacyKey.size,
                         },
                     ],
@@ -89,7 +89,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: privacyKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.en,
+                            language: EnumMessageLanguage.en,
                             size: privacyKey.size,
                         },
                     ],
@@ -109,7 +109,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: cookieKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.en,
+                            language: EnumMessageLanguage.en,
                             size: cookieKey.size,
                         },
                     ],
@@ -118,7 +118,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: cookieKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.en,
+                            language: EnumMessageLanguage.en,
                             size: cookieKey.size,
                         },
                     ],
@@ -138,7 +138,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: marketingKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.en,
+                            language: EnumMessageLanguage.en,
                             size: marketingKey.size,
                         },
                     ],
@@ -147,7 +147,7 @@ export class MigrationTemplateTermPolicySeed
                     contents: [
                         {
                             key: marketingKey.key,
-                            language: ENUM_MESSAGE_LANGUAGE.en,
+                            language: EnumMessageLanguage.en,
                             size: marketingKey.size,
                         },
                     ],

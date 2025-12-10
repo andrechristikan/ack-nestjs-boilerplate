@@ -1,4 +1,4 @@
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from '@common/request/enums/request.status-code.enum';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import {
     ArgumentMetadata,
     BadRequestException,
@@ -24,7 +24,7 @@ export class RequestIsValidObjectIdPipe implements PipeTransform {
     ): Promise<string> {
         if (!value || typeof value !== 'string' || isMongoId(value)) {
             throw new BadRequestException({
-                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.validation,
+                statusCode: EnumRequestStatusCodeError.validation,
                 message: 'request.error.isMongoId',
                 metadata: {
                     customProperty: {

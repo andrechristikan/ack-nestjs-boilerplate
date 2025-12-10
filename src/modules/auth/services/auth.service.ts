@@ -2,7 +2,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from '@modules/auth/enums/auth.status-code.enum';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
@@ -165,7 +165,7 @@ export class AuthService implements IAuthService {
     ): Promise<IAuthJwtAccessTokenPayload> {
         if (err || !user) {
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.jwtAccessTokenInvalid,
+                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
                 message: 'auth.error.accessTokenUnauthorized',
                 _error: err ? err : info,
             });
@@ -180,7 +180,7 @@ export class AuthService implements IAuthService {
             typeof fingerprint !== 'string'
         ) {
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.jwtAccessTokenInvalid,
+                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }
@@ -212,7 +212,7 @@ export class AuthService implements IAuthService {
     ): Promise<IAuthJwtRefreshTokenPayload> {
         if (err || !user) {
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.jwtRefreshTokenInvalid,
+                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
                 message: 'auth.error.refreshTokenUnauthorized',
                 _error: err ? err : info,
             });
@@ -228,7 +228,7 @@ export class AuthService implements IAuthService {
             typeof fingerprint !== 'string'
         ) {
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.jwtRefreshTokenInvalid,
+                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
                 message: 'auth.error.refreshTokenUnauthorized',
             });
         }
@@ -258,7 +258,7 @@ export class AuthService implements IAuthService {
         const requestHeaders = this.authUtil.extractHeaderApple(request);
         if (requestHeaders.length !== 2) {
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.socialGoogleRequired,
+                statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
                 message: 'auth.error.socialAppleRequired',
             });
         }
@@ -274,7 +274,7 @@ export class AuthService implements IAuthService {
             return true;
         } catch (err: unknown) {
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.socialGoogleInvalid,
+                statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
                 message: 'auth.error.socialAppleInvalid',
                 _error: err,
             });
@@ -296,7 +296,7 @@ export class AuthService implements IAuthService {
 
         if (requestHeaders.length !== 2) {
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.socialGoogleRequired,
+                statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
                 message: 'auth.error.socialGoogleRequired',
             });
         }
@@ -314,7 +314,7 @@ export class AuthService implements IAuthService {
             return true;
         } catch (err: unknown) {
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.socialGoogleInvalid,
+                statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
                 message: 'auth.error.socialGoogleInvalid',
                 _error: err,
             });

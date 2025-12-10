@@ -10,7 +10,7 @@ import {
     IMessageValidationImportErrorParam,
 } from '@common/message/interfaces/message.interface';
 import { IMessageService } from '@common/message/interfaces/message.service.interface';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 /**
  * Service responsible for handling internationalization and message formatting.
@@ -19,18 +19,18 @@ import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
  */
 @Injectable()
 export class MessageService implements IMessageService {
-    private readonly defaultLanguage: ENUM_MESSAGE_LANGUAGE;
-    private readonly availableLanguage: ENUM_MESSAGE_LANGUAGE[];
+    private readonly defaultLanguage: EnumMessageLanguage;
+    private readonly availableLanguage: EnumMessageLanguage[];
 
     constructor(
         private readonly i18n: I18nService,
         private readonly configService: ConfigService
     ) {
         this.defaultLanguage =
-            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
-        this.availableLanguage = this.configService.get<
-            ENUM_MESSAGE_LANGUAGE[]
-        >('message.availableLanguage');
+            this.configService.get<EnumMessageLanguage>('message.language');
+        this.availableLanguage = this.configService.get<EnumMessageLanguage[]>(
+            'message.availableLanguage'
+        );
     }
 
     /**

@@ -46,8 +46,8 @@ Configuration structure:
 export default registerAs(
     'message',
     (): IConfigMessage => ({
-        availableLanguage: Object.values(ENUM_MESSAGE_LANGUAGE),
-        language: process.env.APP_LANGUAGE ?? ENUM_MESSAGE_LANGUAGE.EN,
+        availableLanguage: Object.values(EnumMessageLanguage),
+        language: process.env.APP_LANGUAGE ?? EnumMessageLanguage.EN,
     })
 );
 ```
@@ -55,7 +55,7 @@ export default registerAs(
 Language options are defined in the enum:
 
 ```typescript
-export enum ENUM_MESSAGE_LANGUAGE {
+export enum EnumMessageLanguage {
     EN = 'en',
 }
 ```
@@ -265,7 +265,7 @@ cp src/languages/en/*.json src/languages/id/
 3. Update the enum:
 
 ```typescript
-export enum ENUM_MESSAGE_LANGUAGE {
+export enum EnumMessageLanguage {
     EN = 'en',
     ID = 'id', // Add new language
 }

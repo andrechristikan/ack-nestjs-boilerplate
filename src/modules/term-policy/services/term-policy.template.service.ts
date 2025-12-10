@@ -1,6 +1,6 @@
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import { ENUM_FILE_EXTENSION_DOCUMENT } from '@common/file/enums/file.enum';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ITermPolicyImportResult } from '@modules/term-policy/interfaces/term-policy.interface';
 import { ITermPolicyTemplateService } from '@modules/term-policy/interfaces/term-policy.template-service.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
@@ -33,9 +33,9 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 this.termPolicyUtil.createRandomFilenameContentWithPath(
                     ENUM_TERM_POLICY_TYPE.termsOfService,
                     1,
-                    ENUM_MESSAGE_LANGUAGE.en,
+                    EnumMessageLanguage.en,
                     {
-                        extension: ENUM_FILE_EXTENSION_DOCUMENT.hbs,
+                        extension: EnumFileExtensionDocument.hbs,
                     }
                 );
 
@@ -72,9 +72,9 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 this.termPolicyUtil.createRandomFilenameContentWithPath(
                     ENUM_TERM_POLICY_TYPE.privacy,
                     1,
-                    ENUM_MESSAGE_LANGUAGE.en,
+                    EnumMessageLanguage.en,
                     {
-                        extension: ENUM_FILE_EXTENSION_DOCUMENT.hbs,
+                        extension: EnumFileExtensionDocument.hbs,
                     }
                 );
 
@@ -111,9 +111,9 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 this.termPolicyUtil.createRandomFilenameContentWithPath(
                     ENUM_TERM_POLICY_TYPE.cookies,
                     1,
-                    ENUM_MESSAGE_LANGUAGE.en,
+                    EnumMessageLanguage.en,
                     {
-                        extension: ENUM_FILE_EXTENSION_DOCUMENT.hbs,
+                        extension: EnumFileExtensionDocument.hbs,
                     }
                 );
 
@@ -150,9 +150,9 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 this.termPolicyUtil.createRandomFilenameContentWithPath(
                     ENUM_TERM_POLICY_TYPE.marketing,
                     1,
-                    ENUM_MESSAGE_LANGUAGE.en,
+                    EnumMessageLanguage.en,
                     {
-                        extension: ENUM_FILE_EXTENSION_DOCUMENT.hbs,
+                        extension: EnumFileExtensionDocument.hbs,
                     }
                 );
 

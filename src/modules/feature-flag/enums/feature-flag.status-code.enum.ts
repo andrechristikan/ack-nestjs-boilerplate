@@ -1,4 +1,4 @@
-export enum ENUM_FEATURE_FLAG_STATUS_CODE_ERROR {
+export enum EnumFeatureFlagStatusCodeError {
     notFound = 5080,
     serviceUnavailable = 5081,
     invalidMetadata = 5082,

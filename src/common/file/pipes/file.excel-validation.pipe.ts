@@ -5,7 +5,7 @@ import { FileImportException } from '@common/file/exceptions/file.import.excepti
 import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { ValidationError, validate } from 'class-validator';
 import { IFileSheet } from '@common/file/interfaces/file.interface';
-import { ENUM_FILE_STATUS_CODE_ERROR } from '@common/file/enums/file.status-code.enum';
+import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 
 /**
  * A NestJS pipe that validates Excel file data by transforming raw sheet data into DTOs
@@ -20,8 +20,7 @@ import { ENUM_FILE_STATUS_CODE_ERROR } from '@common/file/enums/file.status-code
 export class FileExcelValidationPipe<
     TDto extends ClassConstructor<unknown>,
     TRaw,
-> implements PipeTransform
-{
+> implements PipeTransform {
     constructor(private readonly dtos: TDto[]) {}
 
     /**
@@ -61,7 +60,7 @@ export class FileExcelValidationPipe<
     private validate(value: IFileSheet<TRaw>[]): void {
         if (!value || value.length === 0) {
             throw new UnprocessableEntityException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.requiredExtractFirst,
+                statusCode: EnumFileStatusCodeError.requiredExtractFirst,
                 message: 'file.error.requiredParseFirst',
             });
         }

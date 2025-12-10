@@ -1,4 +1,4 @@
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { registerAs } from '@nestjs/config';
 
 export interface IConfigMessage {
@@ -9,7 +9,7 @@ export interface IConfigMessage {
 export default registerAs(
     'message',
     (): IConfigMessage => ({
-        availableLanguage: Object.values(ENUM_MESSAGE_LANGUAGE),
-        language: process.env.APP_LANGUAGE ?? ENUM_MESSAGE_LANGUAGE.en,
+        availableLanguage: Object.values(EnumMessageLanguage),
+        language: process.env.APP_LANGUAGE ?? EnumMessageLanguage.en,
     })
 );

@@ -1,6 +1,6 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { HelperService } from '@common/helper/services/helper.service';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
 import { IHelloService } from '@modules/hello/interfaces/hello.service.interface';
@@ -22,7 +22,7 @@ export class HelloService implements IHelloService {
 
         // app
         const appName = this.configService.get<string>('app.name')!;
-        const appEnv = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env')!;
+        const appEnv = this.configService.get<EnumAppEnvironment>('app.env')!;
         const appTimezone = this.configService.get<string>('app.timezone')!;
 
         // auth
@@ -44,12 +44,12 @@ export class HelloService implements IHelloService {
         )!;
 
         // message
-        const messageAvailableLanguage: ENUM_MESSAGE_LANGUAGE[] =
-            this.configService.get<ENUM_MESSAGE_LANGUAGE[]>(
+        const messageAvailableLanguage: EnumMessageLanguage[] =
+            this.configService.get<EnumMessageLanguage[]>(
                 'message.availableLanguage'
             )!;
-        const messageDefaultLanguage: ENUM_MESSAGE_LANGUAGE =
-            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language')!;
+        const messageDefaultLanguage: EnumMessageLanguage =
+            this.configService.get<EnumMessageLanguage>('message.language')!;
 
         // request
         const requestTimeoutInMs = this.configService.get<number>(

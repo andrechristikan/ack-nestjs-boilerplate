@@ -1,40 +1,40 @@
-export enum ENUM_FILE_EXTENSION_IMAGE {
+export enum EnumFileExtensionImage {
     jpg = 'jpg',
     jpeg = 'jpeg',
     png = 'png',
 }
 
-export enum ENUM_FILE_EXTENSION_DOCUMENT {
+export enum EnumFileExtensionDocument {
     pdf = 'pdf',
     hbs = 'hbs',
 }
 
-export enum ENUM_FILE_EXTENSION_EXCEL {
+export enum EnumFileExtensionExcel {
     xlsx = 'xlsx',
     csv = 'csv',
 }
 
-export enum ENUM_FILE_EXTENSION_AUDIO {
+export enum EnumFileExtensionAudio {
     mpeg = 'mpeg',
     m4a = 'm4a',
     mp3 = 'mp3',
 }
 
-export enum ENUM_FILE_EXTENSION_VIDEO {
+export enum EnumFileExtensionVideo {
     mp4 = 'mp4',
 }
 
 export const ENUM_FILE_EXTENSION = {
-    ...ENUM_FILE_EXTENSION_IMAGE,
-    ...ENUM_FILE_EXTENSION_DOCUMENT,
-    ...ENUM_FILE_EXTENSION_EXCEL,
-    ...ENUM_FILE_EXTENSION_AUDIO,
-    ...ENUM_FILE_EXTENSION_VIDEO,
+    ...EnumFileExtensionImage,
+    ...EnumFileExtensionDocument,
+    ...EnumFileExtensionExcel,
+    ...EnumFileExtensionAudio,
+    ...EnumFileExtensionVideo,
 };
 
 export type ENUM_FILE_EXTENSION =
-    | ENUM_FILE_EXTENSION_IMAGE
-    | ENUM_FILE_EXTENSION_DOCUMENT
-    | ENUM_FILE_EXTENSION_EXCEL
-    | ENUM_FILE_EXTENSION_AUDIO
-    | ENUM_FILE_EXTENSION_VIDEO;
+    | EnumFileExtensionImage
+    | EnumFileExtensionDocument
+    | EnumFileExtensionExcel
+    | EnumFileExtensionAudio
+    | EnumFileExtensionVideo;

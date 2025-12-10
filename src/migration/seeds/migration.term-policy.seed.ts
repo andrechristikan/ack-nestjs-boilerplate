@@ -1,4 +1,4 @@
-import { ENUM_APP_ENVIRONMENT } from '@app/enums/app.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
@@ -21,7 +21,7 @@ export class MigrationTermPolicySeed
 {
     private readonly logger = new Logger(MigrationTermPolicySeed.name);
 
-    private readonly env: ENUM_APP_ENVIRONMENT;
+    private readonly env: EnumAppEnvironment;
     private readonly termPolicies: TermPolicyCreateRequestDto[] = [];
 
     constructor(
@@ -31,7 +31,7 @@ export class MigrationTermPolicySeed
     ) {
         super();
 
-        this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env');
         this.termPolicies = migrationTermPolicyData[this.env];
     }
 

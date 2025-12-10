@@ -20,8 +20,8 @@ import { ConfigService } from '@nestjs/config';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
-import { ENUM_PAGINATION_TYPE } from '@common/pagination/enums/pagination.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 
 /**
  * Global pagination response interceptor that standardizes paginated HTTP response format
@@ -193,9 +193,9 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         request: IRequestApp
     ): ResponsePagingMetadataDto {
         const today = this.helperService.dateCreate();
-        const xLanguage: ENUM_MESSAGE_LANGUAGE =
-            (request.__language as ENUM_MESSAGE_LANGUAGE) ??
-            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
+        const xLanguage: EnumMessageLanguage =
+            (request.__language as EnumMessageLanguage) ??
+            this.configService.get<EnumMessageLanguage>('message.language');
         const xVersion =
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');
@@ -226,7 +226,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
             hasPrevious: false,
             nextCursor: undefined,
             previousCursor: undefined,
-            type: ENUM_PAGINATION_TYPE.offset,
+            type: EnumPaginationType.offset,
         };
     }
 
@@ -251,8 +251,8 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         }
 
         if (
-            responseData.type !== ENUM_PAGINATION_TYPE.offset &&
-            responseData.type !== ENUM_PAGINATION_TYPE.cursor
+            responseData.type !== EnumPaginationType.offset &&
+            responseData.type !== EnumPaginationType.cursor
         ) {
             throw new Error('Field type must be cursor or offset');
         }

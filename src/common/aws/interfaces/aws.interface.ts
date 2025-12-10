@@ -1,8 +1,8 @@
 import { ObjectCannedACL } from '@aws-sdk/client-s3';
-import { ENUM_AWS_S3_ACCESSIBILITY } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 
 export interface IAwsS3Options {
-    access?: ENUM_AWS_S3_ACCESSIBILITY;
+    access?: EnumAwsS3Accessibility;
 }
 
 export interface IAwsS3PutItemOptions extends IAwsS3Options {
@@ -28,8 +28,8 @@ export interface IAwsS3PresignPutItemOptions extends IAwsS3PutItemOptions {
 }
 
 export interface IAwsS3MoveItemOptions {
-    accessFrom?: ENUM_AWS_S3_ACCESSIBILITY;
-    accessTo?: ENUM_AWS_S3_ACCESSIBILITY;
+    accessFrom?: EnumAwsS3Accessibility;
+    accessTo?: EnumAwsS3Accessibility;
 }
 
 export interface IAwsS3CreateMultiplePart {
@@ -44,7 +44,7 @@ export interface IAwsS3PutItem extends IAwsS3CreateMultiplePart {
 export interface IAwsS3ConfigBucket {
     bucket: string;
     baseUrl: string;
-    access: ENUM_AWS_S3_ACCESSIBILITY;
+    access: EnumAwsS3Accessibility;
     cdnUrl?: string;
 }
 

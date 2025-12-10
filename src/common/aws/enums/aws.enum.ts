@@ -1,4 +1,4 @@
-export enum ENUM_AWS_S3_ACCESSIBILITY {
+export enum EnumAwsS3Accessibility {
     public = 'public',
     private = 'private',
 }
