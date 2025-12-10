@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { DatabaseDto } from '@common/database/dtos/database.dto';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { EnumRoleType } from '@prisma/client';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 
 export class RoleDto extends DatabaseDto {
@@ -23,11 +23,11 @@ export class RoleDto extends DatabaseDto {
 
     @ApiProperty({
         description: 'Representative for role type',
-        example: ENUM_ROLE_TYPE.admin,
+        example: EnumRoleType.admin,
         required: true,
-        enum: ENUM_ROLE_TYPE,
+        enum: EnumRoleType,
     })
-    type: ENUM_ROLE_TYPE;
+    type: EnumRoleType;
 
     @ApiProperty({
         type: RoleAbilityDto,

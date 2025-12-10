@@ -5,7 +5,7 @@ import { ITermPolicyImportResult } from '@modules/term-policy/interfaces/term-po
 import { ITermPolicyTemplateService } from '@modules/term-policy/interfaces/term-policy.template-service.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable, Logger } from '@nestjs/common';
-import { ENUM_TERM_POLICY_TYPE } from '@prisma/client';
+import { EnumTermPolicyType } from '@prisma/client';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -31,7 +31,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
             const templateContent = readFileSync(templatePath);
             const randomKey =
                 this.termPolicyUtil.createRandomFilenameContentWithPath(
-                    ENUM_TERM_POLICY_TYPE.termsOfService,
+                    EnumTermPolicyType.termsOfService,
                     1,
                     EnumMessageLanguage.en,
                     {
@@ -70,7 +70,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
             const templateContent = readFileSync(templatePath);
             const randomKey =
                 this.termPolicyUtil.createRandomFilenameContentWithPath(
-                    ENUM_TERM_POLICY_TYPE.privacy,
+                    EnumTermPolicyType.privacy,
                     1,
                     EnumMessageLanguage.en,
                     {
@@ -109,7 +109,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
             const templateContent = readFileSync(templatePath);
             const randomKey =
                 this.termPolicyUtil.createRandomFilenameContentWithPath(
-                    ENUM_TERM_POLICY_TYPE.cookies,
+                    EnumTermPolicyType.cookies,
                     1,
                     EnumMessageLanguage.en,
                     {
@@ -148,7 +148,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
             const templateContent = readFileSync(templatePath);
             const randomKey =
                 this.termPolicyUtil.createRandomFilenameContentWithPath(
-                    ENUM_TERM_POLICY_TYPE.marketing,
+                    EnumTermPolicyType.marketing,
                     1,
                     EnumMessageLanguage.en,
                     {

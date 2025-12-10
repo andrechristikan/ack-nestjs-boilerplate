@@ -665,11 +665,11 @@ Options:
 
 Examples:
   # Default behavior - NO .env update (manual copy-paste required)
-  yarn generate:keys
+  pnpm generate:keys
   node generate-keys.js generate
 
   # Auto-update .env file - keys inserted automatically
-  yarn generate:keys --direct-insert
+  pnpm generate:keys --direct-insert
   node generate-keys.js generate --direct-insert
         `);
     }

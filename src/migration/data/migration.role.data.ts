@@ -4,14 +4,14 @@ import {
     ENUM_POLICY_SUBJECT,
 } from '@modules/policy/enums/policy.enum';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { EnumRoleType } from '@prisma/client';
 
 const roleData: RoleCreateRequestDto[] = [
     {
         name: 'superadmin',
         description: 'Super Admin Role',
         abilities: [],
-        type: ENUM_ROLE_TYPE.superAdmin,
+        type: EnumRoleType.superAdmin,
     },
     {
         name: 'admin',
@@ -20,13 +20,13 @@ const roleData: RoleCreateRequestDto[] = [
             subject: role,
             action: Object.values(ENUM_POLICY_ACTION),
         })),
-        type: ENUM_ROLE_TYPE.admin,
+        type: EnumRoleType.admin,
     },
     {
         name: 'user',
         description: 'User Role',
         abilities: [],
-        type: ENUM_ROLE_TYPE.user,
+        type: EnumRoleType.user,
     },
 ];
 

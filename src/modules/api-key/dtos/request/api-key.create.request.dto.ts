@@ -8,7 +8,7 @@ import {
 import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
-import { ENUM_API_KEY_TYPE } from '@prisma/client';
+import { EnumApiKeyType } from '@prisma/client';
 
 export class ApiKeyCreateRequestDto extends IntersectionType(
     ApiKeyUpdateRequestDto,
@@ -16,13 +16,13 @@ export class ApiKeyCreateRequestDto extends IntersectionType(
 ) {
     @ApiProperty({
         description: 'Api Key name',
-        example: ENUM_API_KEY_TYPE.default,
+        example: EnumApiKeyType.default,
         required: true,
-        enum: ENUM_API_KEY_TYPE,
+        enum: EnumApiKeyType,
     })
     @IsNotEmpty()
-    @IsEnum(ENUM_API_KEY_TYPE)
-    type: ENUM_API_KEY_TYPE;
+    @IsEnum(EnumApiKeyType)
+    type: EnumApiKeyType;
 }
 
 export class ApiKeyCreateRawRequestDto extends OmitType(

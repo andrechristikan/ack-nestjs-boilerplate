@@ -30,7 +30,7 @@ import { RoleDto } from '@modules/role/dtos/role.dto';
 import { RoleService } from '@modules/role/services/role.service';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { EnumRoleType } from '@prisma/client';
 
 @ApiTags('modules.public.role')
 @Controller({
@@ -49,7 +49,7 @@ export class RolePublicController {
             availableSearch: ROLE_DEFAULT_AVAILABLE_SEARCH,
         })
         pagination: IPaginationQueryOffsetParams,
-        @PaginationQueryFilterInEnum<ENUM_ROLE_TYPE>(
+        @PaginationQueryFilterInEnum<EnumRoleType>(
             'type',
             ROLE_DEFAULT_ROLE_TYPE
         )

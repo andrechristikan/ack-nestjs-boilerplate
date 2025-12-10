@@ -5,7 +5,7 @@ import { HelperService } from '@common/helper/services/helper.service';
 import { Cache } from 'cache-manager';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { ApiKey, ENUM_API_KEY_TYPE } from '@prisma/client';
+import { ApiKey, EnumApiKeyType } from '@prisma/client';
 import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { IApiKeyGenerateCredential } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
@@ -149,8 +149,8 @@ export class ApiKeyUtil {
     }
 
     validateType(
-        apiKey: { type: ENUM_API_KEY_TYPE },
-        allowed: ENUM_API_KEY_TYPE[]
+        apiKey: { type: EnumApiKeyType },
+        allowed: EnumApiKeyType[]
     ): boolean {
         return apiKey && allowed.includes(apiKey.type);
     }

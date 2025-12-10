@@ -12,9 +12,9 @@ import {
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
-    ENUM_ACTIVITY_LOG_ACTION,
-    ENUM_ROLE_TYPE,
-    ENUM_USER_STATUS,
+    EnumActivityLogAction,
+    EnumRoleType,
+    EnumUserStatus,
 } from '@prisma/client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -75,7 +75,7 @@ export class UserAdminController {
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -85,7 +85,7 @@ export class UserAdminController {
             availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
         })
         pagination: IPaginationQueryOffsetParams,
-        @PaginationQueryFilterInEnum<ENUM_USER_STATUS>(
+        @PaginationQueryFilterInEnum<EnumUserStatus>(
             'status',
             USER_DEFAULT_STATUS
         )
@@ -109,7 +109,7 @@ export class UserAdminController {
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -123,12 +123,12 @@ export class UserAdminController {
 
     @UserAdminCreateDoc()
     @Response('user.create')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminUserCreate)
+    @ActivityLog(EnumActivityLogAction.adminUserCreate)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @Post('/create')
@@ -151,12 +151,12 @@ export class UserAdminController {
 
     @UserAdminUpdateStatusDoc()
     @Response('user.updateStatus')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminUserUpdateStatus)
+    @ActivityLog(EnumActivityLogAction.adminUserUpdateStatus)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -182,12 +182,12 @@ export class UserAdminController {
 
     @UserAdminUpdatePasswordDoc()
     @Response('user.updatePassword')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminUserUpdatePassword)
+    @ActivityLog(EnumActivityLogAction.adminUserUpdatePassword)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

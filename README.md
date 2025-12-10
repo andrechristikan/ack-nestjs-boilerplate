@@ -10,7 +10,7 @@
 [![MongoDB][mongodb-shield]][ref-mongodb]
 [![JWT][jwt-shield]][ref-jwt]
 [![Jest][jest-shield]][ref-jest]
-[![Yarn][yarn-shield]][ref-yarn]
+[![PNPM][pnpm-shield]][ref-pnpm]
 [![Docker][docker-shield]][ref-docker]
 
 # ACK NestJs Boilerplate 🔥 🚀
@@ -60,8 +60,8 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
 - [x] Test Migration Email and Send Email
 - [x] Test Term Policy Flow at Admin Side
 - [x] Rename all enum to CapitalCase
-- [ ] Migrate to PNPM and update document installation before release v8
-- [ ] Update doc related with yarn to pnpm
+- [x] Migrate to PNPM and update document installation before release v8
+- [x] Update doc related with yarn to pnpm
 - [ ] Update term and policy doc
 
 ### Next Features
@@ -176,7 +176,7 @@ We welcome contributions to this project! To contribute, follow these steps:
 1. **Fork the repository**
 2. **Create a feature branch**: `git checkout -b feature/your-feature-name`
 3. **Make your changes** and ensure they follow our coding standards
-4. **Run tests**: `yarn test` and `yarn lint` to verify your changes
+4. **Run tests**: `pnpm test` and `pnpm lint` to verify your changes
 5. **Commit your changes**: `git commit -m 'feat: add some feature'`
 6. **Push to your branch**: `git push origin feature/your-feature-name`
 7. **Open a Pull Request** with a clear description of your changes
@@ -234,7 +234,7 @@ If you find this project helpful and would like to support its development, plea
 [mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-[yarn-shield]: https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white
+[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
 [docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
 [linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
@@ -267,7 +267,7 @@ If you find this project helpful and would like to support its development, plea
 [ref-typescript]: https://www.typescriptlang.org/
 [ref-docker]: https://docs.docker.com
 [ref-dockercompose]: https://docs.docker.com/compose/
-[ref-yarn]: https://yarnpkg.com
+[ref-pnpm]: https://pnpm.io
 [ref-12factor]: https://12factor.net
 [ref-commander]: https://nest-commander.jaymcdoniel.dev
 [ref-package-json]: package.json

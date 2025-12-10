@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { IsPassword } from '@common/request/validations/request.is-password.validation';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { ENUM_USER_SIGN_UP_FROM } from '@prisma/client';
+import { EnumUserSignUpFrom } from '@prisma/client';
 
 export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     'roleId',
@@ -50,12 +50,12 @@ export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
 
     @ApiProperty({
         description: 'enum user sign up from',
-        example: ENUM_USER_SIGN_UP_FROM.mobile,
+        example: EnumUserSignUpFrom.mobile,
         required: true,
-        enum: [ENUM_USER_SIGN_UP_FROM.mobile, ENUM_USER_SIGN_UP_FROM.website],
+        enum: [EnumUserSignUpFrom.mobile, EnumUserSignUpFrom.website],
     })
     @IsNotEmpty()
     @IsString()
-    @IsEnum([ENUM_USER_SIGN_UP_FROM.mobile, ENUM_USER_SIGN_UP_FROM.website])
-    from: ENUM_USER_SIGN_UP_FROM;
+    @IsEnum([EnumUserSignUpFrom.mobile, EnumUserSignUpFrom.website])
+    from: EnumUserSignUpFrom;
 }

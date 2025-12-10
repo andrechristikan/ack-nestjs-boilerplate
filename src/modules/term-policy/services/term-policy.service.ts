@@ -39,8 +39,8 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import {
-    ENUM_TERM_POLICY_STATUS,
-    ENUM_TERM_POLICY_TYPE,
+    EnumTermPolicyStatus,
+    EnumTermPolicyType,
     TermPolicy,
 } from '@prisma/client';
 
@@ -54,7 +54,7 @@ export class TermPolicyService implements ITermPolicyService {
 
     async validateTermPolicyGuard(
         request: IRequestApp,
-        requiredTermPolicies: ENUM_TERM_POLICY_TYPE[]
+        requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void> {
         const { __user, user } = request;
 
@@ -69,8 +69,8 @@ export class TermPolicyService implements ITermPolicyService {
             const { termPolicy } = __user;
 
             const defaultTermPolicies = [
-                ENUM_TERM_POLICY_TYPE.termsOfService,
-                ENUM_TERM_POLICY_TYPE.privacy,
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
             ];
             requiredTermPolicies =
                 requiredTermPolicies.length === 0
@@ -260,7 +260,7 @@ export class TermPolicyService implements ITermPolicyService {
                 statusCode: EnumTermPolicyStatusCodeError.notFound,
                 message: 'termPolicy.error.notFound',
             });
-        } else if (termPolicy.status !== ENUM_TERM_POLICY_STATUS.draft) {
+        } else if (termPolicy.status !== EnumTermPolicyStatus.draft) {
             throw new BadRequestException({
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
                 message: 'termPolicy.error.statusInvalid',
@@ -307,7 +307,7 @@ export class TermPolicyService implements ITermPolicyService {
             );
         if (
             termPolicy &&
-            termPolicy.status === ENUM_TERM_POLICY_STATUS.published
+            termPolicy.status === EnumTermPolicyStatus.published
         ) {
             throw new BadRequestException({
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
@@ -351,7 +351,7 @@ export class TermPolicyService implements ITermPolicyService {
                 statusCode: EnumTermPolicyStatusCodeError.notFound,
                 message: 'termPolicy.error.notFound',
             });
-        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.published) {
+        } else if (termPolicy.status === EnumTermPolicyStatus.published) {
             throw new BadRequestException({
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
                 message: 'termPolicy.error.statusInvalid',
@@ -400,7 +400,7 @@ export class TermPolicyService implements ITermPolicyService {
                 statusCode: EnumTermPolicyStatusCodeError.notFound,
                 message: 'termPolicy.error.notFound',
             });
-        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.published) {
+        } else if (termPolicy.status === EnumTermPolicyStatus.published) {
             throw new BadRequestException({
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
                 message: 'termPolicy.error.statusInvalid',
@@ -459,7 +459,7 @@ export class TermPolicyService implements ITermPolicyService {
                 statusCode: EnumTermPolicyStatusCodeError.notFound,
                 message: 'termPolicy.error.notFound',
             });
-        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.published) {
+        } else if (termPolicy.status === EnumTermPolicyStatus.published) {
             throw new BadRequestException({
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
                 message: 'termPolicy.error.statusInvalid',
@@ -543,7 +543,7 @@ export class TermPolicyService implements ITermPolicyService {
                 statusCode: EnumTermPolicyStatusCodeError.notFound,
                 message: 'termPolicy.error.notFound',
             });
-        } else if (termPolicy.status === ENUM_TERM_POLICY_STATUS.published) {
+        } else if (termPolicy.status === EnumTermPolicyStatus.published) {
             throw new BadRequestException({
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
                 message: 'termPolicy.error.statusInvalid',

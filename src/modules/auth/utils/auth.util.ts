@@ -11,11 +11,7 @@ import {
 } from '@modules/auth/interfaces/auth.interface';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { HelperService } from '@common/helper/services/helper.service';
-import {
-    ENUM_USER_LOGIN_FROM,
-    ENUM_USER_SIGN_UP_WITH,
-    User,
-} from '@prisma/client';
+import { EnumUserLoginFrom, EnumUserSignUpWith, User } from '@prisma/client';
 import { KeyObject, createPrivateKey } from 'crypto';
 import verifyAppleToken, {
     VerifyAppleIdTokenResponse,
@@ -289,8 +285,8 @@ export class AuthUtil {
         fingerprint: string,
         sessionId: string,
         loginAt: Date,
-        loginFrom: ENUM_USER_LOGIN_FROM,
-        loginWith: ENUM_USER_SIGN_UP_WITH
+        loginFrom: EnumUserLoginFrom,
+        loginWith: EnumUserSignUpWith
     ): IAuthJwtAccessTokenPayload {
         return {
             userId: data.id,

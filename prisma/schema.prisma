@@ -8,8 +8,8 @@ generator client {
 }
 
 model ApiKey {
-  id       String            @id @default(auto()) @map("_id") @db.ObjectId
-  type     ENUM_API_KEY_TYPE @default(default)
+  id       String         @id @default(auto()) @map("_id") @db.ObjectId
+  type     EnumApiKeyType @default(default)
   name     String
   key      String
   hash     String
@@ -30,10 +30,10 @@ model ApiKey {
 }
 
 model Role {
-  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String?
-  type        ENUM_ROLE_TYPE @default(user)
+  type        EnumRoleType @default(user)
   abilities   Json[]         @default([])
 
   // timestamps fields
@@ -113,17 +113,17 @@ model User {
   passwordExpired DateTime?
   passwordCreated DateTime?
   passwordAttempt Int?
-  signUpAt        DateTime                @default(now())
-  signUpFrom      ENUM_USER_SIGN_UP_FROM
-  signUpWith      ENUM_USER_SIGN_UP_WITH
+  signUpAt        DateTime            @default(now())
+  signUpFrom      EnumUserSignUpFrom
+  signUpWith      EnumUserSignUpWith
   salt            String?
-  status          ENUM_USER_STATUS        @default(active)
-  gender          ENUM_USER_GENDER?
-  countryId       String                  @db.ObjectId
+  status          EnumUserStatus      @default(active)
+  gender          EnumUserGender?
+  countryId       String              @db.ObjectId
   lastLoginAt     DateTime?
   lastIPAddress   String?
-  lastLoginFrom   ENUM_USER_LOGIN_FROM?
-  lastLoginWith   ENUM_USER_SIGN_UP_WITH?
+  lastLoginFrom   EnumUserLoginFrom?
+  lastLoginWith   EnumUserSignUpWith?
   termPolicy      Json
   photo           Json?
 
@@ -155,11 +155,11 @@ model User {
 }
 
 model Verification {
-  id             String                 @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String                 @db.ObjectId
-  mobileNumberId String?                @db.ObjectId
+  id             String               @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String               @db.ObjectId
+  mobileNumberId String?              @db.ObjectId
   to             String
-  type           ENUM_VERIFICATION_TYPE
+  type           EnumVerificationType
   token          String
   expiredAt      DateTime
   verifiedAt     DateTime?
@@ -182,11 +182,11 @@ model Verification {
 }
 
 model PasswordHistory {
-  id        String                     @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String                     @db.ObjectId
+  id        String                  @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String                  @db.ObjectId
   password  String
   salt      String
-  type      ENUM_PASSWORD_HISTORY_TYPE
+  type      EnumPasswordHistoryType
   expiredAt DateTime
 
   user User? @relation("UserPasswordHistories", fields: [userId], references: [id])
@@ -197,9 +197,9 @@ model PasswordHistory {
 }
 
 model ActivityLog {
-  id        String                   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String                   @db.ObjectId
-  action    ENUM_ACTIVITY_LOG_ACTION
+  id        String                @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String                @db.ObjectId
+  action    EnumActivityLogAction
   ipAddress String
   userAgent Json
   metadata  Json?
@@ -241,11 +241,11 @@ model Session {
 }
 
 model TermPolicy {
-  id          String                  @id @default(auto()) @map("_id") @db.ObjectId
-  type        ENUM_TERM_POLICY_TYPE
-  contents    Json[]                  @default([])
-  version     Int                     @default(1)
-  status      ENUM_TERM_POLICY_STATUS @default(draft)
+  id          String               @id @default(auto()) @map("_id") @db.ObjectId
+  type        EnumTermPolicyType
+  contents    Json[]               @default([])
+  version     Int                  @default(1)
+  status      EnumTermPolicyStatus @default(draft)
   publishedAt DateTime?
 
   // timestamps fields
@@ -328,77 +328,77 @@ model ForgotPassword {
   @@map("ForgotPasswords")
 }
 
-enum ENUM_USER_GENDER {
+enum EnumUserGender {
   male
   female
 }
 
-enum ENUM_USER_STATUS {
+enum EnumUserStatus {
   active
   inactive
   blocked
 }
 
-enum ENUM_USER_SIGN_UP_FROM {
+enum EnumUserSignUpFrom {
   system
   admin
   website
   mobile
 }
 
-enum ENUM_USER_SIGN_UP_WITH {
+enum EnumUserSignUpWith {
   credential
   socialGoogle
   socialApple
 }
 
-enum ENUM_USER_LOGIN_FROM {
+enum EnumUserLoginFrom {
   website
   mobile
 }
 
-enum ENUM_USER_LOGIN_WITH {
+enum EnumUserLoginWith {
   credential
   socialGoogle
   socialApple
 }
 
-enum ENUM_ROLE_TYPE {
+enum EnumRoleType {
   superAdmin
   admin
   user
 }
 
-enum ENUM_API_KEY_TYPE {
+enum EnumApiKeyType {
   system
   default
 }
 
-enum ENUM_TERM_POLICY_TYPE {
+enum EnumTermPolicyType {
   termsOfService
   privacy
   cookies
   marketing
 }
 
-enum ENUM_TERM_POLICY_STATUS {
+enum EnumTermPolicyStatus {
   draft
   published
 }
 
-enum ENUM_VERIFICATION_TYPE {
+enum EnumVerificationType {
   mobileNumber
   email
 }
 
-enum ENUM_PASSWORD_HISTORY_TYPE {
+enum EnumPasswordHistoryType {
   signUp
   forgot
   admin
   profile
 }
 
-enum ENUM_ACTIVITY_LOG_ACTION {
+enum EnumActivityLogAction {
   userCreated
   userBlocked
   userUpdateStatus

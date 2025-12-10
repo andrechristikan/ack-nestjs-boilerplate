@@ -66,10 +66,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
-    ENUM_ACTIVITY_LOG_ACTION,
-    ENUM_ROLE_TYPE,
-    ENUM_TERM_POLICY_STATUS,
-    ENUM_TERM_POLICY_TYPE,
+    EnumActivityLogAction,
+    EnumRoleType,
+    EnumTermPolicyStatus,
+    EnumTermPolicyType,
 } from '@prisma/client';
 
 @ApiTags('modules.admin.termPolicy')
@@ -86,7 +86,7 @@ export class TermPolicyAdminController {
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -96,12 +96,12 @@ export class TermPolicyAdminController {
             availableSearch: TERM_POLICY_DEFAULT_AVAILABLE_ORDER_BY,
         })
         pagination: IPaginationQueryOffsetParams,
-        @PaginationQueryFilterInEnum<ENUM_TERM_POLICY_TYPE>(
+        @PaginationQueryFilterInEnum<EnumTermPolicyType>(
             'type',
             TERM_POLICY_DEFAULT_TYPE
         )
         type?: Record<string, IPaginationIn>,
-        @PaginationQueryFilterInEnum<ENUM_TERM_POLICY_STATUS>(
+        @PaginationQueryFilterInEnum<EnumTermPolicyStatus>(
             'status',
             TERM_POLICY_DEFAULT_STATUS
         )
@@ -112,12 +112,12 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminCreateDoc()
     @Response('termPolicy.create')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminTermPolicyCreate)
+    @ActivityLog(EnumActivityLogAction.adminTermPolicyCreate)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -136,7 +136,7 @@ export class TermPolicyAdminController {
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -158,7 +158,7 @@ export class TermPolicyAdminController {
             ENUM_POLICY_ACTION.UPDATE,
         ],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -172,12 +172,12 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminUpdateContentDoc()
     @Response('termPolicy.updateContent')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminTermPolicyUpdateContent)
+    @ActivityLog(EnumActivityLogAction.adminTermPolicyUpdateContent)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -198,12 +198,12 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminAddContentDoc()
     @Response('termPolicy.addContent')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminTermPolicyAddContent)
+    @ActivityLog(EnumActivityLogAction.adminTermPolicyAddContent)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -220,12 +220,12 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminRemoveContentDoc()
     @Response('termPolicy.removeContent')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminTermPolicyRemoveContent)
+    @ActivityLog(EnumActivityLogAction.adminTermPolicyRemoveContent)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -250,7 +250,7 @@ export class TermPolicyAdminController {
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -266,12 +266,12 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminPublishDoc()
     @Response('termPolicy.publish')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminTermPolicyPublish)
+    @ActivityLog(EnumActivityLogAction.adminTermPolicyPublish)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

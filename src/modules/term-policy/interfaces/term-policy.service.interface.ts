@@ -19,12 +19,12 @@ import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/te
 import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
-import { ENUM_TERM_POLICY_TYPE } from '@prisma/client';
+import { EnumTermPolicyType } from '@prisma/client';
 
 export interface ITermPolicyService {
     validateTermPolicyGuard(
         request: IRequestApp,
-        requiredTermPolicies: ENUM_TERM_POLICY_TYPE[]
+        requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void>;
     getList(
         pagination: IPaginationQueryOffsetParams,

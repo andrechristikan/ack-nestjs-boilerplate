@@ -1,7 +1,7 @@
 import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { ENUM_USER_LOGIN_FROM } from '@prisma/client';
+import { EnumUserLoginFrom } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 
@@ -27,11 +27,11 @@ export class UserLoginRequestDto {
 
     @ApiProperty({
         description: 'from where the user is logging in',
-        enum: ENUM_USER_LOGIN_FROM,
-        example: ENUM_USER_LOGIN_FROM.website,
+        enum: EnumUserLoginFrom,
+        example: EnumUserLoginFrom.website,
         required: true,
     })
     @IsNotEmpty()
-    @IsEnum(ENUM_USER_LOGIN_FROM)
-    from: ENUM_USER_LOGIN_FROM;
+    @IsEnum(EnumUserLoginFrom)
+    from: EnumUserLoginFrom;
 }

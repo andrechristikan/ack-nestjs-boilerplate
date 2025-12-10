@@ -17,7 +17,7 @@ import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { EnumRoleType } from '@prisma/client';
 
 @ApiTags('modules.admin.user.activityLog')
 @Controller({
@@ -39,7 +39,7 @@ export class ActivityLogAdminController {
             action: [ENUM_POLICY_ACTION.READ],
         }
     )
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

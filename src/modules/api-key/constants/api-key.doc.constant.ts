@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
-import { ENUM_API_KEY_TYPE } from '@prisma/client';
+import { EnumApiKeyType } from '@prisma/client';
 
 export const ApiKeyDocParamsId: ApiParamOptions[] = [
     {
@@ -26,7 +26,7 @@ export const ApiKeyDocQueryList: ApiQueryOptions[] = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: Object.values(ENUM_API_KEY_TYPE).join(','),
-        description: `enum value with ',' delimiter. Available values: ${Object.values(ENUM_API_KEY_TYPE).join(', ')}`,
+        example: Object.values(EnumApiKeyType).join(','),
+        description: `enum value with ',' delimiter. Available values: ${Object.values(EnumApiKeyType).join(', ')}`,
     },
 ];

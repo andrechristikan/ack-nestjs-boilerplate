@@ -42,7 +42,7 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ENUM_USER_LOGIN_WITH } from '@prisma/client';
+import { EnumUserLoginWith } from '@prisma/client';
 
 @ApiTags('modules.public.user')
 @Controller({
@@ -83,7 +83,7 @@ export class UserPublicController {
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         return this.userService.loginWithSocial(
             email,
-            ENUM_USER_LOGIN_WITH.socialGoogle,
+            EnumUserLoginWith.socialGoogle,
             body,
             {
                 ipAddress,
@@ -106,7 +106,7 @@ export class UserPublicController {
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         return this.userService.loginWithSocial(
             email,
-            ENUM_USER_LOGIN_WITH.socialApple,
+            EnumUserLoginWith.socialApple,
             body,
             {
                 ipAddress,

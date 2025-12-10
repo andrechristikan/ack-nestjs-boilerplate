@@ -1,6 +1,6 @@
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { faker } from '@faker-js/faker';
-import { ENUM_TERM_POLICY_STATUS, ENUM_TERM_POLICY_TYPE } from '@prisma/client';
+import { EnumTermPolicyStatus, EnumTermPolicyType } from '@prisma/client';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 export const TermPolicyDocParamsId: ApiParamOptions[] = [
@@ -31,7 +31,7 @@ export const TermPolicyListPublicDocQuery: ApiQueryOptions[] = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: Object.values(ENUM_TERM_POLICY_TYPE).join(','),
+        example: Object.values(EnumTermPolicyType).join(','),
         description: "value with ',' delimiter",
     },
 ];
@@ -43,7 +43,7 @@ export const TermPolicyListAdminDocQuery: ApiQueryOptions[] = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: Object.values(ENUM_TERM_POLICY_STATUS).join(','),
+        example: Object.values(EnumTermPolicyStatus).join(','),
         description: "value with ',' delimiter",
     },
 ];

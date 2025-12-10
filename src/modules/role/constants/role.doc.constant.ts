@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { EnumRoleType } from '@prisma/client';
 
 export const RoleDocParamsId: ApiParamOptions[] = [
     {
@@ -18,7 +18,7 @@ export const RoleDocQueryList: ApiQueryOptions[] = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: Object.values(ENUM_ROLE_TYPE).join(','),
-        description: `enum value with ',' delimiter. Available values: ${Object.values(ENUM_ROLE_TYPE).join(',')}`,
+        example: Object.values(EnumRoleType).join(','),
+        description: `enum value with ',' delimiter. Available values: ${Object.values(EnumRoleType).join(',')}`,
     },
 ];

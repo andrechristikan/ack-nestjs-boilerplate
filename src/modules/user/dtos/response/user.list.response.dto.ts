@@ -2,10 +2,10 @@ import { ApiHideProperty, OmitType } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { UserDto } from '@modules/user/dtos/user.dto';
 import {
-    ENUM_USER_GENDER,
-    ENUM_USER_LOGIN_FROM,
-    ENUM_USER_SIGN_UP_FROM,
-    ENUM_USER_SIGN_UP_WITH,
+    EnumUserGender,
+    EnumUserLoginFrom,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
 } from '@prisma/client';
 
 export class UserListResponseDto extends OmitType(UserDto, [
@@ -40,11 +40,11 @@ export class UserListResponseDto extends OmitType(UserDto, [
 
     @ApiHideProperty()
     @Exclude()
-    signUpFrom: ENUM_USER_SIGN_UP_FROM;
+    signUpFrom: EnumUserSignUpFrom;
 
     @ApiHideProperty()
     @Exclude()
-    signUpWith: ENUM_USER_SIGN_UP_WITH;
+    signUpWith: EnumUserSignUpWith;
 
     @ApiHideProperty()
     @Exclude()
@@ -52,7 +52,7 @@ export class UserListResponseDto extends OmitType(UserDto, [
 
     @ApiHideProperty()
     @Exclude()
-    gender?: ENUM_USER_GENDER;
+    gender?: EnumUserGender;
 
     @ApiHideProperty()
     @Exclude()
@@ -64,9 +64,9 @@ export class UserListResponseDto extends OmitType(UserDto, [
 
     @ApiHideProperty()
     @Exclude()
-    lastLoginFrom?: ENUM_USER_LOGIN_FROM;
+    lastLoginFrom?: EnumUserLoginFrom;
 
     @ApiHideProperty()
     @Exclude()
-    lastLoginWith?: ENUM_USER_SIGN_UP_WITH;
+    lastLoginWith?: EnumUserSignUpWith;
 }

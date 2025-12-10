@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
-import { ENUM_USER_STATUS } from '@prisma/client';
+import { EnumUserStatus } from '@prisma/client';
 
 export const UserDocParamsId: ApiParamOptions[] = [
     {
@@ -43,7 +43,7 @@ export const UserDocQueryList: ApiQueryOptions[] = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: Object.values(ENUM_USER_STATUS).join(','),
+        example: Object.values(EnumUserStatus).join(','),
         description: "value with ',' delimiter",
     },
 ];

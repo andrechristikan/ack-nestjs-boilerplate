@@ -105,9 +105,9 @@ Parameters:
 
 Usage:
 ```typescript
-@PaginationQueryFilterInEnum<ENUM_USER_STATUS>(
+@PaginationQueryFilterInEnum<EnumUserStatus>(
     'status',
-    [ENUM_USER_STATUS.ACTIVE]
+    [EnumUserStatus.ACTIVE]
 )
 status?: Record<string, IPaginationIn>
 ```
@@ -123,9 +123,9 @@ Parameters:
 
 Usage:
 ```typescript
-@PaginationQueryFilterNinEnum<ENUM_USER_STATUS>(
+@PaginationQueryFilterNinEnum<EnumUserStatus>(
     'status',
-    [ENUM_USER_STATUS.INACTIVE]
+    [EnumUserStatus.INACTIVE]
 )
 status?: Record<string, IPaginationNin>
 ```
@@ -396,9 +396,9 @@ async list(
         availableOrderBy: ['createdAt', 'name']
     })
     pagination: IPaginationQueryOffsetParams,
-    @PaginationQueryFilterInEnum<ENUM_USER_STATUS>(
+    @PaginationQueryFilterInEnum<EnumUserStatus>(
         'status',
-        [ENUM_USER_STATUS.ACTIVE, ENUM_USER_STATUS.INACTIVE]
+        [EnumUserStatus.ACTIVE, EnumUserStatus.INACTIVE]
     )
     status?: Record<string, IPaginationIn>,
     @PaginationQueryFilterEqualString('role')
@@ -486,7 +486,7 @@ export class UserAdminController {
             availableOrderBy: ['createdAt', 'email', 'name']
         })
         pagination: IPaginationQueryOffsetParams,
-        @PaginationQueryFilterInEnum<ENUM_USER_STATUS>(
+        @PaginationQueryFilterInEnum<EnumUserStatus>(
             'status',
             USER_DEFAULT_STATUS
         )
@@ -608,7 +608,7 @@ For detailed documentation on API documentation decorators and OpenAPI generatio
 [mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-[yarn-shield]: https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white
+[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
 [docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
 [linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
@@ -641,7 +641,7 @@ For detailed documentation on API documentation decorators and OpenAPI generatio
 [ref-typescript]: https://www.typescriptlang.org/
 [ref-docker]: https://docs.docker.com
 [ref-dockercompose]: https://docs.docker.com/compose/
-[ref-yarn]: https://yarnpkg.com
+[ref-pnpm]: https://pnpm.io
 [ref-12factor]: https://12factor.net
 [ref-commander]: https://nest-commander.jaymcdoniel.dev
 [ref-package-json]: package.json

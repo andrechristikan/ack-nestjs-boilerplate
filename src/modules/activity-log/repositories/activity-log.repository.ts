@@ -13,7 +13,7 @@ import {
     IActivityLogMetadata,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Injectable } from '@nestjs/common';
-import { ActivityLog, ENUM_ACTIVITY_LOG_ACTION, Prisma } from '@prisma/client';
+import { ActivityLog, EnumActivityLogAction, Prisma } from '@prisma/client';
 
 @Injectable()
 export class ActivityLogRepository {
@@ -63,7 +63,7 @@ export class ActivityLogRepository {
 
     async create(
         userId: string,
-        action: ENUM_ACTIVITY_LOG_ACTION,
+        action: EnumActivityLogAction,
         { ipAddress, userAgent }: IRequestLog,
         metadata?: IActivityLogMetadata
     ): Promise<ActivityLog> {

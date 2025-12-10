@@ -14,7 +14,7 @@ import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-ke
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
-import { ApiKey, ENUM_API_KEY_TYPE } from '@prisma/client';
+import { ApiKey, EnumApiKeyType } from '@prisma/client';
 
 export interface IApiKeyService {
     getList(
@@ -50,6 +50,6 @@ export interface IApiKeyService {
     validateXApiKeyGuard(request: IRequestApp): Promise<ApiKey>;
     validateXApiKeyTypeGuard(
         request: IRequestApp,
-        apiKeyTypes: ENUM_API_KEY_TYPE[]
+        apiKeyTypes: EnumApiKeyType[]
     ): boolean;
 }

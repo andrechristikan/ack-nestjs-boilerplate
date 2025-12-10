@@ -37,7 +37,7 @@ This document provides step-by-step instructions for setting up the ACK NestJS B
 
 ## Prerequisites
 
-> **Note**: ACK NestJS Boilerplate uses Yarn for package management. All documentation examples will use Yarn commands.
+> **Note**: ACK NestJS Boilerplate uses PNPM for package management. All documentation examples will use PNPM commands.
 
 Before starting, install the following tools and packages. We recommend using the LTS (Long Term Support) versions for stability and compatibility.
 
@@ -48,7 +48,7 @@ Before starting, install the following tools and packages. We recommend using th
 | [Node.js](https://nodejs.org) | v24.11.0+ |
 | [MongoDB](https://docs.mongodb.com/) | v8.0.x |
 | [Redis](https://redis.io) | v8.x |
-| [Yarn](https://yarnpkg.com) | v1.22.x |
+| [PNPM](http://pnpm.io) | v10.25.x |
 | [Git](https://git-scm.com) | v2.39.x |
 
 > **Important**: MongoDB must be configured to run as a **replica set** for database transactions to work properly. You can either use [Docker installation](#installation-with-docker) for automatic setup or create a database on [MongoDB Atlas][ref-mongodb] which supports replica sets by default.
@@ -78,7 +78,7 @@ This step will install all the required Node.js packages and dependencies for th
 
 ```bash
 # Install all dependencies
-yarn install
+pnpm install
 ```
 
 ### Create Environment
@@ -102,10 +102,10 @@ ACK NestJS Boilerplate uses **ES256** algorithm for Access Tokens and **ES512** 
 
 ```bash
 # Generate keys and JWKS files
-yarn generate:keys
+pnpm generate:keys
 
 # Or automatically update .env with key IDs (development only)
-yarn generate:keys --direct-insert
+pnpm generate:keys --direct-insert
 ```
 
 **What this command does:**
@@ -207,7 +207,7 @@ Key generation for Docker installation follows the same process as standard inst
 
 ```bash
 # Generate keys and automatically update .env with key IDs (recommended for Docker)
-yarn generate:keys --direct-insert
+pnpm generate:keys --direct-insert
 ```
 
 **What this command does:**
@@ -231,7 +231,7 @@ Now you're ready to start the complete Docker environment with all services.
 
 ```bash
 # Start all services in detached mode (runs in background)
-docker-compose --profile init up -d
+docker-compose up -d
 ```
 
 **What this command does:**
@@ -268,19 +268,19 @@ Prisma uses a generated client to provide type-safe database access and query bu
 
 **Generate database client from Prisma Schema:**
 ```bash
-yarn db:generate
+pnpm db:generate
 ```
 
 ## Database Migration & Seeding
 
 **Migrate schema to MongoDB:**
 ```bash
-yarn db:migrate
+pnpm db:migrate
 ```
 
 **Seed all initial data:**
 ```bash
-yarn migration:seed
+pnpm migration:seed
 ```
 
 **Seed email:**
@@ -288,7 +288,7 @@ yarn migration:seed
 Use this to seed email data for testing email sending features.
 
 ```bash
-yarn migration template-email --type seed
+pnpm migration template-email --type seed
 ```
 
 **Seed term policies:**
@@ -296,7 +296,7 @@ yarn migration template-email --type seed
 Use this to seed term policies data.
 
 ```bash
-yarn migration template-termPolicy --type seed
+pnpm migration template-termPolicy --type seed
 ```
 
 For a complete guide and module details, see [Database Documentation][ref-doc-database].
@@ -308,17 +308,17 @@ Congratulations! You're now ready to start the project. Make sure all your servi
 
 ```bash
 # Start in development mode with hot reload
-yarn start:dev
+pnpm start:dev
 ```
 
 Production Commands
 
 ```bash
 # Build the project for production
-yarn build
+pnpm build
 
 # Start in production mode
-yarn start:prod
+pnpm start:prod
 ```
 
 ## Development Tools
@@ -327,38 +327,38 @@ These commands help maintain code quality during development:
 
 ```bash
 # Format code with Prettier
-yarn format
+pnpm format
 
 # Lint code with ESLint
-yarn lint
+pnpm lint
 
 # Fix linting issues automatically
-yarn lint:fix
+pnpm lint:fix
 
 # Run tests
-yarn test
+pnpm test
 
 # Check for dead/unused code
-yarn deadcode
+pnpm deadcode
 
 # Spell check
-yarn spell
+pnpm spell
 ```
 
 Here are useful commands for managing your dependencies:
 
 ```bash
 # Check for outdated packages
-yarn package:check
+pnpm package:check
 
 # Upgrade all packages to their latest versions
-yarn package:upgrade
+pnpm package:upgrade
 
 # Clean install (removes node_modules and reinstalls everything)
-yarn clean && yarn install
+pnpm clean && pnpm install
 ```
 
-> **Note**: The `yarn clean` command is a custom script that removes `node_modules` directory, `dist` build folder, and yarn cache before reinstalling. This is useful when you encounter dependency conflicts, build issues, or want a fresh installation.
+> **Note**: The `pnpm clean` command is a custom script that removes `node_modules` directory, `dist` build folder, and pnpm cache before reinstalling. This is useful when you encounter dependency conflicts, build issues, or want a fresh installation.
 
 
 ## Accessing the Application
@@ -401,7 +401,7 @@ To verify everything is working correctly:
 [mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-[yarn-shield]: https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white
+[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
 [docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
 [linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
@@ -434,7 +434,7 @@ To verify everything is working correctly:
 [ref-typescript]: https://www.typescriptlang.org/
 [ref-docker]: https://docs.docker.com
 [ref-dockercompose]: https://docs.docker.com/compose/
-[ref-yarn]: https://yarnpkg.com
+[ref-pnpm]: https://pnpm.io
 [ref-12factor]: https://12factor.net
 [ref-commander]: https://nest-commander.jaymcdoniel.dev
 [ref-package-json]: package.json

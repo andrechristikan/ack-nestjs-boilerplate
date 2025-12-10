@@ -10,7 +10,7 @@ import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ISession } from '@modules/session/interfaces/session.interface';
 import { Injectable } from '@nestjs/common';
-import { ENUM_ACTIVITY_LOG_ACTION, Session } from '@prisma/client';
+import { EnumActivityLogAction, Session } from '@prisma/client';
 
 @Injectable()
 export class SessionRepository {
@@ -114,7 +114,7 @@ export class SessionRepository {
                     update: {
                         activityLogs: {
                             create: {
-                                action: ENUM_ACTIVITY_LOG_ACTION.userRevokeSession,
+                                action: EnumActivityLogAction.userRevokeSession,
                                 ipAddress,
                                 userAgent:
                                     this.databaseUtil.toPlainObject(userAgent),
@@ -144,7 +144,7 @@ export class SessionRepository {
                     update: {
                         activityLogs: {
                             create: {
-                                action: ENUM_ACTIVITY_LOG_ACTION.userRevokeSessionByAdmin,
+                                action: EnumActivityLogAction.userRevokeSessionByAdmin,
                                 ipAddress,
                                 userAgent:
                                     this.databaseUtil.toPlainObject(userAgent),

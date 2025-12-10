@@ -1,5 +1,5 @@
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { ENUM_USER_LOGIN_FROM, ENUM_USER_SIGN_UP_WITH } from '@prisma/client';
+import { EnumUserLoginFrom, EnumUserSignUpWith } from '@prisma/client';
 
 export interface IAuthPassword {
     salt: string;
@@ -15,8 +15,8 @@ export interface IAuthPasswordOptions {
 
 export interface IAuthJwtAccessTokenPayload {
     loginAt: Date;
-    loginFrom: ENUM_USER_LOGIN_FROM;
-    loginWith: ENUM_USER_SIGN_UP_WITH;
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserSignUpWith;
     email: string;
     username: string;
     userId: string;
@@ -38,8 +38,10 @@ export type IAuthJwtRefreshTokenPayload = Omit<
     'type' | 'roleId' | 'username' | 'email' | 'termPolicy' | 'verification'
 >;
 
-export interface IAuthSocialPayload
-    extends Pick<IAuthJwtAccessTokenPayload, 'email'> {
+export interface IAuthSocialPayload extends Pick<
+    IAuthJwtAccessTokenPayload,
+    'email'
+> {
     emailVerified: boolean;
 }
 

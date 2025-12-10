@@ -11,14 +11,14 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-    ENUM_ACTIVITY_LOG_ACTION,
-    ENUM_PASSWORD_HISTORY_TYPE,
-    ENUM_TERM_POLICY_STATUS,
-    ENUM_TERM_POLICY_TYPE,
-    ENUM_USER_SIGN_UP_FROM,
-    ENUM_USER_SIGN_UP_WITH,
-    ENUM_USER_STATUS,
-    ENUM_VERIFICATION_TYPE,
+    EnumActivityLogAction,
+    EnumPasswordHistoryType,
+    EnumTermPolicyStatus,
+    EnumTermPolicyType,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
+    EnumVerificationType,
 } from '@prisma/client';
 import { Command } from 'nest-commander';
 import { UAParser } from 'ua-parser-js';
@@ -105,11 +105,11 @@ export class MigrationUserSeed
             where: {
                 type: {
                     in: [
-                        ENUM_TERM_POLICY_TYPE.termsOfService,
-                        ENUM_TERM_POLICY_TYPE.privacy,
+                        EnumTermPolicyType.termsOfService,
+                        EnumTermPolicyType.privacy,
                     ],
                 },
-                status: ENUM_TERM_POLICY_STATUS.published,
+                status: EnumTermPolicyStatus.published,
             },
             select: {
                 id: true,
@@ -134,7 +134,7 @@ export class MigrationUserSeed
                     this.authUtil.createPassword(user.password);
                 const { reference, token, type } =
                     this.userUtil.verificationCreateVerification(
-                        ENUM_VERIFICATION_TYPE.email
+                        EnumVerificationType.email
                     );
 
                 return this.databaseService.user.upsert({
@@ -156,14 +156,14 @@ export class MigrationUserSeed
                         passwordAttempt: 0,
                         signUpAt: today,
                         isVerified: true,
-                        signUpWith: ENUM_USER_SIGN_UP_WITH.credential,
-                        signUpFrom: ENUM_USER_SIGN_UP_FROM.system,
-                        status: ENUM_USER_STATUS.active,
+                        signUpWith: EnumUserSignUpWith.credential,
+                        signUpFrom: EnumUserSignUpFrom.system,
+                        status: EnumUserStatus.active,
                         termPolicy: {
-                            [ENUM_TERM_POLICY_TYPE.cookies]: false,
-                            [ENUM_TERM_POLICY_TYPE.marketing]: false,
-                            [ENUM_TERM_POLICY_TYPE.privacy]: true,
-                            [ENUM_TERM_POLICY_TYPE.termsOfService]: true,
+                            [EnumTermPolicyType.cookies]: false,
+                            [EnumTermPolicyType.marketing]: false,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
                         },
                         username: this.userUtil.createRandomUsername(),
                         deletedAt: null,
@@ -171,7 +171,7 @@ export class MigrationUserSeed
                             create: {
                                 password: passwordHash,
                                 salt,
-                                type: ENUM_PASSWORD_HISTORY_TYPE.admin,
+                                type: EnumPasswordHistoryType.admin,
                                 expiredAt: passwordExpired,
                                 createdAt: passwordCreated,
                                 createdBy: userId,
@@ -193,7 +193,7 @@ export class MigrationUserSeed
                             createMany: {
                                 data: [
                                     {
-                                        action: ENUM_ACTIVITY_LOG_ACTION.userCreated,
+                                        action: EnumActivityLogAction.userCreated,
                                         ipAddress: ip,
                                         userAgent:
                                             this.databaseUtil.toPlainObject(
@@ -202,7 +202,7 @@ export class MigrationUserSeed
                                         createdBy: userId,
                                     },
                                     {
-                                        action: ENUM_ACTIVITY_LOG_ACTION.userVerifiedEmail,
+                                        action: EnumActivityLogAction.userVerifiedEmail,
                                         ipAddress: ip,
                                         userAgent:
                                             this.databaseUtil.toPlainObject(
@@ -211,7 +211,7 @@ export class MigrationUserSeed
                                         createdBy: userId,
                                     },
                                     ...termPolicies.map(termPolicy => ({
-                                        action: ENUM_ACTIVITY_LOG_ACTION.userAcceptTermPolicy,
+                                        action: EnumActivityLogAction.userAcceptTermPolicy,
                                         metadata: {
                                             termPolicyType: termPolicy.type,
                                             termPolicyId: termPolicy.id,

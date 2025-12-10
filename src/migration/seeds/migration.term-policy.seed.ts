@@ -7,7 +7,7 @@ import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ENUM_TERM_POLICY_STATUS } from '@prisma/client';
+import { EnumTermPolicyStatus } from '@prisma/client';
 import { Command } from 'nest-commander';
 
 @Command({
@@ -55,7 +55,7 @@ export class MigrationTermPolicySeed
                         contents: this.databaseUtil.toPlainArray(
                             termPolicy.contents
                         ),
-                        status: ENUM_TERM_POLICY_STATUS.published,
+                        status: EnumTermPolicyStatus.published,
                     },
                     update: {},
                 })

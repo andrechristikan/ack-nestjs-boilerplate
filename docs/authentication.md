@@ -364,8 +364,8 @@ Interface `IAuthJwtAccessTokenPayload`
 ```typescript
 {
     loginAt: Date;
-    loginFrom: ENUM_USER_LOGIN_FROM;
-    loginWith: ENUM_USER_SIGN_UP_WITH;
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserSignUpWith;
     email: string;
     username: string;
     userId: string;
@@ -390,8 +390,8 @@ Interface `IAuthJwtRefreshTokenPayload`
 ```typescript
 {
     loginAt: Date;
-    loginFrom: ENUM_USER_LOGIN_FROM;
-    loginWith: ENUM_USER_SIGN_UP_WITH;
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserSignUpWith;
     userId: string;
     sessionId: string;
     fingerprint: string;
@@ -799,7 +799,7 @@ sequenceDiagram
 Default API keys are used for standard external integrations and third-party access.
 
 **Characteristics:**
-- Type: `ENUM_API_KEY_TYPE.default`
+- Type: `EnumApiKeyType.default`
 - Purpose: General-purpose API access
 - Use Case: External clients, third-party integrations
 - Validation: Requires valid `key:secret` combination
@@ -824,7 +824,7 @@ async getExternalData(@ApiKeyPayload() apiKey: ApiKey) {
 System API keys are used for internal system operations that bypass standard authentication.
 
 **Characteristics:**
-- Type: `ENUM_API_KEY_TYPE.system`
+- Type: `EnumApiKeyType.system`
 - Purpose: System-level operations
 - Use Case: Internal services, background jobs, system maintenance
 - Validation: Requires valid `key:secret` combination
@@ -923,7 +923,7 @@ async getResource(@ApiKeyPayload() apiKey: ApiKey) {
 @Get('/resource')
 async getResource(
     @ApiKeyPayload('name') apiKeyName: string,
-    @ApiKeyPayload('type') apiKeyType: ENUM_API_KEY_TYPE
+    @ApiKeyPayload('type') apiKeyType: EnumApiKeyType
 ) {
     // Extract specific fields only
     return {
@@ -955,8 +955,8 @@ Used for high-speed session validation for **both access and refresh tokens**.
     userId: string;
     fingerprint: string;
     loginAt: Date;
-    loginFrom: ENUM_USER_LOGIN_FROM;
-    loginWith: ENUM_USER_SIGN_UP_WITH;
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserSignUpWith;
 }
 ```
 
@@ -1047,7 +1047,7 @@ When a session is revoked:
 [mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-[yarn-shield]: https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white
+[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
 [docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
 [linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
@@ -1080,7 +1080,7 @@ When a session is revoked:
 [ref-typescript]: https://www.typescriptlang.org/
 [ref-docker]: https://docs.docker.com
 [ref-dockercompose]: https://docs.docker.com/compose/
-[ref-yarn]: https://yarnpkg.com
+[ref-pnpm]: https://pnpm.io
 [ref-12factor]: https://12factor.net
 [ref-commander]: https://nest-commander.jaymcdoniel.dev
 [ref-package-json]: package.json

@@ -8,7 +8,7 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { Injectable } from '@nestjs/common';
-import { ENUM_ROLE_TYPE, Role } from '@prisma/client';
+import { EnumRoleType, Role } from '@prisma/client';
 
 @Injectable()
 export class RoleRepository {
@@ -38,7 +38,7 @@ export class RoleRepository {
 
     async existByName(
         name: string
-    ): Promise<{ id: string; type: ENUM_ROLE_TYPE } | null> {
+    ): Promise<{ id: string; type: EnumRoleType } | null> {
         return this.databaseService.role.findFirst({
             where: {
                 name: name,
@@ -49,7 +49,7 @@ export class RoleRepository {
 
     async existById(
         id: string
-    ): Promise<{ id: string; type: ENUM_ROLE_TYPE } | null> {
+    ): Promise<{ id: string; type: EnumRoleType } | null> {
         return this.databaseService.role.findUnique({
             where: {
                 id,

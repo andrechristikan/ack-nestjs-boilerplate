@@ -167,18 +167,18 @@ flowchart TD
 **Method decorator** that applies `RoleGuard` to route handlers.
 
 **Parameters:**
-- `...requiredRoles` (ENUM_ROLE_TYPE[]): One or more role types required to access the route
+- `...requiredRoles` (EnumRoleType[]): One or more role types required to access the route
 
 **Available Role Types:**
-- `ENUM_ROLE_TYPE.superAdmin` - Super administrator with unrestricted access
-- `ENUM_ROLE_TYPE.admin` - Administrator role
-- `ENUM_ROLE_TYPE.user` - Standard user role
+- `EnumRoleType.superAdmin` - Super administrator with unrestricted access
+- `EnumRoleType.admin` - Administrator role
+- `EnumRoleType.user` - Standard user role
 
 **Usage:**
 
 ```typescript
 // Single role requirement
-@RoleProtected(ENUM_ROLE_TYPE.admin)
+@RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
 @Get('admin/dashboard')
@@ -187,7 +187,7 @@ getAdminDashboard(@UserCurrent() user: IUser) {
 }
 
 // Multiple role requirements (user must have one of the specified roles)
-@RoleProtected(ENUM_ROLE_TYPE.admin, ENUM_ROLE_TYPE.superAdmin)
+@RoleProtected(EnumRoleType.admin, EnumRoleType.superAdmin)
 @UserProtected()
 @AuthJwtAccessProtected()
 @Delete('users/:id')
@@ -201,7 +201,7 @@ deleteUser(@Param('id') id: string) {
 To access the current user's role, use the `@UserCurrent()` decorator and access the `role` property:
 
 ```typescript
-@RoleProtected(ENUM_ROLE_TYPE.admin)
+@RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
 @Get('role-info')
@@ -307,7 +307,7 @@ flowchart TD
   subject: ENUM_POLICY_SUBJECT.USER,
   action: [ENUM_POLICY_ACTION.READ]
 })
-@RoleProtected(ENUM_ROLE_TYPE.admin)
+@RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
 @Get('users')
@@ -320,7 +320,7 @@ getUsers() {
   subject: ENUM_POLICY_SUBJECT.USER,
   action: [ENUM_POLICY_ACTION.UPDATE, ENUM_POLICY_ACTION.DELETE]
 })
-@RoleProtected(ENUM_ROLE_TYPE.admin)
+@RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
 @Put('users/:id')
@@ -339,7 +339,7 @@ updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     action: [ENUM_POLICY_ACTION.MANAGE]
   }
 )
-@RoleProtected(ENUM_ROLE_TYPE.admin)
+@RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
 @Post('users/:id/assign-role')
@@ -426,13 +426,13 @@ The factory creates a CASL ability instance that can check if a user can perform
 **Method decorator** that applies `TermPolicyGuard` to route handlers.
 
 **Parameters:**
-- `...requiredTermPolicies` (ENUM_TERM_POLICY_TYPE[], optional): One or more term policy types that must be accepted. If not provided, defaults to `termsOfService` and `privacy`
+- `...requiredTermPolicies` (EnumTermPolicyType[], optional): One or more term policy types that must be accepted. If not provided, defaults to `termsOfService` and `privacy`
 
 **Available Term Policy Types:**
-- `ENUM_TERM_POLICY_TYPE.termsOfService` - Terms of Service acceptance
-- `ENUM_TERM_POLICY_TYPE.privacy` - Privacy Policy acceptance
-- `ENUM_TERM_POLICY_TYPE.cookies` - Cookies Policy acceptance
-- `ENUM_TERM_POLICY_TYPE.marketing` - Marketing consent acceptance
+- `EnumTermPolicyType.termsOfService` - Terms of Service acceptance
+- `EnumTermPolicyType.privacy` - Privacy Policy acceptance
+- `EnumTermPolicyType.cookies` - Cookies Policy acceptance
+- `EnumTermPolicyType.marketing` - Marketing consent acceptance
 
 **Usage:**
 
@@ -447,7 +447,7 @@ getPremiumFeatures() {
 }
 
 // Single term policy requirement
-@TermPolicyAcceptanceProtected(ENUM_TERM_POLICY_TYPE.marketing)
+@TermPolicyAcceptanceProtected(EnumTermPolicyType.marketing)
 @UserProtected()
 @AuthJwtAccessProtected()
 @Post('subscribe-newsletter')
@@ -457,9 +457,9 @@ subscribeNewsletter(@Body() dto: SubscribeDto) {
 
 // Multiple term policy requirements
 @TermPolicyAcceptanceProtected(
-  ENUM_TERM_POLICY_TYPE.termsOfService,
-  ENUM_TERM_POLICY_TYPE.privacy,
-  ENUM_TERM_POLICY_TYPE.cookies
+  EnumTermPolicyType.termsOfService,
+  EnumTermPolicyType.privacy,
+  EnumTermPolicyType.cookies
 )
 @UserProtected()
 @AuthJwtAccessProtected()
@@ -537,7 +537,7 @@ flowchart TD
 [mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-[yarn-shield]: https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white
+[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
 [docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
 [linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
@@ -571,7 +571,7 @@ flowchart TD
 [ref-typescript]: https://www.typescriptlang.org/
 [ref-docker]: https://docs.docker.com
 [ref-dockercompose]: https://docs.docker.com/compose/
-[ref-yarn]: https://yarnpkg.com
+[ref-pnpm]: https://pnpm.io
 [ref-12factor]: https://12factor.net
 [ref-commander]: https://nest-commander.jaymcdoniel.dev
 [ref-package-json]: package.json

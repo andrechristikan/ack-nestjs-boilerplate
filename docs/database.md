@@ -44,7 +44,7 @@ This documentation explains the database architecture and features in ACK NestJS
 
 Prisma does not support migrations for MongoDB. Instead, use `prisma db push` to sync your Prisma schema with the MongoDB database.
 
-In ACK NestJS Boilerplate, you can use the `yarn db:migrate` script to quickly sync your schema to MongoDB.
+In ACK NestJS Boilerplate, you can use the `pnpm db:migrate` script to quickly sync your schema to MongoDB.
 
 For details, see the official Prisma documentation: [Prisma for MongoDB][ref-prisma-mongodb]
 
@@ -59,7 +59,7 @@ Prisma uses a generated client to provide type-safe database access and query bu
 
 **How to Generate Prisma Client:**
 ```bash
-yarn db:generate
+pnpm db:generate
 ```
 
 This command will read your Prisma schema and generate the client code in `node_modules/@prisma/client`. The generated client is required for your application to interact with the database using Prisma.
@@ -77,13 +77,13 @@ ACK NestJS Boilerplate provides ready-to-use seed scripts to help you quickly in
 - All seed data is stored in `src/migration/data/*`.
 
 **How to Run All Seeds:**
-- `yarn migration:seed` — runs all seed commands to populate initial data.
-- `yarn migration:remove` — removes all seeded data from the database.
+- `pnpm migration:seed` — runs all seed commands to populate initial data.
+- `pnpm migration:remove` — removes all seeded data from the database.
 
 **How to Seed/Remove a Specific Module:**
 Run the command:
-   - Seed: `yarn migration {module} --type seed`
-   - Remove: `yarn migration {module} --type remove`
+   - Seed: `pnpm migration {module} --type seed`
+   - Remove: `pnpm migration {module} --type remove`
 
 **Available Types:**
 - `seed` (add data)
@@ -112,21 +112,21 @@ Template seeding uses the same script and commands as Database Seeds, but is spe
 Every time you run the email template seed, the templates will be inserted into AWS SES automatically.
 
 **How to Run Email Template Seeds:**
-- Seed: `yarn migration template-email --type seed`
-- Remove: `yarn migration template-email --type remove`
+- Seed: `pnpm migration template-email --type seed`
+- Remove: `pnpm migration template-email --type remove`
 
 #### Term Policy Templates
 
 Every time you run the term policy template seed, the policy documents will be linked to the database records automatically.
 
 **How to Run Term Policy Template Seeds:**
-- Seed: `yarn migration template-termPolicy --type seed`
-- Remove: `yarn migration template-termPolicy --type remove`
+- Seed: `pnpm migration template-termPolicy --type seed`
+- Remove: `pnpm migration template-termPolicy --type remove`
 
 
 ## Initial Seeded Data
 
-When you run `yarn migration:seed`, the following initial data will be created in your database. This data is essential for testing and development purposes.
+When you run `pnpm migration:seed`, the following initial data will be created in your database. This data is essential for testing and development purposes.
 
 ### API Keys
 
@@ -250,7 +250,7 @@ For details on switching databases, see: [Prisma: Switching databases][ref-prism
 [mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-[yarn-shield]: https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white
+[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
 [docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
 [linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
@@ -285,7 +285,7 @@ For details on switching databases, see: [Prisma: Switching databases][ref-prism
 [ref-typescript]: https://www.typescriptlang.org/
 [ref-docker]: https://docs.docker.com
 [ref-dockercompose]: https://docs.docker.com/compose/
-[ref-yarn]: https://yarnpkg.com
+[ref-pnpm]: https://pnpm.io
 [ref-12factor]: https://12factor.net
 [ref-commander]: https://nest-commander.jaymcdoniel.dev
 [ref-package-json]: package.json

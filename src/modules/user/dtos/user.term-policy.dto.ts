@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ENUM_TERM_POLICY_TYPE } from '@prisma/client';
+import { EnumTermPolicyType } from '@prisma/client';
 
 export class UserTermPolicyDto {
     @ApiProperty({
@@ -7,26 +7,26 @@ export class UserTermPolicyDto {
         description: 'Terms of Service acceptance',
         example: true,
     })
-    [ENUM_TERM_POLICY_TYPE.termsOfService]: boolean;
+    [EnumTermPolicyType.termsOfService]: boolean;
 
     @ApiProperty({
         required: true,
         description: 'Privacy Policy acceptance',
         example: true,
     })
-    [ENUM_TERM_POLICY_TYPE.privacy]: boolean;
+    [EnumTermPolicyType.privacy]: boolean;
 
     @ApiProperty({
         required: true,
         description: 'Cookie Policy acceptance',
         example: true,
     })
-    [ENUM_TERM_POLICY_TYPE.cookies]: boolean;
+    [EnumTermPolicyType.cookies]: boolean;
 
     @ApiProperty({
         required: true,
         description: 'Marketing Policy acceptance',
         example: false,
     })
-    [ENUM_TERM_POLICY_TYPE.marketing]: boolean;
+    [EnumTermPolicyType.marketing]: boolean;
 }

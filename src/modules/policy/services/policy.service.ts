@@ -9,7 +9,7 @@ import {
     Injectable,
     InternalServerErrorException,
 } from '@nestjs/common';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { EnumRoleType } from '@prisma/client';
 
 @Injectable()
 export class PolicyService implements IPolicyService {
@@ -30,7 +30,7 @@ export class PolicyService implements IPolicyService {
 
         const { role } = __user;
 
-        if (role.type === ENUM_ROLE_TYPE.superAdmin) {
+        if (role.type === EnumRoleType.superAdmin) {
             return true;
         } else if (requiredAbilities.length === 0) {
             throw new InternalServerErrorException({

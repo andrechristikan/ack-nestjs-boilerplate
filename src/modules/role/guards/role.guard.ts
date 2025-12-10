@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RoleService } from '@modules/role/services/role.service';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { EnumRoleType } from '@prisma/client';
 import { ROLE_REQUIRED_META_KEY } from '@modules/role/constants/role.constant';
 
 /**
@@ -22,7 +22,7 @@ export class RoleGuard implements CanActivate {
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredRoles =
-            this.reflector.get<ENUM_ROLE_TYPE[]>(
+            this.reflector.get<EnumRoleType[]>(
                 ROLE_REQUIRED_META_KEY,
                 context.getHandler()
             ) ?? [];

@@ -3,11 +3,11 @@ import { ApiHideProperty, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import {
-    ENUM_USER_GENDER,
-    ENUM_USER_LOGIN_FROM,
-    ENUM_USER_SIGN_UP_FROM,
-    ENUM_USER_SIGN_UP_WITH,
-    ENUM_USER_STATUS,
+    EnumUserGender,
+    EnumUserLoginFrom,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
 } from '@prisma/client';
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
@@ -88,17 +88,17 @@ export class UserDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        example: ENUM_USER_SIGN_UP_FROM.admin,
-        enum: ENUM_USER_SIGN_UP_FROM,
+        example: EnumUserSignUpFrom.admin,
+        enum: EnumUserSignUpFrom,
     })
-    signUpFrom: ENUM_USER_SIGN_UP_FROM;
+    signUpFrom: EnumUserSignUpFrom;
 
     @ApiProperty({
         required: true,
-        example: ENUM_USER_SIGN_UP_WITH.credential,
-        enum: ENUM_USER_SIGN_UP_WITH,
+        example: EnumUserSignUpWith.credential,
+        enum: EnumUserSignUpWith,
     })
-    signUpWith: ENUM_USER_SIGN_UP_WITH;
+    signUpWith: EnumUserSignUpWith;
 
     @ApiHideProperty()
     @Exclude()
@@ -106,10 +106,10 @@ export class UserDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        example: ENUM_USER_STATUS.active,
-        enum: ENUM_USER_STATUS,
+        example: EnumUserStatus.active,
+        enum: EnumUserStatus,
     })
-    status: ENUM_USER_STATUS;
+    status: EnumUserStatus;
 
     @ApiProperty({
         required: true,
@@ -118,11 +118,11 @@ export class UserDto extends DatabaseDto {
     countryId: string;
 
     @ApiProperty({
-        example: ENUM_USER_GENDER.male,
-        enum: ENUM_USER_GENDER,
+        example: EnumUserGender.male,
+        enum: EnumUserGender,
         required: false,
     })
-    gender?: ENUM_USER_GENDER;
+    gender?: EnumUserGender;
 
     @ApiProperty({
         required: false,
@@ -140,17 +140,17 @@ export class UserDto extends DatabaseDto {
 
     @ApiProperty({
         required: false,
-        enum: ENUM_USER_LOGIN_FROM,
-        example: ENUM_USER_LOGIN_FROM.website,
+        enum: EnumUserLoginFrom,
+        example: EnumUserLoginFrom.website,
     })
-    lastLoginFrom?: ENUM_USER_LOGIN_FROM;
+    lastLoginFrom?: EnumUserLoginFrom;
 
     @ApiProperty({
         required: false,
-        enum: ENUM_USER_SIGN_UP_WITH,
-        example: ENUM_USER_SIGN_UP_WITH.credential,
+        enum: EnumUserSignUpWith,
+        example: EnumUserSignUpWith.credential,
     })
-    lastLoginWith?: ENUM_USER_SIGN_UP_WITH;
+    lastLoginWith?: EnumUserSignUpWith;
 
     @ApiProperty({
         required: true,

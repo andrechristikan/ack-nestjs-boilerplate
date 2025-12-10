@@ -4,7 +4,7 @@ import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { TermPolicyTemplateService } from '@modules/term-policy/services/term-policy.template.service';
 import { Logger } from '@nestjs/common';
-import { ENUM_TERM_POLICY_STATUS, ENUM_TERM_POLICY_TYPE } from '@prisma/client';
+import { EnumTermPolicyStatus, EnumTermPolicyType } from '@prisma/client';
 import { Command } from 'nest-commander';
 
 @Command({
@@ -40,14 +40,14 @@ export class MigrationTemplateTermPolicySeed
             this.databaseService.termPolicy.upsert({
                 where: {
                     type_version: {
-                        type: ENUM_TERM_POLICY_TYPE.termsOfService,
+                        type: EnumTermPolicyType.termsOfService,
                         version: 1,
                     },
                 },
                 create: {
-                    type: ENUM_TERM_POLICY_TYPE.termsOfService,
+                    type: EnumTermPolicyType.termsOfService,
                     version: 1,
-                    status: ENUM_TERM_POLICY_STATUS.published,
+                    status: EnumTermPolicyStatus.published,
                     contents: [
                         {
                             key: termsOfServiceKey.key,
@@ -69,14 +69,14 @@ export class MigrationTemplateTermPolicySeed
             this.databaseService.termPolicy.upsert({
                 where: {
                     type_version: {
-                        type: ENUM_TERM_POLICY_TYPE.privacy,
+                        type: EnumTermPolicyType.privacy,
                         version: 1,
                     },
                 },
                 create: {
-                    type: ENUM_TERM_POLICY_TYPE.privacy,
+                    type: EnumTermPolicyType.privacy,
                     version: 1,
-                    status: ENUM_TERM_POLICY_STATUS.published,
+                    status: EnumTermPolicyStatus.published,
                     contents: [
                         {
                             key: privacyKey.key,
@@ -98,14 +98,14 @@ export class MigrationTemplateTermPolicySeed
             this.databaseService.termPolicy.upsert({
                 where: {
                     type_version: {
-                        type: ENUM_TERM_POLICY_TYPE.cookies,
+                        type: EnumTermPolicyType.cookies,
                         version: 1,
                     },
                 },
                 create: {
-                    type: ENUM_TERM_POLICY_TYPE.cookies,
+                    type: EnumTermPolicyType.cookies,
                     version: 1,
-                    status: ENUM_TERM_POLICY_STATUS.published,
+                    status: EnumTermPolicyStatus.published,
                     contents: [
                         {
                             key: cookieKey.key,
@@ -127,14 +127,14 @@ export class MigrationTemplateTermPolicySeed
             this.databaseService.termPolicy.upsert({
                 where: {
                     type_version: {
-                        type: ENUM_TERM_POLICY_TYPE.marketing,
+                        type: EnumTermPolicyType.marketing,
                         version: 1,
                     },
                 },
                 create: {
-                    type: ENUM_TERM_POLICY_TYPE.marketing,
+                    type: EnumTermPolicyType.marketing,
                     version: 1,
-                    status: ENUM_TERM_POLICY_STATUS.published,
+                    status: EnumTermPolicyStatus.published,
                     contents: [
                         {
                             key: marketingKey.key,

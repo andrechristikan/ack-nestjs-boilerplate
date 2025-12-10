@@ -1,6 +1,6 @@
 import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { ApiHideProperty, ApiProperty, PickType } from '@nestjs/swagger';
-import { ENUM_API_KEY_TYPE } from '@prisma/client';
+import { EnumApiKeyType } from '@prisma/client';
 import { Exclude } from 'class-transformer';
 
 export class ApiKeyCreateResponseDto extends PickType(ApiKeyDto, [
@@ -33,7 +33,7 @@ export class ApiKeyCreateResponseDto extends PickType(ApiKeyDto, [
 
     @ApiHideProperty()
     @Exclude()
-    type: ENUM_API_KEY_TYPE;
+    type: EnumApiKeyType;
 
     @ApiHideProperty()
     @Exclude()

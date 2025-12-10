@@ -15,7 +15,7 @@ import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.s
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ENUM_USER_LOGIN_FROM, ENUM_USER_SIGN_UP_WITH } from '@prisma/client';
+import { EnumUserLoginFrom, EnumUserSignUpWith } from '@prisma/client';
 import { TokenPayload } from 'google-auth-library';
 
 /**
@@ -42,8 +42,8 @@ export class AuthService implements IAuthService {
      */
     createTokens(
         user: IUser,
-        loginFrom: ENUM_USER_LOGIN_FROM,
-        loginWith: ENUM_USER_SIGN_UP_WITH
+        loginFrom: EnumUserLoginFrom,
+        loginWith: EnumUserSignUpWith
     ): IAuthTokenGenerate {
         const loginDate = this.helperService.dateCreate();
 

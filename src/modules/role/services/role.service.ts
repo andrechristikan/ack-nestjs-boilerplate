@@ -24,7 +24,7 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { EnumRoleType } from '@prisma/client';
 
 @Injectable()
 export class RoleService implements IRoleService {
@@ -125,7 +125,7 @@ export class RoleService implements IRoleService {
 
     async validateRoleGuard(
         request: IRequestApp,
-        requiredRoles: ENUM_ROLE_TYPE[]
+        requiredRoles: EnumRoleType[]
     ): Promise<RoleAbilityDto[]> {
         const { __user, user } = request;
         if (!__user || !user) {
@@ -137,7 +137,7 @@ export class RoleService implements IRoleService {
 
         const { role } = __user;
 
-        if (role.type === ENUM_ROLE_TYPE.superAdmin) {
+        if (role.type === EnumRoleType.superAdmin) {
             return [];
         } else if (requiredRoles.length === 0) {
             throw new InternalServerErrorException({

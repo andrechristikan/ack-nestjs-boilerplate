@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { EnumRoleType } from '@prisma/client';
 
 export class RoleUpdateRequestDto {
     @ApiProperty({
@@ -27,13 +27,13 @@ export class RoleUpdateRequestDto {
 
     @ApiProperty({
         description: 'Representative for role type',
-        example: ENUM_ROLE_TYPE.admin,
+        example: EnumRoleType.admin,
         required: true,
-        enum: ENUM_ROLE_TYPE,
+        enum: EnumRoleType,
     })
-    @IsEnum(ENUM_ROLE_TYPE)
+    @IsEnum(EnumRoleType)
     @IsNotEmpty()
-    type: ENUM_ROLE_TYPE;
+    type: EnumRoleType;
 
     @ApiProperty({
         required: true,

@@ -2,11 +2,11 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { faker } from '@faker-js/faker';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { ENUM_TERM_POLICY_TYPE } from '@prisma/client';
+import { EnumTermPolicyType } from '@prisma/client';
 
 const termPolicyData: TermPolicyCreateRequestDto[] = [
     {
-        type: ENUM_TERM_POLICY_TYPE.cookies,
+        type: EnumTermPolicyType.cookies,
         version: 1,
         contents: [
             {
@@ -17,7 +17,7 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
         ],
     },
     {
-        type: ENUM_TERM_POLICY_TYPE.marketing,
+        type: EnumTermPolicyType.marketing,
         version: 1,
         contents: [
             {
@@ -28,7 +28,7 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
         ],
     },
     {
-        type: ENUM_TERM_POLICY_TYPE.privacy,
+        type: EnumTermPolicyType.privacy,
         version: 1,
         contents: [
             {
@@ -39,7 +39,7 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
         ],
     },
     {
-        type: ENUM_TERM_POLICY_TYPE.termsOfService,
+        type: EnumTermPolicyType.termsOfService,
         version: 1,
         contents: [
             {

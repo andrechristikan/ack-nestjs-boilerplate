@@ -9,7 +9,7 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { API_KEY_X_TYPE_META_KEY } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
-import { ApiKey, ENUM_API_KEY_TYPE } from '@prisma/client';
+import { ApiKey, EnumApiKeyType } from '@prisma/client';
 
 /**
  * Parameter decorator that extracts API key data from the request context
@@ -31,7 +31,7 @@ export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
 export function ApiKeySystemProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),
-        SetMetadata(API_KEY_X_TYPE_META_KEY, [ENUM_API_KEY_TYPE.system])
+        SetMetadata(API_KEY_X_TYPE_META_KEY, [EnumApiKeyType.system])
     );
 }
 
@@ -42,6 +42,6 @@ export function ApiKeySystemProtected(): MethodDecorator {
 export function ApiKeyProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),
-        SetMetadata(API_KEY_X_TYPE_META_KEY, [ENUM_API_KEY_TYPE.default])
+        SetMetadata(API_KEY_X_TYPE_META_KEY, [EnumApiKeyType.default])
     );
 }

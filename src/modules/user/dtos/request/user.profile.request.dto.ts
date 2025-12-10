@@ -1,6 +1,6 @@
 import { ApiProperty, PickType } from '@nestjs/swagger';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { ENUM_USER_GENDER } from '@prisma/client';
+import { EnumUserGender } from '@prisma/client';
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 
@@ -10,12 +10,12 @@ export class UserUpdateProfileRequestDto extends PickType(
 ) {
     @ApiProperty({
         required: true,
-        enum: ENUM_USER_GENDER,
-        example: ENUM_USER_GENDER.male,
+        enum: EnumUserGender,
+        example: EnumUserGender.male,
     })
-    @IsEnum(ENUM_USER_GENDER)
+    @IsEnum(EnumUserGender)
     @IsNotEmpty()
-    gender: ENUM_USER_GENDER;
+    gender: EnumUserGender;
 }
 
 export class UserUpdateProfilePhotoRequestDto extends PickType(

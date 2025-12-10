@@ -12,7 +12,7 @@ import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.req
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
-import { ENUM_ROLE_TYPE } from '@prisma/client';
+import { EnumRoleType } from '@prisma/client';
 
 export interface IRoleService {
     getList(
@@ -28,6 +28,6 @@ export interface IRoleService {
     delete(id: string): Promise<IResponseReturn<void>>;
     validateRoleGuard(
         request: IRequestApp,
-        requiredRoles: ENUM_ROLE_TYPE[]
+        requiredRoles: EnumRoleType[]
     ): Promise<RoleAbilityDto[]>;
 }

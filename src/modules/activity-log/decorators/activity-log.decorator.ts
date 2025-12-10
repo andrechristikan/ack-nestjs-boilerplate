@@ -2,7 +2,7 @@ import { ACTIVITY_LOG_METADATA_META_KEY } from '@modules/activity-log/constants/
 import { ActivityLogInterceptor } from '@modules/activity-log/interceptors/activity-log.interceptor';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { SetMetadata, UseInterceptors, applyDecorators } from '@nestjs/common';
-import { ENUM_ACTIVITY_LOG_ACTION } from '@prisma/client';
+import { EnumActivityLogAction } from '@prisma/client';
 
 /**
  * Decorator that enables activity logging for controller methods.
@@ -19,7 +19,7 @@ export function ActivityLog(
     // TODO: implement bidirectional logging support, and record when failed attempts occur
     return applyDecorators(
         UseInterceptors(ActivityLogInterceptor),
-        SetMetadata(ENUM_ACTIVITY_LOG_ACTION, action),
+        SetMetadata(EnumActivityLogAction, action),
         SetMetadata(ACTIVITY_LOG_METADATA_META_KEY, metadata)
     );
 }

@@ -1,8 +1,8 @@
 import {
     Country,
-    ENUM_USER_LOGIN_FROM,
-    ENUM_USER_LOGIN_WITH,
-    ENUM_VERIFICATION_TYPE,
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
+    EnumVerificationType,
     Role,
     User,
     UserMobileNumber,
@@ -22,8 +22,8 @@ export interface IUserProfile extends IUser {
 }
 
 export interface IUserLogin {
-    loginFrom: ENUM_USER_LOGIN_FROM;
-    loginWith: ENUM_USER_LOGIN_WITH;
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserLoginWith;
     expiredAt: Date;
     fingerprint: string;
     sessionId: string;
@@ -39,7 +39,7 @@ export interface IUserForgotPasswordCreate {
 }
 
 export interface IUserVerificationCreate {
-    type: ENUM_VERIFICATION_TYPE;
+    type: EnumVerificationType;
     expiredAt: Date;
     expiredInMinutes: number;
     resendInMinutes: number;

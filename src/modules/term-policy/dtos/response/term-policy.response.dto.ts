@@ -1,25 +1,25 @@
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
-import { ENUM_TERM_POLICY_STATUS, ENUM_TERM_POLICY_TYPE } from '@prisma/client';
+import { EnumTermPolicyStatus, EnumTermPolicyType } from '@prisma/client';
 import { Type } from 'class-transformer';
 
 export class TermPolicyResponseDto extends DatabaseDto {
     @ApiProperty({
         description: 'Type of terms or policy',
-        enum: ENUM_TERM_POLICY_TYPE,
-        example: ENUM_TERM_POLICY_TYPE.termsOfService,
+        enum: EnumTermPolicyType,
+        example: EnumTermPolicyType.termsOfService,
         required: true,
     })
-    readonly type: ENUM_TERM_POLICY_TYPE;
+    readonly type: EnumTermPolicyType;
 
     @ApiProperty({
         description: 'Status of terms or policy',
-        enum: ENUM_TERM_POLICY_STATUS,
-        example: ENUM_TERM_POLICY_STATUS.draft,
+        enum: EnumTermPolicyStatus,
+        example: EnumTermPolicyStatus.draft,
         required: true,
     })
-    readonly status: ENUM_TERM_POLICY_STATUS;
+    readonly status: EnumTermPolicyStatus;
 
     @ApiProperty({
         required: true,

@@ -5,11 +5,14 @@ LABEL maintainer="andrechristikan@gmail.com"
 WORKDIR /app
 EXPOSE 3000
 
-COPY package.json yarn.lock ./
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN touch .env
 
-RUN set -x && yarn --frozen-lockfile
+RUN set -x && pnpm install --frozen-lockfile
 
 COPY . .
 
-CMD [ "yarn", "start:dev" ]
+CMD [ "pnpm", "start:dev" ]

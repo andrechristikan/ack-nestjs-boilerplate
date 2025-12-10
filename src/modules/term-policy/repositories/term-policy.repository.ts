@@ -15,10 +15,10 @@ import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dt
 import { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import {
-    ENUM_ACTIVITY_LOG_ACTION,
-    ENUM_TERM_POLICY_STATUS,
-    ENUM_TERM_POLICY_TYPE,
-    ENUM_USER_STATUS,
+    EnumActivityLogAction,
+    EnumTermPolicyStatus,
+    EnumTermPolicyType,
+    EnumUserStatus,
     Prisma,
     TermPolicy,
 } from '@prisma/client';
@@ -61,7 +61,7 @@ export class TermPolicyRepository {
                 where: {
                     ...where,
                     ...type,
-                    status: ENUM_TERM_POLICY_STATUS.published,
+                    status: EnumTermPolicyStatus.published,
                 },
             }
         );
@@ -91,13 +91,13 @@ export class TermPolicyRepository {
         });
     }
 
-    async existLatestPublishedByType(type: ENUM_TERM_POLICY_TYPE): Promise<{
+    async existLatestPublishedByType(type: EnumTermPolicyType): Promise<{
         id: string;
     } | null> {
         return this.databaseService.termPolicy.findFirst({
             where: {
                 type,
-                status: ENUM_TERM_POLICY_STATUS.published,
+                status: EnumTermPolicyStatus.published,
             },
             orderBy: {
                 version: Prisma.SortOrder.desc,
@@ -119,11 +119,11 @@ export class TermPolicyRepository {
 
     async existByVersionAndType(
         version: number,
-        type: ENUM_TERM_POLICY_TYPE
+        type: EnumTermPolicyType
     ): Promise<{
         id: string;
         contents: Prisma.JsonArray;
-        status: ENUM_TERM_POLICY_STATUS;
+        status: EnumTermPolicyStatus;
     } | null> {
         return this.databaseService.termPolicy.findFirst({
             where: {
@@ -141,7 +141,7 @@ export class TermPolicyRepository {
     async accept(
         userId: string,
         termPolicyId: string,
-        type: ENUM_TERM_POLICY_TYPE,
+        type: EnumTermPolicyType,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<ITermPolicyUserAcceptance> {
         const acceptedAt = this.helperService.dateCreate();
@@ -161,7 +161,7 @@ export class TermPolicyRepository {
                 where: {
                     id: userId,
                     deletedAt: null,
-                    status: ENUM_USER_STATUS.active,
+                    status: EnumUserStatus.active,
                 },
                 data: {
                     termPolicy: {
@@ -169,7 +169,7 @@ export class TermPolicyRepository {
                     },
                     activityLogs: {
                         create: {
-                            action: ENUM_ACTIVITY_LOG_ACTION.userAcceptTermPolicy,
+                            action: EnumActivityLogAction.userAcceptTermPolicy,
                             ipAddress,
                             userAgent:
                                 this.databaseUtil.toPlainObject(userAgent),
@@ -195,7 +195,7 @@ export class TermPolicyRepository {
             data: {
                 type,
                 version,
-                status: ENUM_TERM_POLICY_STATUS.draft,
+                status: EnumTermPolicyStatus.draft,
                 contents: contents as unknown as Prisma.InputJsonArray[],
                 createdBy,
             },
@@ -276,7 +276,7 @@ export class TermPolicyRepository {
 
     async publish(
         termPolicyId: string,
-        type: ENUM_TERM_POLICY_TYPE,
+        type: EnumTermPolicyType,
         contents: TermContentDto[],
         updatedBy: string
     ): Promise<TermPolicy> {
@@ -286,7 +286,7 @@ export class TermPolicyRepository {
                     id: termPolicyId,
                 },
                 data: {
-                    status: ENUM_TERM_POLICY_STATUS.published,
+                    status: EnumTermPolicyStatus.published,
                     publishedAt: this.helperService.dateCreate(),
                     contents: contents as unknown as Prisma.InputJsonArray[],
                     updatedBy,
@@ -295,7 +295,7 @@ export class TermPolicyRepository {
             this.databaseService.user.updateMany({
                 where: {
                     deletedAt: null,
-                    status: ENUM_USER_STATUS.active,
+                    status: EnumUserStatus.active,
                 },
                 data: {
                     termPolicy: {

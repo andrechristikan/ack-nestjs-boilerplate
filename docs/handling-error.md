@@ -277,7 +277,7 @@ Use message properties for dynamic message interpolation:
 
 ```typescript
 throw new BadRequestException({
-  statusCode: ENUM_USER_STATUS_CODE_ERROR.statusInvalid,
+  statusCode: EnumUserStatus_CODE_ERROR.statusInvalid,
   message: 'user.error.statusInvalid',
   messageProperties: {
     status: user.status.toLowerCase(),
@@ -309,7 +309,7 @@ Add contextual data to help debugging:
 
 ```typescript
 throw new BadRequestException({
-  statusCode: ENUM_USER_STATUS_CODE_ERROR.statusInvalid,
+  statusCode: EnumUserStatus_CODE_ERROR.statusInvalid,
   message: 'user.error.statusInvalid',
   messageProperties: {
     status: user.status.toLowerCase(),
@@ -351,7 +351,7 @@ throw new BadRequestException({
 [mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-[yarn-shield]: https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white
+[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
 [docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
 [linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
@@ -387,7 +387,7 @@ throw new BadRequestException({
 [ref-typescript]: https://www.typescriptlang.org/
 [ref-docker]: https://docs.docker.com
 [ref-dockercompose]: https://docs.docker.com/compose/
-[ref-yarn]: https://yarnpkg.com
+[ref-pnpm]: https://pnpm.io
 [ref-12factor]: https://12factor.net
 [ref-commander]: https://nest-commander.jaymcdoniel.dev
 [ref-package-json]: package.json

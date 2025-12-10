@@ -1,4 +1,4 @@
-export enum ENUM_USER_STATUS_CODE_ERROR {
+export enum EnumUserStatus_CODE_ERROR {
     notFound = 5150,
     notSelf = 5151,
     emailExist = 5152,

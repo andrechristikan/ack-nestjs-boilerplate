@@ -1,6 +1,6 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
-import { ENUM_API_KEY_TYPE } from '@prisma/client';
+import { EnumApiKeyType } from '@prisma/client';
 
 export const migrationApiKeyData: Record<
     EnumAppEnvironment,
@@ -9,13 +9,13 @@ export const migrationApiKeyData: Record<
     [EnumAppEnvironment.local]: [
         {
             name: 'Api Key Default',
-            type: ENUM_API_KEY_TYPE.default,
+            type: EnumApiKeyType.default,
             key: 'fyFGb7ywyM37TqDY8nuhAmGW5',
             secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
         },
         {
             name: 'Api Key System',
-            type: ENUM_API_KEY_TYPE.system,
+            type: EnumApiKeyType.system,
             key: 'UTDH0fuDMAbd1ZVnwnyrQJd8Q',
             secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
         },

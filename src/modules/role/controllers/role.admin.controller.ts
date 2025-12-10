@@ -20,7 +20,7 @@ import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.req
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-import { ENUM_ACTIVITY_LOG_ACTION, ENUM_ROLE_TYPE } from '@prisma/client';
+import { EnumActivityLogAction, EnumRoleType } from '@prisma/client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
@@ -35,12 +35,12 @@ export class RoleAdminController {
 
     @RoleAdminCreateDoc()
     @Response('role.create')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminRoleCreate)
+    @ActivityLog(EnumActivityLogAction.adminRoleCreate)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -54,12 +54,12 @@ export class RoleAdminController {
 
     @RoleAdminUpdateDoc()
     @Response('role.update')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminRoleUpdate)
+    @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -75,12 +75,12 @@ export class RoleAdminController {
 
     @RoleAdminDeleteDoc()
     @Response('role.delete')
-    @ActivityLog(ENUM_ACTIVITY_LOG_ACTION.adminRoleDelete)
+    @ActivityLog(EnumActivityLogAction.adminRoleDelete)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.ROLE,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
-    @RoleProtected(ENUM_ROLE_TYPE.admin)
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
