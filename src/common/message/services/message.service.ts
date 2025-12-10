@@ -102,7 +102,7 @@ export class MessageService implements IMessageService {
 
     /**
      * Formats validation import errors with localized messages for bulk operations.
-     * Maps each import error to include row, sheet information, and localized error messages.
+     * Maps each import error to include row, and localized error messages.
      * @param {IMessageValidationImportErrorParam[]} errors - Array of validation import error parameters
      * @param {IMessageErrorOptions} [options] - Optional configuration including custom language preference
      * @returns {IMessageValidationImportError[]} Array of formatted validation import errors with localized messages
@@ -113,7 +113,6 @@ export class MessageService implements IMessageService {
     ): IMessageValidationImportError[] {
         return errors.map(val => ({
             row: val.row,
-            sheetName: val.sheetName,
             errors: this.setValidationMessage(val.errors, options),
         }));
     }

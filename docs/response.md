@@ -12,10 +12,11 @@ ACK NestJS Boilerplate standardizes API responses through decorators that automa
 - [Response Decorators](#response-decorators)
   - [@Response](#response)
   - [@ResponsePaging](#responsepaging)
-  - [@ResponseFile](#responsefile)
+  - [@ResponseCsv](#responsecsv)
 - [Response Structure](#response-structure)
   - [Standard](#standard)
   - [Paginated](#paginated)
+  - [Activity Log Metadata](#activity-log-metadata-optional)
 - [Caching](#caching)
 - [Custom Headers](#custom-headers)
 
@@ -158,63 +159,61 @@ async listUsers(
 }
 ```
 
-### @ResponseFile
+### @ResponseCsv
 
-File download response decorator for CSV and Excel files.
+CSV file download response decorator that generates and streams CSV files with proper download headers.
 
 **Parameters:** None
 
 **Requirements:**
-- Response must implement `IResponseFileReturn<T>` interface
-- Data structure varies by file type:
-  - **CSV**: Single sheet only - data must be an array containing one array `[data]`
-  - **Excel**: Multiple sheets supported - data is array of arrays `[sheet1Data, sheet2Data, ...]`
+- Response must implement `IResponseCsvReturn<T>` interface
+- Data must be an array of objects
+- CSV uses semicolon (;) as delimiter
+- Optional `filename` - if not provided, generates timestamped filename: `export-{timestamp}.csv`
 
-**Interceptor:** `ResponseFileInterceptor` - generates files, sets content headers (Content-Type, Content-Disposition, Content-Length), creates timestamped filenames
+**Interceptor:** `ResponseCsvInterceptor` - converts data to CSV format, sets content headers (Content-Type, Content-Disposition, Content-Length), uses provided filename or generates timestamped filename
 
-**CSV Export (Single Sheet):**
+**Basic Export (Auto-generated Filename):**
 
 ```typescript
-@ResponseFile()
+@ResponseCsv()
 @Get('/export')
-async exportUsers(): Promise<IResponseFileReturn<UserDto>> {
+async exportUsers(): Promise<IResponseCsvReturn<UserDto>> {
   const users = await this.userService.findAll();
   
   return {
-    data: [users], // Single array wrapped in array (CSV supports only 1 sheet)
-    extension: EnumFileExtensionExcel.CSV
+    data: users // Filename will be: export-{timestamp}.csv
   };
 }
 ```
 
-**Excel Export (Single Sheet):**
+**Custom Filename:**
 
 ```typescript
-@ResponseFile()
-@Get('/export')
-async exportUsersExcel(): Promise<IResponseFileReturn<UserDto>> {
+@ResponseCsv()
+@Get('/export/custom')
+async exportUsersCustom(): Promise<IResponseCsvReturn<UserDto>> {
   const users = await this.userService.findAll();
   
   return {
-    data: [users], // Single sheet
-    extension: EnumFileExtensionExcel.XLSX
+    data: users,
+    filename: 'users-export.csv'
   };
 }
 ```
 
-**Excel Export (Multiple Sheets):**
+**Dynamic Filename:**
 
 ```typescript
-@ResponseFile()
-@Get('/export-all')
-async exportAllData(): Promise<IResponseFileReturn<any>> {
-  const users = await this.userService.findAll();
-  const orders = await this.orderService.findAll();
-  const products = await this.productService.findAll();
+@ResponseCsv()
+@Get('/export/monthly')
+async exportMonthlyReport(): Promise<IResponseCsvReturn<ReportDto>> {
+  const data = await this.reportService.getMonthlyData();
+  const month = new Date().toISOString().slice(0, 7); // YYYY-MM
   
   return {
-    data: [users, orders, products], // Multiple sheets (array of arrays)
-    extension: EnumFileExtensionExcel.XLSX
+    data,
+    filename: `monthly-report-${month}.csv`
   };
 }
 ```
@@ -287,6 +286,21 @@ async exportAllData(): Promise<IResponseFileReturn<any>> {
   data: T[];
 }
 ```
+
+### Activity Log Metadata (Optional)
+
+All response types (`IResponseReturn`, `IResponsePagingReturn`, `IResponseCsvReturn`) support optional activity log metadata for request tracking and auditing:
+
+```typescript
+return {
+  data: user,
+  metadataActivityLog: {
+    // Activity log tracking data
+  }
+};
+```
+
+See [Activity Log Documentation][ref-doc-activity-log] for complete implementation details.
 
 ## Caching
 
@@ -411,3 +425,4 @@ All responses automatically include these headers (set by interceptors):
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
+[ref-doc-presign]: docs/presign.md

@@ -1,11 +1,9 @@
 import { HttpStatus } from '@nestjs/common';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
-import { IFileSheet } from '@common/file/interfaces/file.interface';
 import {
     IPaginationCursorReturn,
     IPaginationOffsetReturn,
 } from '@common/pagination/interfaces/pagination.interface';
-import { EnumFileExtensionExcel } from '@common/file/enums/file.enum';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 export interface IResponseMetadata {
@@ -42,7 +40,7 @@ export type IResponsePagingReturn<T> = (
     metadata?: IResponseMetadata;
 } & IResponseActivityLogReturn;
 
-export interface IResponseFileReturn<T> extends IResponseActivityLogReturn {
-    extension: EnumFileExtensionExcel;
-    data: IFileSheet<T>[];
+export interface IResponseCsvReturn<T> extends IResponseActivityLogReturn {
+    data: T[];
+    filename?: string;
 }

@@ -2,11 +2,6 @@ import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
 
 export type IFile = Express.Multer.File;
 
-export interface IFileSheet<T> {
-    data: T[];
-    sheetName?: string;
-}
-
 export interface IFileUploadSingle {
     field: string;
     fileSize: number;

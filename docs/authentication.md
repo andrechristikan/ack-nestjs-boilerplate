@@ -1,5 +1,8 @@
 # Authentication Documentation
 
+// TODO: 
+// Thank to Gzerox for the idea of JTI
+
 This documentation explains the features and usage of:
 - **Authentication Module**: Located at `src/modules/auth`
 - **Session Module**: Located at `src/modules/session`
@@ -1114,3 +1117,4 @@ When a session is revoked:
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
+[ref-doc-presign]: docs/presign.md

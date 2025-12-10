@@ -17,12 +17,13 @@ export interface IMessageValidationError {
 }
 
 export interface IMessageValidationImportErrorParam {
-    sheetName?: string;
     row: number;
     errors: ValidationError[];
 }
 
-export interface IMessageValidationImportError
-    extends Omit<IMessageValidationImportErrorParam, 'error'> {
+export interface IMessageValidationImportError extends Omit<
+    IMessageValidationImportErrorParam,
+    'errors'
+> {
     errors: IMessageValidationError[];
 }

@@ -57,12 +57,9 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
 
 ## TODO
 
-- [x] Test Migration Email and Send Email
-- [x] Test Term Policy Flow at Admin Side
-- [x] Rename all enum to CapitalCase
-- [x] Migrate to PNPM and update document installation before release v8
-- [x] Update doc related with yarn to pnpm
+- [ ] Move fingerprint to jti
 - [ ] Update term and policy doc
+- [x] Remove xlsx and use csv for file import and export. 
 
 ### Next Features
 - [ ] Activity Log support bidirectional logging
@@ -151,8 +148,7 @@ For more information see [package.json][ref-package-json]
 - **Sentry Integration** - Error tracking and performance monitoring
 - **Health Checks** - System monitoring endpoints
 - **Multi-language Support** - i18n with header control (`x-custom-lang`) 🗣
-- **CSV Export** - Decorator-based data export
-- **Excel Processing** - XLSX import/export capabilities
+- **CSV Processing** - CSV import/export capabilities
 - **AWS Integration** - S3 file storage and SES email services
 - **Database Seeding** - Commander-based data population
 - **Repository Pattern** - Clean data access layer

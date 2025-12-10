@@ -1,176 +1,64 @@
 import { Injectable } from '@nestjs/common';
 import { IFileService } from '@common/file/interfaces/file.service.interface';
-import { read, utils, write } from 'xlsx';
-import {
-    IFileRandomFilenameOptions,
-    IFileSheet,
-} from '@common/file/interfaces/file.interface';
+import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { HelperService } from '@common/helper/services/helper.service';
 import Mime from 'mime';
-import { EnumFileExtensionExcel } from '@common/file/enums/file.enum';
+import Papa from 'papaparse';
 
 /**
- * Service for handling file operations including CSV and Excel file creation and reading.
- * Provides methods to write and read files in various formats with support for generic data types.
+ * Service for handling file operations including CSV file creation and reading.
+ * Provides methods to write and read CSV files with support for generic data types,
+ * generate random filenames, and extract file information from paths and filenames.
  */
 @Injectable()
 export class FileService implements IFileService {
     constructor(private readonly helperService: HelperService) {}
 
     /**
-     * Writes data to CSV format using semicolon as field separator.
-     * Converts JSON data to CSV buffer for download or storage.
-     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
-     * @param {IFileSheet<T>} sheet - File sheet object containing data and optional sheet name
-     * @returns {Buffer} Buffer containing the CSV data
+     * Converts structured data into CSV format string.
+     * Serializes an array of objects into a CSV string with semicolon (;) as delimiter.
+     * Each object property becomes a column, and the property name becomes the header.
+     *
+     * @template T - The type of data rows (defaults to Record<string, string | number | Date>)
+     * @param {T[]} rows - Array of objects to be converted to CSV rows
+     * @returns {string} CSV formatted string with semicolon delimiter
      */
-    writeCsv<T = Record<string, string | number | Date>>(
-        sheet: IFileSheet<T>
-    ): Buffer {
-        const worksheet = utils.json_to_sheet(sheet.data);
-        const csv = utils.sheet_to_csv(worksheet, { FS: ';' });
-
-        const buff: Buffer = Buffer.from(csv, 'utf8');
-
-        return buff;
+    writeCsv<T = Record<string, string | number | Date>>(rows: T[]): string {
+        return Papa.unparse(rows, {
+            delimiter: ';',
+        });
     }
 
     /**
-     * Writes array data to CSV format using semicolon as field separator.
-     * Converts 2D array data to CSV buffer for download or storage.
-     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
-     * @param {T[][]} sheets - 2D array of data where each sub-array represents a row
-     * @returns {Buffer} Buffer containing the CSV data
+     * Parses CSV string into structured data objects.
+     * Reads a CSV string with semicolon (;) as delimiter and converts it into an array of objects.
+     * The first row is treated as headers which become the object property names.
+     * Empty lines are automatically skipped during parsing.
+     *
+     * @template T - The type of data rows (defaults to Record<string, string | number | Date>)
+     * @param {string} file - CSV string content to be parsed
+     * @returns {T[]} Array of objects parsed from CSV rows
      */
-    writeCsvFromArray<T = Record<string, string | number | Date>>(
-        sheets: T[][]
-    ): Buffer {
-        const worksheet = utils.aoa_to_sheet(sheets);
-        const csv = utils.sheet_to_csv(worksheet, { FS: ';' });
-
-        const buff: Buffer = Buffer.from(csv, 'utf8');
-
-        return buff;
-    }
-
-    /**
-     * Writes data to Excel (XLSX) format with support for multiple sheets.
-     * Creates a workbook with multiple worksheets from the provided data.
-     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
-     * @param {IFileSheet<T>[]} sheets - Array of file sheet objects, each representing a sheet with data and optional sheet name
-     * @returns {Buffer} Buffer containing the Excel data
-     */
-    writeExcel<T = Record<string, string | number | Date>>(
-        sheets: IFileSheet<T>[]
-    ): Buffer {
-        const workbook = utils.book_new();
-
-        for (const [index, sheet] of sheets.entries()) {
-            const worksheet = utils.json_to_sheet(sheet.data);
-            utils.book_append_sheet(
-                workbook,
-                worksheet,
-                sheet.sheetName ?? `Sheet${index + 1}`
-            );
-        }
-
-        const buff: Buffer = write(workbook, {
-            type: 'buffer',
-            bookType: EnumFileExtensionExcel.xlsx,
+    readCsv<T = Record<string, string | number | Date>>(file: string): T[] {
+        const parsed = Papa.parse<T>(file, {
+            header: true,
+            skipEmptyLines: true,
+            delimiter: ';',
         });
 
-        return buff;
+        return parsed.data;
     }
 
     /**
-     * Writes 2D array data to Excel (XLSX) format as a single sheet.
-     * Creates a workbook with one worksheet from the provided array data.
-     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
-     * @param {T[][]} sheets - 2D array of data where each sub-array represents a row
-     * @returns {Buffer} Buffer containing the Excel data
-     */
-    writeExcelFromArray<T = Record<string, string | number | Date>>(
-        sheets: T[][]
-    ): Buffer {
-        const workbook = utils.book_new();
-
-        const worksheet = utils.aoa_to_sheet(sheets);
-        utils.book_append_sheet(workbook, worksheet, `Sheet1`);
-
-        const buff: Buffer = write(workbook, {
-            type: 'buffer',
-            bookType: EnumFileExtensionExcel.xlsx,
-        });
-
-        return buff;
-    }
-
-    /**
-     * Reads CSV data from a buffer or string and converts it to JSON format.
-     * Parses the first sheet of the CSV file and returns the data with sheet information.
-     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
-     * @param {Buffer | string} file - Buffer or string containing the CSV file data
-     * @returns {IFileSheet<T>} IFileSheet object containing the parsed data and sheet name
-     */
-    readCsv<T = Record<string, string | number | Date>>(
-        file: Buffer | string
-    ): IFileSheet<T> {
-        const workbook = read(file, {
-            type: typeof file === 'string' ? 'string' : 'buffer',
-        });
-
-        const worksheetsName: string = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[worksheetsName];
-        const rows: T[] = utils.sheet_to_json(worksheet);
-
-        return {
-            data: rows,
-            sheetName: worksheetsName,
-        };
-    }
-
-    /**
-     * Reads Excel (XLSX) data from a buffer and converts all sheets to JSON format.
-     * Parses all worksheets in the Excel file and returns an array of sheet data objects,
-     * each containing the parsed data and corresponding sheet name.
-     * @template T - Type of data records (defaults to Record<string, string | number | Date>)
-     * @param {Buffer} file - Buffer containing the Excel file data
-     * @returns {IFileSheet<T>[]} Array of IFileSheet objects, each containing data and sheet name for every worksheet
-     */
-    readExcel<T = Record<string, string | number | Date>>(
-        file: Buffer
-    ): IFileSheet<T>[] {
-        const workbook = read(file, {
-            type: 'buffer',
-        });
-
-        const worksheetsName: string[] = workbook.SheetNames;
-        const sheets: IFileSheet<T>[] = [];
-
-        for (let i = 0; i < worksheetsName.length; i++) {
-            const worksheet = workbook.Sheets[worksheetsName[i]];
-
-            const rows: T[] = utils.sheet_to_json(worksheet);
-
-            sheets.push({
-                data: rows,
-                sheetName: worksheetsName[i],
-            });
-        }
-
-        return sheets;
-    }
-
-    /**
-     * Generates a random filename with specified prefix and MIME type extension.
-     * Creates a unique filename by combining a prefix, random string, and file extension derived from MIME type.
+     * Generates a random filename with specified prefix and extension.
+     * Creates a unique filename by combining a path, optional prefix, random string, and file extension.
      * Automatically removes leading slash if present to ensure proper path formatting.
      * @param {IFileRandomFilenameOptions} options - Configuration options for filename generation
-     * @param {string} [options.path] - Directory path to prepend to the filename
-     * @param {string} options.prefix - Prefix to include in the filename
+     * @param {string} options.path - Directory path to prepend to the filename
+     * @param {string} [options.prefix] - Optional prefix to include in the filename before the random string
      * @param {string} options.extension - File extension (e.g., 'jpg', 'png', 'pdf')
      * @param {number} [options.randomLength=10] - Length of the random string portion (defaults to 10 characters)
-     * @returns {string} Generated filename in format: 'prefix/randomString.extension'
+     * @returns {string} Generated filename in format: 'path/prefix-randomString.extension' or 'path/randomString.extension' if no prefix
      */
     createRandomFilename({
         prefix,
@@ -202,9 +90,10 @@ export class FileService implements IFileService {
     /**
      * Extracts the MIME type from a given filename.
      * Uses the file extension to determine the corresponding MIME type.
-     * If the MIME type cannot be determined, returns 'application/octet-stream' as a default.
+     * Returns the MIME type in lowercase format.
+     *
      * @param {string} filename - The name of the file from which to extract the MIME type
-     * @returns {string} The extracted MIME type, or 'application/octet-stream' if undetermined
+     * @returns {string} The extracted MIME type in lowercase
      */
     extractMimeFromFilename(filename: string): string {
         return Mime.getType(

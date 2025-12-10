@@ -262,3 +262,4 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
+[ref-doc-presign]: docs/presign.md

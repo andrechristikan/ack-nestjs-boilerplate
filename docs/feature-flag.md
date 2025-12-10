@@ -281,3 +281,4 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
+[ref-doc-presign]: docs/presign.md

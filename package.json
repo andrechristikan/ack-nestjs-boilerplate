@@ -94,6 +94,7 @@
         "nestjs-i18n": "^10.6.0",
         "nestjs-pino": "^4.5.0",
         "nestjs-real-ip": "^3.0.1",
+        "papaparse": "^5.5.3",
         "passport": "^0.7.0",
         "passport-jwt": "^4.0.1",
         "pino-http": "^11.0.0",
@@ -106,7 +107,6 @@
         "ua-parser-js": "^2.0.7",
         "uuid": "^13.0.0",
         "verify-apple-id-token": "^3.1.2",
-        "xlsx": "^0.18.5",
         "yargs": "^18.0.0"
     },
     "devDependencies": {
@@ -133,6 +133,7 @@
         "@types/ms": "^2.1.0",
         "@types/multer": "^2.0.0",
         "@types/node": "^24.10.2",
+        "@types/papaparse": "^5.5.1",
         "@types/passport-jwt": "^4.0.1",
         "@types/response-time": "^2.3.9",
         "@types/supertest": "^6.0.3",

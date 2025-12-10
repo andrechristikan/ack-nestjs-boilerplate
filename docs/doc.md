@@ -707,3 +707,4 @@ For more information about NestJS Swagger integration, see the [official NestJS 
 [ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
 [ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
 [ref-nestjs-http-status]: https://docs.nestjs.com/controllers#status-code
+[ref-doc-presign]: docs/presign.md

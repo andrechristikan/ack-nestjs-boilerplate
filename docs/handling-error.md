@@ -230,10 +230,10 @@ See [Request Validation][ref-doc-request-validation] for details.
 
 **Catches**: `@Catch(FileImportException)` - file import validation errors
 
-**Use case**: Excel file import validation failures using [class-validator][ref-class-validator]
+**Use case**: CSV file import validation failures using [class-validator][ref-class-validator]
 
 **Behavior**:
-- Formats row-level validation errors with file/sheet information
+- Formats row-level validation errors
 - Uses `MessageService.setValidationImportMessage()`
 - Does not send to Sentry
 
@@ -245,11 +245,13 @@ See [Request Validation][ref-doc-request-validation] for details.
   "errors": [
     {
       "row": 2,
-      "file": "users.xlsx",
-      "sheet": "Sheet1",
-      "key": "isEmail",
-      "property": "email",
-      "message": "Email must be a valid email address"
+      "errors": [
+        {
+          "key": "isEmail",
+          "property": "email",
+          "message": "Email must be a valid email address"
+        }
+      ]
     }
   ],
   "metadata": { ... }
@@ -421,3 +423,4 @@ throw new BadRequestException({
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
+[ref-doc-presign]: docs/presign.md

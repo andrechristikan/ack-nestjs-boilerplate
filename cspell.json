@@ -45,7 +45,8 @@
         "bullmq",
         "uuidv",
         "luxon",
-        "Metadatas"
+        "Metadatas",
+        "papaparse"
     ],
     "ignorePaths": [
         "node_modules/**",

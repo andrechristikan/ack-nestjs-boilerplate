@@ -6,19 +6,19 @@ This documentation explains the features and usage of:
 
 ## Overview
 
-The file upload module provides a comprehensive solution for handling file uploads in ACK NestJs Boilerplate. It includes decorators, pipes, services, and utilities for single/multiple file uploads, file validation, and Excel/CSV processing.
+The file upload module provides a comprehensive solution for handling file uploads in ACK NestJs Boilerplate. It includes decorators, pipes, services, and utilities for single/multiple file uploads, file validation, and CSV processing.
 
-The module supports two primary upload methods:
+The module supports:
 
-1. **Direct Upload**: Traditional multipart form-data upload where files are sent through the backend server. Ideal for small to medium files and when you need immediate server-side processing.
+**Direct Upload**: Traditional multipart form-data upload where files are sent through the backend server. Ideal for small to medium files and when you need immediate server-side processing.
 
-2. **AWS S3 Presigned URL Upload**: Modern approach for client-side direct uploads to S3 without exposing AWS credentials. This method is recommended for large files as it reduces server load, improves upload performance, and provides better scalability by bypassing the backend server during the actual file transfer.
 
 ## Related Documentation
 
 - [Request Validation Documentation][ref-doc-request-validation]
 - [Handling Error Documentation][ref-doc-handling-error]
 - [Message Documentation][ref-doc-message]
+- [Presign Documentation][ref-doc-presign]
 
 ## Table of Contents
 
@@ -31,15 +31,13 @@ The module supports two primary upload methods:
 - [Enums](#enums)
 - [Pipes](#pipes)
   - [FileExtensionPipe](#fileextensionpipe)
-  - [FileExcelParsePipe](#fileexcelparsepipe)
-  - [FileExcelValidationPipe](#fileexcelvalidationpipe)
-- [Excel Import Flow](#excel-import-flow)
+  - [FileCsvParsePipe](#filecsvparsepipe)
+  - [FileCsvValidationPipe](#filecsvvalidationpipe)
+- [CSV Import Flow](#csv-import-flow)
 - [Usage](#usage)
   - [Basic File Upload](#basic-file-upload)
-  - [Excel Import](#excel-import)
+  - [CSV Import](#csv-import)
   - [Multiple Field Upload](#multiple-field-upload)
-- [AWS S3 Presigned URL Upload](#aws-s3-presigned-url-upload)
-  - [AWS S3 Presigned URL Flow](#aws-s3-presigned-url-flow)
 - [Error Handling](#error-handling)
 - [Message Translation](#message-translation)
 
@@ -100,24 +98,23 @@ File extension enums for validation. These enums are used with `FileExtensionPip
 ### Available Enums
 
 - `EnumFileExtensionImage`: Image files
-  - `JPG`, `JPEG`, `PNG`
+  - `jpg`, `jpeg`, `png`
 
 - `EnumFileExtensionDocument`: Document files
-  - `PDF`
-
-- `EnumFileExtensionExcel`: Spreadsheet files
-  - `XLSX`, `CSV`
+  - `pdf`, `hbs`, `csv`
 
 - `EnumFileExtensionAudio`: Audio files
-  - `MPEG`, `M4A`, `MP3`
+  - `mpeg`, `m4a`, `mp3`
 
 - `EnumFileExtensionVideo`: Video files
-  - `MP4`
+  - `mp4`
+
+- `ENUM_FILE_EXTENSION`: Combined type of all file extensions
 
 **When to Use:**
-- Combine multiple enums for flexible validation: `[...IMAGE, ...DOCUMENT]`
-- Use specific enum for strict type control: only `EnumFileExtensionImage`
-- Excel enums are typically used with `FileExcelParsePipe` for data import features
+- Combine multiple enums for flexible validation: `[EnumFileExtensionImage.jpg, EnumFileExtensionDocument.pdf]`
+- Use specific enum for strict type control: only `EnumFileExtensionImage` values
+- CSV enum is typically used with `FileCsvParsePipe` for data import features
 
 ## Pipes
 
@@ -131,58 +128,56 @@ Pass an array of allowed file extensions from the enum constants. Works with bot
 **Throws:**
 - `UnsupportedMediaTypeException`: When file extension is not in the allowed list
 
-### FileExcelParsePipe
+### FileCsvParsePipe
 
-Parses Excel (.xlsx) and CSV (.csv) files into structured sheet data with rows and columns. This pipe converts raw file buffer into usable JavaScript objects.
+Parses CSV (.csv) files into structured data array with rows and columns. This pipe converts raw file buffer into usable JavaScript objects using semicolon (;) as delimiter.
 
 **Returns:**
-Array of `IFileSheet<T>` containing:
-- `sheetName`: Name of the sheet
-- `data`: Array of parsed row objects
+Array of parsed row objects `T[]`
 
 **Supports:**
-- Excel files (.xlsx) - multiple sheets
-- CSV files (.csv) - single sheet
+- CSV files (.csv) with semicolon delimiter
+- Headers in first row become object property names
+- Empty lines are automatically skipped
 
 **Throws:**
 - `UnprocessableEntityException`: Empty buffer or missing file
 - `UnsupportedMediaTypeException`: Invalid file extension
 
-### FileExcelValidationPipe
+### FileCsvValidationPipe
 
-Transforms and validates Excel data using DTO classes with class-validator decorators. This pipe applies validation rules to each row of imported data and provides detailed error messages.
+Transforms and validates CSV data using DTO classes with class-validator decorators. This pipe applies validation rules to each row of imported data and provides detailed error messages.
 
 **How it Works:**
-1. Receives parsed sheet data from `FileExcelParsePipe`
+1. Receives parsed data from `FileCsvParsePipe`
 2. Transforms each row into the specified DTO class
 3. Validates using class-validator decorators
-4. Collects all validation errors with row and sheet context
+4. Collects all validation errors with row context
 5. Throws `FileImportException` if validation fails
 
 **Parameters:**
-- Array of DTO classes (one per sheet)
-- First DTO validates first sheet, second DTO validates second sheet, etc.
+- DTO class for row validation
 
 **Throws:**
-- `FileImportException`: Contains detailed validation errors with sheet name and row context
+- `FileImportException`: Contains detailed validation errors with row context
 
-## Excel Import Flow
+## CSV Import Flow
 
-Understanding the flow of Excel file processing helps you implement robust data import features. The diagram below illustrates how uploaded Excel files are processed through validation and transformation pipelines.
+Understanding the flow of CSV file processing helps you implement robust data import features. The diagram below illustrates how uploaded CSV files are processed through validation and transformation pipelines.
 
 ```mermaid
 flowchart TD
-    A[Client Upload<br/>Excel/CSV File] --> B[ @UploadedFile Decorator]
+    A[Client Upload<br/>CSV File] --> B[ @UploadedFile Decorator]
     B --> C{FileExtensionPipe}
     
     C -->|Invalid Extension| D[Throw UnsupportedMediaTypeException]
-    C -->|Valid Extension| E{FileExcelParsePipe}
+    C -->|Valid Extension| E{FileCsvParsePipe}
     
     E -->|Empty Buffer| F[Throw UnprocessableEntityException]
     E -->|Invalid Format| G[Throw UnsupportedMediaTypeException]
-    E -->|Success| H[Parse Excel to IFileSheet Array]
+    E -->|Success| H[Parse CSV to Array]
     
-    H --> I{FileExcelValidationPipe}
+    H --> I{FileCsvValidationPipe}
     
     I --> J[Transform Each Row to DTO Class]
     J --> K[Validate with class-validator]
@@ -191,7 +186,7 @@ flowchart TD
     L --> M[Throw FileImportException]
     
     K -->|All Valid| N[Return Validated Data Array]
-    N --> O[Controller Receives IFileSheet Array]
+    N --> O[Controller Receives Data Array]
     O --> P[Process Validated Data]
     
     P --> Q[Save to Database]
@@ -223,9 +218,9 @@ export class UserController {
   async uploadPhotoProfile(
     @UploadedFile(
       FileExtensionPipe([
-        EnumFileExtensionImage.JPEG,
-        EnumFileExtensionImage.PNG,
-        EnumFileExtensionImage.JPG
+        EnumFileExtensionImage.jpeg,
+        EnumFileExtensionImage.png,
+        EnumFileExtensionImage.jpg
       ])
     )
     file: IFile
@@ -251,8 +246,8 @@ export class UserController {
 async uploadDocuments(
   @UploadedFiles(
     FileExtensionPipe([
-      EnumFileExtensionDocument.PDF,
-      EnumFileExtensionExcel.XLSX
+      EnumFileExtensionDocument.pdf,
+      EnumFileExtensionDocument.csv
     ])
   )
   files: IFile[]
@@ -274,9 +269,9 @@ async uploadDocuments(
 }
 ```
 
-### Excel Import
+### CSV Import
 
-Import and validate data from Excel or CSV files.
+Import and validate data from CSV files.
 
 **Basic Parsing:**
 
@@ -291,20 +286,14 @@ interface UserImportDto {
 @FileUploadSingle()
 async parseUsers(
   @UploadedFile(
-    FileExtensionPipe([
-      EnumFileExtensionExcel.XLSX,
-      EnumFileExtensionExcel.CSV
-    ]),
-    FileExcelParsePipe<UserImportDto>
+    FileCsvParsePipe<UserImportDto>
   )
-  sheets: IFileSheet<UserImportDto>[]
+  data: UserImportDto[]
 ) {
-  // sheets[0].data contains parsed rows as plain objects
-  // sheets[0].sheetName contains sheet name
+  // data contains parsed rows as plain objects
   return {
-    totalRows: sheets[0].data.length,
-    sheetName: sheets[0].sheetName,
-    preview: sheets[0].data.slice(0, 5) // First 5 rows
+    totalRows: data.length,
+    preview: data.slice(0, 5) // First 5 rows
   };
 }
 ```
@@ -330,73 +319,16 @@ class UserImportDto {
 @FileUploadSingle()
 async importUsers(
   @UploadedFile(
-    FileExtensionPipe([
-      EnumFileExtensionExcel.XLSX,
-      EnumFileExtensionExcel.CSV
-    ]),
-    FileExcelParsePipe,
-    new FileExcelValidationPipe([UserImportDto])
+    FileCsvParsePipe,
+    new FileCsvValidationPipe(UserImportDto)
   )
-  sheets: IFileSheet<UserImportDto>[]
+  data: UserImportDto[]
 ) {
-  const users = sheets[0].data;
-  
   // Data is already validated, safe to use
-  await this.userRepository.createMany(users);
+  await this.userRepository.createMany(data);
   
   return {
-    imported: users.length,
-    sheetName: sheets[0].sheetName
-  };
-}
-```
-
-**Multiple Sheets with Different DTOs:**
-
-```typescript
-class UserImportDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @IsEmail()
-  email: string;
-}
-
-class ProductImportDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @IsNumber()
-  @Min(0)
-  price: number;
-}
-
-@Post('/import-complex')
-@FileUploadSingle()
-async importComplex(
-  @UploadedFile(
-    FileExtensionPipe([EnumFileExtensionExcel.XLSX]),
-    FileExcelParsePipe,
-    new FileExcelValidationPipe([UserImportDto, ProductImportDto])
-  )
-  sheets: IFileSheet<UserImportDto | ProductImportDto>[]
-) {
-  // sheets[0] validated with UserImportDto
-  // sheets[1] validated with ProductImportDto
-  
-  const users = sheets[0].data as UserImportDto[];
-  const products = sheets[1].data as ProductImportDto[];
-  
-  await Promise.all([
-    this.userRepository.createMany(users),
-    this.productRepository.createMany(products)
-  ]);
-  
-  return {
-    usersImported: users.length,
-    productsImported: products.length
+    imported: data.length
   };
 }
 ```
@@ -449,298 +381,11 @@ async uploadCompleteProfile(
 }
 ```
 
-## AWS S3 Presigned URL Upload
-
-AWS S3 presigned URLs enable secure client-side direct uploads to S3 without exposing AWS credentials. This approach is ideal for large files, reduces server bandwidth, and improves upload performance.
-
-**How It Works:**
-
-1. Client requests a presigned URL from the backend with file metadata
-2. Backend generates a time-limited presigned URL and returns it to the client
-3. Client uploads the file directly to S3 using the presigned URL via HTTP PUT
-4. Client notifies the backend of the successful upload with the S3 key
-
-**Implementation:**
-
-**Step 1 - Request DTO:**
-
-```typescript
-export class UserGeneratePhotoProfileRequestDto {
-  @ApiProperty({
-    type: 'string',
-    enum: EnumFileExtensionImage,
-    default: EnumFileExtensionImage.JPG,
-  })
-  @IsString()
-  @IsEnum(EnumFileExtensionImage)
-  @IsNotEmpty()
-  extension: EnumFileExtensionImage;
-
-  @ApiProperty({
-    required: true,
-    description: 'File size in bytes',
-  })
-  @IsNumber({
-    allowInfinity: false,
-    allowNaN: false,
-    maxDecimalPlaces: 0,
-  })
-  @IsInt()
-  @IsNotEmpty()
-  size: number;
-}
-
-export class UserUpdateProfilePhotoRequestDto {
-  @ApiProperty({
-    required: true,
-    description: 'Photo path key from S3',
-    example: 'user/profile/unique-photo-key.jpg',
-  })
-  @IsString()
-  @IsNotEmpty()
-  photo: string;
-
-  @ApiProperty({
-    required: true,
-    description: 'File size in bytes',
-  })
-  @IsNumber({
-    allowInfinity: false,
-    allowNaN: false,
-    maxDecimalPlaces: 0,
-  })
-  @IsInt()
-  @IsNotEmpty()
-  size: number;
-}
-```
-
-**Step 2 - Controller Endpoints:**
-
-```typescript
-@Controller('users')
-export class UserController {
-  constructor(private readonly userService: UserService) {}
-
-  @Response('user.generatePhotoProfilePresign')
-  @UserProtected()
-  @AuthJwtAccessProtected()
-  @Post('/profile/generate-presign/photo')
-  @HttpCode(HttpStatus.OK)
-  async generatePhotoProfilePresign(
-    @AuthJwtPayload('userId') userId: string,
-    @Body() body: UserGeneratePhotoProfileRequestDto
-  ): Promise<IResponseReturn<AwsS3PresignDto>> {
-    return this.userService.generatePhotoProfilePresign(userId, body);
-  }
-
-  @Response('user.updatePhotoProfile')
-  @UserProtected()
-  @AuthJwtAccessProtected()
-  @Put('/profile/update/photo')
-  async updatePhotoProfile(
-    @AuthJwtPayload('userId') userId: string,
-    @Body() body: UserUpdateProfilePhotoRequestDto,
-    @RequestIPAddress() ipAddress: string,
-    @RequestUserAgent() userAgent: RequestUserAgentDto
-  ): Promise<IResponseReturn<void>> {
-    return this.userService.updatePhotoProfile(userId, body, {
-      ipAddress,
-      userAgent,
-    });
-  }
-}
-```
-
-**Step 3 - Service Implementation:**
-
-```typescript
-@Injectable()
-export class UserService {
-  constructor(
-    private readonly awsS3Service: AwsS3Service,
-    private readonly userRepository: UserRepository,
-    private readonly fileService: FileService
-  ) {}
-
-  async generatePhotoProfilePresign(
-    userId: string,
-    { extension, size }: UserGeneratePhotoProfileRequestDto
-  ): Promise<IResponseReturn<AwsS3PresignDto>> {
-    const key: string = this.fileService.createRandomFilename({
-      path: `user/${userId}/profile`,
-      prefix: 'photo',
-      extension,
-    });
-
-    const presign: AwsS3PresignDto = await this.awsS3Service.presignPutItem(
-      { key, size },
-      { 
-        forceUpdate: true,
-        access: EnumAwsS3Accessibility.PUBLIC,
-        expired: 3600 // 1 hour
-      }
-    );
-
-    return { data: presign };
-  }
-
-  async updatePhotoProfile(
-    userId: string,
-    { photo, size }: UserUpdateProfilePhotoRequestDto,
-    requestLog: IRequestLog
-  ): Promise<IResponseReturn<void>> {
-    const aws: AwsS3Dto = this.awsS3Service.mapPresign({ key: photo, size });
-    await this.userRepository.updatePhotoProfile(userId, aws, requestLog);
-    return;
-  }
-}
-```
-
-**Step 4 - Client-Side Upload:**
-
-```typescript
-async function uploadPhotoWithPresign(file: File) {
-  try {
-    // Request presigned URL
-    const response = await fetch('/api/users/profile/generate-presign/photo', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({
-        extension: file.name.split('.').pop(),
-        size: file.size
-      })
-    });
-
-    const { data: presignData } = await response.json();
-
-    // Upload directly to S3
-    await fetch(presignData.presignUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': presignData.mime,
-        'Content-Length': file.size.toString(),
-        'x-amz-checksum-algorithm': 'SHA256'
-      },
-      body: file
-    });
-
-    // Notify backend
-    await fetch('/api/users/profile/update/photo', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({
-        photo: presignData.key,
-        size: file.size
-      })
-    });
-
-    console.log('Photo uploaded successfully!');
-  } catch (error) {
-    console.error('Upload failed:', error);
-  }
-}
-```
-
-**Configuration Options:**
-
-```typescript
-interface IAwsS3PresignOptions {
-  access?: EnumAwsS3Accessibility; // PUBLIC or PRIVATE
-  expired?: number; // Expiration time in seconds (default from config)
-  forceUpdate?: boolean; // Allow overwriting existing files
-}
-```
-
-**Response Structure:**
-
-```typescript
-interface AwsS3PresignDto {
-  presignUrl: string;    // The presigned URL for upload
-  key: string;           // S3 object key
-  extension: string;     // File extension
-  mime: string;          // MIME type
-  expiredIn: number;     // URL expiration time in seconds
-}
-```
-
-### AWS S3 Presigned URL Flow
-
-Understanding the AWS S3 presigned URL upload flow helps you implement secure and efficient file uploads. The diagram below illustrates the complete process from client request to database update.
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Backend
-    participant FileService
-    participant AwsS3Service
-    participant S3 as AWS S3
-    participant Repository as Database
-
-    Client->>Backend: POST /generate-presign/photo<br/>{extension, size}
-    Backend->>FileService: createRandomFilename()
-    FileService-->>Backend: unique S3 key
-    
-    Backend->>AwsS3Service: presignPutItem(key, size, options)
-    AwsS3Service->>S3: Request presigned URL
-    S3-->>AwsS3Service: Presigned URL (1 hour expiry)
-    AwsS3Service-->>Backend: AwsS3PresignDto
-    Backend-->>Client: {presignUrl, key, mime, expiredIn}
-    
-    Note over Client,S3: Direct Upload (Bypass Backend)
-    Client->>S3: PUT file to presignUrl<br/>Headers: Content-Type, Content-Length
-    S3-->>Client: 200 OK
-    
-    Client->>Backend: PUT /update/photo<br/>{photo: key, size}
-    Backend->>AwsS3Service: mapPresign(key, size)
-    AwsS3Service-->>Backend: AwsS3Dto
-    
-    Backend->>Repository: updatePhotoProfile(userId, aws, log)
-    Repository->>Repository: Save S3 reference to DB
-    Repository-->>Backend: Success
-    Backend-->>Client: 200 OK
-    
-    Note over Client,Repository: Upload Complete
-```
-
-**Flow Explanation:**
-
-1. **Generate Presigned URL Stage**:
-   - Client requests presigned URL with file metadata (extension, size)
-   - Backend generates unique S3 key using `FileService`
-   - `AwsS3Service` creates time-limited presigned URL (default 1 hour)
-   - Backend returns presigned URL data to client
-
-2. **Direct Upload Stage**:
-   - Client uploads file **directly to S3** using presigned URL
-   - No backend involvement during actual file transfer
-   - S3 validates request using presigned URL signature
-   - Reduces server bandwidth and improves performance
-
-3. **Database Update Stage**:
-   - Client notifies backend with S3 key and file size
-   - Backend maps presign data to `AwsS3Dto`
-   - Repository updates user profile with S3 file reference
-   - Transaction logged with IP address and user agent
-
-**Important Notes:**
-
-- Presigned URLs expire after configured time (default: 1 hour)
-- Client must use exact Content-Type and Content-Length headers
-- Failed uploads don't update database (client handles retry)
-- S3 key is generated before upload to ensure uniqueness
-
 ## Error Handling
 
 ### FileImportException
 
-Thrown during Excel validation with detailed error context. This exception provides comprehensive information about validation failures including the exact row, sheet name, and validation errors.
+Thrown during CSV validation with detailed error context. This exception provides comprehensive information about validation failures including the exact row and validation errors.
 
 **Exception Structure:**
 
@@ -749,8 +394,7 @@ Thrown during Excel validation with detailed error context. This exception provi
   statusCode: number;
   message: string;
   errors: Array<{
-    row: number;           // Sheet index (0-based)
-    sheetName: string;     // Name of the sheet
+    row: number;           // Row index (0-based)
     errors: ValidationError[];  // class-validator errors
   }>;
 }
@@ -762,7 +406,7 @@ Thrown during Excel validation with detailed error context. This exception provi
 |------------|-------------|---------|-------------|
 | Invalid Extension | 5011 | `file.error.extensionInvalid` | File extension not in allowed list |
 | Empty File | 422 | `Unprocessable Entity` | File buffer is empty or missing |
-| Invalid Format | 415 | `Unsupported Media Type` | File format not supported (Excel/CSV) |
+| Invalid Format | 415 | `Unsupported Media Type` | File format not supported (CSV) |
 | Validation Failed | 5030 | `file.error.validationDto` | DTO validation failed with details |
 
 **Error Response Examples:**
@@ -781,7 +425,6 @@ Thrown during Excel validation with detailed error context. This exception provi
   "errors": [
     {
       "row": 0,
-      "sheetName": "Users",
       "errors": [
         {
           "property": "email",
@@ -803,7 +446,7 @@ Thrown during Excel validation with detailed error context. This exception provi
 
 ## Message Translation
 
-File validation errors are automatically translated using the i18n system. The `FileExcelValidationPipe` integrates with `MessageService` to provide localized error messages based on the user's language preference.
+File validation errors are automatically translated using the i18n system. The `FileCsvValidationPipe` integrates with `MessageService` to provide localized error messages based on the user's language preference.
 
 **How It Works:**
 
@@ -910,3 +553,4 @@ See [Message Documentation][ref-doc-message] for complete language configuration
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
+[ref-doc-presign]: docs/presign.md

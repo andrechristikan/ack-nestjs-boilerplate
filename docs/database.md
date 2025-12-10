@@ -319,3 +319,4 @@ For details on switching databases, see: [Prisma: Switching databases][ref-prism
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
 [ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
+[ref-doc-presign]: docs/presign.md

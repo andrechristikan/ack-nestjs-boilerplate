@@ -421,7 +421,7 @@ findOne(@Param('userId', RequestParseObjectIdPipe) userId: string) {
 ```
 
 **File validation pipes**
-See [File Upload][ref-doc-file-upload] for file extension and Excel validation pipes.
+See [File Upload][ref-doc-file-upload] for file extension and Csv validation pipes.
 
 ## Error Message Mapping
 
@@ -633,3 +633,4 @@ See [Handling Error][ref-doc-handling-error] for complete error handling flow.
 [ref-doc-third-party-integration]: docs/third-party-integration.md
 [ref-doc-file-upload]: docs/file-upload.md
 [ref-doc-doc]: docs/doc.md
+[ref-doc-presign]: docs/presign.md

@@ -11,11 +11,11 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { HelperService } from '@common/helper/services/helper.service';
 import { FileService } from '@common/file/services/file.service';
-import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
+import { IResponseCsvReturn } from '@common/response/interfaces/response.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ConfigService } from '@nestjs/config';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { EnumFileExtensionExcel } from '@common/file/enums/file.enum';
+import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 
 /**
  * Global file response interceptor that handles file download responses
@@ -29,7 +29,7 @@ import { EnumFileExtensionExcel } from '@common/file/enums/file.enum';
  * @template T - The type of the file response data
  */
 @Injectable()
-export class ResponseFileInterceptor<T> implements NestInterceptor {
+export class ResponseCsvInterceptor<T> implements NestInterceptor {
     constructor(
         private readonly fileService: FileService,
         private readonly helperService: HelperService,
@@ -40,13 +40,13 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
      * Intercepts HTTP requests and transforms file responses into streamable files.
      *
      * This method only processes HTTP contexts, ignoring other types like WebSocket
-     * or RPC contexts. It validates file response data, generates either CSV or Excel files,
+     * or RPC contexts. It validates file response data, generates CSV files,
      * sets appropriate download headers, and returns a StreamableFile for download.
      *
-     * @param context - The execution context containing request/response information
-     * @param next - The next handler in the chain
-     * @returns Observable of the StreamableFile promise for file download
-     * @throws Error when response data is not properly formatted for file generation
+     * @param {ExecutionContext} context - The execution context containing request/response information
+     * @param {CallHandler} next - The next handler in the chain
+     * @returns {Observable<Promise<StreamableFile>>} Observable that emits a Promise resolving to a StreamableFile for download
+     * @throws {Error} When response data is not properly formatted for file generation
      */
     intercept(
         context: ExecutionContext,
@@ -60,24 +60,24 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
                     const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
                     const responseData =
-                        (await res) as unknown as IResponseFileReturn<T>;
+                        (await res) as unknown as IResponseCsvReturn<T>;
                     this.validateFileResponse(responseData);
 
-                    const file: Buffer =
-                        responseData.extension === EnumFileExtensionExcel.csv
-                            ? this.fileService.writeCsv(responseData.data[0])
-                            : this.fileService.writeExcel(responseData.data);
+                    const file: string = this.fileService.writeCsv<T>(
+                        responseData.data
+                    );
+                    const fileBuffer: Buffer = Buffer.from(file, 'utf-8');
                     const timestamp = this.createTimestamp();
 
                     this.setFileHeaders(
                         response,
-                        responseData.extension,
-                        file,
-                        timestamp
+                        fileBuffer,
+                        timestamp,
+                        responseData.filename
                     );
                     this.setStandardHeaders(response, request);
 
-                    return new StreamableFile(file);
+                    return new StreamableFile(fileBuffer);
                 })
             );
         }
@@ -87,15 +87,14 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
 
     /**
      * Validates the file response data structure.
+     * Ensures the response data exists and contains a valid array in the data property.
      *
-     * @param responseData - The response data to validate
-     * @throws Error when response data is not properly formatted for file generation
+     * @param {IResponseCsvReturn<T>} responseData - The response data to validate
+     * @throws {Error} When response data is null/undefined or data property is not an array
      */
-    private validateFileResponse(responseData: IResponseFileReturn<T>): void {
+    private validateFileResponse(responseData: IResponseCsvReturn<T>): void {
         if (!responseData) {
-            throw new Error(
-                'ResponseFileExcel must instanceof IResponseFileExcel'
-            );
+            throw new Error('Response data is null or undefined');
         }
 
         if (!responseData.data || !Array.isArray(responseData.data)) {
@@ -105,8 +104,9 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
 
     /**
      * Creates a timestamp for file naming.
+     * Generates a Unix timestamp from the current date to ensure unique file names.
      *
-     * @returns Timestamp number for unique file naming
+     * @returns {number} Unix timestamp in milliseconds for unique file naming
      */
     private createTimestamp(): number {
         const today = this.helperService.dateCreate();
@@ -115,18 +115,20 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
 
     /**
      * Sets file download headers on the HTTP response.
+     * Configures Content-Type, Content-Disposition for download, and Content-Length headers.
      *
-     * @param response - The HTTP response object
-     * @param file - The file buffer
-     * @param timestamp - Timestamp for file naming
+     * @param {Response} response - The HTTP response object to set headers on
+     * @param {Buffer} file - The file buffer containing the CSV data
+     * @param {number} timestamp - Unix timestamp for generating unique file name
      */
     private setFileHeaders(
         response: Response,
-        extension: EnumFileExtensionExcel,
         file: Buffer,
-        timestamp: number
+        timestamp: number,
+        filename?: string
     ): void {
-        const filename = `export-${timestamp}.${extension}`;
+        filename =
+            filename ?? `export-${timestamp}.${EnumFileExtensionDocument.csv}`;
         const mime = this.fileService.extractMimeFromFilename(filename);
         response
             .setHeader('Content-Type', mime)
@@ -144,8 +146,8 @@ export class ResponseFileInterceptor<T> implements NestInterceptor {
      * version information, and request ID for client-side processing
      * and request correlation.
      *
-     * @param response - The HTTP response object
-     * @param request - The HTTP request object
+     * @param {Response} response - The HTTP response object to set headers on
+     * @param {IRequestApp} request - The HTTP request object containing client information
      */
     private setStandardHeaders(response: Response, request: IRequestApp): void {
         const today = this.helperService.dateCreate();
