@@ -708,3 +708,8 @@ For more information about NestJS Swagger integration, see the [official NestJS 
 [ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
 [ref-nestjs-http-status]: https://docs.nestjs.com/controllers#status-code
 [ref-doc-presign]: docs/presign.md
+[ref-doc-term-policy]: docs/term-policy.md
+
+<!-- CONTRIBUTOR -->
+
+[ref-contributor-gzerox]: https://github.com/Gzerox

@@ -54,11 +54,12 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
     ```
 - Since version `8.0.0`, the project uses the `ES256` algorithm for Access Token, and `ES512` for Refresh Token.
 - Since version `8.0.0`, the project uses prisma for handle database.
+- Since version `8.0.0`, the project uses pnpm for package manager.
 
 ## TODO
 
 - [ ] Move fingerprint to jti
-- [ ] Update term and policy doc
+- [x] Update term and policy doc
 - [x] Remove xlsx and use csv for file import and export. 
 
 ### Next Features

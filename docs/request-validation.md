@@ -634,3 +634,8 @@ See [Handling Error][ref-doc-handling-error] for complete error handling flow.
 [ref-doc-file-upload]: docs/file-upload.md
 [ref-doc-doc]: docs/doc.md
 [ref-doc-presign]: docs/presign.md
+[ref-doc-term-policy]: docs/term-policy.md
+
+<!-- CONTRIBUTOR -->
+
+[ref-contributor-gzerox]: https://github.com/Gzerox

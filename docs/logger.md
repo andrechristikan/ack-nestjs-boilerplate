@@ -342,3 +342,8 @@ export const LOGGER_REQUEST_ID_HEADERS = [
 [ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
 [ref-doc-presign]: docs/presign.md
+[ref-doc-term-policy]: docs/term-policy.md
+
+<!-- CONTRIBUTOR -->
+
+[ref-contributor-gzerox]: https://github.com/Gzerox
