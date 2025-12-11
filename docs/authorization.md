@@ -18,6 +18,7 @@ The system is built using NestJS guards and decorators, making it easy to apply 
 - [Environment Documentation][ref-doc-environment] - For Redis environment variables
 - [Authentication Documentation][ref-doc-authentication] - For understand authentication system
 - [Activity Log Documentation][ref-doc-activity-log] - For tracking authorization-related user activities
+- [Term Policy Document][ref-doc-term-policy] - For managing user acceptance of terms and policies 
 
 ## Table of Contents
 
@@ -418,6 +419,8 @@ The factory creates a CASL ability instance that can check if a user can perform
 ## Term Policy Acceptance Protected
 
 `TermPolicyAcceptanceProtected` validates that users have accepted required legal terms and policies (such as Terms of Service, Privacy Policy, etc.) before allowing access to protected routes. This ensures legal compliance and user consent management.
+
+For more detailed information about term policies, see [Term Policy Document][ref-doc-term-policy].
 
 ### Decorators
 
