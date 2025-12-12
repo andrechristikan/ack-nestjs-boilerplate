@@ -40,7 +40,7 @@ jobs:
 
         steps:
             - name: Git checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Get short sha commit
               id: git
@@ -100,7 +100,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Configure AWS Credentials
               uses: aws-actions/configure-aws-credentials@v4
@@ -139,7 +139,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Configure AWS Credentials
               uses: aws-actions/configure-aws-credentials@v4

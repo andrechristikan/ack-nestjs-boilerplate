@@ -12,7 +12,7 @@ jobs:
 
         steps:
             - name: Git checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Get short sha commit
               id: git
