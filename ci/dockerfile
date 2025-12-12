@@ -55,6 +55,9 @@ RUN set -x && pnpm install --frozen-lockfile --prod
 # Generate Prisma Client
 RUN pnpm db:generate
 
+# Run database migrations
+RUN pnpm db:migrate
+
 # Set ownership to non-root user
 RUN chown -R ec2-user:ec2-user /app
 USER ec2-user

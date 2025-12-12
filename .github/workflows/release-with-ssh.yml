@@ -27,7 +27,7 @@
 # - STAGING_SSH_PRIVATE_KEY: SSH private key for staging (multiline format)
 
 
-name: ReleaseWithDirectSSH
+name: ReleaseWithSsh
 on:
     workflow_dispatch:
     # push:
