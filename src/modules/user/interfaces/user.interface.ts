@@ -25,7 +25,7 @@ export interface IUserLogin {
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
     expiredAt: Date;
-    fingerprint: string;
+    jti: string;
     sessionId: string;
 }
 

@@ -22,9 +22,9 @@ export interface IAuthJwtAccessTokenPayload {
     userId: string;
     sessionId: string;
     roleId: string;
-    fingerprint: string;
 
     // standard JWT claims
+    jti?: string;
     iat?: number;
     nbf?: number;
     exp?: number;
@@ -47,6 +47,6 @@ export interface IAuthSocialPayload extends Pick<
 
 export interface IAuthTokenGenerate {
     tokens: AuthTokenResponseDto;
-    fingerprint: string;
+    jti: string;
     sessionId: string;
 }

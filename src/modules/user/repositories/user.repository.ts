@@ -815,7 +815,7 @@ export class UserRepository {
 
     async login(
         userId: string,
-        { loginFrom, loginWith, sessionId, expiredAt, fingerprint }: IUserLogin,
+        { loginFrom, loginWith, sessionId, expiredAt, jti }: IUserLogin,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<User> {
         let action: EnumActivityLogAction =
@@ -844,7 +844,7 @@ export class UserRepository {
                 sessions: {
                     create: {
                         id: sessionId,
-                        fingerprint,
+                        jti,
                         expiredAt,
                         isRevoked: false,
                         ipAddress,
@@ -1236,7 +1236,7 @@ export class UserRepository {
 
     async refresh(
         userId: string,
-        { loginFrom, loginWith, sessionId, fingerprint }: IUserLogin,
+        { loginFrom, loginWith, sessionId, jti }: IUserLogin,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
@@ -1253,7 +1253,7 @@ export class UserRepository {
                             id: sessionId,
                         },
                         data: {
-                            fingerprint,
+                            jti,
                         },
                     },
                 },

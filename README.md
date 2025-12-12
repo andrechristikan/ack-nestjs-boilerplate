@@ -58,10 +58,6 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
 
 ## TODO
 
-- [ ] Move fingerprint to jti
-- [x] Update term and policy doc
-- [x] Remove xlsx and use csv for file import and export. 
-
 ### Next Features
 - [ ] Activity Log support bidirectional logging
 - [ ] Add import and export endpoint (includes: direct upload and presign upload)

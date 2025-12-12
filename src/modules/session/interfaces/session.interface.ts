@@ -8,5 +8,5 @@ export interface ISessionCache {
     userId: string;
     sessionId: string;
     expiredAt: Date;
-    fingerprint: string;
+    jti: string;
 }

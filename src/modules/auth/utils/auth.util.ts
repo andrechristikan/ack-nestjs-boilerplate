@@ -12,35 +12,42 @@ import {
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { HelperService } from '@common/helper/services/helper.service';
 import { EnumUserLoginFrom, EnumUserSignUpWith, User } from '@prisma/client';
-import { KeyObject, createPrivateKey } from 'crypto';
+import { createPrivateKey, createPublicKey } from 'crypto';
 import verifyAppleToken, {
     VerifyAppleIdTokenResponse,
 } from 'verify-apple-id-token';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 
 /**
- * Authentication utility service for JWT token management, password operations,
- * and social authentication (Google, Apple). Provides secure token generation,
- * validation, password hashing, and social provider integration.
+ * Authentication Utility Service
+ *
+ * Provides comprehensive authentication and authorization features including:
+ * - JWT token management (access and refresh tokens) with ES512 algorithm
+ * - Password operations (hashing, validation, expiration tracking)
+ * - Social authentication integration (Google OAuth2, Apple Sign-In)
+ *
+ * All cryptographic operations use industry-standard algorithms and secure
+ * configurations from the application's authentication configuration.
  */
 @Injectable()
 export class AuthUtil {
     // jwt
     private readonly jwtAccessTokenKid: string;
-    private readonly jwtAccessTokenPrivateKey: KeyObject;
-    private readonly jwtAccessTokenPublicKey: Buffer;
+    private readonly jwtAccessTokenPrivateKey: string;
+    private readonly jwtAccessTokenPublicKey: string;
     readonly jwtAccessTokenExpirationTimeInSeconds: number;
     private readonly jwtAccessTokenAlgorithm: Algorithm;
 
     private readonly jwtRefreshTokenKid: string;
-    private readonly jwtRefreshTokenPrivateKey: KeyObject;
-    private readonly jwtRefreshTokenPublicKey: Buffer;
+    private readonly jwtRefreshTokenPrivateKey: string;
+    private readonly jwtRefreshTokenPublicKey: string;
     readonly jwtRefreshTokenExpirationTimeInSeconds: number;
     private readonly jwtRefreshTokenAlgorithm: Algorithm;
 
     readonly jwtPrefix: string;
     private readonly jwtAudience: string;
     private readonly jwtIssuer: string;
+    private readonly jwtHeader: string;
 
     // apple
     private readonly appleHeader: string;
@@ -93,11 +100,19 @@ export class AuthUtil {
             key: jwtAccessTokenPrivateKeyBuffer,
             format: 'der',
             type: 'pkcs8',
-        });
-        this.jwtAccessTokenPublicKey = Buffer.from(
+        }).export({ type: 'pkcs8', format: 'pem' }) as string;
+        const jwtAccessTokenPublicKeyBuffer = Buffer.from(
             this.configService.get<string>('auth.jwt.accessToken.publicKey'),
             'base64'
         );
+        this.jwtAccessTokenPublicKey = createPublicKey({
+            key: jwtAccessTokenPublicKeyBuffer,
+            format: 'der',
+            type: 'spki',
+        }).export({
+            type: 'spki',
+            format: 'pem',
+        }) as string;
         this.jwtAccessTokenAlgorithm = this.configService.get<Algorithm>(
             'auth.jwt.accessToken.algorithm'
         );
@@ -110,11 +125,19 @@ export class AuthUtil {
             key: jwtRefreshTokenPrivateKeyBuffer,
             format: 'der',
             type: 'pkcs8',
-        });
-        this.jwtRefreshTokenPublicKey = Buffer.from(
+        }).export({ type: 'pkcs8', format: 'pem' }) as string;
+        const jwtRefreshTokenPublicKeyBuffer = Buffer.from(
             this.configService.get<string>('auth.jwt.refreshToken.publicKey'),
             'base64'
         );
+        this.jwtRefreshTokenPublicKey = createPublicKey({
+            key: jwtRefreshTokenPublicKeyBuffer,
+            format: 'der',
+            type: 'spki',
+        }).export({
+            type: 'spki',
+            format: 'pem',
+        }) as string;
         this.jwtRefreshTokenAlgorithm = this.configService.get<Algorithm>(
             'auth.jwt.refreshToken.algorithm'
         );
@@ -122,6 +145,7 @@ export class AuthUtil {
         this.jwtPrefix = this.configService.get<string>('auth.jwt.prefix');
         this.jwtAudience = this.configService.get<string>('auth.jwt.audience');
         this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer');
+        this.jwtHeader = this.configService.get<string>('auth.jwt.header');
 
         this.appleHeader = this.configService.get<string>('auth.apple.header');
         this.applePrefix = this.configService.get<string>('auth.apple.prefix');
@@ -168,14 +192,19 @@ export class AuthUtil {
 
     /**
      * Creates a JWT access token for the given subject and payload.
-     * Uses ES512 algorithm with private key from configuration.
-     * @param subject - The unique subject identifier for the token (usually user ID)
+     *
+     * Generates a signed JWT token using the configured private key and ES512 algorithm.
+     * The token includes issuer, audience, and expiration claims based on configuration.
+     *
+     * @param subject - The unique subject identifier for the token (typically user ID)
+     * @param jti - The unique token identifier for security tracking and validation
      * @param payload - The payload data to include in the token
      * @returns The signed JWT access token string
      * @throws {Error} When token signing fails
      */
     createAccessToken(
         subject: string,
+        jti: string,
         payload: IAuthJwtAccessTokenPayload
     ): string {
         return this.jwtService.sign(payload, {
@@ -186,20 +215,26 @@ export class AuthUtil {
             subject,
             algorithm: this.jwtAccessTokenAlgorithm,
             keyid: this.jwtAccessTokenKid,
+            jwtid: jti,
         } as JwtSignOptions);
     }
 
     /**
      * Creates a JWT refresh token for the given subject and payload.
-     * Uses ES512 algorithm with private key from configuration.
-     * @param subject - The unique subject identifier for the token (usually user ID)
+     *
+     * Generates a signed JWT token using the configured private key and ES512 algorithm.
+     * Allows optional custom expiration time; defaults to configuration value if not provided.
+     *
+     * @param subject - The unique subject identifier for the token (typically user ID)
+     * @param jti - The unique token identifier for security tracking and validation
      * @param payload - The refresh token payload data to include in the token
-     * @param expiresIn - Optional custom expiration time in seconds. If not provided, uses default from configuration
+     * @param expiresIn - Optional custom expiration time in seconds. Uses default from configuration if not provided
      * @returns The signed JWT refresh token string
      * @throws {Error} When token signing fails
      */
     createRefreshToken(
         subject: string,
+        jti: string,
         payload: IAuthJwtRefreshTokenPayload,
         expiresIn?: number
     ): string {
@@ -211,17 +246,22 @@ export class AuthUtil {
             subject,
             algorithm: this.jwtRefreshTokenAlgorithm,
             keyid: this.jwtRefreshTokenKid,
+            jwtid: jti,
         } as JwtSignOptions);
     }
 
     /**
      * Validates an access token for the given subject.
-     * Verifies token signature, expiration, audience, issuer and subject claims.
+     *
+     * Verifies the token signature using the configured public key and validates all claims
+     * including expiration, audience, issuer, subject, and token identifier (jti).
+     *
      * @param subject - The subject identifier to validate against
+     * @param jti - The unique token identifier to validate
      * @param token - The JWT access token to validate
-     * @returns True if the token is valid and matches the subject, false otherwise
+     * @returns True if the token is valid and all claims match, false otherwise
      */
-    validateAccessToken(subject: string, token: string): boolean {
+    validateAccessToken(subject: string, jti: string, token: string): boolean {
         try {
             this.jwtService.verify(token, {
                 publicKey: this.jwtAccessTokenPublicKey,
@@ -229,6 +269,7 @@ export class AuthUtil {
                 audience: this.jwtAudience,
                 issuer: this.jwtIssuer,
                 subject,
+                jwtid: jti,
             });
 
             return true;
@@ -239,12 +280,16 @@ export class AuthUtil {
 
     /**
      * Validates a refresh token for the given subject.
-     * Verifies token signature, expiration, audience, issuer and subject claims.
+     *
+     * Verifies the token signature using the configured public key and validates all claims
+     * including expiration, audience, issuer, subject, and token identifier (jti).
+     *
      * @param subject - The subject identifier to validate against
+     * @param jti - The unique token identifier to validate
      * @param token - The JWT refresh token to validate
-     * @returns True if the token is valid and matches the subject, false otherwise
+     * @returns True if the token is valid and all claims match, false otherwise
      */
-    validateRefreshToken(subject: string, token: string): boolean {
+    validateRefreshToken(subject: string, jti: string, token: string): boolean {
         try {
             this.jwtService.verify(token, {
                 publicKey: this.jwtRefreshTokenPublicKey,
@@ -252,6 +297,7 @@ export class AuthUtil {
                 audience: this.jwtAudience,
                 issuer: this.jwtIssuer,
                 subject,
+                jwtid: jti,
             });
 
             return true;
@@ -262,9 +308,13 @@ export class AuthUtil {
 
     /**
      * Decodes and returns the payload from a JWT token without verification.
-     * Note: This method does not validate the token signature or expiration.
+     *
+     * WARNING: This method does not validate the token signature, expiration, or any claims.
+     * Use only for extracting payload information when you don't need validation.
+     * Always verify tokens using validateAccessToken() or validateRefreshToken() before trusting the data.
+     *
      * @param token - The JWT token to decode
-     * @returns The decoded payload of type T
+     * @returns The decoded payload of generic type T
      */
     payloadToken<T>(token: string): T {
         return this.jwtService.decode<T>(token);
@@ -272,17 +322,19 @@ export class AuthUtil {
 
     /**
      * Creates the payload for an access token from user data and login information.
+     *
+     * Constructs a structured payload containing user identification, role information,
+     * and session tracking data to be embedded in the JWT access token.
+     *
      * @param data - The user entity from database containing profile and role information
-     * @param fingerprint - The unique device/session fingerprint for security tracking
      * @param sessionId - The unique session identifier for this login session
      * @param loginAt - The date and time when the login occurred
-     * @param loginFrom - The source/platform of the login (e.g., website, mobile)
-     * @param loginWith - The authentication method used for sign-up (email, google, apple, etc.)
+     * @param loginFrom - The source/platform of the login (e.g., website, mobile app)
+     * @param loginWith - The authentication method used (email, google, apple, etc.)
      * @returns The formatted access token payload containing user and session data
      */
     createPayloadAccessToken(
         data: User,
-        fingerprint: string,
         sessionId: string,
         loginAt: Date,
         loginFrom: EnumUserLoginFrom,
@@ -291,7 +343,6 @@ export class AuthUtil {
         return {
             userId: data.id,
             roleId: data.roleId,
-            fingerprint,
             username: data.username,
             email: data.email,
             sessionId,
@@ -303,11 +354,13 @@ export class AuthUtil {
 
     /**
      * Creates a refresh token payload from an access token payload.
-     * Extracts only the necessary fields required for token refresh operations.
+     *
+     * Extracts only the essential fields from the access token payload needed for
+     * token refresh operations, following the principle of least privilege.
+     *
      * @param payload - The access token payload containing session and user information
      * @param payload.sessionId - The unique session identifier
      * @param payload.userId - The user's unique identifier
-     * @param payload.fingerprint - The unique device/session fingerprint
      * @param payload.loginFrom - The source/platform of the login
      * @param payload.loginAt - The date and time when the login occurred
      * @param payload.loginWith - The authentication method used
@@ -316,13 +369,11 @@ export class AuthUtil {
     createPayloadRefreshToken({
         sessionId,
         userId,
-        fingerprint,
         loginFrom,
         loginAt,
         loginWith,
     }: IAuthJwtAccessTokenPayload): IAuthJwtRefreshTokenPayload {
         return {
-            fingerprint,
             loginAt,
             loginFrom,
             loginWith,
@@ -333,6 +384,10 @@ export class AuthUtil {
 
     /**
      * Validates a password by comparing it with the stored hash using bcrypt.
+     *
+     * Uses the bcrypt algorithm for secure password comparison, defending against
+     * timing attacks through constant-time comparison.
+     *
      * @param passwordString - The plain text password to validate
      * @param passwordHash - The bcrypt hashed password to compare against
      * @returns True if the password matches the hash, false otherwise
@@ -343,9 +398,12 @@ export class AuthUtil {
 
     /**
      * Checks if a user has exceeded the maximum password attempt limit.
-     * Returns false if password attempt checking is disabled in configuration.
+     *
+     * Validates whether the user's failed login attempts have exceeded the configured
+     * maximum. Returns false if password attempt checking is disabled in configuration.
+     *
      * @param user - The user entity containing password attempt information
-     * @returns True if password attempts exceeded the configured limit, false otherwise
+     * @returns True if password attempts exceeded the configured limit, false if within limit or checking disabled
      */
     checkPasswordAttempt(user: User): boolean {
         return this.passwordAttempt
@@ -354,12 +412,15 @@ export class AuthUtil {
     }
 
     /**
-     * Creates a new password hash with salt, expiration information and period expiration.
-     * Generates bcrypt hash with random salt and sets expiration dates based on configuration.
+     * Creates a new password hash with salt and expiration tracking.
+     *
+     * Generates a bcrypt hash with random salt and sets both regular and period expiration dates.
+     * Supports temporary passwords with shorter expiration times for password reset scenarios.
+     *
      * @param password - The plain text password to hash
      * @param options - Optional settings for password creation
-     * @param options.temporary - If true, uses temporary password expiration time instead of regular
-     * @returns Object containing password hash, salt, creation date, expiration date, and period expiration date
+     * @param options.temporary - If true, uses temporary password expiration time instead of regular expiration
+     * @returns Object containing the password hash, salt, creation date, expiration date, and period expiration date
      */
     createPassword(
         password: string,
@@ -395,7 +456,11 @@ export class AuthUtil {
     }
 
     /**
-     * Generates a random password string using the helper service.
+     * Generates a random password string.
+     *
+     * Creates a cryptographically random 10-character alphanumeric string suitable
+     * for temporary passwords or password reset scenarios.
+     *
      * @returns A randomly generated 10-character alphanumeric password string
      */
     createPasswordRandom(): string {
@@ -404,7 +469,10 @@ export class AuthUtil {
 
     /**
      * Checks if a password has expired based on its expiration date.
-     * Compares the password expiration date with the current date.
+     *
+     * Compares the password expiration date with the current date to determine
+     * if the user should be prompted to change their password.
+     *
      * @param passwordExpired - The date when the password expires
      * @returns True if the password has expired (current date > expiration date), false otherwise
      */
@@ -415,7 +483,10 @@ export class AuthUtil {
 
     /**
      * Extracts Google OAuth token from request headers.
-     * Looks for the configured Google header and splits by the configured prefix.
+     *
+     * Looks for the configured Google header name and splits the header value
+     * by the configured prefix (typically 'Bearer ') to extract the token.
+     *
      * @param request - The incoming HTTP request containing Google OAuth headers
      * @returns Array of strings from the header split by prefix, or empty array if header not found
      */
@@ -429,10 +500,13 @@ export class AuthUtil {
 
     /**
      * Verifies a Google OAuth ID token and extracts the payload.
-     * Uses the Google OAuth2Client to validate the token signature and claims.
+     *
+     * Validates the token signature against Google's public keys and verifies all claims.
+     * Extracts the decoded payload containing user information if verification succeeds.
+     *
      * @param token - The Google OAuth ID token to verify
      * @returns Promise resolving to the verified token payload containing user information
-     * @throws {Error} When token verification fails or token is invalid/expired
+     * @throws {Error} When token verification fails, token is invalid, expired, or signature is invalid
      */
     async verifyGoogle(token: string): Promise<TokenPayload> {
         const login: LoginTicket = await this.googleClient.verifyIdToken({
@@ -446,7 +520,10 @@ export class AuthUtil {
 
     /**
      * Extracts Apple Sign-In token from request headers.
-     * Looks for the configured Apple header and splits by the configured prefix.
+     *
+     * Looks for the configured Apple header name and splits the header value
+     * by the configured prefix (typically 'Bearer ') to extract the token.
+     *
      * @param request - The incoming HTTP request containing Apple Sign-In headers
      * @returns Array of strings from the header split by prefix, or empty array if header not found
      */
@@ -460,11 +537,14 @@ export class AuthUtil {
 
     /**
      * Verifies an Apple Sign-In ID token and extracts the payload.
-     * Uses the verify-apple-id-token library to validate the token against Apple's public keys.
-     * Supports both regular Apple ID and Sign-In with Apple client IDs.
+     *
+     * Validates the token signature against Apple's public keys and verifies all claims.
+     * Supports both regular Apple ID and Sign-In with Apple client IDs for compatibility.
+     * Extracts the decoded payload containing user information if verification succeeds.
+     *
      * @param token - The Apple ID token to verify
      * @returns Promise resolving to the verified token response containing user information
-     * @throws {Error} When token verification fails or token is invalid/expired
+     * @throws {Error} When token verification fails, token is invalid, expired, or signature is invalid
      */
     async verifyApple(token: string): Promise<VerifyAppleIdTokenResponse> {
         return verifyAppleToken({
@@ -474,11 +554,31 @@ export class AuthUtil {
     }
 
     /**
-     * Generates a unique fingerprint string for device/session identification.
-     * Creates a 32-character random string used to track unique sessions or devices.
+     * Generates a unique token identifier for session tracking.
+     *
+     * Creates a 32-character random string used to track unique sessions or devices
+     * and provide additional security validation during token verification.
+     *
      * @returns A 32-character random alphanumeric string
      */
-    generateFingerprint(): string {
+    generateJti(): string {
         return this.helperService.randomString(32);
+    }
+
+    /**
+     * Extracts JWT token from request headers.
+     *
+     * Looks for the configured JWT header name and splits the header value
+     * by the configured prefix (typically 'Bearer ') to extract the token.
+     *
+     * @param request - The incoming HTTP request containing JWT headers
+     * @returns Array of strings from the header split by prefix, or empty array if header not found
+     */
+    extractHeaderJwt(request: IRequestApp): string[] {
+        return (
+            (
+                request.headers[`${this.jwtHeader?.toLowerCase()}`] as string
+            )?.split(`${this.jwtPrefix} `) ?? []
+        );
     }
 }

@@ -13,7 +13,7 @@ model ApiKey {
   name     String
   key      String
   hash     String
-  isActive Boolean           @default(true)
+  isActive Boolean        @default(true)
   startAt  DateTime?
   endAt    DateTime?
 
@@ -34,7 +34,7 @@ model Role {
   name        String
   description String?
   type        EnumRoleType @default(user)
-  abilities   Json[]         @default([])
+  abilities   Json[]       @default([])
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -102,13 +102,13 @@ model UserMobileNumber {
 }
 
 model User {
-  id              String                  @id @default(auto()) @map("_id") @db.ObjectId
+  id              String              @id @default(auto()) @map("_id") @db.ObjectId
   name            String?
   username        String
-  isVerified      Boolean                 @default(false)
+  isVerified      Boolean             @default(false)
   verifiedAt      DateTime?
   email           String
-  roleId          String                  @db.ObjectId
+  roleId          String              @db.ObjectId
   password        String?
   passwordExpired DateTime?
   passwordCreated DateTime?
@@ -163,7 +163,7 @@ model Verification {
   token          String
   expiredAt      DateTime
   verifiedAt     DateTime?
-  isUsed         Boolean                @default(false)
+  isUsed         Boolean              @default(false)
   reference      String
 
   // timestamps fields
@@ -216,14 +216,14 @@ model ActivityLog {
 }
 
 model Session {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String    @db.ObjectId
-  fingerprint String
-  ipAddress   String
-  userAgent   Json
-  expiredAt   DateTime
-  revokedAt   DateTime?
-  isRevoked   Boolean   @default(false)
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String    @db.ObjectId
+  jti       String
+  ipAddress String
+  userAgent Json
+  expiredAt DateTime
+  revokedAt DateTime?
+  isRevoked Boolean   @default(false)
 
   user User? @relation("UserSessions", fields: [userId], references: [id])
 

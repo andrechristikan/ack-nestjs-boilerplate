@@ -18,11 +18,17 @@ export interface IAuthService {
         user: IUser,
         refreshTokenFromRequest: string
     ): IAuthTokenGenerate;
+    validateJwtAccessStrategy(
+        payload: IAuthJwtAccessTokenPayload
+    ): Promise<IAuthJwtAccessTokenPayload>;
     validateJwtAccessGuard(
         err: Error,
         user: IAuthJwtAccessTokenPayload,
         info: Error
     ): Promise<IAuthJwtAccessTokenPayload>;
+    validateJwtRefreshStrategy(
+        payload: IAuthJwtRefreshTokenPayload
+    ): Promise<IAuthJwtRefreshTokenPayload>;
     validateJwtRefreshGuard(
         err: Error,
         user: IAuthJwtRefreshTokenPayload,
