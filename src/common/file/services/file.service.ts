@@ -1,141 +1,114 @@
 import { Injectable } from '@nestjs/common';
-import { IFileRows } from '@common/file/interfaces/file.interface';
 import { IFileService } from '@common/file/interfaces/file.service.interface';
-import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
-import { utils, write, read } from 'xlsx';
+import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
+import { HelperService } from '@common/helper/services/helper.service';
+import Mime from 'mime';
+import Papa from 'papaparse';
 
+/**
+ * Service for handling file operations including CSV file creation and reading.
+ * Provides methods to write and read CSV files with support for generic data types,
+ * generate random filenames, and extract file information from paths and filenames.
+ */
 @Injectable()
 export class FileService implements IFileService {
-    writeCsv<T = Record<string, string | number | Date>>(
-        rows: IFileRows<T>
-    ): Buffer {
-        const worksheet = utils.json_to_sheet(rows.data);
-        const csv = utils.sheet_to_csv(worksheet, { FS: ';' });
+    constructor(private readonly helperService: HelperService) {}
 
-        // create buffer
-        const buff: Buffer = Buffer.from(csv, 'utf8');
-
-        return buff;
+    /**
+     * Converts structured data into CSV format string.
+     * Serializes an array of objects into a CSV string with semicolon (;) as delimiter.
+     * Each object property becomes a column, and the property name becomes the header.
+     *
+     * @template T - The type of data rows (defaults to Record<string, string | number | Date>)
+     * @param {T[]} rows - Array of objects to be converted to CSV rows
+     * @returns {string} CSV formatted string with semicolon delimiter
+     */
+    writeCsv<T = Record<string, string | number | Date>>(rows: T[]): string {
+        return Papa.unparse(rows, {
+            delimiter: ';',
+        });
     }
 
-    writeCsvFromArray<T = Record<string, string | number | Date>>(
-        rows: T[][]
-    ): Buffer {
-        const worksheet = utils.aoa_to_sheet(rows);
-        const csv = utils.sheet_to_csv(worksheet, { FS: ';' });
+    /**
+     * Parses CSV string into structured data objects.
+     * Reads a CSV string with semicolon (;) as delimiter and converts it into an array of objects.
+     * The first row is treated as headers which become the object property names.
+     * Empty lines are automatically skipped during parsing.
+     *
+     * @template T - The type of data rows (defaults to Record<string, string | number | Date>)
+     * @param {string} file - CSV string content to be parsed
+     * @returns {T[]} Array of objects parsed from CSV rows
+     */
+    readCsv<T = Record<string, string | number | Date>>(file: string): T[] {
+        const parsed = Papa.parse<T>(file, {
+            header: true,
+            skipEmptyLines: true,
+            delimiter: ';',
+        });
 
-        // create buffer
-        const buff: Buffer = Buffer.from(csv, 'utf8');
-
-        return buff;
+        return parsed.data;
     }
 
-    writeExcel<T = Record<string, string | number | Date>>(
-        rows: IFileRows<T>[]
-    ): Buffer {
-        // workbook
-        const workbook = utils.book_new();
+    /**
+     * Generates a random filename with specified prefix and extension.
+     * Creates a unique filename by combining a path, optional prefix, random string, and file extension.
+     * Automatically removes leading slash if present to ensure proper path formatting.
+     * @param {IFileRandomFilenameOptions} options - Configuration options for filename generation
+     * @param {string} options.path - Directory path to prepend to the filename
+     * @param {string} [options.prefix] - Optional prefix to include in the filename before the random string
+     * @param {string} options.extension - File extension (e.g., 'jpg', 'png', 'pdf')
+     * @param {number} [options.randomLength=10] - Length of the random string portion (defaults to 10 characters)
+     * @returns {string} Generated filename in format: 'path/prefix-randomString.extension' or 'path/randomString.extension' if no prefix
+     */
+    createRandomFilename({
+        prefix,
+        path,
+        extension,
+        randomLength,
+    }: IFileRandomFilenameOptions): string {
+        const randomPath = this.helperService.randomString(randomLength ?? 10);
+        let fullPath: string = `${path}/${prefix ? `${prefix}-` : ''}${randomPath}.${extension.toLowerCase()}`;
 
-        for (const [index, row] of rows.entries()) {
-            // worksheet
-            const worksheet = utils.json_to_sheet(row.data);
-            utils.book_append_sheet(
-                workbook,
-                worksheet,
-                row.sheetName ?? `Sheet${index + 1}`
-            );
+        if (fullPath.startsWith('/')) {
+            fullPath = fullPath.replace('/', '');
         }
 
-        // create buffer
-        const buff: Buffer = write(workbook, {
-            type: 'buffer',
-            bookType: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX,
-        });
-
-        return buff;
+        return fullPath;
     }
 
-    writeExcelFromArray<T = Record<string, string | number | Date>>(
-        rows: T[][]
-    ): Buffer {
-        // workbook
-        const workbook = utils.book_new();
-
-        // worksheet
-        const worksheet = utils.aoa_to_sheet(rows);
-        utils.book_append_sheet(workbook, worksheet, `Sheet1`);
-
-        // create buffer
-        const buff: Buffer = write(workbook, {
-            type: 'buffer',
-            bookType: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX,
-        });
-
-        return buff;
+    /**
+     * Extracts the file extension from a given filename.
+     * Returns the file extension in lowercase without the leading dot.
+     * If the filename has no extension, returns an empty string.
+     * @param {string} filename - The name of the file from which to extract the extension
+     * @returns {string} The extracted file extension in lowercase, or an empty string if none exists
+     */
+    extractExtensionFromFilename(filename: string): string {
+        return filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
     }
 
-    readCsv<T = Record<string, string | number | Date>>(
-        file: Buffer
-    ): IFileRows<T> {
-        // workbook
-        const workbook = read(file, {
-            type: 'buffer',
-        });
-
-        // worksheet
-        const worksheetsName: string = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[worksheetsName];
-        const rows: T[] = utils.sheet_to_json(worksheet);
-
-        return {
-            data: rows,
-            sheetName: worksheetsName,
-        };
+    /**
+     * Extracts the MIME type from a given filename.
+     * Uses the file extension to determine the corresponding MIME type.
+     * Returns the MIME type in lowercase format.
+     *
+     * @param {string} filename - The name of the file from which to extract the MIME type
+     * @returns {string} The extracted MIME type in lowercase
+     */
+    extractMimeFromFilename(filename: string): string {
+        return Mime.getType(
+            filename.slice(filename.lastIndexOf('.'))
+        ).toLowerCase();
     }
 
-    readCsvFromString<T = Record<string, string | number | Date>>(
-        file: string
-    ): IFileRows<T> {
-        // workbook
-        const workbook = read(file, {
-            type: 'string',
-        });
-
-        // worksheet
-        const worksheetsName: string = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[worksheetsName];
-        const rows: T[] = utils.sheet_to_json(worksheet);
-
-        return {
-            data: rows,
-            sheetName: worksheetsName,
-        };
-    }
-
-    readExcel<T = Record<string, string | number | Date>>(
-        file: Buffer
-    ): IFileRows<T>[] {
-        // workbook
-        const workbook = read(file, {
-            type: 'buffer',
-        });
-
-        // worksheet
-        const worksheetsName: string[] = workbook.SheetNames;
-        const sheets: IFileRows[] = [];
-
-        for (let i = 0; i < worksheetsName.length; i++) {
-            const worksheet = workbook.Sheets[worksheetsName[i]];
-
-            // rows
-            const rows: T[] = utils.sheet_to_json(worksheet);
-
-            sheets.push({
-                data: rows,
-                sheetName: worksheetsName[i],
-            });
-        }
-
-        return sheets;
+    /**
+     * Extracts the filename from a given file path.
+     * Returns only the filename portion, excluding any directory paths.
+     * @param {string} filePath - The full path of the file
+     * @returns {string} The extracted filename
+     */
+    extractFilenameFromPath(filePath: string): string {
+        const parts = filePath.split('/');
+        return parts[parts.length - 1];
     }
 }

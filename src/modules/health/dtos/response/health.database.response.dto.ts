@@ -14,6 +14,9 @@ export class HealthDatabaseResponseDto {
             database: {
                 status: 'up',
             },
+            redis: {
+                status: 'up',
+            },
         },
     })
     info?: HealthIndicatorResult;
@@ -24,6 +27,9 @@ export class HealthDatabaseResponseDto {
             database: {
                 status: 'down',
             },
+            redis: {
+                status: 'down',
+            },
         },
     })
     error?: HealthIndicatorResult;
@@ -32,6 +38,9 @@ export class HealthDatabaseResponseDto {
         required: true,
         example: {
             database: {
+                status: 'up',
+            },
+            redis: {
                 status: 'up',
             },
         },

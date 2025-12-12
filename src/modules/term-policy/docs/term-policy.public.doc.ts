@@ -3,10 +3,11 @@ import {
     Doc,
     DocAuth,
     DocRequest,
-    DocResponse,
+    DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyListPublicDocQuery } from '@modules/term-policy/constants/term-policy.doc.constant';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 
 export function TermPolicyPublicListDoc(): MethodDecorator {
     return applyDecorators(
@@ -19,8 +20,9 @@ export function TermPolicyPublicListDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
-        DocResponse<TermPolicyResponseDto>('termPolicy.list', {
+        DocResponsePaging<TermPolicyResponseDto>('termPolicy.list', {
             dto: TermPolicyResponseDto,
+            type: EnumPaginationType.cursor,
         })
     );
 }

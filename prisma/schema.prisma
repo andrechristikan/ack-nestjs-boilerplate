@@ -1,0 +1,445 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ApiKey {
+  id       String         @id @default(auto()) @map("_id") @db.ObjectId
+  type     EnumApiKeyType @default(default)
+  name     String
+  key      String
+  hash     String
+  isActive Boolean        @default(true)
+  startAt  DateTime?
+  endAt    DateTime?
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@unique(fields: [key])
+  @@index(fields: [name, isActive, type, createdAt])
+  @@index(fields: [createdAt])
+  @@map("ApiKeys")
+}
+
+model Role {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  type        EnumRoleType @default(user)
+  abilities   Json[]       @default([])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  users User[] @relation("UserRole")
+
+  @@unique(fields: [name])
+  @@index(fields: [name, type, createdAt])
+  @@index(fields: [createdAt])
+  @@map("Roles")
+}
+
+model Country {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  alpha2Code String
+  alpha3Code String
+  phoneCode  String[]
+  continent  String
+  timezone   String
+
+  mobileNumbers UserMobileNumber[] @relation("UserMobileNumberCountry")
+  users         User[]             @relation("UserCountry")
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@unique(fields: [alpha2Code])
+  @@unique(fields: [alpha3Code])
+  @@index(fields: [name, alpha2Code, alpha3Code, continent, createdAt])
+  @@index(fields: [createdAt])
+  @@map("Countries")
+}
+
+model UserMobileNumber {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String    @db.ObjectId
+  countryId  String    @db.ObjectId
+  phoneCode  String
+  number     String
+  isVerified Boolean   @default(false)
+  verifiedAt DateTime?
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  country       Country?       @relation("UserMobileNumberCountry", fields: [countryId], references: [id])
+  user          User?          @relation("UserMobileNumberUser", fields: [userId], references: [id])
+  verifications Verification[] @relation("UserMobileNumberVerification")
+
+  @@unique(fields: [userId, countryId, phoneCode, number])
+  @@index(fields: [userId])
+  @@index(fields: [isVerified])
+  @@index(fields: [createdAt])
+  @@map("UserMobiles")
+}
+
+model User {
+  id              String              @id @default(auto()) @map("_id") @db.ObjectId
+  name            String?
+  username        String
+  isVerified      Boolean             @default(false)
+  verifiedAt      DateTime?
+  email           String
+  roleId          String              @db.ObjectId
+  password        String?
+  passwordExpired DateTime?
+  passwordCreated DateTime?
+  passwordAttempt Int?
+  signUpAt        DateTime            @default(now())
+  signUpFrom      EnumUserSignUpFrom
+  signUpWith      EnumUserSignUpWith
+  salt            String?
+  status          EnumUserStatus      @default(active)
+  gender          EnumUserGender?
+  countryId       String              @db.ObjectId
+  lastLoginAt     DateTime?
+  lastIPAddress   String?
+  lastLoginFrom   EnumUserLoginFrom?
+  lastLoginWith   EnumUserSignUpWith?
+  termPolicy      Json
+  photo           Json?
+
+  // timestamps fields
+  createdAt DateTime  @default(now())
+  createdBy String?
+  updatedAt DateTime  @updatedAt
+  updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
+
+  mobileNumbers     UserMobileNumber[]         @relation("UserMobileNumberUser")
+  verifications     Verification[]             @relation("UserVerifications")
+  passwordHistories PasswordHistory[]          @relation("UserPasswordHistories")
+  activityLogs      ActivityLog[]              @relation("UserActivityLogs")
+  role              Role?                      @relation("UserRole", fields: [roleId], references: [id])
+  country           Country?                   @relation("UserCountry", fields: [countryId], references: [id])
+  sessions          Session[]                  @relation("UserSessions")
+  acceptances       TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
+  forgotPasswords   ForgotPassword[]           @relation("UserForgotPassword")
+
+  @@unique(fields: [username])
+  @@unique(fields: [email])
+  @@index(fields: [status, countryId, roleId, createdAt])
+  @@index(fields: [id, deletedAt])
+  @@index(fields: [email, deletedAt])
+  @@index(fields: [createdAt])
+  @@map("Users")
+}
+
+model Verification {
+  id             String               @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String               @db.ObjectId
+  mobileNumberId String?              @db.ObjectId
+  to             String
+  type           EnumVerificationType
+  token          String
+  expiredAt      DateTime
+  verifiedAt     DateTime?
+  isUsed         Boolean              @default(false)
+  reference      String
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  user         User?             @relation("UserVerifications", fields: [userId], references: [id])
+  mobileNumber UserMobileNumber? @relation("UserMobileNumberVerification", fields: [mobileNumberId], references: [id])
+
+  @@unique(fields: [reference])
+  @@index(fields: [token, expiredAt, isUsed, type])
+  @@index(fields: [token])
+  @@map("Verifications")
+}
+
+model PasswordHistory {
+  id        String                  @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String                  @db.ObjectId
+  password  String
+  salt      String
+  type      EnumPasswordHistoryType
+  expiredAt DateTime
+
+  user User? @relation("UserPasswordHistories", fields: [userId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+}
+
+model ActivityLog {
+  id        String                @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String                @db.ObjectId
+  action    EnumActivityLogAction
+  ipAddress String
+  userAgent Json
+  metadata  Json?
+
+  user User? @relation("UserActivityLogs", fields: [userId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  @@index(fields: [userId])
+  @@index(fields: [createdAt])
+  @@map("ActivityLogs")
+}
+
+model Session {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String    @db.ObjectId
+  jti       String
+  ipAddress String
+  userAgent Json
+  expiredAt DateTime
+  revokedAt DateTime?
+  isRevoked Boolean   @default(false)
+
+  user User? @relation("UserSessions", fields: [userId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@index(fields: [userId])
+  @@index(fields: [userId, isRevoked, expiredAt])
+  @@index(fields: [createdAt])
+  @@index(fields: [updatedAt])
+  @@map("Sessions")
+}
+
+model TermPolicy {
+  id          String               @id @default(auto()) @map("_id") @db.ObjectId
+  type        EnumTermPolicyType
+  contents    Json[]               @default([])
+  version     Int                  @default(1)
+  status      EnumTermPolicyStatus @default(draft)
+  publishedAt DateTime?
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  userAcceptances TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceTermPolicy")
+
+  @@unique(fields: [type, version])
+  @@index(fields: [type, status, createdAt])
+  @@index(fields: [createdAt])
+  @@index(fields: [publishedAt])
+  @@index(fields: [version])
+  @@map("TermPolicies")
+}
+
+model TermPolicyUserAcceptance {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @db.ObjectId
+  termPolicyId String   @db.ObjectId
+  acceptedAt   DateTime @default(now())
+
+  user       User?       @relation("TermPolicyUserAcceptanceUser", fields: [userId], references: [id])
+  termPolicy TermPolicy? @relation("TermPolicyUserAcceptanceTermPolicy", fields: [termPolicyId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  @@unique(fields: [userId, termPolicyId])
+  @@index(fields: [userId])
+  @@index(fields: [acceptedAt])
+  @@index(fields: [createdAt])
+  @@map("TermPolicyUserAcceptances")
+}
+
+model FeatureFlag {
+  id             String  @id @default(auto()) @map("_id") @db.ObjectId
+  key            String
+  description    String
+  isEnable       Boolean @default(true)
+  rolloutPercent Int     @default(100)
+  metadata       Json?
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@unique(fields: [key])
+  @@index(fields: [key, createdAt])
+  @@index(fields: [createdAt])
+  @@map("FeatureFlags")
+}
+
+model ForgotPassword {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String    @db.ObjectId
+  to        String
+  token     String
+  expiredAt DateTime
+  resetAt   DateTime?
+  isUsed    Boolean   @default(false)
+  reference String
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  user User? @relation("UserForgotPassword", fields: [userId], references: [id])
+
+  @@unique(fields: [reference])
+  @@index(fields: [token, expiredAt, isUsed])
+  @@index(fields: [token])
+  @@map("ForgotPasswords")
+}
+
+enum EnumUserGender {
+  male
+  female
+}
+
+enum EnumUserStatus {
+  active
+  inactive
+  blocked
+}
+
+enum EnumUserSignUpFrom {
+  system
+  admin
+  website
+  mobile
+}
+
+enum EnumUserSignUpWith {
+  credential
+  socialGoogle
+  socialApple
+}
+
+enum EnumUserLoginFrom {
+  website
+  mobile
+}
+
+enum EnumUserLoginWith {
+  credential
+  socialGoogle
+  socialApple
+}
+
+enum EnumRoleType {
+  superAdmin
+  admin
+  user
+}
+
+enum EnumApiKeyType {
+  system
+  default
+}
+
+enum EnumTermPolicyType {
+  termsOfService
+  privacy
+  cookies
+  marketing
+}
+
+enum EnumTermPolicyStatus {
+  draft
+  published
+}
+
+enum EnumVerificationType {
+  mobileNumber
+  email
+}
+
+enum EnumPasswordHistoryType {
+  signUp
+  forgot
+  admin
+  profile
+}
+
+enum EnumActivityLogAction {
+  userCreated
+  userBlocked
+  userUpdateStatus
+  userUpdateProfile
+  userUpdatePhotoProfile
+  userChangePassword
+  userDeleteSelf
+  userAddMobileNumber
+  userUpdateMobileNumber
+  userDeleteMobileNumber
+  userClaimUsername
+  userUpdatePasswordByAdmin
+  userLoginCredential
+  userLoginGoogle
+  userLoginApple
+  userRefreshToken
+  userVerifiedEmail
+  userSendVerificationEmail
+  userSignedUp
+  userRevokeSession
+  userRevokeSessionByAdmin
+  userAcceptTermPolicy
+  userForgotPassword
+  userReachMaxPasswordAttempt
+
+  adminSessionRevoke
+  adminApiKeyCreate
+  adminApiKeyReset
+  adminApiKeyUpdate
+  adminApiKeyUpdateDate
+  adminApiKeyUpdateStatus
+  adminApiKeyDelete
+  adminRoleCreate
+  adminRoleUpdate
+  adminRoleDelete
+  adminTermPolicyCreate
+  adminTermPolicyUpdateContent
+  adminTermPolicyAddContent
+  adminTermPolicyRemoveContent
+  adminTermPolicyPublish
+  adminUserCreate
+  adminUserUpdateStatus
+  adminUserUpdatePassword
+}

@@ -10,7 +10,23 @@
         },
         "sourceMap": true,
         "typeCheck": true,
-        "plugins": ["@nestjs/swagger"],
+        "plugins": [
+            {
+                "name": "@nestjs/swagger",
+                "options": {
+                    "dtoFileNameSuffix": [
+                        ".dto.ts"
+                    ],
+                    "controllerFileNameSuffix": [
+                        ".controller.ts"
+                    ],
+                    "classValidatorShim": false,
+                    "dtoKeyOfComment": "description",
+                    "controllerKeyOfComment": "summary",
+                    "introspectComments": true
+                }
+            }
+        ],
         "assets": [
             {
                 "include": "languages/**/*",
@@ -23,5 +39,19 @@
         ],
         "deleteOutDir": true,
         "watchAssets": true
+    },
+    "projects": {
+        "app": {
+            "type": "application",
+            "root": "src",
+            "entryFile": "main",
+            "sourceRoot": "src"
+        },
+        "migration": {
+            "type": "application",
+            "root": "src",
+            "entryFile": "migration",
+            "sourceRoot": "src"
+        }
     }
 }

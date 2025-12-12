@@ -1,254 +1,178 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
-import { title } from 'case';
-import { ConfigService } from '@nestjs/config';
-import { IEmailService } from '@modules/email/interfaces/email.service.interface';
+import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
+import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
 import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
-import { AwsSESService } from '@modules/aws/services/aws.ses.service';
-import { EmailResetPasswordDto } from '@modules/email/dtos/email.reset-password.dto';
-import { EmailCreateDto } from '@modules/email/dtos/email.create.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
 import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
-import { EmailMobileNumberVerifiedDto } from '@modules/email/dtos/email.mobile-number-verified.dto';
+import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
+import { IEmailService } from '@modules/email/interfaces/email.service.interface';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Injectable } from '@nestjs/common';
+import { Queue } from 'bullmq';
+import { ENUM_QUEUE, ENUM_QUEUE_PRIORITY } from 'src/queues/enums/queue.enum';
 
 @Injectable()
 export class EmailService implements IEmailService {
-    private readonly logger = new Logger(EmailService.name);
-
-    private readonly fromEmail: string;
-    private readonly supportEmail: string;
-
-    private readonly homeName: string;
-    private readonly homeUrl: string;
-
     constructor(
-        private readonly awsSESService: AwsSESService,
-        private readonly helperDateService: HelperDateService,
-        private readonly configService: ConfigService
-    ) {
-        this.fromEmail = this.configService.get<string>('email.fromEmail');
-        this.supportEmail =
-            this.configService.get<string>('email.supportEmail');
+        @InjectQueue(ENUM_QUEUE.EMAIL) private readonly emailQueue: Queue
+    ) {}
 
-        this.homeName = this.configService.get<string>('home.name');
-        this.homeUrl = this.configService.get<string>('home.url');
+    async sendChangePassword(
+        userId: string,
+        { email, username }: EmailSendDto
+    ): Promise<void> {
+        await this.emailQueue.add(
+            ENUM_SEND_EMAIL_PROCESS.changePassword,
+            {
+                send: { email: email, name: username },
+            },
+            {
+                priority: ENUM_QUEUE_PRIORITY.MEDIUM,
+                deduplication: {
+                    id: `${ENUM_SEND_EMAIL_PROCESS.changePassword}-${userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
     }
 
-    async sendChangePassword({ name, email }: EmailSendDto): Promise<boolean> {
-        try {
-            await this.awsSESService.send({
-                templateName: ENUM_SEND_EMAIL_PROCESS.CHANGE_PASSWORD,
-                recipients: [email],
-                sender: this.fromEmail,
-                templateData: {
-                    homeName: this.homeName,
-                    name: title(name),
-                    supportEmail: this.supportEmail,
-                    homeUrl: this.homeUrl,
+    async sendWelcomeByAdmin(
+        userId: string,
+        { email, username }: EmailSendDto,
+        {
+            passwordCreatedAt,
+            passwordExpiredAt,
+            password,
+        }: EmailCreateByAdminDto
+    ): Promise<void> {
+        await this.emailQueue.add(
+            ENUM_SEND_EMAIL_PROCESS.createByAdmin,
+            {
+                send: {
+                    email,
+                    username,
                 },
-            });
-
-            return true;
-        } catch (err: unknown) {
-            this.logger.error(err);
-
-            return false;
-        }
-    }
-
-    async sendWelcome({ name, email }: EmailSendDto): Promise<boolean> {
-        try {
-            await this.awsSESService.send({
-                templateName: ENUM_SEND_EMAIL_PROCESS.WELCOME,
-                recipients: [email],
-                sender: this.fromEmail,
-                templateData: {
-                    homeName: this.homeName,
-                    name: title(name),
-                    email: title(email),
-                    supportEmail: this.supportEmail,
-                    homeUrl: this.homeUrl,
+                data: {
+                    passwordExpiredAt,
+                    password,
+                    passwordCreatedAt,
                 },
-            });
-
-            return true;
-        } catch (err: unknown) {
-            this.logger.error(err);
-
-            return false;
-        }
-    }
-
-    async sendCreate(
-        { name, email }: EmailSendDto,
-        { password: passwordString, passwordExpiredAt }: EmailCreateDto
-    ): Promise<boolean> {
-        try {
-            await this.awsSESService.send({
-                templateName: ENUM_SEND_EMAIL_PROCESS.WELCOME,
-                recipients: [email],
-                sender: this.fromEmail,
-                templateData: {
-                    homeName: this.homeName,
-                    name: title(name),
-                    email: title(email),
-                    supportEmail: this.supportEmail,
-                    homeUrl: this.homeUrl,
-                    password: passwordString,
-                    passwordExpiredAt:
-                        this.helperDateService.formatToRFC2822(
-                            passwordExpiredAt
-                        ),
-                },
-            });
-
-            return true;
-        } catch (err: unknown) {
-            this.logger.error(err);
-
-            return false;
-        }
-    }
-
-    async sendTempPassword(
-        { name, email }: EmailSendDto,
-        { password: passwordString, passwordExpiredAt }: EmailTempPasswordDto
-    ): Promise<boolean> {
-        try {
-            await this.awsSESService.send({
-                templateName: ENUM_SEND_EMAIL_PROCESS.TEMPORARY_PASSWORD,
-                recipients: [email],
-                sender: this.fromEmail,
-                templateData: {
-                    homeName: this.homeName,
-                    name: title(name),
-                    password: passwordString,
-                    supportEmail: this.supportEmail,
-                    homeUrl: this.homeUrl,
-                    passwordExpiredAt:
-                        this.helperDateService.formatToRFC2822(
-                            passwordExpiredAt
-                        ),
-                },
-            });
-
-            return true;
-        } catch (err: unknown) {
-            this.logger.error(err);
-
-            return false;
-        }
-    }
-
-    async sendResetPassword(
-        { name, email }: EmailSendDto,
-        { expiredDate, url }: EmailResetPasswordDto
-    ): Promise<boolean> {
-        try {
-            await this.awsSESService.send({
-                templateName: ENUM_SEND_EMAIL_PROCESS.RESET_PASSWORD,
-                recipients: [email],
-                sender: this.fromEmail,
-                templateData: {
-                    homeName: this.homeName,
-                    name: title(name),
-                    supportEmail: this.supportEmail,
-                    homeUrl: this.homeUrl,
-                    url: `${this.homeUrl}/${url}`,
-                    expiredDate:
-                        this.helperDateService.formatToIsoDate(expiredDate),
-                },
-            });
-
-            return true;
-        } catch (err: unknown) {
-            this.logger.error(err);
-
-            return false;
-        }
+            },
+            {
+                jobId: `${ENUM_SEND_EMAIL_PROCESS.createByAdmin}-${userId}`,
+                priority: ENUM_QUEUE_PRIORITY.LOW,
+            }
+        );
     }
 
     async sendVerification(
-        { name, email }: EmailSendDto,
-        { expiredAt, reference, otp }: EmailVerificationDto
-    ): Promise<boolean> {
-        try {
-            await this.awsSESService.send({
-                templateName: ENUM_SEND_EMAIL_PROCESS.VERIFICATION,
-                recipients: [email],
-                sender: this.fromEmail,
-                templateData: {
-                    homeName: this.homeName,
-                    name: title(name),
-                    supportEmail: this.supportEmail,
-                    homeUrl: this.homeUrl,
-                    expiredAt:
-                        this.helperDateService.formatToIsoDate(expiredAt),
-                    otp,
-                    reference,
+        userId: string,
+        { email, username }: EmailSendDto,
+        { expiredAt, expiredInMinutes, link, reference }: EmailVerificationDto
+    ): Promise<void> {
+        await this.emailQueue.add(
+            ENUM_SEND_EMAIL_PROCESS.verification,
+            {
+                send: {
+                    email,
+                    username,
                 },
-            });
-
-            return true;
-        } catch (err: unknown) {
-            this.logger.error(err);
-
-            return false;
-        }
+                data: { expiredAt, expiredInMinutes, link, reference },
+            },
+            {
+                jobId: `${ENUM_SEND_EMAIL_PROCESS.verification}-${userId}`,
+                priority: ENUM_QUEUE_PRIORITY.HIGH,
+            }
+        );
     }
 
-    async sendEmailVerified(
-        { name, email }: EmailSendDto,
+    async sendTemporaryPassword(
+        userId: string,
+        { email, username }: EmailSendDto,
+        { password, passwordCreatedAt, passwordExpiredAt }: EmailTempPasswordDto
+    ): Promise<void> {
+        await this.emailQueue.add(
+            ENUM_SEND_EMAIL_PROCESS.temporaryPassword,
+            {
+                send: { email, username },
+                data: { password, passwordCreatedAt, passwordExpiredAt },
+            },
+            {
+                deduplication: {
+                    id: `${ENUM_SEND_EMAIL_PROCESS.temporaryPassword}-${userId}`,
+                    ttl: 1000,
+                },
+                priority: ENUM_QUEUE_PRIORITY.HIGH,
+            }
+        );
+    }
+
+    async sendWelcome(
+        userId: string,
+        { email, username }: EmailSendDto
+    ): Promise<void> {
+        await this.emailQueue.add(
+            ENUM_SEND_EMAIL_PROCESS.welcome,
+            {
+                send: { email, username },
+            },
+            {
+                jobId: `${ENUM_SEND_EMAIL_PROCESS.welcome}-${userId}`,
+                priority: ENUM_QUEUE_PRIORITY.LOW,
+            }
+        );
+    }
+
+    async sendVerified(
+        userId: string,
+        { email, username }: EmailSendDto,
         { reference }: EmailVerifiedDto
-    ): Promise<boolean> {
-        try {
-            await this.awsSESService.send({
-                templateName: ENUM_SEND_EMAIL_PROCESS.EMAIL_VERIFIED,
-                recipients: [email],
-                sender: this.fromEmail,
-                templateData: {
-                    homeName: this.homeName,
-                    name: title(name),
-                    supportEmail: this.supportEmail,
-                    homeUrl: this.homeUrl,
+    ): Promise<void> {
+        await this.emailQueue.add(
+            ENUM_SEND_EMAIL_PROCESS.emailVerified,
+            {
+                send: {
+                    email,
+                    username,
+                },
+                data: {
                     reference,
                 },
-            });
-
-            return true;
-        } catch (err: unknown) {
-            this.logger.error(err);
-
-            return false;
-        }
+            },
+            {
+                jobId: `${ENUM_SEND_EMAIL_PROCESS.emailVerified}-${userId}`,
+                priority: ENUM_QUEUE_PRIORITY.MEDIUM,
+            }
+        );
     }
 
-    async sendMobileNumberVerified(
-        { name, email }: EmailSendDto,
-        { reference, mobileNumber }: EmailMobileNumberVerifiedDto
-    ): Promise<boolean> {
-        try {
-            await this.awsSESService.send({
-                templateName: ENUM_SEND_EMAIL_PROCESS.MOBILE_NUMBER_VERIFIED,
-                recipients: [email],
-                sender: this.fromEmail,
-                templateData: {
-                    homeName: this.homeName,
-                    name: title(name),
-                    supportEmail: this.supportEmail,
-                    homeUrl: this.homeUrl,
-                    reference,
-                    mobileNumber,
+    async sendForgotPassword(
+        userId: string,
+        { email, username }: EmailSendDto,
+        {
+            expiredAt,
+            expiredInMinutes,
+            link,
+            reference,
+        }: EmailForgotPasswordDto,
+        resendInMinutes: number
+    ): Promise<void> {
+        await this.emailQueue.add(
+            ENUM_SEND_EMAIL_PROCESS.forgotPassword,
+            {
+                send: {
+                    email,
+                    username,
                 },
-            });
-
-            return true;
-        } catch (err: unknown) {
-            this.logger.error(err);
-
-            return false;
-        }
+                data: { expiredAt, expiredInMinutes, link, reference },
+            },
+            {
+                deduplication: {
+                    id: `${ENUM_SEND_EMAIL_PROCESS.forgotPassword}-${userId}`,
+                    ttl: resendInMinutes * 60 * 1000,
+                },
+                priority: ENUM_QUEUE_PRIORITY.HIGH,
+            }
+        );
     }
 }

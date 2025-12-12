@@ -1,8 +1,9 @@
 import { HttpStatus } from '@nestjs/common';
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { ClassConstructor } from 'class-transformer';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
-import { ENUM_FILE_MIME } from '@common/file/enums/file.enum';
+import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 
 export interface IDocOptions {
     summary?: string;
@@ -11,13 +12,13 @@ export interface IDocOptions {
     description?: string;
 }
 
-export interface IDocOfOptions<T = any> {
+export interface IDocOfOptions<T = unknown> {
     statusCode: number;
     messagePath: string;
     dto?: ClassConstructor<T>;
 }
 
-export interface IDocDefaultOptions<T = any> extends IDocOfOptions<T> {
+export interface IDocDefaultOptions<T = unknown> extends IDocOfOptions<T> {
     httpStatus: HttpStatus;
 }
 
@@ -29,27 +30,40 @@ export interface IDocAuthOptions {
     apple?: boolean;
 }
 
-export interface IDocRequestOptions<T = any> {
+export interface IDocRequestOptions<T = unknown> {
     params?: ApiParamOptions[];
     queries?: ApiQueryOptions[];
-    bodyType?: ENUM_DOC_REQUEST_BODY_TYPE;
+    bodyType?: EnumDocRequestBodyType;
     dto?: ClassConstructor<T>;
 }
 
-export type IDocRequestFileOptions = Omit<IDocRequestOptions, 'bodyType'>;
+export type IDocRequestFileOptions<T = unknown> = Omit<
+    IDocRequestOptions<T>,
+    'bodyType'
+>;
 
 export interface IDocGuardOptions {
     policy?: boolean;
     role?: boolean;
 }
 
-export interface IDocResponseOptions<T = any> {
+export interface IDocResponseOptions<T = unknown> {
     statusCode?: number;
     httpStatus?: HttpStatus;
     dto?: ClassConstructor<T>;
 }
 
-export interface IDocResponseFileOptions
-    extends Omit<IDocResponseOptions, 'dto' | 'statusCode'> {
-    fileType?: ENUM_FILE_MIME;
+export interface IDocResponsePagingOptions<
+    T = unknown,
+> extends IDocResponseOptions<T> {
+    availableSearch?: string[];
+    availableOrder?: string[];
+    type?: EnumPaginationType;
+}
+
+export interface IDocResponseFileOptions extends Omit<
+    IDocResponseOptions,
+    'dto' | 'statusCode'
+> {
+    extension?: ENUM_FILE_EXTENSION;
 }

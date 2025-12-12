@@ -1,7 +1,7 @@
 export enum ENUM_ROLE_STATUS_CODE_ERROR {
-    NOT_FOUND = 5100,
-    EXIST = 5101,
-    IS_ACTIVE = 5102,
-    USED = 5103,
-    INACTIVE_FORBIDDEN = 5104,
+    notFound = 5060,
+    exist = 5061,
+    predefinedNotFound = 5062,
+    forbidden = 5063,
+    used = 5064,
 }

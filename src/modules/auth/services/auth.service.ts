@@ -1,403 +1,381 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import verifyAppleToken from 'verify-apple-id-token';
-import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { Algorithm } from 'jsonwebtoken';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperService } from '@common/helper/services/helper.service';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
-    IAuthPassword,
-    IAuthPasswordOptions,
-    IAuthSocialApplePayload,
-    IAuthSocialGooglePayload,
+    IAuthSocialPayload,
+    IAuthTokenGenerate,
 } from '@modules/auth/interfaces/auth.interface';
-import { ENUM_AUTH_LOGIN_FROM } from '@modules/auth/enums/auth.enum';
-import { IUserDoc } from '@modules/user/interfaces/user.interface';
-import { AuthLoginResponseDto } from '@modules/auth/dtos/response/auth.login.response.dto';
-import { readFileSync } from 'fs';
-import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { join } from 'path';
+import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
+import { SessionUtil } from '@modules/session/utils/session.util';
+import { IUser } from '@modules/user/interfaces/user.interface';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { EnumUserLoginFrom, EnumUserSignUpWith } from '@prisma/client';
+import { TokenPayload } from 'google-auth-library';
 
+/**
+ * Authentication service handling JWT token operations, session validation,
+ * and social authentication (Google, Apple). Manages token creation, refresh,
+ * and authentication guard validations for secure user access.
+ */
 @Injectable()
 export class AuthService implements IAuthService {
-    // jwt
-    private readonly jwtAccessTokenKid: string;
-    private readonly jwtAccessTokenPrivateKey: string;
-    private readonly jwtAccessTokenPublicKey: string;
-    private readonly jwtAccessTokenExpirationTime: number;
-
-    private readonly jwtRefreshTokenKid: string;
-    private readonly jwtRefreshTokenPrivateKey: string;
-    private readonly jwtRefreshTokenPublicKey: string;
-    private readonly jwtRefreshTokenExpirationTime: number;
-
-    private readonly jwtPrefix: string;
-    private readonly jwtAudience: string;
-    private readonly jwtIssuer: string;
-    private readonly jwtAlgorithm: Algorithm;
-
-    // password
-    private readonly passwordExpiredIn: number;
-    private readonly passwordExpiredTemporary: number;
-    private readonly passwordSaltLength: number;
-
-    private readonly passwordAttempt: boolean;
-    private readonly passwordMaxAttempt: number;
-
-    // apple
-    private readonly appleClientId: string;
-    private readonly appleSignInClientId: string;
-
-    // google
-    private readonly googleClient: OAuth2Client;
-
     constructor(
-        private readonly helperHashService: HelperHashService,
-        private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService,
-        private readonly jwtService: JwtService,
-        private readonly configService: ConfigService
-    ) {
-        this.jwtAccessTokenKid = this.configService.get<string>(
-            'auth.jwt.accessToken.kid'
-        );
-        this.jwtAccessTokenPrivateKey = readFileSync(
-            join(
-                process.cwd(),
-                this.configService.get<string>(
-                    'auth.jwt.accessToken.privateKeyPath'
-                )
-            ),
-            'utf8'
-        );
-        this.jwtAccessTokenPublicKey = readFileSync(
-            join(
-                process.cwd(),
-                this.configService.get<string>(
-                    'auth.jwt.accessToken.publicKeyPath'
-                )
-            ),
-            'utf8'
-        );
-        this.jwtAccessTokenExpirationTime = this.configService.get<number>(
-            'auth.jwt.accessToken.expirationTime'
-        );
+        private readonly helperService: HelperService,
+        private readonly authUtil: AuthUtil,
+        private readonly sessionUtil: SessionUtil,
+        private readonly databaseUtil: DatabaseUtil
+    ) {}
 
-        this.jwtRefreshTokenKid = this.configService.get<string>(
-            'auth.jwt.refreshToken.kid'
-        );
-        this.jwtRefreshTokenPrivateKey = readFileSync(
-            join(
-                process.cwd(),
-                this.configService.get<string>(
-                    'auth.jwt.refreshToken.privateKeyPath'
-                )
-            ),
-            'utf8'
-        );
-        this.jwtRefreshTokenPublicKey = readFileSync(
-            join(
-                process.cwd(),
-                this.configService.get<string>(
-                    'auth.jwt.refreshToken.publicKeyPath'
-                )
-            ),
-            'utf8'
-        );
-        this.jwtRefreshTokenExpirationTime = this.configService.get<number>(
-            'auth.jwt.refreshToken.expirationTime'
-        );
+    /**
+     * Creates both access and refresh tokens for a user session.
+     *
+     * Generates JWT tokens with current timestamp, unique session ID, and unique token identifier (jti)
+     * for session tracking and security validation.
+     *
+     * @param user - The user entity containing profile and role information
+     * @param loginFrom - The source/platform of the login (website, mobile, etc.)
+     * @param loginWith - The authentication method used for sign-up (email, google, apple, etc.)
+     * @returns Token response object containing access token, refresh token, expiration time, jti, and sessionId
+     */
+    createTokens(
+        user: IUser,
+        loginFrom: EnumUserLoginFrom,
+        loginWith: EnumUserSignUpWith
+    ): IAuthTokenGenerate {
+        const loginDate = this.helperService.dateCreate();
 
-        this.jwtPrefix = this.configService.get<string>('auth.jwt.prefix');
-        this.jwtAudience = this.configService.get<string>('auth.jwt.audience');
-        this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer');
-        this.jwtAlgorithm =
-            this.configService.get<Algorithm>('auth.jwt.algorithm');
-
-        // password
-        this.passwordExpiredIn = this.configService.get<number>(
-            'auth.password.expiredIn'
-        );
-        this.passwordExpiredTemporary = this.configService.get<number>(
-            'auth.password.expiredInTemporary'
-        );
-        this.passwordSaltLength = this.configService.get<number>(
-            'auth.password.saltLength'
-        );
-
-        this.passwordAttempt = this.configService.get<boolean>(
-            'auth.password.attempt'
-        );
-        this.passwordMaxAttempt = this.configService.get<number>(
-            'auth.password.maxAttempt'
-        );
-
-        // apple
-        this.appleClientId = this.configService.get<string>(
-            'auth.apple.clientId'
-        );
-        this.appleSignInClientId = this.configService.get<string>(
-            'auth.apple.signInClientId'
-        );
-
-        // google
-        this.googleClient = new OAuth2Client(
-            this.configService.get<string>('auth.google.clientId'),
-            this.configService.get<string>('auth.google.clientSecret')
-        );
-    }
-
-    createAccessToken(
-        subject: string,
-        payload: IAuthJwtAccessTokenPayload
-    ): string {
-        return this.jwtService.sign(payload, {
-            privateKey: this.jwtAccessTokenPrivateKey,
-            expiresIn: this.jwtAccessTokenExpirationTime,
-            audience: this.jwtAudience,
-            issuer: this.jwtIssuer,
-            subject,
-            algorithm: this.jwtAlgorithm,
-            keyid: this.jwtAccessTokenKid,
-        } as JwtSignOptions);
-    }
-
-    validateAccessToken(subject: string, token: string): boolean {
-        try {
-            this.jwtService.verify(token, {
-                publicKey: this.jwtAccessTokenPublicKey,
-                algorithms: [this.jwtAlgorithm],
-                audience: this.jwtAudience,
-                issuer: this.jwtIssuer,
-                subject,
-            });
-
-            return true;
-        } catch {
-            return false;
-        }
-    }
-
-    payload<T = any>(token: string): T {
-        return this.jwtService.decode<T>(token);
-    }
-
-    createRefreshToken(
-        subject: string,
-        payload: IAuthJwtRefreshTokenPayload
-    ): string {
-        return this.jwtService.sign(payload, {
-            privateKey: this.jwtRefreshTokenPrivateKey,
-            expiresIn: this.jwtRefreshTokenExpirationTime,
-            audience: this.jwtAudience,
-            issuer: this.jwtIssuer,
-            subject,
-            algorithm: this.jwtAlgorithm,
-            keyid: this.jwtRefreshTokenKid,
-        } as JwtSignOptions);
-    }
-
-    validateRefreshToken(subject: string, token: string): boolean {
-        try {
-            this.jwtService.verify(token, {
-                publicKey: this.jwtRefreshTokenPublicKey,
-                algorithms: [this.jwtAlgorithm],
-                audience: this.jwtAudience,
-                issuer: this.jwtIssuer,
-                subject,
-            });
-
-            return true;
-        } catch {
-            return false;
-        }
-    }
-
-    validateUser(passwordString: string, passwordHash: string): boolean {
-        return this.helperHashService.bcryptCompare(
-            passwordString,
-            passwordHash
-        );
-    }
-
-    createPayloadAccessToken(
-        data: IUserDoc,
-        session: string,
-        loginDate: Date,
-        loginFrom: ENUM_AUTH_LOGIN_FROM
-    ): IAuthJwtAccessTokenPayload {
-        return {
-            user: data._id,
-            type: data.role.type,
-            role: data.role._id,
-            email: data.email,
-            session,
-            termPolicy: {
-                term: data.termPolicy.term,
-                privacy: data.termPolicy.privacy,
-                marketing: data.termPolicy.marketing,
-                cookies: data.termPolicy.cookies,
-            },
-            verification: {
-                email: data.verification.email,
-                mobileNumber: data.verification.mobileNumber,
-            },
-            loginDate,
-            loginFrom,
-        };
-    }
-
-    createPayloadRefreshToken({
-        user,
-        session,
-        loginFrom,
-        loginDate,
-    }: IAuthJwtAccessTokenPayload): IAuthJwtRefreshTokenPayload {
-        return {
-            user,
-            session,
-            loginFrom,
-            loginDate,
-        };
-    }
-
-    createSalt(length: number): string {
-        return this.helperHashService.randomSalt(length);
-    }
-
-    createPassword(
-        password: string,
-        options?: IAuthPasswordOptions
-    ): IAuthPassword {
-        const salt: string = this.createSalt(this.passwordSaltLength);
-
-        const today = this.helperDateService.create();
-        const passwordExpired: Date = this.helperDateService.forward(
-            today,
-            this.helperDateService.createDuration({
-                seconds: options?.temporary
-                    ? this.passwordExpiredTemporary
-                    : this.passwordExpiredIn,
-            })
-        );
-        const passwordCreated: Date = this.helperDateService.create();
-        const passwordHash = this.helperHashService.bcrypt(password, salt);
-        return {
-            passwordHash,
-            passwordExpired,
-            passwordCreated,
-            salt,
-        };
-    }
-
-    createPasswordRandom(): string {
-        return this.helperStringService.random(10);
-    }
-
-    checkPasswordExpired(passwordExpired: Date): boolean {
-        const today: Date = this.helperDateService.create();
-        const passwordExpiredConvert: Date =
-            this.helperDateService.create(passwordExpired);
-
-        return today > passwordExpiredConvert;
-    }
-
-    createToken(user: IUserDoc, session: string): AuthLoginResponseDto {
-        const loginDate = this.helperDateService.create();
-        const roleType = user.role.type;
-
+        const sessionId = this.databaseUtil.createId();
+        const jti = this.authUtil.generateJti();
         const payloadAccessToken: IAuthJwtAccessTokenPayload =
-            this.createPayloadAccessToken(
+            this.authUtil.createPayloadAccessToken(
                 user,
-                session,
+                sessionId,
                 loginDate,
-                ENUM_AUTH_LOGIN_FROM.CREDENTIAL
+                loginFrom,
+                loginWith
             );
-        const accessToken: string = this.createAccessToken(
-            user._id,
+        const accessToken: string = this.authUtil.createAccessToken(
+            user.id,
+            jti,
             payloadAccessToken
         );
 
         const payloadRefreshToken: IAuthJwtRefreshTokenPayload =
-            this.createPayloadRefreshToken(payloadAccessToken);
-        const refreshToken: string = this.createRefreshToken(
-            user._id,
+            this.authUtil.createPayloadRefreshToken(payloadAccessToken);
+        const refreshToken: string = this.authUtil.createRefreshToken(
+            user.id,
+            jti,
             payloadRefreshToken
         );
 
-        return {
-            tokenType: this.jwtPrefix,
-            roleType,
-            expiresIn: this.jwtAccessTokenExpirationTime,
+        const tokens: AuthTokenResponseDto = {
+            tokenType: this.authUtil.jwtPrefix,
+            roleType: user.role.type,
+            expiresIn: this.authUtil.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,
             refreshToken,
         };
+
+        return {
+            tokens,
+            jti,
+            sessionId,
+        };
     }
 
+    /**
+     * Refreshes an access token using a valid refresh token.
+     *
+     * Extracts session information from refresh token to generate new access token with a newly generated
+     * token identifier (jti). Also generates a new refresh token with adjusted expiration time based on remaining validity.
+     *
+     * @param user - The user entity containing profile and role information
+     * @param refreshTokenFromRequest - The existing refresh token to extract session data from
+     * @returns Token response object containing new access token, new refresh token with adjusted expiry, new jti, and sessionId
+     */
     refreshToken(
-        user: IUserDoc,
+        user: IUser,
         refreshTokenFromRequest: string
-    ): AuthLoginResponseDto {
-        const roleType = user.role.type;
-
-        const payloadRefreshToken = this.payload<IAuthJwtRefreshTokenPayload>(
-            refreshTokenFromRequest
-        );
-        const payloadAccessToken: IAuthJwtAccessTokenPayload =
-            this.createPayloadAccessToken(
-                user,
-                payloadRefreshToken.session,
-                payloadRefreshToken.loginDate,
-                payloadRefreshToken.loginFrom
+    ): IAuthTokenGenerate {
+        const { sessionId, loginAt, loginFrom, loginWith } =
+            this.authUtil.payloadToken<IAuthJwtRefreshTokenPayload>(
+                refreshTokenFromRequest
             );
-        const accessToken: string = this.createAccessToken(
-            user._id,
+
+        const jti = this.authUtil.generateJti();
+        const payloadAccessToken: IAuthJwtAccessTokenPayload =
+            this.authUtil.createPayloadAccessToken(
+                user,
+                sessionId,
+                loginAt,
+                loginFrom,
+                loginWith
+            );
+        const accessToken: string = this.authUtil.createAccessToken(
+            user.id,
+            jti,
             payloadAccessToken
         );
 
-        return {
-            tokenType: this.jwtPrefix,
-            roleType,
-            expiresIn: this.jwtAccessTokenExpirationTime,
+        const newPayloadRefreshToken: IAuthJwtRefreshTokenPayload =
+            this.authUtil.createPayloadRefreshToken(payloadAccessToken);
+
+        const today = this.helperService.dateCreate();
+        const expiredAt = this.helperService.dateCreateFromTimestamp(
+            newPayloadRefreshToken.exp * 1000
+        );
+        const newRefreshTokenExpireInSeconds = this.helperService.dateDiff(
+            today,
+            expiredAt
+        );
+        const newRefreshToken: string = this.authUtil.createRefreshToken(
+            user.id,
+            jti,
+            newPayloadRefreshToken,
+            newRefreshTokenExpireInSeconds.seconds
+        );
+
+        const tokens: AuthTokenResponseDto = {
+            tokenType: this.authUtil.jwtPrefix,
+            roleType: user.role.type,
+            expiresIn: this.authUtil.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,
-            refreshToken: refreshTokenFromRequest,
+            refreshToken: newRefreshToken,
         };
-    }
-
-    getPasswordAttempt(): boolean {
-        return this.passwordAttempt;
-    }
-
-    getPasswordMaxAttempt(): number {
-        return this.passwordMaxAttempt;
-    }
-
-    async appleGetTokenInfo(idToken: string): Promise<IAuthSocialApplePayload> {
-        const payload = await verifyAppleToken({
-            idToken,
-            clientId: [this.appleClientId, this.appleSignInClientId],
-        });
-
-        return { email: payload.email, emailVerified: payload.email_verified };
-    }
-
-    async googleGetTokenInfo(
-        idToken: string
-    ): Promise<IAuthSocialGooglePayload> {
-        const login: LoginTicket = await this.googleClient.verifyIdToken({
-            idToken: idToken,
-        });
-        const payload: TokenPayload = login.getPayload();
 
         return {
-            email: payload.email,
-            emailVerified: true,
-            name: payload.name,
-            photo: payload.picture,
+            tokens,
+            jti,
+            sessionId,
         };
+    }
+
+    /**
+     * Validates the JWT access token strategy for Passport.
+     *
+     * Verifies that the access token payload contains required fields (sub, sessionId, jti)
+     * and validates the session exists with matching token identifier to prevent session hijacking.
+     *
+     * @param payload - The decoded JWT access token payload
+     * @returns Promise resolving to the validated payload if all checks pass
+     * @throws {UnauthorizedException} When required fields are missing, invalid type, or session validation fails
+     *
+     * @see {@link AuthJwtAccessStrategy} for the Passport strategy that calls this method
+     */
+    async validateJwtAccessStrategy(
+        payload: IAuthJwtAccessTokenPayload
+    ): Promise<IAuthJwtAccessTokenPayload> {
+        const { sub, sessionId, jti } = payload;
+
+        if (
+            !sub ||
+            !sessionId ||
+            typeof sub !== 'string' ||
+            !jti ||
+            typeof jti !== 'string'
+        ) {
+            throw new UnauthorizedException({
+                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        }
+
+        const isValidSession = await this.sessionUtil.getLogin(sub, sessionId);
+        if (!isValidSession || jti !== isValidSession.jti) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.forbidden,
+                message: 'session.error.forbidden',
+            });
+        }
+
+        return payload;
+    }
+
+    /**
+     * Validates the access token guard callback from Passport.
+     *
+     * Handles error cases that may occur during token verification and returns the authenticated user.
+     * Throws an exception if authentication fails or user is not present.
+     *
+     * @param err - Any error that occurred during token verification
+     * @param user - The authenticated user object from the decoded token
+     * @param info - Additional information from the verification process
+     * @returns Promise resolving to the authenticated user if validation succeeds
+     * @throws {UnauthorizedException} When error exists, user is not present, or verification fails
+     *
+     * @see {@link AuthJwtAccessStrategy} for the Passport strategy that calls this guard
+     */
+    async validateJwtAccessGuard(
+        err: Error,
+        user: IAuthJwtAccessTokenPayload,
+        info: Error
+    ): Promise<IAuthJwtAccessTokenPayload> {
+        if (err || !user) {
+            throw new UnauthorizedException({
+                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                message: 'auth.error.accessTokenUnauthorized',
+                _error: err ? err : info,
+            });
+        }
+
+        return user;
+    }
+
+    /**
+     * Validates the JWT refresh token strategy for Passport.
+     *
+     * Verifies that the refresh token payload contains required fields (sub, sessionId, jti)
+     * and validates the session exists with matching token identifier to prevent session hijacking.
+     *
+     * @param payload - The decoded JWT refresh token payload
+     * @returns Promise resolving to the validated payload if all checks pass
+     * @throws {UnauthorizedException} When required fields are missing, invalid type, or session validation fails
+     *
+     * @see {@link AuthJwtRefreshStrategy} for the Passport strategy that calls this method
+     */
+    async validateJwtRefreshStrategy(
+        payload: IAuthJwtRefreshTokenPayload
+    ): Promise<IAuthJwtRefreshTokenPayload> {
+        const { sub, sessionId, jti } = payload;
+        if (
+            !sub ||
+            !sessionId ||
+            typeof sub !== 'string' ||
+            !jti ||
+            typeof jti !== 'string'
+        ) {
+            throw new UnauthorizedException({
+                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+                message: 'auth.error.refreshTokenUnauthorized',
+            });
+        }
+
+        const isValidSession = await this.sessionUtil.getLogin(sub, sessionId);
+        if (!isValidSession || jti !== isValidSession.jti) {
+            throw new UnauthorizedException({
+                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.forbidden,
+                message: 'session.error.forbidden',
+            });
+        }
+
+        return payload;
+    }
+
+    /**
+     * Validates the refresh token guard callback from Passport.
+     *
+     * Handles error cases that may occur during token verification and returns the authenticated user.
+     * Throws an exception if authentication fails or user is not present.
+     *
+     * @param err - Any error that occurred during token verification
+     * @param user - The authenticated user object from the decoded token
+     * @param info - Additional information from the verification process
+     * @returns Promise resolving to the authenticated user if validation succeeds
+     * @throws {UnauthorizedException} When error exists, user is not present, or verification fails
+     *
+     */
+    async validateJwtRefreshGuard(
+        err: Error,
+        user: IAuthJwtRefreshTokenPayload,
+        info: Error
+    ): Promise<IAuthJwtRefreshTokenPayload> {
+        if (err || !user) {
+            throw new UnauthorizedException({
+                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+                message: 'auth.error.refreshTokenUnauthorized',
+                _error: err ? err : info,
+            });
+        }
+
+        return user;
+    }
+
+    /**
+     * Validates the Apple social authentication token from the request headers.
+     *
+     * Extracts the Apple ID token from Authorization header, verifies it with Apple's servers,
+     * and attaches user data to the request. Sets verified email and email verification status
+     * in the request user object.
+     *
+     * @param request - The HTTP request object containing Authorization header with Apple ID token in format "Bearer {token}"
+     * @returns Promise resolving to true if authentication is successful
+     * @throws {UnauthorizedException} When token is missing, malformed, header format is incorrect, or verification with Apple fails
+     */
+    async validateOAuthAppleGuard(
+        request: IRequestApp<IAuthSocialPayload>
+    ): Promise<boolean> {
+        const requestHeaders = this.authUtil.extractHeaderApple(request);
+        if (requestHeaders.length !== 2) {
+            throw new UnauthorizedException({
+                statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
+                message: 'auth.error.socialAppleRequired',
+            });
+        }
+
+        try {
+            const payload = await this.authUtil.verifyApple(requestHeaders[1]);
+
+            request.user = {
+                email: payload.email,
+                emailVerified: payload.email_verified,
+            };
+
+            return true;
+        } catch (err: unknown) {
+            throw new UnauthorizedException({
+                statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
+                message: 'auth.error.socialAppleInvalid',
+                _error: err,
+            });
+        }
+    }
+
+    /**
+     * Validates the Google social authentication token from the request headers.
+     *
+     * Extracts the Google ID token from Authorization header, verifies it using Google's OAuth2 client,
+     * and attaches user data to the request. Sets verified email and email verification status
+     * in the request user object.
+     *
+     * @param request - The HTTP request object containing Authorization header with Google ID token in format "Bearer {token}"
+     * @returns Promise resolving to true if authentication is successful
+     * @throws {UnauthorizedException} When token is missing, malformed, header format is incorrect, or verification with Google fails
+     */
+    async validateOAuthGoogleGuard(
+        request: IRequestApp<IAuthSocialPayload>
+    ): Promise<boolean> {
+        const requestHeaders = this.authUtil.extractHeaderGoogle(request);
+
+        if (requestHeaders.length !== 2) {
+            throw new UnauthorizedException({
+                statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
+                message: 'auth.error.socialGoogleRequired',
+            });
+        }
+
+        try {
+            const payload: TokenPayload = await this.authUtil.verifyGoogle(
+                requestHeaders[1]
+            );
+
+            request.user = {
+                email: payload.email,
+                emailVerified: payload.email_verified,
+            };
+
+            return true;
+        } catch (err: unknown) {
+            throw new UnauthorizedException({
+                statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
+                message: 'auth.error.socialGoogleInvalid',
+                _error: err,
+            });
+        }
     }
 }

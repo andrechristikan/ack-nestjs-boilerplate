@@ -1,21 +1,28 @@
 import { registerAs } from '@nestjs/config';
 
+export interface IConfigRedis {
+    cache: {
+        url: string;
+        namespace: string;
+        ttlInMs: number;
+    };
+    queue: {
+        url: string;
+        namespace: string;
+    };
+}
+
 export default registerAs(
     'redis',
-    (): Record<string, any> => ({
-        cached: {
-            host: process.env.REDIS_HOST,
-            port: Number.parseInt(process.env.REDIS_PORT),
-            password: process.env.REDIS_PASSWORD,
-            username: process.env.REDIS_USERNAME,
-            ttl: 5 * 60 * 1000, // 5 mins
-            max: 10,
+    (): IConfigRedis => ({
+        cache: {
+            url: process.env.CACHE_REDIS_URL ?? 'redis://localhost:6379',
+            namespace: 'cache',
+            ttlInMs: 5 * 60 * 1000,
         },
         queue: {
-            host: process.env.REDIS_HOST,
-            port: Number.parseInt(process.env.REDIS_PORT),
-            password: process.env.REDIS_PASSWORD,
-            username: process.env.REDIS_USERNAME,
+            url: process.env.QUEUE_REDIS_URL ?? 'redis://localhost:6379',
+            namespace: 'queue',
         },
     })
 );

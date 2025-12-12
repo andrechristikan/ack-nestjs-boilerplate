@@ -1,0 +1,12 @@
+ignoredBuiltDependencies:
+  - '@scarf/scarf'
+  - '@sentry-internal/node-cpu-profiler'
+  - msgpackr-extract
+  - unrs-resolver
+
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@swc/core'
+  - prisma

@@ -1,4 +1,0 @@
-export enum ENUM_VERIFICATION_TYPE {
-    MOBILE_NUMBER = 'MOBILE_NUMBER',
-    EMAIL = 'EMAIL',
-}

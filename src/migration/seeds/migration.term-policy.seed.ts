@@ -1,108 +1,78 @@
-import { Command } from 'nestjs-command';
-import { Injectable } from '@nestjs/common';
-import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
-import {
-    ENUM_TERM_POLICY_STATUS,
-    ENUM_TERM_POLICY_TYPE,
-} from '@modules/term-policy/enums/term-policy.enum';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
-import { Types } from 'mongoose';
-import { CountryDoc } from '@modules/country/repository/entities/country.entity';
-import { CountryService } from '@modules/country/services/country.service';
-import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
+import { migrationTermPolicyData } from '@migration/data/migration.term-policy.data';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { EnumTermPolicyStatus } from '@prisma/client';
+import { Command } from 'nest-commander';
 
-@Injectable()
-export class MigrationTermPolicySeed {
+@Command({
+    name: 'termPolicy',
+    description: 'Seed/Remove Term Policies',
+    allowUnknownOptions: false,
+})
+export class MigrationTermPolicySeed
+    extends MigrationSeedBase
+    implements IMigrationSeed
+{
+    private readonly logger = new Logger(MigrationTermPolicySeed.name);
+
+    private readonly env: EnumAppEnvironment;
+    private readonly termPolicies: TermPolicyCreateRequestDto[] = [];
+
     constructor(
-        private readonly countryService: CountryService,
-        private readonly termPolicyService: TermPolicyService
-    ) {}
+        private readonly databaseService: DatabaseService,
+        private readonly configService: ConfigService,
+        private readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
 
-    @Command({
-        command: 'seed:termPolicy',
-        describe: 'seed terms policy',
-    })
-    async seeds(): Promise<void> {
-        try {
-            const country: CountryDoc =
-                await this.countryService.findOneByAlpha2('ID');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env');
+        this.termPolicies = migrationTermPolicyData[this.env];
+    }
 
-            // dummy data for term policies
-            await this.termPolicyService.createMany(
-                country._id,
-                {
-                    [ENUM_TERM_POLICY_TYPE.TERM]: [
-                        {
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
-                            bucket: 'private-bucket',
-                            completedUrl: 'https://example.com/terms-en.pdf',
-                            extension: 'pdf',
-                            key: 'terms-en.pdf',
-                            mime: 'application/pdf',
-                            size: new Types.Decimal128('123456'),
-                            cdnUrl: 'https://cdn.example.com/terms-en.pdf',
-                            access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
+    async seed(): Promise<void> {
+        this.logger.log('Seeding TermPolicies...');
+        this.logger.log(
+            `Found ${this.termPolicies.length} TermPolicies to seed.`
+        );
+
+        await this.databaseService.$transaction(
+            this.termPolicies.map(termPolicy =>
+                this.databaseService.termPolicy.upsert({
+                    where: {
+                        type_version: {
+                            type: termPolicy.type,
+                            version: termPolicy.version,
                         },
-                    ],
-                    [ENUM_TERM_POLICY_TYPE.PRIVACY]: [
-                        {
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
-                            bucket: 'private-bucket',
-                            completedUrl: 'https://example.com/privacy-en.pdf',
-                            extension: 'pdf',
-                            key: 'privacy-en.pdf',
-                            mime: 'application/pdf',
-                            size: new Types.Decimal128('123456'),
-                            cdnUrl: 'https://cdn.example.com/privacy-en.pdf',
-                            access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
-                        },
-                    ],
-                    [ENUM_TERM_POLICY_TYPE.COOKIES]: [
-                        {
-                            bucket: 'private-bucket',
-                            completedUrl: 'https://example.com/cookies-en.pdf',
-                            extension: 'pdf',
-                            key: 'cookies-en.pdf',
-                            mime: 'application/pdf',
-                            size: new Types.Decimal128('123456'),
-                            cdnUrl: 'https://cdn.example.com/cookies-en.pdf',
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
-                            access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
-                        },
-                    ],
-                    [ENUM_TERM_POLICY_TYPE.MARKETING]: [
-                        {
-                            bucket: 'private-bucket',
-                            completedUrl:
-                                'https://example.com/marketing-en.pdf',
-                            extension: 'pdf',
-                            key: 'marketing-en.pdf',
-                            mime: 'application/pdf',
-                            size: new Types.Decimal128('123456'),
-                            cdnUrl: 'https://cdn.example.com/marketing-en.pdf',
-                            language: ENUM_MESSAGE_LANGUAGE.EN,
-                            access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
-                        },
-                    ],
-                },
-                ENUM_TERM_POLICY_STATUS.PUBLISHED
-            );
-        } catch (err: any) {
-            throw new Error(err);
-        }
+                    },
+                    create: {
+                        ...termPolicy,
+                        contents: this.databaseUtil.toPlainArray(
+                            termPolicy.contents
+                        ),
+                        status: EnumTermPolicyStatus.published,
+                    },
+                    update: {},
+                })
+            )
+        );
+
+        this.logger.log('TermPolicies seeded successfully.');
+
         return;
     }
 
-    @Command({
-        command: 'remove:termPolicy',
-        describe: 'remove terms',
-    })
     async remove(): Promise<void> {
-        try {
-            await this.termPolicyService.deleteMany();
-        } catch (err: any) {
-            throw new Error(err);
-        }
+        this.logger.log('Removing back TermPolicies...');
+
+        await this.databaseService.termPolicy.deleteMany({});
+
+        this.logger.log('TermPolicies removed successfully.');
 
         return;
     }

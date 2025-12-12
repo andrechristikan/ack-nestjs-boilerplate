@@ -1,74 +1,118 @@
 import { Injectable } from '@nestjs/common';
 import {
-    getMetadataStorage,
-    registerDecorator,
     ValidationArguments,
     ValidationOptions,
     ValidatorConstraint,
     ValidatorConstraintInterface,
+    getMetadataStorage,
+    registerDecorator,
 } from 'class-validator';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { MessageService } from '@common/message/services/message.service';
+import { HelperService } from '@common/helper/services/helper.service';
 
-@ValidatorConstraint({ async: true })
+/**
+ * Custom email validation constraint with enhanced validation and detailed error messaging.
+ * Supports optional fields and provides localized error messages.
+ */
+@ValidatorConstraint({ async: false })
 @Injectable()
 export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
-    constructor(
-        private readonly helperStringService: HelperStringService,
-        private readonly messageService: MessageService
-    ) {}
+    constructor(private readonly helperService: HelperService) {}
 
+    /**
+     * Validates the email value using comprehensive email validation rules.
+     *
+     * @param value - The email string to validate
+     * @param validationArguments - Optional validation arguments containing context
+     * @returns True if email is valid or field is optional and empty
+     */
     validate(
         value: string,
         validationArguments?: ValidationArguments
     ): boolean {
         if (
-            (value === null || value === undefined || value === '') &&
+            this.isEmptyValue(value) &&
             this.isPropertyOptional(validationArguments)
         ) {
             return true;
         }
 
-        const validated = this.helperStringService.checkCustomEmail(value);
-
-        return validated.validated;
-    }
-
-    defaultMessage(validationArguments?: ValidationArguments): string {
-        const validated = this.helperStringService.checkCustomEmail(
-            validationArguments.value
-        );
-
-        return this.messageService.setMessage(validated.messagePath);
-    }
-
-    private isPropertyOptional(
-        validationArguments?: ValidationArguments
-    ): boolean {
-        if (!validationArguments || !validationArguments.object) {
+        if (this.isEmptyValue(value)) {
             return false;
         }
 
-        // Access the validation metadata
-        const validationMetadatas =
-            getMetadataStorage().getTargetValidationMetadatas(
-                validationArguments.object.constructor,
-                '', // Property name is empty string to get all properties
-                false,
-                false
-            );
+        const validationResult = this.helperService.checkEmail(value);
+        return validationResult.validated;
+    }
 
-        // Find optional decorators on this property
-        return validationMetadatas.some(
-            metadata =>
-                metadata.propertyName === validationArguments.property &&
-                metadata.type === 'conditionalValidation'
+    /**
+     * Generates localized error message for invalid email values.
+     *
+     * @param validationArguments - Validation arguments containing the invalid value
+     * @returns Localized error message string
+     */
+    defaultMessage(validationArguments?: ValidationArguments): string {
+        if (!validationArguments?.value) {
+            return 'request.error.email.required';
+        }
+
+        const validationResult = this.helperService.checkEmail(
+            validationArguments.value
         );
+        return validationResult.messagePath ?? 'request.error.email.invalid';
+    }
+
+    /**
+     * Checks if a value is considered empty (null, undefined, or empty string).
+     *
+     * @param value - The value to check
+     * @returns True if the value is empty, false otherwise
+     */
+    private isEmptyValue(value: unknown): boolean {
+        return value === null || value === undefined || value === '';
+    }
+
+    /**
+     * Determines if a property is marked as optional using validation decorators.
+     *
+     * @param validationArguments - Validation arguments containing property metadata
+     * @returns True if the property is optional, false otherwise
+     */
+    private isPropertyOptional(
+        validationArguments?: ValidationArguments
+    ): boolean {
+        if (!validationArguments?.object || !validationArguments?.property) {
+            return false;
+        }
+
+        try {
+            const validationMetadatas =
+                getMetadataStorage().getTargetValidationMetadatas(
+                    validationArguments.object.constructor,
+                    '',
+                    false,
+                    false
+                );
+
+            return validationMetadatas.some(
+                metadata =>
+                    metadata.propertyName === validationArguments.property &&
+                    (metadata.type === 'conditionalValidation' ||
+                        metadata.type === 'isOptional')
+            );
+        } catch (_error) {
+            return false;
+        }
     }
 }
 
+/**
+ * Custom email validation decorator with enhanced validation.
+ *
+ * @param validationOptions - Standard class-validator validation options
+ * @returns Property decorator function
+ */
 export function IsCustomEmail(validationOptions?: ValidationOptions) {
-    return function (object: Record<string, any>, propertyName: string): void {
+    return function (object: unknown, propertyName: string): void {
         registerDecorator({
             name: 'IsCustomEmail',
             target: object.constructor,

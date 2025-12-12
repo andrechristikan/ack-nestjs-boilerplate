@@ -4,7 +4,8 @@ import {
     DocAuth,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { PasswordHistoryListResponseDto } from '@modules/password-history/dtos/response/password-history.list.response.dto';
+import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 
 export function PasswordHistorySharedListDoc(): MethodDecorator {
     return applyDecorators(
@@ -15,11 +16,9 @@ export function PasswordHistorySharedListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponsePaging<PasswordHistoryListResponseDto>(
-            'passwordHistory.list',
-            {
-                dto: PasswordHistoryListResponseDto,
-            }
-        )
+        DocResponsePaging<PasswordHistoryResponseDto>('passwordHistory.list', {
+            dto: PasswordHistoryResponseDto,
+            type: EnumPaginationType.cursor,
+        })
     );
 }

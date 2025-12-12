@@ -4,10 +4,31 @@
     "module": {
         "type": "commonjs"
     },
+    "exclude": [
+        "node_modules",
+        "dist",
+        "coverage",
+        "logs",
+        "keys",
+        ".warmup",
+        ".nyc_output",
+        "src/metadata.ts",
+        "src/swagger.json",
+        "generated"
+    ],
     "jsc": {
         "baseUrl": "./",
         "paths": {
-            "src/*": ["src/*"]
+            "@app/*": ["src/app/*"],
+            "@common/*": ["src/common/*"],
+            "@configs/*": ["src/configs/*"],
+            "@config": ["src/configs/index.ts"],
+            "@modules/*": ["src/modules/*"],
+            "@routes/*": ["src/router/routes/*"],
+            "@router": ["src/router/router.module.ts"],
+            "@workers/*": ["src/worker/*"],
+            "@migration/*": ["src/migration/*"],
+            "@test/*": ["test/*"]
         },
         "target": "esnext",
         "parser": {
@@ -20,13 +41,5 @@
             "decoratorMetadata": true
         }
     },
-    "minify": false,
-    "exclude": [
-        "node_modules",
-        "dist",
-        "coverage",
-        "templates",
-        "src/metadata.ts",
-        "logs"
-    ]
+    "minify": false
 }

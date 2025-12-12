@@ -1,55 +1,32 @@
-import { VerificationModule } from '@modules/verification/verification.module';
 import { Module } from '@nestjs/common';
-import { CommandModule } from 'nestjs-command';
 import { CommonModule } from '@common/common.module';
 import { MigrationApiKeySeed } from '@migration/seeds/migration.api-key.seed';
-import { MigrationCountrySeed } from '@migration/seeds/migration.country.seed';
-import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
-import { MigrationTemplateSeed } from '@migration/seeds/migration.template.seed';
-import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
-import { ActivityModule } from '@modules/activity/activity.module';
-import { ApiKeyModule } from '@modules/api-key/api-key.module';
-import { AuthModule } from '@modules/auth/auth.module';
 import { CountryModule } from '@modules/country/country.module';
-import { EmailModule } from '@modules/email/email.module';
-import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
-import { RoleModule } from '@modules/role/role.module';
-import { SessionModule } from '@modules/session/session.module';
 import { UserModule } from '@modules/user/user.module';
-import { MigrationSettingFeatureSeed } from '@migration/seeds/migration.settings.seed';
-import { SettingModule } from '@modules/setting/setting.module';
+import { MigrationCountrySeed } from '@migration/seeds/migration.country.seed';
+import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-flag.seed';
+import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
-import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
-import { AwsModule } from '@modules/aws/aws.module';
+import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
+import { MigrationTemplateEmailSeed } from '@migration/seeds/migration.template-email.seed';
+import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
+import { EmailModule } from '@modules/email/email.module';
 
-// TODO: (v8) CHANGE WITH COMMANDER
+/**
+ * Migration module that provides database seeding functionality.
+ * Contains seed providers for API keys, countries, roles, users, and feature flags.
+ */
 @Module({
-    imports: [
-        CommonModule,
-        CommandModule,
-        ApiKeyModule,
-        CountryModule,
-        EmailModule,
-        AuthModule,
-        RoleModule,
-        UserModule,
-        ActivityModule,
-        PasswordHistoryModule,
-        SessionModule,
-        CountryModule,
-        VerificationModule,
-        SettingModule,
-        TermPolicyModule,
-        AwsModule,
-    ],
+    imports: [CommonModule, CountryModule, UserModule, EmailModule],
     providers: [
         MigrationApiKeySeed,
         MigrationCountrySeed,
-        MigrationUserSeed,
+        MigrationFeatureFlagSeed,
         MigrationRoleSeed,
-        MigrationTemplateSeed,
-        MigrationSettingFeatureSeed,
         MigrationTermPolicySeed,
+        MigrationUserSeed,
+        MigrationTemplateEmailSeed,
+        MigrationTemplateTermPolicySeed,
     ],
     exports: [],
 })

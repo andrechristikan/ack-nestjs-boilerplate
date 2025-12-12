@@ -1,0 +1,130 @@
+
+
+# Required Variables:
+# - AWS_ECR_REPO_URL
+#
+# Required Secrets:
+# - AWS_ACCESS_KEY_ID
+# - AWS_SECRET_ACCESS_KEY
+# - AWS_REGION
+# - PROD_ECS_CLUSTER_NAME
+# - PROD_ECS_SERVICE_NAME
+# - DEV_ECS_CLUSTER_NAME
+# - DEV_ECS_SERVICE_NAME
+# - STAGING_ECS_CLUSTER_NAME
+# - STAGING_ECS_SERVICE_NAME
+
+name: ReleaseWithAwsEcs
+on:
+    workflow_dispatch:
+    # push:
+    #     branches:
+    #         - main
+    #         - staging
+    #         - development
+
+env:
+    DOCKERFILE: ci/dockerfile
+
+jobs:
+    build_image:
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                include:
+                    - branch: main
+                      env: production
+                    - branch: development
+                      env: development
+                    - branch: staging
+                      env: staging
+
+        steps:
+            - name: Git checkout
+              uses: actions/checkout@v4
+
+            - name: Get short sha commit
+              id: git
+              run: |
+                  echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
+
+            - name: Get latest version
+              id: version
+              uses: martinbeentjes/npm-get-version-action@main
+
+            - name: Log info
+              run: |
+                  echo Branch name is: ${{ github.ref_name }}
+                  echo Short sha: ${{ steps.git.outputs.short_sha }}
+                  echo Version is: ${{ steps.version.outputs.current-version }}
+
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+              
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+
+            - name: Build & Push
+              if: ${{ github.ref_name == matrix.branch }}
+              run: |
+                  docker build --build-arg NODE_ENV=${{ matrix.env }} -t ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
+                  docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}
+
+    deploy:
+        needs: [build_image]
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                include:
+                    - branch: main
+                      cluster: ${{ secrets.PROD_ECS_CLUSTER_NAME }}
+                      service: ${{ secrets.PROD_ECS_SERVICE_NAME }}
+                    - branch: development
+                      cluster: ${{ secrets.DEV_ECS_CLUSTER_NAME }}
+                      service: ${{ secrets.DEV_ECS_SERVICE_NAME }}
+                    - branch: staging
+                      cluster: ${{ secrets.STAGING_ECS_CLUSTER_NAME }}
+                      service: ${{ secrets.STAGING_ECS_SERVICE_NAME }}
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Update ECS Service
+              if: ${{ github.ref_name == matrix.branch }}
+              run: |
+                  aws ecs update-service \
+                      --cluster ${{ matrix.cluster }} \
+                      --service ${{ matrix.service }} \
+                      --force-new-deployment \
+                      --region ${{ secrets.AWS_REGION }}
+
+            - name: Wait for ECS Service Stable
+              if: ${{ github.ref_name == matrix.branch }}
+              run: |
+                  aws ecs wait services-stable \
+                      --cluster ${{ matrix.cluster }} \
+                      --services ${{ matrix.service }} \
+                      --region ${{ secrets.AWS_REGION }}

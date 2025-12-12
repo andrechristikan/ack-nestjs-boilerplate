@@ -1,88 +1,77 @@
-import { TermPolicyDoc } from '@modules/term-policy/repository/entities/term-policy.entity';
+import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import {
-    IDatabaseCreateManyOptions,
-    IDatabaseCreateOptions,
-    IDatabaseDeleteOptions,
-    IDatabaseExistsOptions,
-    IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
-    IDatabaseGetTotalOptions,
-    IDatabaseSaveOptions,
-} from '@common/database/interfaces/database.interface';
+    IPaginationIn,
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import {
-    ENUM_TERM_POLICY_STATUS,
-    ENUM_TERM_POLICY_TYPE,
-} from '@modules/term-policy/enums/term-policy.enum';
+    IRequestApp,
+    IRequestLog,
+} from '@common/request/interfaces/request.interface';
 import {
-    ITermPolicyDoc,
-    ITermPolicyEntity,
-} from '@modules/term-policy/interfaces/term-policy.interface';
-import { ClassTransformOptions } from 'class-transformer';
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
+import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
+import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
+import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
-import { TermPolicyUpdateDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.update-document.request';
-import { TermPolicyDocumentEntity } from '@modules/term-policy/repository/entities/term-policy-document.entity';
+import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
+import { EnumTermPolicyType } from '@prisma/client';
 
 export interface ITermPolicyService {
-    findAll(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<ITermPolicyDoc[]>;
-    getTotal(
-        find?: Record<string, any>,
-        options?: IDatabaseGetTotalOptions
-    ): Promise<number>;
-    findOnePublished(
-        type: ENUM_TERM_POLICY_TYPE,
-        country: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<TermPolicyDoc>;
-    findOneLatest(
-        type: ENUM_TERM_POLICY_TYPE,
-        country: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<TermPolicyDoc>;
-    mapList(
-        policies: ITermPolicyDoc[] | ITermPolicyEntity[],
-        options?: ClassTransformOptions
-    ): TermPolicyResponseDto[];
-    exist(
-        type: ENUM_TERM_POLICY_TYPE,
-        country: string,
-        option?: IDatabaseExistsOptions
-    ): Promise<boolean>;
-    findOneById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<TermPolicyDoc>;
-    findOne(
-        find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
-    ): Promise<TermPolicyDoc>;
-    create(
-        country: string,
-        type: ENUM_TERM_POLICY_TYPE,
-        urls: (AwsS3Dto & TermPolicyUpdateDocumentRequestDto)[],
-        createdBy: string,
-        version: number,
-        options?: IDatabaseCreateOptions
-    ): Promise<TermPolicyDoc>;
-    updateDocument(
-        repository: TermPolicyDoc,
-        language: ENUM_MESSAGE_LANGUAGE,
-        { size, ...aws }: AwsS3Dto,
-        options?: IDatabaseSaveOptions
-    ): Promise<TermPolicyDoc>;
-    delete(
-        repository: TermPolicyDoc,
-        options?: IDatabaseDeleteOptions
-    ): Promise<TermPolicyDoc>;
-    createMany(
-        country: string,
-        types: Record<ENUM_TERM_POLICY_TYPE, TermPolicyDocumentEntity[]>,
-        status: ENUM_TERM_POLICY_STATUS,
-        options?: IDatabaseCreateManyOptions
+    validateTermPolicyGuard(
+        request: IRequestApp,
+        requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void>;
-    deleteMany(options?: IDatabaseDeleteOptions): Promise<void>;
+    getList(
+        pagination: IPaginationQueryOffsetParams,
+        type?: Record<string, IPaginationIn>,
+        status?: Record<string, IPaginationIn>
+    ): Promise<IResponsePagingReturn<TermPolicyResponseDto>>;
+    getListPublished(
+        pagination: IPaginationQueryCursorParams,
+        type?: Record<string, IPaginationIn>
+    ): Promise<IResponsePagingReturn<TermPolicyResponseDto>>;
+    getListUserAccepted(
+        userId: string,
+        pagination: IPaginationQueryCursorParams
+    ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>>;
+    userAccept(
+        userId: string,
+        { type }: TermPolicyAcceptRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
+    create(
+        { contents, type, version }: TermPolicyCreateRequestDto,
+        createdBy: string
+    ): Promise<IResponseReturn<TermPolicyResponseDto>>;
+    delete(
+        termPolicyId: string
+    ): Promise<IResponseReturn<TermPolicyResponseDto>>;
+    generateContentPresign({
+        language,
+        size,
+        type,
+        version,
+    }: TermPolicyContentPresignRequestDto): Promise<
+        IResponseReturn<AwsS3PresignDto>
+    >;
+    updateContent(
+        termPolicyId: string,
+        { key, size, language }: TermPolicyContentRequestDto,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>>;
+    addContent(
+        termPolicyId: string,
+        { key, size, language }: TermPolicyContentRequestDto,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>>;
+    removeContent(
+        termPolicyId: string,
+        { language }: TermPolicyRemoveContentRequestDto,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>>;
 }

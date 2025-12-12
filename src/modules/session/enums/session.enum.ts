@@ -1,4 +1,0 @@
-export enum ENUM_SESSION_STATUS {
-    ACTIVE = 'ACTIVE',
-    REVOKED = 'REVOKED',
-}

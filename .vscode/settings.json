@@ -7,7 +7,8 @@
     ],
     "search.exclude": {
         "package-lock.json": true,
-        "yarn.lock": true,
+        "pnpm-lock.yaml": true,
+        "pnpm-workspace.yaml": true,
         "node_modules": true,
         "dist": true,
         "coverage": true
@@ -38,7 +39,5 @@
     "better-comments.multilineComments": true,
     "better-comments.highlightPlainText": true,
 
-    // Disable auto-updating header/title in Markdown
-    "markdown.extension.toc.updateOnSave": true,
-    "markdown.extension.toc.slugifyMode": "github"
+    "prisma.pinToPrisma6": true
 }

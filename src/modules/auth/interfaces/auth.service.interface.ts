@@ -1,54 +1,43 @@
-import { ENUM_AUTH_LOGIN_FROM } from '@modules/auth/enums/auth.enum';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
-    IAuthPassword,
-    IAuthPasswordOptions,
-    IAuthSocialApplePayload,
-    IAuthSocialGooglePayload,
+    IAuthSocialPayload,
+    IAuthTokenGenerate,
 } from '@modules/auth/interfaces/auth.interface';
-import { IUserDoc } from '@modules/user/interfaces/user.interface';
-import { AuthLoginResponseDto } from '@modules/auth/dtos/response/auth.login.response.dto';
+import { IUser } from '@modules/user/interfaces/user.interface';
+import { EnumUserLoginFrom, EnumUserSignUpWith } from '@prisma/client';
 
 export interface IAuthService {
-    createAccessToken(
-        subject: string,
-        payload: IAuthJwtAccessTokenPayload
-    ): string;
-    validateAccessToken(subject: string, token: string): boolean;
-    payload<T = any>(token: string): T;
-    createRefreshToken(
-        subject: string,
-        payload: IAuthJwtRefreshTokenPayload
-    ): string;
-    validateRefreshToken(subject: string, token: string): boolean;
-    validateUser(passwordString: string, passwordHash: string): boolean;
-    createPayloadAccessToken(
-        data: IUserDoc,
-        session: string,
-        loginDate: Date,
-        loginFrom: ENUM_AUTH_LOGIN_FROM
-    ): IAuthJwtAccessTokenPayload;
-    createPayloadRefreshToken({
-        user,
-        session,
-        loginFrom,
-        loginDate,
-    }: IAuthJwtAccessTokenPayload): IAuthJwtRefreshTokenPayload;
-    createSalt(length: number): string;
-    createPassword(
-        password: string,
-        options?: IAuthPasswordOptions
-    ): IAuthPassword;
-    createPasswordRandom(): string;
-    checkPasswordExpired(passwordExpired: Date): boolean;
-    createToken(user: IUserDoc, session: string): AuthLoginResponseDto;
+    createTokens(
+        user: IUser,
+        loginFrom: EnumUserLoginFrom,
+        loginWith: EnumUserSignUpWith
+    ): IAuthTokenGenerate;
     refreshToken(
-        user: IUserDoc,
+        user: IUser,
         refreshTokenFromRequest: string
-    ): AuthLoginResponseDto;
-    getPasswordAttempt(): boolean;
-    getPasswordMaxAttempt(): number;
-    appleGetTokenInfo(idToken: string): Promise<IAuthSocialApplePayload>;
-    googleGetTokenInfo(idToken: string): Promise<IAuthSocialGooglePayload>;
+    ): IAuthTokenGenerate;
+    validateJwtAccessStrategy(
+        payload: IAuthJwtAccessTokenPayload
+    ): Promise<IAuthJwtAccessTokenPayload>;
+    validateJwtAccessGuard(
+        err: Error,
+        user: IAuthJwtAccessTokenPayload,
+        info: Error
+    ): Promise<IAuthJwtAccessTokenPayload>;
+    validateJwtRefreshStrategy(
+        payload: IAuthJwtRefreshTokenPayload
+    ): Promise<IAuthJwtRefreshTokenPayload>;
+    validateJwtRefreshGuard(
+        err: Error,
+        user: IAuthJwtRefreshTokenPayload,
+        info: Error
+    ): Promise<IAuthJwtRefreshTokenPayload>;
+    validateOAuthAppleGuard(
+        request: IRequestApp<IAuthSocialPayload>
+    ): Promise<boolean>;
+    validateOAuthGoogleGuard(
+        request: IRequestApp<IAuthSocialPayload>
+    ): Promise<boolean>;
 }

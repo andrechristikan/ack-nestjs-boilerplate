@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 
-export class EmailWorkerDto {
+export class EmailWorkerDto<T> {
     @ApiProperty({
         required: true,
         type: EmailSendDto,
@@ -29,5 +29,5 @@ export class EmailWorkerDto {
     @IsOptional()
     @IsNotEmptyObject()
     @ValidateNested()
-    data?: Record<string, any>;
+    data?: T;
 }

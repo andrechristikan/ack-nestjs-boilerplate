@@ -20,9 +20,6 @@ export class HealthAwsResponseDto {
             ses: {
                 status: 'up',
             },
-            pinpoint: {
-                status: 'up',
-            },
         },
     })
     info?: HealthIndicatorResult;
@@ -39,9 +36,6 @@ export class HealthAwsResponseDto {
             ses: {
                 status: 'down',
             },
-            pinpoint: {
-                status: 'down',
-            },
         },
     })
     error?: HealthIndicatorResult;
@@ -56,9 +50,6 @@ export class HealthAwsResponseDto {
                 status: 'up',
             },
             ses: {
-                status: 'up',
-            },
-            pinpoint: {
                 status: 'up',
             },
         },

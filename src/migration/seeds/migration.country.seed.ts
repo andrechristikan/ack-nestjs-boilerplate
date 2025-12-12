@@ -1,50 +1,66 @@
-import { Command } from 'nestjs-command';
-import { Injectable } from '@nestjs/common';
-import { CountryService } from '@modules/country/services/country.service';
-import { CountryCreateRequestDto } from '@modules/country/dtos/request/country.create.request.dto';
+import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { DatabaseService } from '@common/database/services/database.service';
+import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
+import { migrationCountryData } from '@migration/data/migration.country.data';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
+import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Command } from 'nest-commander';
 
-@Injectable()
-export class MigrationCountrySeed {
-    constructor(private readonly countryService: CountryService) {}
+@Command({
+    name: 'country',
+    description: 'Seed/Remove Countries',
+    allowUnknownOptions: false,
+})
+export class MigrationCountrySeed
+    extends MigrationSeedBase
+    implements IMigrationSeed
+{
+    private readonly logger = new Logger(MigrationCountrySeed.name);
 
-    @Command({
-        command: 'seed:country',
-        describe: 'seeds countries',
-    })
-    async seeds(): Promise<void> {
-        try {
-            const data: CountryCreateRequestDto[] = [
-                {
-                    name: 'Indonesia',
-                    alpha2Code: 'ID',
-                    alpha3Code: 'IDN',
-                    fipsCode: 'ID',
-                    numericCode: '360',
-                    phoneCode: ['62'],
-                    continent: 'Asia',
-                    timeZone: 'Asia/Jakarta',
-                    currency: 'IDR',
-                },
-            ];
+    private readonly env: EnumAppEnvironment;
+    private readonly countries: CountryRequestDto[] = [];
 
-            await this.countryService.createMany(data);
-        } catch (err: any) {
-            throw new Error(err.message);
-        }
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly configService: ConfigService
+    ) {
+        super();
+
+        this.env = this.configService.get<EnumAppEnvironment>('app.env');
+        this.countries = migrationCountryData[this.env];
+    }
+
+    async seed(): Promise<void> {
+        this.logger.log('Seeding Countries...');
+        this.logger.log(`Found ${this.countries.length} Countries to seed.`);
+
+        await this.databaseService.$transaction(
+            this.countries.map(country =>
+                this.databaseService.country.upsert({
+                    where: {
+                        alpha2Code: country.alpha2Code,
+                    },
+                    create: country,
+                    update: {},
+                })
+            )
+        );
+
+        this.logger.log('Countries seeded successfully.');
 
         return;
     }
 
-    @Command({
-        command: 'remove:country',
-        describe: 'remove countries',
-    })
     async remove(): Promise<void> {
-        try {
-            await this.countryService.deleteMany();
-        } catch (err: any) {
-            throw new Error(err.message);
-        }
+        this.logger.log('Removing back Countries...');
+
+        await this.databaseService.country.deleteMany({
+            where: {},
+        });
+
+        this.logger.log('Countries removed successfully.');
 
         return;
     }

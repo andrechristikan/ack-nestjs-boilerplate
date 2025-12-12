@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsISO8601, IsNotEmpty } from 'class-validator';
-import { DateGreaterThanEqual } from '@common/request/validations/request.date-greater-than.validation';
 import { GreaterThanEqualOtherProperty } from '@common/request/validations/request.greater-than-other-property.validation';
+import { IsAfterNow } from '@common/request/validations/request.is-after-now.validation';
 
 export class ApiKeyUpdateDateRequestDto {
     @ApiProperty({
@@ -12,8 +12,8 @@ export class ApiKeyUpdateDateRequestDto {
     })
     @IsNotEmpty()
     @IsISO8601()
-    @DateGreaterThanEqual(new Date())
-    startDate: Date;
+    @IsAfterNow()
+    startAt: Date;
 
     @ApiProperty({
         description: 'Api Key end date',
@@ -23,5 +23,5 @@ export class ApiKeyUpdateDateRequestDto {
     @IsNotEmpty()
     @IsISO8601()
     @GreaterThanEqualOtherProperty('startDate')
-    endDate: Date;
+    endAt: Date;
 }

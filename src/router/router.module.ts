@@ -6,6 +6,10 @@ import { RoutesSharedModule } from '@routes/routes.shared.module';
 import { RoutesSystemModule } from '@routes/routes.system.module';
 import { RoutesUserModule } from '@routes/routes.user.module';
 
+/**
+ * Main router module that configures API route organization and path prefixes.
+ * Sets up route modules for public, system, admin, user, and shared endpoints with their respective path prefixes.
+ */
 @Module({
     providers: [],
     exports: [],

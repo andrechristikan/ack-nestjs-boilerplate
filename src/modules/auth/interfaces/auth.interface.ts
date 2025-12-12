@@ -1,39 +1,30 @@
-import { ENUM_AUTH_LOGIN_FROM } from '@modules/auth/enums/auth.enum';
-import { ENUM_POLICY_ROLE_TYPE } from '@modules/policy/enums/policy.enum';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { EnumUserLoginFrom, EnumUserSignUpWith } from '@prisma/client';
 
 export interface IAuthPassword {
     salt: string;
     passwordHash: string;
     passwordExpired: Date;
     passwordCreated: Date;
+    passwordPeriodExpired: Date;
 }
 
 export interface IAuthPasswordOptions {
     temporary: boolean;
 }
 
-export interface IAuthJwtTermPolicyPayload {
-    term: boolean;
-    privacy: boolean;
-    marketing: boolean;
-    cookies: boolean;
-}
-
-export interface IAuthJwtVerificationPayload {
-    email: boolean;
-    mobileNumber: boolean;
-}
-
 export interface IAuthJwtAccessTokenPayload {
-    loginDate: Date;
-    loginFrom: ENUM_AUTH_LOGIN_FROM;
-    user: string;
+    loginAt: Date;
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserSignUpWith;
     email: string;
-    session: string;
-    role: string;
-    termPolicy: IAuthJwtTermPolicyPayload;
-    verification: IAuthJwtVerificationPayload;
-    type: ENUM_POLICY_ROLE_TYPE;
+    username: string;
+    userId: string;
+    sessionId: string;
+    roleId: string;
+
+    // standard JWT claims
+    jti?: string;
     iat?: number;
     nbf?: number;
     exp?: number;
@@ -44,17 +35,18 @@ export interface IAuthJwtAccessTokenPayload {
 
 export type IAuthJwtRefreshTokenPayload = Omit<
     IAuthJwtAccessTokenPayload,
-    'role' | 'type' | 'email' | 'verification' | 'termPolicy'
+    'type' | 'roleId' | 'username' | 'email' | 'termPolicy' | 'verification'
 >;
 
-export interface IAuthSocialGooglePayload
-    extends Pick<IAuthJwtAccessTokenPayload, 'email'> {
-    name: string;
-    photo: string;
+export interface IAuthSocialPayload extends Pick<
+    IAuthJwtAccessTokenPayload,
+    'email'
+> {
     emailVerified: boolean;
 }
 
-export type IAuthSocialApplePayload = Pick<
-    IAuthSocialGooglePayload,
-    'email' | 'emailVerified'
->;
+export interface IAuthTokenGenerate {
+    tokens: AuthTokenResponseDto;
+    jti: string;
+    sessionId: string;
+}

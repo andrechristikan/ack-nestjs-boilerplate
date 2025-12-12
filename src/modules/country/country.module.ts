@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { CountryRepositoryModule } from '@modules/country/repository/country.repository.module';
 import { CountryService } from '@modules/country/services/country.service';
+import { CountryUtil } from '@modules/country/utils/country.util';
+import { CountryRepository } from '@modules/country/repositories/country.repository';
 
 @Module({
-    imports: [CountryRepositoryModule],
-    exports: [CountryService],
-    providers: [CountryService],
+    imports: [],
+    exports: [CountryService, CountryUtil, CountryRepository],
+    providers: [CountryService, CountryUtil, CountryRepository],
     controllers: [],
 })
 export class CountryModule {}

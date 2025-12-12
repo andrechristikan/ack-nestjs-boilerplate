@@ -1,9 +1,9 @@
+import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { Injectable } from '@nestjs/common';
 import {
     HealthIndicatorResult,
     HealthIndicatorService,
 } from '@nestjs/terminus';
-import { AwsSESService } from '@modules/aws/services/aws.ses.service';
 
 @Injectable()
 export class HealthAwsSESIndicator {
@@ -25,10 +25,11 @@ export class HealthAwsSESIndicator {
             }
 
             return indicator.up();
-        } catch (err: any) {
-            return indicator.down(
-                `HealthAwsSESIndicator Failed - ${err?.message}`
-            );
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : 'Unknown error';
+
+            return indicator.down(`HealthAwsSESIndicator Failed - ${message}`);
         }
     }
 }

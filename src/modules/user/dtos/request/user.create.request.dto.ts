@@ -1,15 +1,15 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import {
-    IsString,
+    IsMongoId,
     IsNotEmpty,
+    IsOptional,
+    IsString,
     MaxLength,
     MinLength,
-    IsUUID,
-    IsEnum,
 } from 'class-validator';
 import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
-import { ENUM_USER_GENDER } from '@modules/user/enums/user.enum';
+import { Transform } from 'class-transformer';
 
 export class UserCreateRequestDto {
     @ApiProperty({
@@ -20,44 +20,36 @@ export class UserCreateRequestDto {
     @IsCustomEmail()
     @IsNotEmpty()
     @MaxLength(100)
-    email: string;
+    @Transform(({ value }) => value.toLowerCase().trim())
+    email: Lowercase<string>;
 
     @ApiProperty({
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
         required: true,
     })
+    @IsString()
     @IsNotEmpty()
-    @IsUUID()
-    role: string;
+    @IsMongoId()
+    roleId: string;
 
     @ApiProperty({
         example: faker.person.fullName(),
-        required: true,
+        required: false,
         maxLength: 100,
         minLength: 1,
     })
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     @MinLength(1)
     @MaxLength(100)
-    name: string;
+    name?: string;
 
     @ApiProperty({
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
         required: true,
     })
     @IsString()
-    @IsUUID()
     @IsNotEmpty()
-    country: string;
-
-    @ApiProperty({
-        required: true,
-        enum: ENUM_USER_GENDER,
-        example: ENUM_USER_GENDER.MALE,
-    })
-    @IsString()
-    @IsEnum(ENUM_USER_GENDER)
-    @IsNotEmpty()
-    gender: ENUM_USER_GENDER;
+    @IsMongoId()
+    countryId: string;
 }

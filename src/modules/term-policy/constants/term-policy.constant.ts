@@ -1,2 +1,1 @@
-export const TERM_POLICY_ACCEPTANCE_GUARD_META_KEY =
-    'TermPolicyAcceptanceMetaKey';
+export const TERM_POLICY_REQUIRED_GUARD_META_KEY = 'TermPolicyRequiredMetaKey';

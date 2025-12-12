@@ -1,40 +1,49 @@
 import {
-    CountryDoc,
-    CountryEntity,
-} from '@modules/country/repository/entities/country.entity';
-import {
-    RoleDoc,
-    RoleEntity,
-} from '@modules/role/repository/entities/role.entity';
-import {
-    UserDoc,
-    UserEntity,
-} from '@modules/user/repository/entities/user.entity';
-import {
-    UserMobileNumberDoc,
-    UserMobileNumberEntity,
-} from '@modules/user/repository/entities/user.mobile-number.entity';
+    Country,
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
+    EnumVerificationType,
+    Role,
+    User,
+    UserMobileNumber,
+} from '@prisma/client';
 
-export interface IUserMobileNumberEntity
-    extends Omit<UserMobileNumberEntity, 'country'> {
-    country: CountryEntity;
+export interface IUser extends User {
+    role: Role;
 }
 
-export interface IUserMobileNumberDoc
-    extends Omit<UserMobileNumberDoc, 'country'> {
-    country: CountryDoc;
+export interface IUserMobileNumber extends UserMobileNumber {
+    country: Country;
 }
 
-export interface IUserEntity
-    extends Omit<UserEntity, 'role' | 'country' | 'mobileNumber'> {
-    role: RoleEntity;
-    county: CountryEntity;
-    mobileNumber?: IUserMobileNumberEntity;
+export interface IUserProfile extends IUser {
+    mobileNumbers: IUserMobileNumber[];
+    country: Country;
 }
 
-export interface IUserDoc
-    extends Omit<UserDoc, 'role' | 'country' | 'mobileNumber'> {
-    role: RoleDoc;
-    country: CountryDoc;
-    mobileNumber?: IUserMobileNumberDoc;
+export interface IUserLogin {
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserLoginWith;
+    expiredAt: Date;
+    jti: string;
+    sessionId: string;
+}
+
+export interface IUserForgotPasswordCreate {
+    expiredAt: Date;
+    expiredInMinutes: number;
+    resendInMinutes: number;
+    reference: string;
+    token: string;
+    link: string;
+}
+
+export interface IUserVerificationCreate {
+    type: EnumVerificationType;
+    expiredAt: Date;
+    expiredInMinutes: number;
+    resendInMinutes: number;
+    reference: string;
+    token: string;
+    link?: string;
 }

@@ -1,16 +1,84 @@
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
+/**
+ * Response metadata DTO containing API request information.
+ * Provides contextual data about the API response including language, timing, and versioning.
+ */
 export class ResponseMetadataDto {
-    language: string;
+    @ApiProperty({
+        required: true,
+        description: 'Language of the response message',
+        example: EnumMessageLanguage.en,
+        type: String,
+    })
+    language: EnumMessageLanguage;
+
+    @ApiProperty({
+        required: true,
+        description: 'Timestamp of the response',
+        example: 1660190937231,
+        type: Number,
+    })
     timestamp: number;
+
+    @ApiProperty({
+        required: true,
+        description: 'Timezone of the response',
+        example: 'Asia/Jakarta',
+        type: String,
+    })
     timezone: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'API path of the request',
+        example: '/api/v1/test/hello',
+        type: String,
+    })
     path: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Version of the API',
+        example: '1',
+        type: String,
+    })
     version: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Repository version of the application',
+        example: '1.0.0',
+        type: String,
+    })
     repoVersion: string;
-    [key: string]: any;
+
+    [key: string]:
+        | string
+        | number
+        | string[]
+        | number[]
+        | boolean
+        | boolean[]
+        | Record<
+              string,
+              | string
+              | number
+              | boolean
+              | Array<string | number | boolean>
+              | Date
+          >;
 }
 
-export class ResponseDto {
+/**
+ * Generic response DTO wrapper for API responses.
+ * Provides standardized structure for all API responses with metadata and status information.
+ *
+ * @template T - Type of the response data
+ */
+export class ResponseDto<T> {
     @ApiProperty({
         name: 'statusCode',
         type: 'number',
@@ -30,10 +98,11 @@ export class ResponseDto {
     message: string;
 
     @ApiProperty({
-        name: '_metadata',
+        name: 'metadata',
         required: true,
         description: 'Contain metadata about API',
         type: ResponseMetadataDto,
+        additionalProperties: true,
         example: {
             language: 'en',
             timestamp: 1660190937231,
@@ -43,8 +112,9 @@ export class ResponseDto {
             repoVersion: '1.0.0',
         },
     })
-    _metadata: ResponseMetadataDto;
+    @Type(() => ResponseMetadataDto)
+    metadata: ResponseMetadataDto;
 
     @ApiHideProperty()
-    data?: Record<string, any>;
+    data?: T;
 }

@@ -1,0 +1,172 @@
+# Required Variables (Repository Variables):
+# - DOCKER_REGISTRY_URL: Docker registry URL (e.g., docker.io or private registry)
+# - DOCKER_IMAGE_NAME: Docker image name (e.g., my-app)
+# - DOCKER_CONTAINER_NAME: Docker container name (e.g., apis)
+# - DOCKER_CONTAINER_PORT: Docker container port (e.g., 8080)
+#
+# Required Secrets (Repository Secrets - Grouped by Environment):
+#
+# Shared Secrets:
+# - SSH_PORT: SSH port (e.g., 22)
+# - DOCKER_USERNAME: Docker registry username
+# - DOCKER_PASSWORD: Docker registry password or token
+#
+# Production Environment (PROD_* prefix):
+# - PROD_SSH_HOST: SSH host/IP for production (e.g., prod.example.com)
+# - PROD_SSH_USER: SSH username for production (e.g., ec2-user)
+# - PROD_SSH_PRIVATE_KEY: SSH private key for production (multiline format)
+#
+# Development Environment (DEV_* prefix):
+# - DEV_SSH_HOST: SSH host/IP for development (e.g., dev.example.com)
+# - DEV_SSH_USER: SSH username for development (e.g., ec2-user)
+# - DEV_SSH_PRIVATE_KEY: SSH private key for development (multiline format)
+#
+# Staging Environment (STAGING_* prefix):
+# - STAGING_SSH_HOST: SSH host/IP for staging (e.g., staging.example.com)
+# - STAGING_SSH_USER: SSH username for staging (e.g., ec2-user)
+# - STAGING_SSH_PRIVATE_KEY: SSH private key for staging (multiline format)
+
+
+name: ReleaseWithSsh
+on:
+    workflow_dispatch:
+    # push:
+    #     branches:
+    #         - main
+    #         - staging
+    #         - development
+
+env:
+    DOCKERFILE: ci/dockerfile
+
+jobs:
+    build_image:
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                include:
+                    - branch: main
+                      env: production
+                    - branch: development
+                      env: development
+                    - branch: staging
+                      env: staging
+
+        steps:
+            - name: Git checkout
+              uses: actions/checkout@v4
+
+            - name: Get short sha commit
+              id: git
+              run: |
+                  echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
+
+            - name: Get latest version
+              id: version
+              uses: martinbeentjes/npm-get-version-action@main
+
+            - name: Log info
+              run: |
+                  echo Branch name is: ${{ github.ref_name }}
+                  echo Short sha: ${{ steps.git.outputs.short_sha }}
+                  echo Version is: ${{ steps.version.outputs.current-version }}
+
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Login to Docker Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ vars.DOCKER_REGISTRY_URL }}
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Build & Push
+              if: ${{ github.ref_name == matrix.branch }}
+              run: |
+                  docker build --build-arg NODE_ENV=${{ matrix.env }} -t ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
+                  docker tag ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }} ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }}
+
+    deploy:
+        needs: [build_image]
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                include:
+                    - branch: main
+                      env: production
+                      ssh_host: ${{ secrets.PROD_SSH_HOST }}
+                      ssh_user: ${{ secrets.PROD_SSH_USER }}
+                      ssh_key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+                    - branch: development
+                      env: development
+                      ssh_host: ${{ secrets.DEV_SSH_HOST }}
+                      ssh_user: ${{ secrets.DEV_SSH_USER }}
+                      ssh_key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
+                    - branch: staging
+                      env: staging
+                      ssh_host: ${{ secrets.STAGING_SSH_HOST }}
+                      ssh_user: ${{ secrets.STAGING_SSH_USER }}
+                      ssh_key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Deploy via SSH
+              if: ${{ github.ref_name == matrix.branch }}
+              uses: appleboy/ssh-action@master
+              with:
+                  host: ${{ matrix.ssh_host }}
+                  username: ${{ matrix.ssh_user }}
+                  key: ${{ matrix.ssh_key }}
+                  port: ${{ secrets.SSH_PORT }}
+                  script: |
+                      docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} ${{ vars.DOCKER_REGISTRY_URL }}
+                      docker pull ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }}
+                      docker stop ${{ vars.DOCKER_CONTAINER_NAME }} && docker rm ${{ vars.DOCKER_CONTAINER_NAME }} || true
+                      docker network create app-network --driver=bridge 2>/dev/null || true
+                      docker run -itd --env NODE_ENV=${{ matrix.env }} --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }}
+
+    clean:
+        needs: [deploy]
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                include:
+                    - branch: main
+                      ssh_host: ${{ secrets.PROD_SSH_HOST }}
+                      ssh_user: ${{ secrets.PROD_SSH_USER }}
+                      ssh_key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+                    - branch: development
+                      ssh_host: ${{ secrets.DEV_SSH_HOST }}
+                      ssh_user: ${{ secrets.DEV_SSH_USER }}
+                      ssh_key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
+                    - branch: staging
+                      ssh_host: ${{ secrets.STAGING_SSH_HOST }}
+                      ssh_user: ${{ secrets.STAGING_SSH_USER }}
+                      ssh_key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Clean Docker Images
+              if: ${{ github.ref_name == matrix.branch }}
+              uses: appleboy/ssh-action@master
+              with:
+                  host: ${{ matrix.ssh_host }}
+                  username: ${{ matrix.ssh_user }}
+                  key: ${{ matrix.ssh_key }}
+                  port: ${{ secrets.SSH_PORT }}
+                  script: |
+                      docker image prune --force
+                      docker rmi $(docker images ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}/** -q) --force || true
