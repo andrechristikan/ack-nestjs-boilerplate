@@ -1124,7 +1124,7 @@ sequenceDiagram
 
 ## Contribution
 
-Special thanks to [Gzerox][ref-contributor-gzerox] for providing the idea and contribution for JWT ID (jti) validation mechanism.
+Special thanks to [Gzerox][ref-contributor-gzerox] for providing the idea and contribution for Refresh Token Rotation and JWT ID (jti) validation mechanism.
 
 <!-- REFERENCES -->
 
