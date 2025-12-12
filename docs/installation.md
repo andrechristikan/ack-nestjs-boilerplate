@@ -178,7 +178,7 @@ For Docker installation, ensure these specific values in your `.env` file:
 **Database Configuration:**
 ```bash
 # MongoDB (Docker containers)
-DATABASE_URL=mongodb://localhost:27017,localhost:27018,localhost:27019/ack-nestjs-boilerplate?replicaSet=rs0
+DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
 ```
 
 **Redis Configuration:**
@@ -229,9 +229,18 @@ The Docker setup includes a JWKS server that automatically hosts the generated k
 
 Now you're ready to start the complete Docker environment with all services.
 
+> **Note**: By default, Docker installation only sets up dependencies (MongoDB, Redis, JWKS server, BullMQ dashboard). The API container is not included. To also run the API container, use the `full` profile.
+
+**Start only dependencies:**
 ```bash
-# Start all services in detached mode (runs in background)
+# Start MongoDB, Redis, JWKS, and BullMQ dashboard
 docker-compose up -d
+```
+
+**Start with API container (recommended for full development setup):**
+```bash
+# Start all services including the API container
+docker-compose --profile full up -d
 ```
 
 **What this command does:**
@@ -240,6 +249,7 @@ docker-compose up -d
 - Starts JWKS server to host your JWT public keys (port 3011)
 - Runs BullMQ dashboard for queue monitoring (port 3010)
 - Sets up all necessary networks and volumes
+- *(with `--profile full`)* Launches the API container running the application (port 3000)
 
 You can monitor the services as they start up:
 

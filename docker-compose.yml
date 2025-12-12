@@ -9,6 +9,7 @@ services:
             - 3000:3000
         volumes:
             - ./src/:/app/src/
+            - ./prisma/:/app/prisma/
             - .env/:/app/.env
         restart: on-failure
         networks:
@@ -21,7 +22,7 @@ services:
             jwks-server:
                 condition: service_healthy
         healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+            test: ["CMD", "curl", "-f", "http://localhost:3000/api/hello"]
             interval: 30s
             timeout: 10s
             retries: 3
@@ -53,8 +54,8 @@ services:
             test:
                 [
                     "CMD",
-                    "wget",
-                    "-qO-",
+                    "curl",
+                    "-f",
                     "http://localhost:80/.well-known/access-jwks.json",
                 ]
             interval: 30s

@@ -1,0 +1,161 @@
+# Required Variables:
+# - AWS_ECR_REPO_URL
+# - DOCKER_CONTAINER_NAME
+# - DOCKER_CONTAINER_PORT
+#
+# Required Secrets:
+# - AWS_ACCESS_KEY_ID
+# - AWS_SECRET_ACCESS_KEY
+# - AWS_REGION
+# - PROD_AWS_INSTANCE_ID
+# - DEV_AWS_INSTANCE_ID
+# - STAGING_AWS_INSTANCE_ID
+
+
+name: ReleaseWithAWSSDK
+on:
+    workflow_dispatch:
+    # push:
+    #     branches:
+    #         - main
+    #         - staging
+    #         - development
+
+env:
+    DOCKERFILE: ci/dockerfile
+
+jobs:
+    build_image:
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                include:
+                    - branch: main
+                      env: production
+                    - branch: development
+                      env: development
+                    - branch: staging
+                      env: staging
+
+        steps:
+            - name: Git checkout
+              uses: actions/checkout@v4
+
+            - name: Get short sha commit
+              id: git
+              run: |
+                  echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
+
+            - name: Get latest version
+              id: version
+              uses: martinbeentjes/npm-get-version-action@main
+
+            - name: Log info
+              run: |
+                  echo Branch name is: ${{ github.ref_name }}
+                  echo Short sha: ${{ steps.git.outputs.short_sha }}
+                  echo Version is: ${{ steps.version.outputs.current-version }}
+
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+              
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+
+            - name: Build & Push
+              if: ${{ github.ref_name == matrix.branch }}
+              run: |
+                  docker build --build-arg NODE_ENV=${{ matrix.env }} -t ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
+                  docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}
+    deploy:
+        needs: [build_image]
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                include:
+                    - branch: main
+                      env: production
+                      instance: ${{ secrets.PROD_AWS_INSTANCE_ID }}
+                    - branch: development
+                      env: development
+                      instance: ${{ secrets.DEV_AWS_INSTANCE_ID }}
+                    - branch: staging
+                      env: staging
+                      instance: ${{ secrets.STAGING_AWS_INSTANCE_ID }}
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Update AWS EC2 Instance
+              if: ${{ github.ref_name == matrix.branch }}
+              run: |
+                  aws ssm send-command \
+                      --instance-ids "${{ matrix.instance }}" \
+                      --document-name "AWS-RunShellScript" \
+                      --comment "Release new version" \
+                      --parameters commands='[
+                          "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ vars.AWS_ECR_REPO_URL }}",
+                          "docker pull ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}",
+                          "docker stop ${{ vars.DOCKER_CONTAINER_NAME }} && docker rm ${{ vars.DOCKER_CONTAINER_NAME }}",
+                          "docker network create app-network --driver=bridge 2>/dev/null || true",
+                          "docker run -itd --env NODE_ENV=${{ matrix.env }} --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/keys/:/app/keys/ --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}"
+                      ]'
+    clean:
+        needs: [deploy]
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                include:
+                    - branch: main
+                      instance: ${{ secrets.PROD_AWS_INSTANCE_ID }}
+                    - branch: development
+                      instance: ${{ secrets.DEV_AWS_INSTANCE_ID }}
+                    - branch: staging
+                      instance: ${{ secrets.STAGING_AWS_INSTANCE_ID }}
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Clean AWS EC2 Instance
+              if: ${{ github.ref_name == matrix.branch }}
+              run: |
+                  aws ssm send-command \
+                      --instance-ids "${{ matrix.instance }}" \
+                      --document-name "AWS-RunShellScript" \
+                      --comment "Clean up" \
+                      --parameters commands='[
+                          "docker image prune --force",
+                          "docker rmi $(docker images ${{ vars.AWS_ECR_REPO_URL }}/** -q) --force"
+                      ]'

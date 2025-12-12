@@ -49,7 +49,6 @@ config.yml
 
 # pnpm
 .pnpm-store/
-pnpm-lock.yaml
 
 # Files not required for Docker build
 .editorconfig

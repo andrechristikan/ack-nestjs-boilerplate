@@ -6,25 +6,27 @@ on:
           - main
           - development
 
+env:
+    NODE_VERSION: lts/*
+
 jobs:
     linter:
         runs-on: ubuntu-latest
-
-        strategy:
-            matrix:
-                node-version: ['lts/*']
 
         steps:
             - name: Git checkout
               uses: actions/checkout@v4
 
-            - name: Setup node version ${{ matrix.node-version }}
+            - name: Setup node
               uses: actions/setup-node@v4
               with:
-                  node-version: ${{ matrix.node-version }}
+                node-version: ${{ env.NODE_VERSION }}
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
 
             - name: Install dependencies
-              run: pnpm --frozen-lockfile --non-interactive
+              run: pnpm install --frozen-lockfile
 
             - name: Linter
               run: pnpm lint

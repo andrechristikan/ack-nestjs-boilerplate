@@ -28,6 +28,7 @@ This documentation explains the database architecture and features in ACK NestJS
 	- [Users](#users)
 	- [Feature Flags](#feature-flags)
 	- [Term Policies](#term-policies)
+- [Docker](#docker)
 - [Database Tools](#database-tools)
 	- [Prisma ORM](#prisma-orm)
 	- [Why Prisma for Repository Design Pattern?](#why-prisma-for-repository-design-pattern)
@@ -208,6 +209,33 @@ The actual content for these policies is stored as file references in `src/migra
 
 For more details on how seeding works, see: [Template Seeds](#template-seeds)
 
+
+## Docker
+
+Running database commands inside Docker containers from your host machine:
+
+**Generate Prisma Client inside container:**
+```bash
+docker-compose exec apis pnpm db:generate
+```
+
+**Run database migration inside container:**
+```bash
+docker-compose exec apis pnpm db:migrate
+```
+
+**Run all seeds inside container:**
+```bash
+docker-compose exec apis pnpm migration:seed
+```
+
+**Remove all seeded data inside container:**
+```bash
+docker-compose exec apis pnpm migration:remove
+```
+
+These commands execute directly in the running Docker container without needing to enter the container shell. Ensure Docker Compose is running with `docker-compose up -d` before executing these commands.
+
 ## Database Tools
 
 ### **Prisma ORM**
@@ -232,7 +260,6 @@ In ACK NestJS Boilerplate, some adjustments are needed:
 - `DatabaseUtil`: Contains utilities for MongoDB-specific needs (such as ObjectID handling and data conversion) and will need to be updated or replaced with PostgreSQL-specific utilities if you switch databases.
 
 For details on switching databases, see: [Prisma: Switching databases][ref-prisma-setup]
-
 
 
 <!-- REFERENCES -->
