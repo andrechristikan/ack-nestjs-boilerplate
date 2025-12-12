@@ -1,38 +1,96 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, PickType } from '@nestjs/swagger';
-import { PAGINATION_DEFAULT_AVAILABLE_ORDER_DIRECTION } from '@common/pagination/constants/pagination.constant';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
 import {
     ResponseDto,
     ResponseMetadataDto,
 } from '@common/response/dtos/response.dto';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
 
-export class ResponsePagingMetadataPaginationRequestDto {
+/**
+ * Pagination metadata DTO extending base response metadata with pagination information.
+ * Provides comprehensive pagination details including search, filtering, sorting, and page statistics.
+ *
+ * **Pagination Types:**
+ * - `OFFSET`: Traditional page-based pagination with page numbers
+ * - `CURSOR`: Cursor-based pagination for efficient traversal of large datasets
+ */
+export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
-        required: true,
+        required: false,
         example: faker.person.fullName(),
     })
-    search: string;
+    search?: string;
 
     @ApiProperty({
-        required: true,
+        required: false,
     })
-    filters: Record<
+    filters?: Record<
         string,
         string | number | boolean | Array<string | number | boolean> | Date
     >;
 
     @ApiProperty({
         required: true,
-        example: 1,
-    })
-    page: number;
-
-    @ApiProperty({
-        required: true,
         example: 20,
     })
     perPage: number;
+
+    @ApiProperty({
+        required: false,
+        example: 1,
+    })
+    page?: number;
+
+    @ApiProperty({
+        required: false,
+        example: 5,
+    })
+    totalPage?: number;
+
+    @ApiProperty({
+        required: false,
+        example: 100,
+    })
+    count?: number;
+
+    @ApiProperty({
+        required: false,
+        example: 2,
+    })
+    nextPage?: number;
+
+    @ApiProperty({
+        required: false,
+        example: 0,
+    })
+    previousPage?: number;
+
+    @ApiProperty({
+        required: false,
+        example: faker.string.alphanumeric(16),
+    })
+    nextCursor?: string;
+
+    @ApiProperty({
+        required: false,
+        example: faker.string.alphanumeric(16),
+    })
+    previousCursor?: string;
+
+    @ApiProperty({
+        required: true,
+        example: true,
+    })
+    hasNext: boolean;
+
+    @ApiProperty({
+        required: true,
+        example: true,
+    })
+    hasPrevious: boolean;
 
     @ApiProperty({
         required: true,
@@ -42,10 +100,11 @@ export class ResponsePagingMetadataPaginationRequestDto {
 
     @ApiProperty({
         required: true,
-        enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-        example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
+        type: String,
+        enum: EnumPaginationOrderDirectionType,
+        example: EnumPaginationOrderDirectionType.asc,
     })
-    orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
+    orderDirection: EnumPaginationOrderDirectionType;
 
     @ApiProperty({
         required: true,
@@ -55,75 +114,40 @@ export class ResponsePagingMetadataPaginationRequestDto {
 
     @ApiProperty({
         required: true,
-        isArray: true,
-        example: ['name', 'createdAt'],
+        example: ['createdAt', 'updatedAt'],
     })
     availableOrderBy: string[];
 
     @ApiProperty({
         required: true,
-        enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-        isArray: true,
-        example: Object.values(ENUM_PAGINATION_ORDER_DIRECTION_TYPE),
+        type: String,
+        enum: EnumPaginationType,
+        example: EnumPaginationType.offset,
     })
-    availableOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE[];
-
-    @ApiProperty({
-        required: false,
-    })
-    total?: number;
-
-    @ApiProperty({
-        required: false,
-    })
-    totalPage?: number;
+    type: EnumPaginationType;
 }
 
-export class ResponsePagingMetadataDto extends ResponseMetadataDto {
-    @ApiProperty({
-        required: false,
-        type: ResponsePagingMetadataPaginationRequestDto,
-    })
-    pagination?: ResponsePagingMetadataPaginationRequestDto;
-}
-
-export class ResponsePagingDto extends PickType(ResponseDto, [
+/**
+ * Paginated response DTO for API responses with data arrays.
+ * Extends standard response structure to include pagination metadata and array of data items.
+ *
+ * @template T - Type of the individual data items in the array
+ */
+export class ResponsePagingDto<T> extends PickType(ResponseDto, [
     'statusCode',
     'message',
 ] as const) {
     @ApiProperty({
-        name: '_metadata',
+        name: 'metadata',
         required: true,
         description: 'Contain metadata about API',
         type: ResponsePagingMetadataDto,
-        example: {
-            language: 'en',
-            timestamp: 1660190937231,
-            timezone: 'Asia/Jakarta',
-            path: '/api/v1/test/hello',
-            version: '1',
-            repoVersion: '1.0.0',
-            pagination: {
-                search: faker.person.fullName(),
-                filters: {},
-                page: 1,
-                perPage: 20,
-                orderBy: 'createdAt',
-                orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
-                availableSearch: ['name'],
-                availableOrderBy: ['createdAt'],
-                availableOrderDirection:
-                    PAGINATION_DEFAULT_AVAILABLE_ORDER_DIRECTION,
-                total: 100,
-                totalPage: 5,
-            },
-        },
     })
-    _metadata: ResponsePagingMetadataDto;
+    metadata: ResponsePagingMetadataDto;
 
     @ApiProperty({
         required: true,
         isArray: true,
     })
-    data: Record<string, any>[];
+    data: T[];
 }

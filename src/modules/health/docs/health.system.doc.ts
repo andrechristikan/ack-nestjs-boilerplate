@@ -7,6 +7,7 @@ import {
 import { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
 import { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
 import { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
+import { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.sentry.response.dto';
 
 export function HealthSystemCheckAwsDoc(): MethodDecorator {
     return applyDecorators(
@@ -32,6 +33,20 @@ export function HealthSystemCheckDatabaseDoc(): MethodDecorator {
         }),
         DocResponse<HealthDatabaseResponseDto>('health.checkDatabase', {
             dto: HealthDatabaseResponseDto,
+        })
+    );
+}
+
+export function HealthSystemCheckThirdPartyDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'health check api for third party services',
+        }),
+        DocAuth({
+            xApiKey: true,
+        }),
+        DocResponse<HealthThirdPartyResponseDto>('health.checkThirdParty', {
+            dto: HealthThirdPartyResponseDto,
         })
     );
 }

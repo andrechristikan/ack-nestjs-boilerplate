@@ -1,7 +1,6 @@
 name: ack-nestjs-boilerplate
 
 services:
-    # Main API service
     apis:
         build:
             context: .
@@ -10,59 +9,65 @@ services:
             - 3000:3000
         volumes:
             - ./src/:/app/src/
+            - ./prisma/:/app/prisma/
             - .env/:/app/.env
-            - ./keys/access-token.pem:/app/keys/access-token.pem
-            - ./keys/access-token.pub:/app/keys/access-token.pub
-            - ./keys/refresh-token.pem:/app/keys/refresh-token.pem
-            - ./keys/refresh-token.pub:/app/keys/refresh-token.pub
         restart: on-failure
         networks:
             - app-network
         depends_on:
-            - redis
-            - mongo
-            - jwks-server
+            redis:
+                condition: service_healthy
+            mongo:
+                condition: service_healthy
+            jwks-server:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3000/api/hello"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+        profiles: ["full"]
         deploy:
             resources:
                 limits:
-                    cpus: '1'
+                    cpus: "1"
                     memory: 2G
 
-    # JWKS Server for token validation
     jwks-server:
         image: nginx:alpine
         hostname: jwks-server
         ports:
-            - '3011:80'
+            - "3011:80"
         volumes:
-            - ./keys/jwks.json:/usr/share/nginx/html/.well-known/jwks.json
+            - ./keys/access-jwks.json:/usr/share/nginx/html/.well-known/access-jwks.json
+            - ./keys/refresh-jwks.json:/usr/share/nginx/html/.well-known/refresh-jwks.json
             - ./ci/jwks-server/jwks.conf:/etc/nginx/conf.d/default.conf
         networks:
             - app-network
         deploy:
             resources:
                 limits:
-                    cpus: '0.3'
+                    cpus: "0.3"
                     memory: 128M
         healthcheck:
             test:
                 [
-                    'CMD',
-                    'wget',
-                    '-qO-',
-                    'http://localhost:80/.well-known/jwks.json',
+                    "CMD",
+                    "curl",
+                    "-f",
+                    "http://localhost:80/.well-known/access-jwks.json",
                 ]
             interval: 30s
             timeout: 10s
             retries: 3
             start_period: 5s
 
-    # Redis for caching and queues
     redis:
         image: redis:latest
         hostname: redis
         ports:
-            - '6379:6379'
+            - "6379:6379"
         volumes:
             - redis_data:/data
         networks:
@@ -70,17 +75,17 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: '0.5'
+                    cpus: "0.5"
                     memory: 256M
         healthcheck:
-            test: ['CMD', 'redis-cli', 'ping']
+            test: ["CMD", "redis-cli", "ping"]
             interval: 10s
             timeout: 30s
             retries: 5
 
     # Bull dashboard for queue monitoring
     redis-bullboard:
-        image: deadly0/bull-board:3.2.6
+        image: venatum/bull-board:latest
         hostname: redis-bullboard
         ports:
             - 3010:3000
@@ -89,34 +94,35 @@ services:
         environment:
             - REDIS_HOST=redis
             - REDIS_PORT=6379
-            - BULL_PREFIX=bull
+            - BULL_PREFIX=queue
             - USER_LOGIN=admin
             - USER_PASSWORD=admin123
+            - REDIS_DB=1
         depends_on:
-            - redis
+            redis:
+                condition: service_healthy
         deploy:
             resources:
                 limits:
-                    cpus: '0.3'
+                    cpus: "0.3"
                     memory: 128M
 
-    # MongoDB Replica Set - Primary Node
     mongo:
         image: mongo:latest
         hostname: mongo
         ports:
-            - '27017:27017'
+            - "27017:27017"
         networks:
             - app-network
         volumes:
             - mongo_data:/data/db
         command: mongod --bind_ip_all --replSet rs0 --port 27017
         extra_hosts:
-            - 'host.docker.internal:host-gateway'
+            - "host.docker.internal:host-gateway"
         deploy:
             resources:
                 limits:
-                    cpus: '1'
+                    cpus: "1"
                     memory: 1GB
         healthcheck:
             test: mongosh --eval "db.adminCommand('ping')" --quiet
@@ -125,10 +131,9 @@ services:
             retries: 5
             start_period: 20s
 
-    # MongoDB Replica Set Initialization service
     mongo-init:
         image: mongo:latest
-        restart: 'no'
+        restart: "no"
         depends_on:
             mongo:
                 condition: service_healthy

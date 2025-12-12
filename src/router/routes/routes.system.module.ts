@@ -1,30 +1,17 @@
-import { Module } from '@nestjs/common';
-import { ApiKeyModule } from '@modules/api-key/api-key.module';
 import { HealthSystemController } from '@modules/health/controllers/health.system.controller';
 import { HealthModule } from '@modules/health/health.module';
-import { RoleSystemController } from '@modules/role/controllers/role.system.controller';
-import { RoleModule } from '@modules/role/role.module';
-import { SettingSystemController } from '@modules/setting/controllers/setting.system.controller';
-import { SettingModule } from '@modules/setting/setting.module';
 import { UserSystemController } from '@modules/user/controllers/user.system.controller';
 import { UserModule } from '@modules/user/user.module';
+import { Module } from '@nestjs/common';
 
+/**
+ * System routes module that provides system-level endpoints.
+ * Contains controllers for user system operations and health checks for monitoring application status.
+ */
 @Module({
-    controllers: [
-        HealthSystemController,
-        SettingSystemController,
-        RoleSystemController,
-        UserSystemController,
-    ],
+    controllers: [UserSystemController, HealthSystemController],
     providers: [],
     exports: [],
-    imports: [
-        HealthModule,
-        SettingModule,
-        UserModule,
-        RoleModule,
-        HealthModule,
-        ApiKeyModule,
-    ],
+    imports: [UserModule, HealthModule],
 })
 export class RoutesSystemModule {}

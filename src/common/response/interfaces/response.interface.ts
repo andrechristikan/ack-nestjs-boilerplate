@@ -1,55 +1,46 @@
 import { HttpStatus } from '@nestjs/common';
-import { IFileRows } from '@common/file/interfaces/file.interface';
-import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
-import { IMessageOptionsProperties } from '@common/message/interfaces/message.interface';
+import { IMessageProperties } from '@common/message/interfaces/message.interface';
+import {
+    IPaginationCursorReturn,
+    IPaginationOffsetReturn,
+} from '@common/pagination/interfaces/pagination.interface';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
-export interface IResponseCustomProperty {
-    statusCode?: number;
-    message?: string;
-    httpStatus?: HttpStatus;
-    messageProperties?: IMessageOptionsProperties;
-}
-
-// metadata
 export interface IResponseMetadata {
-    customProperty?: IResponseCustomProperty;
-    [key: string]: any;
+    statusCode?: number;
+    httpStatus?: HttpStatus;
+    messagePath?: string;
+    messageProperties?: IMessageProperties;
 }
 
-// decorator options
-export interface IResponseOptions {
-    messageProperties?: IMessageOptionsProperties;
-    cached?: IResponseCacheOptions | boolean;
-}
-
-export interface IResponseFileExcelOptions {
-    type?: ENUM_HELPER_FILE_EXCEL_TYPE;
-}
-
-// response
-export interface IResponse<T = void> {
-    _metadata?: IResponseMetadata;
-    data?: T;
-}
-
-// response pagination
-export interface IResponsePagingPagination {
-    totalPage: number;
-    total: number;
-}
-
-export interface IResponsePaging<T> {
-    _metadata?: IResponseMetadata;
-    _pagination: IResponsePagingPagination;
-    data: T[];
-}
-
-export interface IResponseFileExcel {
-    data: IFileRows[];
-}
-
-// cached
 export interface IResponseCacheOptions {
     key?: string;
     ttl?: number;
+}
+
+export interface IResponseActivityLogReturn {
+    metadataActivityLog?: IActivityLogMetadata;
+}
+
+export interface IResponseOptions {
+    cache?: IResponseCacheOptions | boolean;
+}
+
+export interface IResponseReturn<
+    T = unknown,
+> extends IResponseActivityLogReturn {
+    metadata?: IResponseMetadata;
+    data?: T;
+}
+
+export type IResponsePagingReturn<T> = (
+    | IPaginationOffsetReturn<T>
+    | IPaginationCursorReturn<T>
+) & {
+    metadata?: IResponseMetadata;
+} & IResponseActivityLogReturn;
+
+export interface IResponseCsvReturn<T> extends IResponseActivityLogReturn {
+    data: T[];
+    filename?: string;
 }

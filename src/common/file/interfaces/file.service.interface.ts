@@ -1,25 +1,15 @@
-import { IFileRows } from '@common/file/interfaces/file.interface';
+import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 
 export interface IFileService {
-    writeCsv<T = Record<string, string | number | Date>>(
-        rows: IFileRows<T>
-    ): Buffer;
-    writeCsvFromArray<T = Record<string, string | number | Date>>(
-        rows: T[][]
-    ): Buffer;
-    writeExcel<T = Record<string, string | number | Date>>(
-        rows: IFileRows<T>[]
-    ): Buffer;
-    writeExcelFromArray<T = Record<string, string | number | Date>>(
-        rows: T[][]
-    ): Buffer;
-    readCsv<T = Record<string, string | number | Date>>(
-        file: Buffer
-    ): IFileRows<T>;
-    readCsvFromString<T = Record<string, string | number | Date>>(
-        file: string
-    ): IFileRows<T>;
-    readExcel<T = Record<string, string | number | Date>>(
-        file: Buffer
-    ): IFileRows<T>[];
+    writeCsv<T = Record<string, string | number | Date>>(rows: T[]): string;
+    readCsv<T = Record<string, string | number | Date>>(file: string): T[];
+    createRandomFilename({
+        path,
+        prefix,
+        extension,
+        randomLength,
+    }: IFileRandomFilenameOptions): string;
+    extractExtensionFromFilename(filename: string): string;
+    extractMimeFromFilename(filename: string): string;
+    extractFilenameFromPath(filePath: string): string;
 }

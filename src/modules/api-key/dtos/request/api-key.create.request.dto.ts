@@ -1,9 +1,14 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty, IntersectionType, PartialType } from '@nestjs/swagger';
+import {
+    ApiProperty,
+    IntersectionType,
+    OmitType,
+    PartialType,
+} from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
-import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
+import { EnumApiKeyType } from '@prisma/client';
 
 export class ApiKeyCreateRequestDto extends IntersectionType(
     ApiKeyUpdateRequestDto,
@@ -11,16 +16,19 @@ export class ApiKeyCreateRequestDto extends IntersectionType(
 ) {
     @ApiProperty({
         description: 'Api Key name',
-        example: ENUM_API_KEY_TYPE.DEFAULT,
+        example: EnumApiKeyType.default,
         required: true,
-        enum: ENUM_API_KEY_TYPE,
+        enum: EnumApiKeyType,
     })
     @IsNotEmpty()
-    @IsEnum(ENUM_API_KEY_TYPE)
-    type: ENUM_API_KEY_TYPE;
+    @IsEnum(EnumApiKeyType)
+    type: EnumApiKeyType;
 }
 
-export class ApiKeyCreateRawRequestDto extends ApiKeyCreateRequestDto {
+export class ApiKeyCreateRawRequestDto extends OmitType(
+    ApiKeyCreateRequestDto,
+    ['startAt', 'endAt'] as const
+) {
     @ApiProperty({
         name: 'key',
         example: faker.string.alphanumeric(10),

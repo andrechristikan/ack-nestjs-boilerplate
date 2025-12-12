@@ -1,16 +1,24 @@
-import { DynamicModule, Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
+import { Global, Module } from '@nestjs/common';
 import { AuthJwtAccessStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.access.strategy';
 import { AuthJwtRefreshStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.refresh.strategy';
+import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { AuthService } from '@modules/auth/services/auth.service';
-import { Algorithm } from 'jsonwebtoken';
+import { SessionModule } from '@modules/session/session.module';
 
+@Global()
 @Module({
-    providers: [AuthService],
-    exports: [AuthService],
+    providers: [
+        AuthJwtAccessStrategy,
+        AuthJwtRefreshStrategy,
+        AuthUtil,
+        AuthService,
+    ],
+    exports: [AuthUtil, AuthService],
     controllers: [],
     imports: [
+        SessionModule,
         JwtModule.registerAsync({
             inject: [ConfigService],
             imports: [ConfigModule],
@@ -18,21 +26,9 @@ import { Algorithm } from 'jsonwebtoken';
                 signOptions: {
                     audience: configService.get<string>('auth.jwt.audience'),
                     issuer: configService.get<string>('auth.jwt.issuer'),
-                    algorithm:
-                        configService.get<Algorithm>('auth.jwt.algorithm'),
                 },
             }),
         }),
     ],
 })
-export class AuthModule {
-    static forRoot(): DynamicModule {
-        return {
-            module: AuthModule,
-            providers: [AuthJwtAccessStrategy, AuthJwtRefreshStrategy],
-            exports: [],
-            controllers: [],
-            imports: [],
-        };
-    }
-}
+export class AuthModule {}

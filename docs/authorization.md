@@ -1,434 +1,617 @@
-# Overview
+# Authorization Documentation
 
-This document covers the authorization system role-based access control, and policy enforcement.
+This documentation explains the features and usage of: 
+- **UserProtected**: Located at `src/modules/user/decorators`
+- **RoleProtected**: Located at `src/modules/role/decorators`
+- **PolicyAbilityProtected**: Located at `src/modules/policy/decorators`
+- **TermPolicyAcceptanceProtected**: Located at `src/modules/term-policy/decorators`
 
-This documentation explains the features and usage of:
-- **Policy Module**: Located at `src/modules/policy`
-- **Role Module**: Located at `src/modules/role`
-- **User Module** (protection features): Located at `src/modules/user`
+## Overview
 
-> **Note**: The `@AuthJwtAccessProtected()` decorator is a fundamental requirement for all protected routes in the system, including those using Role-Based Access Control (RBAC) and Policy-based permissions. It serves as the base authentication layer that validates the JWT token and extracts the user payload. All other protection decorators like `@UserProtected()`, `@PolicyRoleProtected()`, and `@PolicyAbilityProtected()` build upon this foundation and require a valid JWT token to function properly.
+This authorization system provides a comprehensive, layered security approach for ACK NestJs Boilerplate. It implements multiple protection levels including user authentication, role-based access control, policy-based permissions, and terms acceptance verification.
 
-# Table of Contents
+The system is built using NestJS guards and decorators, making it easy to apply different authorization levels to your route handlers with simple, declarative syntax.
+
+## Related Documents
+
+- [Configuration Documentation][ref-doc-configuration] - For Redis configuration settings
+- [Environment Documentation][ref-doc-environment] - For Redis environment variables
+- [Authentication Documentation][ref-doc-authentication] - For understand authentication system
+- [Activity Log Documentation][ref-doc-activity-log] - For tracking authorization-related user activities
+- [Term Policy Document][ref-doc-term-policy] - For managing user acceptance of terms and policies 
+
+## Table of Contents
+
 - [Overview](#overview)
-- [Table of Contents](#table-of-contents)
-  - [Role-Based Access Control](#role-based-access-control)
-    - [Role Types](#role-types)
-    - [Role Management](#role-management)
-      - [Admin Role Endpoints](#admin-role-endpoints)
-      - [System Role Endpoints](#system-role-endpoints)
-    - [Role Structure](#role-structure)
-      - [Example Role Entity Data](#example-role-entity-data)
-    - [RBAC Implementation Examples](#rbac-implementation-examples)
-  - [User Protection](#user-protection)
-    - [UserProtected Decorator](#userprotected-decorator)
-    - [UserGuard Implementation](#userguard-implementation)
-    - [Usage Examples](#usage-examples)
-      - [Basic User Protection](#basic-user-protection)
-      - [Combining with Role Protection](#combining-with-role-protection)
-      - [Combining with Policy Abilities](#combining-with-policy-abilities)
-  - [Policies](#policies)
-    - [CASL Integration](#casl-integration)
-      - [How CASL Works in the Project](#how-casl-works-in-the-project)
-    - [Policy Actions](#policy-actions)
-    - [Policy Subjects](#policy-subjects)
-    - [Policy Implementation Examples](#policy-implementation-examples)
-      - [Protecting Routes with Policy Abilities](#protecting-routes-with-policy-abilities)
-      - [Combining Role Protection with Policy Abilities](#combining-role-protection-with-policy-abilities)
+- [Related Documents](#related-documents)
+- [User Protected](#user-protected)
+  - [Decorators](#decorators)
+    - [UserProtected() Decorator](#userprotected-decorator)
+    - [UserCurrent() Parameter Decorator](#usercurrent-parameter-decorator)
+  - [Guards](#guards)
+    - [UserGuard](#userguard)
+  - [Important Notes](#important-notes)
+- [Role Protected](#role-protected)
+  - [Decorators](#decorators-1)
+    - [RoleProtected() Decorator](#roleprotected-decorator)
+  - [Getting Current Role](#getting-current-role)
+  - [Guards](#guards-1)
+    - [RoleGuard](#roleguard)
+  - [Important Notes](#important-notes-1)
+- [Policy Ability Protected](#policy-ability-protected)
+  - [Decorators](#decorators-2)
+    - [PolicyAbilityProtected() Decorator](#policyabilityprotected-decorator)
+  - [Guards](#guards-2)
+    - [PolicyAbilityGuard](#policyabilityguard)
+  - [CASL Integration](#casl-integration)
+  - [Important Notes](#important-notes-2)
+- [Term Policy Acceptance Protected](#term-policy-acceptance-protected)
+  - [Decorators](#decorators-3)
+    - [TermPolicyAcceptanceProtected() Decorator](#termpolicyacceptanceprotected-decorator)
+  - [Guards](#guards-3)
+    - [TermPolicyGuard](#termpolicyguard)
+  - [Important Notes](#important-notes-3)
 
-## Role-Based Access Control
+## User Protected
 
-The Role-Based Access Control (RBAC) system manages user access rights through role assignments. Each user is assigned a role that defines their access level within the system.
+`UserProtected` provides basic user authentication and verification. It ensures that only authenticated users can access protected routes and optionally validates whether the user's email has been verified.
 
-### Role Types
+### Decorators
 
-The system defines three main role types:
+#### UserProtected Decorator
 
-```typescript
-export enum ENUM_POLICY_ROLE_TYPE {
-    SUPER_ADMIN = 'SUPER_ADMIN',
-    ADMIN = 'ADMIN',
-    USER = 'USER',
-}
-```
+**Method decorator** that applies `UserGuard` to route handlers.
 
-- **SUPER_ADMIN**: Has unrestricted access to all resources and operations
-- **ADMIN**: Has access to administrative functions with configurable permissions
-- **USER**: Regular user with limited permissions based on their role
+**Parameters:**
+- `isVerified` (boolean, optional): Whether to require email verification. Default: `true`
 
-### Role Management
-
-Roles are managed through the `RoleService` and can be accessed via both admin and system API endpoints. The system provides comprehensive role management through the following API endpoints:
-
-#### Admin Role Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/role/list` | GET | List all roles with pagination and filtering options |
-| `/role/get/:role` | GET | Get detailed information about a specific role |
-| `/role/create` | POST | Create a new role with specified permissions |
-| `/role/update/:role` | PUT | Update an existing role's description, permissions, or type |
-| `/role/update/:role/inactive` | PATCH | Deactivate a role (disable it without deletion) |
-| `/role/update/:role/active` | PATCH | Activate a previously inactive role |
-| `/role/delete/:role` | DELETE | Permanently delete a role (only if not in use) |
-
-#### System Role Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/role/list` | GET | List all roles with pagination (system access) |
-
-All role management endpoints include proper validation, error handling, and permission checks to ensure secure role administration.
-
-### Role Structure
-
-A role in the system consists of:
+**Usage:**
 
 ```typescript
-export class RoleEntity {
-    name: string;           // Unique name of the role
-    description?: string;   // Optional description
-    isActive: boolean;      // Whether the role is active
-    type: ENUM_POLICY_ROLE_TYPE; // Role type (SUPER_ADMIN, ADMIN, USER)
-    permissions: RolePermissionEntity[]; // Assigned permissions
-}
-```
-
-Permissions within a role define what actions can be performed on specific resources.
-
-#### Example Role Entity Data
-
-Here are examples of role entities as they would be stored in the database:
-
-```typescript
-// Super Admin Role
-{
-  "_id": "f45c89ae-4539-4e99-9ae8-ab1f99f1d632",
-  "name": "superadmin", 
-  "description": "Super administrator with unrestricted access",
-  "isActive": true,
-  "type": "SUPER_ADMIN",
-  "permissions": [], // Super admin doesn't need explicit permissions
-  "createdAt": "2023-04-15T08:30:45.123Z",
-  "updatedAt": "2023-04-15T08:30:45.123Z"
-}
-
-// Admin Role
-{
-  "_id": "a77c65be-b1fc-4bd9-8a2f-c8f7d3c9e123",
-  "name": "admin",
-  "description": "System administrator with elevated privileges",
-  "isActive": true,
-  "type": "ADMIN",
-  "permissions": [
-    {
-      "subject": "USER",
-      "action": ["manage"]
-    },
-    {
-      "subject": "ROLE",
-      "action": ["read", "create", "update"]
-    },
-    {
-      "subject": "SETTING",
-      "action": ["read", "update"]
-    }
-  ],
-  "createdAt": "2023-04-15T09:15:22.456Z",
-  "updatedAt": "2023-05-20T14:32:10.789Z"
-}
-
-// User Role (Content Creator)
-{
-  "_id": "d9e5f123-7aa8-42b1-95c3-7de4f8b72d45",
-  "name": "content_creator",
-  "description": "User who can create and manage content",
-  "isActive": true,
-  "type": "USER",
-  "permissions": [
-    {
-      "subject": "CONTENT",
-      "action": ["read", "create", "update", "delete"]
-    },
-    {
-      "subject": "MEDIA",
-      "action": ["read", "create", "delete"]
-    },
-    {
-      "subject": "COMMENT",
-      "action": ["read", "update", "delete"]
-    }
-  ],
-  "createdAt": "2023-06-10T11:20:33.789Z",
-  "updatedAt": "2023-06-10T11:20:33.789Z"
-}
-
-// Restricted User Role
-{
-  "_id": "b22a47cf-1e5d-48ab-9c72-f6b34c8e1111",
-  "name": "viewer",
-  "description": "User with read-only access",
-  "isActive": true,
-  "type": "USER",
-  "permissions": [
-    {
-      "subject": "CONTENT",
-      "action": ["read"]
-    },
-    {
-      "subject": "COMMENT",
-      "action": ["read"]
-    }
-  ],
-  "createdAt": "2023-06-12T15:45:12.456Z",
-  "updatedAt": "2023-07-05T09:18:27.123Z"
-}
-```
-
-These examples demonstrate different role configurations:
-- The **Super Admin** role has no explicit permissions as it has unrestricted access by default
-- The **Admin** role has management capabilities for users and limited access to roles and settings
-- The **Content Creator** role can manipulate content, media, and comments
-- The **Viewer** role has read-only access to content and comments
-
-### RBAC Implementation Examples
-
-
-Different role types can access different routes:
-
-```typescript
-// Admin-only route
-@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-@AuthJwtAccessProtected()
-@Post('/create')
-async createUser() {
-    // Only ADMIN can create users
-}
-
-// Super admin-only route
-@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN)
-@AuthJwtAccessProtected()
-@Delete('/delete/:id')
-async deleteRole() {
-    // Only SUPER_ADMIN can delete roles
-}
-
-// Multiple role types allowed
-@PolicyRoleProtected([ENUM_POLICY_ROLE_TYPE.ADMIN, ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN])
-@AuthJwtAccessProtected()
-@Get('/settings')
-async getSettings() {
-    // Both ADMIN and SUPER_ADMIN can access settings
-}
-```
-
-## User Protection
-
-The User Protection system ensures that only active user can access protected routes. The system validates the user's existence, and active status before allowing access to the protected endpoints.
-
-### UserProtected Decorator
-
-The `@UserProtected()` decorator is a custom NestJS decorator that applies the `UserGuard` to route handlers. This decorator is crucial for ensuring that only valid users can access protected routes.
-
-
-```typescript
-import { applyDecorators, UseGuards } from '@nestjs/common';
-import { UserGuard } from '@modules/user/guards/user.guard';
-
-export function UserProtected(): MethodDecorator {
-    return applyDecorators(UseGuards(UserGuard));
-}
-```
-
-### UserGuard Implementation
-
-The `UserGuard` performs several important validations:
-
-1. Verifies that the user exists in the database
-2. Checks if the user is active (not inactive, blocked, or deleted)
-3. Confirms that the user's assigned role is active
-4. Validates that the user's password is not expired
-
-### Usage Examples
-
-The `@UserProtected()` decorator is typically used together with other security decorators to build a comprehensive security layer for endpoints:
-
-#### Basic User Protection
-
-```typescript
-@Response('user.profile')
 @UserProtected()
 @AuthJwtAccessProtected()
-@Get('/profile')
-async profile(
-    @AuthJwtPayload('user') user: IUserDoc
-): Promise<IResponse<UserProfileResponseDto>> {
-    // This endpoint is only accessible by authenticated users with active status
-    // ...implementation
+@Get('profile')
+getProfile(@UserCurrent() user: IUser) {
+  return user;
+}
+
+// Allow unverified users
+@UserProtected(false)
+@AuthJwtAccessProtected()
+@Get('dashboard')
+getDashboard(@UserCurrent() user: IUser) {
+  return { user };
 }
 ```
 
-#### Combining with Role Protection
+#### UserCurrent Parameter Decorator
+
+Extracts the authenticated user object from the request context.
+
+**Returns:** `IUser | undefined`
+
+**Usage:**
 
 ```typescript
-@Response('user.delete')
-@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
 @UserProtected()
 @AuthJwtAccessProtected()
-@Delete('/delete')
-async delete(
-    @AuthJwtPayload('user') user: IUserDoc
-): Promise<void> {
-    // This endpoint is only accessible by authenticated users with USER role type
-    // ...implementation
+@Get('me')
+getCurrentUser(@UserCurrent() user: IUser) {
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role
+  };
 }
 ```
 
-#### Combining with Policy Abilities
+### Guards
+
+#### `UserGuard`
+
+The guard implementation that performs the actual validation.
+
+The `UserProtected` decorator follows this validation sequence:
+
+1. **Authentication Check**: Verifies that `request.user` exists (populated by JWT strategy)
+2. **User Lookup**: Retrieves user from database with role information
+3. **User Existence**: Ensures user record exists
+4. **Status Validation**: Confirms user status is `active`
+5. **Password Expiry**: Checks if password has expired
+6. **Email Verification**: Validates email verification if required
+
+**Flow Diagram:**
+
+```mermaid
+flowchart TD
+    Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT and populate request.user]
+    JwtGuard --> CheckAuth{request.user exists?}
+    CheckAuth -->|No| ErrorAuth[Throw UnauthorizedException<br/>JWT_ACCESS_TOKEN_INVALID]
+    CheckAuth -->|Yes| LookupUser[Retrieve user from database<br/>with role information]
+    
+    LookupUser --> UserExists{User exists<br/>in database?}
+    UserExists -->|No| ErrorNotFound[Throw ForbiddenException<br/>USER_NOT_FOUND]
+    UserExists -->|Yes| CheckStatus{User status<br/>is active?}
+    
+    CheckStatus -->|No| ErrorInactive[Throw ForbiddenException<br/>INACTIVE_FORBIDDEN]
+    CheckStatus -->|Yes| CheckPassword{Password<br/>expired?}
+    
+    CheckPassword -->|Yes| ErrorPassword[Throw ForbiddenException<br/>PASSWORD_EXPIRED]
+    CheckPassword -->|No| CheckVerified{isVerified required<br/>AND user not verified?}
+    
+    CheckVerified -->|Yes| ErrorVerified[Throw ForbiddenException<br/>EMAIL_NOT_VERIFIED]
+    CheckVerified -->|No| SetUser[Set request.__user = user]
+    
+    SetUser --> Success([Access Granted])
+    
+    ErrorAuth --> End([Request Rejected])
+    ErrorNotFound --> End
+    ErrorInactive --> End
+    ErrorPassword --> End
+    ErrorVerified --> End
+```
+
+### Important Notes
+
+- `@UserProtected()` **requires** `@AuthJwtAccessProtected()` to be applied first (above in code)
+- `@AuthJwtAccessProtected()` populates `request.user` from JWT token. See [Authentication Documentation][ref-doc-authentication] for details
+- This decorator populates `request.__user` which is required by downstream guards
+
+## Role Protected
+
+`RoleProtected` implements role-based access control (RBAC) to restrict route access based on user roles. It ensures that only users with specific role types can access protected endpoints.
+
+### Decorators
+
+#### RoleProtected Decorator
+
+**Method decorator** that applies `RoleGuard` to route handlers.
+
+**Parameters:**
+- `...requiredRoles` (EnumRoleType[]): One or more role types required to access the route
+
+**Available Role Types:**
+- `EnumRoleType.superAdmin` - Super administrator with unrestricted access
+- `EnumRoleType.admin` - Administrator role
+- `EnumRoleType.user` - Standard user role
+
+**Usage:**
 
 ```typescript
-@ResponsePaging('user.list')
+// Single role requirement
+@RoleProtected(EnumRoleType.admin)
+@UserProtected()
+@AuthJwtAccessProtected()
+@Get('admin/dashboard')
+getAdminDashboard(@UserCurrent() user: IUser) {
+  return this.dashboardService.getAdminData();
+}
+
+// Multiple role requirements (user must have one of the specified roles)
+@RoleProtected(EnumRoleType.admin, EnumRoleType.superAdmin)
+@UserProtected()
+@AuthJwtAccessProtected()
+@Delete('users/:id')
+deleteUser(@Param('id') id: string) {
+  return this.userService.delete(id);
+}
+```
+
+### Getting Current Role
+
+To access the current user's role, use the `@UserCurrent()` decorator and access the `role` property:
+
+```typescript
+@RoleProtected(EnumRoleType.admin)
+@UserProtected()
+@AuthJwtAccessProtected()
+@Get('role-info')
+getRoleInfo(@UserCurrent() user: IUser) {
+  return {
+    roleType: user.role.type,
+    roleName: user.role.name,
+    abilities: user.role.abilities
+  };
+}
+```
+
+### Guards
+
+#### `RoleGuard`
+
+The guard implementation that validates user roles and populates role abilities.
+
+The `RoleProtected` decorator follows this validation sequence:
+
+1. **User Validation**: Verifies that `request.__user` and `request.user` exist
+2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access with empty abilities array
+3. **Required Roles Check**: Validates that required roles are defined
+4. **Role Match**: Confirms user's role type matches one of the required roles
+5. **Abilities Population**: Attaches role abilities to `request.__abilities` for downstream use
+
+**Flow Diagram:**
+
+```mermaid
+flowchart TD
+    Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
+    JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
+    UserGuard --> CheckUser{request.__user and<br/>request.user exist?}
+    
+    CheckUser -->|No| ErrorUser[Throw ForbiddenException<br/>JWT_ACCESS_TOKEN_INVALID]
+    CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
+    
+    CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant access with<br/>empty abilities array]
+    CheckSuperAdmin -->|No| CheckRequired{Required roles<br/>defined?}
+    
+    CheckRequired -->|No| ErrorPredefined[Throw InternalServerErrorException<br/>PREDEFINED_NOT_FOUND]
+    CheckRequired -->|Yes| CheckRoleMatch{User role matches<br/>required roles?}
+    
+    CheckRoleMatch -->|No| ErrorForbidden[Throw ForbiddenException<br/>ROLE_FORBIDDEN]
+    CheckRoleMatch -->|Yes| SetAbilities[Set request.__abilities<br/>from user role]
+    
+    GrantSuperAdmin --> Success([Access Granted])
+    SetAbilities --> Success
+    
+    ErrorUser --> End([Request Rejected])
+    ErrorPredefined --> End
+    ErrorForbidden --> End
+```
+
+### Important Notes
+
+- `@RoleProtected()` **requires** `@AuthJwtAccessProtected()` and `@UserProtected()` to be applied
+- `@AuthJwtAccessProtected()` must be placed at the bottom, followed by `@RoleProtected()`, then `@UserProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- This decorator populates `request.__abilities` which is required by policy guards
+- Incorrect ordering will result in runtime errors
+- Users with `superAdmin` role type have unrestricted access to all `@RoleProtected` routes, regardless of the specified required roles. The guard returns an empty abilities array for super admins, as they bypass ability checks.
+
+
+## Policy Ability Protected
+
+`PolicyAbilityProtected` implements fine-grained, permission-based access control using CASL (an isomorphic authorization library). It allows you to define specific actions (read, create, update, delete, manage) that users can perform on specific subjects (resources like users, roles, settings, etc.).
+
+### Decorators
+
+#### PolicyAbilityProtected Decorator
+
+**Method decorator** that applies `PolicyAbilityGuard` to route handlers.
+
+**Parameters:**
+- `...requiredAbilities` (RoleAbilityRequestDto[]): One or more policy ability objects defining required permissions
+
+**Available Policy Actions:**
+- `ENUM_POLICY_ACTION.MANAGE` - Full control over a subject
+- `ENUM_POLICY_ACTION.READ` - Read/view permission
+- `ENUM_POLICY_ACTION.CREATE` - Create new resources
+- `ENUM_POLICY_ACTION.UPDATE` - Modify existing resources
+- `ENUM_POLICY_ACTION.DELETE` - Remove resources
+
+**Available Policy Subjects:**
+- `ENUM_POLICY_SUBJECT.ALL` - All resources
+- `ENUM_POLICY_SUBJECT.AUTH` - Authentication resources
+- `ENUM_POLICY_SUBJECT.SETTING` - Application settings
+- `ENUM_POLICY_SUBJECT.API_KEY` - API key management
+- `ENUM_POLICY_SUBJECT.COUNTRY` - Country data
+- `ENUM_POLICY_SUBJECT.ROLE` - Role management
+- `ENUM_POLICY_SUBJECT.USER` - User management
+- `ENUM_POLICY_SUBJECT.SESSION` - Session management
+- `ENUM_POLICY_SUBJECT.ACTIVITY_LOG` - Activity logs
+- `ENUM_POLICY_SUBJECT.PASSWORD_HISTORY` - Password history
+- `ENUM_POLICY_SUBJECT.TERM_POLICY` - Terms and policies
+- `ENUM_POLICY_SUBJECT.FEATURE_FLAG` - Feature flags
+
+**Usage:**
+
+```typescript
+// Single ability requirement
 @PolicyAbilityProtected({
-    subject: ENUM_POLICY_SUBJECT.USER,
-    action: [ENUM_POLICY_ACTION.READ],
+  subject: ENUM_POLICY_SUBJECT.USER,
+  action: [ENUM_POLICY_ACTION.READ]
 })
-@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+@RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
-@Get('/list')
-async list(): Promise<IResponsePaging<UserListResponseDto>> {
-    // This endpoint is only accessible by authenticated ADMIN users with READ permission on USER subject
-    // ...implementation
+@Get('users')
+getUsers() {
+  return this.userService.findAll();
+}
+
+// Multiple actions on single subject
+@PolicyAbilityProtected({
+  subject: ENUM_POLICY_SUBJECT.USER,
+  action: [ENUM_POLICY_ACTION.UPDATE, ENUM_POLICY_ACTION.DELETE]
+})
+@RoleProtected(EnumRoleType.admin)
+@UserProtected()
+@AuthJwtAccessProtected()
+@Put('users/:id')
+updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+  return this.userService.update(id, dto);
+}
+
+// Multiple ability requirements (different subjects)
+@PolicyAbilityProtected(
+  {
+    subject: ENUM_POLICY_SUBJECT.ROLE,
+    action: [ENUM_POLICY_ACTION.READ]
+  },
+  {
+    subject: ENUM_POLICY_SUBJECT.USER,
+    action: [ENUM_POLICY_ACTION.MANAGE]
+  }
+)
+@RoleProtected(EnumRoleType.admin)
+@UserProtected()
+@AuthJwtAccessProtected()
+@Post('users/:id/assign-role')
+assignRole(@Param('id') id: string, @Body() dto: AssignRoleDto) {
+  return this.userService.assignRole(id, dto.roleId);
 }
 ```
 
-## Policies
+### Guards
 
-The policy system extends RBAC with fine-grained permission control using the CASL library for ability-based authorization. Policies define what actions a user can perform on which resources.
+#### `PolicyAbilityGuard`
+
+The guard implementation that validates user abilities using CASL library.
+
+The `PolicyAbilityProtected` decorator follows this validation sequence:
+
+1. **User Validation**: Verifies that `request.__user` and `request.user` exist
+2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access
+3. **Required Abilities Check**: Validates that required abilities are defined
+4. **Ability Creation**: Creates CASL ability rules from user's role abilities (`request.__abilities`)
+5. **Permission Validation**: Checks if user abilities match all required abilities
+6. **Access Decision**: Grants or denies access based on permission match
+
+**Flow Diagram:**
+
+```mermaid
+flowchart TD
+    Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
+    JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
+    UserGuard --> RoleGuard[ @RoleProtected<br/>Validate role and load abilities]
+    RoleGuard --> CheckUser{request.__user and<br/>request.user exist?}
+    
+    CheckUser -->|No| ErrorUser[Throw ForbiddenException<br/>JWT_ACCESS_TOKEN_INVALID]
+    CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
+    
+    CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant immediate access]
+    CheckSuperAdmin -->|No| CheckRequired{Required abilities<br/>defined?}
+    
+    CheckRequired -->|No| ErrorPredefined[Throw InternalServerErrorException<br/>PREDEFINED_NOT_FOUND]
+    CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from request.__abilities]
+    
+    CreateAbilities --> ValidateAbilities{All required abilities<br/>present in user abilities?}
+    
+    ValidateAbilities -->|No| ErrorForbidden[Throw ForbiddenException<br/>POLICY_FORBIDDEN]
+    ValidateAbilities -->|Yes| GrantAccess[Grant access]
+    
+    GrantSuperAdmin --> Success([Access Granted])
+    GrantAccess --> Success
+    
+    ErrorUser --> End([Request Rejected])
+    ErrorPredefined --> End
+    ErrorForbidden --> End
+```
 
 ### CASL Integration
 
-#### How CASL Works in the Project
+The system uses [CASL][casl] (Code Access Security Library) to handle complex permission logic:
 
-1. **Ability Definition**: The system uses the `PolicyAbilityFactory` to create CASL abilities based on a user's permissions:
+**PolicyAbilityFactory:**
 
-```typescript
-@Injectable()
-export class PolicyAbilityFactory {
-    createForUser(permissions: RolePermissionEntity[]): IPolicyAbilityRule {
-        const { can, build } = new AbilityBuilder<IPolicyAbilityRule>(
-            createMongoAbility
-        );
+- `createForUser()`: Builds CASL ability rules from user's assigned abilities
+- `handlerAbilities()`: Validates if user has all required abilities using CASL's `can()` method
 
-        for (const permission of permissions) {
-            can(permission.action, permission.subject);
-        }
+**How it works:**
 
-        return build({
-            // Read https://casl.js.org/v6/en/guide/subject-type-detection#use-classes-as-subject-types for details
-            detectSubjectType: (item: any) =>
-                item.constructor as ExtractSubjectType<IPolicyAbilitySubject>,
-        });
-    }
-}
-```
+The factory creates a CASL ability instance that can check if a user can perform specific actions on specific subjects. Every required ability must be satisfied for access to be granted.
 
-2. **Permission Checking**: When a request is made, the `PolicyAbilityGuard` uses CASL to check if the user has the required permissions:
+### Important Notes
 
-```typescript
-handlerAbilities(
-    userAbilities: IPolicyAbilityRule,
-    abilities: IPolicyAbility[]
-): boolean {
-    return abilities.every((ability: IPolicyAbility) =>
-        ability.action.every((action: ENUM_POLICY_ACTION) =>
-            userAbilities.can(action, ability.subject)
-        )
-    );
-}
-```
+- `@PolicyAbilityProtected()` **requires** `@AuthJwtAccessProtected()`, `@RoleProtected()`, and `@UserProtected()` to be applied
+- Decorators must be stacked in this order from bottom to top: `@PolicyAbilityProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- Incorrect ordering will result in runtime errors
+- Users with `superAdmin` role type have unrestricted access to all `@PolicyAbilityProtected` routes, bypassing all ability checks.
+- All actions in a required ability must be present in the user's abilities. For example, if you require `[UPDATE, DELETE]` on `USER` subject, the user must have both actions, not just one.
 
-3. **Hierarchical Permissions**: CASL allows for hierarchical permissions:
-  The `manage` action implies all other actions (read, create, update, delete)
+## Term Policy Acceptance Protected
 
-4. **Storage in MongoDB**: Permissions are stored as part of the role document in MongoDB, allowing for dynamic updates without code changes.
+`TermPolicyAcceptanceProtected` validates that users have accepted required legal terms and policies (such as Terms of Service, Privacy Policy, etc.) before allowing access to protected routes. This ensures legal compliance and user consent management.
 
-### Policy Actions
+For more detailed information about term policies, see [Term Policy Document][ref-doc-term-policy].
 
-Available actions that can be assigned to permissions:
+### Decorators
+
+#### TermPolicyAcceptanceProtected Decorator
+
+**Method decorator** that applies `TermPolicyGuard` to route handlers.
+
+**Parameters:**
+- `...requiredTermPolicies` (EnumTermPolicyType[], optional): One or more term policy types that must be accepted. If not provided, defaults to `termsOfService` and `privacy`
+
+**Available Term Policy Types:**
+- `EnumTermPolicyType.termsOfService` - Terms of Service acceptance
+- `EnumTermPolicyType.privacy` - Privacy Policy acceptance
+- `EnumTermPolicyType.cookies` - Cookies Policy acceptance
+- `EnumTermPolicyType.marketing` - Marketing consent acceptance
+
+**Usage:**
 
 ```typescript
-export enum ENUM_POLICY_ACTION {
-    MANAGE = 'manage',   // Full access (implies all other actions)
-    READ = 'read',       // View access
-    CREATE = 'create',   // Create new resources
-    UPDATE = 'update',   // Modify existing resources
-    DELETE = 'delete',   // Remove resources
-}
-```
-
-### Policy Subjects
-
-Subjects represent the resources that can be protected by policies:
-
-```typescript
-export enum ENUM_POLICY_SUBJECT {
-    AUTH = 'AUTH',         // Authentication related
-    API_KEY = 'API_KEY',   // API key management
-    SETTING = 'SETTING',   // System settings
-    ROLE = 'ROLE',         // Role management
-    USER = 'USER',         // User management
-    SESSION = 'SESSION',   // Session management
-    ACTIVITY = 'ACTIVITY', // User activities
-    // ...other subjects
-}
-```
-
-### Policy Implementation Examples
-
-#### Protecting Routes with Policy Abilities
-
-Routes can be protected using specific abilities defined by action and subject combinations:
-
-```typescript
-@PolicyAbilityProtected({
-    subject: ENUM_POLICY_SUBJECT.USER,
-    action: [ENUM_POLICY_ACTION.READ],
-})
+// Default: requires termsOfService and privacy acceptance
+@TermPolicyAcceptanceProtected()
+@UserProtected()
 @AuthJwtAccessProtected()
-@Get('/list')
-async listUsers() {
-    // Only accessible if the user has READ permission on USER subject
-    // ...implementation
+@Get('premium-features')
+getPremiumFeatures() {
+  return this.featureService.getPremiumFeatures();
 }
 
-@PolicyAbilityProtected({
-    subject: ENUM_POLICY_SUBJECT.USER,
-    action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
-})
+// Single term policy requirement
+@TermPolicyAcceptanceProtected(EnumTermPolicyType.marketing)
+@UserProtected()
 @AuthJwtAccessProtected()
-@Post('/create')
-async createUser() {
-    // Requires both READ and CREATE permissions on USER subject
-    // ...implementation
+@Post('subscribe-newsletter')
+subscribeNewsletter(@Body() dto: SubscribeDto) {
+  return this.newsletterService.subscribe(dto);
+}
+
+// Multiple term policy requirements
+@TermPolicyAcceptanceProtected(
+  EnumTermPolicyType.termsOfService,
+  EnumTermPolicyType.privacy,
+  EnumTermPolicyType.cookies
+)
+@UserProtected()
+@AuthJwtAccessProtected()
+@Post('data-processing')
+processUserData(@Body() dto: ProcessDataDto) {
+  return this.dataService.process(dto);
 }
 ```
 
-#### Combining Role Protection with Policy Abilities
+### Guards
 
-For more granular control, combine role protection with policy abilities:
+#### `TermPolicyGuard`
 
-```typescript
-// Requires ADMIN role AND specific policy abilities
-@PolicyAbilityProtected({
-    subject: ENUM_POLICY_SUBJECT.USER,
-    action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-})
-@PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-@AuthJwtAccessProtected()
-@Put('/update/:user')
-async updateUser() {
-    // Only ADMIN with READ and UPDATE permissions on USER can access
-    // ...implementation
-}
+The guard implementation that validates user term policy acceptance.
+
+The `TermPolicyAcceptanceProtected` decorator follows this validation sequence:
+
+1. **User Validation**: Verifies that `request.__user` and `request.user` exist
+2. **Default Policy Check**: If no required policies specified, sets defaults to `termsOfService` and `privacy`
+3. **Term Policy Lookup**: Retrieves user's term policy acceptance status from `__user.termPolicy`
+4. **Acceptance Validation**: Checks if all required term policies are accepted
+5. **Access Decision**: Grants access only if all required policies are accepted
+
+**Flow Diagram:**
+
+```mermaid
+flowchart TD
+    Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
+    JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
+    UserGuard --> CheckUser{request.__user and<br/>request.user exist?}
+    
+    CheckUser -->|No| ErrorUser[Throw ForbiddenException<br/>JWT_ACCESS_TOKEN_INVALID]
+    CheckUser -->|Yes| CheckRequired{Required term policies<br/>specified?}
+    
+    CheckRequired -->|No| SetDefault[Set default policies:<br/>termsOfService and privacy]
+    CheckRequired -->|Yes| UseSpecified[Use specified policies]
+    
+    SetDefault --> GetTermPolicy[Get user.termPolicy<br/>acceptance status]
+    UseSpecified --> GetTermPolicy
+    
+    GetTermPolicy --> CheckAcceptance{All required policies<br/>accepted by user?}
+    
+    CheckAcceptance -->|No| ErrorRequired[Throw ForbiddenException<br/>REQUIRED_INVALID]
+    CheckAcceptance -->|Yes| GrantAccess[Grant access]
+    
+    GrantAccess --> Success([Access Granted])
+    
+    ErrorUser --> End([Request Rejected])
+    ErrorRequired --> End
 ```
+
+### Important Notes
+
+- `@TermPolicyAcceptanceProtected()` **requires** `@UserProtected()` and `@AuthJwtAccessProtected()` to be applied
+- Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
+- For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
+- Without the required decorators, the endpoint will throw a 403 Forbidden error
+- If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
+- All specified term policies must be accepted by the user for access to be granted
+- Incorrect decorator ordering will result in runtime errors
+
+
+<!-- REFERENCES -->
+
+<!-- BADGE LINKS -->
+
+[ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
+[ack-forks-shield]: https://img.shields.io/github/forks/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
+[ack-stars-shield]: https://img.shields.io/github/stars/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
+[ack-issues-shield]: https://img.shields.io/github/issues/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
+[ack-license-shield]: https://img.shields.io/github/license/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
+[nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
+[nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
+[typescript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
+[mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
+[jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
+[jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
+[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
+[docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
+[github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
+[linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
+
+<!-- CONTACTS -->
+
+[ref-author-linkedin]: https://linkedin.com/in/andrechristikan
+[ref-author-email]: mailto:andrechristikan@gmail.com
+[ref-author-github]: https://github.com/andrechristikan
+[ref-author-paypal]: https://www.paypal.me/andrechristikan
+[ref-author-kofi]: https://ko-fi.com/andrechristikan
+
+<!-- Repo LINKS -->
+
+[ref-ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
+[ref-ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate/issues
+[ref-ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
+[ref-ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
+[ref-ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
+[ref-ack-license]: LICENSE.md
+
+<!-- THIRD PARTY -->
+
+[casl]: https://casl.js.org/
+[ref-nestjs]: http://nestjs.com
+[ref-prisma]: https://www.prisma.io
+[ref-mongodb]: https://docs.mongodb.com/
+[ref-redis]: https://redis.io
+[ref-bullmq]: https://bullmq.io
+[ref-nodejs]: https://nodejs.org/
+[ref-typescript]: https://www.typescriptlang.org/
+[ref-docker]: https://docs.docker.com
+[ref-dockercompose]: https://docs.docker.com/compose/
+[ref-pnpm]: https://pnpm.io
+[ref-12factor]: https://12factor.net
+[ref-commander]: https://nest-commander.jaymcdoniel.dev
+[ref-package-json]: package.json
+[ref-jwt]: https://jwt.io
+[ref-jest]: https://jestjs.io/docs/getting-started
+[ref-git]: https://git-scm.com
+[ref-google-console]: https://console.cloud.google.com/
+[ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
+
+<!-- DOCUMENTS -->
+
+[ref-doc-root]: readme.md
+[ref-doc-activity-log]: docs/activity-log.md
+[ref-doc-authentication]: docs/authentication.md
+[ref-doc-authorization]: docs/authorization.md
+[ref-doc-cache]: docs/cache.md
+[ref-doc-configuration]: docs/configuration.md
+[ref-doc-database]: docs/database.md
+[ref-doc-environment]: docs/environment.md
+[ref-doc-feature-flag]: docs/feature-flag.md
+[ref-doc-file-upload]: docs/file-upload.md
+[ref-doc-handling-error]: docs/handling-error.md
+[ref-doc-installation]: docs/installation.md
+[ref-doc-logger]: docs/logger.md
+[ref-doc-message]: docs/message.md
+[ref-doc-pagination]: docs/pagination.md
+[ref-doc-project-structure]: docs/project-structure.md
+[ref-doc-queue]: docs/queue.md
+[ref-doc-request-validation]: docs/request-validation.md
+[ref-doc-response]: docs/response.md
+[ref-doc-security-and-middleware]: docs/security-and-middleware.md
+[ref-doc-doc]: docs/doc.md
+[ref-doc-third-party-integration]: docs/third-party-integration.md
+[ref-doc-presign]: docs/presign.md
+[ref-doc-term-policy]: docs/term-policy.md
+
+<!-- CONTRIBUTOR -->
+
+[ref-contributor-gzerox]: https://github.com/Gzerox
+

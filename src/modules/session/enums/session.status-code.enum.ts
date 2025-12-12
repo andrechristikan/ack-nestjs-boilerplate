@@ -1,5 +1,4 @@
 export enum ENUM_SESSION_STATUS_CODE_ERROR {
-    NOT_FOUND = 5070,
-    EXPIRED = 5071,
-    FORBIDDEN_REVOKE = 5072,
+    notFound = 5040,
+    forbidden = 5041,
 }

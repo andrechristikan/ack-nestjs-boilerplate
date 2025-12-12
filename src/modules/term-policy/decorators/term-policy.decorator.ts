@@ -1,13 +1,20 @@
 import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
-import { TERM_POLICY_ACCEPTANCE_GUARD_META_KEY } from '@modules/term-policy/constants/term-policy.constant';
+import { TERM_POLICY_REQUIRED_GUARD_META_KEY } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
-import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
+import { EnumTermPolicyType } from '@prisma/client';
 
+/**
+ * Method decorator that applies term policy acceptance protection to routes.
+ * Validates if the user has accepted the required term policies before allowing access.
+ *
+ * @param {...EnumTermPolicyType[]} requiredTermPolicies - List of term policy types that must be accepted
+ * @returns {MethodDecorator} Method decorator function
+ */
 export function TermPolicyAcceptanceProtected(
-    ...types: ENUM_TERM_POLICY_TYPE[]
+    ...requiredTermPolicies: EnumTermPolicyType[]
 ): MethodDecorator {
     return applyDecorators(
         UseGuards(TermPolicyGuard),
-        SetMetadata(TERM_POLICY_ACCEPTANCE_GUARD_META_KEY, types)
+        SetMetadata(TERM_POLICY_REQUIRED_GUARD_META_KEY, requiredTermPolicies)
     );
 }

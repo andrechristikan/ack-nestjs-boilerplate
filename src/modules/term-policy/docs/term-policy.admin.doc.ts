@@ -1,27 +1,29 @@
+import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import {
     Doc,
     DocAuth,
     DocGuard,
     DocRequest,
     DocResponse,
+    DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { applyDecorators } from '@nestjs/common';
+import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import {
+    TermPolicyDocParamsGetContent,
     TermPolicyDocParamsId,
     TermPolicyListAdminDocQuery,
 } from '@modules/term-policy/constants/term-policy.doc.constant';
-import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
-import { TermPolicyUploadDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.upload-document.request';
-import { AwsS3PresignResponseDto } from '@modules/aws/dtos/response/aws.s3-presign.response.dto';
+import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
+import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
-import { TermPolicyUpdateDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.update-document.request';
+import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function TermPolicyAdminListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'Retrieve list of terms and policies',
+            summary: 'Retrieve list of terms and policies for admin',
         }),
         DocRequest({
             queries: TermPolicyListAdminDocQuery,
@@ -34,31 +36,8 @@ export function TermPolicyAdminListDoc(): MethodDecorator {
             policy: true,
             role: true,
         }),
-        DocResponse<TermPolicyResponseDto>('termPolicy.list', {
+        DocResponsePaging<TermPolicyResponseDto>('termPolicy.list', {
             dto: TermPolicyResponseDto,
-        })
-    );
-}
-
-export function TermPolicyAdminUploadDocumentDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'upload document for term-policy using presigned URL',
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({
-            policy: true,
-            role: true,
-        }),
-        DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            dto: TermPolicyUploadDocumentRequestDto,
-        }),
-        DocResponse<AwsS3PresignResponseDto>('termPolicy.updateDocument', {
-            dto: AwsS3PresignResponseDto,
         })
     );
 }
@@ -66,103 +45,176 @@ export function TermPolicyAdminUploadDocumentDoc(): MethodDecorator {
 export function TermPolicyAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'create new term-policy',
+            summary: 'Create a new term or policy',
         }),
         DocAuth({
-            xApiKey: true,
             jwtAccessToken: true,
+            xApiKey: true,
         }),
         DocGuard({
             policy: true,
             role: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: EnumDocRequestBodyType.json,
             dto: TermPolicyCreateRequestDto,
         }),
-        DocResponse<DatabaseIdResponseDto>('termPolicy.create', {
-            dto: DatabaseIdResponseDto,
+        DocResponse<TermPolicyResponseDto>('termPolicy.create', {
+            dto: TermPolicyResponseDto,
+            httpStatus: HttpStatus.CREATED,
         })
-    );
-}
-
-export function TermPolicyAdminUpdateDocumentDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'update document for term-policy',
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({
-            policy: true,
-            role: true,
-        }),
-        DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            dto: TermPolicyUpdateDocumentRequestDto,
-            params: [TermPolicyDocParamsId],
-        }),
-        DocResponse('termPolicy.updateDocument')
     );
 }
 
 export function TermPolicyAdminDeleteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'delete term-policy only if it is in draft status',
+            summary: 'Delete a term or policy by ID',
         }),
         DocAuth({
-            xApiKey: true,
             jwtAccessToken: true,
+            xApiKey: true,
         }),
         DocGuard({
             policy: true,
             role: true,
         }),
         DocRequest({
-            params: [TermPolicyDocParamsId],
+            params: TermPolicyDocParamsId,
         }),
-        DocResponse('termPolicy.delete')
+        DocResponse<TermPolicyResponseDto>('termPolicy.create', {
+            dto: TermPolicyResponseDto,
+        })
     );
 }
 
-export function TermPolicyAdminDeleteDocumentDoc(): MethodDecorator {
+export function TermPolicyAdminGenerateContentPresignDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'delete document from term-policy',
+            summary: 'Generate presign url for term or policy content upload',
         }),
         DocAuth({
-            xApiKey: true,
             jwtAccessToken: true,
+            xApiKey: true,
         }),
         DocGuard({
             policy: true,
             role: true,
         }),
         DocRequest({
-            params: [TermPolicyDocParamsId],
+            bodyType: EnumDocRequestBodyType.json,
+            dto: TermPolicyContentPresignRequestDto,
         }),
-        DocResponse('termPolicy.deleteDocument')
+        DocResponse<AwsS3PresignDto>('termPolicy.generateContentPresign', {
+            dto: AwsS3PresignDto,
+        })
+    );
+}
+
+export function TermPolicyAdminUpdateContentDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'Update content of a term or policy by ID',
+        }),
+        DocAuth({
+            jwtAccessToken: true,
+            xApiKey: true,
+        }),
+        DocGuard({
+            policy: true,
+            role: true,
+        }),
+        DocRequest({
+            bodyType: EnumDocRequestBodyType.json,
+            dto: TermPolicyContentRequestDto,
+            params: TermPolicyDocParamsId,
+        }),
+        DocResponse('termPolicy.updateContent')
+    );
+}
+
+export function TermPolicyAdminAddContentDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'Add content to a term or policy by ID',
+        }),
+        DocAuth({
+            jwtAccessToken: true,
+            xApiKey: true,
+        }),
+        DocGuard({
+            policy: true,
+            role: true,
+        }),
+        DocRequest({
+            bodyType: EnumDocRequestBodyType.json,
+            dto: TermPolicyContentRequestDto,
+            params: TermPolicyDocParamsId,
+        }),
+        DocResponse('termPolicy.addContent')
+    );
+}
+
+export function TermPolicyAdminRemoveContentDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'Remove content of a term or policy by ID',
+        }),
+        DocAuth({
+            jwtAccessToken: true,
+            xApiKey: true,
+        }),
+        DocGuard({
+            policy: true,
+            role: true,
+        }),
+        DocRequest({
+            bodyType: EnumDocRequestBodyType.json,
+            dto: TermPolicyRemoveContentRequestDto,
+            params: TermPolicyDocParamsId,
+        }),
+        DocResponse('termPolicy.removeContent')
+    );
+}
+
+export function TermPolicyAdminGetContentDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'Get content of a term or policy by ID and language',
+        }),
+        DocAuth({
+            jwtAccessToken: true,
+            xApiKey: true,
+        }),
+        DocGuard({
+            policy: true,
+            role: true,
+        }),
+        DocRequest({
+            bodyType: EnumDocRequestBodyType.json,
+            params: TermPolicyDocParamsGetContent,
+        }),
+        DocResponse('termPolicy.getContent', {
+            dto: AwsS3PresignDto,
+        })
     );
 }
 
 export function TermPolicyAdminPublishDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'publish term-policy',
+            summary: 'Publish a term or policy by ID',
         }),
         DocAuth({
-            xApiKey: true,
             jwtAccessToken: true,
+            xApiKey: true,
         }),
         DocGuard({
             policy: true,
             role: true,
         }),
         DocRequest({
-            params: [TermPolicyDocParamsId],
+            params: TermPolicyDocParamsId,
         }),
         DocResponse('termPolicy.publish')
     );

@@ -4,7 +4,7 @@
         {
             "label": "Start Development Server",
             "type": "shell",
-            "command": "yarn start:dev",
+            "command": "pnpm start:dev",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -14,105 +14,105 @@
         {
             "label": "Build Project",
             "type": "shell",
-            "command": "yarn build",
+            "command": "pnpm build",
             "group": "build",
             "problemMatcher": []
         },
         {
             "label": "Format Code",
             "type": "shell",
-            "command": "yarn format",
+            "command": "pnpm format",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Lint Project",
             "type": "shell",
-            "command": "yarn lint",
+            "command": "pnpm lint",
             "group": "test",
             "problemMatcher": ["$eslint-stylish"]
         },
         {
             "label": "Lint and Fix",
             "type": "shell",
-            "command": "yarn lint:fix",
+            "command": "pnpm lint:fix",
             "group": "none",
             "problemMatcher": ["$eslint-stylish"]
         },
         {
             "label": "Run Tests",
             "type": "shell",
-            "command": "yarn test",
+            "command": "pnpm test",
             "group": "test",
             "problemMatcher": []
         },
         {
             "label": "Check Dead Code",
             "type": "shell",
-            "command": "yarn deadcode",
+            "command": "pnpm deadcode",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Spell Check",
             "type": "shell",
-            "command": "yarn spell",
+            "command": "pnpm spell",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Generate Keys",
             "type": "shell",
-            "command": "yarn generate:keys",
+            "command": "pnpm generate:keys",
             "group": "none",
             "problemMatcher": []
         },
         {
-            "label": "Fresh Migration",
+            "label": "Migration",
             "type": "shell",
-            "command": "yarn migrate:fresh",
+            "command": "pnpm db:migrate",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Seed Database",
             "type": "shell",
-            "command": "yarn migrate:seed",
+            "command": "pnpm migration:seed",
             "group": "none",
             "problemMatcher": []
         },
         {
-            "label": "Remove Migration Data",
+            "label": "Remove Database",
             "type": "shell",
-            "command": "yarn migrate:remove",
+            "command": "pnpm migration:remove",
             "group": "none",
             "problemMatcher": []
         },
         {
-            "label": "Migrate Template",
+            "label": "Seed Template",
             "type": "shell",
-            "command": "yarn migrate:template",
+            "command": "pnpm migration template-email --type seed && pnpm migration template-termPolicy --type seed",
             "group": "none",
             "problemMatcher": []
         },
         {
-            "label": "Rollback Template",
+            "label": "Remove Template",
             "type": "shell",
-            "command": "yarn rollback:template",
+            "command": "pnpm migration template-email --type remove && pnpm migration template-termPolicy --type remove",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Package Upgrade",
             "type": "shell",
-            "command": "yarn package:upgrade",
+            "command": "pnpm package:upgrade",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Package Check",
             "type": "shell",
-            "command": "yarn package:check",
+            "command": "pnpm package:check",
             "group": "none",
             "problemMatcher": []
         },
@@ -133,17 +133,9 @@
         {
             "label": "Clean Project",
             "type": "shell",
-            "command": "yarn clean",
+            "command": "pnpm clean",
             "group": "none",
             "problemMatcher": []
-        }
-    ],
-    "inputs": [
-        {
-            "id": "migrationName",
-            "description": "Name of the migration",
-            "default": "NewMigration",
-            "type": "promptString"
         }
     ]
 }

@@ -1,42 +1,38 @@
-import { applyDecorators, SetMetadata, UseInterceptors } from '@nestjs/common';
-import {
-    RESPONSE_FILE_EXCEL_TYPE_META_KEY,
-    RESPONSE_MESSAGE_PATH_META_KEY,
-    RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-} from '@common/response/constants/response.constant';
+import { SetMetadata, UseInterceptors, applyDecorators } from '@nestjs/common';
+import { RESPONSE_MESSAGE_PATH_META_KEY } from '@common/response/constants/response.constant';
 import { ResponseInterceptor } from '@common/response/interceptors/response.interceptor';
-import { ResponseFileExcelInterceptor } from '@common/response/interceptors/response.file.interceptor';
 import { ResponsePagingInterceptor } from '@common/response/interceptors/response.paging.interceptor';
-import {
-    IResponseOptions,
-    IResponseFileExcelOptions,
-} from '@common/response/interfaces/response.interface';
-import { ENUM_HELPER_FILE_EXCEL_TYPE } from '@common/helper/enums/helper.enum';
-import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { IResponseOptions } from '@common/response/interfaces/response.interface';
+import { CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { ResponseCacheInterceptor } from '@common/response/interceptors/response.cache.interceptor';
+import { ResponseCsvInterceptor } from '@common/response/interceptors/response.csv.interceptor';
 
+/**
+ * Decorator for standard API responses with optional caching.
+ *
+ * @param messagePath - Path to response message
+ * @param options - Response configuration options
+ * @returns Method decorator function
+ */
 export function Response(
     messagePath: string,
     options?: IResponseOptions
 ): MethodDecorator {
-    const decorators: any = [
+    const decorators = [
         UseInterceptors(ResponseInterceptor),
         SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
-        SetMetadata(
-            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-            options?.messageProperties
-        ),
     ];
 
-    if (options?.cached) {
-        decorators.push(UseInterceptors(CacheInterceptor));
+    if (options?.cache) {
+        decorators.push(UseInterceptors(ResponseCacheInterceptor));
 
-        if (typeof options?.cached !== 'boolean') {
-            if (options?.cached?.key) {
-                decorators.push(CacheKey(options?.cached?.key));
+        if (typeof options?.cache !== 'boolean') {
+            if (options?.cache?.key) {
+                decorators.push(CacheKey(options?.cache?.key));
             }
 
-            if (options?.cached?.ttl) {
-                decorators.push(CacheTTL(options?.cached?.ttl));
+            if (options?.cache?.ttl) {
+                decorators.push(CacheTTL(options?.cache?.ttl));
             }
         }
     }
@@ -44,29 +40,32 @@ export function Response(
     return applyDecorators(...decorators);
 }
 
+/**
+ * Decorator for paginated API responses with optional caching.
+ *
+ * @param messagePath - Path to response message
+ * @param options - Response configuration options
+ * @returns Method decorator function
+ */
 export function ResponsePaging(
     messagePath: string,
     options?: IResponseOptions
 ): MethodDecorator {
-    const decorators: any = [
+    const decorators = [
         UseInterceptors(ResponsePagingInterceptor),
         SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
-        SetMetadata(
-            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-            options?.messageProperties
-        ),
     ];
 
-    if (options?.cached) {
-        decorators.push(UseInterceptors(CacheInterceptor));
+    if (options?.cache) {
+        decorators.push(UseInterceptors(ResponseCacheInterceptor));
 
-        if (typeof options?.cached !== 'boolean') {
-            if (options?.cached?.key) {
-                decorators.push(CacheKey(options?.cached?.key));
+        if (typeof options?.cache !== 'boolean') {
+            if (options?.cache?.key) {
+                decorators.push(CacheKey(options?.cache?.key));
             }
 
-            if (options?.cached?.ttl) {
-                decorators.push(CacheTTL(options?.cached?.ttl));
+            if (options?.cache?.ttl) {
+                decorators.push(CacheTTL(options?.cache?.ttl));
             }
         }
     }
@@ -74,14 +73,11 @@ export function ResponsePaging(
     return applyDecorators(...decorators);
 }
 
-export function ResponseFileExcel(
-    options?: IResponseFileExcelOptions
-): MethodDecorator {
-    return applyDecorators(
-        UseInterceptors(ResponseFileExcelInterceptor),
-        SetMetadata(
-            RESPONSE_FILE_EXCEL_TYPE_META_KEY,
-            options?.type ?? ENUM_HELPER_FILE_EXCEL_TYPE.CSV
-        )
-    );
+/**
+ * Decorator for file download responses.
+ *
+ * @returns Method decorator function
+ */
+export function ResponseCsv(): MethodDecorator {
+    return applyDecorators(UseInterceptors(ResponseCsvInterceptor));
 }

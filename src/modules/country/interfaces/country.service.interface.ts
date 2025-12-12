@@ -1,56 +1,9 @@
-import {
-    IDatabaseCreateManyOptions,
-    IDatabaseDeleteManyOptions,
-    IDatabaseFindAllOptions,
-    IDatabaseGetTotalOptions,
-    IDatabaseOptions,
-} from '@common/database/interfaces/database.interface';
-import { CountryCreateRequestDto } from '@modules/country/dtos/request/country.create.request.dto';
-import { CountryListResponseDto } from '@modules/country/dtos/response/country.list.response.dto';
-import { CountryShortResponseDto } from '@modules/country/dtos/response/country.short.response.dto';
-import {
-    CountryDoc,
-    CountryEntity,
-} from '@modules/country/repository/entities/country.entity';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
 
 export interface ICountryService {
-    findAll(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<CountryDoc[]>;
-    findOne(
-        find: Record<string, any>,
-        options?: IDatabaseOptions
-    ): Promise<CountryDoc>;
-    findOneByName(
-        name: string,
-        options?: IDatabaseOptions
-    ): Promise<CountryDoc>;
-    findOneByAlpha2(
-        alpha2: string,
-        options?: IDatabaseOptions
-    ): Promise<CountryDoc>;
-    findOneByPhoneCode(
-        phoneCode: string,
-        options?: IDatabaseOptions
-    ): Promise<CountryDoc>;
-    findOneById(_id: string, options?: IDatabaseOptions): Promise<CountryDoc>;
-    getTotal(
-        find?: Record<string, any>,
-        options?: IDatabaseGetTotalOptions
-    ): Promise<number>;
-    deleteMany(
-        find?: Record<string, any>,
-        options?: IDatabaseDeleteManyOptions
-    ): Promise<boolean>;
-    createMany(
-        data: CountryCreateRequestDto[],
-        options?: IDatabaseCreateManyOptions
-    ): Promise<boolean>;
-    mapList(
-        countries: CountryDoc[] | CountryEntity[]
-    ): CountryListResponseDto[];
-    mapShort(
-        countries: CountryDoc[] | CountryEntity[]
-    ): CountryShortResponseDto[];
+    getList(
+        pagination: IPaginationQueryOffsetParams
+    ): Promise<IResponsePagingReturn<CountryResponseDto>>;
 }

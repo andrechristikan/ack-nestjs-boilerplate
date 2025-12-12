@@ -1,8 +1,8 @@
-export enum ENUM_AUTH_STATUS_CODE_ERROR {
-    JWT_ACCESS_TOKEN = 5000,
-    JWT_REFRESH_TOKEN = 5001,
-    SOCIAL_GOOGLE_REQUIRED = 5002,
-    SOCIAL_GOOGLE_INVALID = 5003,
-    SOCIAL_APPLE_REQUIRED = 5004,
-    SOCIAL_APPLE_INVALID = 5005,
+export enum EnumAuthStatusCodeError {
+    jwtAccessTokenInvalid = 5120,
+    jwtRefreshTokenInvalid = 5121,
+    socialGoogleRequired = 5122,
+    socialGoogleInvalid = 5123,
+    socialAppleRequired = 5124,
+    socialAppleInvalid = 5125,
 }

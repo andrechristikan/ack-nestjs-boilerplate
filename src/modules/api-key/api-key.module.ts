@@ -1,11 +1,12 @@
-import { Module } from '@nestjs/common';
-import { ApiKeyRepositoryModule } from '@modules/api-key/repository/api-key.repository.module';
+import { Global, Module } from '@nestjs/common';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
+import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 
+@Global()
 @Module({
-    providers: [ApiKeyService],
-    exports: [ApiKeyService],
-    controllers: [],
-    imports: [ApiKeyRepositoryModule],
+    providers: [ApiKeyService, ApiKeyUtil, ApiKeyRepository],
+    exports: [ApiKeyService, ApiKeyUtil, ApiKeyRepository],
+    imports: [],
 })
 export class ApiKeyModule {}

@@ -1,38 +1,36 @@
 import {
     Doc,
     DocAuth,
-    DocGuard,
     DocRequest,
     DocResponse,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
+import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
-import { TermPolicyAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy-acceptance.response.dto';
+import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
-export function TermPolicyUserAcceptedDoc(): MethodDecorator {
+export function TermPolicySharedListAcceptedDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'User retrieves all accepted terms and policies',
+            summary: 'List of terms or policies accepted by the user',
         }),
         DocAuth({
             jwtAccessToken: true,
             xApiKey: true,
         }),
-        DocGuard({
-            role: true,
-        }),
-        DocResponsePaging<TermPolicyAcceptanceResponseDto>(
+        DocResponsePaging<TermPolicyUserAcceptanceResponseDto>(
             'termPolicy.accepted',
             {
-                dto: TermPolicyAcceptanceResponseDto,
+                dto: TermPolicyUserAcceptanceResponseDto,
+                type: EnumPaginationType.cursor,
             }
         )
     );
 }
 
-export function TermPolicyUserAcceptDoc(): MethodDecorator {
+export function TermPolicySharedAcceptDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'User accepts term or policy',
@@ -41,11 +39,8 @@ export function TermPolicyUserAcceptDoc(): MethodDecorator {
             jwtAccessToken: true,
             xApiKey: true,
         }),
-        DocGuard({
-            role: true,
-        }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: EnumDocRequestBodyType.json,
             dto: TermPolicyAcceptRequestDto,
         }),
         DocResponse('termPolicy.accept')

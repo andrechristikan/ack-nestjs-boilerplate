@@ -1,281 +1,601 @@
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { AwsS3Service } from '@common/aws/services/aws.s3.service';
+import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
-    TermPolicyDoc,
-    TermPolicyEntity,
-} from '@modules/term-policy/repository/entities/term-policy.entity';
-import { Injectable } from '@nestjs/common';
-import { Document, Types } from 'mongoose';
+    IPaginationIn,
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import {
-    IDatabaseCreateManyOptions,
-    IDatabaseCreateOptions,
-    IDatabaseDeleteOptions,
-    IDatabaseExistsOptions,
-    IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
-    IDatabaseGetTotalOptions,
-    IDatabaseSaveOptions,
-} from '@common/database/interfaces/database.interface';
-import { ClassTransformOptions, plainToInstance } from 'class-transformer';
-import { ITermPolicyService } from '@modules/term-policy/interfaces/term-policy.service.interface';
+    IRequestApp,
+    IRequestLog,
+} from '@common/request/interfaces/request.interface';
 import {
-    ITermPolicyDoc,
-    ITermPolicyEntity,
-} from '@modules/term-policy/interfaces/term-policy.interface';
-import { TermPolicyRepository } from '@modules/term-policy/repository/repositories/term-policy.repository';
-import {
-    ENUM_TERM_POLICY_STATUS,
-    ENUM_TERM_POLICY_TYPE,
-} from '@modules/term-policy/enums/term-policy.enum';
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
+import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
+import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from '@common/pagination/enums/pagination.enum';
-import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
-import { TermPolicyUpdateDocumentRequestDto } from '@modules/term-policy/dtos/request/term-policy.update-document.request';
-import { TermPolicyDocumentEntity } from '@modules/term-policy/repository/entities/term-policy-document.entity';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
+import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
+import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
+import { ITermPolicyService } from '@modules/term-policy/interfaces/term-policy.service.interface';
+import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
+import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
+import {
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    Injectable,
+    InternalServerErrorException,
+    NotFoundException,
+} from '@nestjs/common';
+import {
+    EnumTermPolicyStatus,
+    EnumTermPolicyType,
+    TermPolicy,
+} from '@prisma/client';
 
 @Injectable()
 export class TermPolicyService implements ITermPolicyService {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
-        private readonly helperDateService: HelperDateService
+        private readonly termPolicyUtil: TermPolicyUtil,
+        private readonly awsS3Service: AwsS3Service
     ) {}
 
-    async findAll(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<ITermPolicyDoc[]> {
-        return this.termPolicyRepository.findAll<ITermPolicyDoc>(find, {
-            ...options,
-            join: true,
-        });
-    }
+    async validateTermPolicyGuard(
+        request: IRequestApp,
+        requiredTermPolicies: EnumTermPolicyType[]
+    ): Promise<void> {
+        const { __user, user } = request;
 
-    async getTotal(
-        find?: Record<string, any>,
-        options?: IDatabaseGetTotalOptions
-    ): Promise<number> {
-        return this.termPolicyRepository.getTotal(find, options);
-    }
+        if (!__user || !user) {
+            throw new ForbiddenException({
+                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        }
 
-    async findOnePublished(
-        type: ENUM_TERM_POLICY_TYPE,
-        country: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<TermPolicyDoc> {
-        return this.termPolicyRepository.findOne(
-            {
-                type,
-                country,
-                status: ENUM_TERM_POLICY_STATUS.PUBLISHED,
-            },
-            options
-        );
-    }
+        try {
+            const { termPolicy } = __user;
 
-    async findOneLatest(
-        type: ENUM_TERM_POLICY_TYPE,
-        country: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<TermPolicyDoc> {
-        return this.termPolicyRepository.findOne(
-            {
-                type,
-                country,
-            },
-            {
-                ...options,
-                order: {
-                    version: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.DESC,
-                },
+            const defaultTermPolicies = [
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+            ];
+            requiredTermPolicies =
+                requiredTermPolicies.length === 0
+                    ? defaultTermPolicies
+                    : requiredTermPolicies;
+
+            if (!requiredTermPolicies.every(type => termPolicy[type])) {
+                throw new ForbiddenException({
+                    statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
+                    message: 'termPolicy.error.requiredInvalid',
+                });
             }
-        );
+        } catch {
+            throw new ForbiddenException({
+                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        }
     }
 
-    mapList(
-        policies: ITermPolicyDoc[] | ITermPolicyEntity[],
-        options?: ClassTransformOptions
-    ): TermPolicyResponseDto[] {
-        return plainToInstance(
-            TermPolicyResponseDto,
-            policies.map((e: ITermPolicyDoc | ITermPolicyEntity) =>
-                e instanceof Document ? e.toObject() : e
-            ),
-            options
+    async getList(
+        pagination: IPaginationQueryOffsetParams,
+        type?: Record<string, IPaginationIn>,
+        status?: Record<string, IPaginationIn>
+    ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
+        const { data, ...others } = await this.termPolicyRepository.find(
+            pagination,
+            type,
+            status
         );
+
+        const termPolicies: TermPolicyResponseDto[] =
+            this.termPolicyUtil.mapList(data);
+
+        return {
+            data: termPolicies,
+            ...others,
+        };
     }
 
-    async exist(
-        type: ENUM_TERM_POLICY_TYPE,
-        country: string,
-        option?: IDatabaseExistsOptions
-    ): Promise<boolean> {
-        return this.termPolicyRepository.exists(
-            {
+    async getListPublished(
+        pagination: IPaginationQueryCursorParams,
+        type?: Record<string, IPaginationIn>
+    ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
+        const { data, ...others } =
+            await this.termPolicyRepository.findPublished(pagination, type);
+
+        const termPolicies: TermPolicyResponseDto[] =
+            this.termPolicyUtil.mapList(data);
+
+        return {
+            data: termPolicies,
+            ...others,
+        };
+    }
+
+    async getListUserAccepted(
+        userId: string,
+        pagination: IPaginationQueryCursorParams
+    ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>> {
+        const { data, ...others } =
+            await this.termPolicyRepository.findUserAccepted(
+                userId,
+                pagination
+            );
+
+        const termPolicies: TermPolicyUserAcceptanceResponseDto[] =
+            this.termPolicyUtil.mapListUserAccepted(data);
+
+        return {
+            data: termPolicies,
+            ...others,
+        };
+    }
+
+    async userAccept(
+        userId: string,
+        { type }: TermPolicyAcceptRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const policy =
+            await this.termPolicyRepository.existLatestPublishedByType(type);
+        if (!policy) {
+            throw new NotFoundException({
+                statusCode: EnumTermPolicyStatusCodeError.notFound,
+                message: 'termPolicy.error.notFound',
+            });
+        }
+
+        const exist =
+            await this.termPolicyRepository.existAcceptanceByPolicyAndUser(
+                userId,
+                type
+            );
+        if (exist) {
+            throw new ConflictException({
+                statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
+                message: 'termPolicy.error.alreadyAccepted',
+            });
+        }
+
+        try {
+            await this.termPolicyRepository.accept(
+                userId,
+                policy.id,
                 type,
-                country,
-            },
-            option
-        );
-    }
+                requestLog
+            );
 
-    async findOneById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<TermPolicyDoc> {
-        return this.termPolicyRepository.findOneById(_id, options);
-    }
-
-    async findOne(
-        find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
-    ): Promise<TermPolicyDoc> {
-        return this.termPolicyRepository.findOne(find, options);
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
     async create(
-        country: string,
-        type: ENUM_TERM_POLICY_TYPE,
-        urls: (AwsS3Dto & TermPolicyUpdateDocumentRequestDto)[],
-        createdBy: string,
-        version: number,
-        options?: IDatabaseCreateOptions
-    ): Promise<TermPolicyDoc> {
-        const entity = new TermPolicyEntity();
-        entity.type = type;
-        entity.country = country;
-        entity.version = version;
-        entity.status = ENUM_TERM_POLICY_STATUS.DRAFT;
-        entity.publishedAt = null;
-        entity.createdBy = createdBy;
-        entity.updatedBy = createdBy;
-        entity.urls = urls.map(
-            ({
-                bucket,
-                completedUrl,
-                extension,
-                key,
-                mime,
-                size,
-                language,
-                cdnUrl,
-            }) => {
-                const en = new TermPolicyDocumentEntity();
-                en.bucket = bucket;
-                en.completedUrl = completedUrl;
-                en.extension = extension;
-                en.key = key;
-                en.mime = mime;
-                en.size = new Types.Decimal128(size.toString());
-                en.language = language;
-                en.cdnUrl = cdnUrl;
-                return en;
-            }
+        { contents, type, version }: TermPolicyCreateRequestDto,
+        createdBy: string
+    ): Promise<IResponseReturn<TermPolicyResponseDto>> {
+        const isExist = await this.termPolicyRepository.existByVersionAndType(
+            version,
+            type
         );
-
-        return this.termPolicyRepository.create(entity, options);
-    }
-
-    async updateDocument(
-        repository: TermPolicyDoc,
-        language: ENUM_MESSAGE_LANGUAGE,
-        { size, ...aws }: AwsS3Dto,
-        options?: IDatabaseSaveOptions
-    ): Promise<TermPolicyDoc> {
-        const urls = repository.urls || [];
-        const index = urls.findIndex(e => e.language === language);
-
-        if (index === -1) {
-            urls.push({
-                ...aws,
-                language,
-                size: new Types.Decimal128(size.toString()),
+        if (isExist) {
+            throw new ConflictException({
+                statusCode: EnumTermPolicyStatusCodeError.exist,
+                message: 'termPolicy.error.exist',
             });
-        } else {
-            urls[index] = {
-                ...aws,
-                language,
-                size: new Types.Decimal128(size.toString()),
-            };
         }
 
-        repository.urls = urls;
-        return this.termPolicyRepository.save(repository, options);
-    }
+        const isUniqueLanguages =
+            this.termPolicyUtil.validateUniqueLanguages(contents);
+        if (!isUniqueLanguages) {
+            throw new BadRequestException({
+                statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
+                message: 'termPolicy.error.contentsLanguageMustBeUnique',
+            });
+        }
 
-    async publish(
-        repository: TermPolicyDoc,
-        urls: AwsS3Dto[],
-        options?: IDatabaseSaveOptions
-    ): Promise<TermPolicyDoc> {
-        repository.status = ENUM_TERM_POLICY_STATUS.PUBLISHED;
-        repository.publishedAt = this.helperDateService.create();
-        repository.urls = repository.urls.map(
-            ({ key, size, language, ...others }) => {
-                const existingUrl = urls.find(e => e.key === key);
-                if (!existingUrl) {
-                    return {
-                        key,
-                        size,
-                        language,
-                        ...others,
-                    };
-                }
-
-                const en = {
-                    ...existingUrl,
+        try {
+            const mappedContents: TermContentDto[] = contents.map(
+                ({ language, key, size }: TermPolicyContentRequestDto) => ({
                     language,
-                    size: new Types.Decimal128(size.toString()),
-                };
+                    ...this.awsS3Service.mapPresign(
+                        {
+                            key,
+                            size,
+                        },
+                        {
+                            access: EnumAwsS3Accessibility.private,
+                        }
+                    ),
+                })
+            );
+            const created = await this.termPolicyRepository.create(
+                { contents, type, version },
+                mappedContents,
+                createdBy
+            );
+            const termPolicy = this.termPolicyUtil.mapOne(created);
 
-                return en;
-            }
-        );
-
-        return this.termPolicyRepository.save(repository, options);
+            return {
+                data: termPolicy,
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(created),
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
     async delete(
-        repository: TermPolicyDoc,
-        options?: IDatabaseDeleteOptions
-    ): Promise<TermPolicyDoc> {
-        return this.termPolicyRepository.delete(
-            { _id: repository._id },
-            options
+        termPolicyId: string
+    ): Promise<IResponseReturn<TermPolicyResponseDto>> {
+        const termPolicy: TermPolicy =
+            await this.termPolicyRepository.findOneById(termPolicyId);
+        if (!termPolicy) {
+            throw new NotFoundException({
+                statusCode: EnumTermPolicyStatusCodeError.notFound,
+                message: 'termPolicy.error.notFound',
+            });
+        } else if (termPolicy.status !== EnumTermPolicyStatus.draft) {
+            throw new BadRequestException({
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                message: 'termPolicy.error.statusInvalid',
+            });
+        }
+
+        try {
+            const contentPath = this.termPolicyUtil.getPath(termPolicy);
+            const [deleted] = await Promise.all([
+                this.termPolicyRepository.delete(termPolicyId),
+                this.awsS3Service.deleteDir(contentPath, {
+                    access: EnumAwsS3Accessibility.private,
+                }),
+            ]);
+
+            const mapped = this.termPolicyUtil.mapOne(deleted);
+
+            return {
+                data: mapped,
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(deleted),
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async generateContentPresign({
+        language,
+        size,
+        type,
+        version,
+    }: TermPolicyContentPresignRequestDto): Promise<
+        IResponseReturn<AwsS3PresignDto>
+    > {
+        const termPolicy =
+            await this.termPolicyRepository.existByVersionAndType(
+                version,
+                type
+            );
+        if (
+            termPolicy &&
+            termPolicy.status === EnumTermPolicyStatus.published
+        ) {
+            throw new BadRequestException({
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                message: 'termPolicy.error.statusInvalid',
+            });
+        }
+
+        const key: string =
+            this.termPolicyUtil.createRandomFilenameContentWithPath(
+                type,
+                version,
+                language,
+                {
+                    extension: EnumFileExtensionDocument.hbs,
+                }
+            );
+
+        const aws: AwsS3PresignDto = await this.awsS3Service.presignPutItem(
+            {
+                key,
+                size,
+            },
+            {
+                forceUpdate: true,
+                access: EnumAwsS3Accessibility.private,
+            }
         );
+
+        return { data: aws };
     }
 
-    async deleteDocument(
-        repository: TermPolicyDoc,
-        language: ENUM_MESSAGE_LANGUAGE,
-        options?: IDatabaseSaveOptions
-    ): Promise<TermPolicyDoc> {
-        repository.urls = repository.urls.filter(e => e.language !== language);
+    async updateContent(
+        termPolicyId: string,
+        { key, size, language }: TermPolicyContentRequestDto,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        const termPolicy =
+            await this.termPolicyRepository.findOneById(termPolicyId);
+        if (!termPolicy) {
+            throw new NotFoundException({
+                statusCode: EnumTermPolicyStatusCodeError.notFound,
+                message: 'termPolicy.error.notFound',
+            });
+        } else if (termPolicy.status === EnumTermPolicyStatus.published) {
+            throw new BadRequestException({
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                message: 'termPolicy.error.statusInvalid',
+            });
+        }
 
-        return this.termPolicyRepository.save(repository, options);
+        try {
+            const mappedContent: TermContentDto = {
+                language,
+                ...this.awsS3Service.mapPresign(
+                    { key, size },
+                    {
+                        access: EnumAwsS3Accessibility.private,
+                    }
+                ),
+            };
+            const updated = await this.termPolicyRepository.updateContent(
+                termPolicyId,
+                termPolicy.contents as unknown as TermContentDto[],
+                mappedContent,
+                updatedBy
+            );
+
+            return {
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(updated),
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
-    async createMany(
-        country: string,
-        types: Record<ENUM_TERM_POLICY_TYPE, TermPolicyDocumentEntity[]>,
-        status: ENUM_TERM_POLICY_STATUS = ENUM_TERM_POLICY_STATUS.DRAFT,
-        options?: IDatabaseCreateManyOptions
-    ): Promise<void> {
-        const typesArray = Object.keys(types) as ENUM_TERM_POLICY_TYPE[];
-        const entities = typesArray.map(type => {
-            const entity = new TermPolicyEntity();
-            entity.type = type;
-            entity.country = country;
-            entity.version = 1;
-            entity.status = status;
-            entity.urls = types[type];
+    async addContent(
+        termPolicyId: string,
+        { key, size, language }: TermPolicyContentRequestDto,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        const termPolicy =
+            await this.termPolicyRepository.findOneById(termPolicyId);
+        if (!termPolicy) {
+            throw new NotFoundException({
+                statusCode: EnumTermPolicyStatusCodeError.notFound,
+                message: 'termPolicy.error.notFound',
+            });
+        } else if (termPolicy.status === EnumTermPolicyStatus.published) {
+            throw new BadRequestException({
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                message: 'termPolicy.error.statusInvalid',
+            });
+        }
 
-            return entity;
-        });
+        const existingContent = this.termPolicyUtil.getContentByLanguage(
+            termPolicy.contents as unknown as TermContentDto[],
+            language
+        );
+        if (existingContent) {
+            throw new ConflictException({
+                statusCode: EnumTermPolicyStatusCodeError.contentExist,
+                message: 'termPolicy.error.contentExist',
+            });
+        }
 
-        await this.termPolicyRepository.createMany(entities, options);
+        try {
+            const mappedContent: TermContentDto = {
+                language,
+                ...this.awsS3Service.mapPresign(
+                    { key, size },
+                    {
+                        access: EnumAwsS3Accessibility.private,
+                    }
+                ),
+            };
+            const updated = await this.termPolicyRepository.addContent(
+                termPolicyId,
+                mappedContent,
+                updatedBy
+            );
+
+            return {
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(updated),
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
-    async deleteMany(options?: IDatabaseDeleteOptions): Promise<void> {
-        await this.termPolicyRepository.deleteMany({}, options);
+    async removeContent(
+        termPolicyId: string,
+        { language }: TermPolicyRemoveContentRequestDto,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        const termPolicy =
+            await this.termPolicyRepository.findOneById(termPolicyId);
+        if (!termPolicy) {
+            throw new NotFoundException({
+                statusCode: EnumTermPolicyStatusCodeError.notFound,
+                message: 'termPolicy.error.notFound',
+            });
+        } else if (termPolicy.status === EnumTermPolicyStatus.published) {
+            throw new BadRequestException({
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                message: 'termPolicy.error.statusInvalid',
+            });
+        }
+
+        const existingContent = this.termPolicyUtil.getContentByLanguage(
+            termPolicy.contents as unknown as TermContentDto[],
+            language
+        );
+        if (!existingContent) {
+            throw new NotFoundException({
+                statusCode: EnumTermPolicyStatusCodeError.contentNotFound,
+                message: 'termPolicy.error.contentNotFound',
+            });
+        }
+
+        try {
+            const updated = await this.termPolicyRepository.removeContent(
+                termPolicyId,
+                termPolicy.contents as unknown as TermContentDto[],
+                { language },
+                updatedBy
+            );
+
+            return {
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(updated),
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async getContent(
+        termPolicyId: string,
+        language: EnumMessageLanguage
+    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+        const termPolicy =
+            await this.termPolicyRepository.findOneById(termPolicyId);
+        if (!termPolicy) {
+            throw new NotFoundException({
+                statusCode: EnumTermPolicyStatusCodeError.notFound,
+                message: 'termPolicy.error.notFound',
+            });
+        }
+
+        const existContent = this.termPolicyUtil.getContentByLanguage(
+            termPolicy.contents as unknown as TermContentDto[],
+            language
+        );
+        if (!existContent) {
+            throw new NotFoundException({
+                statusCode: EnumTermPolicyStatusCodeError.contentNotFound,
+                message: 'termPolicy.error.contentNotFound',
+            });
+        }
+
+        const awsPresign = await this.awsS3Service.presignGetItem(
+            existContent.key,
+            {
+                access: EnumAwsS3Accessibility.private,
+            }
+        );
+
+        return { data: awsPresign };
+    }
+
+    async publish(
+        termPolicyId: string,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        const termPolicy =
+            await this.termPolicyRepository.findOneById(termPolicyId);
+        if (!termPolicy) {
+            throw new NotFoundException({
+                statusCode: EnumTermPolicyStatusCodeError.notFound,
+                message: 'termPolicy.error.notFound',
+            });
+        } else if (termPolicy.status === EnumTermPolicyStatus.published) {
+            throw new BadRequestException({
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                message: 'termPolicy.error.statusInvalid',
+            });
+        } else if (
+            (termPolicy.contents as unknown as TermContentDto[]).length === 0
+        ) {
+            throw new BadRequestException({
+                statusCode: EnumTermPolicyStatusCodeError.contentEmpty,
+                message: 'termPolicy.error.contentEmpty',
+            });
+        }
+
+        try {
+            const contentPublicPath =
+                this.termPolicyUtil.getContentPublicPath(termPolicy);
+            const contents = termPolicy.contents as unknown as TermContentDto[];
+
+            const newItems = await this.awsS3Service.moveItems(
+                contents,
+                contentPublicPath,
+                {}
+            );
+
+            const newContents = this.termPolicyUtil.mapPublicContent(
+                newItems,
+                contents
+            );
+
+            const contentPath = this.termPolicyUtil.getPath(termPolicy);
+            const [updated] = await Promise.all([
+                this.termPolicyRepository.publish(
+                    termPolicyId,
+                    termPolicy.type,
+                    newContents,
+                    updatedBy
+                ),
+                this.awsS3Service.deleteDir(contentPath, {
+                    access: EnumAwsS3Accessibility.private,
+                }),
+            ]);
+
+            return {
+                metadataActivityLog:
+                    this.termPolicyUtil.mapActivityLogMetadata(updated),
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 }

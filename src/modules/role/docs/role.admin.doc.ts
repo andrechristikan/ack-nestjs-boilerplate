@@ -1,61 +1,16 @@
-import { applyDecorators, HttpStatus } from '@nestjs/common';
-import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import {
     Doc,
     DocAuth,
-    DocRequest,
     DocGuard,
+    DocRequest,
     DocResponse,
-    DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from '@common/doc/enums/doc.enum';
-import {
-    RoleDocParamsId,
-    RoleDocQueryIsActive,
-    RoleDocQueryType,
-} from '@modules/role/constants/role.doc.constant';
+import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { RoleDocParamsId } from '@modules/role/constants/role.doc.constant';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
-import { RoleGetResponseDto } from '@modules/role/dtos/response/role.get.response.dto';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-
-export function RoleAdminListDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'get all of roles',
-        }),
-        DocRequest({
-            queries: [...RoleDocQueryIsActive, ...RoleDocQueryType],
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponsePaging<RoleListResponseDto>('role.list', {
-            dto: RoleListResponseDto,
-        })
-    );
-}
-
-export function RoleAdminGetDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'get detail a role',
-        }),
-        DocRequest({
-            params: RoleDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse<RoleGetResponseDto>('role.get', {
-            dto: RoleGetResponseDto,
-        })
-    );
-}
+import { RoleDto } from '@modules/role/dtos/role.dto';
+import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function RoleAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
@@ -67,48 +22,14 @@ export function RoleAdminCreateDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequest({
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: EnumDocRequestBodyType.json,
             dto: RoleCreateRequestDto,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponse<DatabaseIdResponseDto>('role.create', {
+        DocResponse<RoleDto>('role.create', {
             httpStatus: HttpStatus.CREATED,
-            dto: DatabaseIdResponseDto,
+            dto: RoleDto,
         })
-    );
-}
-
-export function RoleAdminActiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'make role be active',
-        }),
-        DocRequest({
-            params: RoleDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('role.active')
-    );
-}
-
-export function RoleAdminInactiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'make role be inactive',
-        }),
-        DocRequest({
-            params: RoleDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('role.inactive')
     );
 }
 
@@ -119,7 +40,7 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
         }),
         DocRequest({
             params: RoleDocParamsId,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            bodyType: EnumDocRequestBodyType.json,
             dto: RoleUpdateRequestDto,
         }),
         DocAuth({
@@ -127,8 +48,8 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponse<DatabaseIdResponseDto>('role.update', {
-            dto: DatabaseIdResponseDto,
+        DocResponse<RoleDto>('role.update', {
+            dto: RoleDto,
         })
     );
 }

@@ -1,249 +1,171 @@
-import { DatabaseService } from '@common/database/services/database.service';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Cache } from 'cache-manager';
-import { plainToInstance } from 'class-transformer';
-import { Request } from 'express';
-import { Duration } from 'luxon';
-import { Document } from 'mongoose';
 import {
-    IDatabaseCreateOptions,
-    IDatabaseDeleteManyOptions,
-    IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
-    IDatabaseGetTotalOptions,
-    IDatabaseOptions,
-    IDatabaseUpdateManyOptions,
-} from '@common/database/interfaces/database.interface';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { SessionCreateRequestDto } from '@modules/session/dtos/request/session.create.request.dto';
-import { SessionListResponseDto } from '@modules/session/dtos/response/session.list.response.dto';
-import { ENUM_SESSION_STATUS } from '@modules/session/enums/session.enum';
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import {
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
+import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
+import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
 import { ISessionService } from '@modules/session/interfaces/session.service.interface';
-import {
-    SessionDoc,
-    SessionEntity,
-} from '@modules/session/repository/entities/session.entity';
-import { SessionRepository } from '@modules/session/repository/repositories/session.repository';
-import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { SessionRepository } from '@modules/session/repositories/session.repository';
+import { SessionUtil } from '@modules/session/utils/session.util';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
+/**
+ * Session Management Service
+ *
+ * Provides session management operations including retrieving active sessions with pagination,
+ * revoking user sessions, and revoking sessions via admin. Manages both cache and database
+ * persistence for session data.
+ *
+ */
 @Injectable()
 export class SessionService implements ISessionService {
-    private readonly refreshTokenExpiration: number;
-    private readonly appName: string;
-
-    private readonly keyPrefix: string;
-
     constructor(
-        @Inject(CACHE_MANAGER) private cacheManager: Cache,
-        private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService,
         private readonly sessionRepository: SessionRepository,
-        private readonly databaseService: DatabaseService
-    ) {
-        this.refreshTokenExpiration = this.configService.get<number>(
-            'auth.jwt.refreshToken.expirationTime'
-        )!;
-        this.appName = this.configService.get<string>('app.name')!;
+        private readonly sessionUtil: SessionUtil
+    ) {}
 
-        this.keyPrefix = this.configService.get<string>('session.keyPrefix')!;
+    /**
+     * Retrieves a paginated list of active sessions for a user using offset-based pagination.
+     *
+     * Queries the database for sessions belonging to the specified user with offset pagination,
+     * then transforms the results into response DTOs.
+     *
+     * @param userId - The unique identifier of the user
+     * @param pagination - Offset-based pagination parameters (limit, offset)
+     * @returns Promise resolving to paginated session data with pagination metadata
+     *
+     */
+    async getListOffsetByUser(
+        userId: string,
+        pagination: IPaginationQueryOffsetParams
+    ): Promise<IResponsePagingReturn<SessionResponseDto>> {
+        const { data, ...others } =
+            await this.sessionRepository.findWithPaginationOffsetByUser(
+                userId,
+                pagination
+            );
+
+        const sessions: SessionResponseDto[] = this.sessionUtil.mapList(data);
+        return {
+            data: sessions,
+            ...others,
+        };
     }
 
-    async findAll(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<SessionDoc[]> {
-        return this.sessionRepository.findAll<SessionDoc>(find, options);
+    /**
+     * Retrieves a paginated list of active sessions for a user using cursor-based pagination.
+     *
+     * Queries the database for sessions belonging to the specified user with cursor pagination,
+     * then transforms the results into response DTOs. Cursor-based pagination is more efficient
+     * for large datasets and prevents issues with offset-based pagination.
+     *
+     * @param userId - The unique identifier of the user
+     * @param pagination - Cursor-based pagination parameters (first/last, cursor, etc.)
+     * @returns Promise resolving to paginated session data with pagination metadata
+     *
+     */
+    async getListCursorByUser(
+        userId: string,
+        pagination: IPaginationQueryCursorParams
+    ): Promise<IResponsePagingReturn<SessionResponseDto>> {
+        const { data, ...others } =
+            await this.sessionRepository.findWithPaginationCursorByUser(
+                userId,
+                pagination
+            );
+
+        const sessions: SessionResponseDto[] = this.sessionUtil.mapList(data);
+
+        return {
+            data: sessions,
+            ...others,
+        };
     }
 
-    async findAllByUser(
-        user: string,
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<SessionDoc[]> {
-        return this.sessionRepository.findAll<SessionDoc>(
-            { user, ...find },
-            options
+    /**
+     * Revokes a specific user session.
+     *
+     * Validates that the session exists and is active for the user, then revokes the session
+     * in both the database and cache simultaneously. Removes the session from the user's active sessions.
+     *
+     * @param userId - The unique identifier of the user
+     * @param sessionId - The unique identifier of the session to revoke
+     * @param requestLog - Request log information for audit trail
+     * @returns Promise resolving to an empty response indicating successful revocation
+     *
+     */
+    async revoke(
+        userId: string,
+        sessionId: string,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const checkActive = await this.sessionRepository.findOneActiveByUser(
+            userId,
+            sessionId
         );
-    }
+        if (!checkActive) {
+            throw new NotFoundException({
+                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.notFound,
+                message: 'session.error.notFound',
+            });
+        }
 
-    async findOneById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<SessionDoc> {
-        return this.sessionRepository.findOneById<SessionDoc>(_id, options);
-    }
-
-    async findOne(
-        find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
-    ): Promise<SessionDoc> {
-        return this.sessionRepository.findOne<SessionDoc>(find, options);
-    }
-
-    async findOneActiveById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<SessionDoc> {
-        const today = this.helperDateService.create();
-
-        return this.sessionRepository.findOne<SessionDoc>(
-            {
-                _id,
-                ...this.databaseService.filterGte('expiredAt', today),
-            },
-            options
-        );
-    }
-
-    async findOneActiveByIdAndUser(
-        _id: string,
-        user: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<SessionDoc> {
-        const today = this.helperDateService.create();
-
-        return this.sessionRepository.findOne<SessionDoc>(
-            {
-                _id,
-                user,
-                ...this.databaseService.filterGte('expiredAt', today),
-            },
-            options
-        );
-    }
-
-    async getTotal(
-        find?: Record<string, any>,
-        options?: IDatabaseGetTotalOptions
-    ): Promise<number> {
-        return this.sessionRepository.getTotal(find, options);
-    }
-
-    async getTotalByUser(
-        user: string,
-        options?: IDatabaseGetTotalOptions
-    ): Promise<number> {
-        return this.sessionRepository.getTotal({ user }, options);
-    }
-
-    async create(
-        request: Request,
-        { user }: SessionCreateRequestDto,
-        options?: IDatabaseCreateOptions
-    ): Promise<SessionDoc> {
-        const today = this.helperDateService.create();
-        const expiredAt: Date = this.helperDateService.forward(
-            today,
-            Duration.fromObject({
-                seconds: this.refreshTokenExpiration,
-            })
-        );
-
-        const create = new SessionEntity();
-        create.user = user;
-        create.hostname = request.hostname;
-        create.ip = request.ip ?? '0.0.0.0';
-        create.protocol = request.protocol;
-        create.originalUrl = request.originalUrl;
-        create.method = request.method;
-
-        create.userAgent = request.headers['user-agent'] as string;
-        create.xForwardedFor = request.headers['x-forwarded-for'] as string;
-        create.xForwardedHost = request.headers['x-forwarded-host'] as string;
-        create.xForwardedPorto = request.headers['x-forwarded-porto'] as string;
-
-        create.status = ENUM_SESSION_STATUS.ACTIVE;
-        create.expiredAt = expiredAt;
-
-        return this.sessionRepository.create<SessionEntity>(create, options);
-    }
-
-    mapList(
-        userLogins: SessionDoc[] | SessionEntity[]
-    ): SessionListResponseDto[] {
-        return plainToInstance(
-            SessionListResponseDto,
-            userLogins.map((e: SessionDoc | SessionEntity) =>
-                e instanceof Document ? e.toObject() : e
-            )
-        );
-    }
-
-    async findLoginSession(_id: string): Promise<string> {
-        return (await this.cacheManager.get<string>(
-            `${this.appName}:${this.keyPrefix}:${_id}`
-        ))!;
-    }
-
-    async setLoginSession(user: IUserDoc, session: SessionDoc): Promise<void> {
-        const key = `${this.appName}:${this.keyPrefix}:${session._id}`;
-
-        await this.cacheManager.set(
-            key,
-            { user: user._id },
-            this.refreshTokenExpiration
-        );
+        await Promise.all([
+            this.sessionRepository.revokeByUser(userId, sessionId, requestLog),
+            this.sessionUtil.deleteOneLogin(userId, sessionId),
+        ]);
 
         return;
     }
 
-    async deleteLoginSession(_id: string): Promise<void> {
-        const key = `${this.appName}:${this.keyPrefix}:${_id}`;
-        await this.cacheManager.del(key);
-
-        return;
-    }
-
-    async resetLoginSession(): Promise<void> {
-        await this.cacheManager.clear();
-
-        return;
-    }
-
-    async updateRevoke(
-        repository: SessionDoc,
-        options?: IDatabaseOptions
-    ): Promise<SessionDoc> {
-        await this.deleteLoginSession(repository._id);
-
-        repository.status = ENUM_SESSION_STATUS.REVOKED;
-        repository.revokeAt = this.helperDateService.create();
-
-        return this.sessionRepository.save(repository, options);
-    }
-
-    async updateManyRevokeByUser(
-        user: string,
-        options?: IDatabaseUpdateManyOptions
-    ): Promise<boolean> {
-        const today = this.helperDateService.create();
-        const sessions = await this.findAllByUser(user, undefined, options);
-        const promises = sessions.map(e => this.deleteLoginSession(e._id));
-
-        await Promise.all(promises);
-
-        await this.sessionRepository.updateMany(
-            {
-                user,
-            },
-            {
-                status: ENUM_SESSION_STATUS.REVOKED,
-                revokeAt: today,
-            },
-            options
+    /**
+     * Revokes a user session via admin action.
+     *
+     * Similar to revoke() but records the admin/revoker information for audit purposes.
+     * Validates that the session exists and is active, then revokes it from both database
+     * and cache while tracking who initiated the revocation.
+     *
+     * @param userId - The unique identifier of the user
+     * @param sessionId - The unique identifier of the session to revoke
+     * @param requestLog - Request log information for audit trail
+     * @param revokeBy - The identifier (admin/user) who initiated the revocation
+     * @returns Promise resolving to a response containing activity log metadata for audit trail
+     *
+     */
+    async revokeByAdmin(
+        userId: string,
+        sessionId: string,
+        requestLog: IRequestLog,
+        revokeBy: string
+    ): Promise<IResponseReturn<void>> {
+        const checkActive = await this.sessionRepository.findOneActiveByUser(
+            userId,
+            sessionId
         );
+        if (!checkActive) {
+            throw new NotFoundException({
+                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.notFound,
+                message: 'session.error.notFound',
+            });
+        }
 
-        return true;
-    }
+        const [updated] = await Promise.all([
+            this.sessionRepository.revokeByAdmin(
+                sessionId,
+                requestLog,
+                revokeBy
+            ),
+            this.sessionUtil.deleteOneLogin(userId, sessionId),
+        ]);
 
-    async deleteMany(
-        find?: Record<string, any>,
-        options?: IDatabaseDeleteManyOptions
-    ): Promise<boolean> {
-        await this.sessionRepository.deleteMany(find, options);
-
-        return true;
+        return {
+            metadataActivityLog:
+                this.sessionUtil.mapActivityLogMetadata(updated),
+        };
     }
 }

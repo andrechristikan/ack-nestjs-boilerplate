@@ -1,39 +1,39 @@
 import AppConfig from '@configs/app.config';
 import AuthConfig from '@configs/auth.config';
 import DatabaseConfig from '@configs/database.config';
-import HelperConfig from '@configs/helper.config';
 import AwsConfig from '@configs/aws.config';
 import UserConfig from '@configs/user.config';
-import MiddlewareConfig from '@configs/middleware.config';
+import RequestConfig from '@configs/request.config';
 import DocConfig from '@configs/doc.config';
 import MessageConfig from '@configs/message.config';
 import EmailConfig from '@configs/email.config';
 import RedisConfig from '@configs/redis.config';
-import DebugConfig from '@configs/debug.config';
-import ResetPasswordConfig from '@configs/reset-password.config';
+import ForgotPasswordConfig from '@configs/forgot-password.config';
 import VerificationConfig from '@configs/verification.config';
 import HomeConfig from '@configs/home.config';
+import LoggerConfig from '@configs/logger.config';
 import SessionConfig from '@configs/session.config';
-import SettingConfig from '@configs/setting.config';
 import TermPolicyConfig from '@configs/term-policy.config';
+import FeatureFlagConfig from '@configs/feature-flag.config';
+import ResponseConfig from '@configs/response.config';
 
 export default [
     AppConfig,
     AuthConfig,
     DatabaseConfig,
-    HelperConfig,
     AwsConfig,
     UserConfig,
-    MiddlewareConfig,
+    RequestConfig,
     DocConfig,
     MessageConfig,
     EmailConfig,
     RedisConfig,
-    DebugConfig,
-    ResetPasswordConfig,
+    LoggerConfig,
+    ForgotPasswordConfig,
     VerificationConfig,
     HomeConfig,
     SessionConfig,
-    SettingConfig,
     TermPolicyConfig,
+    FeatureFlagConfig,
+    ResponseConfig,
 ];

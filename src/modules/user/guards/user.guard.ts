@@ -1,75 +1,42 @@
-import {
-    CanActivate,
-    ExecutionContext,
-    ForbiddenException,
-    Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { AuthService } from '@modules/auth/services/auth.service';
 import { UserService } from '@modules/user/services/user.service';
-import { IUserDoc, IUserEntity } from '@modules/user/interfaces/user.interface';
-import { ENUM_USER_STATUS } from '@modules/user/enums/user.enum';
-import { ENUM_USER_STATUS_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
 import { Reflector } from '@nestjs/core';
-import { USER_GUARD_EMAIL_VERIFIED_META_KEY } from '@modules/user/constants/user.constant';
+import { USER_GUARD_IS_VERIFIED_META_KEY } from '@modules/user/constants/user.constant';
 
+/**
+ * Guard that validates user authentication and verification status.
+ * Checks if the user is authenticated and optionally validates verification status.
+ */
 @Injectable()
 export class UserGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly userService: UserService,
-        private readonly authService: AuthService
+        private readonly userService: UserService
     ) {}
 
+    /**
+     * Validates user authentication and verification status.
+     * Extracts verification requirement from metadata and validates the user accordingly.
+     *
+     * @param {ExecutionContext} context - The execution context containing request information
+     * @returns {Promise<boolean>} Promise that resolves to true if user is valid and meets verification requirements
+     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const emailVerified =
-            this.reflector.get<boolean[]>(
-                USER_GUARD_EMAIL_VERIFIED_META_KEY,
+        const isVerified =
+            this.reflector.get<boolean>(
+                USER_GUARD_IS_VERIFIED_META_KEY,
                 context.getHandler()
-            ) || [];
+            ) ?? false;
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
-        const { user } = request.user;
 
-        const userWithRole: IUserDoc =
-            await this.userService.findOneWithRoleAndCountryById(user);
+        const user = await this.userService.validateUserGuard(
+            request,
+            isVerified
+        );
 
-        if (!userWithRole) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'user.error.notFound',
-            });
-        } else if (userWithRole.status !== ENUM_USER_STATUS.ACTIVE) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
-                message: 'user.error.inactive',
-            });
-        } else if (!userWithRole.role.isActive) {
-            throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
-                message: 'role.error.inactive',
-            });
-        }
-
-        const checkPasswordExpired: boolean =
-            this.authService.checkPasswordExpired(userWithRole.passwordExpired);
-        if (checkPasswordExpired) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
-                message: 'auth.error.passwordExpired',
-            });
-        } else if (
-            emailVerified.includes(true) &&
-            userWithRole.verification.email !== true
-        ) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_NOT_VERIFIED,
-                message: 'user.error.emailNotVerified',
-            });
-        }
-
-        request.__user = userWithRole.toObject<IUserEntity>();
+        request.__user = user;
 
         return true;
     }

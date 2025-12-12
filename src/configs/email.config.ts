@@ -1,9 +1,16 @@
 import { registerAs } from '@nestjs/config';
 
+export interface IConfigEmail {
+    noreply: string;
+    support: string;
+    admin: string;
+}
+
 export default registerAs(
     'email',
-    (): Record<string, any> => ({
-        fromEmail: 'noreply@mail.com',
-        supportEmail: 'support@mail.com',
+    (): IConfigEmail => ({
+        noreply: 'noreply@mail.com',
+        support: 'support@mail.com',
+        admin: 'admin@mail.com',
     })
 );

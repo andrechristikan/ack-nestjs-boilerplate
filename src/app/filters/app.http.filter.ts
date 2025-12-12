@@ -1,7 +1,7 @@
 import {
-    ExceptionFilter,
-    Catch,
     ArgumentsHost,
+    Catch,
+    ExceptionFilter,
     HttpException,
     HttpStatus,
     Logger,
@@ -10,13 +10,19 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { IAppException } from '@app/interfaces/app.interface';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { ENUM_MESSAGE_LANGUAGE } from '@common/message/enums/message.enum';
-import { IMessageOptionsProperties } from '@common/message/interfaces/message.interface';
+import { HelperService } from '@common/helper/services/helper.service';
 import { MessageService } from '@common/message/services/message.service';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
+import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
+import { IMessageProperties } from '@common/message/interfaces/message.interface';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import * as Sentry from '@sentry/nestjs';
 
+/**
+ * HTTP exception filter that handles HttpException instances.
+ * Validates request paths, redirects invalid requests, and formats error responses with metadata.
+ */
 @Catch(HttpException)
 export class AppHttpFilter implements ExceptionFilter {
     private readonly logger = new Logger(AppHttpFilter.name);
@@ -27,12 +33,19 @@ export class AppHttpFilter implements ExceptionFilter {
     constructor(
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperService: HelperService
     ) {
         this.globalPrefix = this.configService.get<string>('app.globalPrefix');
         this.docPrefix = this.configService.get<string>('doc.prefix');
     }
 
+    /**
+     * Handles HTTP exceptions with path validation and response formatting.
+     * Redirects invalid paths and creates standardized error responses.
+     * @param {HttpException} exception - The HTTP exception to handle
+     * @param {ArgumentsHost} host - Arguments host containing request/response context
+     * @returns {Promise<void>}
+     */
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
@@ -50,24 +63,26 @@ export class AppHttpFilter implements ExceptionFilter {
             return;
         }
 
-        // set default
+        this.sendToSentry(exception);
+
         let statusHttp: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
         let messagePath = `http.${statusHttp}`;
         let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-        let messageProperties: IMessageOptionsProperties;
-        let data: Record<string, any>;
+        let messageProperties: IMessageProperties;
+        let data: unknown;
 
-        // metadata
-        const today = this.helperDateService.create();
-        const xLanguage: string =
-            request.__language ??
-            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
-        const xTimestamp = this.helperDateService.getTimestamp(today);
-        const xTimezone = this.helperDateService.getZone(today);
+        const today = this.helperService.dateCreate();
+        const xLanguage: EnumMessageLanguage =
+            (request.__language as EnumMessageLanguage) ??
+            this.configService.get<EnumMessageLanguage>('message.language');
+        const xTimestamp = this.helperService.dateGetTimestamp(today);
+        const xTimezone = this.helperService.dateGetZone(today);
         const xVersion =
             request.__version ??
             this.configService.get<string>('app.urlVersion.version');
         const xRepoVersion = this.configService.get<string>('app.version');
+        const xRequestId = String(request.id);
+        const xCorrelationId = String(request.correlationId);
         let metadata: ResponseMetadataDto = {
             language: xLanguage,
             timestamp: xTimestamp,
@@ -75,26 +90,24 @@ export class AppHttpFilter implements ExceptionFilter {
             path: request.path,
             version: xVersion,
             repoVersion: xRepoVersion,
+            requestId: xRequestId,
+            correlationId: xCorrelationId,
         };
 
-        // Restructure
         const responseException = exception.getResponse();
         statusHttp = exception.getStatus();
-        messagePath = `http.${statusHttp}`;
         statusCode = exception.getStatus();
+        messagePath = `http.${statusHttp}`;
 
         if (this.isErrorException(responseException)) {
-            const { _metadata } = responseException;
-
             statusCode = responseException.statusCode;
             messagePath = responseException.message;
+            messageProperties = responseException.messageProperties;
             data = responseException.data;
-            messageProperties = _metadata?.customProperty?.messageProperties;
-            delete _metadata?.customProperty;
 
             metadata = {
+                ...responseException.metadata,
                 ...metadata,
-                ..._metadata,
             };
         }
 
@@ -103,10 +116,10 @@ export class AppHttpFilter implements ExceptionFilter {
             properties: messageProperties,
         });
 
-        const responseBody: IAppException = {
+        const responseBody: ResponseErrorDto = {
             statusCode,
             message,
-            _metadata: metadata,
+            metadata,
             data,
         };
 
@@ -116,15 +129,43 @@ export class AppHttpFilter implements ExceptionFilter {
             .setHeader('x-timezone', xTimezone)
             .setHeader('x-version', xVersion)
             .setHeader('x-repo-version', xRepoVersion)
+            .setHeader('x-request-id', xRequestId)
+            .setHeader('x-correlation-id', xCorrelationId)
             .status(statusHttp)
             .json(responseBody);
 
         return;
     }
 
-    isErrorException(obj: any): obj is IAppException {
+    /**
+     * Type guard to check if exception response implements IAppException interface.
+     * Validates object has required statusCode and message properties.
+     * @param {unknown} obj - The object to check
+     * @returns {boolean} True if object has statusCode and message properties
+     */
+    isErrorException(obj: unknown): obj is IAppException<unknown> {
         return typeof obj === 'object'
             ? 'statusCode' in obj && 'message' in obj
             : false;
+    }
+
+    /**
+     * Sends exceptions with status >= 500 to Sentry for monitoring
+     * @param {HttpException} exception - The HTTP exception to send to Sentry
+     * @returns {void}
+     */
+    sendToSentry(exception: HttpException): void {
+        if (exception.getStatus() < 500) {
+            return;
+        }
+
+        try {
+            this.logger.error(exception);
+            Sentry.captureException(exception);
+        } catch (error: unknown) {
+            this.logger.error('Failed to send exception to Sentry', error);
+        }
+
+        return;
     }
 }

@@ -7,21 +7,16 @@ export enum ENUM_POLICY_ACTION {
 }
 
 export enum ENUM_POLICY_SUBJECT {
-    AUTH = 'AUTH',
-    TERM_POLICY = 'TERM_POLICY',
-    SETTINGS = 'SETTINGS',
-    API_KEY = 'API_KEY',
-    COUNTRY = 'COUNTRY',
-    ROLE = 'ROLE',
-    USER = 'USER',
-    SESSION = 'SESSION',
-    ACTIVITY = 'ACTIVITY',
-    DASHBOARD = 'DASHBOARD',
-    UTILITIES = 'UTILITIES',
-}
-
-export enum ENUM_POLICY_ROLE_TYPE {
-    SUPER_ADMIN = 'SUPER_ADMIN',
-    ADMIN = 'ADMIN',
-    USER = 'USER',
+    ALL = 'all',
+    AUTH = 'auth',
+    SETTING = 'setting',
+    API_KEY = 'apiKey',
+    COUNTRY = 'country',
+    ROLE = 'role',
+    USER = 'user',
+    SESSION = 'session',
+    ACTIVITY_LOG = 'activityLog',
+    PASSWORD_HISTORY = 'passwordHistory',
+    TERM_POLICY = 'termPolicy',
+    FEATURE_FLAG = 'featureFlag',
 }

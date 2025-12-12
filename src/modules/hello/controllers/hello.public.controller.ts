@@ -1,10 +1,10 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { Response } from '@common/response/decorators/response.decorator';
-import { IResponse } from '@common/response/interfaces/response.interface';
-import { HelloDoc } from '@modules/hello/docs/hello.doc';
+import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { HelloService } from '@modules/hello/services/hello.service';
 import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
+import { HelloPublicDoc } from '@modules/hello/docs/hello.public.doc';
 
 @ApiTags('modules.public.hello')
 @Controller({
@@ -12,22 +12,14 @@ import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dt
     path: '/hello',
 })
 export class HelloPublicController {
-    constructor(private readonly helperDateService: HelperDateService) {}
+    constructor(private readonly helloService: HelloService) {}
 
-    @HelloDoc()
+    @HelloPublicDoc()
     @Response('hello.hello', {
-        cached: true,
+        cache: true,
     })
     @Get('/')
-    async hello(): Promise<IResponse<HelloResponseDto>> {
-        const today = this.helperDateService.create();
-
-        return {
-            data: {
-                date: today,
-                format: this.helperDateService.formatToIso(today),
-                timestamp: this.helperDateService.getTimestamp(today),
-            },
-        };
+    async hello(): Promise<IResponseReturn<HelloResponseDto>> {
+        return this.helloService.hello();
     }
 }

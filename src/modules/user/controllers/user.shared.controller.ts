@@ -1,53 +1,72 @@
+import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { FileUploadSingle } from '@common/file/decorators/file.decorator';
+import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
+import { IFile } from '@common/file/interfaces/file.interface';
+import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import {
-    Body,
-    Controller,
-    Get,
-    HttpCode,
-    HttpStatus,
-    InternalServerErrorException,
-    NotFoundException,
-    Post,
-    Put,
-} from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-import { ClientSession } from 'mongoose';
-import { ENUM_APP_STATUS_CODE_ERROR } from '@app/enums/app.status-code.enum';
-import { DatabaseService } from '@common/database/services/database.service';
-import { MessageService } from '@common/message/services/message.service';
+    RequestIPAddress,
+    RequestTimeout,
+    RequestUserAgent,
+} from '@common/request/decorators/request.decorator';
+import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { Response } from '@common/response/decorators/response.decorator';
-import { IResponse } from '@common/response/interfaces/response.interface';
-import { ActivityService } from '@modules/activity/services/activity.service';
+import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
+    AuthJwtRefreshProtected,
+    AuthJwtToken,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AwsS3Dto } from '@modules/aws/dtos/aws.s3.dto';
-import { AwsS3PresignRequestDto } from '@modules/aws/dtos/request/aws.s3-presign.request.dto';
-import { AwsS3PresignResponseDto } from '@modules/aws/dtos/response/aws.s3-presign.response.dto';
-import { AwsS3Service } from '@modules/aws/services/aws.s3.service';
-import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
-import { CountryService } from '@modules/country/services/country.service';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
+    UserCurrent,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
+import {
+    UserSharedAddMobileNumberDoc,
+    UserSharedChangePasswordDoc,
+    UserSharedClaimUsernameDoc,
+    UserSharedDeleteMobileNumberDoc,
+    UserSharedGeneratePhotoProfileDoc,
     UserSharedProfileDoc,
+    UserSharedRefreshDoc,
+    UserSharedUpdateMobileNumberDoc,
     UserSharedUpdatePhotoProfileDoc,
     UserSharedUpdateProfileDoc,
     UserSharedUploadPhotoProfileDoc,
 } from '@modules/user/docs/user.shared.doc';
-import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
-import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
-import { IUserDoc } from '@modules/user/interfaces/user.interface';
+import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
+import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
+import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import {
-    UserActiveParsePipe,
-    UserParsePipe,
-} from '@modules/user/pipes/user.parse.pipe';
-import { UserDoc } from '@modules/user/repository/entities/user.entity';
+    UserAddMobileNumberRequestDto,
+    UserUpdateMobileNumberRequestDto,
+} from '@modules/user/dtos/request/user.mobile-number.request.dto';
+import {
+    UserUpdateProfilePhotoRequestDto,
+    UserUpdateProfileRequestDto,
+} from '@modules/user/dtos/request/user.profile.request.dto';
+import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
+import { IUser } from '@modules/user/interfaces/user.interface';
 import { UserService } from '@modules/user/services/user.service';
-import { UserUploadPhotoProfileRequestDto } from '@modules/user/dtos/request/user.upload-photo-profile.request.dto';
-import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.enum';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Patch,
+    Post,
+    Put,
+    UploadedFile,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.shared.user')
 @Controller({
@@ -55,152 +74,234 @@ import { ENUM_TERM_POLICY_TYPE } from '@modules/term-policy/enums/term-policy.en
     path: '/user',
 })
 export class UserSharedController {
-    constructor(
-        private readonly databaseService: DatabaseService,
-        private readonly awsS3Service: AwsS3Service,
-        private readonly userService: UserService,
-        private readonly countryService: CountryService,
-        private readonly activityService: ActivityService,
-        private readonly messageService: MessageService
-    ) {}
+    constructor(private readonly userService: UserService) {}
+
+    @UserSharedRefreshDoc()
+    @Response('user.refresh')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtRefreshProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/refresh')
+    async refresh(
+        @UserCurrent() user: IUser,
+        @AuthJwtToken() refreshToken: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<AuthTokenResponseDto>> {
+        return this.userService.refreshToken(user, refreshToken, {
+            ipAddress,
+            userAgent,
+        });
+    }
 
     @UserSharedProfileDoc()
     @Response('user.profile')
-    @TermPolicyAcceptanceProtected(ENUM_TERM_POLICY_TYPE.PRIVACY)
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/profile')
     async profile(
-        @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user', UserActiveParsePipe)
-        user: IUserDoc
-    ): Promise<IResponse<UserProfileResponseDto>> {
-        const mapped: UserProfileResponseDto =
-            this.userService.mapProfile(user);
-        return { data: mapped };
+        @AuthJwtPayload('userId')
+        userId: string
+    ): Promise<IResponseReturn<UserProfileResponseDto>> {
+        return this.userService.getProfile(userId);
     }
 
     @UserSharedUpdateProfileDoc()
     @Response('user.updateProfile')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/profile/update')
     async updateProfile(
-        @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user', UserParsePipe)
-        user: UserDoc,
+        @AuthJwtPayload('userId')
+        userId: string,
         @Body()
-        { country, ...body }: UserUpdateProfileRequestDto
-    ): Promise<void> {
-        const checkCountry = this.countryService.findOneById(country);
-        if (!checkCountry) {
-            throw new NotFoundException({
-                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
-                message: 'country.error.notFound',
-            });
-        }
-
-        const session: ClientSession =
-            await this.databaseService.createTransaction();
-
-        try {
-            await this.userService.updateProfile(
-                user,
-                { country, ...body },
-                { session }
-            );
-
-            await this.activityService.createByUser(
-                user,
-                {
-                    description: this.messageService.setMessage(
-                        'activity.user.updateProfile'
-                    ),
-                },
-                { session }
-            );
-
-            await this.databaseService.commitTransaction(session);
-        } catch (err: unknown) {
-            await this.databaseService.abortTransaction(session);
-
-            throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
-        }
-
-        return;
+        body: UserUpdateProfileRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.updateProfile(userId, body, {
+            ipAddress,
+            userAgent,
+        });
     }
 
-    @UserSharedUploadPhotoProfileDoc()
-    @Response('user.uploadPhotoProfile')
+    @UserSharedGeneratePhotoProfileDoc()
+    @Response('user.generatePhotoProfilePresign')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/upload/photo-profile')
-    async uploadPhotoProfile(
-        @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user', UserParsePipe)
-        user: UserDoc,
-        @Body() { mime, size }: UserUploadPhotoProfileRequestDto
-    ): Promise<IResponse<AwsS3PresignResponseDto>> {
-        const randomFilename: string =
-            this.userService.createRandomFilenamePhoto(user._id, {
-                mime,
-                size,
-            });
-
-        const aws: AwsS3PresignResponseDto =
-            await this.awsS3Service.presignPutItem(randomFilename, size, {
-                forceUpdate: true,
-            });
-
-        return {
-            data: aws,
-        };
+    @Post('/profile/generate-presign/photo')
+    async generatePhotoProfilePresign(
+        @AuthJwtPayload('userId')
+        userId: string,
+        @Body() body: UserGeneratePhotoProfileRequestDto
+    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+        return this.userService.generatePhotoProfilePresign(userId, body);
     }
 
     @UserSharedUpdatePhotoProfileDoc()
     @Response('user.updatePhotoProfile')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/update/photo-profile')
+    @Put('/profile/update/photo')
     async updatePhotoProfile(
-        @AuthJwtPayload<IAuthJwtAccessTokenPayload>('user', UserParsePipe)
-        user: UserDoc,
-        @Body() body: AwsS3PresignRequestDto
-    ): Promise<void> {
-        const session: ClientSession =
-            await this.databaseService.createTransaction();
+        @AuthJwtPayload('userId')
+        userId: string,
+        @Body() body: UserUpdateProfilePhotoRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.updatePhotoProfile(userId, body, {
+            ipAddress,
+            userAgent,
+        });
+    }
 
-        try {
-            const aws: AwsS3Dto = this.awsS3Service.mapPresign(body);
+    @UserSharedUploadPhotoProfileDoc()
+    @Response('user.uploadPhotoProfile')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @FileUploadSingle()
+    @RequestTimeout('1m')
+    @HttpCode(HttpStatus.OK)
+    @Post('/profile/upload/photo')
+    async uploadPhotoProfile(
+        @AuthJwtPayload('userId')
+        userId: string,
+        @UploadedFile(
+            FileExtensionPipe([
+                EnumFileExtensionImage.jpeg,
+                EnumFileExtensionImage.png,
+                EnumFileExtensionImage.jpg,
+            ])
+        )
+        file: IFile,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.uploadPhotoProfile(userId, file, {
+            ipAddress,
+            userAgent,
+        });
+    }
 
-            await this.userService.updatePhoto(user, aws, { session });
-            await this.activityService.createByUser(
-                user,
-                {
-                    description: this.messageService.setMessage(
-                        'activity.user.uploadPhotoProfile'
-                    ),
-                },
-                { session }
-            );
+    @UserSharedChangePasswordDoc()
+    @Response('user.changePassword')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @FeatureFlagProtected('changePassword')
+    @ApiKeyProtected()
+    @Patch('/change-password')
+    async changePassword(
+        @Body() body: UserChangePasswordRequestDto,
+        @AuthJwtPayload('userId') userId: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.changePassword(userId, body, {
+            ipAddress,
+            userAgent,
+        });
+    }
 
-            await this.databaseService.commitTransaction(session);
-        } catch (err: unknown) {
-            await this.databaseService.abortTransaction(session);
+    @UserSharedAddMobileNumberDoc()
+    @Response('user.addMobileNumber')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/mobile-number/add')
+    async addMobileNumber(
+        @AuthJwtPayload('userId') userId: string,
+        @Body()
+        body: UserAddMobileNumberRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+        return this.userService.addMobileNumber(userId, body, {
+            ipAddress,
+            userAgent,
+        });
+    }
 
-            throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
-        }
+    @UserSharedUpdateMobileNumberDoc()
+    @Response('user.updateMobileNumber')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Put('/mobile-number/update/:mobileNumberId')
+    async updateMobileNumber(
+        @AuthJwtPayload('userId') userId: string,
+        @Param('mobileNumberId') mobileNumberId: string,
+        @Body()
+        body: UserUpdateMobileNumberRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+        return this.userService.updateMobileNumber(
+            userId,
+            mobileNumberId,
+            body,
+            {
+                ipAddress,
+                userAgent,
+            }
+        );
+    }
 
-        return;
+    @UserSharedDeleteMobileNumberDoc()
+    @Response('user.deleteMobileNumber')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Delete('/mobile-number/delete/:mobileNumberId')
+    async deleteMobileNumber(
+        @AuthJwtPayload('userId') userId: string,
+        @Param('mobileNumberId') mobileNumberId: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+        return this.userService.deleteMobileNumber(userId, mobileNumberId, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    // TODO: Verify number implementation, but which provider?
+
+    @UserSharedClaimUsernameDoc()
+    @Response('user.claimUsername')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/username/claim')
+    async claimUsername(
+        @AuthJwtPayload('userId') userId: string,
+        @Body()
+        body: UserClaimUsernameRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.claimUsername(userId, body, {
+            ipAddress,
+            userAgent,
+        });
     }
 }

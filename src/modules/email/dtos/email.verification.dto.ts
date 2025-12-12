@@ -4,9 +4,9 @@ import { ApiProperty } from '@nestjs/swagger';
 export class EmailVerificationDto {
     @ApiProperty({
         required: true,
-        description: 'The OTP code',
+        example: 'https://example.com/verify?token=abcdefg12345',
     })
-    otp: string;
+    link: string;
 
     @ApiProperty({
         required: true,
@@ -14,6 +14,13 @@ export class EmailVerificationDto {
         description: 'Expired at by date',
     })
     expiredAt: Date;
+
+    @ApiProperty({
+        required: true,
+        example: 15,
+        description: 'Expired in minutes',
+    })
+    expiredInMinutes: number;
 
     @ApiProperty({
         required: true,

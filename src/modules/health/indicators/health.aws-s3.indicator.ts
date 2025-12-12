@@ -1,58 +1,36 @@
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { Injectable } from '@nestjs/common';
 import {
     HealthIndicatorResult,
     HealthIndicatorService,
 } from '@nestjs/terminus';
-import { ENUM_AWS_S3_ACCESSIBILITY } from '@modules/aws/enums/aws.enum';
-import { AwsS3Service } from '@modules/aws/services/aws.s3.service';
 
 @Injectable()
-export class HealthAwsS3PublicBucketIndicator {
+export class HealthAwsS3BucketIndicator {
     constructor(
         private readonly awsS3Service: AwsS3Service,
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}
 
-    async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    async isHealthy(
+        key: string,
+        access?: EnumAwsS3Accessibility
+    ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 
         try {
-            await this.awsS3Service.checkBucket();
-
-            return indicator.up();
-        } catch (err: any) {
-            return indicator.down(
-                `HealthAwsS3PublicBucketIndicator Failed - ${err?.message}`
-            );
-        }
-    }
-}
-
-@Injectable()
-export class HealthAwsS3PrivateBucketIndicator {
-    constructor(
-        private readonly awsS3Service: AwsS3Service,
-        private readonly healthIndicatorService: HealthIndicatorService
-    ) {}
-
-    async isHealthy(key: string): Promise<HealthIndicatorResult> {
-        const indicator = this.healthIndicatorService.check(key);
-
-        try {
-            const connection = await this.awsS3Service.checkBucket({
-                access: ENUM_AWS_S3_ACCESSIBILITY.PRIVATE,
+            await this.awsS3Service.checkBucket({
+                access,
             });
 
-            if (!connection) {
-                return indicator.down(
-                    `HealthAwsS3PrivateBucketIndicator Failed - Connection to AWS S3 private bucket failed`
-                );
-            }
-
             return indicator.up();
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : 'Unknown error';
+
             return indicator.down(
-                `HealthAwsS3PrivateBucketIndicator Failed - ${err?.message}`
+                `HealthAwsS3BucketIndicator Failed - ${message}`
             );
         }
     }

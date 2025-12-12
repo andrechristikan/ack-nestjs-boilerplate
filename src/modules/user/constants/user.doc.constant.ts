@@ -1,44 +1,49 @@
 import { faker } from '@faker-js/faker';
-import { ENUM_USER_STATUS } from '@modules/user/enums/user.enum';
+import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
+import { EnumUserStatus } from '@prisma/client';
 
-export const UserDocParamsId = [
+export const UserDocParamsId: ApiParamOptions[] = [
     {
-        name: 'user',
+        name: 'userId',
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     },
 ];
 
-export const UserDocQueryRole = [
+export const UserDocParamsMobileNumberId: ApiParamOptions[] = [
     {
-        name: 'role',
+        name: 'mobileNumberId',
+        allowEmptyValue: false,
+        required: true,
+        type: 'string',
+        example: faker.database.mongodbObjectId(),
+    },
+];
+
+export const UserDocQueryList: ApiQueryOptions[] = [
+    {
+        name: 'roleId',
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: `${faker.string.uuid()},${faker.string.uuid()}`,
-        description: "value with ',' delimiter",
+        example: faker.database.mongodbObjectId(),
+        description: 'Filter by roleId',
     },
-];
-
-export const UserDocQueryCountry = [
     {
-        name: 'country',
+        name: 'countryId',
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     },
-];
-
-export const UserDocQueryStatus = [
     {
         name: 'status',
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: Object.values(ENUM_USER_STATUS).join(','),
+        example: Object.values(EnumUserStatus).join(','),
         description: "value with ',' delimiter",
     },
 ];

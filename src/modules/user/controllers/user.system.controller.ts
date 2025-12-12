@@ -1,27 +1,20 @@
 import {
-    Body,
-    Controller,
-    Get,
-    HttpCode,
-    HttpStatus,
-    Post,
-} from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-import {
-    PaginationQuery,
-    PaginationQueryFilterEqual,
-    PaginationQueryFilterIn,
+    PaginationCursorQuery,
+    PaginationQueryFilterEqualString,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
-import { PaginationListDto } from '@common/pagination/dtos/pagination.list.dto';
-import { PaginationService } from '@common/pagination/services/pagination.service';
+import {
+    IPaginationEqual,
+    IPaginationIn,
+    IPaginationQueryCursorParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
 import {
-    IResponse,
-    IResponsePaging,
+    IResponsePagingReturn,
+    IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
@@ -30,23 +23,29 @@ import {
 } from '@modules/user/constants/user.list.constant';
 import {
     UserSystemCheckEmailDoc,
-    UserSystemCheckMobileNumberDoc,
     UserSystemCheckUsernameDoc,
     UserSystemListDoc,
 } from '@modules/user/docs/user.system.doc';
-import { UserCheckMobileNumberRequestDto } from '@modules/user/dtos/request/user.check-mobile-number.request.dto';
 import {
     UserCheckEmailRequestDto,
     UserCheckUsernameRequestDto,
 } from '@modules/user/dtos/request/user.check.request.dto';
 import {
-    UserCheckResponseDto,
+    UserCheckEmailResponseDto,
     UserCheckUsernameResponseDto,
 } from '@modules/user/dtos/response/user.check.response.dto';
-import { UserShortResponseDto } from '@modules/user/dtos/response/user.short.response.dto';
-import { ENUM_USER_STATUS } from '@modules/user/enums/user.enum';
-import { IUserEntity } from '@modules/user/interfaces/user.interface';
+import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserService } from '@modules/user/services/user.service';
+import {
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Post,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { EnumUserStatus } from '@prisma/client';
 
 @ApiTags('modules.system.user')
 @Controller({
@@ -54,79 +53,33 @@ import { UserService } from '@modules/user/services/user.service';
     path: '/user',
 })
 export class UserSystemController {
-    constructor(
-        private readonly paginationService: PaginationService,
-        private readonly userService: UserService
-    ) {}
+    constructor(private readonly userService: UserService) {}
 
     @UserSystemListDoc()
     @ResponsePaging('user.list')
     @ApiKeySystemProtected()
     @Get('/list')
     async list(
-        @PaginationQuery({ availableSearch: USER_DEFAULT_AVAILABLE_SEARCH })
-        { _search, _limit, _offset, _order }: PaginationListDto,
-        @PaginationQueryFilterInEnum(
-            'status',
-            USER_DEFAULT_STATUS,
-            ENUM_USER_STATUS
-        )
-        status: Record<string, any>,
-        @PaginationQueryFilterIn('role')
-        role: Record<string, any>,
-        @PaginationQueryFilterEqual('country', {
-            queryField: 'country',
+        @PaginationCursorQuery({
+            availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
         })
-        country: Record<string, any>
-    ): Promise<IResponsePaging<UserShortResponseDto>> {
-        const find: Record<string, any> = {
-            ..._search,
-            ...role,
-            ...country,
-            ...status,
-        };
-
-        const users: IUserEntity[] =
-            await this.userService.findAllWithRoleAndCountry(find, {
-                paging: {
-                    limit: _limit,
-                    offset: _offset,
-                },
-                order: _order,
-            });
-
-        const total: number =
-            await this.userService.getTotalWithRoleAndCountry(find);
-        const totalPage: number = this.paginationService.totalPage(
-            total,
-            _limit
+        pagination: IPaginationQueryCursorParams,
+        @PaginationQueryFilterInEnum<EnumUserStatus>(
+            'status',
+            USER_DEFAULT_STATUS
+        )
+        status?: Record<string, IPaginationIn>,
+        @PaginationQueryFilterEqualString('role')
+        role?: Record<string, IPaginationEqual>,
+        @PaginationQueryFilterEqualString('country')
+        country?: Record<string, IPaginationEqual>
+    ): Promise<IResponsePagingReturn<UserListResponseDto>> {
+        return this.userService.getListActiveCursor(
+            pagination,
+            status,
+            role,
+            country
         );
-        const mapUsers: UserShortResponseDto[] =
-            this.userService.mapShort(users);
-
-        return {
-            _pagination: { total, totalPage },
-            data: mapUsers,
-        };
-    }
-
-    @UserSystemCheckMobileNumberDoc()
-    @Response('user.checkMobileNumber')
-    @ApiKeySystemProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/check/mobile-number')
-    async checkMobileNumber(
-        @Body() { number }: UserCheckMobileNumberRequestDto
-    ): Promise<IResponse<UserCheckResponseDto>> {
-        const user = await this.userService.findOneByMobileNumber(number);
-        const mapped = user ? this.userService.mapCensor(user) : undefined;
-
-        return {
-            data: {
-                exist: !!user,
-                user: mapped,
-            },
-        };
     }
 
     @UserSystemCheckUsernameDoc()
@@ -135,23 +88,9 @@ export class UserSystemController {
     @HttpCode(HttpStatus.OK)
     @Post('/check/username')
     async checkUsername(
-        @Body() { username }: UserCheckUsernameRequestDto
-    ): Promise<IResponse<UserCheckUsernameResponseDto>> {
-        const checkUsername = this.userService.checkUsernamePattern(username);
-        const checkBadWord =
-            await this.userService.checkUsernameBadWord(username);
-
-        const user = await this.userService.findOneByUsername(username);
-        const mapped = user ? this.userService.mapCensor(user) : undefined;
-
-        return {
-            data: {
-                badWord: checkBadWord,
-                exist: !!user,
-                pattern: checkUsername,
-                user: mapped,
-            },
-        };
+        @Body() body: UserCheckUsernameRequestDto
+    ): Promise<IResponseReturn<UserCheckUsernameResponseDto>> {
+        return this.userService.checkUsername(body);
     }
 
     @UserSystemCheckEmailDoc()
@@ -160,13 +99,8 @@ export class UserSystemController {
     @HttpCode(HttpStatus.OK)
     @Post('/check/email')
     async checkEmail(
-        @Body() { email }: UserCheckEmailRequestDto
-    ): Promise<IResponse<UserCheckResponseDto>> {
-        const user = await this.userService.findOneByEmail(email);
-        const mapped = user ? this.userService.mapCensor(user) : undefined;
-
-        return {
-            data: { exist: !!user, user: mapped },
-        };
+        @Body() body: UserCheckEmailRequestDto
+    ): Promise<IResponseReturn<UserCheckEmailResponseDto>> {
+        return this.userService.checkEmail(body);
     }
 }

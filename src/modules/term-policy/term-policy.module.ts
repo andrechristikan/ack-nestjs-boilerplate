@@ -1,20 +1,24 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
-import { TermPolicyRepositoryModule } from '@modules/term-policy/repository/term-policy.repository.module';
-import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
+import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
+import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
+import { AwsModule } from '@common/aws/aws.module';
 import { TermPolicyTemplateService } from '@modules/term-policy/services/term-policy.template.service';
 
+@Global()
 @Module({
-    imports: [TermPolicyRepositoryModule],
-    exports: [
-        TermPolicyService,
-        TermPolicyAcceptanceService,
-        TermPolicyTemplateService,
-    ],
+    imports: [AwsModule],
     providers: [
         TermPolicyService,
-        TermPolicyAcceptanceService,
         TermPolicyTemplateService,
+        TermPolicyRepository,
+        TermPolicyUtil,
+    ],
+    exports: [
+        TermPolicyService,
+        TermPolicyTemplateService,
+        TermPolicyRepository,
+        TermPolicyUtil,
     ],
 })
 export class TermPolicyModule {}

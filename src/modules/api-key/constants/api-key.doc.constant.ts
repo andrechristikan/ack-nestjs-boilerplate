@@ -1,34 +1,32 @@
 import { faker } from '@faker-js/faker';
-import { ENUM_API_KEY_TYPE } from '@modules/api-key/enums/api-key.enum';
+import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
+import { EnumApiKeyType } from '@prisma/client';
 
-export const ApiKeyDocQueryIsActive = [
+export const ApiKeyDocParamsId: ApiParamOptions[] = [
+    {
+        name: 'apiKeyId',
+        allowEmptyValue: false,
+        required: true,
+        type: 'string',
+        example: faker.database.mongodbObjectId(),
+    },
+];
+
+export const ApiKeyDocQueryList: ApiQueryOptions[] = [
     {
         name: 'isActive',
         allowEmptyValue: true,
         required: false,
-        type: 'string',
-        example: 'true,false',
-        description: "boolean value with ',' delimiter",
+        type: 'boolean',
+        example: true,
+        description: 'boolean value. Available values: true, false.',
     },
-];
-
-export const ApiKeyDocQueryType = [
     {
         name: 'type',
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: Object.values(ENUM_API_KEY_TYPE).join(','),
-        description: "boolean value with ',' delimiter",
-    },
-];
-
-export const ApiKeyDocParamsId = [
-    {
-        name: 'apiKey',
-        allowEmptyValue: false,
-        required: true,
-        type: 'string',
-        example: faker.string.uuid(),
+        example: Object.values(EnumApiKeyType).join(','),
+        description: `enum value with ',' delimiter. Available values: ${Object.values(EnumApiKeyType).join(', ')}`,
     },
 ];

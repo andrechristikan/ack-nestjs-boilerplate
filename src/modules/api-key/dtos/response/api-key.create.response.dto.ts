@@ -1,9 +1,12 @@
-import { ApiProperty, PickType } from '@nestjs/swagger';
-import { ApiKeyGetResponseDto } from '@modules/api-key/dtos/response/api-key.get.response.dto';
+import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
+import { ApiHideProperty, ApiProperty, PickType } from '@nestjs/swagger';
+import { EnumApiKeyType } from '@prisma/client';
+import { Exclude } from 'class-transformer';
 
-export class ApiKeyCreateResponseDto extends PickType(ApiKeyGetResponseDto, [
+export class ApiKeyCreateResponseDto extends PickType(ApiKeyDto, [
+    'hash',
     'key',
-    '_id',
+    'id',
 ] as const) {
     @ApiProperty({
         description: 'Secret key of ApiKey, only show at once',
@@ -11,4 +14,28 @@ export class ApiKeyCreateResponseDto extends PickType(ApiKeyGetResponseDto, [
         required: true,
     })
     secret: string;
+
+    @ApiHideProperty()
+    @Exclude()
+    isActive: boolean;
+
+    @ApiHideProperty()
+    @Exclude()
+    startDate?: Date;
+
+    @ApiHideProperty()
+    @Exclude()
+    endDate?: Date;
+
+    @ApiHideProperty()
+    @Exclude()
+    name?: string;
+
+    @ApiHideProperty()
+    @Exclude()
+    type: EnumApiKeyType;
+
+    @ApiHideProperty()
+    @Exclude()
+    key: string;
 }

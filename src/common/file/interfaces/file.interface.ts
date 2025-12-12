@@ -1,9 +1,6 @@
-export type IFile = Express.Multer.File;
+import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
 
-export interface IFileRows<T = any> {
-    data: T[];
-    sheetName?: string;
-}
+export type IFile = Express.Multer.File;
 
 export interface IFileUploadSingle {
     field: string;
@@ -20,3 +17,12 @@ export type IFileUploadMultipleFieldOptions = Pick<
     IFileUploadSingle,
     'fileSize'
 >;
+
+export type IFileInput = IFile | IFile[];
+
+export interface IFileRandomFilenameOptions {
+    path?: string;
+    prefix?: string;
+    extension: ENUM_FILE_EXTENSION;
+    randomLength?: number;
+}

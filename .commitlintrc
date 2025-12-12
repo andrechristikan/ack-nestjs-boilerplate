@@ -28,9 +28,9 @@
                 "feat",
                 "fix",
                 "hotfix",
+                "chore",
                 "refactor",
                 "revert",
-                "style",
                 "test"
             ]
         ]

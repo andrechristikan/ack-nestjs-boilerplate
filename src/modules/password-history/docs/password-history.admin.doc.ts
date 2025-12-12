@@ -6,8 +6,8 @@ import {
     DocRequest,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { PasswordHistoryListResponseDto } from '@modules/password-history/dtos/response/password-history.list.response.dto';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
+import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
 
 export function PasswordHistoryAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -22,11 +22,8 @@ export function PasswordHistoryAdminListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponsePaging<PasswordHistoryListResponseDto>(
-            'passwordHistory.list',
-            {
-                dto: PasswordHistoryListResponseDto,
-            }
-        )
+        DocResponsePaging<PasswordHistoryResponseDto>('passwordHistory.list', {
+            dto: PasswordHistoryResponseDto,
+        })
     );
 }

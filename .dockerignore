@@ -1,31 +1,69 @@
-# Build dependencies
+# Build dependencies (keep node_modules for package.json but exclude if exists)
 node_modules/
 coverage/
 dist/
-swagger.json
 .husky/
 .github/
 assets/
+generated/
+src/swagger.json
 src/metadata.ts
 keys/*
+.warmup/
+/.nyc_output
 
 # Logs
 logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Environment (contains sensitive data)
+# Environment (contains sensitive data - but keep .env.example)
 .env*
+!.env.example
+config.yaml
+config.yml
+
+# OS files
+.DS_Store
 
 # Versioning and metadata
 .git
 .gitignore
 .dockerignore
-.eslintignore
 
-# Files not required for production
+# IDE and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# pnpm
+.pnpm-store/
+
+# Files not required for Docker build
 .editorconfig
-dockerfile
-docker-compose.yml
 cspell.json
 README.md
+LICENSE.md
 nodemon.json
-templates
+
+# CI configuration (except ci/dockerfile which is used for production build)
+ci/jwks-server/
+
+# Keep these files as they are needed for production build:
+# - ci/dockerfile (used by GitHub Actions)
+# - eslint.config.mjs (might be needed for linting)
+# - nest-cli.json (needed for NestJS CLI commands)  
+# - tsconfig.json (needed for TypeScript compilation)
+# - test/ (keep for testing capabilities)
+# - scripts/ (might contain build scripts)
