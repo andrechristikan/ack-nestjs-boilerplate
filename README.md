@@ -61,6 +61,7 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
 ### Next Features
 - [ ] Activity Log support bidirectional logging
 - [ ] Add import and export endpoint (includes: direct upload and presign upload)
+- [ ] Make sure github action works
 - [ ] 2FA with TOTP Authentication (eg: Google Authenticator)
 - [ ] Recovery Codes Method
 - [ ] Login with biometrics (fingerprint or face detection)
