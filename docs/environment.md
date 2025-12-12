@@ -123,8 +123,8 @@ AUTH_SOCIAL_APPLE_CLIENT_ID=
 AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 
 # AWS Configuration (Optional)
-AWS_S3_PUBLIC_CREDENTIAL_KEY=
-AWS_S3_PUBLIC_CREDENTIAL_SECRET=
+AWS_S3_CREDENTIAL_KEY=
+AWS_S3_CREDENTIAL_SECRET=
 AWS_S3_REGION=ap-southeast-3
 AWS_S3_PUBLIC_BUCKET=
 AWS_S3_PUBLIC_CDN=
@@ -396,17 +396,17 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 
 > **Note**: AWS settings are optional by default. However, if you want to test file uploads (S3) or email functionality (SES), these become required for those specific features to work.
 
-#### S3 Public Bucket (for public files)
-**`AWS_S3_PUBLIC_CREDENTIAL_KEY`** *(optional/required for file uploads)*  
-AWS access key for S3 public bucket operations.
+#### S3 Configuration
+**`AWS_S3_CREDENTIAL_KEY`** *(optional/required for file uploads)*  
+AWS access key for S3 bucket operations.
 ```bash
-AWS_S3_PUBLIC_CREDENTIAL_KEY=
+AWS_S3_CREDENTIAL_KEY=
 ```
 
-**`AWS_S3_PUBLIC_CREDENTIAL_SECRET`** *(optional/required for file uploads)*  
-AWS secret key for S3 public bucket operations.
+**`AWS_S3_CREDENTIAL_SECRET`** *(optional/required for file uploads)*  
+AWS secret key for S3 bucket operations.
 ```bash
-AWS_S3_PUBLIC_CREDENTIAL_SECRET=
+AWS_S3_CREDENTIAL_SECRET=
 ```
 
 **`AWS_S3_REGION`** *(optional/required for file uploads)*  

@@ -6,11 +6,11 @@ import {
     IsInt,
     IsNotEmpty,
     IsNumber,
+    IsOptional,
     IsString,
     Matches,
     Min,
     MinLength,
-    ValidateIf,
 } from 'class-validator';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -68,6 +68,7 @@ export class AppEnvDto {
      */
     @IsNotEmpty()
     @IsString()
+    @MinLength(1)
     HOME_URL: string;
 
     /**
@@ -105,7 +106,7 @@ export class AppEnvDto {
     @IsString()
     @IsNotEmpty()
     @IsEnum(EnumLoggerLevel)
-    LOGGER_LEVEL: string;
+    LOGGER_LEVEL: EnumLoggerLevel;
 
     /**
      * Whether to write logs to file
@@ -197,6 +198,7 @@ export class AppEnvDto {
      */
     @IsString()
     @IsNotEmpty()
+    @MinLength(1)
     AUTH_JWT_ACCESS_TOKEN_JWKS_URI: string;
 
     /**
@@ -212,6 +214,7 @@ export class AppEnvDto {
      */
     @IsString()
     @IsNotEmpty()
+    @MinLength(1)
     AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY: string;
 
     /**
@@ -219,6 +222,7 @@ export class AppEnvDto {
      */
     @IsString()
     @IsNotEmpty()
+    @MinLength(1)
     AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY: string;
 
     /**
@@ -237,6 +241,7 @@ export class AppEnvDto {
      */
     @IsString()
     @IsNotEmpty()
+    @MinLength(1)
     AUTH_JWT_REFRESH_TOKEN_JWKS_URI: string;
 
     /**
@@ -252,6 +257,7 @@ export class AppEnvDto {
      */
     @IsString()
     @IsNotEmpty()
+    @MinLength(1)
     AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY: string;
 
     /**
@@ -259,6 +265,7 @@ export class AppEnvDto {
      */
     @IsString()
     @IsNotEmpty()
+    @MinLength(1)
     AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: string;
 
     /**
@@ -269,129 +276,104 @@ export class AppEnvDto {
     @Matches(/^\d+[smhd]$/, {
         message: 'Must be a valid duration (e.g., 15m, 1h, 1d)',
     })
+    @MinLength(1)
     AUTH_JWT_REFRESH_TOKEN_EXPIRED: string;
 
     /**
      * AWS S3 access key for authentication
      */
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    AWS_S3_CREDENTIAL_KEY: string;
+    AWS_S3_CREDENTIAL_KEY?: string;
 
     /**
      * AWS S3 secret key for authentication
      */
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    AWS_S3_CREDENTIAL_SECRET: string;
+    AWS_S3_CREDENTIAL_SECRET?: string;
 
     /**
      * AWS S3 region where the buckets are located
      */
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    AWS_S3_REGION: string;
+    AWS_S3_REGION?: string;
 
     /**
      * Name of the public S3 bucket for file storage
      */
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    AWS_S3_PUBLIC_BUCKET: string;
+    AWS_S3_PUBLIC_BUCKET?: string;
 
     /**
      * CDN URL for the public S3 bucket (optional)
      */
-    @ValidateIf(
-        o => o.AWS_S3_PUBLIC_CDN !== undefined && o.AWS_S3_PUBLIC_CDN !== ''
-    )
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
     AWS_S3_PUBLIC_CDN?: string;
 
     /**
      * Name of the private S3 bucket for secure file storage
      */
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    AWS_S3_PRIVATE_BUCKET: string;
+    AWS_S3_PRIVATE_BUCKET?: string;
 
     /**
      * CDN URL for the private S3 bucket (optional)
      */
-    @ValidateIf(
-        o => o.AWS_S3_PRIVATE_CDN !== undefined && o.AWS_S3_PRIVATE_CDN !== ''
-    )
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
     AWS_S3_PRIVATE_CDN?: string;
 
     /**
      * AWS SES access key for email service authentication
      */
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    AWS_SES_CREDENTIAL_KEY: string;
+    AWS_SES_CREDENTIAL_KEY?: string;
 
     /**
      * AWS SES secret key for email service authentication
      */
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    AWS_SES_CREDENTIAL_SECRET: string;
+    AWS_SES_CREDENTIAL_SECRET?: string;
 
     /**
      * AWS SES region for email service
      */
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    AWS_SES_REGION: string;
+    AWS_SES_REGION?: string;
 
     /**
      * Google OAuth client ID for social authentication (optional)
      */
-    @ValidateIf(
-        o =>
-            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== undefined &&
-            o.AUTH_SOCIAL_GOOGLE_CLIENT_ID !== ''
-    )
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
     AUTH_SOCIAL_GOOGLE_CLIENT_ID?: string;
 
     /**
      * Google OAuth client secret for social authentication (optional)
      */
-    @ValidateIf(
-        o =>
-            o.AUTH_SOCIAL_GOOGLE_CLIENT_SECRET !== undefined &&
-            o.AUTH_SOCIAL_GOOGLE_CLIENT_SECRET !== ''
-    )
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
     AUTH_SOCIAL_GOOGLE_CLIENT_SECRET?: string;
 
     /**
      * Apple OAuth client ID for social authentication (optional)
      */
-    @ValidateIf(
-        o =>
-            o.AUTH_SOCIAL_APPLE_CLIENT_ID !== undefined &&
-            o.AUTH_SOCIAL_APPLE_CLIENT_ID !== ''
-    )
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
     AUTH_SOCIAL_APPLE_CLIENT_ID?: string;
 
     /**
      * Apple Sign In client ID for social authentication (optional)
      */
-    @ValidateIf(
-        o =>
-            o.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID !== undefined &&
-            o.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID !== ''
-    )
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
     AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID?: string;
 
@@ -412,8 +394,7 @@ export class AppEnvDto {
     /**
      * Sentry DSN for error tracking and monitoring (optional)
      */
-    @ValidateIf(o => o.SENTRY_DSN !== undefined && o.SENTRY_DSN !== '')
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
     SENTRY_DSN?: string;
 }
