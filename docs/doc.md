@@ -285,13 +285,13 @@ Documents file download/response endpoints.
 
 - `options?: IDocResponseFileOptions`
   - `httpStatus?: HttpStatus` - HTTP status (default: 200)
-  - `extension?: ENUM_FILE_EXTENSION` - File extension (default: CSV)
+  - `extension?: EnumFileExtension` - File extension (default: CSV)
 
 **Usage:**
 
 ```typescript
 @DocResponseFile({
-    extension: ENUM_FILE_EXTENSION.XLSX
+    extension: EnumFileExtension.XLSX
 })
 @Get('/export')
 async exportData() {

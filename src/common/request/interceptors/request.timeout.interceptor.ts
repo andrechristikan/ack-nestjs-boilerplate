@@ -11,8 +11,8 @@ import { Observable, TimeoutError, throwError } from 'rxjs';
 import { catchError, timeout } from 'rxjs/operators';
 import ms from 'ms';
 import {
-    REQUEST_CUSTOM_TIMEOUT_META_KEY,
-    REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY,
+    RequestCustomTimeoutMetaKey,
+    RequestCustomTimeoutValueMetaKey,
 } from '@common/request/constants/request.constant';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
@@ -45,14 +45,14 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
     ): Observable<unknown> {
         if (context.getType() === 'http') {
             const customTimeout = this.reflector.get<boolean>(
-                REQUEST_CUSTOM_TIMEOUT_META_KEY,
+                RequestCustomTimeoutMetaKey,
                 context.getHandler()
             );
 
             if (customTimeout === true) {
                 const timeoutValue: ms.StringValue =
                     this.reflector.get<ms.StringValue>(
-                        REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY,
+                        RequestCustomTimeoutValueMetaKey,
                         context.getHandler()
                     );
 

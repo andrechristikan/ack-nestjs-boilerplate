@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { IFile, IFileInput } from '@common/file/interfaces/file.interface';
-import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
+import { EnumFileExtension } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
 
 /**
@@ -17,12 +17,12 @@ import { FileService } from '@common/file/services/file.service';
  * to ensure they have allowed extensions. It supports both single files
  * and arrays of files.
  *
- * @param {ENUM_FILE_EXTENSION[]} allowedExtensions - Array of allowed file extensions
+ * @param {EnumFileExtension[]} allowedExtensions - Array of allowed file extensions
  * @returns {Type<PipeTransform>} A dynamically created pipe class that validates file extensions
  * @throws {UnsupportedMediaTypeException} When file extension is not in the allowed list
  */
 export function FileExtensionPipe(
-    allowedExtensions: ENUM_FILE_EXTENSION[]
+    allowedExtensions: EnumFileExtension[]
 ): Type<PipeTransform> {
     /**
      * Mixin pipe class that validates file extensions.

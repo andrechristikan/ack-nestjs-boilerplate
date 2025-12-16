@@ -2,7 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { ClassConstructor } from 'class-transformer';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
-import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
+import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 
 export interface IDocOptions {
@@ -65,5 +65,5 @@ export interface IDocResponseFileOptions extends Omit<
     IDocResponseOptions,
     'dto' | 'statusCode'
 > {
-    extension?: ENUM_FILE_EXTENSION;
+    extension?: EnumFileExtensionDocument;
 }

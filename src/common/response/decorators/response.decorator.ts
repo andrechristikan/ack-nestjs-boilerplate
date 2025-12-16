@@ -1,5 +1,5 @@
 import { SetMetadata, UseInterceptors, applyDecorators } from '@nestjs/common';
-import { RESPONSE_MESSAGE_PATH_META_KEY } from '@common/response/constants/response.constant';
+import { ResponseMessagePathMetaKey } from '@common/response/constants/response.constant';
 import { ResponseInterceptor } from '@common/response/interceptors/response.interceptor';
 import { ResponsePagingInterceptor } from '@common/response/interceptors/response.paging.interceptor';
 import { IResponseOptions } from '@common/response/interfaces/response.interface';
@@ -20,7 +20,7 @@ export function Response(
 ): MethodDecorator {
     const decorators = [
         UseInterceptors(ResponseInterceptor),
-        SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
+        SetMetadata(ResponseMessagePathMetaKey, messagePath),
     ];
 
     if (options?.cache) {
@@ -53,7 +53,7 @@ export function ResponsePaging(
 ): MethodDecorator {
     const decorators = [
         UseInterceptors(ResponsePagingInterceptor),
-        SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
+        SetMetadata(ResponseMessagePathMetaKey, messagePath),
     ];
 
     if (options?.cache) {

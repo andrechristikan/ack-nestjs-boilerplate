@@ -4,7 +4,7 @@ import {
     createMongoAbility,
 } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
-import { ENUM_POLICY_ACTION } from '@modules/policy/enums/policy.enum';
+import { EnumPolicyAction } from '@modules/policy/enums/policy.enum';
 import {
     IPolicyAbilityRule,
     IPolicyAbilitySubject,
@@ -49,7 +49,7 @@ export class PolicyAbilityFactory {
         abilities: RoleAbilityRequestDto[]
     ): boolean {
         return abilities.every((ability: RoleAbilityRequestDto) =>
-            ability.action.every((action: ENUM_POLICY_ACTION) =>
+            ability.action.every((action: EnumPolicyAction) =>
                 userAbilities.can(action, ability.subject)
             )
         );

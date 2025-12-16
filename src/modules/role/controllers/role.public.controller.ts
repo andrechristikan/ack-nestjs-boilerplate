@@ -18,8 +18,8 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
-    ROLE_DEFAULT_AVAILABLE_SEARCH,
-    ROLE_DEFAULT_ROLE_TYPE,
+    RoleDefaultAvailableSearch,
+    RoleDefaultType,
 } from '@modules/role/constants/role.list.constant';
 import {
     RolePublicGetDoc,
@@ -46,13 +46,10 @@ export class RolePublicController {
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
-            availableSearch: ROLE_DEFAULT_AVAILABLE_SEARCH,
+            availableSearch: RoleDefaultAvailableSearch,
         })
         pagination: IPaginationQueryOffsetParams,
-        @PaginationQueryFilterInEnum<EnumRoleType>(
-            'type',
-            ROLE_DEFAULT_ROLE_TYPE
-        )
+        @PaginationQueryFilterInEnum<EnumRoleType>('type', RoleDefaultType)
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
         return this.roleService.getList(pagination, type);

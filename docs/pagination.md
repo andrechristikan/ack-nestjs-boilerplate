@@ -482,13 +482,13 @@ export class UserAdminController {
     @ResponsePaging('user.list')
     async list(
         @PaginationOffsetQuery({
-            availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
+            availableSearch: UserDefaultAvailableSearch,
             availableOrderBy: ['createdAt', 'email', 'name']
         })
         pagination: IPaginationQueryOffsetParams,
         @PaginationQueryFilterInEnum<EnumUserStatus>(
             'status',
-            USER_DEFAULT_STATUS
+            UserDefaultStatus
         )
         status?: Record<string, IPaginationIn>,
         @PaginationQueryFilterEqualString('role')

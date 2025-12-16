@@ -7,32 +7,32 @@ import {
     IsString,
 } from 'class-validator';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
+    EnumPolicyAction,
+    EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 
 export class RoleAbilityRequestDto {
     @ApiProperty({
         required: true,
         description: 'Ability subject',
-        enum: ENUM_POLICY_SUBJECT,
+        enum: EnumPolicySubject,
     })
     @IsNotEmpty()
     @IsString()
-    @IsEnum(ENUM_POLICY_SUBJECT)
-    subject: ENUM_POLICY_SUBJECT;
+    @IsEnum(EnumPolicySubject)
+    subject: EnumPolicySubject;
 
     @ApiProperty({
         required: true,
         description: 'Ability action base on subject',
         isArray: true,
-        default: [ENUM_POLICY_ACTION.MANAGE],
-        enum: ENUM_POLICY_ACTION,
+        default: [EnumPolicyAction.manage],
+        enum: EnumPolicyAction,
     })
     @IsString({ each: true })
-    @IsEnum(ENUM_POLICY_ACTION, { each: true })
+    @IsEnum(EnumPolicyAction, { each: true })
     @IsArray()
     @IsNotEmpty()
     @ArrayNotEmpty()
-    action: ENUM_POLICY_ACTION[];
+    action: EnumPolicyAction[];
 }

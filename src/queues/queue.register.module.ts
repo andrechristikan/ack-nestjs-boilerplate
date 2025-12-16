@@ -3,10 +3,10 @@ import { BullModule } from '@nestjs/bullmq';
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
-    QUEUE_CONFIG_KEY,
-    QUEUE_PROCESSOR_CONFIG_KEY,
+    QueueConfigKey,
+    QueueProcessorConfigKey,
 } from 'src/queues/constants/queue.constant';
-import { ENUM_QUEUE } from 'src/queues/enums/queue.enum';
+import { EnumQueue } from 'src/queues/enums/queue.enum';
 
 /**
  * Global module for registering Bull queues with default configurations
@@ -22,8 +22,8 @@ export class QueueRegisterModule {
     static forRoot(): DynamicModule {
         const queues = [
             BullModule.registerQueue({
-                name: ENUM_QUEUE.EMAIL,
-                configKey: QUEUE_CONFIG_KEY,
+                name: EnumQueue.EMAIL,
+                configKey: QueueConfigKey,
                 defaultJobOptions: {
                     attempts: 3,
                     backoff: {
@@ -41,7 +41,7 @@ export class QueueRegisterModule {
             exports: queues,
             imports: [
                 ...queues,
-                BullModule.forRootAsync(QUEUE_CONFIG_KEY, {
+                BullModule.forRootAsync(QueueConfigKey, {
                     imports: [ConfigModule],
                     inject: [ConfigService],
                     useFactory: (configService: ConfigService) => ({
@@ -65,7 +65,7 @@ export class QueueRegisterModule {
                         },
                     }),
                 }),
-                BullModule.forRootAsync(QUEUE_PROCESSOR_CONFIG_KEY, {
+                BullModule.forRootAsync(QueueProcessorConfigKey, {
                     imports: [ConfigModule],
                     inject: [ConfigService],
                     useFactory: (configService: ConfigService) => ({

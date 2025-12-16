@@ -7,8 +7,8 @@ import {
 import { UserService } from '@modules/user/services/user.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
+    EnumPolicyAction,
+    EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
@@ -28,8 +28,8 @@ import {
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
 import {
-    USER_DEFAULT_AVAILABLE_SEARCH,
-    USER_DEFAULT_STATUS,
+    UserDefaultAvailableSearch,
+    UserDefaultStatus,
 } from '@modules/user/constants/user.list.constant';
 import {
     IPaginationEqual,
@@ -72,8 +72,8 @@ export class UserAdminController {
     @UserAdminListDoc()
     @ResponsePaging('user.list')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.USER,
-        action: [ENUM_POLICY_ACTION.READ],
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -82,12 +82,12 @@ export class UserAdminController {
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
-            availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
+            availableSearch: UserDefaultAvailableSearch,
         })
         pagination: IPaginationQueryOffsetParams,
         @PaginationQueryFilterInEnum<EnumUserStatus>(
             'status',
-            USER_DEFAULT_STATUS
+            UserDefaultStatus
         )
         status?: Record<string, IPaginationIn>,
         @PaginationQueryFilterEqualString('role')
@@ -106,8 +106,8 @@ export class UserAdminController {
     @UserAdminGetDoc()
     @Response('user.get')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.USER,
-        action: [ENUM_POLICY_ACTION.READ],
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -125,8 +125,8 @@ export class UserAdminController {
     @Response('user.create')
     @ActivityLog(EnumActivityLogAction.adminUserCreate)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.USER,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -153,8 +153,8 @@ export class UserAdminController {
     @Response('user.updateStatus')
     @ActivityLog(EnumActivityLogAction.adminUserUpdateStatus)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.USER,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -184,8 +184,8 @@ export class UserAdminController {
     @Response('user.updatePassword')
     @ActivityLog(EnumActivityLogAction.adminUserUpdatePassword)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.USER,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()

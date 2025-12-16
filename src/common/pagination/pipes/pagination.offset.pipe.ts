@@ -2,9 +2,9 @@ import { Inject, Injectable, mixin } from '@nestjs/common';
 import { PipeTransform, Scope, Type } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import {
-    PAGINATION_DEFAULT_MAX_PAGE,
-    PAGINATION_DEFAULT_MAX_PER_PAGE,
-    PAGINATION_DEFAULT_PER_PAGE,
+    PaginationDefaultMaxPage,
+    PaginationDefaultMaxPerPage,
+    PaginationDefaultPerPage,
 } from '@common/pagination/constants/pagination.constant';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
@@ -15,7 +15,7 @@ import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagi
  * @returns {Type<PipeTransform>} Configured pipe class for offset pagination
  */
 export function PaginationOffsetPipe(
-    defaultPerPage: number = PAGINATION_DEFAULT_PER_PAGE
+    defaultPerPage: number = PaginationDefaultPerPage
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationOffsetPipe implements PipeTransform {
@@ -37,14 +37,14 @@ export function PaginationOffsetPipe(
             let finalPage = Number(value.page) ?? 1;
             let finalPerPage = Number(value.perPage) ?? defaultPerPage;
 
-            if (finalPage > PAGINATION_DEFAULT_MAX_PAGE) {
-                finalPage = PAGINATION_DEFAULT_MAX_PAGE;
+            if (finalPage > PaginationDefaultMaxPage) {
+                finalPage = PaginationDefaultMaxPage;
             } else if (finalPage < 1) {
                 finalPage = 1;
             }
 
-            if (finalPerPage > PAGINATION_DEFAULT_MAX_PER_PAGE) {
-                finalPerPage = PAGINATION_DEFAULT_MAX_PER_PAGE;
+            if (finalPerPage > PaginationDefaultMaxPerPage) {
+                finalPerPage = PaginationDefaultMaxPerPage;
             } else if (finalPerPage < 1) {
                 finalPerPage = defaultPerPage;
             }

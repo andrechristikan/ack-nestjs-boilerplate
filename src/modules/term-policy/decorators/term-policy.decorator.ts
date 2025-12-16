@@ -1,5 +1,5 @@
 import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
-import { TERM_POLICY_REQUIRED_GUARD_META_KEY } from '@modules/term-policy/constants/term-policy.constant';
+import { TermPolicyRequiredGuardMetaKey } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
 import { EnumTermPolicyType } from '@prisma/client';
 
@@ -15,6 +15,6 @@ export function TermPolicyAcceptanceProtected(
 ): MethodDecorator {
     return applyDecorators(
         UseGuards(TermPolicyGuard),
-        SetMetadata(TERM_POLICY_REQUIRED_GUARD_META_KEY, requiredTermPolicies)
+        SetMetadata(TermPolicyRequiredGuardMetaKey, requiredTermPolicies)
     );
 }

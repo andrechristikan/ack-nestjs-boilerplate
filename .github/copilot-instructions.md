@@ -187,7 +187,7 @@ Throw exceptions with proper message paths:
 ```typescript
 if (!user) {
     throw new NotFoundException({
-        statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
+        statusCode: EnumUserStatusCodeError.notFound,
         message: 'user.error.notFound'
     });
 }
@@ -250,16 +250,16 @@ Inject queue and add jobs:
 ```typescript
 export class EmailService {
     constructor(
-        @InjectQueue(ENUM_QUEUE.EMAIL) 
+        @InjectQueue(EnumQueue.email) 
         private readonly emailQueue: Queue
     ) {}
 
     async sendWelcomeEmail(userId: string): Promise<void> {
         await this.emailQueue.add(
-            ENUM_SEND_EMAIL_PROCESS.WELCOME,
+            EnumSendEmailProcess.welcome,
             { userId },
             {
-                priority: ENUM_QUEUE_PRIORITY.HIGH,
+                priority: EnumQueuePriority.high,
                 attempts: 3,
             }
         );
@@ -272,9 +272,9 @@ export class EmailService {
 Extend `QueueProcessorBase`:
 
 ```typescript
-@QueueProcessor(ENUM_QUEUE.EMAIL)
+@QueueProcessor(EnumQueue.email)
 export class EmailProcessor extends QueueProcessorBase {
-    @Process(ENUM_SEND_EMAIL_PROCESS.WELCOME)
+    @Process(EnumSendEmailProcess.welcome)
     async processWelcome(job: Job<EmailWorkerDto>): Promise<void> {
         try {
             const { userId } = job.data;

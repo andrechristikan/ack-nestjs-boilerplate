@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { POLICY_REQUIRED_ABILITY_META_KEY } from '@modules/policy/constants/policy.constant';
+import { PolicyRequiredAbilityMetaKey } from '@modules/policy/constants/policy.constant';
 import {} from '@modules/policy/enums/policy.enum';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import { PolicyService } from '@modules/policy/services/policy.service';
@@ -24,7 +24,7 @@ export class PolicyAbilityGuard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredAbilities =
             this.reflector.get<RoleAbilityRequestDto[]>(
-                POLICY_REQUIRED_ABILITY_META_KEY,
+                PolicyRequiredAbilityMetaKey,
                 context.getHandler()
             ) ?? [];
 

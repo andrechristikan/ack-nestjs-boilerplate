@@ -4,10 +4,10 @@ import { Params } from 'nestjs-pino';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
-    LOGGER_EXCLUDED_ROUTES,
-    LOGGER_REQUEST_ID_HEADERS,
-    LOGGER_SENSITIVE_FIELDS,
-    LOGGER_SENSITIVE_PATHS,
+    LoggerExcludedRoutes,
+    LoggerRequestIdHeaders,
+    LoggerSensitiveFields,
+    LoggerSensitivePaths,
 } from '@common/logger/constants/logger.constant';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { Response } from 'express';
@@ -54,10 +54,10 @@ export class LoggerOptionService {
         this.prettier = this.configService.get<boolean>('logger.prettier');
 
         this.sensitiveFields = new Set(
-            LOGGER_SENSITIVE_FIELDS.map(field => field.toLowerCase())
+            LoggerSensitiveFields.map(field => field.toLowerCase())
         );
-        this.sensitivePaths = LOGGER_SENSITIVE_PATHS.map(path =>
-            LOGGER_SENSITIVE_FIELDS.map(field =>
+        this.sensitivePaths = LoggerSensitivePaths.map(path =>
+            LoggerSensitiveFields.map(field =>
                 field.includes('-') ? `${path}["${field}"]` : `${path}.${field}`
             )
         ).flat();
@@ -105,7 +105,7 @@ export class LoggerOptionService {
             return request.id as string;
         }
 
-        for (const header of LOGGER_REQUEST_ID_HEADERS) {
+        for (const header of LoggerRequestIdHeaders) {
             const value = headers[header];
             if (value) {
                 return value as string;
@@ -482,7 +482,7 @@ export class LoggerOptionService {
                   ignore: (req: IRequestApp) =>
                       this.helperService.checkUrlMatchesPatterns(
                           req.url,
-                          LOGGER_EXCLUDED_ROUTES
+                          LoggerExcludedRoutes
                       ),
               }
             : false;

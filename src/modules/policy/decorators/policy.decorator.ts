@@ -1,5 +1,5 @@
 import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
-import { POLICY_REQUIRED_ABILITY_META_KEY } from '@modules/policy/constants/policy.constant';
+import { PolicyRequiredAbilityMetaKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 
@@ -13,6 +13,6 @@ export function PolicyAbilityProtected(
 ): MethodDecorator {
     return applyDecorators(
         UseGuards(PolicyAbilityGuard),
-        SetMetadata(POLICY_REQUIRED_ABILITY_META_KEY, requiredAbilities)
+        SetMetadata(PolicyRequiredAbilityMetaKey, requiredAbilities)
     );
 }

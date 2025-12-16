@@ -10,8 +10,8 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
+    EnumPolicyAction,
+    EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -31,12 +31,12 @@ export class ActivityLogAdminController {
     @ResponsePaging('activityLog.list')
     @PolicyAbilityProtected(
         {
-            subject: ENUM_POLICY_SUBJECT.USER,
-            action: [ENUM_POLICY_ACTION.READ],
+            subject: EnumPolicySubject.user,
+            action: [EnumPolicyAction.read],
         },
         {
-            subject: ENUM_POLICY_SUBJECT.ACTIVITY_LOG,
-            action: [ENUM_POLICY_ACTION.READ],
+            subject: EnumPolicySubject.activityLog,
+            action: [EnumPolicyAction.read],
         }
     )
     @RoleProtected(EnumRoleType.admin)

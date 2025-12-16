@@ -66,7 +66,7 @@ import {
     AwsS3MultipartDto,
     AwsS3MultipartPartDto,
 } from '@common/aws/dtos/aws.s3-multipart.dto';
-import { AWS_S3_MAX_PART_NUMBER } from '@common/aws/constants/aws.constant';
+import { AwsS3MaxPartNumber } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import {
@@ -586,9 +586,9 @@ export class AwsS3Service implements IAwsS3Service {
     ): Promise<AwsS3MultipartDto> {
         if (file.key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
-        } else if (maxPartNumber > AWS_S3_MAX_PART_NUMBER) {
+        } else if (maxPartNumber > AwsS3MaxPartNumber) {
             throw new Error(
-                `Max part number is greater than ${AWS_S3_MAX_PART_NUMBER}`
+                `Max part number is greater than ${AwsS3MaxPartNumber}`
             );
         }
 
@@ -666,9 +666,9 @@ export class AwsS3Service implements IAwsS3Service {
     ): Promise<AwsS3MultipartDto> {
         if (file.key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
-        } else if (maxPartNumber > AWS_S3_MAX_PART_NUMBER) {
+        } else if (maxPartNumber > AwsS3MaxPartNumber) {
             throw new Error(
-                `Max part number is greater than ${AWS_S3_MAX_PART_NUMBER}`
+                `Max part number is greater than ${AwsS3MaxPartNumber}`
             );
         }
 

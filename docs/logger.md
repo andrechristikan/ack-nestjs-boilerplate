@@ -83,7 +83,7 @@ this.logger.debug('Debug message');   // debug level
 The logger automatically redacts sensitive fields defined in `src/common/logger/constants/logger.constant.ts`:
 
 ```typescript
-export const LOGGER_SENSITIVE_FIELDS: string[] = [
+export const LoggerSensitiveFields: string[] = [
     'password',
     'newPassword',
     'oldPassword',
@@ -109,7 +109,7 @@ export const LOGGER_SENSITIVE_FIELDS: string[] = [
 Sensitive fields in these paths are automatically replaced with `[REDACTED]`:
 
 ```typescript
-export const LOGGER_SENSITIVE_PATHS = [
+export const LoggerSensitivePaths = [
     'req.body',
     'req.headers',
     'res.body',
@@ -186,7 +186,7 @@ Enable automatic HTTP request/response logging with `LOGGER_AUTO=true`.
 Routes excluded from auto-logging (defined in `logger.constant.ts`):
 
 ```typescript
-export const LOGGER_EXCLUDED_ROUTES: string[] = [
+export const LoggerExcludedRoutes: string[] = [
     '/api/health*',
     '/metrics*',
     '/favicon.ico',
@@ -252,7 +252,7 @@ In non-production environments, additional debug info is included:
 
 The logger extracts request IDs from these headers (in order):
 ```typescript
-export const LOGGER_REQUEST_ID_HEADERS = [
+export const LoggerRequestIdHeaders = [
     'x-correlation-id',
     'x-request-id',
 ];

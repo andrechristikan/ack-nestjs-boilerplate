@@ -49,7 +49,7 @@ Handles single file upload with configurable field name and size limits.
 
 **Parameters:**
 - `options.field` (optional): Field name in form-data (default: `'file'`)
-- `options.fileSize` (optional): Maximum file size in bytes (default: `FILE_SIZE_IN_BYTES`)
+- `options.fileSize` (optional): Maximum file size in bytes (default: `FileSizeInBytes`)
 
 **Example:**
 ```typescript
@@ -63,7 +63,7 @@ Handles multiple files upload with the same field name.
 **Parameters:**
 - `options.field` (optional): Field name in form-data (default: `'files'`)
 - `options.maxFiles` (optional): Maximum number of files (default: `2`)
-- `options.fileSize` (optional): Maximum file size per file in bytes (default: `FILE_SIZE_IN_BYTES`)
+- `options.fileSize` (optional): Maximum file size per file in bytes (default: `FileSizeInBytes`)
 
 **Example:**
 ```typescript
@@ -78,7 +78,7 @@ Handles multiple files from different form fields.
 - `fields`: Array of field configurations
   - `field`: Field name
   - `maxFiles`: Maximum files for this field
-- `options.fileSize` (optional): Maximum file size per file in bytes (default: `FILE_SIZE_IN_BYTES`)
+- `options.fileSize` (optional): Maximum file size per file in bytes (default: `FileSizeInBytes`)
 
 **Example:**
 ```typescript
@@ -112,7 +112,7 @@ File extension enums for validation. These enums are used with `FileExtensionPip
 - `EnumFileExtensionTemplate`: Template files
   - `hbs`
 
-- `ENUM_FILE_EXTENSION`: Combined type of all file extensions
+- `EnumFileExtension`: Combined type of all file extensions
 
 **When to Use:**
 - Combine multiple enums for flexible validation: `[EnumFileExtensionImage.jpg, EnumFileExtensionDocument.pdf]`

@@ -4,7 +4,7 @@ import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import appConfigFunction from '@configs/app.config';
 import loggerConfigFunction from '@configs/logger.config';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { LOGGER_EXCLUDED_ROUTES } from '@common/logger/constants/logger.constant';
+import { LoggerExcludedRoutes } from '@common/logger/constants/logger.constant';
 import { HelperService } from '@common/helper/services/helper.service';
 import { ConfigService } from '@nestjs/config';
 
@@ -50,7 +50,7 @@ if (loggerConfigs.sentry.dsn) {
                 if (
                     helperService.checkUrlMatchesPatterns(
                         url,
-                        LOGGER_EXCLUDED_ROUTES
+                        LoggerExcludedRoutes
                     )
                 ) {
                     return null;
@@ -88,7 +88,7 @@ if (loggerConfigs.sentry.dsn) {
                 transactionName &&
                 helperService.checkUrlMatchesPatterns(
                     transactionName,
-                    LOGGER_EXCLUDED_ROUTES as string[]
+                    LoggerExcludedRoutes as string[]
                 )
             ) {
                 return 0;

@@ -1,4 +1,4 @@
-export const COUNTRY_DEFAULT_AVAILABLE_SEARCH = [
+export const CountryDefaultAvailableSearch = [
     'name',
     'alpha2Code',
     'alpha3Code',

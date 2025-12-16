@@ -1,4 +1,4 @@
-import { ACTIVITY_LOG_METADATA_META_KEY } from '@modules/activity-log/constants/activity-log.constant';
+import { ActivityLogMetadataMetaKey } from '@modules/activity-log/constants/activity-log.constant';
 import { ActivityLogInterceptor } from '@modules/activity-log/interceptors/activity-log.interceptor';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { SetMetadata, UseInterceptors, applyDecorators } from '@nestjs/common';
@@ -20,6 +20,6 @@ export function ActivityLog(
     return applyDecorators(
         UseInterceptors(ActivityLogInterceptor),
         SetMetadata(EnumActivityLogAction, action),
-        SetMetadata(ACTIVITY_LOG_METADATA_META_KEY, metadata)
+        SetMetadata(ActivityLogMetadataMetaKey, metadata)
     );
 }

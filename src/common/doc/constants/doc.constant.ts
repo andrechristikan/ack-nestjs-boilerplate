@@ -6,73 +6,73 @@ import { EnumPaginationStatusCodeError } from '@common/pagination/enums/paginati
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { HttpStatus } from '@nestjs/common';
 
-export const DOC_CONTENT_TYPE_MAPPING = {
+export const DocContentTypeMapping = {
     [EnumDocRequestBodyType.formData]: 'multipart/form-data',
     [EnumDocRequestBodyType.text]: 'text/plain',
     [EnumDocRequestBodyType.json]: 'application/json',
     [EnumDocRequestBodyType.formUrlencoded]: 'x-www-form-urlencoded',
 } as const;
 
-export const DOC_STANDARD_ERROR_RESPONSES = {
-    INTERNAL_SERVER_ERROR: DocDefault({
+export const DocStandardErrorResponse = {
+    internalServerError: DocDefault({
         httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
         messagePath: 'http.serverError.internalServerError',
         statusCode: EnumAppStatusCodeError.unknown,
     }),
-    REQUEST_TIMEOUT: DocDefault({
+    requestTimeout: DocDefault({
         httpStatus: HttpStatus.REQUEST_TIMEOUT,
         messagePath: 'http.serverError.requestTimeout',
         statusCode: EnumRequestStatusCodeError.timeout,
     }),
-    VALIDATION_ERROR: DocDefault({
+    validationError: DocDefault({
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
         statusCode: EnumRequestStatusCodeError.validation,
         messagePath: 'request.error.validation',
     }),
-    PARAM_REQUIRED: DocDefault({
+    paramRequired: DocDefault({
         httpStatus: HttpStatus.BAD_REQUEST,
         statusCode: EnumRequestStatusCodeError.paramRequired,
         messagePath: 'request.error.paramRequired',
     }),
-    ENV_FORBIDDEN: DocDefault({
+    envForbidden: DocDefault({
         httpStatus: HttpStatus.FORBIDDEN,
         statusCode: EnumRequestStatusCodeError.envForbidden,
         messagePath: 'http.clientError.forbidden',
     }),
 } as const;
 
-export const DOC_PAGINATION_ERROR_RESPONSES = {
-    ORDER_BY_NOT_ALLOWED: DocDefault({
+export const DocPaginationErrorResponses = {
+    orderByNotAllowed: DocDefault({
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
         statusCode: EnumPaginationStatusCodeError.orderByNotAllowed,
         messagePath: 'pagination.error.orderByNotAllowed',
     }),
-    FILTER_INVALID_VALUE: DocDefault({
+    filterInvalidValue: DocDefault({
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
         statusCode: EnumPaginationStatusCodeError.filterInvalidValue,
         messagePath: 'pagination.error.filterInvalidValue',
     }),
 };
 
-export const DOC_FILE_ERROR_RESPONSES = {
-    REQUIRED: DocDefault({
+export const DocFileErrorResponses = {
+    required: DocDefault({
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
         messagePath: 'file.error.required',
         statusCode: EnumFileStatusCodeError.required,
     }),
-    EXTENSION_INVALID: DocDefault({
+    extensionInvalid: DocDefault({
         httpStatus: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
         messagePath: 'file.error.extensionInvalid',
         statusCode: EnumFileStatusCodeError.extensionInvalid,
     }),
-    REQUIRED_EXTRACT_FIRST: DocDefault({
+    requiredExtractFirst: DocDefault({
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
         messagePath: 'file.error.requiredParseFirst',
         statusCode: EnumFileStatusCodeError.requiredExtractFirst,
     }),
 };
 
-export const DOC_PAGINATION_OFFSET_QUERIES = [
+export const DocPaginationOffsetQueries = [
     {
         name: 'perPage',
         required: false,
@@ -91,7 +91,7 @@ export const DOC_PAGINATION_OFFSET_QUERIES = [
     },
 ];
 
-export const DOC_PAGINATION_CURSOR_QUERIES = [
+export const DocPaginationCursorQueries = [
     {
         name: 'perPage',
         required: false,

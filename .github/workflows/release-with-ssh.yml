@@ -54,7 +54,7 @@ jobs:
 
         steps:
             - name: Git checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Get short sha commit
               id: git
@@ -117,7 +117,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Deploy via SSH
               if: ${{ github.ref_name == matrix.branch }}
@@ -156,7 +156,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Clean Docker Images
               if: ${{ github.ref_name == matrix.branch }}

@@ -6,15 +6,15 @@ import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dt
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
 import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
 import { EmailWorkerDto } from '@modules/email/dtos/email.worker.dto';
-import { ENUM_SEND_EMAIL_PROCESS } from '@modules/email/enums/email.enum';
+import { EnumSendEmailProcess } from '@modules/email/enums/email.enum';
 import { IEmailProcessor } from '@modules/email/interfaces/email.processor.interface';
-import { ENUM_QUEUE } from 'src/queues/enums/queue.enum';
+import { EnumQueue } from 'src/queues/enums/queue.enum';
 import { QueueProcessorBase } from 'src/queues/bases/queue.processor.base';
 import { QueueProcessor } from 'src/queues/decorators/queue.decorator';
 import { EmailUtil } from '@modules/email/utils/email.util';
 import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
 
-@QueueProcessor(ENUM_QUEUE.EMAIL)
+@QueueProcessor(EnumQueue.EMAIL)
 export class EmailProcessor
     extends QueueProcessorBase
     implements IEmailProcessor
@@ -31,50 +31,50 @@ export class EmailProcessor
         try {
             const jobName = job.name;
             switch (jobName) {
-                case ENUM_SEND_EMAIL_PROCESS.changePassword:
+                case EnumSendEmailProcess.changePassword:
                     await this.processChangePassword(job.data.send);
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.welcome:
+                case EnumSendEmailProcess.welcome:
                     await this.processWelcome(job.data.send);
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.createByAdmin:
+                case EnumSendEmailProcess.createByAdmin:
                     await this.processCreateByAdmin(
                         job.data.send,
                         job.data.data as EmailTempPasswordDto
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.temporaryPassword:
+                case EnumSendEmailProcess.temporaryPassword:
                     await this.processTempPassword(
                         job.data.send,
                         job.data.data as EmailTempPasswordDto
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.forgotPassword:
+                case EnumSendEmailProcess.forgotPassword:
                     await this.processForgotPassword(
                         job.data.send,
                         job.data.data as EmailForgotPasswordDto
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.verification:
+                case EnumSendEmailProcess.verification:
                     await this.processVerification(
                         job.data.send,
                         job.data.data as EmailVerificationDto
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.emailVerified:
+                case EnumSendEmailProcess.emailVerified:
                     await this.processEmailVerified(
                         job.data.send,
                         job.data.data as EmailVerifiedDto
                     );
 
                     break;
-                case ENUM_SEND_EMAIL_PROCESS.mobileNumberVerified:
+                case EnumSendEmailProcess.mobileNumberVerified:
                     await this.processMobileNumberVerified(
                         job.data.send,
                         job.data.data as EmailMobileNumberVerifiedDto

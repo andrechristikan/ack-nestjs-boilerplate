@@ -10,8 +10,8 @@ import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
-    TERM_POLICY_DEFAULT_AVAILABLE_ORDER_BY,
-    TERM_POLICY_DEFAULT_TYPE,
+    TermPolicyDefaultAvailableOrderBy,
+    TermPolicyDefaultType,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyPublicListDoc } from '@modules/term-policy/docs/term-policy.public.doc';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
@@ -34,12 +34,12 @@ export class TermPolicyPublicController {
     @Get('/list')
     async list(
         @PaginationCursorQuery({
-            availableSearch: TERM_POLICY_DEFAULT_AVAILABLE_ORDER_BY,
+            availableSearch: TermPolicyDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryCursorParams,
         @PaginationQueryFilterInEnum<EnumTermPolicyType>(
             'type',
-            TERM_POLICY_DEFAULT_TYPE
+            TermPolicyDefaultType
         )
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {

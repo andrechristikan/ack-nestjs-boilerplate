@@ -19,7 +19,7 @@ import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.cr
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
-import { API_KEY_DEFAULT_AVAILABLE_SEARCH } from '@modules/api-key/constants/api-key.list.constant';
+import { ApiKeyDefaultAvailableSearch } from '@modules/api-key/constants/api-key.list.constant';
 import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 
 export function ApiKeyAdminListDoc(): MethodDecorator {
@@ -35,7 +35,7 @@ export function ApiKeyAdminListDoc(): MethodDecorator {
         DocGuard({ policy: true, role: true }),
         DocResponsePaging<ApiKeyDto>('apiKey.list', {
             dto: ApiKeyDto,
-            availableSearch: API_KEY_DEFAULT_AVAILABLE_SEARCH,
+            availableSearch: ApiKeyDefaultAvailableSearch,
         })
     );
 }

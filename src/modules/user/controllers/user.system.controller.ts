@@ -18,8 +18,8 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
-    USER_DEFAULT_AVAILABLE_SEARCH,
-    USER_DEFAULT_STATUS,
+    UserDefaultAvailableSearch,
+    UserDefaultStatus,
 } from '@modules/user/constants/user.list.constant';
 import {
     UserSystemCheckEmailDoc,
@@ -61,12 +61,12 @@ export class UserSystemController {
     @Get('/list')
     async list(
         @PaginationCursorQuery({
-            availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
+            availableSearch: UserDefaultAvailableSearch,
         })
         pagination: IPaginationQueryCursorParams,
         @PaginationQueryFilterInEnum<EnumUserStatus>(
             'status',
-            USER_DEFAULT_STATUS
+            UserDefaultStatus
         )
         status?: Record<string, IPaginationIn>,
         @PaginationQueryFilterEqualString('role')

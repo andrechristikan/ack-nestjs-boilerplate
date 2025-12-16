@@ -11,7 +11,7 @@ import {
 } from '@modules/auth/interfaces/auth.interface';
 import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
+import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
@@ -189,7 +189,7 @@ export class AuthService implements IAuthService {
         const isValidSession = await this.sessionUtil.getLogin(sub, sessionId);
         if (!isValidSession || jti !== isValidSession.jti) {
             throw new UnauthorizedException({
-                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.forbidden,
+                statusCode: EnumSessionStatusCodeError.forbidden,
                 message: 'session.error.forbidden',
             });
         }
@@ -259,7 +259,7 @@ export class AuthService implements IAuthService {
         const isValidSession = await this.sessionUtil.getLogin(sub, sessionId);
         if (!isValidSession || jti !== isValidSession.jti) {
             throw new UnauthorizedException({
-                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.forbidden,
+                statusCode: EnumSessionStatusCodeError.forbidden,
                 message: 'session.error.forbidden',
             });
         }

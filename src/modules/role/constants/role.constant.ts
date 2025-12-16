@@ -1,1 +1,1 @@
-export const ROLE_REQUIRED_META_KEY = 'RoleRequiredMetaKey';
+export const RoleRequiredMetaKey = 'RoleRequiredMetaKey';

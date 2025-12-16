@@ -1,4 +1,4 @@
-import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
+import { EnumFileExtension } from '@common/file/enums/file.enum';
 
 export type IFile = Express.Multer.File;
 
@@ -23,6 +23,6 @@ export type IFileInput = IFile | IFile[];
 export interface IFileRandomFilenameOptions {
     path?: string;
     prefix?: string;
-    extension: ENUM_FILE_EXTENSION;
+    extension: EnumFileExtension;
     randomLength?: number;
 }

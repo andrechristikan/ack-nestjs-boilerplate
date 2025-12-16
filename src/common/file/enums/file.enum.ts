@@ -23,7 +23,7 @@ export enum EnumFileExtensionVideo {
     mp4 = 'mp4',
 }
 
-export const ENUM_FILE_EXTENSION = {
+export const EnumFileExtension = {
     ...EnumFileExtensionImage,
     ...EnumFileExtensionDocument,
     ...EnumFileExtensionAudio,
@@ -31,7 +31,7 @@ export const ENUM_FILE_EXTENSION = {
     ...EnumFileExtensionTemplate,
 };
 
-export type ENUM_FILE_EXTENSION =
+export type EnumFileExtension =
     | EnumFileExtensionImage
     | EnumFileExtensionDocument
     | EnumFileExtensionAudio

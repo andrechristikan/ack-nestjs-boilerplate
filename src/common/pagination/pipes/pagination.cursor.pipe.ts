@@ -2,8 +2,8 @@ import { Inject, Injectable, mixin } from '@nestjs/common';
 import { PipeTransform, Scope, Type } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import {
-    PAGINATION_DEFAULT_CURSOR_FIELD,
-    PAGINATION_DEFAULT_PER_PAGE,
+    PaginationDefaultCursorField,
+    PaginationDefaultPerPage,
 } from '@common/pagination/constants/pagination.constant';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
@@ -15,8 +15,8 @@ import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagi
  * @returns {Type<PipeTransform>} Configured pipe class for cursor pagination
  */
 export function PaginationCursorPipe(
-    defaultPerPage: number = PAGINATION_DEFAULT_PER_PAGE,
-    defaultCursorField: string = PAGINATION_DEFAULT_CURSOR_FIELD
+    defaultPerPage: number = PaginationDefaultPerPage,
+    defaultCursorField: string = PaginationDefaultCursorField
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationCursorPipe implements PipeTransform {

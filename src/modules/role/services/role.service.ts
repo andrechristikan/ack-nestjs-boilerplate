@@ -13,7 +13,7 @@ import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.req
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { IRoleService } from '@modules/role/interfaces/role.service.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleUtil } from '@modules/role/utils/role.util';
@@ -52,7 +52,7 @@ export class RoleService implements IRoleService {
         const role = await this.roleRepository.findOneById(id);
         if (!role) {
             throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumRoleStatusCodeError.notFound,
                 message: 'role.error.notFound',
             });
         }
@@ -67,7 +67,7 @@ export class RoleService implements IRoleService {
         const exist = await this.roleRepository.existByName(name);
         if (exist) {
             throw new ConflictException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.exist,
+                statusCode: EnumRoleStatusCodeError.exist,
                 message: 'role.error.exist',
             });
         }
@@ -86,7 +86,7 @@ export class RoleService implements IRoleService {
         const role = await this.roleRepository.existById(id);
         if (!role) {
             throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumRoleStatusCodeError.notFound,
                 message: 'role.error.notFound',
             });
         }
@@ -106,12 +106,12 @@ export class RoleService implements IRoleService {
 
         if (!role) {
             throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumRoleStatusCodeError.notFound,
                 message: 'role.error.notFound',
             });
         } else if (roleUsed) {
             throw new ConflictException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.used,
+                statusCode: EnumRoleStatusCodeError.used,
                 message: 'role.error.used',
             });
         }
@@ -141,12 +141,12 @@ export class RoleService implements IRoleService {
             return [];
         } else if (requiredRoles.length === 0) {
             throw new InternalServerErrorException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.predefinedNotFound,
+                statusCode: EnumRoleStatusCodeError.predefinedNotFound,
                 message: 'role.error.predefinedNotFound',
             });
         } else if (!requiredRoles.includes(role.type)) {
             throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.forbidden,
+                statusCode: EnumRoleStatusCodeError.forbidden,
                 message: 'role.error.forbidden',
             });
         }

@@ -65,7 +65,7 @@ The queue system consists of:
 
 Currently available queues defined in `src/queues/enums/queue.enum.ts`:
 
-- `ENUM_QUEUE.EMAIL`: Email processing queue
+- `EnumQueue.email`: Email processing queue
 
 Queue priorities:
 - `HIGH`: 1
@@ -81,16 +81,16 @@ Inject the queue into your service:
 ```typescript
 export class YourService {
     constructor(
-        @InjectQueue(ENUM_QUEUE.EMAIL) 
+        @InjectQueue(EnumQueue.email) 
         private readonly emailQueue: Queue
     ) {}
 
     async sendEmail(data: EmailWorkerDto<unknown>): Promise<void> {
         await this.emailQueue.add(
-            ENUM_SEND_EMAIL_PROCESS.WELCOME,
+            EnumSendEmailProcess.welcome,
             data,
             {
-                priority: ENUM_QUEUE_PRIORITY.HIGH,
+                priority: EnumQueueProperty.high,
                 attempts: 3,
             }
         );
@@ -121,9 +121,9 @@ You can override these options when adding jobs to the queue.
 1. Add new queue enum in `src/queues/enums/queue.enum.ts`:
 
 ```typescript
-export enum ENUM_QUEUE {
-    EMAIL = 'email',
-    NOTIFICATION = 'notification', // New queue
+export enum EnumQueue {
+    email = 'email',
+    notification = 'notification', // New queue
 }
 ```
 
@@ -133,8 +133,8 @@ export enum ENUM_QUEUE {
 static forRoot(): DynamicModule {
     const queues = [
         BullModule.registerQueue({
-            name: ENUM_QUEUE.EMAIL,
-            configKey: QUEUE_CONFIG_KEY,
+            name: EnumQueue.email,
+            configKey: QueueConfigKey,
             defaultJobOptions: {
                 attempts: 3,
                 backoff: {
@@ -147,8 +147,8 @@ static forRoot(): DynamicModule {
         }),
         // Add new queue
         BullModule.registerQueue({
-            name: ENUM_QUEUE.NOTIFICATION,
-            configKey: QUEUE_CONFIG_KEY,
+            name: EnumQueue.notification,
+            configKey: QueueConfigKey,
             defaultJobOptions: {
                 attempts: 5,
                 backoff: {
@@ -169,7 +169,7 @@ static forRoot(): DynamicModule {
 1. Create processor class extending `QueueProcessorBase`:
 
 ```typescript
-@QueueProcessor(ENUM_QUEUE.NOTIFICATION)
+@QueueProcessor(EnumQueue.notification)
 export class NotificationProcessor extends QueueProcessorBase {
     private readonly logger = new Logger(NotificationProcessor.name);
 
@@ -184,10 +184,10 @@ export class NotificationProcessor extends QueueProcessorBase {
             const jobName = job.name;
             
             switch (jobName) {
-                case ENUM_NOTIFICATION_PROCESS.SEND_PUSH:
+                case EnumNotificationProcess.sendPush:
                     await this.processPushNotification(job.data);
                     break;
-                case ENUM_NOTIFICATION_PROCESS.SEND_SMS:
+                case EnumNotificationProcess.sendSms:
                     await this.processSms(job.data);
                     break;
                 default:

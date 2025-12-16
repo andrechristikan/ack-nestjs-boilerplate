@@ -1,4 +1,4 @@
 /**
  * Database batch size for bulk operations
  */
-export const DATABASE_BATCH_SIZE = 1000;
+export const DatabaseBatchSize = 1000;

@@ -280,33 +280,30 @@ flowchart TD
 - `...requiredAbilities` (RoleAbilityRequestDto[]): One or more policy ability objects defining required permissions
 
 **Available Policy Actions:**
-- `ENUM_POLICY_ACTION.MANAGE` - Full control over a subject
-- `ENUM_POLICY_ACTION.READ` - Read/view permission
-- `ENUM_POLICY_ACTION.CREATE` - Create new resources
-- `ENUM_POLICY_ACTION.UPDATE` - Modify existing resources
-- `ENUM_POLICY_ACTION.DELETE` - Remove resources
+- `EnumPolicyAction.manage` - Full control over a subject
+- `EnumPolicyAction.read` - Read/view permission
+- `EnumPolicyAction.create` - Create new resources
+- `EnumPolicyAction.update` - Modify existing resources
+- `EnumPolicyAction.delete` - Remove resources
 
 **Available Policy Subjects:**
-- `ENUM_POLICY_SUBJECT.ALL` - All resources
-- `ENUM_POLICY_SUBJECT.AUTH` - Authentication resources
-- `ENUM_POLICY_SUBJECT.SETTING` - Application settings
-- `ENUM_POLICY_SUBJECT.API_KEY` - API key management
-- `ENUM_POLICY_SUBJECT.COUNTRY` - Country data
-- `ENUM_POLICY_SUBJECT.ROLE` - Role management
-- `ENUM_POLICY_SUBJECT.USER` - User management
-- `ENUM_POLICY_SUBJECT.SESSION` - Session management
-- `ENUM_POLICY_SUBJECT.ACTIVITY_LOG` - Activity logs
-- `ENUM_POLICY_SUBJECT.PASSWORD_HISTORY` - Password history
-- `ENUM_POLICY_SUBJECT.TERM_POLICY` - Terms and policies
-- `ENUM_POLICY_SUBJECT.FEATURE_FLAG` - Feature flags
+- `EnumPolicySubject.all` - All resources
+- `EnumPolicySubject.apiKey` - API key management
+- `EnumPolicySubject.role` - Role management
+- `EnumPolicySubject.user` - User management
+- `EnumPolicySubject.session` - Session management
+- `EnumPolicySubject.activityLog` - Activity logs
+- `EnumPolicySubject.passwordHistory` - Password history
+- `EnumPolicySubject.termPolicy` - Terms and policies
+- `EnumPolicySubject.futureFlag` - Feature flags
 
 **Usage:**
 
 ```typescript
 // Single ability requirement
 @PolicyAbilityProtected({
-  subject: ENUM_POLICY_SUBJECT.USER,
-  action: [ENUM_POLICY_ACTION.READ]
+  subject: EnumPolicySubject.user,
+  action: [EnumPolicyAction.read]
 })
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
@@ -318,8 +315,8 @@ getUsers() {
 
 // Multiple actions on single subject
 @PolicyAbilityProtected({
-  subject: ENUM_POLICY_SUBJECT.USER,
-  action: [ENUM_POLICY_ACTION.UPDATE, ENUM_POLICY_ACTION.DELETE]
+  subject: EnumPolicySubject.user,
+  action: [EnumPolicyAction.update, EnumPolicyAction.delete]
 })
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
@@ -332,12 +329,12 @@ updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
 // Multiple ability requirements (different subjects)
 @PolicyAbilityProtected(
   {
-    subject: ENUM_POLICY_SUBJECT.ROLE,
-    action: [ENUM_POLICY_ACTION.READ]
+    subject: EnumPolicySubject.role,
+    action: [EnumPolicyAction.read]
   },
   {
-    subject: ENUM_POLICY_SUBJECT.USER,
-    action: [ENUM_POLICY_ACTION.MANAGE]
+    subject: EnumPolicySubject.user,
+    action: [EnumPolicyAction.manage]
   }
 )
 @RoleProtected(EnumRoleType.admin)

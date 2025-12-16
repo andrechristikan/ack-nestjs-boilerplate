@@ -5,8 +5,8 @@ import {
     FilesInterceptor,
 } from '@nestjs/platform-express';
 import {
-    FILE_MAX_MULTIPLE,
-    FILE_SIZE_IN_BYTES,
+    FileMaxMultiple,
+    FileSizeInBytes,
 } from '@common/file/constants/file.constant';
 import {
     IFileUploadMultiple,
@@ -26,7 +26,7 @@ export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
         UseInterceptors(
             FileInterceptor(options?.field ?? 'file', {
                 limits: {
-                    fileSize: options?.fileSize ?? FILE_SIZE_IN_BYTES,
+                    fileSize: options?.fileSize ?? FileSizeInBytes,
                     files: 1,
                 },
             })
@@ -47,10 +47,10 @@ export function FileUploadMultiple(
         UseInterceptors(
             FilesInterceptor(
                 options?.field ?? 'files',
-                options?.maxFiles ?? FILE_MAX_MULTIPLE,
+                options?.maxFiles ?? FileMaxMultiple,
                 {
                     limits: {
-                        fileSize: options?.fileSize ?? FILE_SIZE_IN_BYTES,
+                        fileSize: options?.fileSize ?? FileSizeInBytes,
                     },
                 }
             )
@@ -78,8 +78,8 @@ export function FileUploadMultipleFields(
                 })),
                 {
                     limits: {
-                        fileSize: options?.fileSize ?? FILE_SIZE_IN_BYTES,
-                        files: FILE_MAX_MULTIPLE,
+                        fileSize: options?.fileSize ?? FileSizeInBytes,
+                        files: FileMaxMultiple,
                     },
                 }
             )
