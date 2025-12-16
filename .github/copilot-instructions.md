@@ -89,6 +89,7 @@ Always use TypeScript path aliases defined in `tsconfig.json`:
 - `@routes/*` → `src/router/routes/*`
 - `@router` → `src/router/router.module.ts`
 - `@migration/*` → `src/migration/*`
+- `@prisma/client` → `generated/prisma-client`
 
 Example:
 ```typescript

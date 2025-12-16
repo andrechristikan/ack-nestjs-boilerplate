@@ -1,6 +1,6 @@
 {
     "name": "ack-nestjs-boilerplate",
-    "version": "8.0.1",
+    "version": "8.0.2",
     "description": "Ack NestJs Boilerplate",
     "repository": {
         "type": "git",
@@ -14,8 +14,8 @@
     "license": "MIT",
     "scripts": {
         "preinstall": "npx only-allow pnpm",
-        "prepare": "husky",
         "prebuild": "rimraf dist",
+        "prepare": "husky",
         "clean": "rimraf dist && rimraf node_modules && pnpm store prune",
         "generate:keys": "npx ts-node scripts/generate-keys.ts",
         "format": "prettier --write '{src,test}/**/*.{ts,json,yml,yaml}' && prettier --write '*.{ts,json,yml,yaml,mjs}'",

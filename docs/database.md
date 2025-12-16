@@ -63,7 +63,7 @@ Prisma uses a generated client to provide type-safe database access and query bu
 pnpm db:generate
 ```
 
-This command will read your Prisma schema and generate the client code in `node_modules/@prisma/client`. The generated client is required for your application to interact with the database using Prisma.
+This command will read your Prisma schema and generate the client code in `generated/prisma-client`. The generated client is required for your application to interact with the database using Prisma.
 
 
 ## Seeding

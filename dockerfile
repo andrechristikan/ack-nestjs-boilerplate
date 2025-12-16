@@ -5,17 +5,15 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY prisma ./prisma/
-
 
 RUN set -x && pnpm install --frozen-lockfile
-RUN pnpm db:generate
 
 RUN touch .env
 
 COPY . .
 
-EXPOSE 3000
+RUN pnpm db:generate
 
+EXPOSE 3000
 
 CMD [ "pnpm", "start:dev" ]
