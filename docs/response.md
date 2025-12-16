@@ -13,7 +13,7 @@ ACK NestJS Boilerplate standardizes API responses through decorators that automa
 - [Response Decorators](#response-decorators)
   - [@Response](#response)
   - [@ResponsePaging](#responsepaging)
-  - [@ResponseCsv](#responsecsv)
+  - [@ResponseFile](#responsefile)
 - [Response Structure](#response-structure)
   - [Standard](#standard)
   - [Paginated](#paginated)
@@ -167,61 +167,124 @@ async listUsers(
 }
 ```
 
-### @ResponseCsv
+### @ResponseFile
 
-CSV file download response decorator that generates and streams CSV files with proper download headers.
+File download response decorator that handles CSV and PDF file downloads with proper headers and streaming.
 
 **Parameters:** None
 
 **Requirements:**
-- Response must implement `IResponseCsvReturn<T>` interface
-- Data must be an array of objects
-- CSV uses semicolon (;) as delimiter
-- Optional `filename` - if not provided, generates timestamped filename: `export-{timestamp}.csv`
+- Response must implement `IResponseFileReturn` interface (union of `IResponseCsvReturn` | `IResponsePdfReturn`)
+- Must specify `extension`: `EnumFileExtensionDocument.csv` or `EnumFileExtensionDocument.pdf`
+- CSV data must be a string (pre-converted to CSV format)
+- PDF data must be a Buffer
+- Optional `filename` - if not provided, generates timestamped filename: `export-{timestamp}.{extension}`
 
-**Interceptor:** `ResponseCsvInterceptor` - converts data to CSV format, sets content headers (Content-Type, Content-Disposition, Content-Length), uses provided filename or generates timestamped filename
+**Interceptor:** `ResponseFileInterceptor` - validates data based on extension type, converts to Buffer, sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
 
-**Basic Export (Auto-generated Filename):**
+**CSV Export (Auto-generated Filename):**
 
 ```typescript
-@ResponseCsv()
-@Get('/export')
-async exportUsers(): Promise<IResponseCsvReturn<UserDto>> {
+@ResponseFile()
+@Get('/export/csv')
+async exportUsersCsv(): Promise<IResponseCsvReturn> {
   const users = await this.userService.findAll();
+  const csvData = this.fileService.writeCsv(users);
   
   return {
-    data: users // Filename will be: export-{timestamp}.csv
+    data: csvData,
+    extension: EnumFileExtensionDocument.csv
+    // Filename will be: export-{timestamp}.csv
   };
 }
 ```
 
-**Custom Filename:**
+**CSV with Custom Filename:**
 
 ```typescript
-@ResponseCsv()
-@Get('/export/custom')
-async exportUsersCustom(): Promise<IResponseCsvReturn<UserDto>> {
+@ResponseFile()
+@Get('/export/users')
+async exportUsersCustom(): Promise<IResponseCsvReturn> {
   const users = await this.userService.findAll();
+  const csvData = this.fileService.writeCsv(users);
   
   return {
-    data: users,
+    data: csvData,
+    extension: EnumFileExtensionDocument.csv,
     filename: 'users-export.csv'
   };
 }
 ```
 
-**Dynamic Filename:**
+**CSV with Formatted Data:**
 
 ```typescript
-@ResponseCsv()
-@Get('/export/monthly')
-async exportMonthlyReport(): Promise<IResponseCsvReturn<ReportDto>> {
-  const data = await this.reportService.getMonthlyData();
-  const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+@ResponseFile()
+@Get('/export/report')
+async exportUsersReport(): Promise<IResponseCsvReturn> {
+  const users = await this.userService.findAll();
+  
+  const formattedData = users.map(user => ({
+    Name: user.name,
+    Email: user.email,
+    'Created At': new Date(user.createdAt).toLocaleDateString(),
+    Status: user.isActive ? 'Active' : 'Inactive'
+  }));
+  
+  const csvData = this.fileService.writeCsv(formattedData);
   
   return {
-    data,
-    filename: `monthly-report-${month}.csv`
+    data: csvData,
+    extension: EnumFileExtensionDocument.csv,
+    filename: 'user-report.csv'
+  };
+}
+```
+
+**PDF Export:**
+
+```typescript
+@ResponseFile()
+@Get('/export/pdf')
+async exportUsersPdf(): Promise<IResponsePdfReturn> {
+  const users = await this.userService.findAll();
+  
+  // Generate PDF using external library (e.g., pdfkit, puppeteer, jsPDF)
+  // Example: const pdfBuffer = await generatePdfReport(users);
+  const pdfBuffer = Buffer.from('...'); // Your PDF generation logic here
+  
+  return {
+    data: pdfBuffer,
+    extension: EnumFileExtensionDocument.pdf,
+    filename: 'users-report.pdf'
+  };
+}
+```
+
+**Dynamic Format Export:**
+
+```typescript
+@ResponseFile()
+@Get('/export')
+async exportUsers(@Query('format') format: 'csv' | 'pdf'): Promise<IResponseFileReturn> {
+  const users = await this.userService.findAll();
+  const timestamp = Date.now();
+  
+  if (format === 'pdf') {
+    // Generate PDF buffer using your preferred PDF library
+    const pdfBuffer = Buffer.from('...'); // Your PDF generation logic
+    return {
+      data: pdfBuffer,
+      extension: EnumFileExtensionDocument.pdf,
+      filename: `users-${timestamp}.pdf`
+    };
+  }
+  
+  const csvData = this.fileService.writeCsv(users);
+  return {
+    data: csvData,
+    extension: EnumFileExtensionDocument.csv,
+    filename: `users-${timestamp}.csv`
   };
 }
 ```
@@ -297,7 +360,7 @@ async exportMonthlyReport(): Promise<IResponseCsvReturn<ReportDto>> {
 
 ### Activity Log Metadata (Optional)
 
-All response types (`IResponseReturn`, `IResponsePagingReturn`, `IResponseCsvReturn`) support optional activity log metadata for request tracking and auditing:
+All response types (`IResponseReturn`, `IResponsePagingReturn`, `IResponseFileReturn`) support optional activity log metadata for request tracking and auditing:
 
 ```typescript
 return {
@@ -353,6 +416,10 @@ All responses automatically include these headers (set by interceptors):
 - `x-request-id`: Unique request identifier
 - `x-correlation-id`: Request correlation identifier
 
+
+
+<!-- REFERENCES -->
+
 <!-- BADGE LINKS -->
 
 [ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
@@ -391,7 +458,11 @@ All responses automatically include these headers (set by interceptors):
 <!-- THIRD PARTY -->
 
 [ref-nestjs]: http://nestjs.com
+[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
+[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
 [ref-prisma]: https://www.prisma.io
+[ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
+[ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-redis]: https://redis.io
 [ref-bullmq]: https://bullmq.io
@@ -409,34 +480,31 @@ All responses automatically include these headers (set by interceptors):
 [ref-google-console]: https://console.cloud.google.com/
 [ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
 
-<!-- DOCUMENTS -->
-
-[ref-doc-root]: readme.md
-[ref-doc-activity-log]: docs/activity-log.md
-[ref-doc-authentication]: docs/authentication.md
-[ref-doc-authorization]: docs/authorization.md
-[ref-doc-cache]: docs/cache.md
-[ref-doc-configuration]: docs/configuration.md
-[ref-doc-database]: docs/database.md
-[ref-doc-environment]: docs/environment.md
-[ref-doc-feature-flag]: docs/feature-flag.md
-[ref-doc-file-upload]: docs/file-upload.md
-[ref-doc-handling-error]: docs/handling-error.md
-[ref-doc-installation]: docs/installation.md
-[ref-doc-logger]: docs/logger.md
-[ref-doc-message]: docs/message.md
-[ref-doc-pagination]: docs/pagination.md
-[ref-doc-project-structure]: docs/project-structure.md
-[ref-doc-queue]: docs/queue.md
-[ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response]: docs/response.md
-[ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-doc]: docs/doc.md
-[ref-doc-third-party-integration]: docs/third-party-integration.md
-[ref-doc-presign]: docs/presign.md
-[ref-doc-term-policy]: docs/term-policy.md
+[ref-doc-root]: ../readme.md
+[ref-doc-activity-log]: activity-log.md
+[ref-doc-authentication]: authentication.md
+[ref-doc-authorization]: authorization.md
+[ref-doc-cache]: cache.md
+[ref-doc-configuration]: configuration.md
+[ref-doc-database]: database.md
+[ref-doc-environment]: environment.md
+[ref-doc-feature-flag]: feature-flag.md
+[ref-doc-file-upload]: file-upload.md
+[ref-doc-handling-error]: handling-error.md
+[ref-doc-installation]: installation.md
+[ref-doc-logger]: logger.md
+[ref-doc-message]: message.md
+[ref-doc-pagination]: pagination.md
+[ref-doc-project-structure]: project-structure.md
+[ref-doc-queue]: queue.md
+[ref-doc-request-validation]: request-validation.md
+[ref-doc-response]: response.md
+[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-doc]: doc.md
+[ref-doc-third-party-integration]: third-party-integration.md
+[ref-doc-presign]: presign.md
+[ref-doc-term-policy]: term-policy.md
 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
-

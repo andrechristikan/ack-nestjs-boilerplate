@@ -1,5 +1,5 @@
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
+import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ITermPolicyImportResult } from '@modules/term-policy/interfaces/term-policy.interface';
 import { ITermPolicyTemplateService } from '@modules/term-policy/interfaces/term-policy.template-service.interface';
@@ -35,7 +35,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     1,
                     EnumMessageLanguage.en,
                     {
-                        extension: EnumFileExtensionDocument.hbs,
+                        extension: EnumFileExtensionTemplate.hbs,
                     }
                 );
 
@@ -74,7 +74,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     1,
                     EnumMessageLanguage.en,
                     {
-                        extension: EnumFileExtensionDocument.hbs,
+                        extension: EnumFileExtensionTemplate.hbs,
                     }
                 );
 
@@ -113,7 +113,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     1,
                     EnumMessageLanguage.en,
                     {
-                        extension: EnumFileExtensionDocument.hbs,
+                        extension: EnumFileExtensionTemplate.hbs,
                     }
                 );
 
@@ -152,7 +152,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     1,
                     EnumMessageLanguage.en,
                     {
-                        extension: EnumFileExtensionDocument.hbs,
+                        extension: EnumFileExtensionTemplate.hbs,
                     }
                 );
 

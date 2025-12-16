@@ -1,6 +1,6 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
+import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
@@ -34,7 +34,7 @@ export class PolicyService implements IPolicyService {
             return true;
         } else if (requiredAbilities.length === 0) {
             throw new InternalServerErrorException({
-                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.predefinedNotFound,
+                statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
                 message: 'policy.error.predefinedNotFound',
             });
         }
@@ -47,7 +47,7 @@ export class PolicyService implements IPolicyService {
         );
         if (!policyHandler) {
             throw new ForbiddenException({
-                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.forbidden,
+                statusCode: EnumPolicyStatusCodeError.forbidden,
                 message: 'policy.error.forbidden',
             });
         }

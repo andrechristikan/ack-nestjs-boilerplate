@@ -5,8 +5,8 @@ import { Response } from '@common/response/decorators/response.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
+    EnumPolicyAction,
+    EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleService } from '@modules/role/services/role.service';
@@ -37,8 +37,8 @@ export class RoleAdminController {
     @Response('role.create')
     @ActivityLog(EnumActivityLogAction.adminRoleCreate)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.ROLE,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
+        subject: EnumPolicySubject.role,
+        action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -56,8 +56,8 @@ export class RoleAdminController {
     @Response('role.update')
     @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.ROLE,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.role,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -77,8 +77,8 @@ export class RoleAdminController {
     @Response('role.delete')
     @ActivityLog(EnumActivityLogAction.adminRoleDelete)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.ROLE,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
+        subject: EnumPolicySubject.role,
+        action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()

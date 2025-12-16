@@ -1,8 +1,7 @@
 {
     "error": {
-        "validationDto": "The provided data does not meet validation criteria.",
-        "mimeInvalid": "The file's MIME type is invalid.",
+        "required": "This field is required and cannot be left blank.",
         "requiredParseFirst": "Please parse the data before proceeding.",
-        "required": "This field is required and cannot be left blank."
+        "extensionInvalid": "The file extension is invalid."
     }
 }

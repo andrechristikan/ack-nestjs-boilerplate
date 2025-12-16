@@ -1,0 +1,26 @@
+{
+    "list": "Terms and policies retrieved successfully.",
+    "listAccepted": "Accepted terms and policies retrieved successfully.",
+    "get": "Term policy details fetched successfully.",
+    "getContent": "Term policy content retrieved successfully.",
+    "create": "New term policy created successfully.",
+    "update": "Term policy updated successfully.",
+    "updateContent": "Term policy content updated successfully.",
+    "addContent": "Content added to term policy successfully.",
+    "removeContent": "Content removed from term policy successfully.",
+    "delete": "Term policy deleted successfully.",
+    "publish": "Term policy published successfully.",
+    "accept": "Term policy accepted successfully.",
+    "generateContentPresign": "Presigned URL for content upload generated successfully.",
+    "error": {
+        "notFound": "Term policy not found.",
+        "exist": "A term policy with this name already exists.",
+        "alreadyAccepted": "You have already accepted this term policy.",
+        "contentNotFound": "Term policy content not found.",
+        "contentExist": "This content already exists in the term policy.",
+        "contentEmpty": "Term policy content cannot be empty.",
+        "contentsLanguageMustBeUnique": "Each language can only be used once in term policy contents.",
+        "requiredInvalid": "Required field value is invalid.",
+        "statusInvalid": "Term policy status is invalid."
+    }
+}

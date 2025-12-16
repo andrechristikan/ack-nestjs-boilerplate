@@ -3,7 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
-import { COUNTRY_DEFAULT_AVAILABLE_SEARCH } from '@modules/country/constants/country.list.constant';
+import { CountryDefaultAvailableSearch } from '@modules/country/constants/country.list.constant';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryPublicListDoc } from '@modules/country/docs/country.public.doc';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
@@ -24,7 +24,7 @@ export class CountryPublicController {
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
-            availableSearch: COUNTRY_DEFAULT_AVAILABLE_SEARCH,
+            availableSearch: CountryDefaultAvailableSearch,
         })
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<CountryResponseDto>> {

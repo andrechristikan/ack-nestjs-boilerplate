@@ -62,7 +62,7 @@ export class LessThanEqualOtherPropertyConstraint
      * @returns Error message string
      */
     defaultMessage(): string {
-        return `request.lessThanEqualOtherProperty`;
+        return `request.error.lessThanEqualOtherProperty.invalid`;
     }
 
     /**
@@ -187,7 +187,7 @@ export class LessThanOtherPropertyConstraint
      * @returns Error message string
      */
     defaultMessage(): string {
-        return `request.lessThanOtherProperty`;
+        return `request.error.lessThanOtherProperty.invalid`;
     }
 
     /**

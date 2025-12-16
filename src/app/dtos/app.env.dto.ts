@@ -231,9 +231,7 @@ export class AppEnvDto {
     @IsNotEmpty()
     @IsString()
     @MinLength(1)
-    @Matches(/^\d+[smhd]$/, {
-        message: 'Must be a valid duration (e.g., 15m, 1h, 1d)',
-    })
+    @Matches(/^\d+[smhd]$/)
     AUTH_JWT_ACCESS_TOKEN_EXPIRED: string;
 
     /**
@@ -273,9 +271,7 @@ export class AppEnvDto {
      */
     @IsNotEmpty()
     @IsString()
-    @Matches(/^\d+[smhd]$/, {
-        message: 'Must be a valid duration (e.g., 15m, 1h, 1d)',
-    })
+    @Matches(/^\d+[smhd]$/)
     @MinLength(1)
     AUTH_JWT_REFRESH_TOKEN_EXPIRED: string;
 

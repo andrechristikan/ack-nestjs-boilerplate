@@ -46,7 +46,16 @@
         "uuidv",
         "luxon",
         "Metadatas",
-        "papaparse"
+        "papaparse",
+        "unparse",
+        "millis",
+        "jwtid",
+        "mdel",
+        "grawlix",
+        "smhd",
+        "utdh",
+        "Vnwnyr",
+        "keyid"
     ],
     "ignorePaths": [
         "node_modules/**",

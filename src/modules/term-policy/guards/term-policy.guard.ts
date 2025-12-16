@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { Reflector } from '@nestjs/core';
 import { EnumTermPolicyType } from '@prisma/client';
-import { TERM_POLICY_REQUIRED_GUARD_META_KEY } from '@modules/term-policy/constants/term-policy.constant';
+import { TermPolicyRequiredGuardMetaKey } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 
 /**
@@ -25,7 +25,7 @@ export class TermPolicyGuard implements CanActivate {
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredTermPolicies = this.reflector.get<EnumTermPolicyType[]>(
-            TERM_POLICY_REQUIRED_GUARD_META_KEY,
+            TermPolicyRequiredGuardMetaKey,
             context.getHandler()
         );
 

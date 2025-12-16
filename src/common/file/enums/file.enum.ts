@@ -6,8 +6,11 @@ export enum EnumFileExtensionImage {
 
 export enum EnumFileExtensionDocument {
     pdf = 'pdf',
-    hbs = 'hbs',
     csv = 'csv',
+}
+
+export enum EnumFileExtensionTemplate {
+    hbs = 'hbs',
 }
 
 export enum EnumFileExtensionAudio {
@@ -20,15 +23,17 @@ export enum EnumFileExtensionVideo {
     mp4 = 'mp4',
 }
 
-export const ENUM_FILE_EXTENSION = {
+export const EnumFileExtension = {
     ...EnumFileExtensionImage,
     ...EnumFileExtensionDocument,
     ...EnumFileExtensionAudio,
     ...EnumFileExtensionVideo,
+    ...EnumFileExtensionTemplate,
 };
 
-export type ENUM_FILE_EXTENSION =
+export type EnumFileExtension =
     | EnumFileExtensionImage
     | EnumFileExtensionDocument
     | EnumFileExtensionAudio
-    | EnumFileExtensionVideo;
+    | EnumFileExtensionVideo
+    | EnumFileExtensionTemplate;

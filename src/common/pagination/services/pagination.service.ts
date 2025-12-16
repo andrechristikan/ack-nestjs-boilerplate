@@ -1,7 +1,7 @@
 import {
-    PAGINATION_DEFAULT_CURSOR_FIELD,
-    PAGINATION_DEFAULT_MAX_PAGE,
-    PAGINATION_DEFAULT_MAX_PER_PAGE,
+    PaginationDefaultCursorField,
+    PaginationDefaultMaxPage,
+    PaginationDefaultMaxPerPage,
 } from '@common/pagination/constants/pagination.constant';
 import {
     EnumPaginationOrderDirectionType,
@@ -63,15 +63,15 @@ export class PaginationService implements IPaginationService {
             throw new Error('Skip must be greater than or equal to 0');
         }
 
-        if (limit > PAGINATION_DEFAULT_MAX_PER_PAGE) {
+        if (limit > PaginationDefaultMaxPerPage) {
             throw new Error(
-                `Limit must be less than or equal to ${PAGINATION_DEFAULT_MAX_PER_PAGE}`
+                `Limit must be less than or equal to ${PaginationDefaultMaxPerPage}`
             );
         }
 
-        if (currentPage > PAGINATION_DEFAULT_MAX_PAGE) {
+        if (currentPage > PaginationDefaultMaxPage) {
             throw new Error(
-                `Page must be less than or equal to ${PAGINATION_DEFAULT_MAX_PAGE}`
+                `Page must be less than or equal to ${PaginationDefaultMaxPage}`
             );
         }
 
@@ -114,7 +114,7 @@ export class PaginationService implements IPaginationService {
      *
      * **Default Values:**
      * - orderBy: `{ createdAt: 'DESC' }` - Results are sorted by creation date in descending order
-     * - cursorField: `PAGINATION_DEFAULT_CURSOR_FIELD` - Field used for cursor positioning
+     * - cursorField: `PaginationDefaultCursorField` - Field used for cursor positioning
      *
      * **Cursor Behavior:**
      * - The cursor is encoded using URL-safe base64 encoding
@@ -138,7 +138,7 @@ export class PaginationService implements IPaginationService {
             },
             where,
             select,
-            cursorField = PAGINATION_DEFAULT_CURSOR_FIELD,
+            cursorField = PaginationDefaultCursorField,
             includeCount,
         } = args;
 
@@ -148,9 +148,9 @@ export class PaginationService implements IPaginationService {
             throw new Error('Limit must be greater than 0');
         }
 
-        if (limit > PAGINATION_DEFAULT_MAX_PER_PAGE) {
+        if (limit > PaginationDefaultMaxPerPage) {
             throw new Error(
-                `Limit must be less than or equal to ${PAGINATION_DEFAULT_MAX_PER_PAGE}`
+                `Limit must be less than or equal to ${PaginationDefaultMaxPerPage}`
             );
         }
 

@@ -28,12 +28,12 @@ import {
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthService } from '@modules/auth/services/auth.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { ENUM_COUNTRY_STATUS_CODE_ERROR } from '@modules/country/enums/country.status-code.enum';
+import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { CountryRepository } from '@modules/country/repositories/country.repository';
 import { EmailService } from '@modules/email/services/email.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
@@ -218,12 +218,12 @@ export class UserService implements IUserService {
 
         if (!checkRole) {
             throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumRoleStatusCodeError.notFound,
                 message: 'role.error.notFound',
             });
         } else if (!checkCountry) {
             throw new NotFoundException({
-                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumCountryStatusCodeError.notFound,
                 message: 'country.error.notFound',
             });
         } else if (emailExist) {
@@ -413,7 +413,7 @@ export class UserService implements IUserService {
         const checkCountry = await this.countryRepository.existById(countryId);
         if (!checkCountry) {
             throw new NotFoundException({
-                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumCountryStatusCodeError.notFound,
                 message: 'country.error.notFound',
             });
         }
@@ -517,7 +517,7 @@ export class UserService implements IUserService {
             await this.countryRepository.findOneById(countryId);
         if (!checkCountry) {
             throw new NotFoundException({
-                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumCountryStatusCodeError.notFound,
                 message: 'country.error.notFound',
             });
         }
@@ -585,7 +585,7 @@ export class UserService implements IUserService {
             });
         } else if (!checkCountry) {
             throw new NotFoundException({
-                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumCountryStatusCodeError.notFound,
                 message: 'country.error.notFound',
             });
         }
@@ -1023,7 +1023,7 @@ export class UserService implements IUserService {
             );
             if (!role) {
                 throw new NotFoundException({
-                    statusCode: ENUM_ROLE_STATUS_CODE_ERROR.notFound,
+                    statusCode: EnumRoleStatusCodeError.notFound,
                     message: 'role.error.notFound',
                 });
             }
@@ -1176,12 +1176,12 @@ export class UserService implements IUserService {
         ]);
         if (!role) {
             throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumRoleStatusCodeError.notFound,
                 message: 'role.error.notFound',
             });
         } else if (!checkCountry) {
             throw new NotFoundException({
-                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumCountryStatusCodeError.notFound,
                 message: 'country.error.notFound',
             });
         } else if (emailExist) {

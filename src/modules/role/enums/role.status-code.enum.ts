@@ -1,4 +1,4 @@
-export enum ENUM_ROLE_STATUS_CODE_ERROR {
+export enum EnumRoleStatusCodeError {
     notFound = 5060,
     exist = 5061,
     predefinedNotFound = 5062,

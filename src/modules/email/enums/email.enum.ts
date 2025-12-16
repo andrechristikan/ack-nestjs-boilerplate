@@ -1,4 +1,4 @@
-export enum ENUM_SEND_EMAIL_PROCESS {
+export enum EnumSendEmailProcess {
     changePassword = 'changePassword',
     temporaryPassword = 'temporaryPassword',
     welcome = 'welcome',

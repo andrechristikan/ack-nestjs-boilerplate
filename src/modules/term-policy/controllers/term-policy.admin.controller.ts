@@ -25,14 +25,14 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
+    EnumPolicyAction,
+    EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
-    TERM_POLICY_DEFAULT_AVAILABLE_ORDER_BY,
-    TERM_POLICY_DEFAULT_STATUS,
-    TERM_POLICY_DEFAULT_TYPE,
+    TermPolicyDefaultAvailableOrderBy,
+    TermPolicyDefaultStatus,
+    TermPolicyDefaultType,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import {
     TermPolicyAdminAddContentDoc,
@@ -83,8 +83,8 @@ export class TermPolicyAdminController {
     @TermPolicyAdminListDoc()
     @ResponsePaging('termPolicy.list')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
-        action: [ENUM_POLICY_ACTION.READ],
+        subject: EnumPolicySubject.termPolicy,
+        action: [EnumPolicyAction.read],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -93,17 +93,17 @@ export class TermPolicyAdminController {
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
-            availableSearch: TERM_POLICY_DEFAULT_AVAILABLE_ORDER_BY,
+            availableSearch: TermPolicyDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams,
         @PaginationQueryFilterInEnum<EnumTermPolicyType>(
             'type',
-            TERM_POLICY_DEFAULT_TYPE
+            TermPolicyDefaultType
         )
         type?: Record<string, IPaginationIn>,
         @PaginationQueryFilterInEnum<EnumTermPolicyStatus>(
             'status',
-            TERM_POLICY_DEFAULT_STATUS
+            TermPolicyDefaultStatus
         )
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
@@ -114,8 +114,8 @@ export class TermPolicyAdminController {
     @Response('termPolicy.create')
     @ActivityLog(EnumActivityLogAction.adminTermPolicyCreate)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
+        subject: EnumPolicySubject.termPolicy,
+        action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -133,8 +133,8 @@ export class TermPolicyAdminController {
     @TermPolicyAdminDeleteDoc()
     @Response('termPolicy.delete')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
+        subject: EnumPolicySubject.termPolicy,
+        action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -151,11 +151,11 @@ export class TermPolicyAdminController {
     @TermPolicyAdminGenerateContentPresignDoc()
     @Response('termPolicy.generateContentPresign')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
+        subject: EnumPolicySubject.termPolicy,
         action: [
-            ENUM_POLICY_ACTION.READ,
-            ENUM_POLICY_ACTION.CREATE,
-            ENUM_POLICY_ACTION.UPDATE,
+            EnumPolicyAction.read,
+            EnumPolicyAction.create,
+            EnumPolicyAction.update,
         ],
     })
     @RoleProtected(EnumRoleType.admin)
@@ -174,8 +174,8 @@ export class TermPolicyAdminController {
     @Response('termPolicy.updateContent')
     @ActivityLog(EnumActivityLogAction.adminTermPolicyUpdateContent)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.termPolicy,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -200,8 +200,8 @@ export class TermPolicyAdminController {
     @Response('termPolicy.addContent')
     @ActivityLog(EnumActivityLogAction.adminTermPolicyAddContent)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.termPolicy,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -222,8 +222,8 @@ export class TermPolicyAdminController {
     @Response('termPolicy.removeContent')
     @ActivityLog(EnumActivityLogAction.adminTermPolicyRemoveContent)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.termPolicy,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -247,8 +247,8 @@ export class TermPolicyAdminController {
     @TermPolicyAdminGetContentDoc()
     @Response('termPolicy.getContent')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
-        action: [ENUM_POLICY_ACTION.READ],
+        subject: EnumPolicySubject.termPolicy,
+        action: [EnumPolicyAction.read],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -268,8 +268,8 @@ export class TermPolicyAdminController {
     @Response('termPolicy.publish')
     @ActivityLog(EnumActivityLogAction.adminTermPolicyPublish)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.TERM_POLICY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.termPolicy,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()

@@ -1,4 +1,4 @@
-export enum ENUM_POLICY_STATUS_CODE_ERROR {
+export enum EnumPolicyStatusCodeError {
     forbidden = 5180,
     predefinedNotFound = 5182,
 }

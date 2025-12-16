@@ -280,33 +280,30 @@ flowchart TD
 - `...requiredAbilities` (RoleAbilityRequestDto[]): One or more policy ability objects defining required permissions
 
 **Available Policy Actions:**
-- `ENUM_POLICY_ACTION.MANAGE` - Full control over a subject
-- `ENUM_POLICY_ACTION.READ` - Read/view permission
-- `ENUM_POLICY_ACTION.CREATE` - Create new resources
-- `ENUM_POLICY_ACTION.UPDATE` - Modify existing resources
-- `ENUM_POLICY_ACTION.DELETE` - Remove resources
+- `EnumPolicyAction.manage` - Full control over a subject
+- `EnumPolicyAction.read` - Read/view permission
+- `EnumPolicyAction.create` - Create new resources
+- `EnumPolicyAction.update` - Modify existing resources
+- `EnumPolicyAction.delete` - Remove resources
 
 **Available Policy Subjects:**
-- `ENUM_POLICY_SUBJECT.ALL` - All resources
-- `ENUM_POLICY_SUBJECT.AUTH` - Authentication resources
-- `ENUM_POLICY_SUBJECT.SETTING` - Application settings
-- `ENUM_POLICY_SUBJECT.API_KEY` - API key management
-- `ENUM_POLICY_SUBJECT.COUNTRY` - Country data
-- `ENUM_POLICY_SUBJECT.ROLE` - Role management
-- `ENUM_POLICY_SUBJECT.USER` - User management
-- `ENUM_POLICY_SUBJECT.SESSION` - Session management
-- `ENUM_POLICY_SUBJECT.ACTIVITY_LOG` - Activity logs
-- `ENUM_POLICY_SUBJECT.PASSWORD_HISTORY` - Password history
-- `ENUM_POLICY_SUBJECT.TERM_POLICY` - Terms and policies
-- `ENUM_POLICY_SUBJECT.FEATURE_FLAG` - Feature flags
+- `EnumPolicySubject.all` - All resources
+- `EnumPolicySubject.apiKey` - API key management
+- `EnumPolicySubject.role` - Role management
+- `EnumPolicySubject.user` - User management
+- `EnumPolicySubject.session` - Session management
+- `EnumPolicySubject.activityLog` - Activity logs
+- `EnumPolicySubject.passwordHistory` - Password history
+- `EnumPolicySubject.termPolicy` - Terms and policies
+- `EnumPolicySubject.futureFlag` - Feature flags
 
 **Usage:**
 
 ```typescript
 // Single ability requirement
 @PolicyAbilityProtected({
-  subject: ENUM_POLICY_SUBJECT.USER,
-  action: [ENUM_POLICY_ACTION.READ]
+  subject: EnumPolicySubject.user,
+  action: [EnumPolicyAction.read]
 })
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
@@ -318,8 +315,8 @@ getUsers() {
 
 // Multiple actions on single subject
 @PolicyAbilityProtected({
-  subject: ENUM_POLICY_SUBJECT.USER,
-  action: [ENUM_POLICY_ACTION.UPDATE, ENUM_POLICY_ACTION.DELETE]
+  subject: EnumPolicySubject.user,
+  action: [EnumPolicyAction.update, EnumPolicyAction.delete]
 })
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
@@ -332,12 +329,12 @@ updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
 // Multiple ability requirements (different subjects)
 @PolicyAbilityProtected(
   {
-    subject: ENUM_POLICY_SUBJECT.ROLE,
-    action: [ENUM_POLICY_ACTION.READ]
+    subject: EnumPolicySubject.role,
+    action: [EnumPolicyAction.read]
   },
   {
-    subject: ENUM_POLICY_SUBJECT.USER,
-    action: [ENUM_POLICY_ACTION.MANAGE]
+    subject: EnumPolicySubject.user,
+    action: [EnumPolicyAction.manage]
   }
 )
 @RoleProtected(EnumRoleType.admin)
@@ -565,6 +562,8 @@ flowchart TD
 <!-- THIRD PARTY -->
 
 [casl]: https://casl.js.org/
+[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
+[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
 [ref-nestjs]: http://nestjs.com
 [ref-prisma]: https://www.prisma.io
 [ref-mongodb]: https://docs.mongodb.com/
@@ -586,30 +585,30 @@ flowchart TD
 
 <!-- DOCUMENTS -->
 
-[ref-doc-root]: readme.md
-[ref-doc-activity-log]: docs/activity-log.md
-[ref-doc-authentication]: docs/authentication.md
-[ref-doc-authorization]: docs/authorization.md
-[ref-doc-cache]: docs/cache.md
-[ref-doc-configuration]: docs/configuration.md
-[ref-doc-database]: docs/database.md
-[ref-doc-environment]: docs/environment.md
-[ref-doc-feature-flag]: docs/feature-flag.md
-[ref-doc-file-upload]: docs/file-upload.md
-[ref-doc-handling-error]: docs/handling-error.md
-[ref-doc-installation]: docs/installation.md
-[ref-doc-logger]: docs/logger.md
-[ref-doc-message]: docs/message.md
-[ref-doc-pagination]: docs/pagination.md
-[ref-doc-project-structure]: docs/project-structure.md
-[ref-doc-queue]: docs/queue.md
-[ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response]: docs/response.md
-[ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-doc]: docs/doc.md
-[ref-doc-third-party-integration]: docs/third-party-integration.md
-[ref-doc-presign]: docs/presign.md
-[ref-doc-term-policy]: docs/term-policy.md
+[ref-doc-root]: ../readme.md
+[ref-doc-activity-log]: activity-log.md
+[ref-doc-authentication]: authentication.md
+[ref-doc-authorization]: authorization.md
+[ref-doc-cache]: cache.md
+[ref-doc-configuration]: configuration.md
+[ref-doc-database]: database.md
+[ref-doc-environment]: environment.md
+[ref-doc-feature-flag]: feature-flag.md
+[ref-doc-file-upload]: file-upload.md
+[ref-doc-handling-error]: handling-error.md
+[ref-doc-installation]: installation.md
+[ref-doc-logger]: logger.md
+[ref-doc-message]: message.md
+[ref-doc-pagination]: pagination.md
+[ref-doc-project-structure]: project-structure.md
+[ref-doc-queue]: queue.md
+[ref-doc-request-validation]: request-validation.md
+[ref-doc-response]: response.md
+[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-doc]: doc.md
+[ref-doc-third-party-integration]: third-party-integration.md
+[ref-doc-presign]: presign.md
+[ref-doc-term-policy]: term-policy.md
 
 <!-- CONTRIBUTOR -->
 

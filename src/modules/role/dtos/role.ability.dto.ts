@@ -1,23 +1,23 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
+    EnumPolicyAction,
+    EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 
 export class RoleAbilityDto {
     @ApiProperty({
         required: true,
         description: 'Ability subject',
-        enum: ENUM_POLICY_SUBJECT,
+        enum: EnumPolicySubject,
     })
-    subject: ENUM_POLICY_SUBJECT;
+    subject: EnumPolicySubject;
 
     @ApiProperty({
         required: true,
         description: 'Ability action base on subject',
         isArray: true,
-        default: [ENUM_POLICY_ACTION.MANAGE],
-        enum: ENUM_POLICY_ACTION,
+        default: [EnumPolicyAction.manage],
+        enum: EnumPolicyAction,
     })
-    action: ENUM_POLICY_ACTION[];
+    action: EnumPolicyAction[];
 }

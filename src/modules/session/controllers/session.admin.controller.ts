@@ -19,11 +19,11 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
+    EnumPolicyAction,
+    EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-import { SESSION_DEFAULT_AVAILABLE_ORDER_BY } from '@modules/session/constants/session.list.constant';
+import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import {
     SessionAdminListDoc,
     SessionAdminRevokeDoc,
@@ -47,12 +47,12 @@ export class SessionAdminController {
     @ResponsePaging('session.list')
     @PolicyAbilityProtected(
         {
-            subject: ENUM_POLICY_SUBJECT.USER,
-            action: [ENUM_POLICY_ACTION.READ],
+            subject: EnumPolicySubject.user,
+            action: [EnumPolicyAction.read],
         },
         {
-            subject: ENUM_POLICY_SUBJECT.SESSION,
-            action: [ENUM_POLICY_ACTION.READ],
+            subject: EnumPolicySubject.session,
+            action: [EnumPolicyAction.read],
         }
     )
     @RoleProtected(EnumRoleType.admin)
@@ -62,7 +62,7 @@ export class SessionAdminController {
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
-            availableOrderBy: SESSION_DEFAULT_AVAILABLE_ORDER_BY,
+            availableOrderBy: SessionDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams,
         @Param('userId', RequestRequiredPipe) userId: string
@@ -75,12 +75,12 @@ export class SessionAdminController {
     @ActivityLog(EnumActivityLogAction.adminSessionRevoke)
     @PolicyAbilityProtected(
         {
-            subject: ENUM_POLICY_SUBJECT.USER,
-            action: [ENUM_POLICY_ACTION.READ],
+            subject: EnumPolicySubject.user,
+            action: [EnumPolicyAction.read],
         },
         {
-            subject: ENUM_POLICY_SUBJECT.SESSION,
-            action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
+            subject: EnumPolicySubject.session,
+            action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )
     @RoleProtected(EnumRoleType.admin)

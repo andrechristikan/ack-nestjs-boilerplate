@@ -1,4 +1,4 @@
-import { FILE_SIZE_IN_BYTES } from '@common/file/constants/file.constant';
+import { FileSizeInBytes } from '@common/file/constants/file.constant';
 import { registerAs } from '@nestjs/config';
 import bytes from 'bytes';
 import ms from 'ms';
@@ -36,7 +36,7 @@ export default registerAs(
                 limitInBytes: bytes('1mb'),
             },
             applicationOctetStream: {
-                limitInBytes: FILE_SIZE_IN_BYTES,
+                limitInBytes: FileSizeInBytes,
             },
         },
         timeoutInMs: ms('30s'),

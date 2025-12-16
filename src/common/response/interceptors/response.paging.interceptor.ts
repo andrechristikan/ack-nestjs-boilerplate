@@ -11,7 +11,7 @@ import { Response } from 'express';
 import { MessageService } from '@common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { RESPONSE_MESSAGE_PATH_META_KEY } from '@common/response/constants/response.constant';
+import { ResponseMessagePathMetaKey } from '@common/response/constants/response.constant';
 import {
     ResponsePagingDto,
     ResponsePagingMetadataDto,
@@ -74,7 +74,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                     const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
                     let messagePath: string = this.reflector.get<string>(
-                        RESPONSE_MESSAGE_PATH_META_KEY,
+                        ResponseMessagePathMetaKey,
                         context.getHandler()
                     );
 

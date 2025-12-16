@@ -1,0 +1,13 @@
+{
+    "list": "Feature flags retrieved successfully.",
+    "updateMetadata": "Feature flag metadata updated successfully.",
+    "updateStatus": "Feature flag status updated successfully.",
+    "error": {
+        "notFound": "Feature flag not found.",
+        "invalidMetadata": "Feature flag metadata is invalid.",
+        "predefinedKeyEmpty": "Predefined key cannot be empty.",
+        "predefinedKeyLengthExceeded": "Predefined key length exceeded the maximum allowed.",
+        "predefinedKeyTypeInvalid": "Predefined key type is invalid.",
+        "serviceUnavailable": "Feature flag service is currently unavailable."
+    }
+}

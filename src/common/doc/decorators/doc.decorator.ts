@@ -29,7 +29,7 @@ import { ResponseDto } from '@common/response/dtos/response.dto';
 import { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { ENUM_POLICY_STATUS_CODE_ERROR } from '@modules/policy/enums/policy.status-code.enum';
+import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
@@ -37,15 +37,15 @@ import {
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
 import {
-    DOC_CONTENT_TYPE_MAPPING,
-    DOC_FILE_ERROR_RESPONSES,
-    DOC_PAGINATION_CURSOR_QUERIES,
-    DOC_PAGINATION_ERROR_RESPONSES,
-    DOC_PAGINATION_OFFSET_QUERIES,
-    DOC_STANDARD_ERROR_RESPONSES,
+    DocContentTypeMapping,
+    DocFileErrorResponses,
+    DocPaginationCursorQueries,
+    DocPaginationErrorResponses,
+    DocPaginationOffsetQueries,
+    DocStandardErrorResponse,
 } from '@common/doc/constants/doc.constant';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from '@modules/role/enums/role.status-code.enum';
-import { ENUM_FILE_EXTENSION } from '@common/file/enums/file.enum';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
+import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { faker } from '@faker-js/faker';
 
 /**
@@ -269,11 +269,11 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 },
             },
         ]),
-        DOC_STANDARD_ERROR_RESPONSES.INTERNAL_SERVER_ERROR,
-        DOC_STANDARD_ERROR_RESPONSES.REQUEST_TIMEOUT,
-        DOC_STANDARD_ERROR_RESPONSES.VALIDATION_ERROR,
-        DOC_STANDARD_ERROR_RESPONSES.ENV_FORBIDDEN,
-        DOC_STANDARD_ERROR_RESPONSES.PARAM_REQUIRED
+        DocStandardErrorResponse.internalServerError,
+        DocStandardErrorResponse.requestTimeout,
+        DocStandardErrorResponse.validationError,
+        DocStandardErrorResponse.envForbidden,
+        DocStandardErrorResponse.paramRequired
     );
 }
 
@@ -286,8 +286,8 @@ export function Doc(options?: IDocOptions): MethodDecorator {
 export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
 
-    if (options?.bodyType && options.bodyType in DOC_CONTENT_TYPE_MAPPING) {
-        docs.push(ApiConsumes(DOC_CONTENT_TYPE_MAPPING[options.bodyType]));
+    if (options?.bodyType && options.bodyType in DocContentTypeMapping) {
+        docs.push(ApiConsumes(DocContentTypeMapping[options.bodyType]));
     } else {
         docs.push(ApiConsumes('none'));
     }
@@ -317,9 +317,9 @@ export function DocRequestFile(
     options?: IDocRequestFileOptions
 ): MethodDecorator {
     const docs: Array<ClassDecorator | MethodDecorator> = [
-        DOC_FILE_ERROR_RESPONSES.EXTENSION_INVALID,
-        DOC_FILE_ERROR_RESPONSES.REQUIRED,
-        DOC_FILE_ERROR_RESPONSES.REQUIRED_EXTRACT_FIRST,
+        DocFileErrorResponses.extensionInvalid,
+        DocFileErrorResponses.required,
+        DocFileErrorResponses.requiredExtractFirst,
     ];
 
     if (options?.params?.length) {
@@ -348,14 +348,14 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
 
     if (options?.role) {
         oneOfForbidden.push({
-            statusCode: ENUM_ROLE_STATUS_CODE_ERROR.forbidden,
+            statusCode: EnumRoleStatusCodeError.forbidden,
             messagePath: 'role.error.forbidden',
         });
     }
 
     if (options?.policy) {
         oneOfForbidden.push({
-            statusCode: ENUM_POLICY_STATUS_CODE_ERROR.forbidden,
+            statusCode: EnumPolicyStatusCodeError.forbidden,
             messagePath: 'policy.error.forbidden',
         });
     }
@@ -520,18 +520,14 @@ export function DocResponsePaging<T>(
                 },
             },
         }),
-        DOC_PAGINATION_ERROR_RESPONSES.ORDER_BY_NOT_ALLOWED,
-        DOC_PAGINATION_ERROR_RESPONSES.FILTER_INVALID_VALUE,
+        DocPaginationErrorResponses.orderByNotAllowed,
+        DocPaginationErrorResponses.filterInvalidValue,
     ];
 
     if (options.type === EnumPaginationType.cursor) {
-        docs.push(
-            ...DOC_PAGINATION_CURSOR_QUERIES.map(query => ApiQuery(query))
-        );
+        docs.push(...DocPaginationCursorQueries.map(query => ApiQuery(query)));
     } else {
-        docs.push(
-            ...DOC_PAGINATION_OFFSET_QUERIES.map(query => ApiQuery(query))
-        );
+        docs.push(...DocPaginationOffsetQueries.map(query => ApiQuery(query)));
     }
 
     if (options.availableSearch) {
@@ -584,7 +580,7 @@ export function DocResponseFile(
     const httpStatus: HttpStatus = options?.httpStatus ?? HttpStatus.OK;
 
     return applyDecorators(
-        ApiProduces(options?.extension ?? ENUM_FILE_EXTENSION.csv),
+        ApiProduces(options?.extension ?? EnumFileExtensionDocument.csv),
         ApiResponse({
             description: httpStatus.toString(),
             status: httpStatus,

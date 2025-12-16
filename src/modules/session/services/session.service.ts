@@ -8,7 +8,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
-import { ENUM_SESSION_STATUS_CODE_ERROR } from '@modules/session/enums/session.status-code.enum';
+import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { ISessionService } from '@modules/session/interfaces/session.service.interface';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
@@ -110,7 +110,7 @@ export class SessionService implements ISessionService {
         );
         if (!checkActive) {
             throw new NotFoundException({
-                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumSessionStatusCodeError.notFound,
                 message: 'session.error.notFound',
             });
         }
@@ -149,7 +149,7 @@ export class SessionService implements ISessionService {
         );
         if (!checkActive) {
             throw new NotFoundException({
-                statusCode: ENUM_SESSION_STATUS_CODE_ERROR.notFound,
+                statusCode: EnumSessionStatusCodeError.notFound,
                 message: 'session.error.notFound',
             });
         }

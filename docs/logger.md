@@ -83,7 +83,7 @@ this.logger.debug('Debug message');   // debug level
 The logger automatically redacts sensitive fields defined in `src/common/logger/constants/logger.constant.ts`:
 
 ```typescript
-export const LOGGER_SENSITIVE_FIELDS: string[] = [
+export const LoggerSensitiveFields: string[] = [
     'password',
     'newPassword',
     'oldPassword',
@@ -109,7 +109,7 @@ export const LOGGER_SENSITIVE_FIELDS: string[] = [
 Sensitive fields in these paths are automatically replaced with `[REDACTED]`:
 
 ```typescript
-export const LOGGER_SENSITIVE_PATHS = [
+export const LoggerSensitivePaths = [
     'req.body',
     'req.headers',
     'res.body',
@@ -186,7 +186,7 @@ Enable automatic HTTP request/response logging with `LOGGER_AUTO=true`.
 Routes excluded from auto-logging (defined in `logger.constant.ts`):
 
 ```typescript
-export const LOGGER_EXCLUDED_ROUTES: string[] = [
+export const LoggerExcludedRoutes: string[] = [
     '/api/health*',
     '/metrics*',
     '/favicon.ico',
@@ -252,11 +252,13 @@ In non-production environments, additional debug info is included:
 
 The logger extracts request IDs from these headers (in order):
 ```typescript
-export const LOGGER_REQUEST_ID_HEADERS = [
+export const LoggerRequestIdHeaders = [
     'x-correlation-id',
     'x-request-id',
 ];
 ```
+
+
 
 <!-- REFERENCES -->
 
@@ -298,7 +300,11 @@ export const LOGGER_REQUEST_ID_HEADERS = [
 <!-- THIRD PARTY -->
 
 [ref-nestjs]: http://nestjs.com
+[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
+[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
 [ref-prisma]: https://www.prisma.io
+[ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
+[ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-redis]: https://redis.io
 [ref-bullmq]: https://bullmq.io
@@ -315,34 +321,31 @@ export const LOGGER_REQUEST_ID_HEADERS = [
 [ref-git]: https://git-scm.com
 [ref-google-console]: https://console.cloud.google.com/
 [ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
-[ref-pino]: https://getpino.io
 
-<!-- DOCUMENTS -->
-
-[ref-doc-root]: readme.md
-[ref-doc-activity-log]: docs/activity-log.md
-[ref-doc-authentication]: docs/authentication.md
-[ref-doc-authorization]: docs/authorization.md
-[ref-doc-cache]: docs/cache.md
-[ref-doc-configuration]: docs/configuration.md
-[ref-doc-database]: docs/database.md
-[ref-doc-environment]: docs/environment.md
-[ref-doc-feature-flag]: docs/feature-flag.md
-[ref-doc-file-upload]: docs/file-upload.md
-[ref-doc-handling-error]: docs/handling-error.md
-[ref-doc-installation]: docs/installation.md
-[ref-doc-logger]: docs/logger.md
-[ref-doc-message]: docs/message.md
-[ref-doc-pagination]: docs/pagination.md
-[ref-doc-project-structure]: docs/project-structure.md
-[ref-doc-queue]: docs/queue.md
-[ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response]: docs/response.md
-[ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-doc]: docs/doc.md
-[ref-doc-third-party-integration]: docs/third-party-integration.md
-[ref-doc-presign]: docs/presign.md
-[ref-doc-term-policy]: docs/term-policy.md
+[ref-doc-root]: ../readme.md
+[ref-doc-activity-log]: activity-log.md
+[ref-doc-authentication]: authentication.md
+[ref-doc-authorization]: authorization.md
+[ref-doc-cache]: cache.md
+[ref-doc-configuration]: configuration.md
+[ref-doc-database]: database.md
+[ref-doc-environment]: environment.md
+[ref-doc-feature-flag]: feature-flag.md
+[ref-doc-file-upload]: file-upload.md
+[ref-doc-handling-error]: handling-error.md
+[ref-doc-installation]: installation.md
+[ref-doc-logger]: logger.md
+[ref-doc-message]: message.md
+[ref-doc-pagination]: pagination.md
+[ref-doc-project-structure]: project-structure.md
+[ref-doc-queue]: queue.md
+[ref-doc-request-validation]: request-validation.md
+[ref-doc-response]: response.md
+[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-doc]: doc.md
+[ref-doc-third-party-integration]: third-party-integration.md
+[ref-doc-presign]: presign.md
+[ref-doc-term-policy]: term-policy.md
 
 <!-- CONTRIBUTOR -->
 

@@ -1,1 +1,1 @@
-export const FEATURE_FLAG_DEFAULT_AVAILABLE_SEARCH = ['key'];
+export const FeatureFlagDefaultAvailableSearch = ['key'];

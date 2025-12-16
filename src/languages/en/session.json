@@ -3,6 +3,6 @@
     "revoke": "Session revoked successfully.",
     "error": {
         "notFound": "Sorry, we couldn't find the session.",
-        "forbiddenRevoke": "You cannot revoke your current session."
+        "forbidden": "You cannot revoke your current session."
     }
 }

@@ -11,7 +11,7 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { FEATURE_FLAG_DEFAULT_AVAILABLE_SEARCH } from '@modules/feature-flag/constants/feature-flag.list.constant';
+import { FeatureFlagDefaultAvailableSearch } from '@modules/feature-flag/constants/feature-flag.list.constant';
 import {
     FeatureFlagAdminListDoc,
     FeatureFlagAdminUpdateMetadataDoc,
@@ -23,8 +23,8 @@ import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feat
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
+    EnumPolicyAction,
+    EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -43,8 +43,8 @@ export class FeatureFlagAdminController {
     @FeatureFlagAdminListDoc()
     @ResponsePaging('featureFlag.list')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.FEATURE_FLAG,
-        action: [ENUM_POLICY_ACTION.READ],
+        subject: EnumPolicySubject.featureFlag,
+        action: [EnumPolicyAction.read],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -53,7 +53,7 @@ export class FeatureFlagAdminController {
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
-            availableSearch: FEATURE_FLAG_DEFAULT_AVAILABLE_SEARCH,
+            availableSearch: FeatureFlagDefaultAvailableSearch,
         })
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
@@ -63,8 +63,8 @@ export class FeatureFlagAdminController {
     @FeatureFlagAdminUpdateStatusDoc()
     @Response('featureFlag.updateStatus')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.FEATURE_FLAG,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.featureFlag,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -82,8 +82,8 @@ export class FeatureFlagAdminController {
     @FeatureFlagAdminUpdateMetadataDoc()
     @Response('featureFlag.updateMetadata')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.FEATURE_FLAG,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.featureFlag,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()

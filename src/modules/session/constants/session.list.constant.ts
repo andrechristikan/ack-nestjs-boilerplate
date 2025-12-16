@@ -1,1 +1,1 @@
-export const SESSION_DEFAULT_AVAILABLE_ORDER_BY = ['createdAt', 'updatedAt'];
+export const SessionDefaultAvailableOrderBy = ['createdAt', 'updatedAt'];

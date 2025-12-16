@@ -123,10 +123,10 @@ export class DatabaseService
             let sanitizedQuery: string = query;
             if (typeof sanitizedQuery === 'string') {
                 sanitizedQuery = sanitizedQuery
-                    .replace(/\\"/g, '"')
-                    .replace(/\\\\/g, '\\')
-                    .replace(/\\n/g, '\n')
-                    .replace(/\s+/g, ' ')
+                    .replaceAll(/\\"/g, '"')
+                    .replaceAll(/\\\\/g, '\\')
+                    .replaceAll(/\\n/g, '\n')
+                    .replaceAll(/\s+/g, ' ')
                     .trim();
             }
 

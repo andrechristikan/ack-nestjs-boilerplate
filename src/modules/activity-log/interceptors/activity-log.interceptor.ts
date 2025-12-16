@@ -13,8 +13,8 @@ import { UAParser } from 'ua-parser-js';
 import { getClientIp } from '@supercharge/request-ip';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import {
-    ACTIVITY_LOG_ACTION_META_KEY,
-    ACTIVITY_LOG_METADATA_META_KEY,
+    ActivityLogActionMetaKey,
+    ActivityLogMetadataMetaKey,
 } from '@modules/activity-log/constants/activity-log.constant';
 import { EnumActivityLogAction } from '@prisma/client';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -63,12 +63,12 @@ export class ActivityLogInterceptor implements NestInterceptor {
 
                         const action: EnumActivityLogAction =
                             this.reflector.get<EnumActivityLogAction>(
-                                ACTIVITY_LOG_ACTION_META_KEY,
+                                ActivityLogActionMetaKey,
                                 context.getHandler()
                             );
                         const metadata: IActivityLogMetadata =
                             this.reflector.get<IActivityLogMetadata>(
-                                ACTIVITY_LOG_METADATA_META_KEY,
+                                ActivityLogMetadataMetaKey,
                                 context.getHandler()
                             ) ?? {};
 

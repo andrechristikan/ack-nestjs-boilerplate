@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { REQUEST_ENV_META_KEY } from '@common/request/constants/request.constant';
+import { RequestEnvMetaKey } from '@common/request/constants/request.constant';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 /**
@@ -34,7 +34,7 @@ export class RequestEnvGuard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const required: EnumAppEnvironment[] = this.reflector.getAllAndOverride<
             EnumAppEnvironment[]
-        >(REQUEST_ENV_META_KEY, [context.getHandler(), context.getClass()]);
+        >(RequestEnvMetaKey, [context.getHandler(), context.getClass()]);
 
         if (!required || !required.includes(this.env)) {
             throw new ForbiddenException({

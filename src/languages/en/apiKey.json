@@ -1,24 +1,21 @@
 {
     "list": "Here's your complete list of API keys.",
-    "get": "Here are the API key details you requested.",
     "create": "Great! Your new API key has been created successfully.",
     "reset": "Perfect! Your API key has been reset and is ready to use.",
     "update": "Your API key has been updated successfully.",
-    "inactive": "Your API key has been set to inactive mode.",
-    "active": "Your API key is now active and ready to use.",
     "updateDate": "API key dates have been refreshed successfully.",
+    "updateStatus": "API key status has been updated successfully.",
     "delete": "Your API key has been safely removed.",
     "error": {
+        "notFound": "We couldn't locate this API key. Please check and try again.",
+        "inactive": "This API key is currently inactive.",
+        "expired": "This API key has expired. Would you like to create a new one?",
         "xApiKey": {
             "required": "Please provide your API key to continue.",
             "notFound": "We couldn't find this API key in our system.",
-            "inactive": "This API key is currently inactive.",
-            "expired": "This API key has expired. Please generate a new one.",
             "invalid": "Sorry, this API key appears to be invalid.",
-            "forbidden": "You don't have permission to use this API key."
-        },
-        "expired": "This API key has expired. Would you like to create a new one?",
-        "isActiveInvalid": "There seems to be an issue with the API key's status.",
-        "notFound": "We couldn't locate this API key. Please check and try again."
+            "forbidden": "You don't have permission to use this API key.",
+            "predefinedNotFound": "Predefined API key not found in the system."
+        }
     }
 }

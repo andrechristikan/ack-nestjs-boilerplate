@@ -6,9 +6,9 @@ import {
     createParamDecorator,
 } from '@nestjs/common';
 import {
-    REQUEST_CUSTOM_TIMEOUT_META_KEY,
-    REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY,
-    REQUEST_ENV_META_KEY,
+    RequestCustomTimeoutMetaKey,
+    RequestCustomTimeoutValueMetaKey,
+    RequestEnvMetaKey,
 } from '@common/request/constants/request.constant';
 import ms from 'ms';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
@@ -25,8 +25,8 @@ import { UAParser } from 'ua-parser-js';
  */
 export function RequestTimeout(seconds: ms.StringValue): MethodDecorator {
     return applyDecorators(
-        SetMetadata(REQUEST_CUSTOM_TIMEOUT_META_KEY, true),
-        SetMetadata(REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY, seconds)
+        SetMetadata(RequestCustomTimeoutMetaKey, true),
+        SetMetadata(RequestCustomTimeoutValueMetaKey, seconds)
     );
 }
 
@@ -41,7 +41,7 @@ export function RequestEnvProtected(
 ): MethodDecorator {
     return applyDecorators(
         UseGuards(RequestEnvGuard),
-        SetMetadata(REQUEST_ENV_META_KEY, envs)
+        SetMetadata(RequestEnvMetaKey, envs)
     );
 }
 

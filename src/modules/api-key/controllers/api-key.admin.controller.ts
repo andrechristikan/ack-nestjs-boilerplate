@@ -20,8 +20,8 @@ import {
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
 import {
-    API_KEY_DEFAULT_AVAILABLE_SEARCH,
-    API_KEY_DEFAULT_TYPE,
+    ApiKeyDefaultAvailableSearch,
+    ApiKeyDefaultType,
 } from '@modules/api-key/constants/api-key.list.constant';
 import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
@@ -48,8 +48,8 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
+    EnumPolicyAction,
+    EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
@@ -76,8 +76,8 @@ export class ApiKeyAdminController {
     @ApiKeyAdminListDoc()
     @ResponsePaging('apiKey.list')
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.API_KEY,
-        action: [ENUM_POLICY_ACTION.READ],
+        subject: EnumPolicySubject.apiKey,
+        action: [EnumPolicyAction.read],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -86,15 +86,12 @@ export class ApiKeyAdminController {
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
-            availableSearch: API_KEY_DEFAULT_AVAILABLE_SEARCH,
+            availableSearch: ApiKeyDefaultAvailableSearch,
         })
         pagination: IPaginationQueryOffsetParams,
         @PaginationQueryFilterEqualBoolean('isActive')
         isActive?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterInEnum<EnumApiKeyType>(
-            'type',
-            API_KEY_DEFAULT_TYPE
-        )
+        @PaginationQueryFilterInEnum<EnumApiKeyType>('type', ApiKeyDefaultType)
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKeyDto>> {
         return this.apiKeyService.getList(pagination, isActive, type);
@@ -104,8 +101,8 @@ export class ApiKeyAdminController {
     @Response('apiKey.create')
     @ActivityLog(EnumActivityLogAction.adminApiKeyCreate)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.API_KEY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
+        subject: EnumPolicySubject.apiKey,
+        action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -122,8 +119,8 @@ export class ApiKeyAdminController {
     @Response('apiKey.reset')
     @ActivityLog(EnumActivityLogAction.adminApiKeyReset)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.API_KEY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.apiKey,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -141,8 +138,8 @@ export class ApiKeyAdminController {
     @Response('apiKey.update')
     @ActivityLog(EnumActivityLogAction.adminApiKeyUpdate)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.API_KEY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.apiKey,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -161,8 +158,8 @@ export class ApiKeyAdminController {
     @Response('apiKey.updateDate')
     @ActivityLog(EnumActivityLogAction.adminApiKeyUpdateDate)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.API_KEY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.apiKey,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -181,8 +178,8 @@ export class ApiKeyAdminController {
     @Response('apiKey.updateStatus')
     @ActivityLog(EnumActivityLogAction.adminApiKeyUpdateStatus)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.API_KEY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        subject: EnumPolicySubject.apiKey,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
@@ -201,8 +198,8 @@ export class ApiKeyAdminController {
     @Response('apiKey.delete')
     @ActivityLog(EnumActivityLogAction.adminApiKeyDelete)
     @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.API_KEY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
+        subject: EnumPolicySubject.apiKey,
+        action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()

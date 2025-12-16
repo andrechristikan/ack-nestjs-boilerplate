@@ -1,4 +1,4 @@
-import { FEATURE_FLAG_KEY_PATH_META_KEY } from '@modules/feature-flag/constants/feature-flag.constant';
+import { FeatureFlagKeyPathMetaKey } from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -23,7 +23,7 @@ export class FeatureFlagGuard implements CanActivate {
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const featureFlagKeyPath = this.reflector.get<string>(
-            FEATURE_FLAG_KEY_PATH_META_KEY,
+            FeatureFlagKeyPathMetaKey,
             context.getHandler()
         );
 

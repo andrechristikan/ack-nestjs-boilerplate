@@ -1,3 +1,15 @@
+name: ReleaseWithSsh
+on:
+    workflow_dispatch:
+    # push:
+    #     branches:
+    #         - main
+    #         - staging
+    #         - development
+
+env:
+    DOCKERFILE: ci/dockerfile
+
 # Required Variables (Repository Variables):
 # - DOCKER_REGISTRY_URL: Docker registry URL (e.g., docker.io or private registry)
 # - DOCKER_IMAGE_NAME: Docker image name (e.g., my-app)
@@ -26,19 +38,6 @@
 # - STAGING_SSH_USER: SSH username for staging (e.g., ec2-user)
 # - STAGING_SSH_PRIVATE_KEY: SSH private key for staging (multiline format)
 
-
-name: ReleaseWithSsh
-on:
-    workflow_dispatch:
-    # push:
-    #     branches:
-    #         - main
-    #         - staging
-    #         - development
-
-env:
-    DOCKERFILE: ci/dockerfile
-
 jobs:
     build_image:
         runs-on: ubuntu-latest
@@ -55,7 +54,7 @@ jobs:
 
         steps:
             - name: Git checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Get short sha commit
               id: git
@@ -118,7 +117,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Deploy via SSH
               if: ${{ github.ref_name == matrix.branch }}
@@ -157,7 +156,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Clean Docker Images
               if: ${{ github.ref_name == matrix.branch }}
