@@ -5,7 +5,7 @@ import { ResponsePagingInterceptor } from '@common/response/interceptors/respons
 import { IResponseOptions } from '@common/response/interfaces/response.interface';
 import { CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import { ResponseCacheInterceptor } from '@common/response/interceptors/response.cache.interceptor';
-import { ResponseCsvInterceptor } from '@common/response/interceptors/response.csv.interceptor';
+import { ResponseFileInterceptor } from '@common/response/interceptors/response.file.interceptor';
 
 /**
  * Decorator for standard API responses with optional caching.
@@ -78,6 +78,6 @@ export function ResponsePaging(
  *
  * @returns Method decorator function
  */
-export function ResponseCsv(): MethodDecorator {
-    return applyDecorators(UseInterceptors(ResponseCsvInterceptor));
+export function ResponseFile(): MethodDecorator {
+    return applyDecorators(UseInterceptors(ResponseFileInterceptor));
 }

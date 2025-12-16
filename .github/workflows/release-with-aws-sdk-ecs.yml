@@ -1,4 +1,14 @@
+name: ReleaseWithAwsEcs
+on:
+    workflow_dispatch:
+    # push:
+    #     branches:
+    #         - main
+    #         - staging
+    #         - development
 
+env:
+    DOCKERFILE: ci/dockerfile
 
 # Required Variables:
 # - AWS_ECR_REPO_URL
@@ -13,18 +23,6 @@
 # - DEV_ECS_SERVICE_NAME
 # - STAGING_ECS_CLUSTER_NAME
 # - STAGING_ECS_SERVICE_NAME
-
-name: ReleaseWithAwsEcs
-on:
-    workflow_dispatch:
-    # push:
-    #     branches:
-    #         - main
-    #         - staging
-    #         - development
-
-env:
-    DOCKERFILE: ci/dockerfile
 
 jobs:
     build_image:

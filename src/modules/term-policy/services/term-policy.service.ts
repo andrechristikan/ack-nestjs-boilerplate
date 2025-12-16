@@ -2,7 +2,7 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
+import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     IPaginationIn,
@@ -321,7 +321,7 @@ export class TermPolicyService implements ITermPolicyService {
                 version,
                 language,
                 {
-                    extension: EnumFileExtensionDocument.hbs,
+                    extension: EnumFileExtensionTemplate.hbs,
                 }
             );
 

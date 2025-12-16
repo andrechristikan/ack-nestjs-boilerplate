@@ -59,9 +59,9 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
 ## TODO
 
 ### Next Features
+- [x] Add import and export endpoint (includes: direct upload and presign upload)
+- [x] Make sure github action works
 - [ ] Activity Log support bidirectional logging
-- [ ] Add import and export endpoint (includes: direct upload and presign upload)
-- [ ] Make sure github action works
 - [ ] 2FA with TOTP Authentication (eg: Google Authenticator)
 - [ ] Recovery Codes Method
 - [ ] Login with biometrics (fingerprint or face detection)
@@ -213,6 +213,8 @@ If you find this project helpful and would like to support its development, plea
 </div>
 
 
+
+
 <!-- REFERENCES -->
 
 <!-- BADGE LINKS -->
@@ -253,7 +255,11 @@ If you find this project helpful and would like to support its development, plea
 <!-- THIRD PARTY -->
 
 [ref-nestjs]: http://nestjs.com
+[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
+[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
 [ref-prisma]: https://www.prisma.io
+[ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
+[ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-redis]: https://redis.io
 [ref-bullmq]: https://bullmq.io
@@ -271,10 +277,8 @@ If you find this project helpful and would like to support its development, plea
 [ref-google-console]: https://console.cloud.google.com/
 [ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
 
-<!-- DOCUMENTS -->
-
 [ref-doc-root]: readme.md
-[ref-doc-audit-activity-log]: docs/audit-activity-log.md
+[ref-doc-activity-log]: docs/activity-log.md
 [ref-doc-authentication]: docs/authentication.md
 [ref-doc-authorization]: docs/authorization.md
 [ref-doc-cache]: docs/cache.md
@@ -282,14 +286,22 @@ If you find this project helpful and would like to support its development, plea
 [ref-doc-database]: docs/database.md
 [ref-doc-environment]: docs/environment.md
 [ref-doc-feature-flag]: docs/feature-flag.md
-[ref-doc-how-to-handling-error]: docs/how-to-handling-error.md
+[ref-doc-file-upload]: docs/file-upload.md
+[ref-doc-handling-error]: docs/handling-error.md
 [ref-doc-installation]: docs/installation.md
-[ref-doc-internationalization]: docs/internationalization.md
 [ref-doc-logger]: docs/logger.md
+[ref-doc-message]: docs/message.md
+[ref-doc-pagination]: docs/pagination.md
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response-structure]: docs/response-structure.md
+[ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-service-side-pagination]: docs/service-side-pagination.md
+[ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
+[ref-doc-presign]: docs/presign.md
+[ref-doc-term-policy]: docs/term-policy.md
+
+<!-- CONTRIBUTOR -->
+
+[ref-contributor-gzerox]: https://github.com/Gzerox

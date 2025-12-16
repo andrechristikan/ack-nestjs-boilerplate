@@ -1,3 +1,6 @@
 {
-    "check": "Health check complete. All systems are functioning normally."
+    "checkAws": "AWS health check completed successfully.",
+    "checkDatabase": "Database health check completed successfully.",
+    "checkInstance": "Instance health check completed successfully.",
+    "checkThirdParty": "Third-party services health check completed successfully."
 }

@@ -40,7 +40,7 @@ export class IsAfterNowConstraint implements ValidatorConstraintInterface {
      * @returns Error message string
      */
     defaultMessage(): string {
-        return `request.isAfterNow`;
+        return `request.error.isAfterNow.invalid`;
     }
 
     /**

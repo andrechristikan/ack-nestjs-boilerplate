@@ -5,6 +5,7 @@ import {
     IPaginationOffsetReturn,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 
 export interface IResponseMetadata {
     statusCode?: number;
@@ -40,7 +41,16 @@ export type IResponsePagingReturn<T> = (
     metadata?: IResponseMetadata;
 } & IResponseActivityLogReturn;
 
-export interface IResponseCsvReturn<T> extends IResponseActivityLogReturn {
-    data: T[];
+export interface IResponseCsvReturn extends IResponseActivityLogReturn {
+    data: string;
+    extension: EnumFileExtensionDocument.csv;
     filename?: string;
 }
+
+export interface IResponsePdfReturn extends IResponseActivityLogReturn {
+    data: Buffer;
+    extension: EnumFileExtensionDocument.pdf;
+    filename?: string;
+}
+
+export type IResponseFileReturn = IResponseCsvReturn | IResponsePdfReturn;

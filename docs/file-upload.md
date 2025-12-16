@@ -101,13 +101,16 @@ File extension enums for validation. These enums are used with `FileExtensionPip
   - `jpg`, `jpeg`, `png`
 
 - `EnumFileExtensionDocument`: Document files
-  - `pdf`, `hbs`, `csv`
+  - `pdf`, `csv`
 
 - `EnumFileExtensionAudio`: Audio files
   - `mpeg`, `m4a`, `mp3`
 
 - `EnumFileExtensionVideo`: Video files
   - `mp4`
+
+- `EnumFileExtensionTemplate`: Template files
+  - `hbs`
 
 - `ENUM_FILE_EXTENSION`: Combined type of all file extensions
 
@@ -471,6 +474,7 @@ Add custom validation messages in your i18n language files for any class-validat
 
 See [Message Documentation][ref-doc-message] for complete language configuration details.
 
+
 <!-- REFERENCES -->
 
 <!-- BADGE LINKS -->
@@ -511,7 +515,11 @@ See [Message Documentation][ref-doc-message] for complete language configuration
 <!-- THIRD PARTY -->
 
 [ref-nestjs]: http://nestjs.com
+[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
+[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
 [ref-prisma]: https://www.prisma.io
+[ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
+[ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-redis]: https://redis.io
 [ref-bullmq]: https://bullmq.io
@@ -529,34 +537,31 @@ See [Message Documentation][ref-doc-message] for complete language configuration
 [ref-google-console]: https://console.cloud.google.com/
 [ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
 
-<!-- DOCUMENTS -->
-
-[ref-doc-root]: readme.md
-[ref-doc-activity-log]: docs/activity-log.md
-[ref-doc-authentication]: docs/authentication.md
-[ref-doc-authorization]: docs/authorization.md
-[ref-doc-cache]: docs/cache.md
-[ref-doc-configuration]: docs/configuration.md
-[ref-doc-database]: docs/database.md
-[ref-doc-environment]: docs/environment.md
-[ref-doc-feature-flag]: docs/feature-flag.md
-[ref-doc-file-upload]: docs/file-upload.md
-[ref-doc-handling-error]: docs/handling-error.md
-[ref-doc-installation]: docs/installation.md
-[ref-doc-logger]: docs/logger.md
-[ref-doc-message]: docs/message.md
-[ref-doc-pagination]: docs/pagination.md
-[ref-doc-project-structure]: docs/project-structure.md
-[ref-doc-queue]: docs/queue.md
-[ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response]: docs/response.md
-[ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-doc]: docs/doc.md
-[ref-doc-third-party-integration]: docs/third-party-integration.md
-[ref-doc-presign]: docs/presign.md
-[ref-doc-term-policy]: docs/term-policy.md
+[ref-doc-root]: ../readme.md
+[ref-doc-activity-log]: activity-log.md
+[ref-doc-authentication]: authentication.md
+[ref-doc-authorization]: authorization.md
+[ref-doc-cache]: cache.md
+[ref-doc-configuration]: configuration.md
+[ref-doc-database]: database.md
+[ref-doc-environment]: environment.md
+[ref-doc-feature-flag]: feature-flag.md
+[ref-doc-file-upload]: file-upload.md
+[ref-doc-handling-error]: handling-error.md
+[ref-doc-installation]: installation.md
+[ref-doc-logger]: logger.md
+[ref-doc-message]: message.md
+[ref-doc-pagination]: pagination.md
+[ref-doc-project-structure]: project-structure.md
+[ref-doc-queue]: queue.md
+[ref-doc-request-validation]: request-validation.md
+[ref-doc-response]: response.md
+[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-doc]: doc.md
+[ref-doc-third-party-integration]: third-party-integration.md
+[ref-doc-presign]: presign.md
+[ref-doc-term-policy]: term-policy.md
 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
-

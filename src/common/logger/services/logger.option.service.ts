@@ -336,9 +336,6 @@ export class LoggerOptionService {
             return request.ip as string;
         }
 
-        if (request.connection?.remoteAddress) {
-            return request.connection.remoteAddress as string;
-        }
         if (request.socket?.remoteAddress) {
             return request.socket.remoteAddress as string;
         }

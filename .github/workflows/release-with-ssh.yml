@@ -1,3 +1,15 @@
+name: ReleaseWithSsh
+on:
+    workflow_dispatch:
+    # push:
+    #     branches:
+    #         - main
+    #         - staging
+    #         - development
+
+env:
+    DOCKERFILE: ci/dockerfile
+
 # Required Variables (Repository Variables):
 # - DOCKER_REGISTRY_URL: Docker registry URL (e.g., docker.io or private registry)
 # - DOCKER_IMAGE_NAME: Docker image name (e.g., my-app)
@@ -25,19 +37,6 @@
 # - STAGING_SSH_HOST: SSH host/IP for staging (e.g., staging.example.com)
 # - STAGING_SSH_USER: SSH username for staging (e.g., ec2-user)
 # - STAGING_SSH_PRIVATE_KEY: SSH private key for staging (multiline format)
-
-
-name: ReleaseWithSsh
-on:
-    workflow_dispatch:
-    # push:
-    #     branches:
-    #         - main
-    #         - staging
-    #         - development
-
-env:
-    DOCKERFILE: ci/dockerfile
 
 jobs:
     build_image:

@@ -1,3 +1,15 @@
+name: ReleaseWithAwsSdkEc2
+on:
+    workflow_dispatch:
+    # push:
+    #     branches:
+    #         - main
+    #         - staging
+    #         - development
+
+env:
+    DOCKERFILE: ci/dockerfile
+
 # Required Variables:
 # - AWS_ECR_REPO_URL
 # - DOCKER_CONTAINER_NAME
@@ -10,19 +22,6 @@
 # - PROD_AWS_INSTANCE_ID
 # - DEV_AWS_INSTANCE_ID
 # - STAGING_AWS_INSTANCE_ID
-
-
-name: ReleaseWithAwsSdkEc2
-on:
-    workflow_dispatch:
-    # push:
-    #     branches:
-    #         - main
-    #         - staging
-    #         - development
-
-env:
-    DOCKERFILE: ci/dockerfile
 
 jobs:
     build_image:

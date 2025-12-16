@@ -209,5 +209,8 @@ export class UserAdminController {
         );
     }
 
-    // TODO: Create example import and export endpoints via CSV file
+    // TODO-1: Create example import and export endpoints use CSV file
+    // import can be used to create multiple users at once
+    // export can be used to export user list to CSV file
+    // import using 2 methods: file upload and presigned URL upload
 }

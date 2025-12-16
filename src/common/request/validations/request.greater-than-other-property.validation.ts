@@ -13,9 +13,7 @@ import {
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
-export class GreaterThanEqualOtherPropertyConstraint
-    implements ValidatorConstraintInterface
-{
+export class GreaterThanEqualOtherPropertyConstraint implements ValidatorConstraintInterface {
     /**
      * Validates that the current value is greater than or equal to the related property value.
      *
@@ -59,12 +57,10 @@ export class GreaterThanEqualOtherPropertyConstraint
     /**
      * Generates a default error message for validation failures.
      *
-     * @param args - Validation arguments containing property information
      * @returns Error message string
      */
-    defaultMessage(args: ValidationArguments): string {
-        const [property] = args.constraints;
-        return `${args.property} must be greater than or equal to ${property}`;
+    defaultMessage(): string {
+        return `request.error.greaterThanEqualOtherProperty.invalid`;
     }
 
     /**
@@ -140,9 +136,7 @@ export function GreaterThanEqualOtherProperty(
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
-export class GreaterThanOtherPropertyConstraint
-    implements ValidatorConstraintInterface
-{
+export class GreaterThanOtherPropertyConstraint implements ValidatorConstraintInterface {
     /**
      * Validates that the current value is strictly greater than the related property value.
      *
@@ -189,7 +183,7 @@ export class GreaterThanOtherPropertyConstraint
      * @returns Error message string
      */
     defaultMessage(): string {
-        return `request.greaterThanOtherProperty`;
+        return `request.error.greaterThanOtherProperty.invalid`;
     }
 
     /**
