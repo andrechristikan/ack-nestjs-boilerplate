@@ -4,12 +4,14 @@ import {
     EnumUserLoginWith,
     EnumVerificationType,
     Role,
+    TwoFactor,
     User,
     UserMobileNumber,
 } from '@prisma/client';
 
 export interface IUser extends User {
     role: Role;
+    twoFactor?: IUserTwoFactor | null;
 }
 
 export interface IUserMobileNumber extends UserMobileNumber {
@@ -47,3 +49,5 @@ export interface IUserVerificationCreate {
     token: string;
     link?: string;
 }
+
+export type IUserTwoFactor = TwoFactor;

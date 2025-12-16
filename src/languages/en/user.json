@@ -22,9 +22,16 @@
     "loginCredential": "Logged in successfully with credentials.",
     "loginWithSocialGoogle": "Logged in successfully with Google.",
     "loginWithSocialApple": "Logged in successfully with Apple.",
+    "loginTwoFactor": "Two-factor verification completed successfully.",
     "refresh": "Token refreshed successfully.",
     "sendEmailVerification": "Verification email has been sent.",
     "verifyEmail": "Email has been successfully verified.",
+    "twoFactor": {
+        "setup": "Two-factor setup initialized. Use the provided secret to configure your authenticator.",
+        "confirm": "Two-factor authentication has been enabled.",
+        "regenerate": "New backup codes generated successfully.",
+        "disable": "Two-factor authentication has been disabled."
+    },
     "error": {
         "notFound": "Sorry, we couldn't find the user you requested.",
         "inactive": "This user is inactive.",

@@ -58,6 +58,10 @@ Configuration for tokens, sessions, password, social providers, and API keys is 
         - [Configuration](#configuration-1)
         - [Setup Apple Sign In](#setup-apple-sign-in)
         - [Usage](#usage-2)
+- [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp)
+    - [Config](#config)
+    - [Flow](#flow)
+    - [Endpoints](#endpoints)
 - [API Key Authentication](#api-key-authentication)
     - [Configuration](#configuration-2)
     - [API Key Types](#api-key-types)
@@ -714,6 +718,34 @@ async loginApple(@AuthJwtPayload() payload: IAuthSocialPayload) {
     // Return JWT tokens (both include jti)
 }
 ```
+
+## Two-Factor Authentication (TOTP)
+
+TOTP-based 2FA adds a second verification step to login. Tokens are only issued after the user passes 2FA.
+
+### Config
+- Configured in `src/configs/auth.config.ts` under `twoFactor`.
+- Key env vars:  
+  `AUTH_TWO_FACTOR_ISSUER`, `AUTH_TWO_FACTOR_LABEL`, `AUTH_TWO_FACTOR_DIGITS`, `AUTH_TWO_FACTOR_STEP`, `AUTH_TWO_FACTOR_WINDOW`, `AUTH_TWO_FACTOR_SECRET_LENGTH`, `AUTH_TWO_FACTOR_CHALLENGE_TTL_MS`, `AUTH_TWO_FACTOR_CACHE_PREFIX_KEY`, `AUTH_TWO_FACTOR_BACKUP_CODES_COUNT`, `AUTH_TWO_FACTOR_BACKUP_CODES_LENGTH`, `AUTH_TWO_FACTOR_ENCRYPTION_KEY`, `AUTH_TWO_FACTOR_ENCRYPTION_IV`.
+- Secrets are AES-encrypted (key/IV from env). Backup codes are SHA-256 hashed. Challenges live in cache with TTL.
+
+### Flow
+1. User logs in (credential or social).
+2. If 2FA is **disabled**, access/refresh tokens are returned immediately.
+3. If 2FA is **enabled**, response contains `challengeToken` + TTL; no tokens yet.
+4. User calls `/v1/user/login/2fa` with `challengeToken` and a TOTP code or backup code.
+5. On success, tokens are issued and session stored in Redis + DB; backup codes are consumed on use.
+
+### Endpoints
+- Public login: `POST /v1/user/login/credential`, `POST /v1/user/login/social/google|apple` → may return `challengeToken`.
+- Verify challenge: `POST /v1/user/login/2fa` (body: `challengeToken` + `code` or `backupCode`) → returns tokens.
+- Authenticated management:
+  - `POST /v1/user/2fa/setup` → get secret + otpauth URL.
+  - `POST /v1/user/2fa/confirm` → enable 2FA and receive backup codes.
+  - `POST /v1/user/2fa/backup/regenerate` → new backup codes.
+  - `DELETE /v1/user/2fa` → disable using code or backup code.
+
+See `docs/two-factor-authentication.md` for detailed flows and payloads.
 
 ## API Key Authentication
 

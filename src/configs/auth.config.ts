@@ -49,6 +49,24 @@ export interface IConfigAuth {
         header: string;
         cachePrefixKey: string;
     };
+    twoFactor: {
+        issuer: string;
+        label: string;
+        digits: number;
+        step: number;
+        window: number;
+        secretLength: number;
+        challengeTtlInMs: number;
+        cachePrefixKey: string;
+        backupCodes: {
+            count: number;
+            length: number;
+        };
+        encryption: {
+            key?: string;
+            iv?: string;
+        };
+    };
 }
 
 export default registerAs(
@@ -111,6 +129,34 @@ export default registerAs(
         xApiKey: {
             header: 'x-api-key',
             cachePrefixKey: 'ApiKey',
+        },
+        twoFactor: {
+            issuer: process.env.AUTH_TWO_FACTOR_ISSUER ?? 'ACK',
+            label: process.env.AUTH_TWO_FACTOR_LABEL ?? 'ACK Auth',
+            digits: Number.parseInt(process.env.AUTH_TWO_FACTOR_DIGITS ?? '6'),
+            step: Number.parseInt(process.env.AUTH_TWO_FACTOR_STEP ?? '30'),
+            window: Number.parseInt(process.env.AUTH_TWO_FACTOR_WINDOW ?? '1'),
+            secretLength: Number.parseInt(
+                process.env.AUTH_TWO_FACTOR_SECRET_LENGTH ?? '32'
+            ),
+            challengeTtlInMs: Number.parseInt(
+                process.env.AUTH_TWO_FACTOR_CHALLENGE_TTL_MS ?? `${5 * 60 * 1000}`
+            ),
+            cachePrefixKey: process.env.AUTH_TWO_FACTOR_CACHE_PREFIX_KEY
+                ? process.env.AUTH_TWO_FACTOR_CACHE_PREFIX_KEY
+                : 'TwoFactor',
+            backupCodes: {
+                count: Number.parseInt(
+                    process.env.AUTH_TWO_FACTOR_BACKUP_CODES_COUNT ?? '8'
+                ),
+                length: Number.parseInt(
+                    process.env.AUTH_TWO_FACTOR_BACKUP_CODES_LENGTH ?? '10'
+                ),
+            },
+            encryption: {
+                key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY,
+                iv: process.env.AUTH_TWO_FACTOR_ENCRYPTION_IV,
+            },
         },
     })
 );

@@ -26,6 +26,7 @@ import {
     IUserForgotPasswordCreate,
     IUserLogin,
     IUserProfile,
+    IUserTwoFactor,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -123,6 +124,7 @@ export class UserRepository {
             where: { email, deletedAt: null },
             include: {
                 role: true,
+                twoFactor: true,
             },
         });
     }
@@ -162,6 +164,7 @@ export class UserRepository {
             where: { id, deletedAt: null },
             include: {
                 role: true,
+                twoFactor: true,
             },
         });
     }
@@ -185,6 +188,128 @@ export class UserRepository {
             },
             include: {
                 user: true,
+            },
+        });
+    }
+
+    async upsertTwoFactorSecret(
+        userId: string,
+        secret: string
+    ): Promise<IUserTwoFactor> {
+        return this.databaseService.twoFactor.upsert({
+            where: { userId },
+            create: {
+                userId,
+                secret,
+                backupCodes: [],
+                enabled: false,
+                createdBy: userId,
+            },
+            update: {
+                secret,
+                backupCodes: [],
+                enabled: false,
+                confirmedAt: null,
+                updatedBy: userId,
+            },
+        });
+    }
+
+    async confirmTwoFactor(
+        userId: string,
+        backupCodes: string[],
+        requestLog: IRequestLog
+    ): Promise<IUserTwoFactor> {
+        const now = this.helperService.dateCreate();
+        const userAgent = this.databaseUtil.toPlainObject(requestLog.userAgent);
+
+        const [twoFactor] = await this.databaseService.$transaction([
+            this.databaseService.twoFactor.update({
+                where: { userId },
+                data: {
+                    enabled: true,
+                    confirmedAt: now,
+                    lastVerifiedAt: now,
+                    backupCodes,
+                    updatedBy: userId,
+                },
+            }),
+            this.databaseService.activityLog.create({
+                data: {
+                    userId,
+                    action: EnumActivityLogAction.userEnableTwoFactor,
+                    ipAddress: requestLog.ipAddress,
+                    userAgent,
+                    createdBy: userId,
+                },
+            }),
+        ]);
+
+        return twoFactor;
+    }
+
+    async disableTwoFactor(
+        userId: string,
+        requestLog: IRequestLog
+    ): Promise<IUserTwoFactor> {
+        const userAgent = this.databaseUtil.toPlainObject(requestLog.userAgent);
+        const [twoFactor] = await this.databaseService.$transaction([
+            this.databaseService.twoFactor.update({
+                where: { userId },
+                data: {
+                    enabled: false,
+                    backupCodes: [],
+                    updatedBy: userId,
+                },
+            }),
+            this.databaseService.activityLog.create({
+                data: {
+                    userId,
+                    action: EnumActivityLogAction.userDisableTwoFactor,
+                    ipAddress: requestLog.ipAddress,
+                    userAgent,
+                    createdBy: userId,
+                },
+            }),
+        ]);
+
+        return twoFactor;
+    }
+
+    async updateTwoFactorBackupCodes(
+        userId: string,
+        backupCodes: string[],
+        requestLog: IRequestLog
+    ): Promise<IUserTwoFactor> {
+        const userAgent = this.databaseUtil.toPlainObject(requestLog.userAgent);
+        const [twoFactor] = await this.databaseService.$transaction([
+            this.databaseService.twoFactor.update({
+                where: { userId },
+                data: {
+                    backupCodes,
+                    updatedBy: userId,
+                },
+            }),
+            this.databaseService.activityLog.create({
+                data: {
+                    userId,
+                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                    ipAddress: requestLog.ipAddress,
+                    userAgent,
+                    createdBy: userId,
+                },
+            }),
+        ]);
+
+        return twoFactor;
+    }
+
+    async markTwoFactorUsed(userId: string): Promise<void> {
+        await this.databaseService.twoFactor.update({
+            where: { userId },
+            data: {
+                lastUsedAt: this.helperService.dateCreate(),
+                lastVerifiedAt: this.helperService.dateCreate(),
             },
         });
     }
