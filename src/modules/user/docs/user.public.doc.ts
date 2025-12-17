@@ -69,7 +69,7 @@ export function UserPublicLoginTwoFactorVerifyDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
             dto: UserTwoFactorVerifyLoginRequestDto,
         }),
-        DocResponse('user.loginTwoFactor', {
+        DocResponse('user.verifyTwoFactor', {
             dto: UserLoginResponseDto,
         })
     );

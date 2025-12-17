@@ -18,17 +18,20 @@ import {
     UserUserTwoFactorDisableDoc,
     UserUserTwoFactorRegenerateBackupDoc,
     UserUserTwoFactorSetupDoc,
+    UserUserTwoFactorStatusDoc,
 } from '@modules/user/docs/user.user.doc';
 import { UserTwoFactorConfirmRequestDto } from '@modules/user/dtos/request/user.two-factor-confirm.request.dto';
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import { UserTwoFactorRegenerateRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate.request.dto';
 import { UserTwoFactorBackupCodesResponseDto } from '@modules/user/dtos/response/user.two-factor-backup-codes.response.dto';
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
+import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserService } from '@modules/user/services/user.service';
 import {
     Body,
     Controller,
     Delete,
+    Get,
     HttpCode,
     HttpStatus,
     Post,
@@ -43,6 +46,19 @@ import { EnumRoleType } from '@prisma/client';
 })
 export class UserUserController {
     constructor(private readonly userService: UserService) {}
+
+    @UserUserTwoFactorStatusDoc()
+    @Response('user.twoFactor.status')
+    @RoleProtected(EnumRoleType.user)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/2fa')
+    async getTwoFactorStatus(
+        @AuthJwtPayload('userId') userId: string
+    ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>> {
+        return this.userService.getTwoFactorStatus(userId);
+    }
 
     @UserUserTwoFactorSetupDoc()
     @Response('user.twoFactor.setup')

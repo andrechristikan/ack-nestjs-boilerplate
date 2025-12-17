@@ -50,6 +50,7 @@ import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.res
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorBackupCodesResponseDto } from '@modules/user/dtos/response/user.two-factor-backup-codes.response.dto';
+import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { EnumUserLoginWith } from '@prisma/client';
@@ -145,6 +146,11 @@ export interface IUserService {
         requestLog: IRequestLog,
         updatedBy: string
     ): Promise<IResponseReturn<void>>;
+    disableTwoFactorByAdmin(
+        userId: string,
+        requestLog: IRequestLog,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>>;
     changePassword(
         userId: string,
         { newPassword, oldPassword }: UserChangePasswordRequestDto,
@@ -173,6 +179,9 @@ export interface IUserService {
         }: UserTwoFactorVerifyLoginRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserLoginResponseDto>>;
+    getTwoFactorStatus(
+        userId: string
+    ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>>;
     setupTwoFactor(
         userId: string,
         requestLog: IRequestLog

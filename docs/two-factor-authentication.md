@@ -41,7 +41,7 @@ Other 2FA tuning values (digits, step, window, secret length, challenge TTL, cac
   Body: social DTO + `Authorization: Bearer <social_id_token>` header  
   Response matches credential login (may return `challengeToken`).
 
-- `POST /v1/user/login/2fa`  
+- `POST /v1/user/verify/2fa`  
   Body: `{ challengeToken, code? | backupCode? }`  
   Response: `{ isTwoFactorRequired: false, tokens }`
 

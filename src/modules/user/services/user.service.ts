@@ -72,6 +72,7 @@ import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.res
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorBackupCodesResponseDto } from '@modules/user/dtos/response/user.two-factor-backup-codes.response.dto';
+import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { EnumUserStatus_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
 import { IUser, IUserTwoFactor } from '@modules/user/interfaces/user.interface';
@@ -838,6 +839,62 @@ export class UserService implements IUserService {
         }
     }
 
+    async disableTwoFactorByAdmin(
+        userId: string,
+        requestLog: IRequestLog,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        const user = await this.userRepository.findOneById(userId);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                message: 'user.error.notFound',
+            });
+        } else if (user.status === EnumUserStatus.blocked) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatus_CODE_ERROR.statusInvalid,
+                message: 'user.error.statusInvalid',
+                _metadata: {
+                    customProperty: {
+                        messageProperties: {
+                            status: user.status.toLowerCase(),
+                        },
+                    },
+                },
+            });
+        }
+
+        const twoFactor =
+            await this.userRepository.findOneTwoFactorStatusByUserId(userId);
+        const isTwoFactorEnabled = Boolean(
+            twoFactor?.enabled && twoFactor.confirmedAt
+        );
+        if (!isTwoFactorEnabled) {
+            throw new BadRequestException({
+                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+                message: 'auth.error.twoFactorNotEnabled',
+            });
+        }
+
+        try {
+            await this.userRepository.disableTwoFactorByAdmin(
+                userId,
+                requestLog,
+                updatedBy
+            );
+
+            return {
+                data: undefined,
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
     async changePassword(
         userId: string,
         { newPassword, oldPassword }: UserChangePasswordRequestDto,
@@ -1215,6 +1272,33 @@ export class UserService implements IUserService {
                 _error: err,
             });
         }
+    }
+
+    async getTwoFactorStatus(
+        userId: string
+    ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>> {
+        const twoFactor =
+            await this.userRepository.findOneTwoFactorStatusByUserId(userId);
+
+        const isTwoFactorEnabled = Boolean(
+            twoFactor?.enabled && twoFactor.confirmedAt
+        );
+        const confirmedAt = twoFactor?.confirmedAt ?? undefined;
+
+        return {
+            data: {
+                isTwoFactorEnabled,
+                isTwoFactorPendingConfirmation:
+                    Boolean(twoFactor) &&
+                    !isTwoFactorEnabled &&
+                    !confirmedAt &&
+                    Boolean(twoFactor?.iv),
+                backupCodesRemaining: twoFactor?.backupCodes?.length ?? 0,
+                confirmedAt,
+                lastUsedAt: twoFactor?.lastUsedAt ?? undefined,
+                lastVerifiedAt: twoFactor?.lastVerifiedAt ?? undefined,
+            },
+        };
     }
 
     async setupTwoFactor(

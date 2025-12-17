@@ -11,6 +11,7 @@ import { UserTwoFactorRegenerateRequestDto } from '@modules/user/dtos/request/us
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorBackupCodesResponseDto } from '@modules/user/dtos/response/user.two-factor-backup-codes.response.dto';
+import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function UserUserDeleteSelfDoc(): MethodDecorator {
@@ -39,6 +40,22 @@ export function UserUserTwoFactorSetupDoc(): MethodDecorator {
         DocGuard({ role: true }),
         DocResponse('user.twoFactor.setup', {
             dto: UserTwoFactorSetupResponseDto,
+        })
+    );
+}
+
+export function UserUserTwoFactorStatusDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'Get current two-factor authentication status',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true }),
+        DocResponse('user.twoFactor.status', {
+            dto: UserTwoFactorStatusResponseDto,
         })
     );
 }

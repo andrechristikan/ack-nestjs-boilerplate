@@ -46,6 +46,7 @@ import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import {
     UserAdminCreateDoc,
+    UserAdminDisableTwoFactorDoc,
     UserAdminGetDoc,
     UserAdminListDoc,
     UserAdminUpdatePasswordDoc,
@@ -162,7 +163,7 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Patch('/update/:userId/status')
     async updateStatus(
-        @Param('userId', RequestRequiredPipe)
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
         @Body() body: UserUpdateStatusRequestDto,
@@ -193,13 +194,41 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Put('/update/:userId/password')
     async updatePassword(
-        @Param('userId', RequestRequiredPipe)
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.updatePasswordByAdmin(
+            userId,
+            {
+                ipAddress,
+                userAgent,
+            },
+            updatedBy
+        );
+    }
+
+    @UserAdminDisableTwoFactorDoc()
+    @Response('user.twoFactor.disable')
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/update/:userId/2fa/disable')
+    async disableTwoFactor(
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string,
+        @AuthJwtPayload('userId') updatedBy: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.disableTwoFactorByAdmin(
             userId,
             {
                 ipAddress,

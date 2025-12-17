@@ -734,12 +734,12 @@ TOTP-based 2FA adds a second verification step to login. Tokens are only issued 
 1. User logs in (credential or social).
 2. If 2FA is **disabled**, access/refresh tokens are returned immediately.
 3. If 2FA is **enabled**, response contains `challengeToken` + TTL; no tokens yet.
-4. User calls `/v1/user/login/2fa` with `challengeToken` and a TOTP code or backup code.
+4. User calls `/v1/user/verify/2fa` with `challengeToken` and a TOTP code or backup code.
 5. On success, tokens are issued and session stored in Redis + DB; backup codes are consumed on use.
 
 ### Endpoints
 - Public login: `POST /v1/user/login/credential`, `POST /v1/user/login/social/google|apple` → may return `challengeToken`.
-- Verify challenge: `POST /v1/user/login/2fa` (body: `challengeToken` + `code` or `backupCode`) → returns tokens.
+- Verify challenge: `POST /v1/user/verify/2fa` (body: `challengeToken` + `code` or `backupCode`) → returns tokens.
 - Authenticated management:
   - `POST /v1/user/2fa/setup` → get secret + otpauth URL.
   - `POST /v1/user/2fa/confirm` → enable 2FA and receive backup codes.

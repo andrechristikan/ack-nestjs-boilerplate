@@ -22,12 +22,13 @@
     "loginCredential": "Logged in successfully with credentials.",
     "loginWithSocialGoogle": "Logged in successfully with Google.",
     "loginWithSocialApple": "Logged in successfully with Apple.",
-    "loginTwoFactor": "Two-factor verification completed successfully.",
+    "verifyTwoFactor": "Two-factor verification completed successfully.",
     "refresh": "Token refreshed successfully.",
     "sendEmailVerification": "Verification email has been sent.",
     "verifyEmail": "Email has been successfully verified.",
     "twoFactor": {
         "setup": "Two-factor setup initialized. Use the provided secret to configure your authenticator.",
+        "status": "Two-factor authentication status retrieved successfully.",
         "confirm": "Two-factor authentication has been enabled.",
         "regenerate": "New backup codes generated successfully.",
         "disable": "Two-factor authentication has been disabled."

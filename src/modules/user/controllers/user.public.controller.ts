@@ -118,10 +118,10 @@ export class UserPublicController {
     }
 
     @UserPublicLoginTwoFactorVerifyDoc()
-    @Response('user.loginTwoFactor')
+    @Response('user.verifyTwoFactor')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/login/2fa')
+    @Post('/verify/2fa')
     async verifyLoginTwoFactor(
         @Body() body: UserTwoFactorVerifyLoginRequestDto,
         @RequestIPAddress() ipAddress: string,

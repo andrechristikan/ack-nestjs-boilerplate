@@ -44,6 +44,7 @@ import {
     EnumVerificationType,
     ForgotPassword,
     Prisma,
+    TwoFactor,
     User,
     UserMobileNumber,
     Verification,
@@ -63,8 +64,18 @@ export class UserRepository {
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
-        return this.paginationService.offset<IUser>(this.databaseService.user, {
+    ): Promise<
+        IResponsePagingReturn<
+            Omit<IUser, 'twoFactor'> & {
+                twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+            }
+        >
+    > {
+        return this.paginationService.offset<
+            Omit<IUser, 'twoFactor'> & {
+                twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+            }
+        >(this.databaseService.user, {
             ...params,
             where: {
                 ...where,
@@ -75,6 +86,12 @@ export class UserRepository {
             },
             include: {
                 role: true,
+                twoFactor: {
+                    select: {
+                        enabled: true,
+                        confirmedAt: true,
+                    },
+                },
             },
         });
     }
@@ -84,8 +101,18 @@ export class UserRepository {
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
-    ): Promise<IPaginationCursorReturn<IUser>> {
-        return this.paginationService.cursor<IUser>(this.databaseService.user, {
+    ): Promise<
+        IPaginationCursorReturn<
+            Omit<IUser, 'twoFactor'> & {
+                twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+            }
+        >
+    > {
+        return this.paginationService.cursor<
+            Omit<IUser, 'twoFactor'> & {
+                twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+            }
+        >(this.databaseService.user, {
             ...params,
             where: {
                 ...where,
@@ -97,6 +124,12 @@ export class UserRepository {
             },
             include: {
                 role: true,
+                twoFactor: {
+                    select: {
+                        enabled: true,
+                        confirmedAt: true,
+                    },
+                },
             },
         });
     }
@@ -129,12 +162,25 @@ export class UserRepository {
         });
     }
 
-    async findOneProfileById(id: string): Promise<IUserProfile | null> {
+    async findOneProfileById(
+        id: string
+    ): Promise<
+        | (Omit<IUserProfile, 'twoFactor'> & {
+              twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+          })
+        | null
+    > {
         return this.databaseService.user.findUnique({
             where: { id, deletedAt: null },
             include: {
                 role: true,
                 country: true,
+                twoFactor: {
+                    select: {
+                        enabled: true,
+                        confirmedAt: true,
+                    },
+                },
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -144,12 +190,25 @@ export class UserRepository {
         });
     }
 
-    async findOneActiveProfileById(id: string): Promise<IUserProfile | null> {
+    async findOneActiveProfileById(
+        id: string
+    ): Promise<
+        | (Omit<IUserProfile, 'twoFactor'> & {
+              twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+          })
+        | null
+    > {
         return this.databaseService.user.findUnique({
             where: { id, deletedAt: null, status: EnumUserStatus.active },
             include: {
                 role: true,
                 country: true,
+                twoFactor: {
+                    select: {
+                        enabled: true,
+                        confirmedAt: true,
+                    },
+                },
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -165,6 +224,32 @@ export class UserRepository {
             include: {
                 role: true,
                 twoFactor: true,
+            },
+        });
+    }
+
+    async findOneTwoFactorStatusByUserId(
+        userId: string
+    ): Promise<
+        Pick<
+            TwoFactor,
+            | 'enabled'
+            | 'confirmedAt'
+            | 'lastUsedAt'
+            | 'lastVerifiedAt'
+            | 'backupCodes'
+            | 'iv'
+        > | null
+    > {
+        return this.databaseService.twoFactor.findUnique({
+            where: { userId },
+            select: {
+                enabled: true,
+                confirmedAt: true,
+                lastUsedAt: true,
+                lastVerifiedAt: true,
+                backupCodes: true,
+                iv: true,
             },
         });
     }
@@ -272,6 +357,35 @@ export class UserRepository {
                     ipAddress: requestLog.ipAddress,
                     userAgent,
                     createdBy: userId,
+                },
+            }),
+        ]);
+
+        return twoFactor;
+    }
+
+    async disableTwoFactorByAdmin(
+        userId: string,
+        requestLog: IRequestLog,
+        updatedBy: string
+    ): Promise<IUserTwoFactor> {
+        const userAgent = this.databaseUtil.toPlainObject(requestLog.userAgent);
+        const [twoFactor] = await this.databaseService.$transaction([
+            this.databaseService.twoFactor.update({
+                where: { userId },
+                data: {
+                    enabled: false,
+                    backupCodes: [],
+                    updatedBy,
+                },
+            }),
+            this.databaseService.activityLog.create({
+                data: {
+                    userId,
+                    action: EnumActivityLogAction.userDisableTwoFactor,
+                    ipAddress: requestLog.ipAddress,
+                    userAgent,
+                    createdBy: updatedBy,
                 },
             }),
         ]);
