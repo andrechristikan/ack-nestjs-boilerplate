@@ -8,6 +8,7 @@ import { SessionCacheProvider } from '@modules/session/constants/session.constan
 import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomBytes } from 'crypto';
 import { authenticator } from 'otplib';
 
 @Injectable()
@@ -23,7 +24,6 @@ export class AuthTwoFactorService {
     private readonly backupCodesCount: number;
     private readonly backupCodesLength: number;
     private readonly encryptionKey?: string;
-    private readonly encryptionIv?: string;
 
     constructor(
         @Inject(SessionCacheProvider) private readonly cacheManager: Cache,
@@ -53,9 +53,6 @@ export class AuthTwoFactorService {
         this.encryptionKey = this.configService.get<string>(
             'auth.twoFactor.encryption.key'
         );
-        this.encryptionIv = this.configService.get<string>(
-            'auth.twoFactor.encryption.iv'
-        );
 
         authenticator.options = {
             step: this.step,
@@ -76,23 +73,28 @@ export class AuthTwoFactorService {
         return authenticator.check(code, secret);
     }
 
-    encryptSecret(secret: string): string {
-        this.ensureEncryption();
+    generateEncryptionIv(): string {
+        // Store as a tagged string so we can safely parse/extend formats later.
+        return `hex:${randomBytes(16).toString('hex')}`;
+    }
+
+    encryptSecret(secret: string, iv: string): string {
+        this.ensureEncryptionKey();
 
         return this.helperService.aes256Encrypt(
             secret,
             this.encryptionKey,
-            this.encryptionIv
+            iv
         );
     }
 
-    decryptSecret(secret: string): string {
-        this.ensureEncryption();
+    decryptSecret(secret: string, iv: string): string {
+        this.ensureEncryptionKey();
 
         return this.helperService.aes256Decrypt(
             secret,
             this.encryptionKey,
-            this.encryptionIv
+            iv
         );
     }
 
@@ -153,8 +155,8 @@ export class AuthTwoFactorService {
         return `${this.cachePrefixKey}:${token}`;
     }
 
-    private ensureEncryption(): void {
-        if (!this.encryptionKey || !this.encryptionIv) {
+    private ensureEncryptionKey(): void {
+        if (!this.encryptionKey) {
             throw new InternalServerErrorException({
                 statusCode: EnumAuthStatusCodeError.twoFactorConfigMissing,
                 message: 'auth.error.twoFactorConfigMissing',

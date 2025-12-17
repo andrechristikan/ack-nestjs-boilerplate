@@ -106,8 +106,11 @@ export class HelperService implements IHelperService {
      * @returns {string} Encrypted string
      */
     aes256Encrypt<T>(data: T, key: string, iv: string): string {
-        const cIv = enc.Utf8.parse(iv);
-        const cipher = AES.encrypt(JSON.stringify(data), key, {
+        const cIv = this.parseAesIv(iv);
+        // Derive a fixed-length 256-bit key to avoid CryptoJS edge cases with
+        // non-standard UTF-8 key byte lengths.
+        const cKey = SHA256(key);
+        const cipher = AES.encrypt(JSON.stringify(data), cKey, {
             mode: mode.CBC,
             padding: pad.Pkcs7,
             iv: cIv,
@@ -125,14 +128,20 @@ export class HelperService implements IHelperService {
      * @returns {T} Decrypted data
      */
     aes256Decrypt<T>(encrypted: string, key: string, iv: string): T {
-        const cIv = enc.Utf8.parse(iv);
-        const cipher = AES.decrypt(encrypted, key, {
+        const cIv = this.parseAesIv(iv);
+        const cKey = SHA256(key);
+
+        const decrypted = AES.decrypt(encrypted, cKey, {
             mode: mode.CBC,
             padding: pad.Pkcs7,
             iv: cIv,
-        });
+        }).toString(enc.Utf8);
 
-        return JSON.parse(cipher.toString(enc.Utf8));
+        if (!decrypted) {
+            throw new Error('AES-256-CBC decryption failed');
+        }
+
+        return JSON.parse(decrypted);
     }
 
     /**
@@ -143,6 +152,18 @@ export class HelperService implements IHelperService {
      */
     aes256Compare(aes1: string, aes2: string): boolean {
         return aes1 === aes2;
+    }
+
+    private parseAesIv(iv: string) {
+        if (!iv) {
+            return enc.Utf8.parse('');
+        } else if (iv.startsWith('hex:')) {
+            return enc.Hex.parse(iv.slice(4));
+        } else if (iv.startsWith('b64:')) {
+            return enc.Base64.parse(iv.slice(4));
+        }
+
+        return enc.Utf8.parse(iv);
     }
 
     /**

@@ -726,8 +726,9 @@ TOTP-based 2FA adds a second verification step to login. Tokens are only issued 
 ### Config
 - Configured in `src/configs/auth.config.ts` under `twoFactor`.
 - Key env vars:  
-  `AUTH_TWO_FACTOR_ISSUER`, `AUTH_TWO_FACTOR_LABEL`, `AUTH_TWO_FACTOR_DIGITS`, `AUTH_TWO_FACTOR_STEP`, `AUTH_TWO_FACTOR_WINDOW`, `AUTH_TWO_FACTOR_SECRET_LENGTH`, `AUTH_TWO_FACTOR_CHALLENGE_TTL_MS`, `AUTH_TWO_FACTOR_CACHE_PREFIX_KEY`, `AUTH_TWO_FACTOR_BACKUP_CODES_COUNT`, `AUTH_TWO_FACTOR_BACKUP_CODES_LENGTH`, `AUTH_TWO_FACTOR_ENCRYPTION_KEY`, `AUTH_TWO_FACTOR_ENCRYPTION_IV`.
-- Secrets are AES-encrypted (key/IV from env). Backup codes are SHA-256 hashed. Challenges live in cache with TTL.
+  `AUTH_TWO_FACTOR_ISSUER`, `AUTH_TWO_FACTOR_LABEL`, `AUTH_TWO_FACTOR_ENCRYPTION_KEY`.
+- Secrets are AES-encrypted (key from env + per-user IV stored in DB). Backup codes are SHA-256 hashed. Challenges live in cache with TTL.
+- Other 2FA tuning values (digits, step, window, secret length, challenge TTL, cache prefix, backup codes) are configured in code.
 
 ### Flow
 1. User logs in (credential or social).

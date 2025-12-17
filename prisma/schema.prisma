@@ -245,6 +245,7 @@ model TwoFactor {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
   userId         String   @unique @db.ObjectId
   secret         String
+  iv             String?
   backupCodes    String[] @default([])
   enabled        Boolean  @default(false)
   confirmedAt    DateTime?

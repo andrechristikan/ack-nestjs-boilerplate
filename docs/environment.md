@@ -142,16 +142,7 @@ QUEUE_REDIS_URL=redis://localhost:6379/1
 # Two-Factor Authentication
 AUTH_TWO_FACTOR_ISSUER=ACK
 AUTH_TWO_FACTOR_LABEL=ACK Auth
-AUTH_TWO_FACTOR_DIGITS=6
-AUTH_TWO_FACTOR_STEP=30
-AUTH_TWO_FACTOR_WINDOW=1
-AUTH_TWO_FACTOR_SECRET_LENGTH=32
-AUTH_TWO_FACTOR_CHALLENGE_TTL_MS=300000
-AUTH_TWO_FACTOR_CACHE_PREFIX_KEY=TwoFactor
-AUTH_TWO_FACTOR_BACKUP_CODES_COUNT=8
-AUTH_TWO_FACTOR_BACKUP_CODES_LENGTH=10
-AUTH_TWO_FACTOR_ENCRYPTION_KEY=your32charencryptionkeyhere
-AUTH_TWO_FACTOR_ENCRYPTION_IV=your16charivhere
+AUTH_TWO_FACTOR_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
 
 # Debug (Optional)
 SENTRY_DSN=
@@ -409,7 +400,7 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 
 ### Two-Factor Authentication Settings
 
-> **Note**: Two-factor settings are optional but required if 2FA is enabled. Encryption key/IV must be provided to protect TOTP secrets.
+> **Note**: Two-factor settings are optional but required if 2FA is enabled. The encryption key must be provided to protect TOTP secrets; the IV is generated per user and stored in the database. Other 2FA tuning values are configured in `src/configs/auth.config.ts`.
 
 **`AUTH_TWO_FACTOR_ISSUER`** *(optional)*  
 Issuer name displayed in authenticator apps.  
@@ -423,64 +414,10 @@ Account label displayed in authenticator apps.
 AUTH_TWO_FACTOR_LABEL=ACK Auth
 ```
 
-**`AUTH_TWO_FACTOR_DIGITS`** *(optional)*  
-Number of digits for TOTP codes (default 6).  
-```bash
-AUTH_TWO_FACTOR_DIGITS=6
-```
-
-**`AUTH_TWO_FACTOR_STEP`** *(optional)*  
-TOTP time step in seconds (default 30).  
-```bash
-AUTH_TWO_FACTOR_STEP=30
-```
-
-**`AUTH_TWO_FACTOR_WINDOW`** *(optional)*  
-Allowed window for clock drift (default 1).  
-```bash
-AUTH_TWO_FACTOR_WINDOW=1
-```
-
-**`AUTH_TWO_FACTOR_SECRET_LENGTH`** *(optional)*  
-Length of generated secrets (default 32).  
-```bash
-AUTH_TWO_FACTOR_SECRET_LENGTH=32
-```
-
-**`AUTH_TWO_FACTOR_CHALLENGE_TTL_MS`** *(optional)*  
-TTL in milliseconds for 2FA login challenges (default 300000).  
-```bash
-AUTH_TWO_FACTOR_CHALLENGE_TTL_MS=300000
-```
-
-**`AUTH_TWO_FACTOR_CACHE_PREFIX_KEY`** *(optional)*  
-Cache key prefix for storing challenges (default TwoFactor).  
-```bash
-AUTH_TWO_FACTOR_CACHE_PREFIX_KEY=TwoFactor
-```
-
-**`AUTH_TWO_FACTOR_BACKUP_CODES_COUNT`** *(optional)*  
-Number of backup codes generated (default 8).  
-```bash
-AUTH_TWO_FACTOR_BACKUP_CODES_COUNT=8
-```
-
-**`AUTH_TWO_FACTOR_BACKUP_CODES_LENGTH`** *(optional)*  
-Length of each backup code (default 10).  
-```bash
-AUTH_TWO_FACTOR_BACKUP_CODES_LENGTH=10
-```
-
 **`AUTH_TWO_FACTOR_ENCRYPTION_KEY`** *(required for 2FA)*  
-AES key used to encrypt TOTP secrets (32 chars for AES-256).  
+Secret used to derive an AES-256 key for encrypting TOTP secrets (recommended 32+ chars).  
 ```bash
-AUTH_TWO_FACTOR_ENCRYPTION_KEY=your32charencryptionkeyhere
-```
-
-**`AUTH_TWO_FACTOR_ENCRYPTION_IV`** *(required for 2FA)*  
-Initialization vector used for secret encryption (16 chars).  
-```bash
-AUTH_TWO_FACTOR_ENCRYPTION_IV=your16charivhere
+AUTH_TWO_FACTOR_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
 ```
 
 ### AWS Settings

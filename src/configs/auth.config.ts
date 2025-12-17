@@ -64,7 +64,6 @@ export interface IConfigAuth {
         };
         encryption: {
             key?: string;
-            iv?: string;
         };
     };
 }
@@ -133,29 +132,18 @@ export default registerAs(
         twoFactor: {
             issuer: process.env.AUTH_TWO_FACTOR_ISSUER ?? 'ACK',
             label: process.env.AUTH_TWO_FACTOR_LABEL ?? 'ACK Auth',
-            digits: Number.parseInt(process.env.AUTH_TWO_FACTOR_DIGITS ?? '6'),
-            step: Number.parseInt(process.env.AUTH_TWO_FACTOR_STEP ?? '30'),
-            window: Number.parseInt(process.env.AUTH_TWO_FACTOR_WINDOW ?? '1'),
-            secretLength: Number.parseInt(
-                process.env.AUTH_TWO_FACTOR_SECRET_LENGTH ?? '32'
-            ),
-            challengeTtlInMs: Number.parseInt(
-                process.env.AUTH_TWO_FACTOR_CHALLENGE_TTL_MS ?? `${5 * 60 * 1000}`
-            ),
-            cachePrefixKey: process.env.AUTH_TWO_FACTOR_CACHE_PREFIX_KEY
-                ? process.env.AUTH_TWO_FACTOR_CACHE_PREFIX_KEY
-                : 'TwoFactor',
+            digits: 6,
+            step: 30,
+            window: 1,
+            secretLength: 32,
+            challengeTtlInMs: 5 * 60 * 1000,
+            cachePrefixKey: 'TwoFactor',
             backupCodes: {
-                count: Number.parseInt(
-                    process.env.AUTH_TWO_FACTOR_BACKUP_CODES_COUNT ?? '8'
-                ),
-                length: Number.parseInt(
-                    process.env.AUTH_TWO_FACTOR_BACKUP_CODES_LENGTH ?? '10'
-                ),
+                count: 8,
+                length: 10,
             },
             encryption: {
                 key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY,
-                iv: process.env.AUTH_TWO_FACTOR_ENCRYPTION_IV,
             },
         },
     })

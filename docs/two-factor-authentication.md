@@ -4,7 +4,7 @@ This document describes the TOTP-based 2FA feature, configuration, endpoints, an
 
 ## Overview
 - Adds a second factor after primary login (credential or social).
-- TOTP secrets are AES-encrypted (key/IV from env). Backup codes are SHA-256 hashed.
+- TOTP secrets are AES-encrypted (key from env + per-user IV stored in DB). Backup codes are SHA-256 hashed.
 - Login issues a `challengeToken` when 2FA is enabled; JWTs are only issued after successful 2FA verification.
 - Challenges are cached with TTL; sessions continue to be stored in Redis + Mongo as with the core auth flow.
 
@@ -18,10 +18,9 @@ Location: `src/configs/auth.config.ts` under `twoFactor`.
 
 Environment variables (see `docs/environment.md` for defaults and descriptions):
 - `AUTH_TWO_FACTOR_ISSUER`, `AUTH_TWO_FACTOR_LABEL`
-- `AUTH_TWO_FACTOR_DIGITS`, `AUTH_TWO_FACTOR_STEP`, `AUTH_TWO_FACTOR_WINDOW`, `AUTH_TWO_FACTOR_SECRET_LENGTH`
-- `AUTH_TWO_FACTOR_CHALLENGE_TTL_MS`, `AUTH_TWO_FACTOR_CACHE_PREFIX_KEY`
-- `AUTH_TWO_FACTOR_BACKUP_CODES_COUNT`, `AUTH_TWO_FACTOR_BACKUP_CODES_LENGTH`
-- `AUTH_TWO_FACTOR_ENCRYPTION_KEY`, `AUTH_TWO_FACTOR_ENCRYPTION_IV` (required to encrypt secrets)
+- `AUTH_TWO_FACTOR_ENCRYPTION_KEY` (required to encrypt secrets)
+
+Other 2FA tuning values (digits, step, window, secret length, challenge TTL, cache prefix, backup codes) are configured in `src/configs/auth.config.ts`.
 
 ## Flow
 1) User submits primary login (credential or social).
@@ -62,11 +61,11 @@ Environment variables (see `docs/environment.md` for defaults and descriptions):
 - Challenge verification uses `UserTwoFactorVerifyLoginRequestDto` (`challengeToken` + `code` or `backupCode`).
 
 ## Security Notes
-- Secrets encrypted via `HelperService.aes256Encrypt` using `AUTH_TWO_FACTOR_ENCRYPTION_KEY/IV`.
+- Secrets encrypted via `HelperService.aes256Encrypt` using `AUTH_TWO_FACTOR_ENCRYPTION_KEY` and a unique IV per user (stored in `TwoFactor.iv`).
 - Backup codes stored hashed (SHA-256) and consumed on use.
-- Challenges cached with TTL (`AUTH_TWO_FACTOR_CHALLENGE_TTL_MS`) to prevent reuse.
+- Challenges cached with a TTL to prevent reuse.
 - Sessions still validated via jti match (Redis + DB) on every request; 2FA does not bypass session checks.
 
 ## Operational Tips
 - When running locally without JWKS, set `AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY`/`AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY` for token verification, or point JWKS URIs to `http://localhost:3011/.well-known/...` with Docker compose running.
-- Ensure `AUTH_TWO_FACTOR_ENCRYPTION_KEY` (32 chars) and `AUTH_TWO_FACTOR_ENCRYPTION_IV` (16 chars) are set before enabling 2FA; otherwise secret encryption will fail.
+- Ensure `AUTH_TWO_FACTOR_ENCRYPTION_KEY` is set (recommended 32+ chars) before enabling 2FA; the IV is generated per user during setup and stored in the database.

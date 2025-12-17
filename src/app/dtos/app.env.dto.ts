@@ -388,81 +388,11 @@ export class AppEnvDto {
     AUTH_TWO_FACTOR_LABEL?: string;
 
     /**
-     * Two-factor TOTP digits
-     */
-    @IsOptional()
-    @IsInt()
-    @Type(() => Number)
-    AUTH_TWO_FACTOR_DIGITS?: number;
-
-    /**
-     * Two-factor TOTP step (seconds)
-     */
-    @IsOptional()
-    @IsInt()
-    @Type(() => Number)
-    AUTH_TWO_FACTOR_STEP?: number;
-
-    /**
-     * Two-factor TOTP window
-     */
-    @IsOptional()
-    @IsInt()
-    @Type(() => Number)
-    AUTH_TWO_FACTOR_WINDOW?: number;
-
-    /**
-     * Two-factor secret length
-     */
-    @IsOptional()
-    @IsInt()
-    @Type(() => Number)
-    AUTH_TWO_FACTOR_SECRET_LENGTH?: number;
-
-    /**
-     * Two-factor challenge TTL (ms)
-     */
-    @IsOptional()
-    @IsInt()
-    @Type(() => Number)
-    AUTH_TWO_FACTOR_CHALLENGE_TTL_MS?: number;
-
-    /**
-     * Two-factor cache prefix
-     */
-    @IsOptional()
-    @IsString()
-    AUTH_TWO_FACTOR_CACHE_PREFIX_KEY?: string;
-
-    /**
-     * Two-factor backup codes count
-     */
-    @IsOptional()
-    @IsInt()
-    @Type(() => Number)
-    AUTH_TWO_FACTOR_BACKUP_CODES_COUNT?: number;
-
-    /**
-     * Two-factor backup codes length
-     */
-    @IsOptional()
-    @IsInt()
-    @Type(() => Number)
-    AUTH_TWO_FACTOR_BACKUP_CODES_LENGTH?: number;
-
-    /**
      * Two-factor encryption key
      */
     @IsOptional()
     @IsString()
     AUTH_TWO_FACTOR_ENCRYPTION_KEY?: string;
-
-    /**
-     * Two-factor encryption IV
-     */
-    @IsOptional()
-    @IsString()
-    AUTH_TWO_FACTOR_ENCRYPTION_IV?: string;
 
     /**
      * Redis server URL for caching

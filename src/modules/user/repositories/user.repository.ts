@@ -194,19 +194,22 @@ export class UserRepository {
 
     async upsertTwoFactorSecret(
         userId: string,
-        secret: string
+        secret: string,
+        iv: string
     ): Promise<IUserTwoFactor> {
         return this.databaseService.twoFactor.upsert({
             where: { userId },
             create: {
                 userId,
                 secret,
+                iv,
                 backupCodes: [],
                 enabled: false,
                 createdBy: userId,
             },
             update: {
                 secret,
+                iv,
                 backupCodes: [],
                 enabled: false,
                 confirmedAt: null,
