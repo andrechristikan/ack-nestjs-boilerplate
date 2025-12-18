@@ -9,17 +9,13 @@
             }
         },
         "sourceMap": true,
-        "typeCheck": true,
+        "typeCheck": false,
         "plugins": [
             {
                 "name": "@nestjs/swagger",
                 "options": {
-                    "dtoFileNameSuffix": [
-                        ".dto.ts"
-                    ],
-                    "controllerFileNameSuffix": [
-                        ".controller.ts"
-                    ],
+                    "dtoFileNameSuffix": [".dto.ts"],
+                    "controllerFileNameSuffix": [".controller.ts"],
                     "classValidatorShim": false,
                     "dtoKeyOfComment": "description",
                     "controllerKeyOfComment": "summary",

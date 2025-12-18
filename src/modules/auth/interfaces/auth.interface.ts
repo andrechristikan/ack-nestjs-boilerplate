@@ -1,5 +1,9 @@
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { EnumUserLoginFrom, EnumUserSignUpWith } from '@prisma/client';
+import {
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
+    EnumUserSignUpWith,
+} from '@prisma/client';
 
 export interface IAuthPassword {
     salt: string;
@@ -49,4 +53,15 @@ export interface IAuthTokenGenerate {
     tokens: AuthTokenResponseDto;
     jti: string;
     sessionId: string;
+}
+
+export interface IAuthTwoFactorChallengeCache {
+    userId: string;
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserLoginWith;
+}
+
+export interface IAuthTwoFactorBackupCodes {
+    codes: string[];
+    hashes: string[];
 }

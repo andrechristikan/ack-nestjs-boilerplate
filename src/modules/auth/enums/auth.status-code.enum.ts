@@ -5,4 +5,12 @@ export enum EnumAuthStatusCodeError {
     socialGoogleInvalid = 5123,
     socialAppleRequired = 5124,
     socialAppleInvalid = 5125,
+    twoFactorRequired = 5126,
+    twoFactorInvalid = 5127,
+    twoFactorChallengeInvalid = 5128,
+    twoFactorNotEnabled = 5129,
+    twoFactorAlreadyEnabled = 5130,
+    twoFactorBackupCodeInvalid = 5131,
+    twoFactorBackupCodeExhausted = 5132,
+    twoFactorConfigMissing = 5133,
 }

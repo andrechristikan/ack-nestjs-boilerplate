@@ -112,3 +112,20 @@ export function UserAdminUpdatePasswordDoc(): MethodDecorator {
         DocResponse('user.updatePassword')
     );
 }
+
+export function UserAdminDisableTwoFactorDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: "disable user's two-factor authentication",
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('user.twoFactor.disable')
+    );
+}

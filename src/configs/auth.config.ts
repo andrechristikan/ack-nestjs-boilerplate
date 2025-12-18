@@ -49,6 +49,23 @@ export interface IConfigAuth {
         header: string;
         cachePrefixKey: string;
     };
+    twoFactor: {
+        issuer: string;
+        label: string;
+        digits: number;
+        step: number;
+        window: number;
+        secretLength: number;
+        challengeTtlInMs: number;
+        cachePrefixKey: string;
+        backupCodes: {
+            count: number;
+            length: number;
+        };
+        encryption: {
+            key?: string;
+        };
+    };
 }
 
 export default registerAs(
@@ -111,6 +128,23 @@ export default registerAs(
         xApiKey: {
             header: 'x-api-key',
             cachePrefixKey: 'ApiKey',
+        },
+        twoFactor: {
+            issuer: process.env.AUTH_TWO_FACTOR_ISSUER ?? 'ACK',
+            label: process.env.AUTH_TWO_FACTOR_LABEL ?? 'ACK Auth',
+            digits: 6,
+            step: 30,
+            window: 1,
+            secretLength: 32,
+            challengeTtlInMs: 5 * 60 * 1000,
+            cachePrefixKey: 'TwoFactor',
+            backupCodes: {
+                count: 8,
+                length: 10,
+            },
+            encryption: {
+                key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY,
+            },
         },
     })
 );

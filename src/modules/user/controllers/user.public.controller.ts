@@ -18,6 +18,7 @@ import {
     AuthPublicLoginSocialGoogleDoc,
     UserPublicForgotPasswordDoc,
     UserPublicLoginCredentialDoc,
+    UserPublicLoginTwoFactorVerifyDoc,
     UserPublicResetPasswordDoc,
     UserPublicSendEmailVerificationDoc,
     UserPublicSignUpDoc,
@@ -29,8 +30,9 @@ import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.fo
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
+import { UserTwoFactorVerifyLoginRequestDto } from '@modules/user/dtos/request/user.two-factor-verify-login.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
-import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
+import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserService } from '@modules/user/services/user.service';
 import {
     Body,
@@ -62,7 +64,7 @@ export class UserPublicController {
         @Body() body: UserLoginRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginCredential(body, {
             ipAddress,
             userAgent,
@@ -80,7 +82,7 @@ export class UserPublicController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto,
         @Body() body: UserCreateSocialRequestDto
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginWithSocial(
             email,
             EnumUserLoginWith.socialGoogle,
@@ -103,7 +105,7 @@ export class UserPublicController {
         @Body() body: UserCreateSocialRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginWithSocial(
             email,
             EnumUserLoginWith.socialApple,
@@ -113,6 +115,22 @@ export class UserPublicController {
                 userAgent,
             }
         );
+    }
+
+    @UserPublicLoginTwoFactorVerifyDoc()
+    @Response('user.verifyTwoFactor')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/verify/2fa')
+    async verifyLoginTwoFactor(
+        @Body() body: UserTwoFactorVerifyLoginRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<UserLoginResponseDto>> {
+        return this.userService.verifyLoginTwoFactor(body, {
+            ipAddress,
+            userAgent,
+        });
     }
 
     @UserPublicSignUpDoc()

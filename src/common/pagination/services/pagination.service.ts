@@ -138,6 +138,7 @@ export class PaginationService implements IPaginationService {
             },
             where,
             select,
+            include,
             cursorField = PaginationDefaultCursorField,
             includeCount,
         } = args;
@@ -179,6 +180,7 @@ export class PaginationService implements IPaginationService {
                 skip: cursor ? 1 : 0,
                 select,
                 orderBy,
+                include,
             }),
         ];
 

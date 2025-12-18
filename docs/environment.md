@@ -31,6 +31,7 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
   - [Database Settings](#database-settings)
   - [Authentication Settings](#authentication-settings)
   - [Social Authentication Settings](#social-authentication-settings)
+  - [Two-Factor Authentication Settings](#two-factor-authentication-settings)
   - [AWS Settings](#aws-settings)
   - [Redis Settings](#redis-settings)
   - [Debug Settings](#debug-settings)
@@ -137,6 +138,11 @@ AWS_SES_REGION=ap-southeast-3
 # Redis
 CACHE_REDIS_URL=redis://localhost:6379/0
 QUEUE_REDIS_URL=redis://localhost:6379/1
+
+# Two-Factor Authentication
+AUTH_TWO_FACTOR_ISSUER=ACK
+AUTH_TWO_FACTOR_LABEL=ACK Auth
+AUTH_TWO_FACTOR_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
 
 # Debug (Optional)
 SENTRY_DSN=
@@ -390,6 +396,28 @@ AUTH_SOCIAL_APPLE_CLIENT_ID=
 Apple Sign In client ID.
 ```bash
 AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
+```
+
+### Two-Factor Authentication Settings
+
+> **Note**: Two-factor settings are optional but required if 2FA is enabled. The encryption key must be provided to protect TOTP secrets; the IV is generated per user and stored in the database. Other 2FA tuning values are configured in `src/configs/auth.config.ts`.
+
+**`AUTH_TWO_FACTOR_ISSUER`** *(optional)*  
+Issuer name displayed in authenticator apps.  
+```bash
+AUTH_TWO_FACTOR_ISSUER=ACK
+```
+
+**`AUTH_TWO_FACTOR_LABEL`** *(optional)*  
+Account label displayed in authenticator apps.  
+```bash
+AUTH_TWO_FACTOR_LABEL=ACK Auth
+```
+
+**`AUTH_TWO_FACTOR_ENCRYPTION_KEY`** *(required for 2FA)*  
+Secret used to derive an AES-256 key for encrypting TOTP secrets (recommended 32+ chars).  
+```bash
+AUTH_TWO_FACTOR_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
 ```
 
 ### AWS Settings

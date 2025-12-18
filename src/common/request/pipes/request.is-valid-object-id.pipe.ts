@@ -22,7 +22,7 @@ export class RequestIsValidObjectIdPipe implements PipeTransform {
         value: string,
         metadata: ArgumentMetadata
     ): Promise<string> {
-        if (!value || typeof value !== 'string' || isMongoId(value)) {
+        if (!value || typeof value !== 'string' || !isMongoId(value)) {
             throw new BadRequestException({
                 statusCode: EnumRequestStatusCodeError.validation,
                 message: 'request.error.isMongoId',

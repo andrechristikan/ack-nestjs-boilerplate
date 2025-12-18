@@ -374,6 +374,27 @@ export class AppEnvDto {
     AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID?: string;
 
     /**
+     * Two-factor authentication issuer (TOTP label)
+     */
+    @IsOptional()
+    @IsString()
+    AUTH_TWO_FACTOR_ISSUER?: string;
+
+    /**
+     * Two-factor authentication label (TOTP account label)
+     */
+    @IsOptional()
+    @IsString()
+    AUTH_TWO_FACTOR_LABEL?: string;
+
+    /**
+     * Two-factor encryption key
+     */
+    @IsOptional()
+    @IsString()
+    AUTH_TWO_FACTOR_ENCRYPTION_KEY?: string;
+
+    /**
      * Redis server URL for caching
      */
     @IsNotEmpty()

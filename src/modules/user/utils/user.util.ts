@@ -7,6 +7,7 @@ import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile
 import { UserDto } from '@modules/user/dtos/user.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import {
+    IUser,
     IUserForgotPasswordCreate,
     IUserMobileNumber,
     IUserProfile,
@@ -14,10 +15,18 @@ import {
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumVerificationType, PasswordHistory, User } from '@prisma/client';
+import { EnumVerificationType, PasswordHistory, TwoFactor, User } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { Duration } from 'luxon';
 import { Profanity } from '@2toad/profanity';
+
+type IUserWithTwoFactorFlag = Omit<IUser, 'twoFactor'> & {
+    twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+};
+
+type IUserProfileWithTwoFactorFlag = Omit<IUserProfile, 'twoFactor'> & {
+    twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+};
 
 @Injectable()
 export class UserUtil {
@@ -142,16 +151,34 @@ export class UserUtil {
         return this.profanity.exists(str);
     }
 
-    mapList(users: User[]): UserListResponseDto[] {
-        return plainToInstance(UserListResponseDto, users);
+    mapList(users: IUserWithTwoFactorFlag[]): UserListResponseDto[] {
+        const serialized = users.map(user => {
+            const { twoFactor, ...rest } = user;
+
+            return {
+                ...rest,
+                isTwoFactorEnabled: Boolean(
+                    twoFactor?.enabled && twoFactor?.confirmedAt
+                ),
+            };
+        });
+
+        return plainToInstance(UserListResponseDto, serialized);
     }
 
     mapOne(user: User): UserDto {
         return plainToInstance(UserDto, user);
     }
 
-    mapProfile(user: IUserProfile): UserProfileResponseDto {
-        return plainToInstance(UserProfileResponseDto, user);
+    mapProfile(user: IUserProfileWithTwoFactorFlag): UserProfileResponseDto {
+        const { twoFactor, ...rest } = user;
+
+        return plainToInstance(UserProfileResponseDto, {
+            ...rest,
+            isTwoFactorEnabled: Boolean(
+                twoFactor?.enabled && twoFactor?.confirmedAt
+            ),
+        });
     }
 
     mapMobileNumber(

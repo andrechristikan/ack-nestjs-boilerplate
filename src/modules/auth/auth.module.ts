@@ -5,6 +5,7 @@ import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthTwoFactorService } from '@modules/auth/services/auth-two-factor.service';
 import { SessionModule } from '@modules/session/session.module';
 
 @Global()
@@ -14,8 +15,9 @@ import { SessionModule } from '@modules/session/session.module';
         AuthJwtRefreshStrategy,
         AuthUtil,
         AuthService,
+        AuthTwoFactorService,
     ],
-    exports: [AuthUtil, AuthService],
+    exports: [AuthUtil, AuthService, AuthTwoFactorService],
     controllers: [],
     imports: [
         SessionModule,

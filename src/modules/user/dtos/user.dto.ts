@@ -35,6 +35,13 @@ export class UserDto extends DatabaseDto {
     isVerified: boolean;
 
     @ApiProperty({
+        required: true,
+        description: 'Whether the user has 2FA enabled',
+        example: false,
+    })
+    isTwoFactorEnabled: boolean;
+
+    @ApiProperty({
         required: false,
         example: faker.date.past(),
     })

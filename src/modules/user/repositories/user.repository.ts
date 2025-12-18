@@ -26,6 +26,7 @@ import {
     IUserForgotPasswordCreate,
     IUserLogin,
     IUserProfile,
+    IUserTwoFactor,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -43,6 +44,7 @@ import {
     EnumVerificationType,
     ForgotPassword,
     Prisma,
+    TwoFactor,
     User,
     UserMobileNumber,
     Verification,
@@ -62,8 +64,18 @@ export class UserRepository {
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
-        return this.paginationService.offset<IUser>(this.databaseService.user, {
+    ): Promise<
+        IResponsePagingReturn<
+            Omit<IUser, 'twoFactor'> & {
+                twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+            }
+        >
+    > {
+        return this.paginationService.offset<
+            Omit<IUser, 'twoFactor'> & {
+                twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+            }
+        >(this.databaseService.user, {
             ...params,
             where: {
                 ...where,
@@ -74,6 +86,12 @@ export class UserRepository {
             },
             include: {
                 role: true,
+                twoFactor: {
+                    select: {
+                        enabled: true,
+                        confirmedAt: true,
+                    },
+                },
             },
         });
     }
@@ -83,8 +101,18 @@ export class UserRepository {
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
-    ): Promise<IPaginationCursorReturn<IUser>> {
-        return this.paginationService.cursor<IUser>(this.databaseService.user, {
+    ): Promise<
+        IPaginationCursorReturn<
+            Omit<IUser, 'twoFactor'> & {
+                twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+            }
+        >
+    > {
+        return this.paginationService.cursor<
+            Omit<IUser, 'twoFactor'> & {
+                twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+            }
+        >(this.databaseService.user, {
             ...params,
             where: {
                 ...where,
@@ -96,6 +124,12 @@ export class UserRepository {
             },
             include: {
                 role: true,
+                twoFactor: {
+                    select: {
+                        enabled: true,
+                        confirmedAt: true,
+                    },
+                },
             },
         });
     }
@@ -123,16 +157,30 @@ export class UserRepository {
             where: { email, deletedAt: null },
             include: {
                 role: true,
+                twoFactor: true,
             },
         });
     }
 
-    async findOneProfileById(id: string): Promise<IUserProfile | null> {
+    async findOneProfileById(
+        id: string
+    ): Promise<
+        | (Omit<IUserProfile, 'twoFactor'> & {
+              twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+          })
+        | null
+    > {
         return this.databaseService.user.findUnique({
             where: { id, deletedAt: null },
             include: {
                 role: true,
                 country: true,
+                twoFactor: {
+                    select: {
+                        enabled: true,
+                        confirmedAt: true,
+                    },
+                },
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -142,12 +190,25 @@ export class UserRepository {
         });
     }
 
-    async findOneActiveProfileById(id: string): Promise<IUserProfile | null> {
+    async findOneActiveProfileById(
+        id: string
+    ): Promise<
+        | (Omit<IUserProfile, 'twoFactor'> & {
+              twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
+          })
+        | null
+    > {
         return this.databaseService.user.findUnique({
             where: { id, deletedAt: null, status: EnumUserStatus.active },
             include: {
                 role: true,
                 country: true,
+                twoFactor: {
+                    select: {
+                        enabled: true,
+                        confirmedAt: true,
+                    },
+                },
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -162,6 +223,33 @@ export class UserRepository {
             where: { id, deletedAt: null },
             include: {
                 role: true,
+                twoFactor: true,
+            },
+        });
+    }
+
+    async findOneTwoFactorStatusByUserId(
+        userId: string
+    ): Promise<
+        Pick<
+            TwoFactor,
+            | 'enabled'
+            | 'confirmedAt'
+            | 'lastUsedAt'
+            | 'lastVerifiedAt'
+            | 'backupCodes'
+            | 'iv'
+        > | null
+    > {
+        return this.databaseService.twoFactor.findUnique({
+            where: { userId },
+            select: {
+                enabled: true,
+                confirmedAt: true,
+                lastUsedAt: true,
+                lastVerifiedAt: true,
+                backupCodes: true,
+                iv: true,
             },
         });
     }
@@ -185,6 +273,160 @@ export class UserRepository {
             },
             include: {
                 user: true,
+            },
+        });
+    }
+
+    async upsertTwoFactorSecret(
+        userId: string,
+        secret: string,
+        iv: string
+    ): Promise<IUserTwoFactor> {
+        return this.databaseService.twoFactor.upsert({
+            where: { userId },
+            create: {
+                userId,
+                secret,
+                iv,
+                backupCodes: [],
+                enabled: false,
+                createdBy: userId,
+            },
+            update: {
+                secret,
+                iv,
+                backupCodes: [],
+                enabled: false,
+                confirmedAt: null,
+                updatedBy: userId,
+            },
+        });
+    }
+
+    async confirmTwoFactor(
+        userId: string,
+        backupCodes: string[],
+        requestLog: IRequestLog
+    ): Promise<IUserTwoFactor> {
+        const now = this.helperService.dateCreate();
+        const userAgent = this.databaseUtil.toPlainObject(requestLog.userAgent);
+
+        const [twoFactor] = await this.databaseService.$transaction([
+            this.databaseService.twoFactor.update({
+                where: { userId },
+                data: {
+                    enabled: true,
+                    confirmedAt: now,
+                    lastVerifiedAt: now,
+                    backupCodes,
+                    updatedBy: userId,
+                },
+            }),
+            this.databaseService.activityLog.create({
+                data: {
+                    userId,
+                    action: EnumActivityLogAction.userEnableTwoFactor,
+                    ipAddress: requestLog.ipAddress,
+                    userAgent,
+                    createdBy: userId,
+                },
+            }),
+        ]);
+
+        return twoFactor;
+    }
+
+    async disableTwoFactor(
+        userId: string,
+        requestLog: IRequestLog
+    ): Promise<IUserTwoFactor> {
+        const userAgent = this.databaseUtil.toPlainObject(requestLog.userAgent);
+        const [twoFactor] = await this.databaseService.$transaction([
+            this.databaseService.twoFactor.update({
+                where: { userId },
+                data: {
+                    enabled: false,
+                    backupCodes: [],
+                    updatedBy: userId,
+                },
+            }),
+            this.databaseService.activityLog.create({
+                data: {
+                    userId,
+                    action: EnumActivityLogAction.userDisableTwoFactor,
+                    ipAddress: requestLog.ipAddress,
+                    userAgent,
+                    createdBy: userId,
+                },
+            }),
+        ]);
+
+        return twoFactor;
+    }
+
+    async disableTwoFactorByAdmin(
+        userId: string,
+        requestLog: IRequestLog,
+        updatedBy: string
+    ): Promise<IUserTwoFactor> {
+        const userAgent = this.databaseUtil.toPlainObject(requestLog.userAgent);
+        const [twoFactor] = await this.databaseService.$transaction([
+            this.databaseService.twoFactor.update({
+                where: { userId },
+                data: {
+                    enabled: false,
+                    backupCodes: [],
+                    updatedBy,
+                },
+            }),
+            this.databaseService.activityLog.create({
+                data: {
+                    userId,
+                    action: EnumActivityLogAction.userDisableTwoFactor,
+                    ipAddress: requestLog.ipAddress,
+                    userAgent,
+                    createdBy: updatedBy,
+                },
+            }),
+        ]);
+
+        return twoFactor;
+    }
+
+    async updateTwoFactorBackupCodes(
+        userId: string,
+        backupCodes: string[],
+        requestLog: IRequestLog
+    ): Promise<IUserTwoFactor> {
+        const userAgent = this.databaseUtil.toPlainObject(requestLog.userAgent);
+        const [twoFactor] = await this.databaseService.$transaction([
+            this.databaseService.twoFactor.update({
+                where: { userId },
+                data: {
+                    backupCodes,
+                    updatedBy: userId,
+                },
+            }),
+            this.databaseService.activityLog.create({
+                data: {
+                    userId,
+                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                    ipAddress: requestLog.ipAddress,
+                    userAgent,
+                    createdBy: userId,
+                },
+            }),
+        ]);
+
+        return twoFactor;
+    }
+
+    async markTwoFactorUsed(userId: string): Promise<void> {
+        await this.databaseService.twoFactor.update({
+            where: { userId },
+            data: {
+                lastUsedAt: this.helperService.dateCreate(),
+                lastVerifiedAt: this.helperService.dateCreate(),
             },
         });
     }
