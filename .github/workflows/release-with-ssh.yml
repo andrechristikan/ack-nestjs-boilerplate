@@ -10,34 +10,6 @@ on:
 env:
     DOCKERFILE: ci/dockerfile
 
-# Required Variables (Repository Variables):
-# - DOCKER_REGISTRY_URL: Docker registry URL (e.g., docker.io or private registry)
-# - DOCKER_IMAGE_NAME: Docker image name (e.g., my-app)
-# - DOCKER_CONTAINER_NAME: Docker container name (e.g., apis)
-# - DOCKER_CONTAINER_PORT: Docker container port (e.g., 8080)
-#
-# Required Secrets (Repository Secrets - Grouped by Environment):
-#
-# Shared Secrets:
-# - SSH_PORT: SSH port (e.g., 22)
-# - DOCKER_USERNAME: Docker registry username
-# - DOCKER_PASSWORD: Docker registry password or token
-#
-# Production Environment (PROD_* prefix):
-# - PROD_SSH_HOST: SSH host/IP for production (e.g., prod.example.com)
-# - PROD_SSH_USER: SSH username for production (e.g., ec2-user)
-# - PROD_SSH_PRIVATE_KEY: SSH private key for production (multiline format)
-#
-# Development Environment (DEV_* prefix):
-# - DEV_SSH_HOST: SSH host/IP for development (e.g., dev.example.com)
-# - DEV_SSH_USER: SSH username for development (e.g., ec2-user)
-# - DEV_SSH_PRIVATE_KEY: SSH private key for development (multiline format)
-#
-# Staging Environment (STAGING_* prefix):
-# - STAGING_SSH_HOST: SSH host/IP for staging (e.g., staging.example.com)
-# - STAGING_SSH_USER: SSH username for staging (e.g., ec2-user)
-# - STAGING_SSH_PRIVATE_KEY: SSH private key for staging (multiline format)
-
 jobs:
     build_image:
         runs-on: ubuntu-latest
@@ -91,6 +63,12 @@ jobs:
                   docker tag ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }} ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:sha-${{ steps.git.outputs.short_sha }}
                   docker push ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:sha-${{ steps.git.outputs.short_sha }}
                   docker push ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }}
+                  
+                  # Push latest tag only for production
+                  if [ "${{ matrix.env }}" = "production" ]; then
+                    docker tag ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }} ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:latest
+                    docker push ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:latest
+                  fi
 
     deploy:
         needs: [build_image]
@@ -101,31 +79,45 @@ jobs:
                 include:
                     - branch: main
                       env: production
-                      ssh_host: ${{ secrets.PROD_SSH_HOST }}
-                      ssh_user: ${{ secrets.PROD_SSH_USER }}
-                      ssh_key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
                     - branch: development
                       env: development
-                      ssh_host: ${{ secrets.DEV_SSH_HOST }}
-                      ssh_user: ${{ secrets.DEV_SSH_USER }}
-                      ssh_key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
                     - branch: staging
                       env: staging
-                      ssh_host: ${{ secrets.STAGING_SSH_HOST }}
-                      ssh_user: ${{ secrets.STAGING_SSH_USER }}
-                      ssh_key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
 
         steps:
             - name: Checkout
               uses: actions/checkout@v6
 
+            - name: Set SSH variables
+              if: ${{ github.ref_name == matrix.branch }}
+              run: |
+                  if [ "${{ matrix.env }}" = "production" ]; then
+                    echo "SSH_HOST=${{ secrets.PROD_SSH_HOST }}" >> $GITHUB_ENV
+                    echo "SSH_USER=${{ secrets.PROD_SSH_USER }}" >> $GITHUB_ENV
+                    echo "SSH_KEY<<EOF" >> $GITHUB_ENV
+                    echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
+                    echo "EOF" >> $GITHUB_ENV
+                  elif [ "${{ matrix.env }}" = "development" ]; then
+                    echo "SSH_HOST=${{ secrets.DEV_SSH_HOST }}" >> $GITHUB_ENV
+                    echo "SSH_USER=${{ secrets.DEV_SSH_USER }}" >> $GITHUB_ENV
+                    echo "SSH_KEY<<EOF" >> $GITHUB_ENV
+                    echo "${{ secrets.DEV_SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
+                    echo "EOF" >> $GITHUB_ENV
+                  elif [ "${{ matrix.env }}" = "staging" ]; then
+                    echo "SSH_HOST=${{ secrets.STAGING_SSH_HOST }}" >> $GITHUB_ENV
+                    echo "SSH_USER=${{ secrets.STAGING_SSH_USER }}" >> $GITHUB_ENV
+                    echo "SSH_KEY<<EOF" >> $GITHUB_ENV
+                    echo "${{ secrets.STAGING_SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
+                    echo "EOF" >> $GITHUB_ENV
+                  fi
+
             - name: Deploy via SSH
               if: ${{ github.ref_name == matrix.branch }}
               uses: appleboy/ssh-action@master
               with:
-                  host: ${{ matrix.ssh_host }}
-                  username: ${{ matrix.ssh_user }}
-                  key: ${{ matrix.ssh_key }}
+                  host: ${{ env.SSH_HOST }}
+                  username: ${{ env.SSH_USER }}
+                  key: ${{ env.SSH_KEY }}
                   port: ${{ secrets.SSH_PORT }}
                   script: |
                       docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} ${{ vars.DOCKER_REGISTRY_URL }}
@@ -142,29 +134,46 @@ jobs:
             matrix:
                 include:
                     - branch: main
-                      ssh_host: ${{ secrets.PROD_SSH_HOST }}
-                      ssh_user: ${{ secrets.PROD_SSH_USER }}
-                      ssh_key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+                      env: production
                     - branch: development
-                      ssh_host: ${{ secrets.DEV_SSH_HOST }}
-                      ssh_user: ${{ secrets.DEV_SSH_USER }}
-                      ssh_key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
+                      env: development
                     - branch: staging
-                      ssh_host: ${{ secrets.STAGING_SSH_HOST }}
-                      ssh_user: ${{ secrets.STAGING_SSH_USER }}
-                      ssh_key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+                      env: staging
 
         steps:
             - name: Checkout
               uses: actions/checkout@v6
 
+            - name: Set SSH variables
+              if: ${{ github.ref_name == matrix.branch }}
+              run: |
+                  if [ "${{ matrix.env }}" = "production" ]; then
+                    echo "SSH_HOST=${{ secrets.PROD_SSH_HOST }}" >> $GITHUB_ENV
+                    echo "SSH_USER=${{ secrets.PROD_SSH_USER }}" >> $GITHUB_ENV
+                    echo "SSH_KEY<<EOF" >> $GITHUB_ENV
+                    echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
+                    echo "EOF" >> $GITHUB_ENV
+                  elif [ "${{ matrix.env }}" = "development" ]; then
+                    echo "SSH_HOST=${{ secrets.DEV_SSH_HOST }}" >> $GITHUB_ENV
+                    echo "SSH_USER=${{ secrets.DEV_SSH_USER }}" >> $GITHUB_ENV
+                    echo "SSH_KEY<<EOF" >> $GITHUB_ENV
+                    echo "${{ secrets.DEV_SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
+                    echo "EOF" >> $GITHUB_ENV
+                  elif [ "${{ matrix.env }}" = "staging" ]; then
+                    echo "SSH_HOST=${{ secrets.STAGING_SSH_HOST }}" >> $GITHUB_ENV
+                    echo "SSH_USER=${{ secrets.STAGING_SSH_USER }}" >> $GITHUB_ENV
+                    echo "SSH_KEY<<EOF" >> $GITHUB_ENV
+                    echo "${{ secrets.STAGING_SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
+                    echo "EOF" >> $GITHUB_ENV
+                  fi
+
             - name: Clean Docker Images
               if: ${{ github.ref_name == matrix.branch }}
               uses: appleboy/ssh-action@master
               with:
-                  host: ${{ matrix.ssh_host }}
-                  username: ${{ matrix.ssh_user }}
-                  key: ${{ matrix.ssh_key }}
+                  host: ${{ env.SSH_HOST }}
+                  username: ${{ env.SSH_USER }}
+                  key: ${{ env.SSH_KEY }}
                   port: ${{ secrets.SSH_PORT }}
                   script: |
                       docker image prune --force

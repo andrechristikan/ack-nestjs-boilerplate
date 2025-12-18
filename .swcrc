@@ -13,7 +13,7 @@
         ".warmup",
         ".nyc_output",
         "src/metadata.ts",
-        "src/swagger.json",
+        "swagger.json",
         "generated"
     ],
     "jsc": {
@@ -28,7 +28,9 @@
             "@router": ["src/router/router.module.ts"],
             "@workers/*": ["src/worker/*"],
             "@migration/*": ["src/migration/*"],
-            "@test/*": ["test/*"]
+            "@test/*": ["test/*"],
+            "@generated/*": ["generated/*"],
+            "@prisma/client": ["generated/prisma-client"]
         },
         "target": "esnext",
         "parser": {

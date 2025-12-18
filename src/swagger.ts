@@ -12,14 +12,17 @@ export default async function (app: NestApplication): Promise<void> {
 
     const env: string = configService.get<string>('app.env')!;
     const appName: string = configService.get<string>('app.name');
+    const appVersion: string = configService.get<string>('app.version');
+    const appUrl: string = configService.get<string>('app.url')!;
+
+    const appAuthorName: string = configService.get<string>('app.author.name')!;
+    const appAuthorEmail: string =
+        configService.get<string>('app.author.email')!;
+
     const docName: string = configService.get<string>('doc.name')!;
     const docDesc: string = configService.get<string>('doc.description')!;
-    const docVersion: string = configService.get<string>('app.version')!;
+    const docVersion: string = configService.get<string>('doc.version')!;
     const docPrefix: string = configService.get<string>('doc.prefix')!;
-    const docUrl: string = configService.get<string>('app.url')!;
-    const docAuthorName: string = configService.get<string>('app.author.name')!;
-    const docAuthorEmail: string =
-        configService.get<string>('app.author.email')!;
 
     const logger = new Logger(`${appName}-Doc`);
 
@@ -27,7 +30,8 @@ export default async function (app: NestApplication): Promise<void> {
         const documentBuild = new DocumentBuilder()
             .setTitle(docName)
             .setDescription(docDesc)
-            .setVersion(docVersion)
+            .setVersion(appVersion)
+            .setOpenAPIVersion(docVersion)
             .setDescription(
                 messageService.setMessage('app.description.swagger', {
                     properties: {
@@ -35,7 +39,7 @@ export default async function (app: NestApplication): Promise<void> {
                     },
                 })
             )
-            .setContact(docAuthorName, docUrl, docAuthorEmail)
+            .setContact(appAuthorName, appUrl, appAuthorEmail)
             .addServer('/')
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
@@ -64,7 +68,7 @@ export default async function (app: NestApplication): Promise<void> {
         });
 
         try {
-            writeFileSync('src/swagger.json', JSON.stringify(document));
+            writeFileSync('generated/swagger.json', JSON.stringify(document));
         } catch {}
 
         SwaggerModule.setup(docPrefix, app, document, {

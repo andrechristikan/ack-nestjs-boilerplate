@@ -1,4 +1,4 @@
-import { ApiHideProperty, OmitType } from '@nestjs/swagger';
+import { ApiHideProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { UserDto } from '@modules/user/dtos/user.dto';
 import {
@@ -8,20 +8,7 @@ import {
     EnumUserSignUpWith,
 } from '@prisma/client';
 
-export class UserListResponseDto extends OmitType(UserDto, [
-    'passwordExpired',
-    'passwordCreated',
-    'passwordAttempt',
-    'signUpDate',
-    'signUpFrom',
-    'signUpWith',
-    'salt',
-    'gender',
-    'lastLoginAt',
-    'lastIPAddress',
-    'lastLoginFrom',
-    'lastLoginWith',
-] as const) {
+export class UserListResponseDto extends UserDto {
     @ApiHideProperty()
     @Exclude()
     passwordExpired?: Date;

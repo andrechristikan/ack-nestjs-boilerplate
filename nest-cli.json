@@ -1,28 +1,19 @@
 {
+    "$schema": "https://json.schemastore.org/nest-cli",
     "collection": "@nestjs/schematics",
     "sourceRoot": "src",
     "compilerOptions": {
+        "deleteOutDir": true,
+        "watchAssets": true,
+        "typeCheck": true,
         "builder": {
             "type": "swc",
             "options": {
-                "swcrcPath": ".swcrc"
+                "swcrcPath": ".swcrc",
+                "outDir": "dist"
             }
         },
-        "sourceMap": true,
-        "typeCheck": false,
-        "plugins": [
-            {
-                "name": "@nestjs/swagger",
-                "options": {
-                    "dtoFileNameSuffix": [".dto.ts"],
-                    "controllerFileNameSuffix": [".controller.ts"],
-                    "classValidatorShim": false,
-                    "dtoKeyOfComment": "description",
-                    "controllerKeyOfComment": "summary",
-                    "introspectComments": true
-                }
-            }
-        ],
+        "plugins": [],
         "assets": [
             {
                 "include": "languages/**/*",
@@ -32,9 +23,7 @@
                 "include": "**/**/templates/*",
                 "outDir": "dist"
             }
-        ],
-        "deleteOutDir": true,
-        "watchAssets": true
+        ]
     },
     "projects": {
         "app": {

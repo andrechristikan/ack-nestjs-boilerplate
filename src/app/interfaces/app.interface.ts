@@ -10,4 +10,5 @@ export interface IAppException<T> {
     data?: T;
     metadata?: Record<string, string | number>;
     errors?: IMessageValidationError[];
+    _error?: unknown;
 }
