@@ -5,6 +5,7 @@ import {
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import {
@@ -65,7 +66,8 @@ export class SessionAdminController {
             availableOrderBy: SessionDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams,
-        @Param('userId', RequestRequiredPipe) userId: string
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         return this.sessionService.getListOffsetByUser(userId, pagination);
     }
@@ -89,7 +91,8 @@ export class SessionAdminController {
     @ApiKeyProtected()
     @Delete('/revoke/:sessionId')
     async revoke(
-        @Param('userId', RequestRequiredPipe) userId: string,
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string,
         @Param('sessionId', RequestRequiredPipe) sessionId: string,
         @AuthJwtPayload('userId') revokeBy: string,
         @RequestIPAddress() ipAddress: string,

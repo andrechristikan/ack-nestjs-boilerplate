@@ -282,8 +282,6 @@ export class UserSharedController {
         });
     }
 
-    // TODO: Verify number implementation, but which provider?
-
     @UserSharedClaimUsernameDoc()
     @Response('user.claimUsername')
     @TermPolicyAcceptanceProtected()
@@ -304,4 +302,6 @@ export class UserSharedController {
             userAgent,
         });
     }
+
+    // TODO: Verify number implementation, but which provider?
 }
