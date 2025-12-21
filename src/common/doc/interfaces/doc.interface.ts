@@ -45,6 +45,7 @@ export type IDocRequestFileOptions<T = unknown> = Omit<
 export interface IDocGuardOptions {
     policy?: boolean;
     role?: boolean;
+    termPolicy?: boolean;
 }
 
 export interface IDocResponseOptions<T = unknown> {

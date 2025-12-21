@@ -5,6 +5,7 @@ import { DatabaseDto } from '@common/database/dtos/database.dto';
 import {
     EnumUserGender,
     EnumUserLoginFrom,
+    EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
@@ -12,6 +13,7 @@ import {
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { UserTermPolicyDto } from '@modules/user/dtos/user.term-policy.dto';
+import { UserTwoFactorDto } from '@modules/user/dtos/user.two-factor.dto';
 
 export class UserDto extends DatabaseDto {
     @ApiProperty({
@@ -100,10 +102,6 @@ export class UserDto extends DatabaseDto {
     })
     signUpWith: EnumUserSignUpWith;
 
-    @ApiHideProperty()
-    @Exclude()
-    salt?: string;
-
     @ApiProperty({
         required: true,
         example: EnumUserStatus.active,
@@ -147,10 +145,10 @@ export class UserDto extends DatabaseDto {
 
     @ApiProperty({
         required: false,
-        enum: EnumUserSignUpWith,
-        example: EnumUserSignUpWith.credential,
+        enum: EnumUserLoginWith,
+        example: EnumUserLoginWith.credential,
     })
-    lastLoginWith?: EnumUserSignUpWith;
+    lastLoginWith?: EnumUserLoginWith;
 
     @ApiProperty({
         required: true,
@@ -167,4 +165,12 @@ export class UserDto extends DatabaseDto {
     })
     @Type(() => AwsS3Dto)
     photo?: AwsS3Dto;
+
+    @ApiProperty({
+        required: true,
+        type: UserTwoFactorDto,
+        oneOf: [{ $ref: getSchemaPath(UserTwoFactorDto) }],
+    })
+    @Type(() => UserTwoFactorDto)
+    twoFactor: UserTwoFactorDto;
 }

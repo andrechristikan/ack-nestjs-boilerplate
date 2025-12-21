@@ -4,12 +4,14 @@ import {
     EnumUserLoginWith,
     EnumVerificationType,
     Role,
+    TwoFactor,
     User,
     UserMobileNumber,
 } from '@prisma/client';
 
 export interface IUser extends User {
     role: Role;
+    twoFactor: TwoFactor;
 }
 
 export interface IUserMobileNumber extends UserMobileNumber {

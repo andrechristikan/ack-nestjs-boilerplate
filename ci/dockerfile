@@ -6,7 +6,6 @@ ENV NODE_ENV=${NODE_ENV}
 RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
-
 # Stage to install all dependencies and build the app
 FROM base AS builder
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

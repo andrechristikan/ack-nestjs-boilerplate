@@ -22,6 +22,7 @@ import {
     UserPublicSendEmailVerificationDoc,
     UserPublicSignUpDoc,
     UserPublicVerifyEmailDoc,
+    UserPublicVerifyTwoFactorDoc,
 } from '@modules/user/docs/user.public.doc';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
@@ -29,7 +30,9 @@ import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.fo
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
+import { UserTwoFactorVerifyRequestDto } from '@modules/user/dtos/request/user.two-factor-verify.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
+import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { UserService } from '@modules/user/services/user.service';
 import {
@@ -62,7 +65,7 @@ export class UserPublicController {
         @Body() body: UserLoginRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginCredential(body, {
             ipAddress,
             userAgent,
@@ -80,7 +83,7 @@ export class UserPublicController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto,
         @Body() body: UserCreateSocialRequestDto
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginWithSocial(
             email,
             EnumUserLoginWith.socialGoogle,
@@ -103,7 +106,7 @@ export class UserPublicController {
         @Body() body: UserCreateSocialRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginWithSocial(
             email,
             EnumUserLoginWith.socialApple,
@@ -195,4 +198,22 @@ export class UserPublicController {
             userAgent,
         });
     }
+
+    @UserPublicVerifyTwoFactorDoc()
+    @Response('user.verifyTwoFactor')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/verify/2fa')
+    async verifyLoginTwoFactor(
+        @Body() body: UserTwoFactorVerifyRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+        return this.userService.verifyTwoFactor(body, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    // TODO: Implement required setup 2FA flow during login
 }

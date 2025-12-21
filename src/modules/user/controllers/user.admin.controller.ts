@@ -48,6 +48,7 @@ import {
     UserAdminCreateDoc,
     UserAdminGetDoc,
     UserAdminListDoc,
+    UserAdminResetTwoFactorDoc,
     UserAdminUpdatePasswordDoc,
     UserAdminUpdateStatusDoc,
 } from '@modules/user/docs/user.admin.doc';
@@ -209,7 +210,31 @@ export class UserAdminController {
         );
     }
 
-    // TODO-1: Create example import and export endpoints use CSV file
+    @UserAdminResetTwoFactorDoc()
+    @Response('user.twoFactor.resetByAdmin')
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/update/:userId/2fa/reset')
+    async resetTwoFactorByAdmin(
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string,
+        @AuthJwtPayload('userId') updatedBy: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.resetTwoFactorByAdmin(userId, updatedBy, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    // TODO: 1 Create example import and export endpoints use CSV file
     // import can be used to create multiple users at once
     // export can be used to export user list to CSV file
     // import using 2 methods: file upload and presigned URL upload

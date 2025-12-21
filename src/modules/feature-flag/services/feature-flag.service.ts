@@ -14,6 +14,7 @@ import { FeatureFlagRepository } from '@modules/feature-flag/repositories/featur
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import {
     BadRequestException,
+    HttpException,
     Injectable,
     InternalServerErrorException,
     NotFoundException,
@@ -88,7 +89,11 @@ export class FeatureFlagService implements IFeatureFlagService {
                     });
                 }
             }
-        } catch {
+        } catch (error: unknown) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+
             throw new ServiceUnavailableException({
                 statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
                 message: 'featureFlag.error.serviceUnavailable',

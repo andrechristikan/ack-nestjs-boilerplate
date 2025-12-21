@@ -10,7 +10,9 @@ import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.fo
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
+import { UserTwoFactorVerifyRequestDto } from '@modules/user/dtos/request/user.two-factor-verify.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
+import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
@@ -27,7 +29,7 @@ export function UserPublicLoginCredentialDoc(): MethodDecorator {
             dto: UserLoginRequestDto,
         }),
         DocResponse('user.loginCredential', {
-            dto: UserTokenResponseDto,
+            dto: UserLoginResponseDto,
         })
     );
 }
@@ -39,7 +41,7 @@ export function AuthPublicLoginSocialGoogleDoc(): MethodDecorator {
         }),
         DocAuth({ xApiKey: true, google: true }),
         DocResponse('auth.loginWithSocialGoogle', {
-            dto: UserTokenResponseDto,
+            dto: UserLoginResponseDto,
         })
     );
 }
@@ -51,7 +53,7 @@ export function AuthPublicLoginSocialAppleDoc(): MethodDecorator {
         }),
         DocAuth({ xApiKey: true, apple: true }),
         DocResponse('auth.loginWithSocialApple', {
-            dto: UserTokenResponseDto,
+            dto: UserLoginResponseDto,
         })
     );
 }
@@ -135,5 +137,23 @@ export function UserPublicResetPasswordDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocResponse('user.resetPassword')
+    );
+}
+
+export function UserPublicVerifyTwoFactorDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'User verify two factor during login',
+        }),
+        DocAuth({
+            xApiKey: true,
+        }),
+        DocRequest({
+            bodyType: EnumDocRequestBodyType.json,
+            dto: UserTwoFactorVerifyRequestDto,
+        }),
+        DocResponse('user.verifyTwoFactor', {
+            dto: UserTokenResponseDto,
+        })
     );
 }

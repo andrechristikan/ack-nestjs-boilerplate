@@ -42,10 +42,16 @@ import {
 } from '@modules/user/dtos/response/user.check.response.dto';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { EnumUserLoginWith } from '@prisma/client';
+import { UserTwoFactorVerifyRequestDto } from '@modules/user/dtos/request/user.two-factor-verify.request.dto';
+import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 
 export interface IUserService {
     validateUserGuard(
@@ -146,13 +152,13 @@ export interface IUserService {
     loginCredential(
         { email, password, from }: UserLoginRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTokenResponseDto>>;
+    ): Promise<IResponseReturn<UserLoginResponseDto>>;
     loginWithSocial(
         email: string,
         loginWith: EnumUserLoginWith,
         { from, ...others }: UserCreateSocialRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTokenResponseDto>>;
+    ): Promise<IResponseReturn<UserLoginResponseDto>>;
     refreshToken(
         user: IUser,
         refreshToken: string,
@@ -176,6 +182,37 @@ export interface IUserService {
     ): Promise<IResponseReturn<void>>;
     resetPassword(
         { newPassword, token }: UserForgotPasswordResetRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
+    verifyTwoFactor(
+        {
+            challengeToken,
+            code,
+            backupCode,
+            method,
+        }: UserTwoFactorVerifyRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTokenResponseDto>>;
+    getTwoFactorStatus(
+        user: IUser
+    ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>>;
+    enableTwoFactor(
+        user: IUser,
+        { code }: UserTwoFactorEnableRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
+    disableTwoFactor(
+        user: IUser,
+        { code, backupCode, method }: UserTwoFactorDisableRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
+    regenerateTwoFactorBackupCodes(
+        user: IUser,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
+    resetTwoFactorByAdmin(
+        userId: string,
+        updatedBy: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
 }

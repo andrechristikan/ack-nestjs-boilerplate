@@ -171,6 +171,9 @@ importers:
             nestjs-real-ip:
                 specifier: ^3.0.1
                 version: 3.0.1(@nestjs/common@11.1.9(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))
+            otplib:
+                specifier: ^12.0.1
+                version: 12.0.1
             papaparse:
                 specifier: ^5.5.3
                 version: 5.5.3
@@ -2970,6 +2973,36 @@ packages:
         engines: { node: ^18.19.0 || >=20.6.0 }
         peerDependencies:
             '@opentelemetry/api': ^1.1.0
+
+    '@otplib/core@12.0.1':
+        resolution:
+            {
+                integrity: sha512-4sGntwbA/AC+SbPhbsziRiD+jNDdIzsZ3JUyfZwjtKyc/wufl1pnSIaG4Uqx8ymPagujub0o92kgBnB89cuAMA==,
+            }
+
+    '@otplib/plugin-crypto@12.0.1':
+        resolution:
+            {
+                integrity: sha512-qPuhN3QrT7ZZLcLCyKOSNhuijUi9G5guMRVrxq63r9YNOxxQjPm59gVxLM+7xGnHnM6cimY57tuKsjK7y9LM1g==,
+            }
+
+    '@otplib/plugin-thirty-two@12.0.1':
+        resolution:
+            {
+                integrity: sha512-MtT+uqRso909UkbrrYpJ6XFjj9D+x2Py7KjTO9JDPhL0bJUYVu5kFP4TFZW4NFAywrAtFRxOVY261u0qwb93gA==,
+            }
+
+    '@otplib/preset-default@12.0.1':
+        resolution:
+            {
+                integrity: sha512-xf1v9oOJRyXfluBhMdpOkr+bsE+Irt+0D5uHtvg6x1eosfmHCsCC6ej/m7FXiWqdo0+ZUI6xSKDhJwc8yfiOPQ==,
+            }
+
+    '@otplib/preset-v11@12.0.1':
+        resolution:
+            {
+                integrity: sha512-9hSetMI7ECqbFiKICrNa4w70deTUfArtwXykPUvSHWOdzOlfa9ajglu7mNCntlvxycTiOAXkQGwjQCzzDEMRMg==,
+            }
 
     '@paralleldrive/cuid2@2.3.1':
         resolution:
@@ -8201,6 +8234,12 @@ packages:
             }
         engines: { node: '>=10' }
 
+    otplib@12.0.1:
+        resolution:
+            {
+                integrity: sha512-xDGvUOQjop7RDgxTQ+o4pOol0/3xSZzawTiPKRrHnQWAy0WjhNs/5HdIDJCrqC4MBynmjXgULc6YfioaxZeFgg==,
+            }
+
     p-cancelable@3.0.0:
         resolution:
             {
@@ -9440,6 +9479,13 @@ packages:
                 integrity: sha512-te/NtwBwfiNRLf9Ijqx3T0nlqZiQ2XrrtBvu+cLL8ZRrGkO0NHTug8MYFKyoSrv/sHTaSKfilUkizV6XhxMJ3g==,
             }
         engines: { node: '>=8' }
+
+    thirty-two@1.0.2:
+        resolution:
+            {
+                integrity: sha512-OEI0IWCe+Dw46019YLl6V10Us5bi574EvlJEOcAkB29IzQ/mYD1A6RyNHLjZPiHCmuodxvgF6U+vZO1L15lxVA==,
+            }
+        engines: { node: '>=0.2.6' }
 
     thread-stream@3.1.0:
         resolution:
@@ -12198,6 +12244,29 @@ snapshots:
         dependencies:
             '@opentelemetry/api': 1.9.0
             '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
+
+    '@otplib/core@12.0.1': {}
+
+    '@otplib/plugin-crypto@12.0.1':
+        dependencies:
+            '@otplib/core': 12.0.1
+
+    '@otplib/plugin-thirty-two@12.0.1':
+        dependencies:
+            '@otplib/core': 12.0.1
+            thirty-two: 1.0.2
+
+    '@otplib/preset-default@12.0.1':
+        dependencies:
+            '@otplib/core': 12.0.1
+            '@otplib/plugin-crypto': 12.0.1
+            '@otplib/plugin-thirty-two': 12.0.1
+
+    '@otplib/preset-v11@12.0.1':
+        dependencies:
+            '@otplib/core': 12.0.1
+            '@otplib/plugin-crypto': 12.0.1
+            '@otplib/plugin-thirty-two': 12.0.1
 
     '@paralleldrive/cuid2@2.3.1':
         dependencies:
@@ -15721,6 +15790,12 @@ snapshots:
             strip-ansi: 6.0.1
             wcwidth: 1.0.1
 
+    otplib@12.0.1:
+        dependencies:
+            '@otplib/core': 12.0.1
+            '@otplib/preset-default': 12.0.1
+            '@otplib/preset-v11': 12.0.1
+
     p-cancelable@3.0.0: {}
 
     p-finally@1.0.0: {}
@@ -16426,6 +16501,8 @@ snapshots:
             - react-native-b4a
 
     text-extensions@2.4.0: {}
+
+    thirty-two@1.0.2: {}
 
     thread-stream@3.1.0:
         dependencies:
