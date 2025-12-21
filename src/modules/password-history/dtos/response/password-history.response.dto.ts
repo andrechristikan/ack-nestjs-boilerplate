@@ -23,10 +23,6 @@ export class PasswordHistoryResponseDto extends DatabaseDto {
     @Exclude()
     password: string;
 
-    @ApiHideProperty()
-    @Exclude()
-    salt: string;
-
     @ApiProperty({
         required: true,
         example: EnumPasswordHistoryType.admin,

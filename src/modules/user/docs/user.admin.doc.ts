@@ -113,10 +113,10 @@ export function UserAdminUpdatePasswordDoc(): MethodDecorator {
     );
 }
 
-export function UserAdminDisableTwoFactorDoc(): MethodDecorator {
+export function UserAdminResetTwoFactorDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: "disable user's two-factor authentication",
+            summary: "Reset user's two-factor authentication",
         }),
         DocRequest({
             params: UserDocParamsId,
@@ -126,6 +126,6 @@ export function UserAdminDisableTwoFactorDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponse('user.twoFactor.disable')
+        DocResponse('user.twoFactor.reset')
     );
 }

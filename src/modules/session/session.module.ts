@@ -29,7 +29,7 @@ import { RedisClientCachedProvider } from '@common/redis/constants/redis.constan
             },
         }),
     ],
-    exports: [SessionUtil, SessionService, SessionRepository, SessionCacheProvider],
+    exports: [SessionUtil, SessionService, SessionRepository],
     providers: [
         SessionUtil,
         SessionService,

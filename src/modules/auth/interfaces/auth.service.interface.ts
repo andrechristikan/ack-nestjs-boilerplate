@@ -6,13 +6,13 @@ import {
     IAuthTokenGenerate,
 } from '@modules/auth/interfaces/auth.interface';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import { EnumUserLoginFrom, EnumUserSignUpWith } from '@prisma/client';
+import { EnumUserLoginFrom, EnumUserLoginWith } from '@prisma/client';
 
 export interface IAuthService {
     createTokens(
         user: IUser,
         loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserSignUpWith
+        loginWith: EnumUserLoginWith
     ): IAuthTokenGenerate;
     refreshToken(
         user: IUser,

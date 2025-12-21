@@ -1,37 +1,31 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
+import { UserTwoFactorResponseDto } from '@modules/user/dtos/response/user.two-factor.response.dto';
+import { Type } from 'class-transformer';
 
 export class UserLoginResponseDto {
     @ApiProperty({
-        description: 'Indicates whether an additional 2FA verification step is required',
+        description:
+            'Indicates whether an additional 2FA verification step is enable',
         example: false,
+        required: true,
     })
-    isTwoFactorRequired: boolean;
+    isTwoFactorEnable: boolean;
 
     @ApiProperty({
         required: false,
         type: UserTokenResponseDto,
+        description: 'Provides access and refresh tokens upon successful login',
     })
+    @Type(() => UserTokenResponseDto)
     tokens?: UserTokenResponseDto;
 
     @ApiProperty({
         required: false,
-        description: 'Challenge token to be used for completing 2FA login',
-        example: '2b5b8933f0a44a94b3e1a96f8d2e2f21',
+        type: UserTwoFactorResponseDto,
+        description:
+            'Provides details for completing the 2FA verification step',
     })
-    challengeToken?: string;
-
-    @ApiProperty({
-        required: false,
-        description: 'Challenge token TTL in seconds',
-        example: 300,
-    })
-    challengeExpiresIn?: number;
-
-    @ApiProperty({
-        required: false,
-        description: 'Remaining backup codes count for the account',
-        example: 8,
-    })
-    backupCodesRemaining?: number;
+    @Type(() => UserTwoFactorResponseDto)
+    twoFactor?: UserTwoFactorResponseDto;
 }

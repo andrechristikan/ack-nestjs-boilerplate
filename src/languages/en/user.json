@@ -29,9 +29,10 @@
     "twoFactor": {
         "setup": "Two-factor setup initialized. Use the provided secret to configure your authenticator.",
         "status": "Two-factor authentication status retrieved successfully.",
-        "confirm": "Two-factor authentication has been enabled.",
-        "regenerate": "New backup codes generated successfully.",
-        "disable": "Two-factor authentication has been disabled."
+        "enable": "Two-factor authentication has been enabled.",
+        "regenerateBackupCodes": "New backup codes generated successfully.",
+        "disable": "Two-factor authentication has been disabled.",
+        "resetByAdmin": "Two-factor authentication has been reset."
     },
     "error": {
         "notFound": "Sorry, we couldn't find the user you requested.",

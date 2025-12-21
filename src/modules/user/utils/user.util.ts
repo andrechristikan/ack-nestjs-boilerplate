@@ -15,18 +15,16 @@ import {
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumVerificationType, PasswordHistory, TwoFactor, User } from '@prisma/client';
+import {
+    EnumVerificationType,
+    PasswordHistory,
+    TwoFactor,
+    User,
+} from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { Duration } from 'luxon';
 import { Profanity } from '@2toad/profanity';
-
-type IUserWithTwoFactorFlag = Omit<IUser, 'twoFactor'> & {
-    twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
-};
-
-type IUserProfileWithTwoFactorFlag = Omit<IUserProfile, 'twoFactor'> & {
-    twoFactor?: Pick<TwoFactor, 'enabled' | 'confirmedAt'> | null;
-};
+import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 
 @Injectable()
 export class UserUtil {
@@ -151,40 +149,36 @@ export class UserUtil {
         return this.profanity.exists(str);
     }
 
-    mapList(users: IUserWithTwoFactorFlag[]): UserListResponseDto[] {
-        const serialized = users.map(user => {
-            const { twoFactor, ...rest } = user;
-
-            return {
-                ...rest,
-                isTwoFactorEnabled: Boolean(
-                    twoFactor?.enabled && twoFactor?.confirmedAt
-                ),
-            };
-        });
-
-        return plainToInstance(UserListResponseDto, serialized);
+    mapList(users: IUser[]): UserListResponseDto[] {
+        return plainToInstance(UserListResponseDto, users);
     }
 
     mapOne(user: User): UserDto {
         return plainToInstance(UserDto, user);
     }
 
-    mapProfile(user: IUserProfileWithTwoFactorFlag): UserProfileResponseDto {
-        const { twoFactor, ...rest } = user;
-
-        return plainToInstance(UserProfileResponseDto, {
-            ...rest,
-            isTwoFactorEnabled: Boolean(
-                twoFactor?.enabled && twoFactor?.confirmedAt
-            ),
-        });
+    mapProfile(user: IUserProfile): UserProfileResponseDto {
+        return plainToInstance(UserProfileResponseDto, user);
     }
 
     mapMobileNumber(
         mobileNumber: IUserMobileNumber
     ): UserMobileNumberResponseDto {
         return plainToInstance(UserMobileNumberResponseDto, mobileNumber);
+    }
+
+    mapTwoFactor(twoFactor: TwoFactor): UserTwoFactorStatusResponseDto {
+        return {
+            isEnabled: twoFactor.enabled,
+            isPendingConfirmation:
+                !twoFactor.enabled &&
+                !!twoFactor.secret &&
+                !!twoFactor.iv &&
+                !twoFactor.confirmedAt,
+            backupCodesRemaining: twoFactor.backupCodes.length,
+            confirmedAt: twoFactor.confirmedAt,
+            lastUsedAt: twoFactor.lastUsedAt,
+        };
     }
 
     checkMobileNumber(phoneCodes: string[], phoneCode: string): boolean {

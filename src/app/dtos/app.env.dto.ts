@@ -276,6 +276,48 @@ export class AppEnvDto {
     AUTH_JWT_REFRESH_TOKEN_EXPIRED: string;
 
     /**
+     * Two-factor authentication issuer (TOTP label)
+     */
+    @IsNotEmpty()
+    @IsString()
+    AUTH_TWO_FACTOR_ISSUER: string;
+
+    /**
+     * Two-factor encryption key
+     */
+    @IsNotEmpty()
+    @IsString()
+    AUTH_TWO_FACTOR_ENCRYPTION_KEY: string;
+
+    /**
+     * Google OAuth client ID for social authentication (optional)
+     */
+    @IsOptional()
+    @IsString()
+    AUTH_SOCIAL_GOOGLE_CLIENT_ID?: string;
+
+    /**
+     * Google OAuth client secret for social authentication (optional)
+     */
+    @IsOptional()
+    @IsString()
+    AUTH_SOCIAL_GOOGLE_CLIENT_SECRET?: string;
+
+    /**
+     * Apple OAuth client ID for social authentication (optional)
+     */
+    @IsOptional()
+    @IsString()
+    AUTH_SOCIAL_APPLE_CLIENT_ID?: string;
+
+    /**
+     * Apple Sign In client ID for social authentication (optional)
+     */
+    @IsOptional()
+    @IsString()
+    AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID?: string;
+
+    /**
      * AWS S3 access key for authentication
      */
     @IsOptional()
@@ -344,55 +386,6 @@ export class AppEnvDto {
     @IsOptional()
     @IsString()
     AWS_SES_REGION?: string;
-
-    /**
-     * Google OAuth client ID for social authentication (optional)
-     */
-    @IsOptional()
-    @IsString()
-    AUTH_SOCIAL_GOOGLE_CLIENT_ID?: string;
-
-    /**
-     * Google OAuth client secret for social authentication (optional)
-     */
-    @IsOptional()
-    @IsString()
-    AUTH_SOCIAL_GOOGLE_CLIENT_SECRET?: string;
-
-    /**
-     * Apple OAuth client ID for social authentication (optional)
-     */
-    @IsOptional()
-    @IsString()
-    AUTH_SOCIAL_APPLE_CLIENT_ID?: string;
-
-    /**
-     * Apple Sign In client ID for social authentication (optional)
-     */
-    @IsOptional()
-    @IsString()
-    AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID?: string;
-
-    /**
-     * Two-factor authentication issuer (TOTP label)
-     */
-    @IsOptional()
-    @IsString()
-    AUTH_TWO_FACTOR_ISSUER?: string;
-
-    /**
-     * Two-factor authentication label (TOTP account label)
-     */
-    @IsOptional()
-    @IsString()
-    AUTH_TWO_FACTOR_LABEL?: string;
-
-    /**
-     * Two-factor encryption key
-     */
-    @IsOptional()
-    @IsString()
-    AUTH_TWO_FACTOR_ENCRYPTION_KEY?: string;
 
     /**
      * Redis server URL for caching

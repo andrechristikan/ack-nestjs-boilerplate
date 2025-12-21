@@ -159,4 +159,65 @@ export class SessionRepository {
             },
         });
     }
+
+    async revokeAllByUser(
+        userId: string,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<void> {
+        await this.databaseService.$transaction([
+            this.databaseService.session.updateMany({
+                where: {
+                    userId,
+                    isRevoked: false,
+                    expiredAt: {
+                        gte: this.helperService.dateCreate(),
+                    },
+                },
+                data: {
+                    isRevoked: true,
+                    revokedAt: this.helperService.dateCreate(),
+                    updatedBy: userId,
+                },
+            }),
+            this.databaseService.activityLog.create({
+                data: {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    ipAddress,
+                    userAgent: this.databaseUtil.toPlainObject(userAgent),
+                    createdBy: userId,
+                },
+            }),
+        ]);
+    }
+
+    async revokeAllByAdmin(
+        userId: string,
+        { ipAddress, userAgent }: IRequestLog,
+        revokeBy: string
+    ): Promise<void> {
+        await this.databaseService.$transaction([
+            this.databaseService.session.updateMany({
+                where: {
+                    userId,
+                    isRevoked: false,
+                    expiredAt: {
+                        gte: this.helperService.dateCreate(),
+                    },
+                },
+                data: {
+                    isRevoked: true,
+                    revokedAt: this.helperService.dateCreate(),
+                    updatedBy: revokeBy,
+                },
+            }),
+            this.databaseService.activityLog.create({
+                data: {
+                    action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                    ipAddress,
+                    userAgent: this.databaseUtil.toPlainObject(userAgent),
+                    createdBy: revokeBy,
+                },
+            }),
+        ]);
+    }
 }

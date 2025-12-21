@@ -1,12 +1,8 @@
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import {
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    EnumUserSignUpWith,
-} from '@prisma/client';
+import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { EnumUserLoginFrom, EnumUserLoginWith } from '@prisma/client';
 
 export interface IAuthPassword {
-    salt: string;
     passwordHash: string;
     passwordExpired: Date;
     passwordCreated: Date;
@@ -20,7 +16,7 @@ export interface IAuthPasswordOptions {
 export interface IAuthJwtAccessTokenPayload {
     loginAt: Date;
     loginFrom: EnumUserLoginFrom;
-    loginWith: EnumUserSignUpWith;
+    loginWith: EnumUserLoginWith;
     email: string;
     username: string;
     userId: string;
@@ -55,13 +51,35 @@ export interface IAuthTokenGenerate {
     sessionId: string;
 }
 
+export interface IAuthTwoFactorBackupCodes {
+    codes: string[];
+    hashes: string[];
+}
+
+export interface IAuthTwoFactorBackupCodesVerifyResult {
+    isValid: boolean;
+    index: number;
+}
+
+export interface IAuthTwoFactorChallenge {
+    token: string;
+    expiresInMs: number;
+}
+
 export interface IAuthTwoFactorChallengeCache {
     userId: string;
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
 }
 
-export interface IAuthTwoFactorBackupCodes {
-    codes: string[];
-    hashes: string[];
+export interface IAuthTwoFactorVerify {
+    method: EnumAuthTwoFactorMethod;
+    code?: string;
+    backupCode?: string;
+}
+
+export interface IAuthTwoFactorVerifyResult {
+    isValid: boolean;
+    method: EnumAuthTwoFactorMethod;
+    newBackupCodes?: string[];
 }

@@ -36,10 +36,6 @@ import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
-import { UserTwoFactorConfirmRequestDto } from '@modules/user/dtos/request/user.two-factor-confirm.request.dto';
-import { UserTwoFactorVerifyLoginRequestDto } from '@modules/user/dtos/request/user.two-factor-verify-login.request.dto';
-import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import { UserTwoFactorRegenerateRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate.request.dto';
 import {
     UserCheckEmailResponseDto,
     UserCheckUsernameResponseDto,
@@ -48,12 +44,14 @@ import { UserListResponseDto } from '@modules/user/dtos/response/user.list.respo
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
-import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
-import { UserTwoFactorBackupCodesResponseDto } from '@modules/user/dtos/response/user.two-factor-backup-codes.response.dto';
-import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { EnumUserLoginWith } from '@prisma/client';
+import { UserTwoFactorVerifyRequestDto } from '@modules/user/dtos/request/user.two-factor-verify.request.dto';
+import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 
 export interface IUserService {
     validateUserGuard(
@@ -146,11 +144,6 @@ export interface IUserService {
         requestLog: IRequestLog,
         updatedBy: string
     ): Promise<IResponseReturn<void>>;
-    disableTwoFactorByAdmin(
-        userId: string,
-        requestLog: IRequestLog,
-        updatedBy: string
-    ): Promise<IResponseReturn<void>>;
     changePassword(
         userId: string,
         { newPassword, oldPassword }: UserChangePasswordRequestDto,
@@ -171,36 +164,6 @@ export interface IUserService {
         refreshToken: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserTokenResponseDto>>;
-    verifyLoginTwoFactor(
-        {
-            challengeToken,
-            code,
-            backupCode,
-        }: UserTwoFactorVerifyLoginRequestDto,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserLoginResponseDto>>;
-    getTwoFactorStatus(
-        userId: string
-    ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>>;
-    setupTwoFactor(
-        userId: string,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>>;
-    confirmTwoFactor(
-        userId: string,
-        { code }: UserTwoFactorConfirmRequestDto,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTwoFactorBackupCodesResponseDto>>;
-    regenerateTwoFactorBackupCodes(
-        userId: string,
-        body: UserTwoFactorRegenerateRequestDto,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTwoFactorBackupCodesResponseDto>>;
-    disableTwoFactor(
-        userId: string,
-        { code, backupCode }: UserTwoFactorDisableRequestDto,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
     signUp(
         { countryId, email, password, ...others }: UserSignUpRequestDto,
         requestLog: IRequestLog
@@ -219,6 +182,37 @@ export interface IUserService {
     ): Promise<IResponseReturn<void>>;
     resetPassword(
         { newPassword, token }: UserForgotPasswordResetRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
+    verifyTwoFactor(
+        {
+            challengeToken,
+            code,
+            backupCode,
+            method,
+        }: UserTwoFactorVerifyRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTokenResponseDto>>;
+    getTwoFactorStatus(
+        user: IUser
+    ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>>;
+    enableTwoFactor(
+        user: IUser,
+        { code }: UserTwoFactorEnableRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
+    disableTwoFactor(
+        user: IUser,
+        { code, backupCode, method }: UserTwoFactorDisableRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
+    regenerateTwoFactorBackupCodes(
+        user: IUser,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
+    resetTwoFactorByAdmin(
+        userId: string,
+        updatedBy: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
 }

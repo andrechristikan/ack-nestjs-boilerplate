@@ -11,7 +11,7 @@ import {
 
 export interface IUser extends User {
     role: Role;
-    twoFactor?: IUserTwoFactor | null;
+    twoFactor: TwoFactor;
 }
 
 export interface IUserMobileNumber extends UserMobileNumber {
@@ -49,5 +49,3 @@ export interface IUserVerificationCreate {
     token: string;
     link?: string;
 }
-
-export type IUserTwoFactor = TwoFactor;

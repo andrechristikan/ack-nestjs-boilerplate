@@ -175,4 +175,20 @@ export class EmailService implements IEmailService {
             }
         );
     }
+
+    async sendResetTwoFactorByAdmin(
+        userId: string,
+        { email, username }: EmailSendDto
+    ): Promise<void> {
+        await this.emailQueue.add(
+            EnumSendEmailProcess.resetTwoFactorByAdmin,
+            {
+                send: { email, username },
+            },
+            {
+                jobId: `${EnumSendEmailProcess.resetTwoFactorByAdmin}-${userId}`,
+                priority: EnumQueuePriority.MEDIUM,
+            }
+        );
+    }
 }

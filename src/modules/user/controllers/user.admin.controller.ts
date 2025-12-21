@@ -46,9 +46,9 @@ import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import {
     UserAdminCreateDoc,
-    UserAdminDisableTwoFactorDoc,
     UserAdminGetDoc,
     UserAdminListDoc,
+    UserAdminResetTwoFactorDoc,
     UserAdminUpdatePasswordDoc,
     UserAdminUpdateStatusDoc,
 } from '@modules/user/docs/user.admin.doc';
@@ -210,8 +210,8 @@ export class UserAdminController {
         );
     }
 
-    @UserAdminDisableTwoFactorDoc()
-    @Response('user.twoFactor.disable')
+    @UserAdminResetTwoFactorDoc()
+    @Response('user.twoFactor.resetByAdmin')
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
@@ -220,25 +220,21 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/:userId/2fa/disable')
-    async disableTwoFactor(
+    @Patch('/update/:userId/2fa/reset')
+    async resetTwoFactorByAdmin(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.userService.disableTwoFactorByAdmin(
-            userId,
-            {
-                ipAddress,
-                userAgent,
-            },
-            updatedBy
-        );
+        return this.userService.resetTwoFactorByAdmin(userId, updatedBy, {
+            ipAddress,
+            userAgent,
+        });
     }
 
-    // TODO-1: Create example import and export endpoints use CSV file
+    // TODO: 1 Create example import and export endpoints use CSV file
     // import can be used to create multiple users at once
     // export can be used to export user list to CSV file
     // import using 2 methods: file upload and presigned URL upload
