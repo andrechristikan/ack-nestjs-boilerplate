@@ -4,7 +4,7 @@ This document provides instructions for GitHub Copilot to generate code that fol
 
 ## Project Overview
 
-ACK NestJS Boilerplate (v8.0.0+) is a comprehensive authentication and authorization service built with NestJS v11.x. It uses:
+ACK NestJS Boilerplate (v8.1.0+) is a comprehensive authentication and authorization service built with NestJS v11.x. It uses:
 - **Prisma ORM** for database operations (MongoDB with replication set)
 - **PNPM** as the package manager
 - **Repository Design Pattern** for data access layer
@@ -13,6 +13,11 @@ ACK NestJS Boilerplate (v8.0.0+) is a comprehensive authentication and authoriza
 - **Redis** for caching and session management
 - **BullMQ** for queue processing
 - **ES256/ES512** JWT algorithms for authentication
+- **RedisSessionStore** for session handling
+- **class-validator** and **class-transformer** for DTO validation and transformation
+- **Swagger** for API documentation
+- **i18n** for internationalization with nested JSON structure
+- **BullMQ** for background job processing
 - **TypeScript** with strict path aliases
 
 ## Architecture Patterns
@@ -89,6 +94,7 @@ Always use TypeScript path aliases defined in `tsconfig.json`:
 - `@routes/*` → `src/router/routes/*`
 - `@router` → `src/router/router.module.ts`
 - `@migration/*` → `src/migration/*`
+- `@generated/*` → `generated/*`
 - `@prisma/client` → `generated/prisma-client`
 
 Example:
@@ -106,9 +112,9 @@ When using multiple protection decorators, apply them in this **EXACT** order (t
 
 ```typescript
 @ExampleDoc()                              // Documentation (always first)
+@TermPolicyAcceptanceProtected(...)       // Terms acceptance verification
 @PolicyAbilityProtected({...})            // CASL policy-based permissions
 @RoleProtected(...)                       // Role-based access control
-@TermPolicyAcceptanceProtected(...)       // Terms acceptance verification
 @ActivityLog(...)                         // Activity logging
 @UserProtected()                          // User authentication check
 @AuthJwtAccessProtected()                 // JWT access token validation
@@ -140,6 +146,11 @@ Always invalidate sessions when:
 ## Request & Response
 
 ### DTOs (Data Transfer Objects)
+
+
+**Naming Convention:**
+- Request DTOs **must** use the `RequestDto` suffix (e.g., `CreateUserRequestDto`, `LoginRequestDto`).
+- Response DTOs **must** use the `ResponseDto` suffix (e.g., `UserResponseDto`, `LoginResponseDto`).
 
 Use `class-validator` decorators for validation:
 
@@ -182,6 +193,13 @@ async listUsers(@Query() query: UserListDto): Promise<IResponsePagingReturn<User
 ```
 
 ### Error Handling
+
+
+
+You can also pass additional properties in exceptions:
+- `messageProperties`: object (for i18n interpolation)
+- `errors`: `IMessageValidationError` (for validation error details, only read if thrown with `RequestValidationException` or `FileImportException`)
+- `metadata`: object (for extra context)
 
 Throw exceptions with proper message paths:
 
@@ -321,7 +339,11 @@ Sensitive data is automatically redacted (password, token, apiKey, etc.).
 
 ## Caching
 
+
 Use Redis for caching with decorators:
+
+- Use `CacheMainProvider` for general caching purposes.
+- Use `SessionCacheProvider` specifically for session management.
 
 ```typescript
 @Response('user.get', { cache: true })
@@ -426,22 +448,25 @@ export enum EnumUserStatusCodeError {
 
 ### Import Order
 
-Organize imports in this order:
-1. External packages (NestJS, third-party)
-2. Project imports using **absolute path aliases only** (never use relative paths)
 
-```typescript
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
+Import order is enforced using ESLint's `sort-imports` rule:
 
-import { DatabaseModule } from '@common/database/database.module';
-import { IConfigAuth } from '@config';
-import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserDto } from '@modules/user/dtos/user.dto';
-import { IUserService } from '@modules/user/interfaces/user-service.interface';
+```
+const importOrderRules = {
+    'sort-imports': [
+        'error',
+        {
+            ignoreCase: false,
+            ignoreDeclarationSort: true,
+            ignoreMemberSort: false,
+            memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
+            allowSeparatedGroups: true,
+        },
+    ],
+};
 ```
 
-**Important**: Always use absolute imports with path aliases. Never use relative imports like `./` or `../`.
+This rule sorts import members within each import statement, but does **not** enforce the order of entire import blocks (e.g., external vs internal). You are still required to use **absolute path aliases** for all project imports (never use relative paths like `./` or `../`).
 
 ## Best Practices
 

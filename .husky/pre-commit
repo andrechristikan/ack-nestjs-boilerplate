@@ -1,3 +1,4 @@
+pnpm db:generate
 pnpm lint:staged
 pnpm deadcode
 pnpm spell

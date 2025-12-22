@@ -29,5 +29,8 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
 
+            - name: Generate Client
+              run: pnpm db:generate
+
             - name: Linter
               run: pnpm lint
