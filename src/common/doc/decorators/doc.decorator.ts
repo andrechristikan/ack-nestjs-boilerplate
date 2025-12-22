@@ -369,7 +369,6 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
         });
     }
 
-    // TODO: Update each doc to include term policy errors where applicable
     if (options?.termPolicy) {
         oneOfForbidden.push({
             statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,

@@ -30,7 +30,7 @@ export function UserAdminListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<UserListResponseDto>('user.list', {
             dto: UserListResponseDto,
         })
@@ -49,7 +49,7 @@ export function UserAdminGetDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<UserProfileResponseDto>('user.get', {
             dto: UserProfileResponseDto,
         })
@@ -69,7 +69,7 @@ export function UserAdminCreateDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
             dto: UserCreateRequestDto,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<DatabaseIdDto>('user.create', {
             httpStatus: HttpStatus.CREATED,
             dto: DatabaseIdDto,
@@ -91,7 +91,7 @@ export function UserAdminUpdateStatusDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse('user.updateStatus')
     );
 }
@@ -108,7 +108,7 @@ export function UserAdminUpdatePasswordDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse('user.updatePassword')
     );
 }
@@ -125,7 +125,7 @@ export function UserAdminResetTwoFactorDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse('user.twoFactor.reset')
     );
 }

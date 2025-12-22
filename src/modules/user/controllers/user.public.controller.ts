@@ -18,22 +18,25 @@ import {
     AuthPublicLoginSocialGoogleDoc,
     UserPublicForgotPasswordDoc,
     UserPublicLoginCredentialDoc,
+    UserPublicLoginEnableTwoFactorDoc,
+    UserPublicLoginVerifyTwoFactorDoc,
     UserPublicResetPasswordDoc,
     UserPublicSendEmailVerificationDoc,
     UserPublicSignUpDoc,
     UserPublicVerifyEmailDoc,
-    UserPublicVerifyTwoFactorDoc,
 } from '@modules/user/docs/user.public.doc';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
+import { UserLoginEnableTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-enable-two-factor.request.dto';
+import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
-import { UserTwoFactorVerifyRequestDto } from '@modules/user/dtos/request/user.two-factor-verify.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
+import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserService } from '@modules/user/services/user.service';
 import {
     Body,
@@ -199,21 +202,35 @@ export class UserPublicController {
         });
     }
 
-    @UserPublicVerifyTwoFactorDoc()
+    @UserPublicLoginVerifyTwoFactorDoc()
     @Response('user.verifyTwoFactor')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/verify/2fa')
-    async verifyLoginTwoFactor(
-        @Body() body: UserTwoFactorVerifyRequestDto,
+    @Post('/login/2fa/verify')
+    async loginVerifyTwoFactor(
+        @Body() body: UserLoginVerifyTwoFactorRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
-        return this.userService.verifyTwoFactor(body, {
+        return this.userService.loginVerifyTwoFactor(body, {
             ipAddress,
             userAgent,
         });
     }
 
-    // TODO: Implement required setup 2FA flow during login
+    @UserPublicLoginEnableTwoFactorDoc()
+    @Response('user.loginEnableTwoFactor')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/login/2fa/enable')
+    async verifyLoginTwoFactor(
+        @Body() body: UserLoginEnableTwoFactorRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
+        return this.userService.loginEnableTwoFactor(body, {
+            ipAddress,
+            userAgent,
+        });
+    }
 }

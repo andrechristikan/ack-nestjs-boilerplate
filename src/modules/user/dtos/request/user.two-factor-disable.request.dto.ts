@@ -1,7 +1,7 @@
-import { UserTwoFactorVerifyRequestDto } from '@modules/user/dtos/request/user.two-factor-verify.request.dto';
+import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { OmitType } from '@nestjs/swagger';
 
 export class UserTwoFactorDisableRequestDto extends OmitType(
-    UserTwoFactorVerifyRequestDto,
+    UserLoginVerifyTwoFactorRequestDto,
     ['challengeToken'] as const
 ) {}

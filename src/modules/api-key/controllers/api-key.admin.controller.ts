@@ -64,6 +64,7 @@ import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 
 @ApiTags('modules.admin.apiKey')
 @Controller({
@@ -75,6 +76,7 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminListDoc()
     @ResponsePaging('apiKey.list')
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read],
@@ -100,6 +102,7 @@ export class ApiKeyAdminController {
     @ApiKeyAdminCreateDoc()
     @Response('apiKey.create')
     @ActivityLog(EnumActivityLogAction.adminApiKeyCreate)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
@@ -118,6 +121,7 @@ export class ApiKeyAdminController {
     @ApiKeyAdminResetDoc()
     @Response('apiKey.reset')
     @ActivityLog(EnumActivityLogAction.adminApiKeyReset)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
@@ -137,6 +141,7 @@ export class ApiKeyAdminController {
     @ApiKeyAdminUpdateDoc()
     @Response('apiKey.update')
     @ActivityLog(EnumActivityLogAction.adminApiKeyUpdate)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
@@ -157,6 +162,7 @@ export class ApiKeyAdminController {
     @ApiKeyAdminUpdateDateDoc()
     @Response('apiKey.updateDate')
     @ActivityLog(EnumActivityLogAction.adminApiKeyUpdateDate)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
@@ -177,6 +183,7 @@ export class ApiKeyAdminController {
     @ApiKeyAdminUpdateStatusDoc()
     @Response('apiKey.updateStatus')
     @ActivityLog(EnumActivityLogAction.adminApiKeyUpdateStatus)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
@@ -197,6 +204,7 @@ export class ApiKeyAdminController {
     @ApiKeyAdminDeleteDoc()
     @Response('apiKey.delete')
     @ActivityLog(EnumActivityLogAction.adminApiKeyDelete)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],

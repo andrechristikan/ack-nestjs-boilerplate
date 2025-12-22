@@ -15,6 +15,7 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -30,6 +31,7 @@ export class ActivityLogAdminController {
 
     @ActivityLogAdminListDoc()
     @ResponsePaging('activityLog.list')
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
             subject: EnumPolicySubject.user,

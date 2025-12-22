@@ -61,6 +61,7 @@ import {
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -72,6 +73,7 @@ export class UserAdminController {
 
     @UserAdminListDoc()
     @ResponsePaging('user.list')
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read],
@@ -106,6 +108,7 @@ export class UserAdminController {
 
     @UserAdminGetDoc()
     @Response('user.get')
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read],
@@ -125,6 +128,7 @@ export class UserAdminController {
     @UserAdminCreateDoc()
     @Response('user.create')
     @ActivityLog(EnumActivityLogAction.adminUserCreate)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
@@ -153,6 +157,7 @@ export class UserAdminController {
     @UserAdminUpdateStatusDoc()
     @Response('user.updateStatus')
     @ActivityLog(EnumActivityLogAction.adminUserUpdateStatus)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
@@ -184,6 +189,7 @@ export class UserAdminController {
     @UserAdminUpdatePasswordDoc()
     @Response('user.updatePassword')
     @ActivityLog(EnumActivityLogAction.adminUserUpdatePassword)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
@@ -212,6 +218,8 @@ export class UserAdminController {
 
     @UserAdminResetTwoFactorDoc()
     @Response('user.twoFactor.resetByAdmin')
+    @ActivityLog(EnumActivityLogAction.adminUserResetTwoFactor)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],

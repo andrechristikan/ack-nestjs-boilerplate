@@ -28,7 +28,7 @@ export function FeatureFlagAdminListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<FeatureFlagResponseDto>('featureFlag.list', {
             dto: FeatureFlagResponseDto,
         })
@@ -47,7 +47,7 @@ export function FeatureFlagAdminUpdateStatusDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<FeatureFlagResponseDto>('featureFlag.updateStatus', {
             dto: FeatureFlagResponseDto,
         })
@@ -66,7 +66,7 @@ export function FeatureFlagAdminUpdateMetadataDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<FeatureFlagResponseDto>('featureFlag.updateMetadata', {
             dto: FeatureFlagResponseDto,
         })

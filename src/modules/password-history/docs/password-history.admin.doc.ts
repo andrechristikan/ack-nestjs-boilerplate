@@ -21,7 +21,7 @@ export function PasswordHistoryAdminListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<PasswordHistoryResponseDto>('passwordHistory.list', {
             dto: PasswordHistoryResponseDto,
         })

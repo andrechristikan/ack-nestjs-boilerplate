@@ -4,7 +4,7 @@ import { IsTwoFactorCode } from '@modules/auth/validations/auth.two-factor-code.
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsString, ValidateIf } from 'class-validator';
 
-export class UserTwoFactorVerifyRequestDto {
+export class UserLoginVerifyTwoFactorRequestDto {
     @ApiProperty({
         description:
             'Challenge token returned by the login endpoint when 2FA is required',

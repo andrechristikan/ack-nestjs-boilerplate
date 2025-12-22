@@ -1,6 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
+import { ApiProperty, PartialType } from '@nestjs/swagger';
 
-export class UserTwoFactorResponseDto {
+export class UserTwoFactorResponseDto extends PartialType(
+    UserTwoFactorSetupResponseDto
+) {
     @ApiProperty({
         description:
             'Indicates whether the user is required to set up 2FA upon next login',
@@ -24,9 +27,9 @@ export class UserTwoFactorResponseDto {
     challengeExpiresInMs: number;
 
     @ApiProperty({
-        required: true,
+        required: false,
         description: 'Remaining backup codes count for the account',
         example: 8,
     })
-    backupCodesRemaining: number;
+    backupCodesRemaining?: number;
 }

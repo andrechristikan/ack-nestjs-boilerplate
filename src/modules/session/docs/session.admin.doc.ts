@@ -23,7 +23,7 @@ export function SessionAdminListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<SessionResponseDto>('session.list', {
             dto: SessionResponseDto,
         })
@@ -42,7 +42,7 @@ export function SessionAdminRevokeDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse('session.revoke')
     );
 }

@@ -1,6 +1,7 @@
 import {
     Doc,
     DocAuth,
+    DocGuard,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -16,6 +17,7 @@ export function ActivityLogSharedListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocGuard({ termPolicy: true }),
         DocResponsePaging<ActivityLogResponseDto>('activityLog.list', {
             dto: ActivityLogResponseDto,
             type: EnumPaginationType.cursor,

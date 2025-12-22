@@ -93,10 +93,12 @@ import {
 } from '@prisma/client';
 import { Duration } from 'luxon';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
-import { UserTwoFactorVerifyRequestDto } from '@modules/user/dtos/request/user.two-factor-verify.request.dto';
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
+import { UserLoginEnableTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-enable-two-factor.request.dto';
+import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -1516,8 +1518,6 @@ export class UserService implements IUserService {
         loginWith: EnumUserLoginWith,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
-        // TODO: When 2FA is enabled, handle required setup flow
-
         if (!user.twoFactor.enabled) {
             const tokens = await this.createTokenAndSession(
                 user,
@@ -1541,11 +1541,37 @@ export class UserService implements IUserService {
                 loginWith,
             });
 
+        if (user.twoFactor.requiredSetup) {
+            const { encryptedSecret, otpauthUrl, secret, iv } =
+                await this.authTwoFactorUtil.setupTwoFactor(user.email);
+            await this.userRepository.setupTwoFactor(
+                user.id,
+                encryptedSecret,
+                iv,
+                requestLog
+            );
+
+            return {
+                data: {
+                    isTwoFactorEnable: true,
+                    twoFactor: {
+                        isRequiredSetup: true,
+                        challengeToken: token,
+                        challengeExpiresInMs: expiresInMs,
+                        backupCodesRemaining:
+                            user.twoFactor.backupCodes.length ?? 0,
+                        otpauthUrl,
+                        secret,
+                    },
+                },
+            };
+        }
+
         return {
             data: {
                 isTwoFactorEnable: true,
                 twoFactor: {
-                    isRequiredSetup: user.twoFactor.requiredSetup,
+                    isRequiredSetup: false,
                     challengeToken: token,
                     challengeExpiresInMs: expiresInMs,
                     backupCodesRemaining:
@@ -1555,13 +1581,13 @@ export class UserService implements IUserService {
         };
     }
 
-    async verifyTwoFactor(
+    async loginVerifyTwoFactor(
         {
             challengeToken,
             code,
             backupCode,
             method,
-        }: UserTwoFactorVerifyRequestDto,
+        }: UserLoginVerifyTwoFactorRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserTokenResponseDto>> {
         const challenge =
@@ -1598,8 +1624,8 @@ export class UserService implements IUserService {
             });
         } else if (user.twoFactor.requiredSetup) {
             throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorSetupRequired,
-                message: 'auth.error.twoFactorSetupRequired',
+                statusCode: EnumAuthStatusCodeError.twoFactorRequiredSetup,
+                message: 'auth.error.twoFactorRequiredSetup',
             });
         }
 
@@ -1646,6 +1672,85 @@ export class UserService implements IUserService {
         }
     }
 
+    async loginEnableTwoFactor(
+        { code, challengeToken }: UserLoginEnableTwoFactorRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
+        const challenge =
+            await this.authTwoFactorUtil.getChallenge(challengeToken);
+        if (!challenge) {
+            throw new UnauthorizedException({
+                statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
+                message: 'auth.error.twoFactorChallengeInvalid',
+            });
+        }
+
+        const user = await this.userRepository.findOneWithRoleById(
+            challenge.userId
+        );
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                message: 'user.error.notFound',
+            });
+        } else if (user.status !== EnumUserStatus.active) {
+            throw new ForbiddenException({
+                statusCode: EnumUserStatus_CODE_ERROR.inactiveForbidden,
+                message: 'user.error.inactive',
+            });
+        } else if (!user.isVerified) {
+            throw new ForbiddenException({
+                statusCode: EnumUserStatus_CODE_ERROR.emailNotVerified,
+                message: 'user.error.emailNotVerified',
+            });
+        } else if (!user.twoFactor.enabled) {
+            throw new BadRequestException({
+                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+                message: 'auth.error.twoFactorNotEnabled',
+            });
+        } else if (!user.twoFactor.requiredSetup) {
+            throw new BadRequestException({
+                statusCode: EnumAuthStatusCodeError.twoFactorNotRequiredSetup,
+                message: 'auth.error.twoFactorNotRequiredSetup',
+            });
+        }
+
+        const verified = await this.authTwoFactorUtil.verifyTwoFactor(
+            user.twoFactor,
+            {
+                method: EnumAuthTwoFactorMethod.code,
+                code,
+            }
+        );
+        if (!verified.isValid) {
+            throw new UnauthorizedException({
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+                message: 'auth.error.twoFactorInvalid',
+            });
+        }
+
+        try {
+            const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
+            await this.userRepository.enableTwoFactor(
+                user.id,
+                backupCodes.hashes,
+                requestLog
+            );
+
+            return {
+                data: {
+                    backupCodes: backupCodes.codes,
+                },
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
     async getTwoFactorStatus(
         user: IUser
     ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>> {
@@ -1666,17 +1771,8 @@ export class UserService implements IUserService {
         }
 
         try {
-            const secret = this.authTwoFactorUtil.generateSecret();
-            const iv = this.authTwoFactorUtil.generateEncryptionIv();
-            const encryptedSecret = this.authTwoFactorUtil.encryptSecret(
-                secret,
-                iv
-            );
-            const otpAuthUrl = this.authTwoFactorUtil.createKeyUri(
-                user.email,
-                secret
-            );
-
+            const { encryptedSecret, otpauthUrl, secret, iv } =
+                await this.authTwoFactorUtil.setupTwoFactor(user.email);
             await this.userRepository.setupTwoFactor(
                 user.id,
                 encryptedSecret,
@@ -1687,7 +1783,7 @@ export class UserService implements IUserService {
             return {
                 data: {
                     secret,
-                    otpauthUrl: otpAuthUrl,
+                    otpauthUrl,
                 },
             };
         } catch (err: unknown) {

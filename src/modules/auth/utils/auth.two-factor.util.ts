@@ -7,6 +7,7 @@ import {
     IAuthTwoFactorBackupCodesVerifyResult,
     IAuthTwoFactorChallenge,
     IAuthTwoFactorChallengeCache,
+    IAuthTwoFactorSetup,
     IAuthTwoFactorVerify,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
@@ -300,6 +301,26 @@ export class AuthTwoFactorUtil {
             isValid: true,
             method,
             newBackupCodes: updatedTwoFactorBackupCodes,
+        };
+    }
+
+    /**
+     * Sets up two-factor authentication (2FA) for a user by generating a secret and otpauth URL.
+     *
+     * @param email - The email address of the user for whom 2FA is being set up.
+     * @returns An object containing the otpauth URL, secret, encrypted secret, and IV for 2FA setup.
+     */
+    async setupTwoFactor(email: string): Promise<IAuthTwoFactorSetup> {
+        const secret = this.generateSecret();
+        const iv = this.generateEncryptionIv();
+        const encryptedSecret = this.encryptSecret(secret, iv);
+        const otpAuthUrl = this.createKeyUri(email, secret);
+
+        return {
+            otpauthUrl: otpAuthUrl,
+            secret,
+            encryptedSecret,
+            iv,
         };
     }
 }

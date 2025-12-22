@@ -24,6 +24,7 @@ import { EnumActivityLogAction, EnumRoleType } from '@prisma/client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 
 @ApiTags('modules.admin.role')
 @Controller({
@@ -36,6 +37,7 @@ export class RoleAdminController {
     @RoleAdminCreateDoc()
     @Response('role.create')
     @ActivityLog(EnumActivityLogAction.adminRoleCreate)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
@@ -55,6 +57,7 @@ export class RoleAdminController {
     @RoleAdminUpdateDoc()
     @Response('role.update')
     @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
@@ -76,6 +79,7 @@ export class RoleAdminController {
     @RoleAdminDeleteDoc()
     @Response('role.delete')
     @ActivityLog(EnumActivityLogAction.adminRoleDelete)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],

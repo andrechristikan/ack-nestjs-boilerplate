@@ -31,6 +31,7 @@ import {
 } from '@modules/session/docs/session.admin.doc';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { SessionService } from '@modules/session/services/session.service';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -46,6 +47,7 @@ export class SessionAdminController {
 
     @SessionAdminListDoc()
     @ResponsePaging('session.list')
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
             subject: EnumPolicySubject.user,
@@ -75,6 +77,7 @@ export class SessionAdminController {
     @SessionAdminRevokeDoc()
     @ResponsePaging('session.revoke')
     @ActivityLog(EnumActivityLogAction.adminSessionRevoke)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
             subject: EnumPolicySubject.user,

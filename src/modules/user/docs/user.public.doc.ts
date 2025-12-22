@@ -7,13 +7,15 @@ import {
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
+import { UserLoginEnableTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-enable-two-factor.request.dto';
+import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
-import { UserTwoFactorVerifyRequestDto } from '@modules/user/dtos/request/user.two-factor-verify.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
+import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function UserPublicLoginCredentialDoc(): MethodDecorator {
@@ -140,7 +142,7 @@ export function UserPublicResetPasswordDoc(): MethodDecorator {
     );
 }
 
-export function UserPublicVerifyTwoFactorDoc(): MethodDecorator {
+export function UserPublicLoginVerifyTwoFactorDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'User verify two factor during login',
@@ -150,10 +152,29 @@ export function UserPublicVerifyTwoFactorDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserTwoFactorVerifyRequestDto,
+            dto: UserLoginVerifyTwoFactorRequestDto,
         }),
-        DocResponse('user.verifyTwoFactor', {
+        DocResponse('user.loginVerifyTwoFactor', {
             dto: UserTokenResponseDto,
+        })
+    );
+}
+
+export function UserPublicLoginEnableTwoFactorDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary:
+                'User enable two factor during login, for required setup 2FA flow',
+        }),
+        DocAuth({
+            xApiKey: true,
+        }),
+        DocRequest({
+            bodyType: EnumDocRequestBodyType.json,
+            dto: UserLoginEnableTwoFactorRequestDto,
+        }),
+        DocResponse('user.loginEnableTwoFactor', {
+            dto: UserTwoFactorEnableResponseDto,
         })
     );
 }

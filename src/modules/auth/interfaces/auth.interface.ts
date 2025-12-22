@@ -83,3 +83,10 @@ export interface IAuthTwoFactorVerifyResult {
     method: EnumAuthTwoFactorMethod;
     newBackupCodes?: string[];
 }
+
+export interface IAuthTwoFactorSetup {
+    secret: string;
+    otpauthUrl: string;
+    encryptedSecret: string;
+    iv: string;
+}
