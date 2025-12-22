@@ -62,7 +62,7 @@ export interface IConfigAuth {
             length: number;
         };
         encryption: {
-            key?: string;
+            key: string;
         };
     };
 }

@@ -346,19 +346,24 @@ Documents authorization guards and forbidden responses.
 **Parameters:**
 
 - `options?: IDocGuardOptions`
-  - `role?: boolean` - Role-based guard
-  - `policy?: boolean` - Policy-based guard
+    - `role?: boolean` - Role-based guard
+    - `policy?: boolean` - Policy-based guard
+    - `termPolicy?: boolean` - Term policy acceptance guard
 
 **Auto-includes:**
 
-- Forbidden error responses (403) based on guard types
+- Forbidden error responses (403) based on guard types:
+    - If `role` is true, documents forbidden response for role-based access control.
+    - If `policy` is true, documents forbidden response for policy-based access control.
+    - If `termPolicy` is true, documents forbidden response for term policy acceptance.
 
 **Usage:**
 
 ```typescript
 @DocGuard({
-    role: true,
-    policy: true
+        role: true,
+        policy: true,
+        termPolicy: true
 })
 @Post('/admin/users')
 async createUser() {
@@ -487,6 +492,26 @@ DocAllOf(
     }
 )
 ```
+
+## Swagger JSON
+
+The ACK NestJS Boilerplate automatically generates the OpenAPI Swagger JSON documentation for your API. This file describes all endpoints, schemas, and metadata for integration, testing, or external documentation tools.
+
+### How to Get swagger.json
+
+There are two ways to obtain the Swagger JSON file:
+
+1. **Via URL (API Docs Endpoint):**
+    - After starting the server, access: `/docs/json`
+    - Example: `http://localhost:3000/docs/json`
+    - This endpoint always serves the latest Swagger spec for the running app.
+
+2. **Via Generated File:**
+    - The file is auto-generated at: `generated/swagger.json`
+    - This file is written every time the app starts.
+    - You can use this file for CI/CD, external tools, or static documentation.
+
+Both methods provide the same OpenAPI spec. Use whichever fits your workflow (dynamic via URL or static via file).
 
 ## DTO Documentation
 
@@ -767,6 +792,7 @@ For more information about NestJS Swagger integration, see the [official NestJS 
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 

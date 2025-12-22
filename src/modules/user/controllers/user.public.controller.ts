@@ -11,6 +11,7 @@ import {
     AuthSocialAppleProtected,
     AuthSocialGoogleProtected,
 } from '@modules/auth/decorators/auth.social.decorator';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import {
@@ -35,7 +36,6 @@ import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
-import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserService } from '@modules/user/services/user.service';
 import {
@@ -211,7 +211,7 @@ export class UserPublicController {
         @Body() body: UserLoginVerifyTwoFactorRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<AuthTokenResponseDto>> {
         return this.userService.loginVerifyTwoFactor(body, {
             ipAddress,
             userAgent,

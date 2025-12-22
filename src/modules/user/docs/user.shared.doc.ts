@@ -9,6 +9,7 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { FileSingleDto } from '@common/file/dtos/file.single.dto';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { UserDocParamsMobileNumberId } from '@modules/user/constants/user.doc.constant';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
@@ -24,7 +25,6 @@ import {
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
-import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
@@ -43,8 +43,8 @@ export function UserSharedRefreshDoc(): MethodDecorator {
         DocGuard({
             termPolicy: true,
         }),
-        DocResponse<UserTokenResponseDto>('user.response', {
-            dto: UserTokenResponseDto,
+        DocResponse<AuthTokenResponseDto>('user.response', {
+            dto: AuthTokenResponseDto,
         })
     );
 }

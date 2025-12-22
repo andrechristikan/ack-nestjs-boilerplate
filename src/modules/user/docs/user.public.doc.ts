@@ -5,6 +5,7 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import { UserLoginEnableTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-enable-two-factor.request.dto';
@@ -14,7 +15,6 @@ import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
-import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
@@ -155,7 +155,7 @@ export function UserPublicLoginVerifyTwoFactorDoc(): MethodDecorator {
             dto: UserLoginVerifyTwoFactorRequestDto,
         }),
         DocResponse('user.loginVerifyTwoFactor', {
-            dto: UserTokenResponseDto,
+            dto: AuthTokenResponseDto,
         })
     );
 }

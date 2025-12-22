@@ -62,7 +62,7 @@ export interface IAuthTwoFactorBackupCodesVerifyResult {
 }
 
 export interface IAuthTwoFactorChallenge {
-    token: string;
+    challengeToken: string;
     expiresInMs: number;
 }
 

@@ -65,7 +65,6 @@ import {
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
-import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
@@ -78,7 +77,6 @@ import {
     BadRequestException,
     ConflictException,
     ForbiddenException,
-    HttpException,
     Injectable,
     InternalServerErrorException,
     NotFoundException,
@@ -99,6 +97,7 @@ import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { UserLoginEnableTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-enable-two-factor.request.dto';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -967,24 +966,12 @@ export class UserService implements IUserService {
             });
         }
 
-        try {
-            return this.handleLogin(
-                user,
-                from,
-                EnumUserLoginWith.credential,
-                requestLog
-            );
-        } catch (err: unknown) {
-            if (err instanceof HttpException) {
-                throw err;
-            }
-
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
-        }
+        return this.handleLogin(
+            user,
+            from,
+            EnumUserLoginWith.credential,
+            requestLog
+        );
     }
 
     async loginWithSocial(
@@ -1038,35 +1025,23 @@ export class UserService implements IUserService {
             });
         }
 
-        try {
-            const promises = [];
-            if (!user.isVerified) {
-                promises.push(this.userRepository.verify(user.id, requestLog));
-            }
-
-            if (promises.length > 0) {
-                await Promise.all(promises);
-            }
-
-            return this.handleLogin(user, from, loginWith, requestLog);
-        } catch (err: unknown) {
-            if (err instanceof HttpException) {
-                throw err;
-            }
-
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+        const promises = [];
+        if (!user.isVerified) {
+            promises.push(this.userRepository.verify(user.id, requestLog));
         }
+
+        if (promises.length > 0) {
+            await Promise.all(promises);
+        }
+
+        return this.handleLogin(user, from, loginWith, requestLog);
     }
 
     async refreshToken(
         user: IUser,
         refreshToken: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<AuthTokenResponseDto>> {
         const {
             sessionId,
             userId,
@@ -1481,7 +1456,7 @@ export class UserService implements IUserService {
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
         requestLog: IRequestLog
-    ): Promise<UserTokenResponseDto> {
+    ): Promise<AuthTokenResponseDto> {
         const { tokens, sessionId, jti } = this.authService.createTokens(
             user,
             loginFrom,
@@ -1534,13 +1509,12 @@ export class UserService implements IUserService {
             };
         }
 
-        const { token, expiresInMs } =
+        const { challengeToken, expiresInMs } =
             await this.authTwoFactorUtil.createChallenge({
                 userId: user.id,
                 loginFrom,
                 loginWith,
             });
-
         if (user.twoFactor.requiredSetup) {
             const { encryptedSecret, otpauthUrl, secret, iv } =
                 await this.authTwoFactorUtil.setupTwoFactor(user.email);
@@ -1556,7 +1530,7 @@ export class UserService implements IUserService {
                     isTwoFactorEnable: true,
                     twoFactor: {
                         isRequiredSetup: true,
-                        challengeToken: token,
+                        challengeToken,
                         challengeExpiresInMs: expiresInMs,
                         backupCodesRemaining:
                             user.twoFactor.backupCodes.length ?? 0,
@@ -1572,7 +1546,7 @@ export class UserService implements IUserService {
                 isTwoFactorEnable: true,
                 twoFactor: {
                     isRequiredSetup: false,
-                    challengeToken: token,
+                    challengeToken,
                     challengeExpiresInMs: expiresInMs,
                     backupCodesRemaining:
                         user.twoFactor.backupCodes.length ?? 0,
@@ -1589,7 +1563,7 @@ export class UserService implements IUserService {
             method,
         }: UserLoginVerifyTwoFactorRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<AuthTokenResponseDto>> {
         const challenge =
             await this.authTwoFactorUtil.getChallenge(challengeToken);
         if (!challenge) {

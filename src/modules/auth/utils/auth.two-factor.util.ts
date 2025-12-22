@@ -171,20 +171,20 @@ export class AuthTwoFactorUtil {
     /**
      * Create a challenge token for 2FA verification
      * @param cachePayload Challenge payload
-     * @returns Token and expiry
+     * @returns ChallengeToken and expiry
      */
     async createChallenge(
         cachePayload: IAuthTwoFactorChallengeCache
     ): Promise<IAuthTwoFactorChallenge> {
-        const token = this.helperService.randomString(48);
-        const key = `${this.cachePrefixKey}:${token}`;
+        const challengeToken = this.helperService.randomString(48);
+        const key = `${this.cachePrefixKey}:${challengeToken}`;
         await this.cacheManager.set<IAuthTwoFactorChallengeCache>(
             key,
             cachePayload,
             this.challengeTtlInMs
         );
 
-        return { token, expiresInMs: this.challengeTtlInMs };
+        return { challengeToken, expiresInMs: this.challengeTtlInMs };
     }
 
     /**

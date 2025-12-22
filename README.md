@@ -60,12 +60,12 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
 
 ### Next Features
 - [x] Change enum name to use PascalCase
+- [x] 2FA with TOTP Authentication (eg: Google Authenticator)
+- [x] Recovery Codes Method
 - [ ] Add import and export endpoint (includes: direct upload and presign upload)
+- [ ] Add TOTP Authentication Protected to reset password, change password, and regenerate backup codes endpoints
 - [ ] Make sure github action works
-- [ ] Test and find potential memory leak [#587](https://github.com/andrechristikan/ack-nestjs-boilerplate/issues/587) and [#562](https://github.com/andrechristikan/ack-nestjs-boilerplate/issues/562)
 - [ ] Activity Log support bidirectional logging
-- [ ] 2FA with TOTP Authentication (eg: Google Authenticator)
-- [ ] Recovery Codes Method
 - [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
 - [ ] Login with Github SSO

@@ -14,7 +14,6 @@ import { FeatureFlagRepository } from '@modules/feature-flag/repositories/featur
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import {
     BadRequestException,
-    HttpException,
     Injectable,
     InternalServerErrorException,
     NotFoundException,
@@ -33,71 +32,57 @@ export class FeatureFlagService implements IFeatureFlagService {
         request: IRequestApp,
         keyPath: string
     ): Promise<void> {
-        try {
-            const keys = keyPath.split('.');
-            if (keys.length === 0) {
-                throw new InternalServerErrorException({
-                    statusCode:
-                        EnumFeatureFlagStatusCodeError.predefinedKeyEmpty,
-                    message: 'featureFlag.error.predefinedKeyEmpty',
-                });
-            } else if (keys.length > 2) {
-                throw new InternalServerErrorException({
-                    statusCode:
-                        EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded,
-                    message: 'featureFlag.error.predefinedKeyLengthExceeded',
-                });
-            }
+        const keys = keyPath.split('.');
+        if (keys.length === 0) {
+            throw new InternalServerErrorException({
+                statusCode: EnumFeatureFlagStatusCodeError.predefinedKeyEmpty,
+                message: 'featureFlag.error.predefinedKeyEmpty',
+            });
+        } else if (keys.length > 2) {
+            throw new InternalServerErrorException({
+                statusCode:
+                    EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded,
+                message: 'featureFlag.error.predefinedKeyLengthExceeded',
+            });
+        }
 
-            const featureFlag = await this.findOneByKeyAndCache(keys[0]);
-            if (!featureFlag || !featureFlag.isEnable) {
+        const featureFlag = await this.findOneByKeyAndCache(keys[0]);
+        if (!featureFlag || !featureFlag.isEnable) {
+            throw new ServiceUnavailableException({
+                statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
+                message: 'featureFlag.error.serviceUnavailable',
+            });
+        } else if (keys.length > 1) {
+            const metadata: boolean | number | string | null =
+                featureFlag.metadata[keys[1]];
+            if (typeof metadata !== 'boolean') {
+                throw new InternalServerErrorException({
+                    statusCode:
+                        EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid,
+                    message: 'featureFlag.error.predefinedKeyTypeInvalid',
+                });
+            } else if (!metadata) {
                 throw new ServiceUnavailableException({
                     statusCode:
                         EnumFeatureFlagStatusCodeError.serviceUnavailable,
                     message: 'featureFlag.error.serviceUnavailable',
                 });
-            } else if (keys.length > 1) {
-                const metadata: boolean | number | string | null =
-                    featureFlag.metadata[keys[1]];
-                if (typeof metadata !== 'boolean') {
-                    throw new InternalServerErrorException({
-                        statusCode:
-                            EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid,
-                        message: 'featureFlag.error.predefinedKeyTypeInvalid',
-                    });
-                } else if (!metadata) {
-                    throw new ServiceUnavailableException({
-                        statusCode:
-                            EnumFeatureFlagStatusCodeError.serviceUnavailable,
-                        message: 'featureFlag.error.serviceUnavailable',
-                    });
-                }
             }
+        }
 
-            const { user } = request;
-            if (user) {
-                const checkRollout =
-                    this.featureFlagUtil.checkRolloutPercentage(
-                        featureFlag.rolloutPercent,
-                        user.userId
-                    );
-                if (!checkRollout) {
-                    throw new ServiceUnavailableException({
-                        statusCode:
-                            EnumFeatureFlagStatusCodeError.serviceUnavailable,
-                        message: 'featureFlag.error.serviceUnavailable',
-                    });
-                }
+        const { user } = request;
+        if (user) {
+            const checkRollout = this.featureFlagUtil.checkRolloutPercentage(
+                featureFlag.rolloutPercent,
+                user.userId
+            );
+            if (!checkRollout) {
+                throw new ServiceUnavailableException({
+                    statusCode:
+                        EnumFeatureFlagStatusCodeError.serviceUnavailable,
+                    message: 'featureFlag.error.serviceUnavailable',
+                });
             }
-        } catch (error: unknown) {
-            if (error instanceof HttpException) {
-                throw error;
-            }
-
-            throw new ServiceUnavailableException({
-                statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
-                message: 'featureFlag.error.serviceUnavailable',
-            });
         }
     }
 

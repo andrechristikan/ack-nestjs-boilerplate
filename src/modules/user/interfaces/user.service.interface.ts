@@ -43,7 +43,6 @@ import {
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
-import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { EnumUserLoginWith } from '@prisma/client';
@@ -52,6 +51,7 @@ import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.t
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 
 export interface IUserService {
     validateUserGuard(
@@ -163,7 +163,7 @@ export interface IUserService {
         user: IUser,
         refreshToken: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTokenResponseDto>>;
+    ): Promise<IResponseReturn<AuthTokenResponseDto>>;
     signUp(
         { countryId, email, password, ...others }: UserSignUpRequestDto,
         requestLog: IRequestLog
@@ -192,7 +192,7 @@ export interface IUserService {
             method,
         }: UserLoginVerifyTwoFactorRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTokenResponseDto>>;
+    ): Promise<IResponseReturn<AuthTokenResponseDto>>;
     getTwoFactorStatus(
         user: IUser
     ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>>;

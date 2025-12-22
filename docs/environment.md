@@ -141,7 +141,6 @@ QUEUE_REDIS_URL=redis://localhost:6379/1
 
 # Two-Factor Authentication
 AUTH_TWO_FACTOR_ISSUER=ACK
-AUTH_TWO_FACTOR_LABEL=ACK Auth
 AUTH_TWO_FACTOR_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
 
 # Debug (Optional)
@@ -400,18 +399,10 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 
 ### Two-Factor Authentication Settings
 
-> **Note**: Two-factor settings are optional but required if 2FA is enabled. The encryption key must be provided to protect TOTP secrets; the IV is generated per user and stored in the database. Other 2FA tuning values are configured in `src/configs/auth.config.ts`.
-
 **`AUTH_TWO_FACTOR_ISSUER`** *(optional)*  
 Issuer name displayed in authenticator apps.  
 ```bash
 AUTH_TWO_FACTOR_ISSUER=ACK
-```
-
-**`AUTH_TWO_FACTOR_LABEL`** *(optional)*  
-Account label displayed in authenticator apps.  
-```bash
-AUTH_TWO_FACTOR_LABEL=ACK Auth
 ```
 
 **`AUTH_TWO_FACTOR_ENCRYPTION_KEY`** *(required for 2FA)*  
@@ -597,6 +588,7 @@ SENTRY_DSN=
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 

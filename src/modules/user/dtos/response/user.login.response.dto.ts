@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
 import { UserTwoFactorResponseDto } from '@modules/user/dtos/response/user.two-factor.response.dto';
 import { Type } from 'class-transformer';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 
 export class UserLoginResponseDto {
     @ApiProperty({
@@ -14,11 +14,11 @@ export class UserLoginResponseDto {
 
     @ApiProperty({
         required: false,
-        type: UserTokenResponseDto,
+        type: AuthTokenResponseDto,
         description: 'Provides access and refresh tokens upon successful login',
     })
-    @Type(() => UserTokenResponseDto)
-    tokens?: UserTokenResponseDto;
+    @Type(() => AuthTokenResponseDto)
+    tokens?: AuthTokenResponseDto;
 
     @ApiProperty({
         required: false,

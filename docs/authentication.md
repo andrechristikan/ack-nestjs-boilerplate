@@ -59,11 +59,10 @@ Configuration for tokens, sessions, password, social providers, and API keys is 
         - [Setup Apple Sign In](#setup-apple-sign-in)
         - [Usage](#usage-2)
 - [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp)
-    - [Config](#config)
-    - [Flow](#flow)
-    - [Endpoints](#endpoints)
-- [API Key Authentication](#api-key-authentication)
     - [Configuration](#configuration-2)
+    - [Flow](#flow)
+- [API Key Authentication](#api-key-authentication)
+    - [Configuration](#configuration-3)
     - [API Key Types](#api-key-types)
         - [Default API Key](#default-api-key)
         - [System API Key](#system-api-key)
@@ -77,12 +76,9 @@ Configuration for tokens, sessions, password, social providers, and API keys is 
         - [Redis (Primary - Validation)](#redis-primary---validation)
         - [Database (Secondary - Management)](#database-secondary---management)
         - [How They Work Together](#how-they-work-together)
-    - [Session API](#session-api)
-        - [List User Sessions](#list-user-sessions)
-        - [Revoke Session](#revoke-session)
-        - [What Happens on Revocation](#what-happens-on-revocation)
     - [Session Lifecycle](#session-lifecycle)
     - [Session Validation Flow](#session-validation-flow)
+    - [What Happens on Revocation](#what-happens-on-revocation)
 
 ## Password
 
@@ -723,30 +719,55 @@ async loginApple(@AuthJwtPayload() payload: IAuthSocialPayload) {
 
 TOTP-based 2FA adds a second verification step to login. Tokens are only issued after the user passes 2FA.
 
-### Config
-- Configured in `src/configs/auth.config.ts` under `twoFactor`.
-- Key env vars:  
-  `AUTH_TWO_FACTOR_ISSUER`, `AUTH_TWO_FACTOR_LABEL`, `AUTH_TWO_FACTOR_ENCRYPTION_KEY`.
-- Secrets are AES-encrypted (key from env + per-user IV stored in DB). Backup codes are SHA-256 hashed. Challenges live in cache with TTL.
-- Other 2FA tuning values (digits, step, window, secret length, challenge TTL, cache prefix, backup codes) are configured in code.
+### Configuration
+
+Two Factor authentication is configured in `auth.config.ts`:
+
+```typescript
+export default registerAs(
+    'auth',
+    (): IConfigAuth => ({
+        twoFactor: {
+            issuer: 'ACKNestJsTwoFactor',     // App name shown in authenticator apps (TOTP issuer)
+            digits: 6,                        // Number of TOTP code digits (usually 6)
+            step: 30,                         // Code validity interval (seconds)
+            window: 1,                        // Time skew tolerance (in steps, ±30 seconds)
+            secretLength: 32,                 // TOTP secret length (base32 characters)
+            challengeTtlInMs: 300000,         // Challenge token validity (milliseconds, default 5 minutes)
+            cachePrefixKey: 'TwoFactor',      // Redis cache prefix for 2FA challenge
+            backupCodes: {
+                count: 8,                     // Number of backup codes generated per user
+                length: 10                    // Length of each backup code (characters)
+            },
+            encryption: {
+                key: 'qwerty1234567890'       // Encryption key for 2FA secret (must be 32 characters)
+            },
+        }
+});
+```
+
+**Environment Variables:**
+- `AUTH_TWO_FACTOR_ISSUER`:YourAppName
+- `AUTH_TWO_FACTOR_ENCRYPTION_KEY`:your-32-character-encryption-key
+
 
 ### Flow
-1. User logs in (credential or social).
-2. If 2FA is **disabled**, access/refresh tokens are returned immediately.
-3. If 2FA is **enabled**, response contains `challengeToken` + TTL; no tokens yet.
-4. User calls `/v1/user/verify/2fa` with `challengeToken` and a TOTP code or backup code.
-5. On success, tokens are issued and session stored in Redis + DB; backup codes are consumed on use.
 
-### Endpoints
-- Public login: `POST /v1/user/login/credential`, `POST /v1/user/login/social/google|apple` → may return `challengeToken`.
-- Verify challenge: `POST /v1/user/verify/2fa` (body: `challengeToken` + `code` or `backupCode`) → returns tokens.
-- Authenticated management:
-  - `POST /v1/user/2fa/setup` → get secret + otpauth URL.
-  - `POST /v1/user/2fa/confirm` → enable 2FA and receive backup codes.
-  - `POST /v1/user/2fa/backup/regenerate` → new backup codes.
-  - `DELETE /v1/user/2fa` → disable using code or backup code.
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant Cache
 
-See `docs/two-factor-authentication.md` for detailed flows and payloads.
+    User->>API: POST /user/login/credential
+    API->>Cache: Store challenge token
+    API->>User: Return challengeToken
+    User->>API: POST /user/login/2fa/verify {challengeToken, code}
+    API->>Cache: Validate challenge
+    API->>User: Return JWT tokens
+```
+
+See [Two-Factor Documentation][ref-doc-two-factor] for detailed.
 
 ## API Key Authentication
 
@@ -1245,6 +1266,7 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for providing the idea and co
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 

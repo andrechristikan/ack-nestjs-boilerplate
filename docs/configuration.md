@@ -133,7 +133,7 @@ urlVersion: {
 **File**: `src/configs/auth.config.ts`
 **Interface**: `IConfigAuth`
 
-This configuration manages JWT authentication settings including token configuration, password policies, and social authentication.
+This configuration manages JWT authentication settings including token configuration, password policies, social authentication, dan two-factor authentication.
 
 > **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
@@ -174,6 +174,26 @@ password: {
   expiredInSeconds: number;       // Password expiration time
   expiredTemporaryInSeconds: number; // Temporary password expiration
   periodInSeconds: number;        // Password renewal period
+}
+```
+
+**`twoFactor`** - Two-factor authentication configuration
+```typescript
+twoFactor: {
+  issuer: string;                 // Issuer name for OTP (TOTP)
+  digits: number;                 // Number of digits in OTP
+  step: number;                   // Time step in seconds for OTP validity
+  window: number;                 // Allowed window for OTP validation
+  secretLength: number;           // Length of OTP secret
+  challengeTtlInMs: number;       // Challenge TTL in milliseconds
+  cachePrefixKey: string;         // Cache prefix for two-factor data
+  backupCodes: {
+    count: number;                // Number of backup codes
+    length: number;               // Length of each backup code
+  };
+  encryption: {
+    key: string;                  // Encryption key for backup codes
+  };
 }
 ```
 
@@ -429,6 +449,7 @@ uploadPhotoProfilePath: string  // Path template for user profile photo uploads
 
 ### Documentation Configuration
 
+
 **File**: `src/configs/doc.config.ts`
 **Interface**: `IConfigDoc`
 
@@ -451,6 +472,11 @@ description: string             // API documentation description
 **`prefix`** - Documentation URL prefix
 ```typescript
 prefix: string                  // URL prefix for API documentation (default: '/docs')
+```
+
+**`version`** - Static Swagger version
+```typescript
+version: string                 // Static version for Swagger documentation (default: '3.1.0')
 ```
 
 ### Message Configuration
@@ -756,6 +782,7 @@ cachePrefix: string             // Cache prefix for API response data
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 
