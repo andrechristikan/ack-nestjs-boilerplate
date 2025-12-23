@@ -45,10 +45,14 @@ export interface IAuthSocialPayload extends Pick<
     emailVerified: boolean;
 }
 
-export interface IAuthTokenGenerate {
+export interface IAuthAccessTokenGenerate {
     tokens: AuthTokenResponseDto;
     jti: string;
     sessionId: string;
+}
+
+export interface IAuthRefreshTokenGenerate extends IAuthAccessTokenGenerate {
+    expiredInMs: number;
 }
 
 export interface IAuthTwoFactorBackupCodes {

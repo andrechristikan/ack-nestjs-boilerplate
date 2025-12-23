@@ -87,7 +87,7 @@ export function UserSharedUpdateProfileDoc(): MethodDecorator {
     );
 }
 
-export function UserSharedGeneratePhotoProfileDoc(): MethodDecorator {
+export function UserSharedGeneratePhotoProfilePresignDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'generate upload photo profile presign',

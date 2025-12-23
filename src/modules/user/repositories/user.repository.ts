@@ -178,7 +178,7 @@ export class UserRepository {
 
     async findOneActiveByForgotPasswordToken(
         token: string
-    ): Promise<(ForgotPassword & { user: User }) | null> {
+    ): Promise<(ForgotPassword & { user: IUser }) | null> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.forgotPassword.findFirst({
@@ -194,7 +194,12 @@ export class UserRepository {
                 },
             },
             include: {
-                user: true,
+                user: {
+                    include: {
+                        role: true,
+                        twoFactor: true,
+                    },
+                },
             },
         });
     }
@@ -1531,6 +1536,34 @@ export class UserRepository {
             include: {
                 role: true,
                 twoFactor: true,
+            },
+        });
+    }
+
+    async increaseTwoFactorAttempt(userId: string): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                twoFactor: {
+                    update: {
+                        attempt: {
+                            increment: 1,
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    async resetTwoFactorAttempt(userId: string): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                twoFactor: {
+                    update: {
+                        attempt: 0,
+                    },
+                },
             },
         });
     }

@@ -11,6 +11,7 @@ import {
     IAuthTwoFactorVerify,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
+import { IUser } from '@modules/user/interfaces/user.interface';
 import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -37,6 +38,8 @@ export class AuthTwoFactorUtil {
     private readonly backupCodesCount: number;
     private readonly backupCodesLength: number;
     private readonly encryptionKey: string;
+    private readonly maxAttempt: number;
+    private readonly lockAttemptDuration: number;
 
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
@@ -64,6 +67,12 @@ export class AuthTwoFactorUtil {
         );
         this.encryptionKey = this.configService.get<string>(
             'auth.twoFactor.encryption.key'
+        );
+        this.maxAttempt = this.configService.get<number>(
+            'auth.twoFactor.maxAttempt'
+        );
+        this.lockAttemptDuration = this.configService.get<number>(
+            'auth.twoFactor.lockAttemptDuration'
         );
 
         authenticator.options = {
@@ -322,5 +331,56 @@ export class AuthTwoFactorUtil {
             encryptedSecret,
             iv,
         };
+    }
+
+    /**
+     * Checks if the user's 2FA attempt count has reached the maximum allowed attempts.
+     *
+     * @param user - The user to check 2FA attempts for
+     * @returns True if attempts >= maxAttempt, otherwise false
+     */
+    checkAttempt(user: IUser): boolean {
+        return user.twoFactor.attempt >= this.maxAttempt;
+    }
+
+    /**
+     * Locks the user's two-factor authentication (2FA) attempts by setting a lock flag in cache with exponential backoff TTL.
+     *
+     * - The lock is stored in cache with a key based on the user ID.
+     * - TTL (time to live) is calculated using the formula:
+     *   TTL = 2^(attempt / maxAttempt) * lockAttemptDuration
+     * - lockAttemptDuration can be configured (e.g., 2 minutes = 120000 ms) to set the minimum hold time.
+     * - TTL increases exponentially as the attempt count grows, so the user must wait longer for each failed attempt.
+     * - Used to prevent brute-force attacks on 2FA verification.
+     *
+     * @param user - The user whose 2FA attempts should be locked
+     * @returns Promise<void>
+     */
+    async lockTwoFactorAttempt(user: IUser): Promise<void> {
+        const key = `${this.cachePrefixKey}:lock:${user.id}`;
+        const ttlExponentialInMs =
+            Math.pow(2, user.twoFactor.attempt / this.maxAttempt) *
+            this.lockAttemptDuration;
+        await this.cacheManager.set<boolean>(key, true, ttlExponentialInMs);
+
+        return;
+    }
+
+    /**
+     * Retrieves the remaining lock duration (in milliseconds) for a user's two-factor authentication (2FA) attempts.
+     *
+     * - Checks if the user is currently locked out from 2FA attempts by looking up the lock key in cache.
+     * - If locked, returns the remaining TTL (time to live) in milliseconds until the user can retry.
+     * - If not locked, returns 0.
+     *
+     * @param user - The user whose 2FA lock status is being checked
+     * @returns Promise<number> Remaining lock duration in milliseconds, or 0 if not locked
+     */
+    async getLockTwoFactorAttempt(user: IUser): Promise<number> {
+        const key = `${this.cachePrefixKey}:lock:${user.id}`;
+        const isLocked = await this.cacheManager.get<boolean>(key);
+        const retryAfterMs = await this.cacheManager.ttl(key);
+
+        return isLocked ? retryAfterMs : 0;
     }
 }

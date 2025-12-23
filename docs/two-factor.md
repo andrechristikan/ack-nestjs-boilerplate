@@ -1,7 +1,5 @@
 # Two Factor Documentation
 
-> ⚠️ `Future Plan:` Will add two factor when reset password, change password, and regenerate backup codes.
-
 ## Overview
 
 Two-Factor Authentication (2FA) adds an additional security layer to user authentication using Time-based One-Time Password (TOTP) algorithm. This implementation supports both authenticator apps (Google Authenticator, Authy, etc.) and backup codes for account recovery.
@@ -13,6 +11,8 @@ Two-Factor Authentication (2FA) adds an additional security layer to user authen
 - AES-256 encryption for secret storage
 - Challenge-based verification flow
 - Session revocation on security changes
+- Account protection with failed attempts tracking
+- **2FA protection on sensitive operations** (login, password change, password reset, disable 2FA)
 
 ## Related Documents
 
@@ -28,15 +28,21 @@ Two-Factor Authentication (2FA) adds an additional security layer to user authen
 - [Configuration](#configuration)
     - [Environment Variables](#environment-variables)
     - [Configuration Details](#configuration-details)
+- [Security Features](#security-features)
+    - [Failed Attempts Protection](#failed-attempts-protection)
+    - [Temporary Lock Mechanism](#temporary-lock-mechanism)
 - [Where 2FA is Used](#where-2fa-is-used)
-    - [Shared Endpoints](#shared-endpoints)
-    - [Login Endpoints](#login-endpoints)
+    - [Shared Endpoints (User Operations)](#shared-endpoints-user-operations)
+    - [Public Endpoints](#public-endpoints)
     - [Admin Endpoints](#admin-endpoints)
 - [Authentication Flows](#authentication-flows)
     - [Setup Flow](#setup-flow)
     - [Login Flow (2FA Enabled)](#login-flow-2fa-enabled)
     - [Admin Force Setup Flow](#admin-force-setup-flow)
     - [Backup Code Usage Flow](#backup-code-usage-flow)
+    - [Temporary Lock Flow](#temporary-lock-flow)
+    - [Admin Reset 2FA Flow](#admin-reset-2fa-flow)
+    - [Password Operations with 2FA Flow](#password-operations-with-2fa-flow)
 - [Error Handling](#error-handling)
     - [HTTP Status Codes](#http-status-codes)
 - [Contribution](#contribution)
@@ -63,25 +69,108 @@ Located in `src/configs/auth.config.ts`:
 | `challengeTtlInMs` | `300000` | Challenge token TTL (5 minutes) |
 | `backupCodes.count` | `8` | Number of backup codes generated |
 | `backupCodes.length` | `10` | Characters per backup code (A-Z, 0-9) |
+| `maxAttempt` | `5` | Maximum failed verification attempts before lock |
+| `lockAttemptDuration` | `120000` | Base lock duration in milliseconds (2 minutes) |
+
+## Security Features
+
+### Failed Attempts Protection
+
+The system tracks failed 2FA verification attempts to protect against brute force attacks:
+
+**How it works:**
+- Each failed TOTP code or backup code verification increments the attempt counter
+- Counter is stored in the `TwoFactor.attempt` field
+- Counter resets to 0 when user successfully verifies with valid code or backup code
+- Both TOTP codes and backup codes share the same counter (combined limit)
+
+**Counter tracking:**
+```
+Attempt 1 (TOTP failed) → attempt = 1
+Attempt 2 (Backup code failed) → attempt = 2
+Attempt 3 (TOTP failed) → attempt = 3
+Attempt 4 (TOTP success) → attempt = 0 (reset)
+```
+
+### Temporary Lock Mechanism
+
+When a user reaches the maximum allowed attempts (5 failed verifications), the system temporarily locks 2FA verification with exponential backoff.
+
+**How it works:**
+1. Lock check happens **before** verification attempt
+2. If locked, return error with `retryAfterSeconds` (HTTP 429)
+3. If not locked, proceed with verification
+4. If verification fails:
+   - Increment attempt counter first
+   - **After increment**, check if counter reached max (5)
+   - If reached max, set lock in cache with exponential TTL
+   - Return invalid code error (HTTP 401)
+5. Lock is stored in Redis cache with automatic expiration
+6. Lock duration increases exponentially based on attempt count
+
+**Lock timing:**
+- Lock is set **after** the 5th failed attempt
+- Lock prevents **next** verification attempt
+- User receives HTTP 429 on **next** attempt (not the 5th)
+
+**Lock duration calculation:**
+- Formula: `TTL = 2^(attempt / maxAttempt) × lockAttemptDuration`
+- Base lock duration: 2 minutes (configurable via `lockAttemptDuration`)
+
+**Lock duration examples:**
+```
+After 5th failed attempt (attempt=5):
+  TTL = 2^(5/5) × 2 minutes = 2^1 × 2 = 4 minutes
+
+After 6th failed attempt (attempt=6):
+  TTL = 2^(6/5) × 2 minutes = 2^1.2 × 2 ≈ 4.6 minutes
+
+After 7th failed attempt (attempt=7):
+  TTL = 2^(7/5) × 2 minutes = 2^1.4 × 2 ≈ 5.3 minutes
+```
+
+**User experience flow:**
+1. User enters wrong code 5 times → gets HTTP 401 (invalid code)
+2. Lock is set in background
+3. User tries again (6th attempt) → gets HTTP 429 with `retryAfterSeconds: 240` (4 minutes)
+4. User waits 4 minutes
+5. Lock expires automatically
+6. User can try again
+7. If fails again, new lock with longer duration (exponential backoff)
+
+**Recovery process:**
+- Lock automatically expires after TTL duration (no admin intervention needed)
+- Attempt counter persists in database until successful verification
+- Each subsequent lock (after retry) increases duration exponentially
+- Counter resets to 0 only on successful verification
+- Admin can force reset 2FA to clear both counter and lock
 
 ## Where 2FA is Used
 
-### Shared Endpoints
+### Shared Endpoints (User Operations)
+**2FA Management:**
 - `GET /shared/user/2fa/status` - Check current 2FA status
 - `POST /shared/user/2fa/setup` - Get TOTP secret and otpauthUrl
 - `POST /shared/user/2fa/enable` - Enable 2FA with code verification
-- `DELETE /shared/user/2fa/disable` - Disable 2FA with code verification
-- `POST /shared/user/2fa/regenerate-backup-codes` - Generate new backup codes
+- `DELETE /shared/user/2fa/disable` - **Disable 2FA (requires 2FA verification)**
+- `POST /shared/user/2fa/regenerate-backup-codes` - Regenerate backup codes
 
-### Login Endpoints
+**Password Operations (require 2FA if enabled):**
+- `PUT /shared/user/password/change` - **Change password (requires 2FA verification if enabled)**
+
+### Public Endpoints
+**Login Flow:**
 - `POST /public/user/login/credential` - Login with email/password
 - `POST /public/user/login/social/google` - Login with Google OAuth
 - `POST /public/user/login/social/apple` - Login with Apple Sign In
 - `POST /public/user/login/2fa/verify` - Verify TOTP code or backup code
 - `POST /public/user/login/2fa/enable` - Complete forced 2FA setup during login
 
+**Password Recovery (require 2FA if enabled):**
+- `PUT /public/user/password/reset` - **Reset password (requires 2FA verification if enabled)**
+
 ### Admin Endpoints
-- `PATCH /admin/user/update/:userId/2fa/reset` - Force reset user's 2FA
+- `PATCH /admin/user/update/:userId/2fa/reset` - Force reset user's 2FA (clears lock and resets attempts)
 
 **Note:** See Swagger documentation for detailed request/response schemas.
 
@@ -108,6 +197,7 @@ sequenceDiagram
     API->>API: Generate 8 backup codes
     API->>Database: Hash & save backup codes
     API->>Database: Set enabled=true, confirmedAt=now
+    API->>Database: Set attempt=0
     API->>User: Return backup codes
 ```
 
@@ -129,12 +219,29 @@ sequenceDiagram
     API->>User: Return challengeToken
     User->>API: POST /user/login/2fa/verify {challengeToken, code}
     API->>Cache: Validate challenge
-    API->>Database: Get & decrypt secret
-    API->>API: Verify TOTP code (±30s tolerance)
-    API->>API: Generate JWT tokens
-    API->>Database: Create session
-    API->>Cache: Delete challenge
-    API->>User: Return access + refresh tokens
+    API->>Cache: Check if user is locked
+    alt User Locked
+        API->>Cache: Get TTL (remaining lock time)
+        API->>User: Error: Temporarily locked (429)<br/>retryAfterSeconds: X
+    else Not Locked
+        API->>Database: Get & decrypt secret
+        API->>API: Verify TOTP code (±30s tolerance)
+        alt Code Valid
+            API->>Database: Reset attempt to 0
+            API->>API: Generate JWT tokens
+            API->>Database: Create session
+            API->>Cache: Delete challenge
+            API->>User: Return access + refresh tokens
+        else Code Invalid
+            API->>Database: Increment attempt counter
+            API->>Database: Get updated attempt count
+            alt Updated Attempt >= 5
+                Note over API: Calculate exponential TTL<br/>TTL = 2^(attempt/5) × 2 minutes
+                API->>Cache: Set lock with TTL
+            end
+            API->>User: Error: Invalid code (401)
+        end
+    end
 ```
 
 ### Admin Force Setup Flow
@@ -159,7 +266,7 @@ sequenceDiagram
     User->>User: Scan QR code
     User->>API: POST /user/login/2fa/enable {challengeToken, code}
     API->>Database: Verify & save backup codes
-    API->>Database: Set requiredSetup=false
+    API->>Database: Set requiredSetup=false, attempt=0
     API->>User: Return backup codes
     User->>API: POST /user/login/2fa/verify {challengeToken, code}
     API->>User: Return tokens
@@ -172,17 +279,218 @@ User uses backup code when authenticator app is unavailable:
 sequenceDiagram
     participant User
     participant API
+    participant Cache
     participant Database
 
     User->>API: POST /user/login/2fa/verify {backupCode}
-    API->>Database: Get hashed backup codes
-    API->>API: Hash input & compare
-    API->>Database: Remove used backup code
-    API->>Database: Update lastUsedAt
-    API->>User: Return tokens + backupCodesRemaining
+    API->>Cache: Check if user is locked
+    alt User Locked
+        API->>Cache: Get TTL (remaining lock time)
+        API->>User: Error: Temporarily locked (429)<br/>retryAfterSeconds: X
+    else Not Locked
+        API->>Database: Get hashed backup codes
+        API->>API: Hash input & compare
+        alt Backup Code Valid
+            API->>Database: Remove used backup code
+            API->>Database: Reset attempt to 0
+            API->>Database: Update lastUsedAt
+            API->>User: Return tokens + backupCodesRemaining
+            alt No Codes Left
+                API->>User: Warning: Regenerate backup codes
+            end
+        else Backup Code Invalid
+            API->>Database: Increment attempt counter
+            API->>Database: Get updated attempt count
+            alt Updated Attempt >= 5
+                Note over API: Calculate exponential TTL<br/>TTL = 2^(attempt/5) × 2 minutes
+                API->>Cache: Set lock with TTL
+            end
+            API->>User: Error: Invalid backup code (401)
+        end
+    end
+```
+
+### Temporary Lock Flow
+
+System behavior when user reaches maximum attempts:
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant Cache
+    participant Database
+
+    User->>API: POST /user/login/2fa/verify {code}
+    API->>Cache: Check if user is locked
     
-    alt No Codes Left
-        API->>User: Warning: Regenerate backup codes
+    alt User Already Locked
+        API->>Cache: Get TTL (remaining lock time)
+        API->>User: Error: Temporarily locked (429)<br/>retryAfterSeconds: X
+    else Not Locked
+        API->>API: Verify code
+        alt Code Valid
+            API->>Database: Reset attempt = 0
+            API->>User: Success: Return tokens
+        else Code Invalid
+            API->>Database: Increment attempt (attempt++)
+            API->>Database: Get updated attempt count
+            
+            alt Updated Attempt >= 5
+                Note over API: Calculate exponential TTL<br/>TTL = 2^(attempt/5) × 2 minutes
+                API->>Cache: Set lock with TTL
+                Note over Cache: Lock will be checked<br/>on next verification attempt
+            end
+            
+            API->>User: Error: Invalid code (401)
+        end
+    end
+    
+    Note over User,Cache: Lock expires after TTL
+    Note over User: User can retry after lock expires
+```
+
+### Admin Reset 2FA Flow
+
+Admin can force reset user's 2FA if needed (optional, user can also wait for lock to expire):
+```mermaid
+sequenceDiagram
+    participant User
+    participant Admin
+    participant API
+    participant Database
+    participant Cache
+
+    Note over User: User locked out or lost access
+    User->>Admin: Request 2FA reset
+    
+    Admin->>API: PATCH /admin/user/update/:userId/2fa/reset
+    API->>Database: Reset 2FA (set requiredSetup=true)
+    API->>Database: Clear attempt counter
+    API->>Cache: Clear lock (if exists)
+    API->>Database: Revoke all sessions
+    API->>Admin: Success confirmation
+    
+    Admin->>User: 2FA has been reset
+    
+    Note over User: User must setup 2FA again on next login
+    User->>API: POST /user/login/credential
+    API->>User: Return secret + otpauthUrl + challengeToken
+    User->>API: POST /user/login/2fa/enable {code}
+    API->>Database: Complete setup, attempt=0
+    User->>API: POST /user/login/2fa/verify {code}
+    API->>User: Return tokens
+```
+
+### Password Operations with 2FA Flow
+
+When user has 2FA enabled, password operations require additional verification:
+
+**Change Password:**
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant Cache
+    participant Database
+
+    User->>API: PUT /shared/user/password/change<br/>{oldPassword, newPassword, code/backupCode, method}
+    API->>Database: Verify old password
+    alt Old Password Invalid
+        API->>User: Error: Password not match (400)
+    else Old Password Valid
+        alt User has 2FA enabled
+            API->>Cache: Check if user is locked
+            alt User Locked
+                API->>User: Error: Temporarily locked (429)
+            else Not Locked
+                API->>API: Verify 2FA (code or backupCode)
+                alt 2FA Invalid
+                    API->>Database: Increment attempt
+                    alt Attempt >= 5
+                        API->>Cache: Set lock
+                    end
+                    API->>User: Error: Invalid 2FA (401)
+                else 2FA Valid
+                    API->>Database: Reset attempt to 0
+                    API->>Database: Change password
+                    API->>Database: Revoke all sessions
+                    API->>User: Success
+                end
+            end
+        else 2FA not enabled
+            API->>Database: Change password
+            API->>Database: Revoke all sessions
+            API->>User: Success
+        end
+    end
+```
+
+**Reset Password (Forgot Password):**
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant Cache
+    participant Database
+
+    User->>API: PUT /public/user/password/reset<br/>{token, newPassword, code/backupCode, method}
+    API->>Database: Verify reset token
+    alt Token Invalid
+        API->>User: Error: Token invalid (404)
+    else Token Valid
+        alt User has 2FA enabled
+            API->>Cache: Check if user is locked
+            alt User Locked
+                API->>User: Error: Temporarily locked (429)
+            else Not Locked
+                API->>API: Verify 2FA (code or backupCode)
+                alt 2FA Invalid
+                    API->>Database: Increment attempt
+                    alt Attempt >= 5
+                        API->>Cache: Set lock
+                    end
+                    API->>User: Error: Invalid 2FA (401)
+                else 2FA Valid
+                    API->>Database: Reset attempt to 0
+                    API->>Database: Reset password
+                    API->>Database: Revoke all sessions
+                    API->>User: Success
+                end
+            end
+        else 2FA not enabled
+            API->>Database: Reset password
+            API->>Database: Revoke all sessions
+            API->>User: Success
+        end
+    end
+```
+
+**Disable 2FA:**
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant Cache
+    participant Database
+
+    User->>API: DELETE /shared/user/2fa/disable<br/>{code/backupCode, method}
+    API->>Cache: Check if user is locked
+    alt User Locked
+        API->>User: Error: Temporarily locked (429)
+    else Not Locked
+        API->>API: Verify 2FA (code or backupCode)
+        alt 2FA Invalid
+            API->>Database: Increment attempt
+            alt Attempt >= 5
+                API->>Cache: Set lock
+            end
+            API->>User: Error: Invalid 2FA (401)
+        else 2FA Valid
+            API->>Database: Reset attempt to 0
+            API->>Database: Disable 2FA
+            API->>Database: Clear secret, IV, backup codes
+            API->>User: Success
+        end
     end
 ```
 
@@ -198,9 +506,12 @@ sequenceDiagram
 | 400 | `twoFactorNotRequiredSetup` | Setup already completed |
 | 401 | `twoFactorInvalid` | Invalid TOTP code or backup code |
 | 401 | `twoFactorChallengeInvalid` | Challenge token expired or invalid |
+| 429 | `twoFactorAttemptTemporaryLock` | Too many failed attempts, temporarily locked with `retryAfterSeconds` |
 | 403 | `inactiveForbidden` | Account inactive |
 | 403 | `emailNotVerified` | Email not verified |
 | 404 | `notFound` | User not found |
+
+**Note on `twoFactorAttemptTemporaryLock`:** This error occurs when user tries to verify 2FA while locked. Response includes `retryAfterSeconds` indicating when user can retry. Lock is set automatically after the 5th failed attempt (when attempt counter reaches 5). Lock duration increases exponentially with each subsequent lockout.
 
 ## Contribution
 

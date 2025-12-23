@@ -250,6 +250,7 @@ model TwoFactor {
   requiredSetup  Boolean  @default(false)
   confirmedAt    DateTime?
   lastUsedAt     DateTime?
+  attempt       Int      @default(0)
 
   // timestamps fields
   createdAt DateTime @default(now())

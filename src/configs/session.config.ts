@@ -7,6 +7,6 @@ export interface IConfigSession {
 export default registerAs(
     'session',
     (): IConfigSession => ({
-        keyPattern: 'user:{userId}:session:{sessionId}',
+        keyPattern: 'User:{userId}:Session:{sessionId}',
     })
 );

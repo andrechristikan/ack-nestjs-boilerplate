@@ -232,6 +232,11 @@ export class MigrationUserSeed
                                 })),
                             },
                         },
+                        twoFactor: {
+                            create: {
+                                enabled: false,
+                            },
+                        },
                     },
                     update: {},
                 });

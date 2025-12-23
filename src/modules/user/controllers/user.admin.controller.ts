@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Patch,
+    Post,
+    Put,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
     Response,
@@ -46,7 +56,10 @@ import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import {
     UserAdminCreateDoc,
+    UserAdminExportDoc,
+    UserAdminGenerateImportDoc,
     UserAdminGetDoc,
+    UserAdminImportDoc,
     UserAdminListDoc,
     UserAdminResetTwoFactorDoc,
     UserAdminUpdatePasswordDoc,
@@ -62,6 +75,9 @@ import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.upda
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
+import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { UserGenerateImportRequestDto } from '@modules/user/dtos/request/user.generate-import.request.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -242,8 +258,74 @@ export class UserAdminController {
         });
     }
 
-    // TODO: 1 Create example import and export endpoints use CSV file
-    // import can be used to create multiple users at once
-    // export can be used to export user list to CSV file
-    // import using 2 methods: file upload and presigned URL upload
+    @UserAdminGenerateImportDoc()
+    @Response('user.generateImportPresign')
+    @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read, EnumPolicyAction.create],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/import/generate-presign')
+    async generateImportPresign(
+        @Body() body: UserGenerateImportRequestDto
+    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+        return this.userService.generateImportPresign(body);
+    }
+
+    @UserAdminImportDoc()
+    @Response('user.import')
+    @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read, EnumPolicyAction.create],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/import')
+    async import(
+        @AuthJwtPayload('userId')
+        createdBy: string,
+        @Body() body: UserImportRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.import(body, createdBy, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @UserAdminExportDoc()
+    @Response('user.export')
+    @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/export')
+    async export(
+        @PaginationQueryFilterInEnum<EnumUserStatus>(
+            'status',
+            UserDefaultStatus
+        )
+        status?: Record<string, IPaginationIn>,
+        @PaginationQueryFilterEqualString('role')
+        role?: Record<string, IPaginationEqual>,
+        @PaginationQueryFilterEqualString('country')
+        country?: Record<string, IPaginationEqual>
+    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+        return this.userService.export(status, role, country);
+    }
 }

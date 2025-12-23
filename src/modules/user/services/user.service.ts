@@ -25,6 +25,8 @@ import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.en
 import {
     IAuthJwtRefreshTokenPayload,
     IAuthPassword,
+    IAuthTwoFactorVerify,
+    IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthService } from '@modules/auth/services/auth.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
@@ -98,6 +100,9 @@ import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/u
 import { UserLoginEnableTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-enable-two-factor.request.dto';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { UserGenerateImportRequestDto } from '@modules/user/dtos/request/user.generate-import.request.dto';
+import { RequestTooManyException } from '@common/request/exceptions/request.too-many.exception';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -470,12 +475,12 @@ export class UserService implements IUserService {
 
     async updatePhotoProfile(
         userId: string,
-        { photo, size }: UserUpdateProfilePhotoRequestDto,
+        { photoKey, size }: UserUpdateProfilePhotoRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         try {
             const aws: AwsS3Dto = this.awsS3Service.mapPresign({
-                key: photo,
+                key: photoKey,
                 size,
             });
 
@@ -837,12 +842,16 @@ export class UserService implements IUserService {
     }
 
     async changePassword(
-        userId: string,
-        { newPassword, oldPassword }: UserChangePasswordRequestDto,
+        user: IUser,
+        {
+            newPassword,
+            oldPassword,
+            backupCode,
+            code,
+            method,
+        }: UserChangePasswordRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        const user = await this.userRepository.findOneActiveById(userId);
-
         if (this.authUtil.checkPasswordAttempt(user)) {
             throw new ForbiddenException({
                 statusCode: EnumUserStatus_CODE_ERROR.passwordAttemptMax,
@@ -851,7 +860,7 @@ export class UserService implements IUserService {
         } else if (
             !this.authUtil.validatePassword(oldPassword, user.password)
         ) {
-            await this.userRepository.increasePasswordAttempt(userId);
+            await this.userRepository.increasePasswordAttempt(user.id);
 
             throw new BadRequestException({
                 statusCode: EnumUserStatus_CODE_ERROR.passwordNotMatch,
@@ -859,10 +868,10 @@ export class UserService implements IUserService {
             });
         }
 
-        await this.userRepository.resetPasswordAttempt(userId);
+        await this.userRepository.resetPasswordAttempt(user.id);
 
         const passwordHistories =
-            await this.passwordHistoryRepository.findAllActiveByUser(userId);
+            await this.passwordHistoryRepository.findAllActiveByUser(user.id);
         const passwordCheck = this.userUtil.checkPasswordPeriod(
             passwordHistories,
             newPassword
@@ -879,18 +888,36 @@ export class UserService implements IUserService {
             });
         }
 
+        let twoFactorVerified: IAuthTwoFactorVerifyResult | undefined;
+        if (user.twoFactor.enabled) {
+            twoFactorVerified = await this.handleTwoFactorValidation(user, {
+                code,
+                backupCode,
+                method,
+            });
+        }
+
         try {
-            const sessions = await this.sessionRepository.findAllByUser(userId);
+            const sessions = await this.sessionRepository.findAllByUser(
+                user.id
+            );
             const password = this.authUtil.createPassword(newPassword);
 
             await Promise.all([
                 this.userRepository.changePassword(
-                    userId,
+                    user.id,
                     password,
                     requestLog
                 ),
-                this.sessionUtil.deleteAllLogins(userId, sessions),
-                this.sessionRepository.revokeAllByUser(userId, requestLog),
+                this.sessionUtil.deleteAllLogins(user.id, sessions),
+                this.sessionRepository.revokeAllByUser(user.id, requestLog),
+                twoFactorVerified
+                    ? this.userRepository.verifyTwoFactor(
+                          user.id,
+                          twoFactorVerified,
+                          requestLog
+                      )
+                    : Promise.resolve(),
             ]);
 
             // @note: send email after all creation
@@ -1061,17 +1088,19 @@ export class UserService implements IUserService {
         }
 
         try {
-            const { jti: newJti, tokens } = this.authService.refreshToken(
-                user,
-                refreshToken
-            );
+            const {
+                jti: newJti,
+                tokens,
+                expiredInMs,
+            } = this.authService.refreshToken(user, refreshToken);
 
             await Promise.all([
                 this.sessionUtil.updateLogin(
                     userId,
                     sessionId,
                     session,
-                    newJti
+                    newJti,
+                    expiredInMs
                 ),
                 this.userRepository.refresh(
                     userId,
@@ -1381,7 +1410,13 @@ export class UserService implements IUserService {
     }
 
     async resetPassword(
-        { newPassword, token }: UserForgotPasswordResetRequestDto,
+        {
+            newPassword,
+            token,
+            backupCode,
+            code,
+            method,
+        }: UserForgotPasswordResetRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         const resetPassword =
@@ -1413,6 +1448,18 @@ export class UserService implements IUserService {
             });
         }
 
+        let twoFactorVerified: IAuthTwoFactorVerifyResult | undefined;
+        if (resetPassword.user.twoFactor.enabled) {
+            twoFactorVerified = await this.handleTwoFactorValidation(
+                resetPassword.user,
+                {
+                    code,
+                    backupCode,
+                    method,
+                }
+            );
+        }
+
         try {
             const sessions = await this.sessionRepository.findAllByUser(
                 resetPassword.userId
@@ -1433,6 +1480,13 @@ export class UserService implements IUserService {
                     resetPassword.userId,
                     requestLog
                 ),
+                twoFactorVerified
+                    ? this.userRepository.verifyTwoFactor(
+                          resetPassword.userId,
+                          twoFactorVerified,
+                          requestLog
+                      )
+                    : Promise.resolve(),
             ]);
 
             // @note: send email after all creation
@@ -1555,6 +1609,49 @@ export class UserService implements IUserService {
         };
     }
 
+    private async handleTwoFactorValidation(
+        user: IUser,
+        { method, code, backupCode }: IAuthTwoFactorVerify
+    ): Promise<IAuthTwoFactorVerifyResult> {
+        const retryAfterMs =
+            await this.authTwoFactorUtil.getLockTwoFactorAttempt(user);
+        if (retryAfterMs > 0) {
+            throw new RequestTooManyException({
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                message: 'auth.error.twoFactorAttemptTemporaryLock',
+                messageProperties: {
+                    retryAfterSeconds: retryAfterMs / 1000,
+                },
+            });
+        }
+
+        const verified = await this.authTwoFactorUtil.verifyTwoFactor(
+            user.twoFactor,
+            {
+                method,
+                code,
+                backupCode,
+            }
+        );
+        if (!verified.isValid) {
+            await this.userRepository.increaseTwoFactorAttempt(user.id);
+
+            if (this.authTwoFactorUtil.checkAttempt(user)) {
+                await this.authTwoFactorUtil.lockTwoFactorAttempt(user);
+            }
+
+            throw new UnauthorizedException({
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+                message: 'auth.error.twoFactorInvalid',
+            });
+        }
+
+        await this.userRepository.resetTwoFactorAttempt(user.id);
+
+        return verified;
+    }
+
     async loginVerifyTwoFactor(
         {
             challengeToken,
@@ -1603,20 +1700,11 @@ export class UserService implements IUserService {
             });
         }
 
-        const verified = await this.authTwoFactorUtil.verifyTwoFactor(
-            user.twoFactor,
-            {
-                method,
-                code,
-                backupCode,
-            }
-        );
-        if (!verified.isValid) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
-                message: 'auth.error.twoFactorInvalid',
-            });
-        }
+        const twoFactorVerified = await this.handleTwoFactorValidation(user, {
+            method,
+            code,
+            backupCode,
+        });
 
         try {
             const [tokens] = await Promise.all([
@@ -1629,7 +1717,7 @@ export class UserService implements IUserService {
                 this.authTwoFactorUtil.clearChallenge(challengeToken),
                 this.userRepository.verifyTwoFactor(
                     user.id,
-                    verified,
+                    twoFactorVerified,
                     requestLog
                 ),
             ]);
@@ -1689,19 +1777,10 @@ export class UserService implements IUserService {
             });
         }
 
-        const verified = await this.authTwoFactorUtil.verifyTwoFactor(
-            user.twoFactor,
-            {
-                method: EnumAuthTwoFactorMethod.code,
-                code,
-            }
-        );
-        if (!verified.isValid) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
-                message: 'auth.error.twoFactorInvalid',
-            });
-        }
+        await this.handleTwoFactorValidation(user, {
+            method: EnumAuthTwoFactorMethod.code,
+            code,
+        });
 
         try {
             const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
@@ -1841,6 +1920,8 @@ export class UserService implements IUserService {
             }
         );
         if (!verified.isValid) {
+            await this.userRepository.increaseTwoFactorAttempt(user.id);
+
             throw new UnauthorizedException({
                 statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
                 message: 'auth.error.twoFactorInvalid',
@@ -1950,5 +2031,39 @@ export class UserService implements IUserService {
                 _error: err,
             });
         }
+    }
+
+    async generateImportPresign({
+        size,
+    }: UserGenerateImportRequestDto): Promise<
+        IResponseReturn<AwsS3PresignDto>
+    > {
+        // TODO: Generate user data import presign url
+        // generate unique key for import
+        // consider to add date prefix for easier management
+        // consider to add file expiration time if needed
+        return;
+    }
+
+    async import(
+        { importKey, size }: UserImportRequestDto,
+        createdBy: string,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        // TODO: Import user data from S3
+        // consider to remove file from S3 after import
+        return;
+    }
+
+    async export(
+        status?: Record<string, IPaginationIn>,
+        role?: Record<string, IPaginationEqual>,
+        country?: Record<string, IPaginationEqual>
+    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+        // TODO: export user data to S3 and generate presign url
+        // consider to export in background job if data is too large
+        // export to s3 private bucket and generate presign url
+        // TODO: 2 Enchant export to create a separate module to handle large data export, combine with bullmq
+        return;
     }
 }

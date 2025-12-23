@@ -23,6 +23,7 @@ export class IsTwoFactorCodeConstraint implements ValidatorConstraintInterface {
         if (this.isEmptyValue(value)) {
             return false;
         }
+
         return this.authTwoFactorUtil.validateCode(value);
     }
 

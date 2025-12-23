@@ -52,6 +52,8 @@ import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { UserGenerateImportRequestDto } from '@modules/user/dtos/request/user.generate-import.request.dto';
 
 export interface IUserService {
     validateUserGuard(
@@ -106,7 +108,7 @@ export interface IUserService {
     ): Promise<IResponseReturn<AwsS3PresignDto>>;
     updatePhotoProfile(
         userId: string,
-        { photo, size }: UserUpdateProfilePhotoRequestDto,
+        { photoKey, size }: UserUpdateProfilePhotoRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
     deleteSelf(
@@ -145,7 +147,7 @@ export interface IUserService {
         updatedBy: string
     ): Promise<IResponseReturn<void>>;
     changePassword(
-        userId: string,
+        user: IUser,
         { newPassword, oldPassword }: UserChangePasswordRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
@@ -215,4 +217,17 @@ export interface IUserService {
         updatedBy: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
+    generateImportPresign({
+        size,
+    }: UserGenerateImportRequestDto): Promise<IResponseReturn<AwsS3PresignDto>>;
+    import(
+        { importKey, size }: UserImportRequestDto,
+        createdBy: string,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
+    export(
+        status?: Record<string, IPaginationIn>,
+        role?: Record<string, IPaginationEqual>,
+        country?: Record<string, IPaginationEqual>
+    ): Promise<IResponseReturn<AwsS3PresignDto>>;
 }

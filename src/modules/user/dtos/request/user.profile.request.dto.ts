@@ -29,5 +29,5 @@ export class UserUpdateProfilePhotoRequestDto extends PickType(
     })
     @IsString()
     @IsNotEmpty()
-    photo: string;
+    photoKey: string;
 }

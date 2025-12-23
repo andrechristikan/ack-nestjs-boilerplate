@@ -23,6 +23,7 @@ export class IsTwoFactorBackupCodeConstraint implements ValidatorConstraintInter
         if (this.isEmptyValue(value)) {
             return false;
         }
+
         return this.authTwoFactorUtil.validateBackupCode(value);
     }
 

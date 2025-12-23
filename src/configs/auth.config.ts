@@ -57,6 +57,8 @@ export interface IConfigAuth {
         secretLength: number;
         challengeTtlInMs: number;
         cachePrefixKey: string;
+        maxAttempt: number;
+        lockAttemptDuration: number;
         backupCodes: {
             count: number;
             length: number;
@@ -140,6 +142,8 @@ export default registerAs(
                 count: 8,
                 length: 10,
             },
+            maxAttempt: 5,
+            lockAttemptDuration: ms('2m'),
             encryption: {
                 key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY,
             },

@@ -30,7 +30,7 @@ import {
     UserSharedChangePasswordDoc,
     UserSharedClaimUsernameDoc,
     UserSharedDeleteMobileNumberDoc,
-    UserSharedGeneratePhotoProfileDoc,
+    UserSharedGeneratePhotoProfilePresignDoc,
     UserSharedProfileDoc,
     UserSharedRefreshDoc,
     UserSharedTwoFactorDisableDoc,
@@ -141,7 +141,7 @@ export class UserSharedController {
         });
     }
 
-    @UserSharedGeneratePhotoProfileDoc()
+    @UserSharedGeneratePhotoProfilePresignDoc()
     @Response('user.generatePhotoProfilePresign')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -216,12 +216,12 @@ export class UserSharedController {
     @ApiKeyProtected()
     @Patch('/change-password')
     async changePassword(
+        @UserCurrent() user: IUser,
         @Body() body: UserChangePasswordRequestDto,
-        @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.userService.changePassword(userId, body, {
+        return this.userService.changePassword(user, body, {
             ipAddress,
             userAgent,
         });
@@ -403,5 +403,5 @@ export class UserSharedController {
         });
     }
 
-    // TODO: 3 Verify number implementation, but which provider?
+    // TODO: Verify number implementation, but which provider?
 }
