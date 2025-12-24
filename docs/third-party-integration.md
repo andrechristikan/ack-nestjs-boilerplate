@@ -270,3 +270,4 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

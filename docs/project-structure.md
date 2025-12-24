@@ -362,3 +362,4 @@ Below are explanations for the root folders and files outside `src/` (excluding 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

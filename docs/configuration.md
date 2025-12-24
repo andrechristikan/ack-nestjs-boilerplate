@@ -787,3 +787,4 @@ cachePrefix: string             // Cache prefix for API response data
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

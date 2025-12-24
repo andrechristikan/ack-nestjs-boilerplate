@@ -491,3 +491,4 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for contributing to the Term 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

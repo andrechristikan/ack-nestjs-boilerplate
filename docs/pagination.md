@@ -687,3 +687,4 @@ For detailed documentation on API documentation decorators and OpenAPI generatio
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g
