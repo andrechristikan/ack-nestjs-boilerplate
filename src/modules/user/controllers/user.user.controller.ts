@@ -11,6 +11,7 @@ import {
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { UserUserDeleteSelfDoc } from '@modules/user/docs/user.user.doc';
 import { UserService } from '@modules/user/services/user.service';
@@ -28,6 +29,7 @@ export class UserUserController {
 
     @UserUserDeleteSelfDoc()
     @Response('user.deleteSelf')
+    @TermPolicyAcceptanceProtected()
     @RoleProtected(EnumRoleType.user)
     @UserProtected()
     @AuthJwtAccessProtected()

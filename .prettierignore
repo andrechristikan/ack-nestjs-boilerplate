@@ -1,4 +1,4 @@
 **/**/templates/*
 generated/
-src/swagger.json
+swagger.json
 src/metadata.ts

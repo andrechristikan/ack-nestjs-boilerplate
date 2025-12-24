@@ -11,7 +11,7 @@ import {
 } from '@modules/auth/interfaces/auth.interface';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { HelperService } from '@common/helper/services/helper.service';
-import { EnumUserLoginFrom, EnumUserSignUpWith, User } from '@prisma/client';
+import { EnumUserLoginFrom, EnumUserLoginWith, User } from '@prisma/client';
 import { createPrivateKey, createPublicKey } from 'crypto';
 import verifyAppleToken, {
     VerifyAppleIdTokenResponse,
@@ -338,7 +338,7 @@ export class AuthUtil {
         sessionId: string,
         loginAt: Date,
         loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserSignUpWith
+        loginWith: EnumUserLoginWith
     ): IAuthJwtAccessTokenPayload {
         return {
             userId: data.id,
@@ -420,7 +420,7 @@ export class AuthUtil {
      * @param password - The plain text password to hash
      * @param options - Optional settings for password creation
      * @param options.temporary - If true, uses temporary password expiration time instead of regular expiration
-     * @returns Object containing the password hash, salt, creation date, expiration date, and period expiration date
+     * @returns Object containing the password hash, creation date, expiration date, and period expiration date
      */
     createPassword(
         password: string,
@@ -450,7 +450,6 @@ export class AuthUtil {
             passwordHash,
             passwordExpired,
             passwordCreated: today,
-            salt,
             passwordPeriodExpired,
         };
     }

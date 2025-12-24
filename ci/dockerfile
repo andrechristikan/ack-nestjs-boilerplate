@@ -1,66 +1,39 @@
-# Build stage for compiling the application
-FROM node:lts-alpine AS builder
-
+# Build stage base
+FROM node:lts-alpine AS base
 LABEL maintainer="andrechristikan@gmail.com"
-
-WORKDIR /app
-
-# Install pnpm globally
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# Copy package files for dependency installation
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-
-# Install dependencies with clear logging and no user interaction
-RUN set -x && pnpm install --frozen-lockfile
-
-# Copy application source code
-COPY . .
-
-# Build the application
-RUN pnpm build
-
-# Production stage with minimal footprint
-FROM node:lts-alpine AS main
-
-LABEL maintainer="andrechristikan@gmail.com"
-
-# Create non-root user for security
-RUN addgroup -S ec2-user && adduser -S ec2-user -G ec2-user
-
-# Install pnpm globally
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# Set environment variable from build arg
 ARG NODE_ENV
 ENV NODE_ENV=${NODE_ENV}
-
-# Set working directory and expose API port
+RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
-EXPOSE 3000
 
-# Copy only necessary files from builder stage
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
+# Stage to install all dependencies and build the app
+FROM base AS builder
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN set -x && pnpm install --frozen-lockfile --ignore-scripts
 
-# Create .env file if needed
-RUN touch .env
+COPY . .
 
-# Install only production dependencies
-RUN set -x && pnpm install --frozen-lockfile --prod
-
-# Generate Prisma Client
 RUN pnpm db:generate
+RUN ls -la
+RUN pnpm build
+RUN ls -la
 
-# Run database migrations
-RUN pnpm db:migrate
+# Main Stage
+FROM base AS main
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN set -x && pnpm install --frozen-lockfile --prod --ignore-scripts
 
-# Set ownership to non-root user
-RUN chown -R ec2-user:ec2-user /app
+# Copy only necessary files from previous stages
+COPY --from=builder /app/generated/prisma-client ./generated/prisma-client
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
+
+# Create non-root user for security
+RUN addgroup -S ec2-user && adduser -S ec2-user -G ec2-user && \
+    chown -R ec2-user:ec2-user /app
 USER ec2-user
 
-# Start the application in production mode
+RUN touch .env
+EXPOSE 3000
+
 CMD ["pnpm", "start:prod"]

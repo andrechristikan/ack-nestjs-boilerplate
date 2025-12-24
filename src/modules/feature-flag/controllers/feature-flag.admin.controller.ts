@@ -27,6 +27,7 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Body, Controller, Get, Param, Patch, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -42,6 +43,7 @@ export class FeatureFlagAdminController {
 
     @FeatureFlagAdminListDoc()
     @ResponsePaging('featureFlag.list')
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.featureFlag,
         action: [EnumPolicyAction.read],
@@ -62,6 +64,7 @@ export class FeatureFlagAdminController {
 
     @FeatureFlagAdminUpdateStatusDoc()
     @Response('featureFlag.updateStatus')
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.featureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
@@ -81,6 +84,7 @@ export class FeatureFlagAdminController {
 
     @FeatureFlagAdminUpdateMetadataDoc()
     @Response('featureFlag.updateMetadata')
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.featureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],

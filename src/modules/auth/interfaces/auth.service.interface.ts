@@ -1,23 +1,24 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
+    IAuthAccessTokenGenerate,
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
+    IAuthRefreshTokenGenerate,
     IAuthSocialPayload,
-    IAuthTokenGenerate,
 } from '@modules/auth/interfaces/auth.interface';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import { EnumUserLoginFrom, EnumUserSignUpWith } from '@prisma/client';
+import { EnumUserLoginFrom, EnumUserLoginWith } from '@prisma/client';
 
 export interface IAuthService {
     createTokens(
         user: IUser,
         loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserSignUpWith
-    ): IAuthTokenGenerate;
+        loginWith: EnumUserLoginWith
+    ): IAuthAccessTokenGenerate;
     refreshToken(
         user: IUser,
         refreshTokenFromRequest: string
-    ): IAuthTokenGenerate;
+    ): IAuthRefreshTokenGenerate;
     validateJwtAccessStrategy(
         payload: IAuthJwtAccessTokenPayload
     ): Promise<IAuthJwtAccessTokenPayload>;

@@ -30,9 +30,14 @@ import {
     UserSharedChangePasswordDoc,
     UserSharedClaimUsernameDoc,
     UserSharedDeleteMobileNumberDoc,
-    UserSharedGeneratePhotoProfileDoc,
+    UserSharedGeneratePhotoProfilePresignDoc,
     UserSharedProfileDoc,
     UserSharedRefreshDoc,
+    UserSharedTwoFactorDisableDoc,
+    UserSharedTwoFactorEnableDoc,
+    UserSharedTwoFactorRegenerateBackupDoc,
+    UserSharedTwoFactorSetupDoc,
+    UserSharedTwoFactorStatusDoc,
     UserSharedUpdateMobileNumberDoc,
     UserSharedUpdatePhotoProfileDoc,
     UserSharedUpdateProfileDoc,
@@ -49,7 +54,12 @@ import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
+import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
+import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { UserService } from '@modules/user/services/user.service';
@@ -131,7 +141,7 @@ export class UserSharedController {
         });
     }
 
-    @UserSharedGeneratePhotoProfileDoc()
+    @UserSharedGeneratePhotoProfilePresignDoc()
     @Response('user.generatePhotoProfilePresign')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -206,12 +216,12 @@ export class UserSharedController {
     @ApiKeyProtected()
     @Patch('/change-password')
     async changePassword(
+        @UserCurrent() user: IUser,
         @Body() body: UserChangePasswordRequestDto,
-        @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.userService.changePassword(userId, body, {
+        return this.userService.changePassword(user, body, {
             ipAddress,
             userAgent,
         });
@@ -282,8 +292,6 @@ export class UserSharedController {
         });
     }
 
-    // TODO: Verify number implementation, but which provider?
-
     @UserSharedClaimUsernameDoc()
     @Response('user.claimUsername')
     @TermPolicyAcceptanceProtected()
@@ -304,4 +312,96 @@ export class UserSharedController {
             userAgent,
         });
     }
+
+    @UserSharedTwoFactorStatusDoc()
+    @Response('user.twoFactor.status')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/2fa/status')
+    async getTwoFactorStatus(
+        @UserCurrent() user: IUser
+    ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>> {
+        return this.userService.getTwoFactorStatus(user);
+    }
+
+    @UserSharedTwoFactorSetupDoc()
+    @Response('user.twoFactor.setup')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/2fa/setup')
+    async setupTwoFactor(
+        @UserCurrent() user: IUser,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>> {
+        return this.userService.setupTwoFactor(user, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @UserSharedTwoFactorEnableDoc()
+    @Response('user.twoFactor.enable')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/2fa/enable')
+    async enableTwoFactor(
+        @UserCurrent() user: IUser,
+        @Body() body: UserTwoFactorEnableRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
+        return this.userService.enableTwoFactor(user, body, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @UserSharedTwoFactorDisableDoc()
+    @Response('user.twoFactor.disable')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Delete('/2fa/disable')
+    async disableTwoFactor(
+        @UserCurrent() user: IUser,
+        @Body() body: UserTwoFactorDisableRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.disableTwoFactor(user, body, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @UserSharedTwoFactorRegenerateBackupDoc()
+    @Response('user.twoFactor.regenerateBackupCodes')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/2fa/regenerate-backup-codes')
+    async regenerateTwoFactorBackupCodes(
+        @UserCurrent() user: IUser,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
+        return this.userService.regenerateTwoFactorBackupCodes(user, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    // TODO: Verify number implementation, but which provider?
 }

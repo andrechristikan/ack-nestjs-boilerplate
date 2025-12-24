@@ -93,27 +93,30 @@ export class SessionUtil {
     }
 
     /**
-     * Updates an existing login session in the cache with a new token identifier.
+     * Updates an existing login session in the cache with a new token identifier (jti) and TTL.
      *
-     * Retrieves the current TTL of the session key and updates the session data while
-     * preserving the original TTL. Typically used when refreshing tokens to update the jti.
+     * This method is typically used when refreshing tokens to update the jti while preserving or resetting
+     * the session's expiration. The session data is updated in cache with the new jti and the TTL is set to
+     * the provided expiredInMs value, which determines how much longer the session remains valid.
      *
      * @param userId - The unique identifier of the user
      * @param sessionId - The unique identifier of the session
      * @param session - The existing session cache data to update
      * @param jti - The new unique JWT token identifier to set
-     * @returns Promise resolving when the session has been updated
+     * @param expiredInMs - The new time to live (TTL) for the session in milliseconds. This value determines
+     *   how long the session will remain valid in cache from the time of update.
+     * @returns Promise<void> Resolves when the session has been updated in cache
      */
     async updateLogin(
         userId: string,
         sessionId: string,
         session: ISessionCache,
-        jti: string
+        jti: string,
+        expiredInMs: number
     ): Promise<void> {
         const key = this.keyPattern
             .replace('{userId}', userId)
             .replace('{sessionId}', sessionId);
-        const ttl = await this.cacheManager.ttl(key);
 
         await this.cacheManager.set<ISessionCache>(
             key,
@@ -121,7 +124,7 @@ export class SessionUtil {
                 ...session,
                 jti,
             },
-            ttl
+            expiredInMs
         );
 
         return;

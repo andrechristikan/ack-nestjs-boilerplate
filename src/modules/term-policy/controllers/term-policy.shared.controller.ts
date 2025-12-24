@@ -28,13 +28,14 @@ import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/r
 import {
     TermPolicySharedAcceptDoc,
     TermPolicySharedListAcceptedDoc,
-} from '@modules/term-policy/docs/term-policy.user.doc';
+} from '@modules/term-policy/docs/term-policy.shared.doc';
 import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 
 @ApiTags('modules.shared.user.termPolicy')
 @Controller({
@@ -46,6 +47,7 @@ export class TermPolicySharedController {
 
     @TermPolicySharedListAcceptedDoc()
     @ResponsePaging('termPolicy.listAccepted')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -60,6 +62,7 @@ export class TermPolicySharedController {
 
     @TermPolicySharedAcceptDoc()
     @Response('termPolicy.accept')
+    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

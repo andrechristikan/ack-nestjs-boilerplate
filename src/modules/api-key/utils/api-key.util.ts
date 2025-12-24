@@ -44,9 +44,9 @@ export class ApiKeyUtil {
 
     async getCacheByKey(key: string): Promise<ApiKey | null> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
-        const cachedApiKey = await this.cacheManager.get<string>(cacheKey);
+        const cachedApiKey = await this.cacheManager.get<ApiKey>(cacheKey);
         if (cachedApiKey) {
-            return JSON.parse(cachedApiKey) as ApiKey;
+            return cachedApiKey;
         }
 
         return null;
@@ -54,7 +54,7 @@ export class ApiKeyUtil {
 
     async setCacheByKey(key: string, apiKey: ApiKey): Promise<void> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
-        await this.cacheManager.set(cacheKey, JSON.stringify(apiKey));
+        await this.cacheManager.set(cacheKey, apiKey);
 
         return;
     }

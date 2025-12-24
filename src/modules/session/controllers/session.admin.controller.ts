@@ -5,6 +5,7 @@ import {
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import {
@@ -30,6 +31,7 @@ import {
 } from '@modules/session/docs/session.admin.doc';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { SessionService } from '@modules/session/services/session.service';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -45,6 +47,7 @@ export class SessionAdminController {
 
     @SessionAdminListDoc()
     @ResponsePaging('session.list')
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
             subject: EnumPolicySubject.user,
@@ -65,7 +68,8 @@ export class SessionAdminController {
             availableOrderBy: SessionDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams,
-        @Param('userId', RequestRequiredPipe) userId: string
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         return this.sessionService.getListOffsetByUser(userId, pagination);
     }
@@ -73,6 +77,7 @@ export class SessionAdminController {
     @SessionAdminRevokeDoc()
     @ResponsePaging('session.revoke')
     @ActivityLog(EnumActivityLogAction.adminSessionRevoke)
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
             subject: EnumPolicySubject.user,
@@ -89,7 +94,8 @@ export class SessionAdminController {
     @ApiKeyProtected()
     @Delete('/revoke/:sessionId')
     async revoke(
-        @Param('userId', RequestRequiredPipe) userId: string,
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string,
         @Param('sessionId', RequestRequiredPipe) sessionId: string,
         @AuthJwtPayload('userId') revokeBy: string,
         @RequestIPAddress() ipAddress: string,

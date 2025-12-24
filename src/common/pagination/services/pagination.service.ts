@@ -31,7 +31,7 @@ export class PaginationService implements IPaginationService {
      * Performs offset-based pagination using page number and limit approach.
      *
      * **Default Values:**
-     * - orderBy: `{ createdAt: 'DESC' }` - Results are sorted by creation date in descending order
+     * - orderBy: `{ createdAt: 'desc' }` - Results are sorted by creation date in descending order
      *
      * @template TReturn - The type of items being paginated
      * @param {IPaginationRepository} repository - Repository instance that implements IPaginationRepository
@@ -113,7 +113,7 @@ export class PaginationService implements IPaginationService {
      * Performs cursor-based pagination using cursor tokens for efficient traversal.
      *
      * **Default Values:**
-     * - orderBy: `{ createdAt: 'DESC' }` - Results are sorted by creation date in descending order
+     * - orderBy: `{ createdAt: 'desc' }` - Results are sorted by creation date in descending order
      * - cursorField: `PaginationDefaultCursorField` - Field used for cursor positioning
      *
      * **Cursor Behavior:**
@@ -138,6 +138,7 @@ export class PaginationService implements IPaginationService {
             },
             where,
             select,
+            include,
             cursorField = PaginationDefaultCursorField,
             includeCount,
         } = args;
@@ -179,6 +180,7 @@ export class PaginationService implements IPaginationService {
                 skip: cursor ? 1 : 0,
                 select,
                 orderBy,
+                include,
             }),
         ];
 

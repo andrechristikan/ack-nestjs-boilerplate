@@ -25,7 +25,7 @@ export function RoleAdminCreateDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
             dto: RoleCreateRequestDto,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<RoleDto>('role.create', {
             httpStatus: HttpStatus.CREATED,
             dto: RoleDto,
@@ -47,7 +47,7 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<RoleDto>('role.update', {
             dto: RoleDto,
         })
@@ -66,7 +66,7 @@ export function RoleAdminDeleteDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse('role.delete')
     );
 }

@@ -65,28 +65,21 @@ export class TermPolicyService implements ITermPolicyService {
             });
         }
 
-        try {
-            const { termPolicy } = __user;
+        const { termPolicy } = __user;
 
-            const defaultTermPolicies = [
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-            ];
-            requiredTermPolicies =
-                requiredTermPolicies.length === 0
-                    ? defaultTermPolicies
-                    : requiredTermPolicies;
+        const defaultTermPolicies = [
+            EnumTermPolicyType.termsOfService,
+            EnumTermPolicyType.privacy,
+        ];
+        requiredTermPolicies =
+            requiredTermPolicies.length === 0
+                ? defaultTermPolicies
+                : requiredTermPolicies;
 
-            if (!requiredTermPolicies.every(type => termPolicy[type])) {
-                throw new ForbiddenException({
-                    statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
-                    message: 'termPolicy.error.requiredInvalid',
-                });
-            }
-        } catch {
+        if (!requiredTermPolicies.every(type => termPolicy[type])) {
             throw new ForbiddenException({
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                message: 'auth.error.accessTokenUnauthorized',
+                statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
+                message: 'termPolicy.error.requiredInvalid',
             });
         }
     }

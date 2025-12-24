@@ -10,20 +10,6 @@ on:
 env:
     DOCKERFILE: ci/dockerfile
 
-# Required Variables:
-# - AWS_ECR_REPO_URL
-#
-# Required Secrets:
-# - AWS_ACCESS_KEY_ID
-# - AWS_SECRET_ACCESS_KEY
-# - AWS_REGION
-# - PROD_ECS_CLUSTER_NAME
-# - PROD_ECS_SERVICE_NAME
-# - DEV_ECS_CLUSTER_NAME
-# - DEV_ECS_SERVICE_NAME
-# - STAGING_ECS_CLUSTER_NAME
-# - STAGING_ECS_SERVICE_NAME
-
 jobs:
     build_image:
         runs-on: ubuntu-latest
@@ -81,6 +67,12 @@ jobs:
                   docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
                   docker push ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
                   docker push ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}
+                  
+                  # Push latest tag only for production
+                  if [ "${{ matrix.env }}" = "production" ]; then
+                    docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:latest
+                    docker push ${{ vars.AWS_ECR_REPO_URL }}:latest
+                  fi
 
     deploy:
         needs: [build_image]
@@ -90,14 +82,11 @@ jobs:
             matrix:
                 include:
                     - branch: main
-                      cluster: ${{ secrets.PROD_ECS_CLUSTER_NAME }}
-                      service: ${{ secrets.PROD_ECS_SERVICE_NAME }}
+                      env: production
                     - branch: development
-                      cluster: ${{ secrets.DEV_ECS_CLUSTER_NAME }}
-                      service: ${{ secrets.DEV_ECS_SERVICE_NAME }}
+                      env: development
                     - branch: staging
-                      cluster: ${{ secrets.STAGING_ECS_CLUSTER_NAME }}
-                      service: ${{ secrets.STAGING_ECS_SERVICE_NAME }}
+                      env: staging
 
         steps:
             - name: Checkout
@@ -110,12 +99,26 @@ jobs:
                   aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
                   aws-region: ${{ secrets.AWS_REGION }}
 
+            - name: Set ECS variables
+              if: ${{ github.ref_name == matrix.branch }}
+              run: |
+                  if [ "${{ matrix.env }}" = "production" ]; then
+                    echo "ECS_CLUSTER=${{ secrets.PROD_ECS_CLUSTER_NAME }}" >> $GITHUB_ENV
+                    echo "ECS_SERVICE=${{ secrets.PROD_ECS_SERVICE_NAME }}" >> $GITHUB_ENV
+                  elif [ "${{ matrix.env }}" = "development" ]; then
+                    echo "ECS_CLUSTER=${{ secrets.DEV_ECS_CLUSTER_NAME }}" >> $GITHUB_ENV
+                    echo "ECS_SERVICE=${{ secrets.DEV_ECS_SERVICE_NAME }}" >> $GITHUB_ENV
+                  elif [ "${{ matrix.env }}" = "staging" ]; then
+                    echo "ECS_CLUSTER=${{ secrets.STAGING_ECS_CLUSTER_NAME }}" >> $GITHUB_ENV
+                    echo "ECS_SERVICE=${{ secrets.STAGING_ECS_SERVICE_NAME }}" >> $GITHUB_ENV
+                  fi
+
             - name: Update ECS Service
               if: ${{ github.ref_name == matrix.branch }}
               run: |
                   aws ecs update-service \
-                      --cluster ${{ matrix.cluster }} \
-                      --service ${{ matrix.service }} \
+                      --cluster ${{ env.ECS_CLUSTER }} \
+                      --service ${{ env.ECS_SERVICE }} \
                       --force-new-deployment \
                       --region ${{ secrets.AWS_REGION }}
 
@@ -123,6 +126,6 @@ jobs:
               if: ${{ github.ref_name == matrix.branch }}
               run: |
                   aws ecs wait services-stable \
-                      --cluster ${{ matrix.cluster }} \
-                      --services ${{ matrix.service }} \
+                      --cluster ${{ env.ECS_CLUSTER }} \
+                      --services ${{ env.ECS_SERVICE }} \
                       --region ${{ secrets.AWS_REGION }}

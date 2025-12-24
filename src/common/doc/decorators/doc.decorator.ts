@@ -47,6 +47,7 @@ import {
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { faker } from '@faker-js/faker';
+import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 
 /**
  * Helper function to create a schema object with consistent structure.
@@ -338,10 +339,18 @@ export function DocRequestFile(
 }
 
 /**
- * Creates an API documentation decorator for endpoints that require authorization guards.
- * This decorator automatically documents forbidden responses based on the guard types used.
- * @param {IDocGuardOptions} [options] - Optional configuration for guard documentation
- * @returns {MethodDecorator} A method decorator that applies Swagger guard documentation
+ * Creates an API documentation decorator for endpoints protected by authorization guards (role, policy, term policy).
+ *
+ * This decorator will automatically document possible forbidden (403) responses for each guard type enabled in the options:
+ * - If `role` is true, adds forbidden response for role-based access control.
+ * - If `policy` is true, adds forbidden response for policy-based access control.
+ * - If `termPolicy` is true, adds forbidden response for term policy acceptance.
+ *
+ * @param {IDocGuardOptions} [options] - Guard documentation options:
+ *   - role: boolean — Document forbidden if role is insufficient
+ *   - policy: boolean — Document forbidden if policy is violated
+ *   - termPolicy: boolean — Document forbidden if term policy not accepted
+ * @returns {MethodDecorator} Swagger method decorator with forbidden responses for enabled guards
  */
 export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
     const oneOfForbidden: IDocOfOptions[] = [];
@@ -357,6 +366,13 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
         oneOfForbidden.push({
             statusCode: EnumPolicyStatusCodeError.forbidden,
             messagePath: 'policy.error.forbidden',
+        });
+    }
+
+    if (options?.termPolicy) {
+        oneOfForbidden.push({
+            statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
+            messagePath: 'termPolicy.error.requiredInvalid',
         });
     }
 

@@ -42,10 +42,18 @@ import {
 } from '@modules/user/dtos/response/user.check.response.dto';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
-import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
+import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { EnumUserLoginWith } from '@prisma/client';
+import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { UserGenerateImportRequestDto } from '@modules/user/dtos/request/user.generate-import.request.dto';
 
 export interface IUserService {
     validateUserGuard(
@@ -100,7 +108,7 @@ export interface IUserService {
     ): Promise<IResponseReturn<AwsS3PresignDto>>;
     updatePhotoProfile(
         userId: string,
-        { photo, size }: UserUpdateProfilePhotoRequestDto,
+        { photoKey, size }: UserUpdateProfilePhotoRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
     deleteSelf(
@@ -139,25 +147,25 @@ export interface IUserService {
         updatedBy: string
     ): Promise<IResponseReturn<void>>;
     changePassword(
-        userId: string,
+        user: IUser,
         { newPassword, oldPassword }: UserChangePasswordRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
     loginCredential(
         { email, password, from }: UserLoginRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTokenResponseDto>>;
+    ): Promise<IResponseReturn<UserLoginResponseDto>>;
     loginWithSocial(
         email: string,
         loginWith: EnumUserLoginWith,
         { from, ...others }: UserCreateSocialRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTokenResponseDto>>;
+    ): Promise<IResponseReturn<UserLoginResponseDto>>;
     refreshToken(
         user: IUser,
         refreshToken: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTokenResponseDto>>;
+    ): Promise<IResponseReturn<AuthTokenResponseDto>>;
     signUp(
         { countryId, email, password, ...others }: UserSignUpRequestDto,
         requestLog: IRequestLog
@@ -178,4 +186,48 @@ export interface IUserService {
         { newPassword, token }: UserForgotPasswordResetRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
+    loginVerifyTwoFactor(
+        {
+            challengeToken,
+            code,
+            backupCode,
+            method,
+        }: UserLoginVerifyTwoFactorRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<AuthTokenResponseDto>>;
+    getTwoFactorStatus(
+        user: IUser
+    ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>>;
+    enableTwoFactor(
+        user: IUser,
+        { code }: UserTwoFactorEnableRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
+    disableTwoFactor(
+        user: IUser,
+        { code, backupCode, method }: UserTwoFactorDisableRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
+    regenerateTwoFactorBackupCodes(
+        user: IUser,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
+    resetTwoFactorByAdmin(
+        userId: string,
+        updatedBy: string,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
+    generateImportPresign({
+        size,
+    }: UserGenerateImportRequestDto): Promise<IResponseReturn<AwsS3PresignDto>>;
+    import(
+        { importKey, size }: UserImportRequestDto,
+        createdBy: string,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
+    export(
+        status?: Record<string, IPaginationIn>,
+        role?: Record<string, IPaginationEqual>,
+        country?: Record<string, IPaginationEqual>
+    ): Promise<IResponseReturn<AwsS3PresignDto>>;
 }

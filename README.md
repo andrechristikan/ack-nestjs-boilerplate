@@ -15,11 +15,20 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-> This repository serves as a comprehensive authentication and authorization service boilerplate
-
-[ACK NestJs][ref-ack] is a [NestJs v11.x][ref-nestjs] boilerplate designed for backend services.
+[ACK NestJs][ref-ack] is a [NestJs v11.x][ref-nestjs] boilerplate designed for backend services. Production-ready NestJS boilerplate with authentication, authorization, and enterprise features
 
 _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with following this link_
+
+### Ideal For
+
+This boilerplate is perfect for:
+
+- 🏢 **Enterprise Applications** - Full-featured auth system with RBAC and audit logging
+- 🔐 **Authentication Services** - Ready-to-use JWT, OAuth, and 2FA implementation
+- 📱 **Mobile App Backends** - RESTful API with social login support
+- 🌐 **Multi-tenant SaaS** - Role-based access control and policy management
+- 🚀 **Microservices** - Stateful sessions with Redis and async job processing
+- 💼 **Startup MVPs** - Production-ready foundation to ship faster
 
 ## Table of contents
 
@@ -29,6 +38,15 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
   - [Build with](#build-with)
   - [Objective](#objective)
   - [Features](#features)
+    - [Authentication & Security](#authentication--security)
+    - [Database & Storage](#database--storage)
+    - [Performance & Optimization](#performance--optimization)
+    - [Development Experience](#development-experience)
+    - [Integrations & Monitoring](#integrations--monitoring)
+    - [Testing & Documentation](#testing--documentation)
+    - [Architecture Highlights](#architecture-highlights)
+  - [Quick Start](#quick-start)
+  - [Change DB with Minimal Effort](#change-db-with-minimal-effort)
   - [Installation](#installation)
   - [License](#license)
   - [Contribute](#contribute)
@@ -60,14 +78,17 @@ _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with 
 
 ### Next Features
 - [x] Change enum name to use PascalCase
-- [ ] Add import and export endpoint (includes: direct upload and presign upload)
-- [ ] Make sure github action works
+- [x] 2FA with TOTP Authentication (eg: Google Authenticator)
+- [x] Recovery Codes Method
+- [x] Add TOTP Authentication Protected to reset password, change password, and regenerate backup codes endpoints
+- [ ] Add import and export endpoint with presign upload
+- [ ] Add migration script to migrate AWS S3 Policy for public and private, include config for presign expiration
+- [ ] Export Module for background export processing
 - [ ] Activity Log support bidirectional logging
-- [ ] 2FA with TOTP Authentication (eg: Google Authenticator)
-- [ ] Recovery Codes Method
 - [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
 - [ ] Login with Github SSO
+- [ ] Implement mobile number verification
 - [ ] Device awareness
 - [ ] Verification Mobile Number
 - [ ] Simple Notification System or Enchant Activity Log to be able act as notification
@@ -123,38 +144,111 @@ For more information see [package.json][ref-package-json]
 
 ## Features
 
-- **NestJS 11.x** - Latest framework version 🥳
-- **TypeScript** - Full type safety 🚀
-- **Production Ready** - Enterprise-grade architecture 🔥
-- **Stateful Authorization** - Redis session with revokable tokens
-- **JWT Authentication** - ES256 for Access Token, ES512 for Refresh Token
-- **Role-Based Access Control (RBAC)** - Fine-grained permission system
-- **Policy Management** - Flexible authorization rules and permissions
-- **API Key Protection** - Secure API access control
-- **Social Authentication** - Google Auth and Apple ID integration
-- **Prisma ORM** - Modern type-safe database toolkit 🎉
-- **MongoDB Integration** - NoSQL with transaction support
-- **Redis Caching** - High-performance cache layer
-- **Cache Manager** - Multi-level caching strategies
-- **Background Jobs** - BullMQ queue system for async processing
-- **Swagger/OpenAPI 3** - Interactive API documentation
+### 🔐 Authentication & Security
+Production-ready authentication system with multiple strategies and security layers.
+
+- **JWT Authentication** - ES256 for Access Token, ES512 for Refresh Token with automatic rotation
+- **Stateful Sessions** - Redis-backed sessions with token revocation support
+- **Social Login** - Google OAuth and Apple Sign In integration ([docs][ref-doc-authentication])
+- **Two-Factor Authentication** - TOTP-based 2FA with backup recovery codes ([docs][ref-doc-two-factor])
+- **RBAC & Policies** - Fine-grained role and permission system ([docs][ref-doc-authorization])
+- **API Key Protection** - Secure external API access control
+- **Rate Limiting** - DDoS protection with configurable throttling
+- **Security Headers** - Helmet integration for HTTP security
+
+### 📊 Database & Storage
+Modern ORM with NoSQL database and file storage capabilities.
+
+- **Prisma ORM** - Type-safe database toolkit with migrations ([docs][ref-doc-database])
+- **MongoDB** - NoSQL database with transaction support (replica set required)
+- **Redis Caching** - Multi-level caching strategies for performance ([docs][ref-doc-cache])
+- **AWS S3 Integration** - File storage with presigned URLs ([docs][ref-doc-file-upload])
+- **Repository Pattern** - Clean separation of data access layer
+
+### ⚡ Performance & Optimization
+Built for speed and scalability from day one.
+
+- **Background Jobs** - BullMQ queue system for async processing ([docs][ref-doc-queue])
+- **Response Compression** - Automatic gzip/deflate compression
+- **SWC Compiler** - 20x faster than TypeScript compiler
+- **Pagination** - Server-side pagination with cursor support ([docs][ref-doc-pagination])
+- **Feature Flags** - Dynamic feature rollout with A/B testing ([docs][ref-doc-feature-flag])
+
+### 🛠 Development Experience
+Developer-friendly tooling and best practices.
+
+- **NestJS 11.x** - Latest framework version with full TypeScript support
+- **Swagger/OpenAPI 3** - Interactive API documentation ([docs][ref-doc-doc])
 - **API Versioning** - URL-based versioning (default v1)
-- **Request Validation** - class-validator integration
-- **Server-side Pagination** - Efficient data handling
-- **SWC Compiler** - Lightning-fast compilation
-- **Response Compression** - Optimized payload delivery
-- **Rate Limiting** - Throttling and DDoS protection
-- **Sentry Integration** - Error tracking and performance monitoring
-- **Health Checks** - System monitoring endpoints
-- **Multi-language Support** - i18n with header control (`x-custom-lang`) 🗣
-- **CSV Processing** - CSV import/export capabilities
-- **AWS Integration** - S3 file storage and SES email services
+- **Request Validation** - Automatic validation with class-validator ([docs][ref-doc-request-validation])
+- **Error Handling** - Standardized error responses with i18n ([docs][ref-doc-handling-error])
+- **Hot Reload** - Fast development with SWC
+- **Code Quality** - ESLint, Prettier, Husky pre-commit hooks
 - **Database Seeding** - Commander-based data population
-- **Repository Pattern** - Clean data access layer
-- **Docker Support** - Complete containerization
-- **Code Quality** - ESLint, Prettier, Husky git hooks 🐶
-- **Testing Framework** - Jest with comprehensive setup
-- **Dead Code Detection** - Automated cleanup tools
+
+### 📡 Integrations & Monitoring
+Enterprise-grade integrations for production readiness.
+
+- **Sentry** - Error tracking and performance monitoring ([docs][ref-doc-third-party-integration])
+- **AWS SES** - Transactional email delivery
+- **Activity Logging** - Comprehensive audit trail ([docs][ref-doc-activity-log])
+- **Health Checks** - System monitoring endpoints
+- **Multi-language Support** - i18n with `x-custom-lang` header ([docs][ref-doc-message])
+
+### 📝 Testing & Documentation
+Comprehensive testing framework and documentation.
+
+- **Jest Testing** - Unit, integration, and e2e test setup
+- **Swagger UI** - Auto-generated API documentation
+- **Detailed Docs** - 20+ documentation files covering all features
+- **Docker Support** - Complete containerization with docker-compose
+
+### 🎯 Architecture Highlights
+
+- **Repository Pattern** - Clean data access abstraction
+- **SOLID Principles** - Maintainable and testable codebase  
+- **Modular Structure** - Component-based folder organization
+- **12-Factor App** - Cloud-native best practices
+- **Production Ready** - Enterprise-grade security and scalability
+
+## Quick Start
+
+```bash
+# Clone repository
+git clone https://github.com/andrechristikan/ack-nestjs-boilerplate
+
+# Install dependencies
+pnpm install
+
+# Setup environment
+cp .env.example .env
+
+# Run with Docker
+docker-compose up -d
+
+# Access API
+open http://localhost:3000/docs
+```
+
+## Change DB with Minimal Effort
+
+Thanks to **Repository Pattern** and **Prisma ORM**, switching databases requires minimal code changes. The abstraction layer isolates database logic from business logic.
+
+### Supported Databases
+
+Prisma supports multiple databases out of the box:
+
+- 🐘 **PostgreSQL** - Recommended for production
+- 🐬 **MySQL** - Popular relational database  
+
+**Migration typically requires:**
+- Updating `prisma/schema.prisma` provider
+- Adjusting ID strategy (ObjectId → UUID)
+- Running `pnpm prisma:migrate`
+
+**Business logic stays unchanged** - services, controllers, and authentication work as-is.
+
+For detailed migration guides, see [Database Documentation][ref-doc-database].
 
 ## Installation
 
@@ -212,8 +306,6 @@ If you find this project helpful and would like to support its development, plea
     <img src='https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg' alt='Donate with PayPal' />
   </a>
 </div>
-
-
 
 
 <!-- REFERENCES -->

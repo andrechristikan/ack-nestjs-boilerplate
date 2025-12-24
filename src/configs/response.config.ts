@@ -7,6 +7,6 @@ export interface IConfigRequest {
 export default registerAs(
     'response',
     (): IConfigRequest => ({
-        cachePrefix: 'apis',
+        cachePrefix: 'Apis',
     })
 );

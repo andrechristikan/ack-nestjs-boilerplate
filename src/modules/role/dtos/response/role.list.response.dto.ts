@@ -4,7 +4,6 @@ import { Exclude, Transform } from 'class-transformer';
 
 export class RoleListResponseDto extends OmitType(RoleDto, [
     'abilities',
-    'description',
 ] as const) {
     @ApiHideProperty()
     @Exclude()

@@ -62,11 +62,12 @@ export class MessageService implements IMessageService {
     }
 
     /**
-     * Converts class-validator ValidationError objects into localized message objects.
-     * Handles nested validation errors and provides detailed property path information.
-     * @param {ValidationError[]} errors - Array of ValidationError objects from class-validator
-     * @param {IMessageErrorOptions} [options] - Optional configuration including custom language preference
-     * @returns {IMessageValidationError[]} Array of formatted validation error messages with property paths
+     * Converts an array of class-validator ValidationError objects into an array of localized validation message objects.
+     * Handles both flat and nested validation errors, providing detailed property path information for each error.
+     *
+     * @param errors - Array of ValidationError objects from class-validator
+     * @param options - (Optional) Configuration for custom language and message properties
+     * @returns Array of IMessageValidationError objects, each containing the constraint key, property path, and localized message
      */
     setValidationMessage(
         errors: ValidationError[],
@@ -89,6 +90,7 @@ export class MessageService implements IMessageService {
                 messages.push(
                     this.createValidationMessage(
                         constraint,
+                        error.constraints[constraint],
                         error.value,
                         property,
                         options
@@ -153,32 +155,48 @@ export class MessageService implements IMessageService {
     }
 
     /**
-     * Creates a localized validation message object for a specific validation constraint.
-     * This method constructs a complete validation error message by combining the constraint name,
-     * failed value, property path, and localized message text from the i18n system.
-     * @param constraint - The validation constraint identifier (e.g., 'isNotEmpty', 'isEmail', 'minLength')
-     * @param value - The actual value that failed validation, can be of any type
-     * @param property - The full property path that failed validation (e.g., 'user.email', 'profile.name')
-     * @param options - Optional configuration object containing custom language preferences
-     * @returns A structured validation error object containing the constraint key, property path, and localized message
+     * Creates a single localized validation message object for a specific validation constraint.
+     * Constructs a validation error message by combining the constraint key, failed value, property path,
+     * and a localized message string from the i18n system. If the i18n translation for the constraint is not found,
+     * it falls back to the raw message provided by class-validator.
+     *
+     * @param constraint - The validation constraint key (e.g., 'isNotEmpty', 'isEmail', 'minLength')
+     * @param rawMessage - The raw message string from class-validator constraints
+     * @param value - The value that failed validation (any type)
+     * @param property - (Optional) The full property path that failed validation (e.g., 'user.email', 'profile.name')
+     * @param options - (Optional) Configuration for custom language and message properties
+     * @returns IMessageValidationError object containing the constraint key, property path, and localized message
      */
     private createValidationMessage(
         constraint: string,
+        rawMessage: string,
         value: unknown,
         property?: string,
         options?: IMessageErrorOptions
     ): IMessageValidationError {
-        const message = this.setMessage(`request.error.${constraint}`, {
+        const messagePath = `request.error.${constraint}`;
+        const lastProperty = property?.split('.')?.pop() ?? 'Unknown';
+        let message = this.setMessage(`request.error.${constraint}`, {
             customLanguage: options?.customLanguage,
             properties: {
-                property: property?.split('.').pop(),
+                property: lastProperty,
                 value: value as string | number,
             },
         });
 
+        if (message === messagePath) {
+            message = this.setMessage(rawMessage, {
+                customLanguage: options?.customLanguage,
+                properties: {
+                    property: lastProperty,
+                    value: value as string | number,
+                },
+            });
+        }
+
         return {
             key: constraint,
-            property: property ?? 'Unknown',
+            property,
             message,
         };
     }

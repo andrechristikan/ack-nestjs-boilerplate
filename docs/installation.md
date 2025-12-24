@@ -240,7 +240,7 @@ docker-compose up -d
 **Start with API container (recommended for full development setup):**
 ```bash
 # Start all services including the API container
-docker-compose --profile full up -d
+docker-compose up -d
 ```
 
 **What this command does:**
@@ -249,7 +249,7 @@ docker-compose --profile full up -d
 - Starts JWKS server to host your JWT public keys (port 3011)
 - Runs BullMQ dashboard for queue monitoring (port 3010)
 - Sets up all necessary networks and volumes
-- *(with `--profile full`)* Launches the API container running the application (port 3000)
+- *(with `--profile apis`)* Launches the API container running the application (port 3000)
 
 You can monitor the services as they start up:
 
@@ -484,7 +484,9 @@ To verify everything is working correctly:
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

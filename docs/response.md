@@ -387,6 +387,12 @@ async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
 }
 ```
 
+**Cache Key:**
+
+```text
+Apis:*
+```
+
 **Custom Cache Configuration:**
 
 ```typescript
@@ -504,7 +510,9 @@ All responses automatically include these headers (set by interceptors):
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

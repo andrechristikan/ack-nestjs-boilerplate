@@ -32,7 +32,7 @@ export function PaginationOrderPipe(
          * Transforms input value to add ordering functionality with validation
          * @param {Object} value - Input object containing order parameters and pagination params
          * @param {string} value.orderBy - Field to order by
-         * @param {EnumPaginationOrderDirectionType} value.orderDirection - Direction of ordering (ASC/DESC)
+         * @param {EnumPaginationOrderDirectionType} value.orderDirection - Direction of ordering (asc/desc)
          * @returns {Promise<IPaginationQueryOffsetParams | IPaginationQueryCursorParams>} Transformed pagination params with ordering
          * @throws {UnprocessableEntityException} When orderBy field is not in allowed list
          */
@@ -87,7 +87,7 @@ export function PaginationOrderPipe(
         /**
          * Builds order object for database query
          * @param {string} field - Field name to order by
-         * @param {EnumPaginationOrderDirectionType} orderDirection - Order direction (ASC/DESC)
+         * @param {EnumPaginationOrderDirectionType} orderDirection - Order direction (asc/desc)
          * @returns {IPaginationOrderBy} Order object for query
          */
         private buildOrderObject(

@@ -1,27 +1,16 @@
-import { ApiHideProperty, OmitType } from '@nestjs/swagger';
+import { ApiHideProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { UserDto } from '@modules/user/dtos/user.dto';
 import {
     EnumUserGender,
     EnumUserLoginFrom,
+    EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
 } from '@prisma/client';
+import { UserTwoFactorDto } from '@modules/user/dtos/user.two-factor.dto';
 
-export class UserListResponseDto extends OmitType(UserDto, [
-    'passwordExpired',
-    'passwordCreated',
-    'passwordAttempt',
-    'signUpDate',
-    'signUpFrom',
-    'signUpWith',
-    'salt',
-    'gender',
-    'lastLoginAt',
-    'lastIPAddress',
-    'lastLoginFrom',
-    'lastLoginWith',
-] as const) {
+export class UserListResponseDto extends UserDto {
     @ApiHideProperty()
     @Exclude()
     passwordExpired?: Date;
@@ -48,10 +37,6 @@ export class UserListResponseDto extends OmitType(UserDto, [
 
     @ApiHideProperty()
     @Exclude()
-    salt?: string;
-
-    @ApiHideProperty()
-    @Exclude()
     gender?: EnumUserGender;
 
     @ApiHideProperty()
@@ -68,5 +53,9 @@ export class UserListResponseDto extends OmitType(UserDto, [
 
     @ApiHideProperty()
     @Exclude()
-    lastLoginWith?: EnumUserSignUpWith;
+    lastLoginWith?: EnumUserLoginWith;
+
+    @ApiHideProperty()
+    @Exclude()
+    twoFactor: UserTwoFactorDto;
 }

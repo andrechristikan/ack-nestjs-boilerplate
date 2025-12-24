@@ -322,4 +322,34 @@ export class EmailUtil {
             return false;
         }
     }
+
+    /**
+     * Send email notification when 2FA is reset by admin
+     * @param {EmailSendDto} emailData - Email and username data
+     * @returns {Promise<boolean>} True if email sent successfully, false otherwise
+     */
+    async sendResetTwoFactorByAdmin({
+        username,
+        email,
+    }: EmailSendDto): Promise<boolean> {
+        try {
+            await this.awsSESService.send({
+                templateName: EnumSendEmailProcess.resetTwoFactorByAdmin,
+                recipients: [email],
+                sender: this.fromEmail,
+                templateData: {
+                    homeName: this.homeName,
+                    supportEmail: title(this.supportEmail),
+                    homeUrl: this.homeUrl,
+                    username,
+                },
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
 }

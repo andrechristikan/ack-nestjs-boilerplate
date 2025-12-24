@@ -31,7 +31,8 @@
             "@router": ["src/router/router.module.ts"],
             "@migration/*": ["src/migration/*"],
             "@test/*": ["test/*"],
-            "@generated/*": ["generated/*"]
+            "@generated/*": ["generated/*"],
+            "@prisma/client": ["generated/prisma-client"]
         }
     },
     "include": ["src/**/*", "test/**/*"],
@@ -45,7 +46,7 @@
         ".nyc_output",
         "generated",
         "src/metadata.ts",
-        "src/swagger.json",
+        "swagger.json",
         "**/**/templates/*"
     ]
 }

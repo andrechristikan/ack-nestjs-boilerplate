@@ -499,4 +499,64 @@ export class EmailTemplateService implements IEmailTemplateService {
             return false;
         }
     }
+
+    /**
+     * Import reset two factor by admin email template to AWS SES
+     * @returns {Promise<boolean>} True if template imported successfully, false otherwise
+     */
+    async importResetTwoFactorByAdmin(): Promise<boolean> {
+        try {
+            const templatePath = join(
+                this.templatesDir,
+                'email.reset-two-factor-by-admin.template.hbs'
+            );
+
+            await this.awsSESService.createTemplate({
+                name: EnumSendEmailProcess.resetTwoFactorByAdmin,
+                subject: `Reset Two Factor By Admin`,
+                htmlBody: readFileSync(templatePath, 'utf8'),
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    /**
+     * Get reset two factor by admin email template from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput | null>} Template output if found, null otherwise
+     */
+    async getResetTwoFactorByAdmin(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            const template = await this.awsSESService.getTemplate({
+                name: EnumSendEmailProcess.resetTwoFactorByAdmin,
+            });
+            return template;
+        } catch (err: unknown) {
+            this.logger.warn(err);
+
+            return null;
+        }
+    }
+
+    /**
+     * Delete reset two factor by admin email template from AWS SES
+     * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
+     */
+    async deleteResetTwoFactorByAdmin(): Promise<boolean> {
+        try {
+            await this.awsSESService.deleteTemplate({
+                name: EnumSendEmailProcess.resetTwoFactorByAdmin,
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
 }

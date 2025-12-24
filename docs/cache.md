@@ -96,7 +96,7 @@ createKeyv(
     { url: 'redis://localhost:6379' },
     {
         connectionTimeout: 30000,
-        namespace: 'cache',
+        namespace: 'Cache',
         useUnlink: true,
         keyPrefixSeparator: ':'
     }
@@ -156,7 +156,7 @@ export class SessionService {
 {
     cache: {
         url: process.env.CACHE_REDIS_URL ?? 'redis://localhost:6379',
-        namespace: 'cache',
+        namespace: 'Cache',
         ttlInMs: 5 * 60 * 1000  // Default TTL: 5 minutes
     }
 }
@@ -301,7 +301,9 @@ For cache operations (set, get, delete, etc.), see:
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

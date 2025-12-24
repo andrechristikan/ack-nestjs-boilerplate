@@ -130,7 +130,7 @@ export class MigrationUserSeed
         await this.databaseService.$transaction(
             this.users.map(user => {
                 const userId = this.databaseUtil.createId();
-                const { passwordCreated, passwordExpired, passwordHash, salt } =
+                const { passwordCreated, passwordExpired, passwordHash } =
                     this.authUtil.createPassword(user.password);
                 const { reference, token, type } =
                     this.userUtil.verificationCreateVerification(
@@ -149,7 +149,6 @@ export class MigrationUserSeed
                             country => country.alpha2Code === user.country
                         ).id,
                         roleId: roles.find(role => role.name === user.role).id,
-                        salt,
                         password: passwordHash,
                         passwordCreated,
                         passwordExpired,
@@ -170,7 +169,6 @@ export class MigrationUserSeed
                         passwordHistories: {
                             create: {
                                 password: passwordHash,
-                                salt,
                                 type: EnumPasswordHistoryType.admin,
                                 expiredAt: passwordExpired,
                                 createdAt: passwordCreated,
@@ -232,6 +230,11 @@ export class MigrationUserSeed
                                     termPolicyId: termPolicy.id,
                                     createdBy: userId,
                                 })),
+                            },
+                        },
+                        twoFactor: {
+                            create: {
+                                enabled: false,
                             },
                         },
                     },

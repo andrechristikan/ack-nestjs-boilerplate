@@ -198,6 +198,10 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 - Only values can be updated: `isEnable`, `rolloutPercent`, metadata values
 
 
+## Contribution
+
+Special thanks to [Gzerox][ref-contributor-gzerox] for main contributor for this feature.
+
 
 <!-- REFERENCES -->
 
@@ -285,7 +289,9 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

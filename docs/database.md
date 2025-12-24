@@ -32,7 +32,7 @@ This documentation explains the database architecture and features in ACK NestJS
 - [Database Tools](#database-tools)
 	- [Prisma ORM](#prisma-orm)
 	- [Why Prisma for Repository Design Pattern?](#why-prisma-for-repository-design-pattern)
-	- [Database Flexibility & Project-Specific Adjustments](#database-flexibility--project-specific-adjustments)
+	- [Change DB with Minimal Effort](#change-db-with-minimal-effort)
 
 
 ## Prerequisites
@@ -63,7 +63,7 @@ Prisma uses a generated client to provide type-safe database access and query bu
 pnpm db:generate
 ```
 
-This command will read your Prisma schema and generate the client code in `node_modules/@prisma/client`. The generated client is required for your application to interact with the database using Prisma.
+This command will read your Prisma schema and generate the client code in `generated/prisma-client`. The generated client is required for your application to interact with the database using Prisma.
 
 
 ## Seeding
@@ -251,15 +251,66 @@ Prisma perfectly enables ACK NestJS Boilerplate's **Repository Design Pattern** 
 - **Easy Implementation**: Consistent query API and transaction support simplify repository development
 - **Database Agnostic**: Switch between MongoDB, PostgreSQL, MySQL, SQLite without changing repository code
 
-### Database Flexibility & Project-Specific Adjustments
+### Change DB with Minimal Effort
 
-With Prisma and the Repository Pattern, switching databases is straightforward. For example, to move from MongoDB to PostgreSQL, update the datasource configuration and regenerate the Prisma Client. Repository and business logic code do not need changes.
+Prisma, combined with the Repository Pattern, allows you to switch databases with minimal effort and maximum codebase stability. The data access layer is fully abstracted, so your service and business logic remain unchanged regardless of the underlying database engine.
 
-In ACK NestJS Boilerplate, some adjustments are needed:
-- `DatabaseService`: May require updates for database-specific features (e.g., connection management, health checks, logging) when switching from MongoDB to PostgreSQL.
-- `DatabaseUtil`: Contains utilities for MongoDB-specific needs (such as ObjectID handling and data conversion) and will need to be updated or replaced with PostgreSQL-specific utilities if you switch databases.
+#### Supported Databases
 
-For details on switching databases, see: [Prisma: Switching databases][ref-prisma-setup]
+| Database | Best For | Transaction Support |
+|----------|----------|---------------------|
+| **PostgreSQL** | Production apps, complex queries | ✅ Yes |
+| **MongoDB** | Document-based, flexible schema | ✅ Yes (replica set) |
+
+**Other supported databases:** MySQL, SQLite, SQL Server, CockroachDB
+
+#### Quick Migration: MongoDB → PostgreSQL
+
+**1. Update Prisma Schema** (`prisma/schema.prisma`):
+```prisma
+// Change provider
+datasource db {
+  provider = "postgresql"  // was: "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// Update ID fields in all models
+model User {
+  id String @id @default(uuid())  // was: @default(auto()) @map("_id") @db.ObjectId
+  // Remove @db.ObjectId from all foreign keys
+}
+```
+
+**2. Update Environment** (`.env`):
+```bash
+# From:
+DATABASE_URL=mongodb://localhost:27017/ACKNestJs?replicaSet=rs0
+
+# To:
+DATABASE_URL=postgresql://user:password@localhost:5432/ACKNestJs
+```
+
+**3. Generate Migration & Client:**
+```bash
+pnpm prisma migrate dev --name init  # PostgreSQL
+pnpm db:generate                      # Regenerate client
+```
+
+**4. Update Database-Specific Code:**
+
+- **DatabaseService** (`src/common/database/services/database.service.ts`) - May require updates for connection management, health checks, and database-specific features
+- **DatabaseUtil** (`src/common/database/utils/database.util.ts`) - Replace MongoDB `ObjectId` helpers with UUID validators
+
+**5. Re-seed Database:**
+```bash
+pnpm migration:seed
+```
+
+#### Learn More
+
+- [Prisma: Switching Databases][ref-prisma-setup]
+- [Prisma MongoDB Documentation][ref-prisma-mongodb]
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 
 
 <!-- REFERENCES -->
@@ -350,7 +401,9 @@ For details on switching databases, see: [Prisma: Switching databases][ref-prism
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

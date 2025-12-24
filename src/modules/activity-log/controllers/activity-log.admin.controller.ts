@@ -1,5 +1,6 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
@@ -14,6 +15,7 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -29,6 +31,7 @@ export class ActivityLogAdminController {
 
     @ActivityLogAdminListDoc()
     @ResponsePaging('activityLog.list')
+    @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
             subject: EnumPolicySubject.user,
@@ -47,7 +50,8 @@ export class ActivityLogAdminController {
     async list(
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams,
-        @Param('userId', RequestRequiredPipe) userId: string
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
         return this.activityLogService.getListOffsetByUser(userId, pagination);
     }

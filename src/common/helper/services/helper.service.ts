@@ -7,7 +7,7 @@ import { IHelperService } from '@common/helper/interfaces/helper.service.interfa
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { compareSync, genSaltSync, hashSync } from 'bcryptjs';
-import { AES, MD5, SHA256, enc, mode, pad } from 'crypto-js';
+import { AES, MD5, SHA256, enc, lib, mode, pad } from 'crypto-js';
 import { DateObjectUnits, DateTime, Duration, DurationLikeObject } from 'luxon';
 import _ from 'lodash';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
@@ -98,6 +98,33 @@ export class HelperService implements IHelperService {
     }
 
     /**
+     * Parses initialization vector (IV) string into CryptoJS WordArray.
+     * Supports multiple encoding formats based on prefix:
+     * - 'hex:' prefix for hexadecimal encoded IV
+     * - 'b64:' prefix for Base64 encoded IV
+     * - No prefix defaults to UTF-8 encoding
+     *
+     * @param {string} iv - Initialization vector string, optionally prefixed with 'hex:' or 'b64:'
+     * @returns {lib.WordArray} Parsed IV as CryptoJS WordArray for use in encryption/decryption
+     * @throws {Error} If IV is empty or missing value after prefix
+     * @private
+     */
+    private parseAesIv(iv: string): lib.WordArray {
+        if (!iv) {
+            throw new Error('AES IV parsing failed: missing IV value');
+        } else if (iv.startsWith('hex:') || iv.startsWith('b64:')) {
+            const stringIv = iv.slice(4);
+            if (!stringIv) {
+                throw new Error('AES IV parsing failed: missing IV value');
+            }
+
+            return enc.Hex.parse(iv.slice(4));
+        }
+
+        return enc.Utf8.parse(iv);
+    }
+
+    /**
      * Encrypts data using AES-256-CBC encryption.
      * @template T - Type of data to encrypt
      * @param {T} data - Data to encrypt
@@ -106,8 +133,11 @@ export class HelperService implements IHelperService {
      * @returns {string} Encrypted string
      */
     aes256Encrypt<T>(data: T, key: string, iv: string): string {
-        const cIv = enc.Utf8.parse(iv);
-        const cipher = AES.encrypt(JSON.stringify(data), key, {
+        const cIv = this.parseAesIv(iv);
+        // Derive a fixed-length 256-bit key to avoid CryptoJS edge cases with
+        // non-standard UTF-8 key byte lengths.
+        const cKey = SHA256(key);
+        const cipher = AES.encrypt(JSON.stringify(data), cKey, {
             mode: mode.CBC,
             padding: pad.Pkcs7,
             iv: cIv,
@@ -125,14 +155,20 @@ export class HelperService implements IHelperService {
      * @returns {T} Decrypted data
      */
     aes256Decrypt<T>(encrypted: string, key: string, iv: string): T {
-        const cIv = enc.Utf8.parse(iv);
-        const cipher = AES.decrypt(encrypted, key, {
+        const cIv = this.parseAesIv(iv);
+        const cKey = SHA256(key);
+
+        const decrypted = AES.decrypt(encrypted, cKey, {
             mode: mode.CBC,
             padding: pad.Pkcs7,
             iv: cIv,
-        });
+        }).toString(enc.Utf8);
 
-        return JSON.parse(cipher.toString(enc.Utf8));
+        if (!decrypted) {
+            throw new Error('AES-256-CBC decryption failed');
+        }
+
+        return JSON.parse(decrypted);
     }
 
     /**

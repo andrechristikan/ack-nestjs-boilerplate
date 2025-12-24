@@ -2,6 +2,7 @@ import { applyDecorators } from '@nestjs/common';
 import {
     Doc,
     DocAuth,
+    DocGuard,
     DocRequest,
     DocResponse,
     DocResponsePaging,
@@ -19,6 +20,7 @@ export function SessionSharedListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocGuard({ termPolicy: true }),
         DocResponsePaging<SessionResponseDto>('session.list', {
             dto: SessionResponseDto,
             type: EnumPaginationType.cursor,
@@ -38,6 +40,7 @@ export function SessionSharedRevokeDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocGuard({ termPolicy: true }),
         DocResponse('session.revoke')
     );
 }

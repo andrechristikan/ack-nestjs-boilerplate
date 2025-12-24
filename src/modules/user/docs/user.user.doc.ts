@@ -15,7 +15,7 @@ export function UserUserDeleteSelfDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true }),
+        DocGuard({ role: true, termPolicy: true }),
         DocResponse('user.delete')
     );
 }

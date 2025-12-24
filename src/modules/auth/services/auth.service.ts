@@ -4,10 +4,11 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import {
+    IAuthAccessTokenGenerate,
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
+    IAuthRefreshTokenGenerate,
     IAuthSocialPayload,
-    IAuthTokenGenerate,
 } from '@modules/auth/interfaces/auth.interface';
 import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
@@ -15,7 +16,7 @@ import { EnumSessionStatusCodeError } from '@modules/session/enums/session.statu
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { EnumUserLoginFrom, EnumUserSignUpWith } from '@prisma/client';
+import { EnumUserLoginFrom, EnumUserLoginWith } from '@prisma/client';
 import { TokenPayload } from 'google-auth-library';
 
 /**
@@ -40,14 +41,14 @@ export class AuthService implements IAuthService {
      *
      * @param user - The user entity containing profile and role information
      * @param loginFrom - The source/platform of the login (website, mobile, etc.)
-     * @param loginWith - The authentication method used for sign-up (email, google, apple, etc.)
+     * @param loginWith - The authentication method used for login (email, google, apple, etc.)
      * @returns Token response object containing access token, refresh token, expiration time, jti, and sessionId
      */
     createTokens(
         user: IUser,
         loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserSignUpWith
-    ): IAuthTokenGenerate {
+        loginWith: EnumUserLoginWith
+    ): IAuthAccessTokenGenerate {
         const loginDate = this.helperService.dateCreate();
 
         const sessionId = this.databaseUtil.createId();
@@ -92,21 +93,28 @@ export class AuthService implements IAuthService {
     /**
      * Refreshes an access token using a valid refresh token.
      *
-     * Extracts session information from refresh token to generate new access token with a newly generated
-     * token identifier (jti). Also generates a new refresh token with adjusted expiration time based on remaining validity.
+     * This method extracts session and user information from the provided refresh token, then generates a new access token
+     * and a new refresh token with a new token identifier (jti). The new refresh token's expiration is adjusted based on the
+     * remaining validity of the original refresh token, ensuring the session does not extend beyond its original lifetime.
      *
      * @param user - The user entity containing profile and role information
-     * @param refreshTokenFromRequest - The existing refresh token to extract session data from
-     * @returns Token response object containing new access token, new refresh token with adjusted expiry, new jti, and sessionId
+     * @param refreshTokenFromRequest - The existing refresh token to extract session and expiration data from
+     * @returns IAuthRefreshTokenGenerate object containing the new access token, new refresh token (with adjusted expiry), new jti, sessionId, and remaining expiration in ms
+     * @throws {UnauthorizedException} If the refresh token is invalid or session validation fails
      */
     refreshToken(
         user: IUser,
         refreshTokenFromRequest: string
-    ): IAuthTokenGenerate {
-        const { sessionId, loginAt, loginFrom, loginWith } =
-            this.authUtil.payloadToken<IAuthJwtRefreshTokenPayload>(
-                refreshTokenFromRequest
-            );
+    ): IAuthRefreshTokenGenerate {
+        const {
+            sessionId,
+            loginAt,
+            loginFrom,
+            loginWith,
+            exp: oldExp,
+        } = this.authUtil.payloadToken<IAuthJwtRefreshTokenPayload>(
+            refreshTokenFromRequest
+        );
 
         const jti = this.authUtil.generateJti();
         const payloadAccessToken: IAuthJwtAccessTokenPayload =
@@ -128,17 +136,22 @@ export class AuthService implements IAuthService {
 
         const today = this.helperService.dateCreate();
         const expiredAt = this.helperService.dateCreateFromTimestamp(
-            newPayloadRefreshToken.exp * 1000
+            oldExp * 1000
         );
-        const newRefreshTokenExpireInSeconds = this.helperService.dateDiff(
-            today,
-            expiredAt
+
+        const newRefreshTokenExpire = this.helperService.dateDiff(
+            expiredAt,
+            today
         );
+        const newRefreshTokenExpireInSeconds = newRefreshTokenExpire.seconds
+            ? newRefreshTokenExpire.seconds
+            : Math.floor(newRefreshTokenExpire.milliseconds / 1000);
+
         const newRefreshToken: string = this.authUtil.createRefreshToken(
             user.id,
             jti,
             newPayloadRefreshToken,
-            newRefreshTokenExpireInSeconds.seconds
+            newRefreshTokenExpireInSeconds
         );
 
         const tokens: AuthTokenResponseDto = {
@@ -153,6 +166,7 @@ export class AuthService implements IAuthService {
             tokens,
             jti,
             sessionId,
+            expiredInMs: newRefreshTokenExpire.milliseconds,
         };
     }
 

@@ -11,6 +11,7 @@ import {
     AuthSocialAppleProtected,
     AuthSocialGoogleProtected,
 } from '@modules/auth/decorators/auth.social.decorator';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import {
@@ -18,6 +19,8 @@ import {
     AuthPublicLoginSocialGoogleDoc,
     UserPublicForgotPasswordDoc,
     UserPublicLoginCredentialDoc,
+    UserPublicLoginEnableTwoFactorDoc,
+    UserPublicLoginVerifyTwoFactorDoc,
     UserPublicResetPasswordDoc,
     UserPublicSendEmailVerificationDoc,
     UserPublicSignUpDoc,
@@ -26,11 +29,14 @@ import {
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
+import { UserLoginEnableTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-enable-two-factor.request.dto';
+import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
-import { UserTokenResponseDto } from '@modules/user/dtos/response/user.token.response.dto';
+import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
+import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserService } from '@modules/user/services/user.service';
 import {
     Body,
@@ -62,7 +68,7 @@ export class UserPublicController {
         @Body() body: UserLoginRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginCredential(body, {
             ipAddress,
             userAgent,
@@ -80,7 +86,7 @@ export class UserPublicController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto,
         @Body() body: UserCreateSocialRequestDto
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginWithSocial(
             email,
             EnumUserLoginWith.socialGoogle,
@@ -103,7 +109,7 @@ export class UserPublicController {
         @Body() body: UserCreateSocialRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<UserTokenResponseDto>> {
+    ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginWithSocial(
             email,
             EnumUserLoginWith.socialApple,
@@ -191,6 +197,38 @@ export class UserPublicController {
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.resetPassword(body, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @UserPublicLoginVerifyTwoFactorDoc()
+    @Response('user.verifyTwoFactor')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/login/2fa/verify')
+    async loginVerifyTwoFactor(
+        @Body() body: UserLoginVerifyTwoFactorRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<AuthTokenResponseDto>> {
+        return this.userService.loginVerifyTwoFactor(body, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @UserPublicLoginEnableTwoFactorDoc()
+    @Response('user.loginEnableTwoFactor')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/login/2fa/enable')
+    async verifyLoginTwoFactor(
+        @Body() body: UserLoginEnableTwoFactorRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
+        return this.userService.loginEnableTwoFactor(body, {
             ipAddress,
             userAgent,
         });

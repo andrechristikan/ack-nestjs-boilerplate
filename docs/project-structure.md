@@ -15,6 +15,8 @@ ACK NestJS Boilerplate is a comprehensive NestJS application designed for scalab
 - [Migration](#migration)
 - [Queues](#queues)
 - [Router](#router)
+- [Instrument](#instrument)
+- [Migration](#migration-file)
 - [Modules](#modules)
 - [Other Modules](#other-modules)
     - [Folders](#folders)
@@ -35,7 +37,9 @@ src
   ├── router
   ├── queues
   ├── templates
+  ├── instrument.ts
   ├── main.ts
+  ├── migration.ts
   └── swagger.ts
 ```
 
@@ -109,6 +113,27 @@ The router folder defines API routing by access level. It includes:
 - `routes/`: Subfolder organizing endpoints by access level (admin, public, user, system, shared)
 - Ensures clear separation of concerns and robust access control for all API endpoints
 
+## Instrument
+
+**Location:** `src/instrument.ts`
+
+The instrument file configures observability and monitoring for the application using **Sentry**. It is imported at the very beginning of the application bootstrap to ensure all errors and transactions are properly tracked. Key responsibilities include:
+- Initializing Sentry with DSN and configuration based on the environment
+- Configuring sampling rates for traces and profiles (higher in development, lower in production)
+- Implementing custom filtering logic to exclude non-fatal worker exceptions and protected routes from Sentry reporting
+- Setting maximum breadcrumbs, value lengths, and stack trace attachment policies
+- Ensuring sensitive data (PII) is not sent to Sentry
+
+## Migration
+
+**Location:** `src/migration.ts`
+
+The migration file is the entry point for the migration CLI tool using **nest-commander**. It handles database migrations, initialization, and data seeding operations. Key responsibilities include:
+- Creating a NestJS application context specifically for running CLI commands
+- Loading the `MigrationModule` which contains all migration-related logic and commands
+- Using Pino logger for CLI logging output
+- Running migration commands (e.g., database seeding, data population) and gracefully closing the application after completion
+- Can be invoked via the `pnpm migration` command followed by the specific migration command
 
 ## Modules
 
@@ -332,7 +357,9 @@ Below are explanations for the root folders and files outside `src/` (excluding 
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

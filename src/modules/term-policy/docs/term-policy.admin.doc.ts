@@ -35,6 +35,7 @@ export function TermPolicyAdminListDoc(): MethodDecorator {
         DocGuard({
             policy: true,
             role: true,
+            termPolicy: true,
         }),
         DocResponsePaging<TermPolicyResponseDto>('termPolicy.list', {
             dto: TermPolicyResponseDto,
@@ -54,6 +55,7 @@ export function TermPolicyAdminCreateDoc(): MethodDecorator {
         DocGuard({
             policy: true,
             role: true,
+            termPolicy: true,
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
@@ -78,6 +80,7 @@ export function TermPolicyAdminDeleteDoc(): MethodDecorator {
         DocGuard({
             policy: true,
             role: true,
+            termPolicy: true,
         }),
         DocRequest({
             params: TermPolicyDocParamsId,
@@ -100,6 +103,7 @@ export function TermPolicyAdminGenerateContentPresignDoc(): MethodDecorator {
         DocGuard({
             policy: true,
             role: true,
+            termPolicy: true,
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
@@ -123,6 +127,7 @@ export function TermPolicyAdminUpdateContentDoc(): MethodDecorator {
         DocGuard({
             policy: true,
             role: true,
+            termPolicy: true,
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
@@ -145,6 +150,7 @@ export function TermPolicyAdminAddContentDoc(): MethodDecorator {
         DocGuard({
             policy: true,
             role: true,
+            termPolicy: true,
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
@@ -167,6 +173,7 @@ export function TermPolicyAdminRemoveContentDoc(): MethodDecorator {
         DocGuard({
             policy: true,
             role: true,
+            termPolicy: true,
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
@@ -189,6 +196,7 @@ export function TermPolicyAdminGetContentDoc(): MethodDecorator {
         DocGuard({
             policy: true,
             role: true,
+            termPolicy: true,
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
@@ -212,6 +220,7 @@ export function TermPolicyAdminPublishDoc(): MethodDecorator {
         DocGuard({
             policy: true,
             role: true,
+            termPolicy: true,
         }),
         DocRequest({
             params: TermPolicyDocParamsId,

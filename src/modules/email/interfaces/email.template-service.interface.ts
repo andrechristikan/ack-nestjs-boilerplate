@@ -25,4 +25,7 @@ export interface IEmailTemplateService {
     importMobileNumberVerified(): Promise<boolean>;
     getMobileNumberVerified(): Promise<GetTemplateCommandOutput | null>;
     deleteMobileNumberVerified(): Promise<boolean>;
+    importResetTwoFactorByAdmin(): Promise<boolean>;
+    getResetTwoFactorByAdmin(): Promise<GetTemplateCommandOutput | null>;
+    deleteResetTwoFactorByAdmin(): Promise<boolean>;
 }

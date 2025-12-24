@@ -17,6 +17,8 @@ import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { UserGenerateImportRequestDto } from '@modules/user/dtos/request/user.generate-import.request.dto';
 
 export function UserAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -30,7 +32,7 @@ export function UserAdminListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<UserListResponseDto>('user.list', {
             dto: UserListResponseDto,
         })
@@ -49,7 +51,7 @@ export function UserAdminGetDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<UserProfileResponseDto>('user.get', {
             dto: UserProfileResponseDto,
         })
@@ -69,7 +71,7 @@ export function UserAdminCreateDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
             dto: UserCreateRequestDto,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<DatabaseIdDto>('user.create', {
             httpStatus: HttpStatus.CREATED,
             dto: DatabaseIdDto,
@@ -91,7 +93,7 @@ export function UserAdminUpdateStatusDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse('user.updateStatus')
     );
 }
@@ -108,7 +110,79 @@ export function UserAdminUpdatePasswordDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse('user.updatePassword')
+    );
+}
+
+export function UserAdminResetTwoFactorDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: "Reset user's two-factor authentication",
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocResponse('user.twoFactor.reset')
+    );
+}
+
+export function UserAdminGenerateImportDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'generate presign url for user import',
+        }),
+        DocRequest({
+            dto: UserGenerateImportRequestDto,
+            bodyType: EnumDocRequestBodyType.json,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocResponse('user.generateImportPresign')
+    );
+}
+
+export function UserAdminImportDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'import users via csv file',
+        }),
+        DocRequest({
+            dto: UserImportRequestDto,
+            bodyType: EnumDocRequestBodyType.json,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocResponse('user.import', {
+            httpStatus: HttpStatus.CREATED,
+        })
+    );
+}
+
+export function UserAdminExportDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'export users via csv file',
+        }),
+        DocRequest({
+            queries: UserDocQueryList,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocResponse('user.export')
     );
 }

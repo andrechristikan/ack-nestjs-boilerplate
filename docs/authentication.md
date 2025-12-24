@@ -58,8 +58,11 @@ Configuration for tokens, sessions, password, social providers, and API keys is 
         - [Configuration](#configuration-1)
         - [Setup Apple Sign In](#setup-apple-sign-in)
         - [Usage](#usage-2)
-- [API Key Authentication](#api-key-authentication)
+- [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp)
     - [Configuration](#configuration-2)
+    - [Flow](#flow)
+- [API Key Authentication](#api-key-authentication)
+    - [Configuration](#configuration-3)
     - [API Key Types](#api-key-types)
         - [Default API Key](#default-api-key)
         - [System API Key](#system-api-key)
@@ -73,12 +76,9 @@ Configuration for tokens, sessions, password, social providers, and API keys is 
         - [Redis (Primary - Validation)](#redis-primary---validation)
         - [Database (Secondary - Management)](#database-secondary---management)
         - [How They Work Together](#how-they-work-together)
-    - [Session API](#session-api)
-        - [List User Sessions](#list-user-sessions)
-        - [Revoke Session](#revoke-session)
-        - [What Happens on Revocation](#what-happens-on-revocation)
     - [Session Lifecycle](#session-lifecycle)
     - [Session Validation Flow](#session-validation-flow)
+    - [What Happens on Revocation](#what-happens-on-revocation)
 
 ## Password
 
@@ -243,7 +243,7 @@ sequenceDiagram
         Database-->>API: Session created
     and Store in Redis
         API->>Redis: Store session with TTL
-        Note over Redis: Key: user:{userId}:session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
+        Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
         Redis-->>API: Session cached
     end
     
@@ -590,7 +590,7 @@ sequenceDiagram
             Database-->>API: Session created
         and Store in Redis
             API->>Redis: Store session with jti and TTL
-            Note over Redis: Key: user:{userId}:session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
+            Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
             Redis-->>API: Session cached
         end
         
@@ -714,6 +714,28 @@ async loginApple(@AuthJwtPayload() payload: IAuthSocialPayload) {
     // Return JWT tokens (both include jti)
 }
 ```
+
+## Two-Factor Authentication (TOTP)
+
+TOTP-based 2FA adds a second verification step to login. Tokens are only issued after the user passes 2FA.
+
+### Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant Cache
+
+    User->>API: POST /user/login/credential
+    API->>Cache: Store challenge token
+    API->>User: Return challengeToken
+    User->>API: POST /user/login/2fa/verify {challengeToken, code}
+    API->>Cache: Validate challenge
+    API->>User: Return JWT tokens
+```
+
+See [Two-Factor Documentation][ref-doc-two-factor] for detailed.
 
 ## API Key Authentication
 
@@ -972,7 +994,7 @@ Used for high-speed session validation for **both access and refresh tokens**.
 
 **Redis Key Pattern:**
 ```
-user:{userId}:session:{sessionId}
+User:{userId}:Session:{sessionId}
 ```
 
 **TTL Behavior:**
@@ -1100,7 +1122,7 @@ sequenceDiagram
         
         API->>API: Extract sessionId & jti from payload
         
-        API->>Redis: GET user:{userId}:session:{sessionId}
+        API->>Redis: GET User:{userId}:Session:{sessionId}
         
         alt Session Not Found
             Redis-->>API: null
@@ -1212,7 +1234,9 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for providing the idea and co
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

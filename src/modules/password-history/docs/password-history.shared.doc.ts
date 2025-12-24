@@ -2,6 +2,7 @@ import { applyDecorators } from '@nestjs/common';
 import {
     Doc,
     DocAuth,
+    DocGuard,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
@@ -16,6 +17,7 @@ export function PasswordHistorySharedListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocGuard({ termPolicy: true }),
         DocResponsePaging<PasswordHistoryResponseDto>('passwordHistory.list', {
             dto: PasswordHistoryResponseDto,
             type: EnumPaginationType.cursor,

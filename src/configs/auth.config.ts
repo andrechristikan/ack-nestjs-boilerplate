@@ -49,6 +49,24 @@ export interface IConfigAuth {
         header: string;
         cachePrefixKey: string;
     };
+    twoFactor: {
+        issuer: string;
+        digits: number;
+        step: number;
+        window: number;
+        secretLength: number;
+        challengeTtlInMs: number;
+        cachePrefixKey: string;
+        maxAttempt: number;
+        lockAttemptDuration: number;
+        backupCodes: {
+            count: number;
+            length: number;
+        };
+        encryption: {
+            key: string;
+        };
+    };
 }
 
 export default registerAs(
@@ -111,6 +129,24 @@ export default registerAs(
         xApiKey: {
             header: 'x-api-key',
             cachePrefixKey: 'ApiKey',
+        },
+        twoFactor: {
+            issuer: process.env.AUTH_TWO_FACTOR_ISSUER ?? 'ACKNestJsTwoFactor',
+            digits: 6,
+            step: 30,
+            window: 1,
+            secretLength: 32,
+            challengeTtlInMs: ms('5m'),
+            cachePrefixKey: 'TwoFactor',
+            backupCodes: {
+                count: 8,
+                length: 10,
+            },
+            maxAttempt: 5,
+            lockAttemptDuration: ms('2m'),
+            encryption: {
+                key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY,
+            },
         },
     })
 );

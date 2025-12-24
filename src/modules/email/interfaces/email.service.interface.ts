@@ -49,4 +49,8 @@ export interface IEmailService {
         }: EmailForgotPasswordDto,
         resendInMinutes: number
     ): Promise<void>;
+    sendResetTwoFactorByAdmin(
+        userId: string,
+        { email, username }: EmailSendDto
+    ): Promise<void>;
 }

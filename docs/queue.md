@@ -324,7 +324,7 @@ redis-bullboard:
     environment:
         - REDIS_HOST=redis
         - REDIS_PORT=6379
-        - BULL_PREFIX=queue
+        - BULL_PREFIX=Queue
         - USER_LOGIN=admin
         - USER_PASSWORD=admin123
 ```
@@ -418,7 +418,9 @@ redis-bullboard:
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g

@@ -7,6 +7,7 @@ import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile
 import { UserDto } from '@modules/user/dtos/user.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import {
+    IUser,
     IUserForgotPasswordCreate,
     IUserMobileNumber,
     IUserProfile,
@@ -14,10 +15,16 @@ import {
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumVerificationType, PasswordHistory, User } from '@prisma/client';
+import {
+    EnumVerificationType,
+    PasswordHistory,
+    TwoFactor,
+    User,
+} from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { Duration } from 'luxon';
 import { Profanity } from '@2toad/profanity';
+import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 
 @Injectable()
 export class UserUtil {
@@ -142,7 +149,7 @@ export class UserUtil {
         return this.profanity.exists(str);
     }
 
-    mapList(users: User[]): UserListResponseDto[] {
+    mapList(users: IUser[]): UserListResponseDto[] {
         return plainToInstance(UserListResponseDto, users);
     }
 
@@ -158,6 +165,20 @@ export class UserUtil {
         mobileNumber: IUserMobileNumber
     ): UserMobileNumberResponseDto {
         return plainToInstance(UserMobileNumberResponseDto, mobileNumber);
+    }
+
+    mapTwoFactor(twoFactor: TwoFactor): UserTwoFactorStatusResponseDto {
+        return {
+            isEnabled: twoFactor.enabled,
+            isPendingConfirmation:
+                !twoFactor.enabled &&
+                !!twoFactor.secret &&
+                !!twoFactor.iv &&
+                !twoFactor.confirmedAt,
+            backupCodesRemaining: twoFactor.backupCodes.length,
+            confirmedAt: twoFactor.confirmedAt,
+            lastUsedAt: twoFactor.lastUsedAt,
+        };
     }
 
     checkMobileNumber(phoneCodes: string[], phoneCode: string): boolean {
