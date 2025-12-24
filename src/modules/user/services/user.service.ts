@@ -2033,11 +2033,9 @@ export class UserService implements IUserService {
         }
     }
 
-    async generateImportPresign({
-        size,
-    }: UserGenerateImportRequestDto): Promise<
-        IResponseReturn<AwsS3PresignDto>
-    > {
+    async generateImportPresign(
+        _dto: UserGenerateImportRequestDto
+    ): Promise<IResponseReturn<AwsS3PresignDto>> {
         // TODO: Generate user data import presign url
         // generate unique key for import
         // consider to add date prefix for easier management
@@ -2046,9 +2044,9 @@ export class UserService implements IUserService {
     }
 
     async import(
-        { importKey, size }: UserImportRequestDto,
-        createdBy: string,
-        requestLog: IRequestLog
+        _dto: UserImportRequestDto,
+        _createdBy: string,
+        _requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         // TODO: Import user data from S3
         // consider to remove file from S3 after import
@@ -2056,14 +2054,14 @@ export class UserService implements IUserService {
     }
 
     async export(
-        status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
+        _status?: Record<string, IPaginationIn>,
+        _role?: Record<string, IPaginationEqual>,
+        _country?: Record<string, IPaginationEqual>
     ): Promise<IResponseReturn<AwsS3PresignDto>> {
         // TODO: export user data to S3 and generate presign url
         // consider to export in background job if data is too large
         // export to s3 private bucket and generate presign url
-        // TODO: 2 Enchant export to create a separate module to handle large data export, combine with bullmq
+        // TODO: Enchant export to create a separate module to handle large data export, combine with bullmq
         return;
     }
 }

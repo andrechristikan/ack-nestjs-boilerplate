@@ -213,7 +213,14 @@ async update(
 
 ### Validation Pipe
 
-Validation errors are automatically translated by `MessageService`. See [Request Validation Documentation][ref-doc-request-validation] for details.
+Validation errors are automatically translated by `MessageService`. The service handles both flat and nested validation errors by traversing the error tree and extracting constraints at each level. See [Request Validation Documentation][ref-doc-request-validation] for details.
+
+**Message Resolution Strategy:**
+
+1. **Primary**: Tries to resolve message from `request.error.{constraint}` path
+2. **Fallback**: If translation not found, uses the raw message from class-validator
+
+**Example message file:**
 
 ```json
 // src/languages/en/request.json
@@ -226,7 +233,31 @@ Validation errors are automatically translated by `MessageService`. See [Request
 }
 ```
 
-The validation pipe transforms class-validator errors into localized messages:
+**Nested Validation:**
+
+For nested objects, the service return the full property path by traversing child errors:
+
+```typescript
+// Input DTO with nested validation
+class AddressDto {
+    @IsNotEmpty()
+    street: string;
+}
+
+class UserDto {
+    @ValidateNested()
+    address: AddressDto;
+}
+
+// Validation error output:
+{
+    "key": "isNotEmpty",
+    "property": "address.street",
+    "message": "street should not be empty"
+}
+```
+
+**Standard validation response:**
 
 ```typescript
 // Automatic transformation
@@ -317,6 +348,7 @@ export enum EnumMessageLanguage {
 [ref-nestjs]: http://nestjs.com
 [ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
 [ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
+[ref-nestjs-i18n]: https://nestjs-i18n.com
 [ref-prisma]: https://www.prisma.io
 [ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
 [ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
