@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import ms from 'ms';
 
 export interface IConfigFeatureFlag {
     cachePrefixKey: string;
@@ -9,6 +10,6 @@ export default registerAs(
     'featureFlag',
     (): IConfigFeatureFlag => ({
         cachePrefixKey: 'FeatureFlag',
-        cacheTtlMs: 60 * 60,
+        cacheTtlMs: ms('1h'),
     })
 );
