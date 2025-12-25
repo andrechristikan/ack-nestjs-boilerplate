@@ -89,6 +89,8 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import {
+    EnumActivityLogAction,
+    EnumPasswordHistoryType,
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -916,6 +918,8 @@ export class UserService implements IUserService {
                 this.userRepository.changePassword(
                     user.id,
                     password,
+                    EnumPasswordHistoryType.profile,
+                    EnumActivityLogAction.userChangePassword,
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(user.id, sessions),
@@ -1479,7 +1483,10 @@ export class UserService implements IUserService {
                 this.userRepository.changePassword(
                     resetPassword.userId,
                     password,
-                    requestLog
+                    EnumPasswordHistoryType.forgot,
+                    EnumActivityLogAction.userForgotPassword,
+                    requestLog,
+                    resetPassword.id
                 ),
                 this.sessionUtil.deleteAllLogins(
                     resetPassword.userId,

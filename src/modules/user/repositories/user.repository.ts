@@ -813,7 +813,10 @@ export class UserRepository {
             passwordHash,
             passwordPeriodExpired,
         }: IAuthPassword,
-        { ipAddress, userAgent }: IRequestLog
+        passwordHistoryType: EnumPasswordHistoryType,
+        activityAction: EnumActivityLogAction,
+        { ipAddress, userAgent }: IRequestLog,
+        forgotPasswordId?: string
     ): Promise<User> {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -826,7 +829,7 @@ export class UserRepository {
                 passwordHistories: {
                     create: {
                         password: passwordHash,
-                        type: EnumPasswordHistoryType.profile,
+                        type: passwordHistoryType,
                         expiredAt: passwordPeriodExpired,
                         createdAt: passwordCreated,
                         createdBy: userId,
@@ -834,18 +837,23 @@ export class UserRepository {
                 },
                 activityLogs: {
                     create: {
-                        action: EnumActivityLogAction.userChangePassword,
+                        action: activityAction,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
-                sessions: {
-                    updateMany: {
-                        where: { isRevoked: false },
-                        data: { isRevoked: true },
+                ...(forgotPasswordId && {
+                    forgotPasswords: {
+                        update: {
+                            where: { id: forgotPasswordId },
+                            data: {
+                                isUsed: true,
+                                resetAt: this.helperService.dateCreate(),
+                            },
+                        },
                     },
-                },
+                }),
             },
         });
     }
