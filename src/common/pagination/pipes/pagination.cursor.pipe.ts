@@ -35,8 +35,9 @@ export function PaginationCursorPipe(
                 perPage?: number | string;
             } & IPaginationQueryCursorParams
         ): Promise<IPaginationQueryCursorParams> {
-            const finalPerPage =
-                Number.parseInt(value.perPage?.toString()) ?? defaultPerPage;
+            const finalPerPage = Number.isFinite(value?.perPage)
+                ? Number(value?.perPage)
+                : defaultPerPage;
             this.addToRequestInstance(finalPerPage, value.cursor);
 
             return {

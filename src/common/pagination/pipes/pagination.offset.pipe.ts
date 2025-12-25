@@ -34,8 +34,12 @@ export function PaginationOffsetPipe(
                 perPage?: number | string;
             } & IPaginationQueryOffsetParams
         ): Promise<IPaginationQueryOffsetParams> {
-            let finalPage = Number(value.page) ?? 1;
-            let finalPerPage = Number(value.perPage) ?? defaultPerPage;
+            let finalPage = Number.isFinite(value.page)
+                ? Number(value.page)
+                : 1;
+            let finalPerPage = Number.isFinite(value.perPage)
+                ? Number(value.perPage)
+                : defaultPerPage;
 
             if (finalPage > PaginationDefaultMaxPage) {
                 finalPage = PaginationDefaultMaxPage;
