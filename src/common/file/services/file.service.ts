@@ -6,22 +6,25 @@ import Mime from 'mime';
 import Papa from 'papaparse';
 
 /**
- * Service for handling file operations including CSV file creation and reading.
- * Provides methods to write and read CSV files with support for generic data types,
- * generate random filenames, and extract file information from paths and filenames.
+ * Service for handling file operations such as CSV parsing, random filename generation,
+ * and extracting file information from filenames and paths.
+ *
+ * Provides methods to:
+ * - Write and read CSV files (semicolon delimiter)
+ * - Generate random filenames with optional prefix and extension
+ * - Extract file extension, MIME type, and filename from path
  */
 @Injectable()
 export class FileService implements IFileService {
     constructor(private readonly helperService: HelperService) {}
 
     /**
-     * Converts structured data into CSV format string.
-     * Serializes an array of objects into a CSV string with semicolon (;) as delimiter.
-     * Each object property becomes a column, and the property name becomes the header.
+     * Converts an array of objects into a CSV string (semicolon delimiter).
+     * Each object property becomes a column, and property names are used as headers.
      *
-     * @template T - The type of data rows (defaults to Record<string, string | number | Date>)
-     * @param {T[]} rows - Array of objects to be converted to CSV rows
-     * @returns {string} CSV formatted string with semicolon delimiter
+     * @template T - Type of data rows (defaults to Record<string, string | number | Date>)
+     * @param {T[]} rows - Array of objects to convert to CSV
+     * @returns {string} CSV formatted string (semicolon-delimited)
      */
     writeCsv<T = Record<string, string | number | Date>>(rows: T[]): string {
         return Papa.unparse(rows, {
@@ -30,35 +33,38 @@ export class FileService implements IFileService {
     }
 
     /**
-     * Parses CSV string into structured data objects.
-     * Reads a CSV string with semicolon (;) as delimiter and converts it into an array of objects.
-     * The first row is treated as headers which become the object property names.
-     * Empty lines are automatically skipped during parsing.
+     * Parses a semicolon-delimited CSV string into an array of objects.
+     * The first row is used as headers. Empty lines are skipped.
      *
-     * @template T - The type of data rows (defaults to Record<string, string | number | Date>)
-     * @param {string} file - CSV string content to be parsed
-     * @returns {T[]} Array of objects parsed from CSV rows
+     * @template T - Type of data rows (defaults to Record<string, string | number | Date>)
+     * @param {string} file - CSV string content to parse
+     * @returns {T[]} Array of parsed objects
      */
     readCsv<T = Record<string, string | number | Date>>(file: string): T[] {
         const parsed = Papa.parse<T>(file, {
             header: true,
             skipEmptyLines: true,
             delimiter: ';',
+            fastMode: true,
+            transform(value) {
+                return value === '' ? null : value;
+            },
         });
 
         return parsed.data;
     }
 
     /**
-     * Generates a random filename with specified prefix and extension.
-     * Creates a unique filename by combining a path, optional prefix, random string, and file extension.
-     * Automatically removes leading slash if present to ensure proper path formatting.
-     * @param {IFileRandomFilenameOptions} options - Configuration options for filename generation
-     * @param {string} options.path - Directory path to prepend to the filename
-     * @param {string} [options.prefix] - Optional prefix to include in the filename before the random string
-     * @param {string} options.extension - File extension (e.g., 'jpg', 'png', 'pdf')
-     * @param {number} [options.randomLength=10] - Length of the random string portion (defaults to 10 characters)
-     * @returns {string} Generated filename in format: 'path/prefix-randomString.extension' or 'path/randomString.extension' if no prefix
+     * Generates a random filename with optional prefix and extension.
+     * The result is formatted as 'path/prefix-randomString.extension' or 'path/randomString.extension'.
+     * Leading slash is removed if present.
+     *
+     * @param {IFileRandomFilenameOptions} options - Options for filename generation
+     * @param {string} options.path - Directory path to prepend
+     * @param {string} [options.prefix] - Optional prefix before random string
+     * @param {string} options.extension - File extension (e.g. 'jpg', 'pdf')
+     * @param {number} [options.randomLength=10] - Length of random string (default: 10)
+     * @returns {string} Generated filename
      */
     createRandomFilename({
         prefix,
@@ -77,23 +83,22 @@ export class FileService implements IFileService {
     }
 
     /**
-     * Extracts the file extension from a given filename.
-     * Returns the file extension in lowercase without the leading dot.
-     * If the filename has no extension, returns an empty string.
-     * @param {string} filename - The name of the file from which to extract the extension
-     * @returns {string} The extracted file extension in lowercase, or an empty string if none exists
+     * Extracts the file extension (lowercase, no dot) from a filename.
+     * Returns an empty string if no extension exists.
+     *
+     * @param {string} filename - Filename to extract extension from
+     * @returns {string} File extension in lowercase, or empty string if none
      */
     extractExtensionFromFilename(filename: string): string {
         return filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
     }
 
     /**
-     * Extracts the MIME type from a given filename.
-     * Uses the file extension to determine the corresponding MIME type.
-     * Returns the MIME type in lowercase format.
+     * Extracts the MIME type from a filename using its extension.
+     * Returns the MIME type in lowercase.
      *
-     * @param {string} filename - The name of the file from which to extract the MIME type
-     * @returns {string} The extracted MIME type in lowercase
+     * @param {string} filename - Filename to extract MIME type from
+     * @returns {string} MIME type in lowercase
      */
     extractMimeFromFilename(filename: string): string {
         return Mime.getType(
@@ -102,10 +107,10 @@ export class FileService implements IFileService {
     }
 
     /**
-     * Extracts the filename from a given file path.
-     * Returns only the filename portion, excluding any directory paths.
-     * @param {string} filePath - The full path of the file
-     * @returns {string} The extracted filename
+     * Extracts the filename from a file path (removes directory path).
+     *
+     * @param {string} filePath - Full file path
+     * @returns {string} Filename only
      */
     extractFilenameFromPath(filePath: string): string {
         const parts = filePath.split('/');

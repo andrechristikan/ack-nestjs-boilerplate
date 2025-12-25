@@ -11,92 +11,81 @@ import { EnumFileExtension } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
 
 /**
- * Creates a dynamic pipe that validates file extensions against allowed types.
+ * Factory function to create a dynamic NestJS pipe for validating file extensions.
  *
- * This factory function creates a mixin pipe that validates uploaded files
- * to ensure they have allowed extensions. It supports both single files
- * and arrays of files.
+ * Returns a mixin pipe class that checks if uploaded file(s) have extensions in the allowed list.
+ * Supports both single file and array input (if extended).
  *
  * @param {EnumFileExtension[]} allowedExtensions - Array of allowed file extensions
- * @returns {Type<PipeTransform>} A dynamically created pipe class that validates file extensions
- * @throws {UnsupportedMediaTypeException} When file extension is not in the allowed list
+ * @returns {Type<PipeTransform>} A NestJS pipe class for file extension validation
+ * @throws {UnsupportedMediaTypeException} If file extension is not allowed
  */
 export function FileExtensionPipe(
     allowedExtensions: EnumFileExtension[]
 ): Type<PipeTransform> {
     /**
-     * Mixin pipe class that validates file extensions.
+     * Pipe class for validating file extensions using the allowed list.
      *
-     * This class implements the PipeTransform interface to validate
-     * file extensions against a predefined set of allowed extensions.
+     * @class
+     * @implements {PipeTransform}
      */
     @Injectable()
-    class MixinFileTypePipe implements PipeTransform {
+    class MixinFileExtensionPipe implements PipeTransform {
+        /**
+         * Set of allowed file extensions for validation.
+         * @type {ReadonlySet<string>}
+         * @readonly
+         */
         private readonly extensions: ReadonlySet<string> = new Set(
             allowedExtensions
         );
 
+        /**
+         * @param {FileService} fileService - FileService instance for extracting file extension
+         */
         constructor(private readonly fileService: FileService) {}
 
         /**
-         * Transforms and validates the input file(s) by checking their extensions.
+         * Validates the extension of the input file.
+         * Returns the original value if validation passes.
          *
-         * This method validates file extensions for both single files and arrays of files.
-         * If validation fails, it throws an UnsupportedMediaTypeException.
-         *
-         * @param {IFileInput} value - The input value containing file(s) to validate
-         * @returns {Promise<IFileInput>} The original input value if validation passes
-         * @throws {UnsupportedMediaTypeException} When file extension is not allowed
+         * @param {IFileInput} value - The file to validate
+         * @returns {Promise<IFileInput>} The original value if validation passes
+         * @throws {UnsupportedMediaTypeException} If file extension is not allowed
          */
         async transform(value: IFileInput): Promise<IFileInput> {
             if (!value) {
                 return value;
             }
-
-            const filesToValidate = this.extractFilesToValidate(value);
-
-            if (!filesToValidate) {
+            const fileToValidate = this.extractFilesToValidate(value);
+            if (!fileToValidate) {
                 return value;
             }
-
-            if (Array.isArray(filesToValidate)) {
-                this.validateFileArray(filesToValidate);
-            } else {
-                this.validateSingleFile(filesToValidate);
-            }
-
+            this.validate(fileToValidate);
             return value;
         }
 
         /**
-         * Extracts files from the input value for validation.
-         *
-         * This method checks if the input value contains files to validate
-         * and returns them in the appropriate format.
+         * Extracts a file from the input value for validation.
+         * Returns null if the value is empty.
          *
          * @private
-         * @param {IFileInput} value - The input value to extract files from
-         * @returns {IFile | IFile[] | null} The extracted file(s) or null if no files to validate
+         * @param {IFileInput} value - The input value to extract file from
+         * @returns {IFile | null} The extracted file or null if empty
          */
-        private extractFilesToValidate(
-            value: IFileInput
-        ): IFile | IFile[] | null {
+        private extractFilesToValidate(value: IFileInput): IFile | null {
             if (this.isEmptyValue(value)) {
                 return null;
             }
-
-            return value as IFile | IFile[];
+            return value as IFile;
         }
 
         /**
-         * Checks if the provided value is empty or null.
-         *
-         * This method determines if a value is considered empty by checking
-         * for null/undefined, empty objects, or empty arrays.
+         * Checks if the provided value is empty (null, undefined, empty object, or empty array).
          *
          * @private
-         * @param {unknown} value - The value to check for emptiness
-         * @returns {boolean} True if the value is empty, false otherwise
+         * @param {unknown} value - The value to check
+         * @returns {boolean} True if empty, false otherwise
          */
         private isEmptyValue(value: unknown): boolean {
             return (
@@ -109,60 +98,30 @@ export function FileExtensionPipe(
         }
 
         /**
-         * Validates an array of files by checking each file's extension.
-         *
-         * This method iterates through an array of files and validates
-         * each file's extension against the allowed extensions.
-         *
-         * @private
-         * @param {IFile[]} files - Array of files to validate
-         * @throws {UnsupportedMediaTypeException} When any file has an invalid extension
-         */
-        private validateFileArray(files: IFile[]): void {
-            for (const file of files) {
-                if (file?.originalname) {
-                    this.validateExtension(file.originalname);
-                } else {
-                    throw new UnsupportedMediaTypeException({
-                        statusCode: EnumFileStatusCodeError.extensionInvalid,
-                        message: 'file.error.extensionInvalid',
-                    });
-                }
-            }
-        }
-
-        /**
-         * Validates a single file by checking its extension.
-         *
-         * This method validates a single file's extension against
-         * the allowed extensions list.
+         * Validates a file's extension against the allowed list.
+         * Throws an exception if the extension is not allowed.
          *
          * @private
          * @param {IFile} file - The file to validate
-         * @throws {UnsupportedMediaTypeException} When the file has an invalid extension
+         * @throws {UnsupportedMediaTypeException} If extension is not allowed
          */
-        private validateSingleFile(file: IFile): void {
-            if (file?.originalname) {
-                this.validateExtension(file.originalname);
-            } else {
+        private validate(file: IFile): void {
+            if (!file?.originalname) {
                 throw new UnsupportedMediaTypeException({
                     statusCode: EnumFileStatusCodeError.extensionInvalid,
                     message: 'file.error.extensionInvalid',
                 });
             }
-
-            return;
+            this.validateExtension(file.originalname);
         }
 
         /**
          * Validates a file extension against the allowed extensions.
-         *
-         * This method extracts the extension from a originalname and checks
-         * if it's in the set of allowed extensions.
+         * Throws an exception if the extension is not allowed.
          *
          * @private
-         * @param {string} originalname - The originalname to extract and validate the extension from
-         * @throws {UnsupportedMediaTypeException} When the extension is not allowed
+         * @param {string} originalname - The filename to extract and validate extension from
+         * @throws {UnsupportedMediaTypeException} If extension is not allowed
          */
         private validateExtension(originalname: string): void {
             const extension =
@@ -173,10 +132,8 @@ export function FileExtensionPipe(
                     message: 'file.error.extensionInvalid',
                 });
             }
-
-            return;
         }
     }
 
-    return mixin(MixinFileTypePipe);
+    return mixin(MixinFileExtensionPipe);
 }

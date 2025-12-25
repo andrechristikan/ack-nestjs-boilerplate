@@ -1,12 +1,9 @@
-import {
-    PaginationDefaultCursorField,
-    PaginationDefaultMaxPage,
-    PaginationDefaultMaxPerPage,
-} from '@common/pagination/constants/pagination.constant';
+import { PaginationDefaultCursorField } from '@common/pagination/constants/pagination.constant';
 import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import {
     IPaginationCursorReturn,
     IPaginationCursorValue,
@@ -16,7 +13,7 @@ import {
     IPaginationRepository,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IPaginationService } from '@common/pagination/interfaces/pagination.service.interface';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 
 /**
  * Service for handling pagination operations with offset and cursor-based pagination.
@@ -24,6 +21,10 @@ import { Injectable } from '@nestjs/common';
  * This service provides two pagination strategies:
  * - **Offset-based pagination**: Traditional page number and limit approach
  * - **Cursor-based pagination**: Uses cursor tokens for efficient traversal of large datasets
+ *
+ * **Validation Note:**
+ * Input parameters are assumed to be valid as they are already validated by the respective pipes
+ * (PaginationOffsetPipe, PaginationCursorPipe) before reaching this service.
  */
 @Injectable()
 export class PaginationService implements IPaginationService {
@@ -33,11 +34,14 @@ export class PaginationService implements IPaginationService {
      * **Default Values:**
      * - orderBy: `{ createdAt: 'desc' }` - Results are sorted by creation date in descending order
      *
+     * **Assumptions:**
+     * Input parameters are assumed to be valid as they are validated by PaginationOffsetPipe before reaching this service.
+     *
      * @template TReturn - The type of items being paginated
      * @param {IPaginationRepository} repository - Repository instance that implements IPaginationRepository
-     * @param {IPaginationQueryOffsetParams} args - Pagination parameters.
+     * @param {IPaginationQueryOffsetParams} args - Pagination parameters (validated by pipe).
      * @returns {Promise<IPaginationOffsetReturn<TReturn>>} Promise that resolves to paginated result with items, metadata (count, page, totalPage, hasNext, hasPrevious, nextPage, previousPage)
-     * @throws {Error} If validation constraints are violated
+     * @throws {BadRequestException} If data integrity issues are detected (unexpected condition)
      */
     async offset<TReturn>(
         repository: IPaginationRepository,
@@ -53,27 +57,8 @@ export class PaginationService implements IPaginationService {
             select,
             include,
         } = args;
+
         const currentPage = Math.floor(skip / limit) + 1;
-
-        if (limit <= 0) {
-            throw new Error('Limit must be greater than 0');
-        }
-
-        if (skip < 0) {
-            throw new Error('Skip must be greater than or equal to 0');
-        }
-
-        if (limit > PaginationDefaultMaxPerPage) {
-            throw new Error(
-                `Limit must be less than or equal to ${PaginationDefaultMaxPerPage}`
-            );
-        }
-
-        if (currentPage > PaginationDefaultMaxPage) {
-            throw new Error(
-                `Page must be less than or equal to ${PaginationDefaultMaxPage}`
-            );
-        }
 
         const [count, items] = await Promise.all([
             repository.count({
@@ -118,14 +103,17 @@ export class PaginationService implements IPaginationService {
      *
      * **Cursor Behavior:**
      * - The cursor is encoded using URL-safe base64 encoding
-     * - If cursor is invalid or conditions changed, pagination resets to first page
+     * - If cursor is invalid or conditions changed, returns error (see Point 8)
      * - Fetches `limit + 1` items to determine if there are more results
+     *
+     * **Assumptions:**
+     * Input parameters are assumed to be valid as they are validated by PaginationCursorPipe before reaching this service.
      *
      * @template TReturn - The type of items being paginated
      * @param {IPaginationRepository} repository - Repository instance that implements IPaginationRepository
-     * @param {IPaginationQueryCursorParams} args - Cursor pagination parameters
+     * @param {IPaginationQueryCursorParams} args - Cursor pagination parameters (validated by pipe)
      * @returns {Promise<IPaginationCursorReturn<TReturn>>} Promise that resolves to cursor paginated result with items, cursor token, hasNext flag, and optional count
-     * @throws {Error} If validation constraints are violated
+     * @throws {BadRequestException} If pagination conditions have changed
      */
     async cursor<TReturn>(
         repository: IPaginationRepository,
@@ -143,28 +131,40 @@ export class PaginationService implements IPaginationService {
             includeCount,
         } = args;
 
-        let { cursor } = args;
+        const { cursor } = args;
 
-        if (limit <= 0) {
-            throw new Error('Limit must be greater than 0');
-        }
+        // If cursor provided, decode and check if conditions match
+        let decodedCursor: IPaginationCursorValue | undefined;
 
-        if (limit > PaginationDefaultMaxPerPage) {
-            throw new Error(
-                `Limit must be less than or equal to ${PaginationDefaultMaxPerPage}`
-            );
-        }
+        if (cursor) {
+            try {
+                decodedCursor = this.decodeCursor(cursor);
+            } catch {
+                throw new BadRequestException({
+                    statusCode:
+                        EnumPaginationStatusCodeError.invalidCursorFormat,
+                    message: 'pagination.error.invalidCursorFormat',
+                });
+            }
 
-        const decodedCursor = cursor ? this.decodeCursor(cursor) : undefined;
-        if (decodedCursor) {
-            if (
-                JSON.stringify(decodedCursor.orderBy).toLowerCase() !==
-                    JSON.stringify(orderBy).toLowerCase() ||
-                JSON.stringify(decodedCursor.where).toLowerCase() !==
-                    JSON.stringify(where).toLowerCase()
-            ) {
-                // Invalidate the cursor if orderBy or where conditions do not match, will reset to first page
-                cursor = undefined;
+            if (decodedCursor) {
+                const orderByChanged = !this.isDeepEqual(
+                    decodedCursor.orderBy,
+                    orderBy
+                );
+                const whereChanged = !this.isDeepEqual(
+                    decodedCursor.where,
+                    where
+                );
+
+                if (orderByChanged || whereChanged) {
+                    throw new BadRequestException({
+                        statusCode:
+                            EnumPaginationStatusCodeError.invalidCursorPaginationParams,
+                        message:
+                            'pagination.error.invalidCursorPaginationParams',
+                    });
+                }
             }
         }
 
@@ -188,10 +188,9 @@ export class PaginationService implements IPaginationService {
             queries.push(repository.count({ where }));
         }
 
-        const [items, count] = (await Promise.all(queries)) as [
-            TReturn[],
-            number,
-        ];
+        const results = await Promise.all(queries);
+        const items = results[0] as TReturn[];
+        const count = includeCount ? (results[1] as number) : undefined;
 
         const hasNext = items.length > limit;
         const data = hasNext ? items.slice(0, limit) : items;
@@ -216,35 +215,94 @@ export class PaginationService implements IPaginationService {
         };
     }
 
+    /**
+     * Encodes cursor data to URL-safe base64 format.
+     * Same encoding method as used in pipes.
+     *
+     * @param {IPaginationCursorValue} data - Cursor data containing cursor value, orderBy, and where conditions
+     * @returns {string} URL-safe base64 encoded cursor (without padding)
+     * @throws {BadRequestException} If cursor data is invalid
+     */
     private encodeCursor(data: IPaginationCursorValue): string {
         if (!data || data.cursor === undefined || data.cursor === null) {
-            throw new Error('Invalid cursor data');
+            throw new BadRequestException({
+                statusCode: EnumPaginationStatusCodeError.invalidCursorData,
+                message: 'pagination.error.invalidCursorData',
+            });
         }
 
         try {
-            // url-safe base64 encoding
+            // Standard base64 → URL-safe base64 (+ becomes -, / becomes _)
+            // Padding (=) is removed for URL safety
             return Buffer.from(JSON.stringify(data))
                 .toString('base64')
                 .replaceAll(/\+/g, '-')
                 .replaceAll(/\//g, '_')
                 .replaceAll(/=/g, '');
         } catch {
-            throw new Error('Failed to encode cursor');
+            throw new BadRequestException({
+                statusCode: EnumPaginationStatusCodeError.failedToEncodeCursor,
+                message: 'pagination.error.failedToEncodeCursor',
+            });
         }
     }
 
+    /**
+     * Decodes URL-safe base64 cursor data.
+     * Same decoding method as encoder, adds back padding before conversion.
+     *
+     * @param {string} cursor - URL-safe base64 encoded cursor (without padding)
+     * @returns {IPaginationCursorValue} Decoded cursor data
+     * @throws {BadRequestException} If cursor cannot be decoded
+     */
     private decodeCursor(cursor: string): IPaginationCursorValue {
         if (!cursor || typeof cursor !== 'string') {
-            throw new Error('Invalid cursor format');
+            throw new BadRequestException({
+                statusCode: EnumPaginationStatusCodeError.invalidCursorFormat,
+                message: 'pagination.error.invalidCursorFormat',
+            });
         }
 
         try {
-            // url-safe base64 encoding
+            // Add padding back based on length
             const padded = cursor + '='.repeat((4 - (cursor.length % 4)) % 4);
+            // Convert URL-safe characters back to standard base64 (- becomes +, _ becomes /)
             const base64 = padded.replaceAll(/-/g, '+').replaceAll(/_/g, '/');
-            return JSON.parse(Buffer.from(base64, 'base64').toString());
-        } catch {
-            throw new Error(`Failed to decode cursor`);
+            const decoded = JSON.parse(
+                Buffer.from(base64, 'base64').toString()
+            );
+
+            // Validate decoded cursor has required fields
+            if (!decoded.cursor || !decoded.orderBy) {
+                throw new BadRequestException({
+                    statusCode: EnumPaginationStatusCodeError.invalidCursorData,
+                    message: 'pagination.error.invalidCursorData',
+                });
+            }
+
+            return decoded as IPaginationCursorValue;
+        } catch (error) {
+            // Only re-throw if already BadRequestException
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
+            throw new BadRequestException({
+                statusCode: EnumPaginationStatusCodeError.failedToDecodeCursor,
+                message: 'pagination.error.failedToDecodeCursor',
+            });
         }
+    }
+
+    /**
+     * Deep equality comparison for objects.
+     * Used to check if cursor conditions (orderBy, where) match current request.
+     *
+     * @param {unknown} obj1 - First object to compare
+     * @param {unknown} obj2 - Second object to compare
+     * @returns {boolean} True if objects are deeply equal
+     */
+    private isDeepEqual(obj1: unknown, obj2: unknown): boolean {
+        return JSON.stringify(obj1) === JSON.stringify(obj2);
     }
 }

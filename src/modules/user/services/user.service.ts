@@ -109,6 +109,7 @@ import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.res
 import { RequestTooManyException } from '@common/request/exceptions/request.too-many.exception';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { ConfigService } from '@nestjs/config';
+import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -271,10 +272,6 @@ export class UserService implements IUserService {
                     temporary: true,
                 }
             );
-            const emailVerification =
-                this.userUtil.verificationCreateVerification(
-                    EnumVerificationType.email
-                );
             const randomUsername = this.userUtil.createRandomUsername();
             const created = await this.userRepository.createByAdmin(
                 randomUsername,
@@ -285,43 +282,24 @@ export class UserService implements IUserService {
                     roleId,
                 },
                 password,
-                emailVerification,
                 checkRole,
                 requestLog,
                 createdBy
             );
 
             // @note: send email after all creation
-            await Promise.all([
-                this.emailService.sendWelcomeByAdmin(
-                    created.id,
-                    {
-                        email,
-                        username: randomUsername,
-                    },
-                    {
-                        password: passwordString,
-                        passwordCreatedAt: password.passwordCreated,
-                        passwordExpiredAt: password.passwordExpired,
-                    }
-                ),
-                checkRole.type !== EnumRoleType.user
-                    ? this.emailService.sendVerification(
-                          created.id,
-                          {
-                              email,
-                              username: created.username,
-                          },
-                          {
-                              expiredAt: emailVerification.expiredAt,
-                              reference: emailVerification.reference,
-                              link: emailVerification.link,
-                              expiredInMinutes:
-                                  emailVerification.expiredInMinutes,
-                          }
-                      )
-                    : Promise.resolve(),
-            ]);
+            await this.emailService.sendWelcomeByAdmin(
+                created.id,
+                {
+                    email,
+                    username: randomUsername,
+                },
+                {
+                    password: passwordString,
+                    passwordCreatedAt: password.passwordCreated.toISOString(),
+                    passwordExpiredAt: password.passwordExpired.toISOString(),
+                }
+            );
 
             return {
                 data: { id: created.id },
@@ -522,7 +500,6 @@ export class UserService implements IUserService {
             await Promise.all([
                 this.userRepository.deleteSelf(userId, requestLog),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                this.sessionRepository.revokeAll(userId, requestLog),
             ]);
 
             return;
@@ -820,11 +797,6 @@ export class UserService implements IUserService {
                     updatedBy
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                this.sessionRepository.revokeAllByAdmin(
-                    userId,
-                    requestLog,
-                    updatedBy
-                ),
             ]);
 
             // @note: send email after all creation
@@ -836,8 +808,8 @@ export class UserService implements IUserService {
                 },
                 {
                     password: passwordString,
-                    passwordCreatedAt: password.passwordCreated,
-                    passwordExpiredAt: password.passwordExpired,
+                    passwordCreatedAt: password.passwordCreated.toISOString(),
+                    passwordExpiredAt: password.passwordExpired.toISOString(),
                 }
             );
 
@@ -923,7 +895,6 @@ export class UserService implements IUserService {
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(user.id, sessions),
-                this.sessionRepository.revokeAll(user.id, requestLog),
                 twoFactorVerified
                     ? this.userRepository.verifyTwoFactor(
                           user.id,
@@ -1206,7 +1177,7 @@ export class UserService implements IUserService {
                         username: created.username,
                     },
                     {
-                        expiredAt: emailVerification.expiredAt,
+                        expiredAt: emailVerification.expiredAt.toISOString(),
                         reference: emailVerification.reference,
                         link: emailVerification.link,
                         expiredInMinutes: emailVerification.expiredInMinutes,
@@ -1331,7 +1302,7 @@ export class UserService implements IUserService {
                     username: user.username,
                 },
                 {
-                    expiredAt: emailVerification.expiredAt,
+                    expiredAt: emailVerification.expiredAt.toISOString(),
                     reference: emailVerification.reference,
                     link: emailVerification.link,
                     expiredInMinutes: emailVerification.expiredInMinutes,
@@ -1404,7 +1375,7 @@ export class UserService implements IUserService {
                     username: user.username,
                 },
                 {
-                    expiredAt: resetPassword.expiredAt,
+                    expiredAt: resetPassword.expiredAt.toISOString(),
                     link: resetPassword.link,
                     reference: resetPassword.reference,
                     expiredInMinutes: resetPassword.expiredInMinutes,
@@ -1491,10 +1462,6 @@ export class UserService implements IUserService {
                 this.sessionUtil.deleteAllLogins(
                     resetPassword.userId,
                     sessions
-                ),
-                this.sessionRepository.revokeAll(
-                    resetPassword.userId,
-                    requestLog
                 ),
                 twoFactorVerified
                     ? this.userRepository.verifyTwoFactor(
@@ -2026,11 +1993,6 @@ export class UserService implements IUserService {
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                this.sessionRepository.revokeAllByAdmin(
-                    userId,
-                    requestLog,
-                    updatedBy
-                ),
             ]);
 
             // @note: send email after all creation
@@ -2051,9 +2013,15 @@ export class UserService implements IUserService {
 
     async importByAdmin(
         data: UserImportRequestDto[],
-        _createdBy: string,
-        _requestLog: IRequestLog
+        createdBy: string,
+        requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
+        // TODO: Optimize by doing
+        // - in background job with bullmq, also before create check username uniqueness
+        // - when upload file, upload using presign
+        // - load data from s3, and not process all in one time
+        // - think about how to show progress status to user with bullmq
+
         const emails = data.map(item => item.email);
         const [checkRole, checkCountry, existingUsers] = await Promise.all([
             this.roleRepository.existByName(this.userRoleName),
@@ -2082,9 +2050,51 @@ export class UserService implements IUserService {
         }
 
         try {
-            // TODO: import users using transaction db
-            // then send email after all creation
-            // adminUserImport
+            const totalData = data.length;
+            const usernames = Array(totalData)
+                .fill(0)
+                .map(() => this.userUtil.createRandomUsername());
+            const passwords = Array(totalData)
+                .fill(0)
+                .map(() => this.authUtil.createPasswordRandom());
+            const passwordHasheds = passwords.map(e =>
+                this.authUtil.createPassword(e)
+            );
+
+            const newUsers = await this.userRepository.importByAdmin(
+                data,
+                usernames,
+                passwordHasheds,
+                checkCountry.id,
+                checkRole,
+                requestLog,
+                createdBy
+            );
+
+            // @note: send email after all creation
+            const sendEmailPromises = [];
+            for (const [index, newUser] of newUsers.entries()) {
+                sendEmailPromises.push(
+                    this.emailService.sendWelcomeByAdmin(
+                        newUser.id,
+                        {
+                            email: newUser.email,
+                            username: newUser.username,
+                        },
+                        {
+                            password: passwords[index],
+                            passwordCreatedAt:
+                                newUser.passwordCreated.toISOString(),
+                            passwordExpiredAt:
+                                newUser.passwordExpired.toISOString(),
+                        }
+                    )
+                );
+            }
+
+            await Promise.all(sendEmailPromises);
+
+            return;
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: EnumAppStatusCodeError.unknown,
@@ -2092,8 +2102,6 @@ export class UserService implements IUserService {
                 _error: err,
             });
         }
-
-        return;
     }
 
     async exportByAdmin(
@@ -2101,14 +2109,20 @@ export class UserService implements IUserService {
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponseFileReturn> {
+        // TODO: Optimize by doing
+        // - in background job with bullmq
+        // - return aws s3 link
+        // - think about how to show progress status to user with bullmq
+
         const data = await this.userRepository.findAllExport(
             status,
             role,
             country
         );
 
-        const users: UserListResponseDto[] = this.userUtil.mapList(data);
-        const csvString = this.fileService.writeCsv<UserListResponseDto>(users);
+        const users: UserExportResponseDto[] = this.userUtil.mapExport(data);
+        const csvString =
+            this.fileService.writeCsv<UserExportResponseDto>(users);
 
         return {
             data: csvString,

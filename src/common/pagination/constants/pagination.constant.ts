@@ -17,3 +17,5 @@ export const PaginationDefaultMaxPage = 20;
  * Default field used for cursor-based pagination.
  */
 export const PaginationDefaultCursorField = 'id';
+
+export const PaginationMaxCursorLength = 256;

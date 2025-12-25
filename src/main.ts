@@ -61,7 +61,15 @@ async function bootstrap(): Promise<void> {
     // Validate Env
     const logger = new Logger(`${appName}-Main`);
     const classEnv = plainToInstance(AppEnvDto, process.env);
-    const errors = await validate(classEnv);
+    const errors = await validate(classEnv, {
+        skipMissingProperties: false,
+        skipNullProperties: false,
+        skipUndefinedProperties: false,
+        validationError: {
+            target: false,
+            value: true,
+        },
+    });
     if (errors.length > 0) {
         const messageService = app.get(MessageService);
         const errorsMessage = messageService.setValidationMessage(errors);

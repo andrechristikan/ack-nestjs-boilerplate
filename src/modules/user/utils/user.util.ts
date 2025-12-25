@@ -25,6 +25,7 @@ import { plainToInstance } from 'class-transformer';
 import { Duration } from 'luxon';
 import { Profanity } from '@2toad/profanity';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 
 @Injectable()
 export class UserUtil {
@@ -66,7 +67,7 @@ export class UserUtil {
             'user.uploadPhotoProfilePath'
         );
 
-        this.homeUrl = this.configService.get('app.homeUrl');
+        this.homeUrl = this.configService.get('home.url');
 
         this.forgotPasswordReferencePrefix = this.configService.get(
             'forgotPassword.reference.prefix'
@@ -151,6 +152,10 @@ export class UserUtil {
 
     mapList(users: IUser[]): UserListResponseDto[] {
         return plainToInstance(UserListResponseDto, users);
+    }
+
+    mapExport(users: IUser[]): UserExportResponseDto[] {
+        return plainToInstance(UserExportResponseDto, users);
     }
 
     mapOne(user: User): UserDto {

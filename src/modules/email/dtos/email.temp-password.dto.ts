@@ -11,15 +11,15 @@ export class EmailTempPasswordDto {
 
     @ApiProperty({
         required: true,
-        example: faker.date.future(),
+        example: faker.date.future().toString(),
         description: 'Expired at by date',
     })
-    passwordExpiredAt: Date;
+    passwordExpiredAt: string;
 
     @ApiProperty({
         required: true,
-        example: faker.date.recent(),
+        example: faker.date.recent().toString(),
         description: 'Password created at by date',
     })
-    passwordCreatedAt: Date;
+    passwordCreatedAt: string;
 }
