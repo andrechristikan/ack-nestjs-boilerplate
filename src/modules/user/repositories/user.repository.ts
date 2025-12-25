@@ -22,6 +22,7 @@ import { IRole } from '@modules/role/interfaces/role.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
@@ -48,6 +49,7 @@ import {
     EnumVerificationType,
     ForgotPassword,
     Prisma,
+    TermPolicyUserAcceptance,
     User,
     UserMobileNumber,
     Verification,
@@ -342,12 +344,6 @@ export class UserRepository {
             passwordHash,
             passwordPeriodExpired,
         }: IAuthPassword,
-        {
-            expiredAt,
-            reference,
-            token,
-            type: verificationType,
-        }: IUserVerificationCreate,
         { id: roleId, type: roleType }: IRole,
         { ipAddress, userAgent }: IRequestLog,
         createdBy: string
@@ -393,16 +389,6 @@ export class UserRepository {
                     },
                     createdBy,
                     deletedAt: null,
-                    verifications: {
-                        create: {
-                            expiredAt,
-                            reference,
-                            token,
-                            type: verificationType,
-                            to: email,
-                            createdBy,
-                        },
-                    },
                     passwordHistories: {
                         create: {
                             password: passwordHash,
@@ -1591,5 +1577,139 @@ export class UserRepository {
                 },
             },
         });
+    }
+
+    async importByAdmin(
+        data: UserImportRequestDto[],
+        usernames: string[],
+        passwordHasheds: IAuthPassword[],
+        countryId: string,
+        { id: roleId, type: roleType }: IRole,
+        { ipAddress, userAgent }: IRequestLog,
+        createdBy: string
+    ): Promise<User[]> {
+        const termPolicies = await this.databaseService.termPolicy.findMany({
+            where: {
+                type: {
+                    in: [
+                        EnumTermPolicyType.termsOfService,
+                        EnumTermPolicyType.privacy,
+                    ],
+                },
+                status: EnumTermPolicyStatus.published,
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        const users = await this.databaseService.$transaction(
+            async (tx: Prisma.TransactionClient) => {
+                const usersToCreate: Prisma.PrismaPromise<User>[] = [];
+                const termPolicyUserAcceptancesToCreate: Prisma.PrismaPromise<TermPolicyUserAcceptance>[] =
+                    [];
+
+                for (const [index, { email, name }] of data.entries()) {
+                    const userId = this.databaseUtil.createId();
+                    const username = usernames[index];
+                    const {
+                        passwordCreated,
+                        passwordExpired,
+                        passwordHash,
+                        passwordPeriodExpired,
+                    } = passwordHasheds[index];
+
+                    usersToCreate.push(
+                        tx.user.create({
+                            data: {
+                                id: userId,
+                                email,
+                                countryId,
+                                roleId,
+                                name,
+                                signUpFrom: EnumUserSignUpFrom.admin,
+                                signUpWith: EnumUserSignUpWith.credential,
+                                passwordCreated,
+                                passwordExpired,
+                                password: passwordHash,
+                                passwordAttempt: 0,
+                                username,
+                                isVerified:
+                                    roleType === EnumRoleType.user
+                                        ? false
+                                        : true,
+                                status: EnumUserStatus.active,
+                                termPolicy: {
+                                    [EnumTermPolicyType.cookies]: false,
+                                    [EnumTermPolicyType.marketing]: false,
+                                    [EnumTermPolicyType.privacy]: true,
+                                    [EnumTermPolicyType.termsOfService]: true,
+                                },
+                                createdBy,
+                                deletedAt: null,
+                                passwordHistories: {
+                                    create: {
+                                        password: passwordHash,
+                                        type: EnumPasswordHistoryType.admin,
+                                        expiredAt: passwordPeriodExpired,
+                                        createdAt: passwordCreated,
+                                        createdBy,
+                                    },
+                                },
+                                activityLogs: {
+                                    createMany: {
+                                        data: [
+                                            {
+                                                action: EnumActivityLogAction.userCreated,
+                                                ipAddress,
+                                                userAgent:
+                                                    this.databaseUtil.toPlainObject(
+                                                        userAgent
+                                                    ),
+                                                createdBy,
+                                            },
+                                            {
+                                                action: EnumActivityLogAction.userSendVerificationEmail,
+                                                ipAddress,
+                                                userAgent:
+                                                    this.databaseUtil.toPlainObject(
+                                                        userAgent
+                                                    ),
+                                                createdBy,
+                                            },
+                                        ],
+                                    },
+                                },
+                                twoFactor: {
+                                    create: {
+                                        enabled: false,
+                                        requiredSetup: false,
+                                        createdBy,
+                                    },
+                                },
+                            },
+                        })
+                    );
+                    termPolicyUserAcceptancesToCreate.push(
+                        ...termPolicies.map(termPolicy =>
+                            tx.termPolicyUserAcceptance.create({
+                                data: {
+                                    userId,
+                                    termPolicyId: termPolicy.id,
+                                    createdBy,
+                                },
+                            })
+                        )
+                    );
+                }
+
+                const users = await Promise.all(usersToCreate);
+                await Promise.all(termPolicyUserAcceptancesToCreate);
+
+                return users;
+            }
+        );
+
+        return users;
     }
 }

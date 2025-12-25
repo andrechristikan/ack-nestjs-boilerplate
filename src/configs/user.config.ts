@@ -18,7 +18,7 @@ export default registerAs(
         uploadPhotoProfilePath: 'users/{userId}/profile',
         default: {
             role: 'user',
-            country: 'id',
+            country: 'ID',
         },
     })
 );
