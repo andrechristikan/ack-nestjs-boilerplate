@@ -66,7 +66,7 @@ export class UserUtil {
             'user.uploadPhotoProfilePath'
         );
 
-        this.homeUrl = this.configService.get('app.homeUrl');
+        this.homeUrl = this.configService.get('home.url');
 
         this.forgotPasswordReferencePrefix = this.configService.get(
             'forgotPassword.reference.prefix'
