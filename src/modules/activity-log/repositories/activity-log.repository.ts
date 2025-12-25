@@ -47,7 +47,7 @@ export class ActivityLogRepository {
         { where, ...params }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
         return this.paginationService.cursor<IActivityLog>(
-            this.databaseService.user,
+            this.databaseService.activityLog,
             {
                 ...params,
                 where: {

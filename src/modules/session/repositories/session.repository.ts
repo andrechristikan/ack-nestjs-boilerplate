@@ -26,7 +26,7 @@ export class SessionRepository {
         { where, ...others }: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ISession>> {
         return this.paginationService.offset<ISession>(
-            this.databaseService.passwordHistory,
+            this.databaseService.session,
             {
                 ...others,
                 where: {
@@ -45,7 +45,7 @@ export class SessionRepository {
         { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<ISession>> {
         return this.paginationService.cursor<ISession>(
-            this.databaseService.passwordHistory,
+            this.databaseService.session,
             {
                 ...others,
                 where: {
@@ -180,6 +180,7 @@ export class SessionRepository {
                 data: {
                     action: EnumActivityLogAction.userRevokeAllSessions,
                     ipAddress,
+                    userId,
                     userAgent: this.databaseUtil.toPlainObject(userAgent),
                     createdBy: userId,
                 },
