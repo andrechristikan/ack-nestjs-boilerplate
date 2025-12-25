@@ -107,6 +107,11 @@ import { RequestTooManyException } from '@common/request/exceptions/request.too-
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { ConfigService } from '@nestjs/config';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
+import { UserAbilitiesResponseDto } from '@modules/user/dtos/response/user.abilities.response.dto';
+import { UserUpdateAbilitiesRequestDto } from '@modules/user/dtos/request/user.update-abilities.request.dto';
+import { UserAbilityRequestDto } from '@modules/user/dtos/request/user.ability.request.dto';
+import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
+import { EnumRoleType } from '@prisma/client';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -177,6 +182,154 @@ export class UserService implements IUserService {
         }
 
         return user;
+    }
+
+    async getUserAbilities(
+        userId: string
+    ): Promise<IResponseReturn<UserAbilitiesResponseDto>> {
+        const user = await this.userRepository.findOneWithRoleById(userId);
+
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                message: 'user.error.notFound',
+            });
+        }
+
+        if (user.role.type !== EnumRoleType.custom) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatus_CODE_ERROR.statusInvalid,
+                message: 'user.error.abilitiesOnlyForCustomRoles',
+            });
+        }
+
+        return {
+            data: {
+                userId: user.id,
+                abilities: (user.abilities || []) as unknown as RoleAbilityDto[],
+            },
+        };
+    }
+
+    async updateUserAbilities(
+        userId: string,
+        { abilities }: UserUpdateAbilitiesRequestDto
+    ): Promise<IResponseReturn<void>> {
+        const user = await this.userRepository.findOneWithRoleById(userId);
+
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                message: 'user.error.notFound',
+            });
+        }
+
+        if (user.role.type !== EnumRoleType.custom) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatus_CODE_ERROR.statusInvalid,
+                message: 'user.error.canOnlyUpdateAbilitiesForCustomRoles',
+            });
+        }
+
+        try {
+            await this.userRepository.updateAbilities(userId, abilities);
+            return {};
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async addUserAbility(
+        userId: string,
+        ability: UserAbilityRequestDto
+    ): Promise<IResponseReturn<void>> {
+        const user = await this.userRepository.findOneWithRoleById(userId);
+
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                message: 'user.error.notFound',
+            });
+        }
+
+        if (user.role.type !== EnumRoleType.custom) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatus_CODE_ERROR.statusInvalid,
+                message: 'user.error.canOnlyAddAbilitiesToCustomRoles',
+            });
+        }
+
+        const currentAbilities = (user.abilities || []) as any[];
+
+        // Check if ability already exists
+        const exists = currentAbilities.some(a => a.subject === ability.subject);
+
+        if (exists) {
+            throw new ConflictException({
+                statusCode: EnumUserStatus_CODE_ERROR.statusInvalid,
+                message: 'user.error.abilityAlreadyExists',
+            });
+        }
+
+        try {
+            await this.userRepository.updateAbilities(userId, [
+                ...currentAbilities,
+                ability,
+            ]);
+            return {};
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async removeUserAbility(
+        userId: string,
+        { subject }: UserAbilityRequestDto
+    ): Promise<IResponseReturn<void>> {
+        const user = await this.userRepository.findOneWithRoleById(userId);
+
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                message: 'user.error.notFound',
+            });
+        }
+
+        if (user.role.type !== EnumRoleType.custom) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatus_CODE_ERROR.statusInvalid,
+                message: 'user.error.canOnlyRemoveAbilitiesFromCustomRoles',
+            });
+        }
+
+        const currentAbilities = (user.abilities || []) as any[];
+        const newAbilities = currentAbilities.filter(a => a.subject !== subject);
+
+        if (currentAbilities.length === newAbilities.length) {
+            throw new NotFoundException({
+                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                message: 'user.error.abilityNotFound',
+            });
+        }
+
+        try {
+            await this.userRepository.updateAbilities(userId, newAbilities);
+            return {};
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
     async getListOffsetByAdmin(

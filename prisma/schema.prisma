@@ -126,6 +126,7 @@ model User {
   lastLoginWith   EnumUserLoginWith?
   termPolicy      Json
   photo           Json?
+  abilities       Json[]      @default([])
 
   // timestamps fields
   createdAt DateTime  @default(now())
@@ -393,6 +394,7 @@ enum EnumRoleType {
   superAdmin
   admin
   user
+  custom
 }
 
 enum EnumApiKeyType {

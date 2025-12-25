@@ -84,6 +84,9 @@ import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileCsvParsePipe } from '@common/file/pipes/file.csv-parse.pipe';
 import { FilCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { UserUpdateAbilitiesRequestDto } from '@modules/user/dtos/request/user.update-abilities.request.dto';
+import { UserAbilityRequestDto } from '@modules/user/dtos/request/user.ability.request.dto';
+import { Delete } from '@nestjs/common';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -323,5 +326,84 @@ export class UserAdminController {
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponseFileReturn> {
         return this.userService.exportByAdmin(status, role, country);
+    }
+
+    @Response('user.abilities.get')
+    @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/get/:userId/abilities')
+    async getUserAbilities(
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string
+    ) {
+        return this.userService.getUserAbilities(userId);
+    }
+
+    @Response('user.abilities.update')
+    @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Put('/update/:userId/abilities')
+    async updateUserAbilities(
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string,
+        @Body()
+        body: UserUpdateAbilitiesRequestDto
+    ) {
+        return this.userService.updateUserAbilities(userId, body);
+    }
+
+    @Response('user.abilities.add')
+    @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/update/:userId/abilities')
+    async addUserAbility(
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string,
+        @Body()
+        body: import('@modules/user/dtos/request/user.ability.request.dto').UserAbilityRequestDto
+    ) {
+        return this.userService.addUserAbility(userId, body);
+    }
+
+    @Response('user.abilities.remove')
+    @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/update/:userId/abilities/remove')
+    async removeUserAbility(
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string,
+        @Body()
+        body: import('@modules/user/dtos/request/user.ability.request.dto').UserAbilityRequestDto
+    ) {
+        return this.userService.removeUserAbility(userId, body);
     }
 }

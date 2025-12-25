@@ -174,9 +174,18 @@ export class RoleService implements IRoleService {
 
         const { role } = __user;
 
+        // SuperAdmin has full access to everything
         if (role.type === EnumRoleType.superAdmin) {
             return [];
-        } else if (requiredRoles.length === 0) {
+        }
+
+        if (role.type === EnumRoleType.custom) {
+            // Return user-specific abilities from __user (database record)
+            return (__user.abilities || []) as unknown as RoleAbilityDto[];
+        }
+
+        // Predefined roles (admin, user) use type-based authorization
+        if (requiredRoles.length === 0) {
             throw new InternalServerErrorException({
                 statusCode: EnumRoleStatusCodeError.predefinedNotFound,
                 message: 'role.error.predefinedNotFound',

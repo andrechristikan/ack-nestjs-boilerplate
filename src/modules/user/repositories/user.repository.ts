@@ -797,6 +797,16 @@ export class UserRepository {
         });
     }
 
+    async updateAbilities(userId: string, abilities: any[]): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                abilities: abilities as unknown as Prisma.InputJsonValue[],
+                updatedBy: userId,
+            },
+        });
+    }
+
     async changePassword(
         userId: string,
         {
