@@ -22,7 +22,7 @@ export class FeatureFlagUtil {
             'featureFlag.cachePrefixKey'
         );
         this.cacheTtlMs = this.configService.get<number>(
-            'featureFlag.cacheTtlSeconds'
+            'featureFlag.cacheTtlMs'
         );
     }
 
