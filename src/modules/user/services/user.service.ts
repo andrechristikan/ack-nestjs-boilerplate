@@ -497,7 +497,6 @@ export class UserService implements IUserService {
             await Promise.all([
                 this.userRepository.deleteSelf(userId, requestLog),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                this.sessionRepository.revokeAll(userId, requestLog),
             ]);
 
             return;
@@ -795,11 +794,6 @@ export class UserService implements IUserService {
                     updatedBy
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                this.sessionRepository.revokeAllByAdmin(
-                    userId,
-                    requestLog,
-                    updatedBy
-                ),
             ]);
 
             // @note: send email after all creation
@@ -896,7 +890,6 @@ export class UserService implements IUserService {
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(user.id, sessions),
-                this.sessionRepository.revokeAll(user.id, requestLog),
                 twoFactorVerified
                     ? this.userRepository.verifyTwoFactor(
                           user.id,
@@ -1462,10 +1455,6 @@ export class UserService implements IUserService {
                     resetPassword.userId,
                     sessions
                 ),
-                this.sessionRepository.revokeAll(
-                    resetPassword.userId,
-                    requestLog
-                ),
                 twoFactorVerified
                     ? this.userRepository.verifyTwoFactor(
                           resetPassword.userId,
@@ -1996,11 +1985,6 @@ export class UserService implements IUserService {
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                this.sessionRepository.revokeAllByAdmin(
-                    userId,
-                    requestLog,
-                    updatedBy
-                ),
             ]);
 
             // @note: send email after all creation

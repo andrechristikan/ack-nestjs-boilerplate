@@ -767,6 +767,12 @@ export class UserRepository {
                         createdBy: updatedBy,
                     },
                 },
+                sessions: {
+                    updateMany: {
+                        where: { isRevoked: false },
+                        data: { isRevoked: true },
+                    },
+                },
             },
         });
     }
@@ -1541,6 +1547,12 @@ export class UserRepository {
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: updatedBy,
                         createdAt: now,
+                    },
+                },
+                sessions: {
+                    updateMany: {
+                        where: { isRevoked: false },
+                        data: { isRevoked: true },
                     },
                 },
             },
