@@ -50,7 +50,6 @@ import { SessionModule } from '@modules/session/session.module';
         ApiKeyModule,
         AuthModule,
         PolicyModule,
-        PolicyModule,
         RoleModule,
         FeatureFlagModule,
         TermPolicyModule,

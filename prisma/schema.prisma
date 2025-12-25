@@ -444,6 +444,7 @@ enum EnumActivityLogAction {
   userVerifiedEmail
   userSendVerificationEmail
   userSignedUp
+  userResetPassword
   userRevokeSession
   userRevokeSessionByAdmin
   userRevokeAllSessions

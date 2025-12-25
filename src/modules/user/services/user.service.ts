@@ -890,8 +890,6 @@ export class UserService implements IUserService {
                 this.userRepository.changePassword(
                     user.id,
                     password,
-                    EnumPasswordHistoryType.profile,
-                    EnumActivityLogAction.userChangePassword,
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(user.id, sessions),
@@ -1451,13 +1449,11 @@ export class UserService implements IUserService {
             const password = this.authUtil.createPassword(newPassword);
 
             await Promise.all([
-                this.userRepository.changePassword(
+                this.userRepository.resetPassword(
                     resetPassword.userId,
+                    resetPassword.id,
                     password,
-                    EnumPasswordHistoryType.forgot,
-                    EnumActivityLogAction.userForgotPassword,
-                    requestLog,
-                    resetPassword.id
+                    requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(
                     resetPassword.userId,

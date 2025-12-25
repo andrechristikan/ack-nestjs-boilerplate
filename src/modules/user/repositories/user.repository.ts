@@ -805,10 +805,7 @@ export class UserRepository {
             passwordHash,
             passwordPeriodExpired,
         }: IAuthPassword,
-        passwordHistoryType: EnumPasswordHistoryType,
-        activityAction: EnumActivityLogAction,
-        { ipAddress, userAgent }: IRequestLog,
-        forgotPasswordId?: string
+        { ipAddress, userAgent }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -821,7 +818,7 @@ export class UserRepository {
                 passwordHistories: {
                     create: {
                         password: passwordHash,
-                        type: passwordHistoryType,
+                        type: EnumPasswordHistoryType.profile,
                         expiredAt: passwordPeriodExpired,
                         createdAt: passwordCreated,
                         createdBy: userId,
@@ -829,23 +826,27 @@ export class UserRepository {
                 },
                 activityLogs: {
                     create: {
-                        action: activityAction,
+                        action: EnumActivityLogAction.userChangePassword,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
                     },
                 },
-                ...(forgotPasswordId && {
-                    forgotPasswords: {
-                        update: {
-                            where: { id: forgotPasswordId },
-                            data: {
-                                isUsed: true,
-                                resetAt: this.helperService.dateCreate(),
+                sessions: {
+                    updateMany: {
+                        where: {
+                            isRevoked: false,
+                            expiredAt: {
+                                gte: this.helperService.dateCreate(),
                             },
                         },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: this.helperService.dateCreate(),
+                            updatedBy: userId,
+                        },
                     },
-                }),
+                },
             },
         });
     }
@@ -1189,6 +1190,70 @@ export class UserRepository {
         });
 
         return;
+    }
+
+    async resetPassword(
+        userId: string,
+        forgotPasswordId: string,
+        {
+            passwordCreated,
+            passwordExpired,
+            passwordHash,
+            passwordPeriodExpired,
+        }: IAuthPassword,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                password: passwordHash,
+                passwordCreated,
+                passwordExpired,
+                passwordAttempt: 0,
+                updatedBy: userId,
+                passwordHistories: {
+                    create: {
+                        password: passwordHash,
+                        type: EnumPasswordHistoryType.forgot,
+                        expiredAt: passwordPeriodExpired,
+                        createdAt: passwordCreated,
+                        createdBy: userId,
+                    },
+                },
+                activityLogs: {
+                    create: {
+                        action: EnumActivityLogAction.userResetPassword,
+                        ipAddress,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        createdBy: userId,
+                    },
+                },
+                forgotPasswords: {
+                    update: {
+                        where: { id: forgotPasswordId },
+                        data: {
+                            isUsed: true,
+                            resetAt: this.helperService.dateCreate(),
+                        },
+                    },
+                },
+                sessions: {
+                    updateMany: {
+                        where: {
+                            isRevoked: false,
+                            expiredAt: {
+                                gte: this.helperService.dateCreate(),
+                            },
+                        },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: this.helperService.dateCreate(),
+                            updatedBy: userId,
+                        },
+                    },
+                },
+            },
+        });
     }
 
     async verifyEmail(
