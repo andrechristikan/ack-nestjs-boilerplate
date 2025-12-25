@@ -21,7 +21,7 @@ export class FeatureFlagRepository {
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<FeatureFlag>> {
         return this.paginationService.offset<FeatureFlag>(
-            this.databaseService.passwordHistory,
+            this.databaseService.featureFlag,
             pagination
         );
     }
@@ -30,7 +30,7 @@ export class FeatureFlagRepository {
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<FeatureFlag>> {
         return this.paginationService.cursor<FeatureFlag>(
-            this.databaseService.passwordHistory,
+            this.databaseService.featureFlag,
             pagination
         );
     }

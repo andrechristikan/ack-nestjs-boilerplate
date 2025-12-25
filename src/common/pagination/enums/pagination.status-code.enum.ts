@@ -1,4 +1,17 @@
 export enum EnumPaginationStatusCodeError {
     orderByNotAllowed = 5020,
     filterInvalidValue = 5021,
+    invalidPerPage = 5022,
+    invalidCursorPaginationParams = 5023,
+    cursorTooLong = 5024,
+    invalidCursorFormat = 5025,
+    invalidOffsetPaginationParams = 5026,
+    invalidPage = 5027,
+    pageExceedsMaximum = 5028,
+    pageCannotBeLessThanOne = 5029,
+    perPageExceedsMaximum = 5030,
+    perPageCannotBeLessThanOne = 5031,
+    invalidCursorData = 5032,
+    failedToEncodeCursor = 5033,
+    failedToDecodeCursor = 5034,
 }

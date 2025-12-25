@@ -1,8 +1,8 @@
 import {
+    BadRequestException,
     Inject,
     Injectable,
     Type,
-    UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
@@ -63,9 +63,12 @@ export function PaginationOrderPipe(
                 value.orderDirection.trim() as EnumPaginationOrderDirectionType;
 
             if (!defaultAvailableOrder.includes(finalOrderBy)) {
-                throw new UnprocessableEntityException({
+                throw new BadRequestException({
                     statusCode: EnumPaginationStatusCodeError.orderByNotAllowed,
                     message: `pagination.error.orderByNotAllowed`,
+                    messageProperties: {
+                        allowedFields: defaultAvailableOrder.join(', '),
+                    },
                 });
             }
 
