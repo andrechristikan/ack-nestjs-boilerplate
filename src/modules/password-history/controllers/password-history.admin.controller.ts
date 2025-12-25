@@ -55,7 +55,7 @@ export class PasswordHistoryAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {
-        return this.passwordHistoryService.getListOffsetByUser(
+        return this.passwordHistoryService.getListOffsetByAdmin(
             userId,
             pagination
         );

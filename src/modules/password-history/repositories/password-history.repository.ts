@@ -18,7 +18,7 @@ export class PasswordHistoryRepository {
         private readonly helperService: HelperService
     ) {}
 
-    async findWithPaginationOffsetByUser(
+    async findWithPaginationOffsetByAdmin(
         userId: string,
         { where, ...others }: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
@@ -37,7 +37,7 @@ export class PasswordHistoryRepository {
         );
     }
 
-    async findWithPaginationCursorByUser(
+    async findWithPaginationCursor(
         userId: string,
         { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
@@ -56,7 +56,7 @@ export class PasswordHistoryRepository {
         );
     }
 
-    async findAllActiveByUser(userId: string): Promise<PasswordHistory[]> {
+    async findAllActiveUser(userId: string): Promise<PasswordHistory[]> {
         const today = this.helperService.dateCreate();
         return this.databaseService.passwordHistory.findMany({
             where: {

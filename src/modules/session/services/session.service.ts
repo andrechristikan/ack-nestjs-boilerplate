@@ -40,12 +40,12 @@ export class SessionService implements ISessionService {
      * @returns Promise resolving to paginated session data with pagination metadata
      *
      */
-    async getListOffsetByUser(
+    async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         const { data, ...others } =
-            await this.sessionRepository.findWithPaginationOffsetByUser(
+            await this.sessionRepository.findWithPaginationOffsetByAdmin(
                 userId,
                 pagination
             );
@@ -69,12 +69,12 @@ export class SessionService implements ISessionService {
      * @returns Promise resolving to paginated session data with pagination metadata
      *
      */
-    async getListCursorByUser(
+    async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         const { data, ...others } =
-            await this.sessionRepository.findWithPaginationCursorByUser(
+            await this.sessionRepository.findWithPaginationCursor(
                 userId,
                 pagination
             );
@@ -104,7 +104,7 @@ export class SessionService implements ISessionService {
         sessionId: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        const checkActive = await this.sessionRepository.findOneActiveByUser(
+        const checkActive = await this.sessionRepository.findOneActive(
             userId,
             sessionId
         );
@@ -116,7 +116,7 @@ export class SessionService implements ISessionService {
         }
 
         await Promise.all([
-            this.sessionRepository.revokeByUser(userId, sessionId, requestLog),
+            this.sessionRepository.revoke(userId, sessionId, requestLog),
             this.sessionUtil.deleteOneLogin(userId, sessionId),
         ]);
 
@@ -143,7 +143,7 @@ export class SessionService implements ISessionService {
         requestLog: IRequestLog,
         revokeBy: string
     ): Promise<IResponseReturn<void>> {
-        const checkActive = await this.sessionRepository.findOneActiveByUser(
+        const checkActive = await this.sessionRepository.findOneActive(
             userId,
             sessionId
         );

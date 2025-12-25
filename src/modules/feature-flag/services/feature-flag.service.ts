@@ -1,4 +1,7 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
@@ -109,11 +112,11 @@ export class FeatureFlagService implements IFeatureFlagService {
         return null;
     }
 
-    async getList(
+    async getListByAdmin(
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
         const { data, ...others } =
-            await this.featureFlagRepository.findWithPaginationOffsetByUser(
+            await this.featureFlagRepository.findWithPaginationOffsetByAdmin(
                 pagination
             );
 
@@ -125,7 +128,23 @@ export class FeatureFlagService implements IFeatureFlagService {
         };
     }
 
-    async updateStatus(
+    async getListCursor(
+        pagination: IPaginationQueryCursorParams
+    ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
+        const { data, ...others } =
+            await this.featureFlagRepository.findWithPaginationCursor(
+                pagination
+            );
+
+        const featureFlags: FeatureFlagResponseDto[] =
+            this.featureFlagUtil.mapList(data);
+        return {
+            data: featureFlags,
+            ...others,
+        };
+    }
+
+    async updateStatusByAdmin(
         id: string,
         data: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
@@ -150,7 +169,7 @@ export class FeatureFlagService implements IFeatureFlagService {
         };
     }
 
-    async updateMetadata(
+    async updateMetadataByAdmin(
         id: string,
         data: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {

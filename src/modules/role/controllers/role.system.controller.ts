@@ -1,10 +1,10 @@
 import {
-    PaginationOffsetQuery,
+    PaginationCursorQuery,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
 import {
     IPaginationIn,
-    IPaginationQueryOffsetParams,
+    IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
@@ -16,53 +16,53 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     RoleDefaultAvailableSearch,
     RoleDefaultType,
 } from '@modules/role/constants/role.list.constant';
 import {
-    RolePublicGetDoc,
-    RolePublicListDoc,
-} from '@modules/role/docs/role.public.doc';
+    RoleSystemGetAbilitiesDoc,
+    RoleSystemListDoc,
+} from '@modules/role/docs/role.system.doc';
+import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleDto } from '@modules/role/dtos/role.dto';
 import { RoleService } from '@modules/role/services/role.service';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumRoleType } from '@prisma/client';
 
-@ApiTags('modules.public.role')
+@ApiTags('modules.system.role')
 @Controller({
     version: '1',
     path: '/role',
 })
-export class RolePublicController {
+export class RoleSystemController {
     constructor(private readonly roleService: RoleService) {}
 
-    @RolePublicListDoc()
+    @RoleSystemListDoc()
     @ResponsePaging('role.list')
-    @ApiKeyProtected()
+    @ApiKeySystemProtected()
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
+        @PaginationCursorQuery({
             availableSearch: RoleDefaultAvailableSearch,
         })
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryCursorParams,
         @PaginationQueryFilterInEnum<EnumRoleType>('type', RoleDefaultType)
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        return this.roleService.getList(pagination, type);
+        return this.roleService.getListCursor(pagination, type);
     }
 
-    @RolePublicGetDoc()
-    @Response('role.get')
-    @ApiKeyProtected()
-    @Get('/get/:roleId')
-    async get(
+    @RoleSystemGetAbilitiesDoc()
+    @Response('role.getAbilities')
+    @ApiKeySystemProtected()
+    @Get('/get/:roleId/abilities')
+    async getAbilities(
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         roleId: string
-    ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleService.getOne(roleId);
+    ): Promise<IResponseReturn<RoleAbilitiesResponseDto>> {
+        return this.roleService.getAbilities(roleId);
     }
 }

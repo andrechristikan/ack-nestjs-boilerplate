@@ -1,6 +1,7 @@
 {
     "list": "Roles retrieved successfully.",
     "get": "Role details fetched successfully.",
+    "getAbilities": "Role abilities fetched successfully.",
     "create": "New role created successfully.",
     "update": "Role updated successfully.",
     "delete": "Role deleted successfully.",

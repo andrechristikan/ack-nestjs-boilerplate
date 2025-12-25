@@ -59,7 +59,7 @@ export class FeatureFlagAdminController {
         })
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
-        return this.featureFlagService.getList(pagination);
+        return this.featureFlagService.getListByAdmin(pagination);
     }
 
     @FeatureFlagAdminUpdateStatusDoc()
@@ -79,7 +79,7 @@ export class FeatureFlagAdminController {
         featureFlagId: string,
         @Body() body: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
-        return this.featureFlagService.updateStatus(featureFlagId, body);
+        return this.featureFlagService.updateStatusByAdmin(featureFlagId, body);
     }
 
     @FeatureFlagAdminUpdateMetadataDoc()
@@ -99,6 +99,9 @@ export class FeatureFlagAdminController {
         featureFlagId: string,
         @Body() body: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
-        return this.featureFlagService.updateMetadata(featureFlagId, body);
+        return this.featureFlagService.updateMetadataByAdmin(
+            featureFlagId,
+            body
+        );
     }
 }

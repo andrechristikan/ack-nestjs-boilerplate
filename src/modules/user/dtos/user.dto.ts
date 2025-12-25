@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiHideProperty, ApiProperty, getSchemaPath } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import {
@@ -58,7 +58,6 @@ export class UserDto extends DatabaseDto {
     @ApiProperty({
         required: true,
         type: RoleDto,
-        oneOf: [{ $ref: getSchemaPath(RoleDto) }],
     })
     @Type(() => RoleDto)
     role: RoleDto;
@@ -153,7 +152,6 @@ export class UserDto extends DatabaseDto {
     @ApiProperty({
         required: true,
         type: UserTermPolicyDto,
-        oneOf: [{ $ref: getSchemaPath(UserTermPolicyDto) }],
     })
     @Type(() => UserTermPolicyDto)
     termPolicy: UserTermPolicyDto;
@@ -161,7 +159,6 @@ export class UserDto extends DatabaseDto {
     @ApiProperty({
         required: false,
         type: AwsS3Dto,
-        oneOf: [{ $ref: getSchemaPath(AwsS3Dto) }],
     })
     @Type(() => AwsS3Dto)
     photo?: AwsS3Dto;
@@ -169,7 +166,6 @@ export class UserDto extends DatabaseDto {
     @ApiProperty({
         required: true,
         type: UserTwoFactorDto,
-        oneOf: [{ $ref: getSchemaPath(UserTwoFactorDto) }],
     })
     @Type(() => UserTwoFactorDto)
     twoFactor: UserTwoFactorDto;

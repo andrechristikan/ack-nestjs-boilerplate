@@ -34,7 +34,6 @@
         "disable": "Two-factor authentication has been disabled.",
         "resetByAdmin": "Two-factor authentication has been reset."
     },
-    "generateImportPresign": "Presigned URL for user data import generated successfully.",
     "import": "User data imported successfully.",
     "export": "User data export initiated successfully.",
     "error": {
@@ -52,6 +51,7 @@
         "usernameContainBadWord": "Username contains inappropriate words.",
         "verificationTokenInvalid": "Verification token is invalid or expired.",
         "verificationEmailResendLimitExceeded": "You have exceeded the limit for resending verification emails.",
-        "forgotPasswordRequestLimitExceeded": "You have exceeded the limit for password reset requests."
+        "forgotPasswordRequestLimitExceeded": "You have exceeded the limit for password reset requests.",
+        "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}"
     }
 }

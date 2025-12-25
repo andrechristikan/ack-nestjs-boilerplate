@@ -1,4 +1,7 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
@@ -13,14 +16,17 @@ export interface IFeatureFlagService {
     validateFeatureFlagGuard(request: IRequestApp, key: string): Promise<void>;
     findOneByKeyAndCache(key: string): Promise<FeatureFlag | null>;
     findOneMetadataByKeyAndCache<T>(key: string): Promise<T | null>;
-    getList(
+    getListByAdmin(
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>>;
-    updateStatus(
+    getListCursor(
+        pagination: IPaginationQueryCursorParams
+    ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>>;
+    updateStatusByAdmin(
         id: string,
         data: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>>;
-    updateMetadata(
+    updateMetadataByAdmin(
         id: string,
         data: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>>;

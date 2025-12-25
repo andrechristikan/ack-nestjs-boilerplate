@@ -21,7 +21,7 @@ export class SessionRepository {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    async findWithPaginationOffsetByUser(
+    async findWithPaginationOffsetByAdmin(
         userId: string,
         { where, ...others }: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ISession>> {
@@ -40,7 +40,7 @@ export class SessionRepository {
         );
     }
 
-    async findWithPaginationCursorByUser(
+    async findWithPaginationCursor(
         userId: string,
         { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<ISession>> {
@@ -59,7 +59,7 @@ export class SessionRepository {
         );
     }
 
-    async findAllByUser(userId: string): Promise<
+    async findAll(userId: string): Promise<
         {
             id: string;
         }[]
@@ -78,10 +78,7 @@ export class SessionRepository {
         });
     }
 
-    async findOneActiveByUser(
-        userId: string,
-        sessionId: string
-    ): Promise<Session> {
+    async findOneActive(userId: string, sessionId: string): Promise<Session> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.session.findFirst({
@@ -96,7 +93,7 @@ export class SessionRepository {
         });
     }
 
-    async revokeByUser(
+    async revoke(
         userId: string,
         sessionId: string,
         { ipAddress, userAgent }: IRequestLog
@@ -160,7 +157,7 @@ export class SessionRepository {
         });
     }
 
-    async revokeAllByUser(
+    async revokeAll(
         userId: string,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<void> {

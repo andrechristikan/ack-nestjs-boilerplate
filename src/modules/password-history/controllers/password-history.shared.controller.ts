@@ -37,9 +37,6 @@ export class PasswordHistorySharedController {
         pagination: IPaginationQueryCursorParams,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {
-        return this.passwordHistoryService.getListCursorByUser(
-            userId,
-            pagination
-        );
+        return this.passwordHistoryService.getListCursor(userId, pagination);
     }
 }

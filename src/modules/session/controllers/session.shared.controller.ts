@@ -50,7 +50,7 @@ export class SessionSharedController {
         pagination: IPaginationQueryCursorParams,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        return this.sessionService.getListCursorByUser(userId, pagination);
+        return this.sessionService.getListCursor(userId, pagination);
     }
 
     @SessionSharedRevokeDoc()

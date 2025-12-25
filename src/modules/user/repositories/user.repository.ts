@@ -18,6 +18,7 @@ import {
     IAuthPassword,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
+import { IRole } from '@modules/role/interfaces/role.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
@@ -83,7 +84,7 @@ export class UserRepository {
         });
     }
 
-    async findActiveWithPaginationCursor(
+    async findWithPaginationCursor(
         { where, ...params }: IPaginationQueryCursorParams,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
@@ -97,7 +98,37 @@ export class UserRepository {
                 ...country,
                 ...role,
                 deletedAt: null,
-                status: EnumUserStatus.active,
+            },
+            include: {
+                role: true,
+                twoFactor: true,
+            },
+        });
+    }
+
+    async findAllByEmails(emails: string[]): Promise<IUser[]> {
+        return this.databaseService.user.findMany({
+            where: {
+                email: { in: emails },
+            },
+            include: {
+                role: true,
+                twoFactor: true,
+            },
+        });
+    }
+
+    async findAllExport(
+        status?: Record<string, IPaginationIn>,
+        role?: Record<string, IPaginationEqual>,
+        country?: Record<string, IPaginationEqual>
+    ): Promise<IUser[]> {
+        return this.databaseService.user.findMany({
+            where: {
+                ...status,
+                ...country,
+                ...role,
+                deletedAt: null,
             },
             include: {
                 role: true,
@@ -317,13 +348,7 @@ export class UserRepository {
             token,
             type: verificationType,
         }: IUserVerificationCreate,
-        {
-            id: roleId,
-            type: roleType,
-        }: {
-            id: string;
-            type: EnumRoleType;
-        },
+        { id: roleId, type: roleType }: IRole,
         { ipAddress, userAgent }: IRequestLog,
         createdBy: string
     ): Promise<User> {

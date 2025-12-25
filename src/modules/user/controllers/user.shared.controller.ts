@@ -9,6 +9,7 @@ import {
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -191,6 +192,7 @@ export class UserSharedController {
         @AuthJwtPayload('userId')
         userId: string,
         @UploadedFile(
+            RequestRequiredPipe,
             FileExtensionPipe([
                 EnumFileExtensionImage.jpeg,
                 EnumFileExtensionImage.png,

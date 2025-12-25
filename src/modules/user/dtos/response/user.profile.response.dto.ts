@@ -1,4 +1,4 @@
-import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
@@ -9,7 +9,6 @@ export class UserProfileResponseDto extends UserDto {
     @ApiProperty({
         required: true,
         type: RoleDto,
-        oneOf: [{ $ref: getSchemaPath(RoleDto) }],
     })
     @Type(() => RoleDto)
     role: RoleDto;
@@ -17,16 +16,14 @@ export class UserProfileResponseDto extends UserDto {
     @ApiProperty({
         required: true,
         type: CountryResponseDto,
-        oneOf: [{ $ref: getSchemaPath(CountryResponseDto) }],
     })
     @Type(() => CountryResponseDto)
     country: CountryResponseDto;
 
     @ApiProperty({
         required: false,
-        type: UserMobileNumberResponseDto,
-        oneOf: [{ $ref: getSchemaPath(UserMobileNumberResponseDto) }],
+        type: [UserMobileNumberResponseDto],
     })
     @Type(() => UserMobileNumberResponseDto)
-    mobileNumber?: UserMobileNumberResponseDto;
+    mobileNumbers?: UserMobileNumberResponseDto[];
 }

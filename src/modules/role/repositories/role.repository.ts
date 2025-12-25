@@ -1,14 +1,16 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import {
     IPaginationIn,
+    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
+import { IRole } from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumRoleType, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class RoleRepository {
@@ -17,11 +19,24 @@ export class RoleRepository {
         private readonly paginationService: PaginationService
     ) {}
 
-    async findWithPagination(
+    async findWithPaginationOffsetByAdmin(
         { where, ...params }: IPaginationQueryOffsetParams,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<Role>> {
         return this.paginationService.offset<Role>(this.databaseService.role, {
+            ...params,
+            where: {
+                ...where,
+                ...type,
+            },
+        });
+    }
+
+    async findWithPaginationCursor(
+        { where, ...params }: IPaginationQueryCursorParams,
+        type?: Record<string, IPaginationIn>
+    ): Promise<IResponsePagingReturn<Role>> {
+        return this.paginationService.cursor<Role>(this.databaseService.role, {
             ...params,
             where: {
                 ...where,
@@ -36,29 +51,25 @@ export class RoleRepository {
         });
     }
 
-    async existByName(
-        name: string
-    ): Promise<{ id: string; type: EnumRoleType } | null> {
+    async existByName(name: string): Promise<IRole | null> {
         return this.databaseService.role.findFirst({
             where: {
                 name: name,
             },
-            select: { id: true, type: true },
+            select: { id: true, type: true, name: true },
         });
     }
 
-    async existById(
-        id: string
-    ): Promise<{ id: string; type: EnumRoleType } | null> {
+    async existById(id: string): Promise<IRole | null> {
         return this.databaseService.role.findUnique({
             where: {
                 id,
             },
-            select: { id: true, type: true },
+            select: { id: true, type: true, name: true },
         });
     }
 
-    async usedByUser(id: string): Promise<{ id: string } | null> {
+    async used(id: string): Promise<{ id: string } | null> {
         return this.databaseService.role.findFirst({
             where: {
                 users: {

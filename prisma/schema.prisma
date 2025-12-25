@@ -477,4 +477,5 @@ enum EnumActivityLogAction {
   adminUserUpdateStatus
   adminUserUpdatePassword
   adminUserResetTwoFactor
+  adminUserImport
 }

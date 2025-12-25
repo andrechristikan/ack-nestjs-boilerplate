@@ -1,10 +1,5 @@
 import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
-import {
-    ApiProperty,
-    OmitType,
-    PickType,
-    getSchemaPath,
-} from '@nestjs/swagger';
+import { ApiProperty, OmitType, PickType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
     ArrayNotEmpty,
@@ -150,8 +145,7 @@ export class AwsSESSendBulkDto extends OmitType(AwsSESSendDto, [
     @ApiProperty({
         required: true,
         isArray: true,
-        type: AwsSESSendBulkRecipientsDto,
-        oneOf: [{ $ref: getSchemaPath(AwsSESSendBulkRecipientsDto) }],
+        type: [AwsSESSendBulkRecipientsDto],
     })
     @IsNotEmpty()
     @IsArray()

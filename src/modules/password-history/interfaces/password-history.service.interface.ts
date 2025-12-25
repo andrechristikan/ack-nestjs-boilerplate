@@ -6,11 +6,11 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
 
 export interface IPasswordHistoryService {
-    getListOffsetByUser(
+    getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>>;
-    getListCursorByUser(
+    getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>>;

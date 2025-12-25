@@ -10,11 +10,11 @@ import {
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 
 export interface ISessionService {
-    getListOffsetByUser(
+    getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<SessionResponseDto>>;
-    getListCursorByUser(
+    getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<SessionResponseDto>>;

@@ -96,7 +96,7 @@ export class ApiKeyAdminController {
         @PaginationQueryFilterInEnum<EnumApiKeyType>('type', ApiKeyDefaultType)
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKeyDto>> {
-        return this.apiKeyService.getList(pagination, isActive, type);
+        return this.apiKeyService.getListByAdmin(pagination, isActive, type);
     }
 
     @ApiKeyAdminCreateDoc()
@@ -115,7 +115,7 @@ export class ApiKeyAdminController {
     async create(
         @Body() body: ApiKeyCreateRequestDto
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyService.create(body);
+        return this.apiKeyService.createByAdmin(body);
     }
 
     @ApiKeyAdminResetDoc()
@@ -135,7 +135,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyService.reset(apiKeyId);
+        return this.apiKeyService.resetByAdmin(apiKeyId);
     }
 
     @ApiKeyAdminUpdateDoc()
@@ -156,7 +156,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyDto>> {
-        return this.apiKeyService.update(apiKeyId, body);
+        return this.apiKeyService.updateByAdmin(apiKeyId, body);
     }
 
     @ApiKeyAdminUpdateDateDoc()
@@ -177,7 +177,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyDto>> {
-        return this.apiKeyService.updateDates(apiKeyId, body);
+        return this.apiKeyService.updateDatesByAdmin(apiKeyId, body);
     }
 
     @ApiKeyAdminUpdateStatusDoc()
@@ -198,7 +198,7 @@ export class ApiKeyAdminController {
         apiKeyId: string,
         @Body() body: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<ApiKeyDto>> {
-        return this.apiKeyService.updateStatus(apiKeyId, body);
+        return this.apiKeyService.updateStatusByAdmin(apiKeyId, body);
     }
 
     @ApiKeyAdminDeleteDoc()
@@ -218,6 +218,6 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyDto>> {
-        return this.apiKeyService.delete(apiKeyId);
+        return this.apiKeyService.deleteByAdmin(apiKeyId);
     }
 }

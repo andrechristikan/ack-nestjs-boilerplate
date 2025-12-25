@@ -1,6 +1,6 @@
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
-import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { EnumTermPolicyStatus, EnumTermPolicyType } from '@prisma/client';
 import { Type } from 'class-transformer';
 
@@ -23,8 +23,7 @@ export class TermPolicyResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        type: TermContentDto,
-        oneOf: [{ $ref: getSchemaPath(TermContentDto) }],
+        type: [TermContentDto],
         isArray: true,
     })
     @Type(() => TermContentDto)

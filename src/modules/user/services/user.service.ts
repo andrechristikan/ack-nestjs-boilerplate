@@ -3,7 +3,10 @@ import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
-import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
+import {
+    EnumFileExtensionDocument,
+    EnumFileExtensionImage,
+} from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { HelperService } from '@common/helper/services/helper.service';
@@ -18,6 +21,7 @@ import {
     IRequestLog,
 } from '@common/request/interfaces/request.interface';
 import {
+    IResponseFileReturn,
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -100,13 +104,14 @@ import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/u
 import { UserLoginEnableTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-enable-two-factor.request.dto';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
-import { UserGenerateImportRequestDto } from '@modules/user/dtos/request/user.generate-import.request.dto';
 import { RequestTooManyException } from '@common/request/exceptions/request.too-many.exception';
+import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService implements IUserService {
-    private readonly userRoleName: string = 'user';
+    private readonly userRoleName: string;
+    private readonly userCountryName: string;
 
     constructor(
         private readonly userUtil: UserUtil,
@@ -123,8 +128,14 @@ export class UserService implements IUserService {
         private readonly sessionRepository: SessionRepository,
         private readonly featureFlagService: FeatureFlagService,
         private readonly emailService: EmailService,
-        private readonly authTwoFactorUtil: AuthTwoFactorUtil
-    ) {}
+        private readonly authTwoFactorUtil: AuthTwoFactorUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.userRoleName = this.configService.get<string>('user.default.role');
+        this.userCountryName = this.configService.get<string>(
+            'user.default.country'
+        );
+    }
 
     async validateUserGuard(
         request: IRequestApp,
@@ -168,7 +179,7 @@ export class UserService implements IUserService {
         return user;
     }
 
-    async getListOffset(
+    async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
@@ -189,14 +200,14 @@ export class UserService implements IUserService {
         };
     }
 
-    async getListActiveCursor(
+    async getListCursor(
         pagination: IPaginationQueryCursorParams,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<UserListResponseDto>> {
         const { data, ...others } =
-            await this.userRepository.findActiveWithPaginationCursor(
+            await this.userRepository.findWithPaginationCursor(
                 pagination,
                 status,
                 role,
@@ -505,11 +516,11 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         try {
-            const sessions = await this.sessionRepository.findAllByUser(userId);
+            const sessions = await this.sessionRepository.findAll(userId);
             await Promise.all([
                 this.userRepository.deleteSelf(userId, requestLog),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                this.sessionRepository.revokeAllByUser(userId, requestLog),
+                this.sessionRepository.revokeAll(userId, requestLog),
             ]);
 
             return;
@@ -798,7 +809,7 @@ export class UserService implements IUserService {
                 temporary: true,
             });
 
-            const sessions = await this.sessionRepository.findAllByUser(userId);
+            const sessions = await this.sessionRepository.findAll(userId);
             const [updated] = await Promise.all([
                 this.userRepository.updatePasswordByAdmin(
                     userId,
@@ -871,7 +882,7 @@ export class UserService implements IUserService {
         await this.userRepository.resetPasswordAttempt(user.id);
 
         const passwordHistories =
-            await this.passwordHistoryRepository.findAllActiveByUser(user.id);
+            await this.passwordHistoryRepository.findAllActiveUser(user.id);
         const passwordCheck = this.userUtil.checkPasswordPeriod(
             passwordHistories,
             newPassword
@@ -898,9 +909,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const sessions = await this.sessionRepository.findAllByUser(
-                user.id
-            );
+            const sessions = await this.sessionRepository.findAll(user.id);
             const password = this.authUtil.createPassword(newPassword);
 
             await Promise.all([
@@ -910,7 +919,7 @@ export class UserService implements IUserService {
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(user.id, sessions),
-                this.sessionRepository.revokeAllByUser(user.id, requestLog),
+                this.sessionRepository.revokeAll(user.id, requestLog),
                 twoFactorVerified
                     ? this.userRepository.verifyTwoFactor(
                           user.id,
@@ -1429,7 +1438,7 @@ export class UserService implements IUserService {
         }
 
         const passwordHistories =
-            await this.passwordHistoryRepository.findAllActiveByUser(
+            await this.passwordHistoryRepository.findAllActiveUser(
                 resetPassword.userId
             );
         const passwordCheck = this.userUtil.checkPasswordPeriod(
@@ -1461,7 +1470,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const sessions = await this.sessionRepository.findAllByUser(
+            const sessions = await this.sessionRepository.findAll(
                 resetPassword.userId
             );
             const password = this.authUtil.createPassword(newPassword);
@@ -1476,7 +1485,7 @@ export class UserService implements IUserService {
                     resetPassword.userId,
                     sessions
                 ),
-                this.sessionRepository.revokeAllByUser(
+                this.sessionRepository.revokeAll(
                     resetPassword.userId,
                     requestLog
                 ),
@@ -2001,7 +2010,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const sessions = await this.sessionRepository.findAllByUser(userId);
+            const sessions = await this.sessionRepository.findAll(userId);
 
             await Promise.all([
                 this.userRepository.resetTwoFactorByAdmin(
@@ -2033,35 +2042,70 @@ export class UserService implements IUserService {
         }
     }
 
-    async generateImportPresign(
-        _dto: UserGenerateImportRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
-        // TODO: Generate user data import presign url
-        // generate unique key for import
-        // consider to add date prefix for easier management
-        // consider to add file expiration time if needed
-        return;
-    }
-
-    async import(
-        _dto: UserImportRequestDto,
+    async importByAdmin(
+        data: UserImportRequestDto[],
         _createdBy: string,
         _requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        // TODO: Import user data from S3
-        // consider to remove file from S3 after import
+        const emails = data.map(item => item.email);
+        const [checkRole, checkCountry, existingUsers] = await Promise.all([
+            this.roleRepository.existByName(this.userRoleName),
+            this.countryRepository.existByAlpha2Code(this.userCountryName),
+            this.userRepository.findAllByEmails(emails),
+        ]);
+
+        if (existingUsers.length > 0) {
+            throw new ConflictException({
+                statusCode: EnumUserStatus_CODE_ERROR.emailExist,
+                message: 'user.error.importEmailExist',
+                messageProperties: {
+                    emails: existingUsers.map(user => user.email).join(', '),
+                },
+            });
+        } else if (!checkRole) {
+            throw new NotFoundException({
+                statusCode: EnumRoleStatusCodeError.notFound,
+                message: 'role.error.notFound',
+            });
+        } else if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: EnumCountryStatusCodeError.notFound,
+                message: 'country.error.notFound',
+            });
+        }
+
+        try {
+            // TODO: import users using transaction db
+            // then send email after all creation
+            // adminUserImport
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+
         return;
     }
 
-    async export(
-        _status?: Record<string, IPaginationIn>,
-        _role?: Record<string, IPaginationEqual>,
-        _country?: Record<string, IPaginationEqual>
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
-        // TODO: export user data to S3 and generate presign url
-        // consider to export in background job if data is too large
-        // export to s3 private bucket and generate presign url
-        // TODO: Enchant export to create a separate module to handle large data export, combine with bullmq
-        return;
+    async exportByAdmin(
+        status?: Record<string, IPaginationIn>,
+        role?: Record<string, IPaginationEqual>,
+        country?: Record<string, IPaginationEqual>
+    ): Promise<IResponseFileReturn> {
+        const data = await this.userRepository.findAllExport(
+            status,
+            role,
+            country
+        );
+
+        const users: UserListResponseDto[] = this.userUtil.mapList(data);
+        const csvString = this.fileService.writeCsv<UserListResponseDto>(users);
+
+        return {
+            data: csvString,
+            extension: EnumFileExtensionDocument.csv,
+        };
     }
 }

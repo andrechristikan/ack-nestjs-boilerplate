@@ -4,7 +4,9 @@ import {
     DocAuth,
     DocGuard,
     DocRequest,
+    DocRequestFile,
     DocResponse,
+    DocResponseFile,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
@@ -17,8 +19,8 @@ import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
-import { UserGenerateImportRequestDto } from '@modules/user/dtos/request/user.generate-import.request.dto';
+import { FileSingleDto } from '@common/file/dtos/file.single.dto';
+import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 
 export function UserAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -132,32 +134,13 @@ export function UserAdminResetTwoFactorDoc(): MethodDecorator {
     );
 }
 
-export function UserAdminGenerateImportDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'generate presign url for user import',
-        }),
-        DocRequest({
-            dto: UserGenerateImportRequestDto,
-            bodyType: EnumDocRequestBodyType.json,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponse('user.generateImportPresign')
-    );
-}
-
 export function UserAdminImportDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'import users via csv file',
         }),
-        DocRequest({
-            dto: UserImportRequestDto,
-            bodyType: EnumDocRequestBodyType.json,
+        DocRequestFile({
+            dto: FileSingleDto,
         }),
         DocAuth({
             xApiKey: true,
@@ -183,6 +166,8 @@ export function UserAdminExportDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponse('user.export')
+        DocResponseFile({
+            extension: EnumFileExtensionDocument.csv,
+        })
     );
 }
