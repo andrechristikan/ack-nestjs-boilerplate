@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     AbortMultipartUploadCommand,
@@ -19,6 +19,7 @@ import {
     DeleteObjectsCommand,
     DeleteObjectsCommandInput,
     DeleteObjectsCommandOutput,
+    ExpirationStatus,
     GetObjectCommand,
     GetObjectCommandInput,
     GetObjectCommandOutput,
@@ -35,11 +36,26 @@ import {
     ListObjectsV2CommandOutput,
     ListObjectsV2Output,
     NotFound,
-    ObjectCannedACL,
     ObjectIdentifier,
+    ObjectOwnership,
+    PutBucketCorsCommand,
+    PutBucketCorsCommandInput,
+    PutBucketCorsCommandOutput,
+    PutBucketLifecycleConfigurationCommand,
+    PutBucketLifecycleConfigurationCommandInput,
+    PutBucketLifecycleConfigurationCommandOutput,
+    PutBucketOwnershipControlsCommand,
+    PutBucketOwnershipControlsCommandInput,
+    PutBucketOwnershipControlsCommandOutput,
+    PutBucketPolicyCommand,
+    PutBucketPolicyCommandInput,
+    PutBucketPolicyCommandOutput,
     PutObjectCommand,
     PutObjectCommandInput,
     PutObjectCommandOutput,
+    PutPublicAccessBlockCommand,
+    PutPublicAccessBlockCommandInput,
+    PutPublicAccessBlockCommandOutput,
     S3Client,
     UploadPartCommand,
     UploadPartCommandInput,
@@ -58,15 +74,18 @@ import {
     IAwsS3Options,
     IAwsS3PresignGetItemOptions,
     IAwsS3PresignPutItemOptions,
+    IAwsS3PresignPutItemPartOptions,
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
-    IAwsS3PutItemWithAclOptions,
 } from '@common/aws/interfaces/aws.interface';
 import {
     AwsS3MultipartDto,
     AwsS3MultipartPartDto,
 } from '@common/aws/dtos/aws.s3-multipart.dto';
-import { AwsS3MaxPartNumber } from '@common/aws/constants/aws.constant';
+import {
+    AwsS3MaxFetchItems,
+    AwsS3MaxPartNumber,
+} from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import {
@@ -88,8 +107,19 @@ import { FileService } from '@common/file/services/file.service';
  */
 @Injectable()
 export class AwsS3Service implements IAwsS3Service {
-    private readonly presignExpired: number;
+    private readonly logger: Logger = new Logger(AwsS3Service.name);
+
     private readonly client: S3Client;
+
+    private readonly bucketPublicArn: string | undefined;
+    private readonly bucketPrivateArn: string | undefined;
+
+    private readonly presignExpired: number;
+    private readonly multipartExpiredInDay: number;
+
+    private readonly iamArn: string | undefined;
+
+    private readonly corsAllowedOrigin: string[];
 
     private readonly config: Map<EnumAwsS3Accessibility, IAwsS3ConfigBucket> =
         new Map<EnumAwsS3Accessibility, IAwsS3ConfigBucket>();
@@ -98,20 +128,26 @@ export class AwsS3Service implements IAwsS3Service {
         private readonly configService: ConfigService,
         private readonly fileService: FileService
     ) {
-        this.presignExpired = this.configService.get<number>(
-            'aws.s3.presignExpired'
-        );
+        const accessKeyId = this.configService.get<string>('aws.s3.iam.key');
+        const secretAccessKey =
+            this.configService.get<string>('aws.s3.iam.secret');
+        const region = this.configService.get<string>('aws.s3.region');
+
+        if (!accessKeyId || !secretAccessKey || !region) {
+            this.logger.warn('AWS S3 not configured');
+        }
 
         this.client = new S3Client({
             credentials: {
-                accessKeyId: this.configService.get<string>(
-                    'aws.s3.credential.key'
-                ),
-                secretAccessKey: this.configService.get<string>(
-                    'aws.s3.credential.secret'
-                ),
+                accessKeyId,
+                secretAccessKey,
             },
-            region: this.configService.get<string>('aws.s3.region'),
+            region,
+            maxAttempts: this.configService.get<number>('aws.s3.maxAttempts'),
+            requestHandler: {
+                requestTimeout:
+                    this.configService.get<number>('aws.s3.timeoutInMs'),
+            },
         });
 
         this.config.set(EnumAwsS3Accessibility.public, {
@@ -127,8 +163,32 @@ export class AwsS3Service implements IAwsS3Service {
             ),
             access: EnumAwsS3Accessibility.private,
         });
+
+        this.bucketPublicArn = this.configService.get<string>(
+            'aws.s3.config.public.arn'
+        );
+        this.bucketPrivateArn = this.configService.get<string>(
+            'aws.s3.config.private.arn'
+        );
+
+        this.presignExpired = this.configService.get<number>(
+            'aws.s3.presignExpired'
+        );
+        this.multipartExpiredInDay = this.configService.get<number>(
+            'aws.s3.multipartExpiredInDay'
+        );
+        this.iamArn = this.configService.get<string>('aws.s3.iam.arn');
+
+        this.corsAllowedOrigin = this.configService.get<string[]>(
+            'request.cors.allowedOrigin'
+        );
     }
 
+    /**
+     * Extracts file information (path, filename, extension, mime) from an S3 key.
+     * @param {string} key - The S3 object key
+     * @returns {IAwsS3FileInfo} File info object
+     */
     private getFileInfoFromKey(key: string): IAwsS3FileInfo {
         const pathWithFilename: string = `/${key}`;
         const filename: string = key.substring(
@@ -187,9 +247,8 @@ export class AwsS3Service implements IAwsS3Service {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.config.get(
-            options?.access ?? EnumAwsS3Accessibility.public
-        );
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.config.get(accessibility);
 
         const headCommand = new HeadObjectCommand({
             Bucket: config.bucket,
@@ -213,7 +272,7 @@ export class AwsS3Service implements IAwsS3Service {
             extension,
             size: item.ContentLength,
             mime,
-            access: options?.access ?? EnumAwsS3Accessibility.public,
+            access: accessibility,
         };
     }
 
@@ -231,58 +290,54 @@ export class AwsS3Service implements IAwsS3Service {
             throw new Error('Path should not start with "/"');
         }
 
-        const config = this.config.get(
-            options?.access ?? EnumAwsS3Accessibility.public
-        );
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.config.get(accessibility);
 
-        const command: ListObjectsV2Command = new ListObjectsV2Command({
-            Bucket: config.bucket,
-            Prefix: path,
-            MaxKeys: 1000,
-            ContinuationToken: options?.continuationToken,
-        });
+        const allItems: AwsS3Dto[] = [];
+        let continuationToken: string | undefined = options?.continuationToken;
 
-        const listItems: ListObjectsV2Output = await this.client.send<
-            ListObjectsV2CommandInput,
-            ListObjectsV2CommandOutput
-        >(command);
-        const mapList: AwsS3Dto[] = listItems.Contents.map((item: _Object) => {
-            const { pathWithFilename, extension, mime } =
-                this.getFileInfoFromKey(item.Key);
-            return {
-                bucket: config.bucket,
-                key: item.Key,
-                completedUrl: `${config.baseUrl}${pathWithFilename}`,
-                cdnUrl:
-                    config.cdnUrl && config.cdnUrl !== ''
-                        ? `${config.cdnUrl}${pathWithFilename}`
-                        : undefined,
-                baseUrl: config.baseUrl,
-                extension,
-                size: item.Size,
-                mime,
-                access: options?.access ?? EnumAwsS3Accessibility.public,
-            };
-        });
-
-        if (listItems.IsTruncated) {
-            const nextItems: AwsS3Dto[] = await this.getItems(path, {
-                ...options,
-                continuationToken: listItems.NextContinuationToken,
+        do {
+            const command: ListObjectsV2Command = new ListObjectsV2Command({
+                Bucket: config.bucket,
+                Prefix: path,
+                MaxKeys: AwsS3MaxFetchItems,
+                ContinuationToken: continuationToken,
             });
-            mapList.push(...nextItems);
-        }
 
-        if (listItems.CommonPrefixes) {
-            for (const dir of listItems.CommonPrefixes) {
-                const dirItems = await this.getItems(dir.Prefix, {
-                    access: options?.access,
+            const listItems: ListObjectsV2Output = await this.client.send<
+                ListObjectsV2CommandInput,
+                ListObjectsV2CommandOutput
+            >(command);
+
+            if (listItems.Contents) {
+                const mappedItems = listItems.Contents.map((item: _Object) => {
+                    const { pathWithFilename, extension, mime } =
+                        this.getFileInfoFromKey(item.Key);
+
+                    return {
+                        bucket: config.bucket,
+                        key: item.Key,
+                        completedUrl: `${config.baseUrl}${pathWithFilename}`,
+                        cdnUrl: config.cdnUrl
+                            ? `${config.cdnUrl}${pathWithFilename}`
+                            : undefined,
+                        baseUrl: config.baseUrl,
+                        extension,
+                        size: item.Size,
+                        mime,
+                        access: accessibility,
+                    };
                 });
-                mapList.push(...dirItems);
-            }
-        }
 
-        return mapList;
+                allItems.push(...mappedItems);
+            }
+
+            continuationToken = listItems.IsTruncated
+                ? listItems.NextContinuationToken
+                : undefined;
+        } while (continuationToken);
+
+        return allItems;
     }
 
     /**
@@ -296,9 +351,8 @@ export class AwsS3Service implements IAwsS3Service {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.config.get(
-            options?.access ?? EnumAwsS3Accessibility.public
-        );
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.config.get(accessibility);
         const command: GetObjectCommand = new GetObjectCommand({
             Bucket: config.bucket,
             Key: key,
@@ -322,7 +376,7 @@ export class AwsS3Service implements IAwsS3Service {
             data: item.Body,
             size: item.ContentLength,
             mime,
-            access: options?.access ?? EnumAwsS3Accessibility.public,
+            access: accessibility,
         };
     }
 
@@ -338,13 +392,18 @@ export class AwsS3Service implements IAwsS3Service {
     ): Promise<AwsS3Dto> {
         if (file.key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
-        } else if (!file.file) {
+        }
+
+        if (!file.file) {
             throw new Error('File is required');
         }
 
-        const config = this.config.get(
-            options?.access ?? EnumAwsS3Accessibility.public
-        );
+        if (file.key.includes('..') || file.key.includes('//')) {
+            throw new Error('Invalid key: path traversal detected');
+        }
+
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.config.get(accessibility);
 
         if (!options?.forceUpdate) {
             const headCommand = new HeadObjectCommand({
@@ -375,6 +434,8 @@ export class AwsS3Service implements IAwsS3Service {
             Bucket: config.bucket,
             Key: file.key,
             Body: content,
+            ServerSideEncryption: 'AES256',
+            ChecksumAlgorithm: 'SHA256',
         });
 
         await this.client.send<PutObjectCommandInput, PutObjectCommandOutput>(
@@ -392,77 +453,7 @@ export class AwsS3Service implements IAwsS3Service {
             extension,
             size: file?.size,
             mime,
-            access: options?.access ?? EnumAwsS3Accessibility.public,
-        };
-    }
-
-    /**
-     * Uploads a file to S3 with specified Access Control List (ACL) permissions.
-     * @param {IAwsS3PutItem} file - The file object containing key, file data, and optional size
-     * @param {IAwsS3PutItemWithAclOptions} [options] - Optional configuration including force update, ACL settings and access level
-     * @returns {Promise<AwsS3Dto>} Promise that resolves to an AwsS3Dto with upload information
-     */
-    async putItemWithAcl(
-        file: IAwsS3PutItem,
-        options?: IAwsS3PutItemWithAclOptions
-    ): Promise<AwsS3Dto> {
-        if (file.key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
-        } else if (!file.file) {
-            throw new Error('File is required');
-        }
-
-        const config = this.config.get(
-            options?.access ?? EnumAwsS3Accessibility.public
-        );
-
-        if (!options?.forceUpdate) {
-            const headCommand = new HeadObjectCommand({
-                Bucket: config.bucket,
-                Key: file.key,
-            });
-
-            try {
-                await this.client.send<
-                    HeadObjectCommandInput,
-                    HeadObjectCommandOutput
-                >(headCommand);
-
-                throw new Error(`Key ${file.key} is already exist.`);
-            } catch (error: unknown) {
-                if (!(error instanceof NotFound)) {
-                    throw error;
-                }
-            }
-        }
-
-        const { pathWithFilename, extension, mime } = this.getFileInfoFromKey(
-            file.key
-        );
-        const content: Buffer = file.file;
-        const command: PutObjectCommand = new PutObjectCommand({
-            Bucket: config.bucket,
-            Key: file.key,
-            Body: content,
-            ACL: options?.acl ?? ObjectCannedACL.public_read,
-        });
-
-        await this.client.send<PutObjectCommandInput, PutObjectCommandOutput>(
-            command
-        );
-
-        return {
-            bucket: config.bucket,
-            key: file.key,
-            completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl:
-                config.cdnUrl && config.cdnUrl !== ''
-                    ? `${config.cdnUrl}${pathWithFilename}`
-                    : undefined,
-            extension,
-            size: file?.size,
-            mime,
-            access: options?.access ?? EnumAwsS3Accessibility.public,
+            access: accessibility,
         };
     }
 
@@ -538,11 +529,20 @@ export class AwsS3Service implements IAwsS3Service {
         );
         let continuationToken: string | undefined = undefined;
 
+        const maxIterations = 100;
+        let iterations = 0;
+
         do {
+            if (iterations >= maxIterations) {
+                throw new Error(
+                    `DeleteDir exceeded max iterations (${maxIterations}). Too many objects.`
+                );
+            }
+
             const listCommand: ListObjectsV2Command = new ListObjectsV2Command({
                 Bucket: config.bucket,
                 Prefix: path,
-                MaxKeys: 1000,
+                MaxKeys: AwsS3MaxFetchItems,
                 ContinuationToken: continuationToken,
             });
 
@@ -559,6 +559,7 @@ export class AwsS3Service implements IAwsS3Service {
                             Objects: listItems.Contents.map(item => ({
                                 Key: item.Key,
                             })),
+                            Quiet: true,
                         },
                     });
 
@@ -569,6 +570,7 @@ export class AwsS3Service implements IAwsS3Service {
             }
 
             continuationToken = listItems.NextContinuationToken;
+            iterations++;
         } while (continuationToken);
     }
 
@@ -592,9 +594,8 @@ export class AwsS3Service implements IAwsS3Service {
             );
         }
 
-        const config = this.config.get(
-            options?.access ?? EnumAwsS3Accessibility.public
-        );
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.config.get(accessibility);
 
         if (!options?.forceUpdate) {
             const headCommand = new HeadObjectCommand({
@@ -626,6 +627,8 @@ export class AwsS3Service implements IAwsS3Service {
                 Key: file.key,
                 ContentType: mime,
                 ContentDisposition: 'inline',
+                ServerSideEncryption: 'AES256',
+                ChecksumAlgorithm: 'SHA256',
             });
 
         const response = await this.client.send<
@@ -648,67 +651,7 @@ export class AwsS3Service implements IAwsS3Service {
             maxPartNumber: maxPartNumber,
             parts: [],
             mime,
-            access: options?.access ?? EnumAwsS3Accessibility.public,
-        };
-    }
-
-    /**
-     * Initiates a multipart upload with Access Control List (ACL) permissions for large files in S3.
-     * @param {IAwsS3CreateMultiplePart} file - The file object containing key, and optional size
-     * @param {number} maxPartNumber - The maximum number of parts for the multipart upload
-     * @param {IAwsS3PutItemWithAclOptions} [options] - Optional configuration including ACL settings, force update, and access level
-     * @returns {Promise<AwsS3MultipartDto>} Promise that resolves to an AwsS3MultipartDto with upload information
-     */
-    async createMultiPartWithAcl(
-        file: IAwsS3CreateMultiplePart,
-        maxPartNumber: number,
-        options?: IAwsS3PutItemWithAclOptions
-    ): Promise<AwsS3MultipartDto> {
-        if (file.key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
-        } else if (maxPartNumber > AwsS3MaxPartNumber) {
-            throw new Error(
-                `Max part number is greater than ${AwsS3MaxPartNumber}`
-            );
-        }
-
-        const config = this.config.get(
-            options?.access ?? EnumAwsS3Accessibility.public
-        );
-        const { pathWithFilename, extension, mime } = this.getFileInfoFromKey(
-            file.key
-        );
-
-        const multiPartCommand: CreateMultipartUploadCommand =
-            new CreateMultipartUploadCommand({
-                Bucket: config.bucket,
-                Key: file.key,
-                ACL: options?.acl ?? ObjectCannedACL.public_read,
-                ContentType: mime,
-                ContentDisposition: 'inline',
-            });
-
-        const response = await this.client.send<
-            CreateMultipartUploadCommandInput,
-            CreateMultipartUploadCommandOutput
-        >(multiPartCommand);
-
-        return {
-            bucket: config.bucket,
-            uploadId: response.UploadId,
-            key: file.key,
-            completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl:
-                config.cdnUrl && config.cdnUrl !== ''
-                    ? `${config.cdnUrl}${pathWithFilename}`
-                    : undefined,
-            extension,
-            size: file?.size,
-            lastPartNumber: 0,
-            maxPartNumber: maxPartNumber,
-            parts: [],
-            mime,
-            access: options?.access ?? EnumAwsS3Accessibility.public,
+            access: accessibility,
         };
     }
 
@@ -781,7 +724,9 @@ export class AwsS3Service implements IAwsS3Service {
                 MultipartUpload: {
                     Parts: parts.map(part => ({
                         PartNumber: part.partNumber,
-                        ETag: `"${part.eTag}"`,
+                        ETag: part.eTag.startsWith('"')
+                            ? part.eTag
+                            : `"${part.eTag}"`,
                     })),
                 },
             });
@@ -923,6 +868,7 @@ export class AwsS3Service implements IAwsS3Service {
             Key: key,
             ContentType: mime,
             ContentLength: size,
+            ServerSideEncryption: 'AES256',
             ChecksumAlgorithm: 'SHA256',
             ContentDisposition: 'inline',
         });
@@ -944,12 +890,12 @@ export class AwsS3Service implements IAwsS3Service {
     /**
      * Generates a presigned URL for uploading a part of a multipart upload to S3.
      * @param {AwsS3PresignPartRequestDto} request - Object containing key, size, uploadId, and partNumber information
-     * @param {IAwsS3PresignPutItemOptions} [options] - Optional configuration including expiration time, force update, and access level
+     * @param {IAwsS3PresignPutItemPartOptions} [options] - Optional configuration including expiration time, and access level
      * @returns {Promise<AwsS3PresignPartDto>} Promise that resolves to a presigned URL and part metadata
      */
     async presignPutItemPart(
         { key, size, uploadId, partNumber }: AwsS3PresignPartRequestDto,
-        options?: IAwsS3PresignPutItemOptions
+        options?: IAwsS3PresignPutItemPartOptions
     ): Promise<AwsS3PresignPartDto> {
         if (key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
@@ -958,26 +904,6 @@ export class AwsS3Service implements IAwsS3Service {
         const config = this.config.get(
             options?.access ?? EnumAwsS3Accessibility.public
         );
-
-        if (!options?.forceUpdate) {
-            const headCommand = new HeadObjectCommand({
-                Bucket: config.bucket,
-                Key: key,
-            });
-
-            try {
-                await this.client.send<
-                    HeadObjectCommandInput,
-                    HeadObjectCommandOutput
-                >(headCommand);
-
-                throw new Error(`Key ${key} is already exist.`);
-            } catch (error: unknown) {
-                if (!(error instanceof NotFound)) {
-                    throw error;
-                }
-            }
-        }
 
         const uploadPartCommand: UploadPartCommand = new UploadPartCommand({
             Bucket: config.bucket,
@@ -1017,9 +943,8 @@ export class AwsS3Service implements IAwsS3Service {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.config.get(
-            options?.access ?? EnumAwsS3Accessibility.public
-        );
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.config.get(accessibility);
         const { pathWithFilename, extension, mime } =
             this.getFileInfoFromKey(key);
 
@@ -1034,7 +959,7 @@ export class AwsS3Service implements IAwsS3Service {
             extension,
             size,
             mime,
-            access: options?.access ?? EnumAwsS3Accessibility.public,
+            access: accessibility,
         };
     }
 
@@ -1072,6 +997,7 @@ export class AwsS3Service implements IAwsS3Service {
             Key: destinationKey,
             CopySource: `${configFrom.bucket}/${source.key}`,
             MetadataDirective: 'COPY',
+            ServerSideEncryption: 'AES256',
         });
 
         await this.client.send<CopyObjectCommandInput, CopyObjectCommandOutput>(
@@ -1129,5 +1055,328 @@ export class AwsS3Service implements IAwsS3Service {
 
         const movedItems: AwsS3Dto[] = await Promise.all(promises);
         return movedItems;
+    }
+
+    /**
+     * Sets a lifecycle configuration on the bucket to automatically delete incomplete multipart uploads and expired objects.
+     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
+     * @returns {Promise<void>}
+     */
+    async settingBucketExpiredObjectLifecycle(
+        options?: IAwsS3Options
+    ): Promise<void> {
+        const config = this.config.get(
+            options?.access ?? EnumAwsS3Accessibility.public
+        );
+
+        const command: PutBucketLifecycleConfigurationCommand =
+            new PutBucketLifecycleConfigurationCommand({
+                Bucket: config.bucket,
+                LifecycleConfiguration: {
+                    Rules: [
+                        {
+                            ID: 'delete-incomplete-multipart',
+                            Status: ExpirationStatus.Enabled,
+                            Filter: {
+                                Prefix: '', // Apply to all objects
+                            },
+                            AbortIncompleteMultipartUpload: {
+                                DaysAfterInitiation: this.multipartExpiredInDay,
+                            },
+                            Expiration: {
+                                ExpiredObjectDeleteMarker: true,
+                            },
+                        },
+                    ],
+                },
+            });
+
+        await this.client.send<
+            PutBucketLifecycleConfigurationCommandInput,
+            PutBucketLifecycleConfigurationCommandOutput
+        >(command);
+    }
+
+    /**
+     * Sets the bucket policy for public or private buckets, allowing or restricting access as needed.
+     * @param {string[]} folders - List of folder ARNs or paths for policy
+     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
+     * @returns {Promise<void>}
+     */
+    async settingBucketPolicy(
+        folders: string[],
+        options?: IAwsS3Options
+    ): Promise<void> {
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.config.get(accessibility);
+
+        let command: PutBucketPolicyCommand;
+        if (accessibility === EnumAwsS3Accessibility.public) {
+            const resource = [
+                this.bucketPublicArn,
+                `arn:aws:s3:::${config.bucket}/*`,
+            ];
+
+            const bucketPolicy = {
+                Version: '2012-10-17',
+                Statement: [
+                    {
+                        Sid: 'PublicReadForSpecificFolder',
+                        Effect: 'Allow',
+                        Principal: '*',
+                        Action: 's3:GetObject',
+                        Resource: folders,
+                    },
+                    {
+                        Sid: 'IAMUserFullAccess',
+                        Effect: 'Allow',
+                        Principal: {
+                            AWS: this.iamArn,
+                        },
+                        Action: 's3:*',
+                        Resource: resource,
+                    },
+                ],
+            };
+
+            command = new PutBucketPolicyCommand({
+                Bucket: config.bucket,
+                ChecksumAlgorithm: 'SHA256',
+                Policy: JSON.stringify(bucketPolicy),
+            });
+        } else {
+            const resource = [
+                this.bucketPrivateArn,
+                `arn:aws:s3:::${config.bucket}/*`,
+            ];
+            const bucketPolicy = {
+                Version: '2012-10-17',
+                Statement: [
+                    {
+                        // Deny public access
+                        Sid: 'DenyPublicAccess',
+                        Effect: 'Deny',
+                        Principal: '*',
+                        Action: [
+                            's3:GetObject',
+                            's3:GetObjectVersion',
+                            's3:ListBucket',
+                        ],
+                        Resource: resource,
+                        Condition: {
+                            StringEquals: {
+                                'aws:PrincipalType': 'Anonymous',
+                            },
+                        },
+                    },
+                    {
+                        // Deny HTTP, allow HTTPS only
+                        Sid: 'DenyInsecureTransport',
+                        Effect: 'Deny',
+                        Principal: '*',
+                        Action: 's3:*',
+                        Resource: resource,
+                        Condition: {
+                            Bool: {
+                                'aws:SecureTransport': 'false',
+                            },
+                        },
+                    },
+                    {
+                        // Allow Presigned URL Access
+                        Sid: 'AllowPresignedURLAccess',
+                        Effect: 'Allow',
+                        Principal: '*',
+                        Action: [
+                            's3:GetObject',
+                            's3:PutObject',
+                            's3:DeleteObject',
+                        ],
+                        Resource: `arn:aws:s3:::${config.bucket}/*`,
+                    },
+                    {
+                        // Allow full access to IAM user
+                        Sid: 'AllowIAMFullAccess',
+                        Effect: 'Allow',
+                        Principal: {
+                            AWS: this.iamArn,
+                        },
+                        Action: 's3:*',
+                        Resource: resource,
+                    },
+                ],
+            };
+
+            command = new PutBucketPolicyCommand({
+                Bucket: config.bucket,
+                Policy: JSON.stringify(bucketPolicy),
+            });
+        }
+
+        await this.client.send<
+            PutBucketPolicyCommandInput,
+            PutBucketPolicyCommandOutput
+        >(command);
+    }
+
+    /**
+     * Sets the CORS configuration for the S3 bucket based on access level.
+     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
+     * @returns {Promise<void>}
+     */
+    async settingCorsConfiguration(options?: IAwsS3Options): Promise<void> {
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.config.get(accessibility);
+
+        let command: PutBucketCorsCommand;
+        if (accessibility === EnumAwsS3Accessibility.public) {
+            command = new PutBucketCorsCommand({
+                Bucket: config.bucket,
+                CORSConfiguration: {
+                    CORSRules: [
+                        {
+                            AllowedOrigins: this.corsAllowedOrigin,
+                            AllowedMethods: ['GET', 'HEAD'],
+                            AllowedHeaders: ['*'],
+                            ExposeHeaders: [
+                                'ETag',
+                                'Content-Length',
+                                'Content-Type',
+                            ],
+                            MaxAgeSeconds: 86400,
+                        },
+                        {
+                            AllowedOrigins: this.corsAllowedOrigin,
+                            AllowedMethods: ['PUT', 'POST', 'DELETE'],
+                            AllowedHeaders: ['*'],
+                            ExposeHeaders: [
+                                'ETag',
+                                'Content-Length',
+                                'x-amz-version-id',
+                            ],
+                            MaxAgeSeconds: 3600,
+                        },
+                    ],
+                },
+            });
+        } else {
+            command = new PutBucketCorsCommand({
+                Bucket: config.bucket,
+                CORSConfiguration: {
+                    CORSRules: [
+                        {
+                            AllowedOrigins: this.corsAllowedOrigin,
+                            AllowedMethods: [
+                                'GET',
+                                'HEAD',
+                                'PUT',
+                                'POST',
+                                'DELETE',
+                            ],
+                            AllowedHeaders: [
+                                'Content-Type',
+                                'Content-Length',
+                                'Content-Disposition',
+                                'x-amz-date',
+                                'x-amz-content-sha256',
+                                'x-amz-security-token',
+                                'x-amz-meta-*',
+                                'x-amz-server-side-encryption',
+                                'Authorization',
+                                'Cache-Control',
+                            ],
+                            ExposeHeaders: [
+                                'ETag',
+                                'Content-Length',
+                                'Content-Type',
+                                'Content-Range',
+                                'Accept-Ranges',
+                                'Last-Modified',
+                                'x-amz-server-side-encryption',
+                                'x-amz-request-id',
+                                'x-amz-version-id',
+                                'x-amz-meta-*',
+                            ],
+                            MaxAgeSeconds: 3600,
+                        },
+                    ],
+                },
+            });
+        }
+
+        await this.client.send<
+            PutBucketCorsCommandInput,
+            PutBucketCorsCommandOutput
+        >(command);
+    }
+
+    /**
+     * Disables ACLs on the bucket by enforcing bucket owner ownership controls.
+     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
+     * @returns {Promise<void>}
+     */
+    async settingDisableAclConfiguration(
+        options?: IAwsS3Options
+    ): Promise<void> {
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.config.get(accessibility);
+
+        const command: PutBucketOwnershipControlsCommand =
+            new PutBucketOwnershipControlsCommand({
+                Bucket: config.bucket,
+                OwnershipControls: {
+                    Rules: [
+                        {
+                            ObjectOwnership:
+                                ObjectOwnership.BucketOwnerEnforced,
+                        },
+                    ],
+                },
+            });
+
+        await this.client.send<
+            PutBucketOwnershipControlsCommandInput,
+            PutBucketOwnershipControlsCommandOutput
+        >(command);
+    }
+
+    /**
+     * Sets the public access block configuration for the S3 bucket.
+     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
+     * @returns {Promise<void>}
+     */
+    async settingBlockPublicAccessConfiguration(
+        options?: IAwsS3Options
+    ): Promise<void> {
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.config.get(accessibility);
+
+        let command: PutPublicAccessBlockCommand;
+        if (accessibility === EnumAwsS3Accessibility.public) {
+            command = new PutPublicAccessBlockCommand({
+                Bucket: config.bucket,
+                PublicAccessBlockConfiguration: {
+                    BlockPublicAcls: true,
+                    IgnorePublicAcls: true,
+                    BlockPublicPolicy: false,
+                    RestrictPublicBuckets: false,
+                },
+            });
+        } else {
+            command = new PutPublicAccessBlockCommand({
+                Bucket: config.bucket,
+                PublicAccessBlockConfiguration: {
+                    BlockPublicAcls: true,
+                    BlockPublicPolicy: true,
+                    IgnorePublicAcls: true,
+                    RestrictPublicBuckets: true,
+                },
+            });
+        }
+
+        await this.client.send<
+            PutPublicAccessBlockCommandInput,
+            PutPublicAccessBlockCommandOutput
+        >(command);
     }
 }

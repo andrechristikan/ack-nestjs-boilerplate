@@ -161,11 +161,7 @@ export class MigrationTemplateTermPolicySeed
     }
 
     async remove(): Promise<void> {
-        this.logger.log('Removing back Term Policies...');
-
-        await Promise.all([]);
-
-        this.logger.log('Term Policies removed successfully.');
+        this.logger.log('Skipping removal of Term Policies seed.');
 
         return;
     }

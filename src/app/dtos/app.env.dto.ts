@@ -11,6 +11,7 @@ import {
     Matches,
     Min,
     MinLength,
+    ValidateIf,
 } from 'class-validator';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -133,12 +134,12 @@ export class AppEnvDto {
     LOGGER_AUTO: boolean;
 
     /**
-     * CORS origin configuration for the middleware
+     * The allowed origin(s) for CORS
      */
     @IsString()
     @IsNotEmpty()
     @MinLength(1)
-    MIDDLEWARE_CORS_ORIGIN: string;
+    CORS_ALLOWED_ORIGIN: string;
 
     /**
      * Whether URL versioning is enabled for the API
@@ -322,19 +323,29 @@ export class AppEnvDto {
      */
     @IsOptional()
     @IsString()
-    AWS_S3_CREDENTIAL_KEY?: string;
+    AWS_S3_IAM_CREDENTIAL_KEY?: string;
 
     /**
      * AWS S3 secret key for authentication
      */
     @IsOptional()
     @IsString()
-    AWS_S3_CREDENTIAL_SECRET?: string;
+    AWS_S3_IAM_CREDENTIAL_SECRET?: string;
+
+    /**
+     * AWS S3 IAM Role ARN for authentication (optional)
+     */
+    @IsNotEmpty()
+    @IsString()
+    @ValidateIf(
+        o => o.AWS_S3_IAM_CREDENTIAL_KEY || o.AWS_S3_IAM_CREDENTIAL_SECRET
+    )
+    AWS_S3_IAM_ARN?: string;
 
     /**
      * AWS S3 region where the buckets are located
      */
-    @IsOptional()
+    @IsNotEmpty()
     @IsString()
     AWS_S3_REGION?: string;
 
@@ -371,14 +382,24 @@ export class AppEnvDto {
      */
     @IsOptional()
     @IsString()
-    AWS_SES_CREDENTIAL_KEY?: string;
+    AWS_SES_IAM_CREDENTIAL_KEY?: string;
 
     /**
      * AWS SES secret key for email service authentication
      */
     @IsOptional()
     @IsString()
-    AWS_SES_CREDENTIAL_SECRET?: string;
+    AWS_SES_IAM_CREDENTIAL_SECRET?: string;
+
+    /**
+     * AWS SES IAM Role ARN for email service authentication (optional)
+     */
+    @IsNotEmpty()
+    @IsString()
+    @ValidateIf(
+        o => o.AWS_SES_IAM_CREDENTIAL_KEY || o.AWS_SES_IAM_CREDENTIAL_SECRET
+    )
+    AWS_SES_IAM_ARN?: string;
 
     /**
      * AWS SES region for email service

@@ -82,7 +82,7 @@ This boilerplate is perfect for:
 - [x] Recovery Codes Method
 - [x] Add TOTP Authentication Protected to reset password, change password, and regenerate backup codes endpoints
 - [x] Add import and export endpoint with presign upload
-- [ ] Add migration script to migrate AWS S3 Policy for public and private, include config for presign expiration
+- [x] Add migration script to migrate AWS S3 Policy for public and private, include config for presign expiration
 
 ### Next Features
 
