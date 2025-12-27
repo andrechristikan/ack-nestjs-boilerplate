@@ -8,10 +8,12 @@ import {
     Patch,
     Post,
     Put,
+    UploadedFile,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
     Response,
+    ResponseFile,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
 import { UserService } from '@modules/user/services/user.service';
@@ -47,6 +49,7 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
+    IResponseFileReturn,
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -57,7 +60,6 @@ import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile
 import {
     UserAdminCreateDoc,
     UserAdminExportDoc,
-    UserAdminGenerateImportDoc,
     UserAdminGetDoc,
     UserAdminImportDoc,
     UserAdminListDoc,
@@ -69,15 +71,19 @@ import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.req
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import {
     RequestIPAddress,
+    RequestTimeout,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { FileUploadSingle } from '@common/file/decorators/file.decorator';
+import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
+import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
+import { FileCsvParsePipe } from '@common/file/pipes/file.csv-parse.pipe';
+import { FilCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
-import { UserGenerateImportRequestDto } from '@modules/user/dtos/request/user.generate-import.request.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -114,7 +120,7 @@ export class UserAdminController {
         @PaginationQueryFilterEqualString('country')
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-        return this.userService.getListOffset(
+        return this.userService.getListOffsetByAdmin(
             pagination,
             status,
             role,
@@ -258,25 +264,6 @@ export class UserAdminController {
         });
     }
 
-    @UserAdminGenerateImportDoc()
-    @Response('user.generateImportPresign')
-    @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
-        subject: EnumPolicySubject.user,
-        action: [EnumPolicyAction.read, EnumPolicyAction.create],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/import/generate-presign')
-    async generateImportPresign(
-        @Body() body: UserGenerateImportRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
-        return this.userService.generateImportPresign(body);
-    }
-
     @UserAdminImportDoc()
     @Response('user.import')
     @TermPolicyAcceptanceProtected()
@@ -288,22 +275,31 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @FileUploadSingle()
+    @RequestTimeout('1m')
+    @HttpCode(HttpStatus.OK)
     @Post('/import')
     async import(
         @AuthJwtPayload('userId')
         createdBy: string,
-        @Body() body: UserImportRequestDto,
+        @UploadedFile(
+            RequestRequiredPipe,
+            FileExtensionPipe([EnumFileExtensionDocument.csv]),
+            FileCsvParsePipe,
+            new FilCsvValidationPipe(UserImportRequestDto)
+        )
+        data: UserImportRequestDto[],
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.userService.import(body, createdBy, {
+        return this.userService.importByAdmin(data, createdBy, {
             ipAddress,
             userAgent,
         });
     }
 
     @UserAdminExportDoc()
-    @Response('user.export')
+    @ResponseFile()
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.user,
@@ -325,7 +321,7 @@ export class UserAdminController {
         role?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterEqualString('country')
         country?: Record<string, IPaginationEqual>
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
-        return this.userService.export(status, role, country);
+    ): Promise<IResponseFileReturn> {
+        return this.userService.exportByAdmin(status, role, country);
     }
 }

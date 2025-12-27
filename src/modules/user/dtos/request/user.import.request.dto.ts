@@ -1,16 +1,7 @@
-import { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
-import { ApiProperty, PickType } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { PickType } from '@nestjs/swagger';
 
-export class UserImportRequestDto extends PickType(AwsS3PresignRequestDto, [
-    'size',
-]) {
-    @ApiProperty({
-        required: true,
-        description: 'import path key',
-        example: 'user/import/unique-import-key.csv',
-    })
-    @IsString()
-    @IsNotEmpty()
-    importKey: string;
-}
+export class UserImportRequestDto extends PickType(UserCreateRequestDto, [
+    'email',
+    'name',
+]) {}

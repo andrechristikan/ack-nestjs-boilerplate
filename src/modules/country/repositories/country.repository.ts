@@ -28,6 +28,15 @@ export class CountryRepository {
         });
     }
 
+    async existByAlpha2Code(
+        alpha2Code: string
+    ): Promise<{ id: string } | null> {
+        return this.databaseService.country.findUnique({
+            where: { alpha2Code },
+            select: { id: true },
+        });
+    }
+
     async findOneById(id: string): Promise<Country | null> {
         return this.databaseService.country.findUnique({
             where: { id },

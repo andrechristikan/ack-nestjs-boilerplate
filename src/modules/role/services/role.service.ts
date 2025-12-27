@@ -1,5 +1,6 @@
 import {
     IPaginationIn,
+    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
@@ -10,6 +11,7 @@ import {
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
+import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
@@ -33,12 +35,33 @@ export class RoleService implements IRoleService {
         private readonly roleUtil: RoleUtil
     ) {}
 
-    async getList(
+    async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
         const { data, ...others } =
-            await this.roleRepository.findWithPagination(pagination, type);
+            await this.roleRepository.findWithPaginationOffsetByAdmin(
+                pagination,
+                type
+            );
+
+        const roles: RoleListResponseDto[] = this.roleUtil.mapList(data);
+
+        return {
+            data: roles,
+            ...others,
+        };
+    }
+
+    async getListCursor(
+        pagination: IPaginationQueryCursorParams,
+        type?: Record<string, IPaginationIn>
+    ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
+        const { data, ...others } =
+            await this.roleRepository.findWithPaginationCursor(
+                pagination,
+                type
+            );
 
         const roles: RoleListResponseDto[] = this.roleUtil.mapList(data);
 
@@ -60,7 +83,21 @@ export class RoleService implements IRoleService {
         return { data: this.roleUtil.mapOne(role) };
     }
 
-    async create({
+    async getAbilities(
+        id: string
+    ): Promise<IResponseReturn<RoleAbilitiesResponseDto>> {
+        const role = await this.roleRepository.findOneById(id);
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: EnumRoleStatusCodeError.notFound,
+                message: 'role.error.notFound',
+            });
+        }
+
+        return { data: this.roleUtil.mapAbilities(role) };
+    }
+
+    async createByAdmin({
         name,
         ...others
     }: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
@@ -79,7 +116,7 @@ export class RoleService implements IRoleService {
         };
     }
 
-    async update(
+    async updateByAdmin(
         id: string,
         data: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
@@ -98,10 +135,10 @@ export class RoleService implements IRoleService {
         };
     }
 
-    async delete(id: string): Promise<IResponseReturn<void>> {
+    async deleteByAdmin(id: string): Promise<IResponseReturn<void>> {
         const [role, roleUsed] = await Promise.all([
             this.roleRepository.existById(id),
-            this.roleRepository.usedByUser(id),
+            this.roleRepository.used(id),
         ]);
 
         if (!role) {

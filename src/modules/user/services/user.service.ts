@@ -3,7 +3,10 @@ import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
-import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
+import {
+    EnumFileExtensionDocument,
+    EnumFileExtensionImage,
+} from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { HelperService } from '@common/helper/services/helper.service';
@@ -18,6 +21,7 @@ import {
     IRequestLog,
 } from '@common/request/interfaces/request.interface';
 import {
+    IResponseFileReturn,
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -85,7 +89,6 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import {
-    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserStatus,
@@ -100,13 +103,15 @@ import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/u
 import { UserLoginEnableTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-enable-two-factor.request.dto';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
-import { UserGenerateImportRequestDto } from '@modules/user/dtos/request/user.generate-import.request.dto';
 import { RequestTooManyException } from '@common/request/exceptions/request.too-many.exception';
+import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { ConfigService } from '@nestjs/config';
+import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 
 @Injectable()
 export class UserService implements IUserService {
-    private readonly userRoleName: string = 'user';
+    private readonly userRoleName: string;
+    private readonly userCountryName: string;
 
     constructor(
         private readonly userUtil: UserUtil,
@@ -123,8 +128,14 @@ export class UserService implements IUserService {
         private readonly sessionRepository: SessionRepository,
         private readonly featureFlagService: FeatureFlagService,
         private readonly emailService: EmailService,
-        private readonly authTwoFactorUtil: AuthTwoFactorUtil
-    ) {}
+        private readonly authTwoFactorUtil: AuthTwoFactorUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.userRoleName = this.configService.get<string>('user.default.role');
+        this.userCountryName = this.configService.get<string>(
+            'user.default.country'
+        );
+    }
 
     async validateUserGuard(
         request: IRequestApp,
@@ -168,7 +179,7 @@ export class UserService implements IUserService {
         return user;
     }
 
-    async getListOffset(
+    async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
@@ -189,14 +200,14 @@ export class UserService implements IUserService {
         };
     }
 
-    async getListActiveCursor(
+    async getListCursor(
         pagination: IPaginationQueryCursorParams,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<UserListResponseDto>> {
         const { data, ...others } =
-            await this.userRepository.findActiveWithPaginationCursor(
+            await this.userRepository.findWithPaginationCursor(
                 pagination,
                 status,
                 role,
@@ -258,10 +269,6 @@ export class UserService implements IUserService {
                     temporary: true,
                 }
             );
-            const emailVerification =
-                this.userUtil.verificationCreateVerification(
-                    EnumVerificationType.email
-                );
             const randomUsername = this.userUtil.createRandomUsername();
             const created = await this.userRepository.createByAdmin(
                 randomUsername,
@@ -272,43 +279,24 @@ export class UserService implements IUserService {
                     roleId,
                 },
                 password,
-                emailVerification,
                 checkRole,
                 requestLog,
                 createdBy
             );
 
             // @note: send email after all creation
-            await Promise.all([
-                this.emailService.sendWelcomeByAdmin(
-                    created.id,
-                    {
-                        email,
-                        username: randomUsername,
-                    },
-                    {
-                        password: passwordString,
-                        passwordCreatedAt: password.passwordCreated,
-                        passwordExpiredAt: password.passwordExpired,
-                    }
-                ),
-                checkRole.type !== EnumRoleType.user
-                    ? this.emailService.sendVerification(
-                          created.id,
-                          {
-                              email,
-                              username: created.username,
-                          },
-                          {
-                              expiredAt: emailVerification.expiredAt,
-                              reference: emailVerification.reference,
-                              link: emailVerification.link,
-                              expiredInMinutes:
-                                  emailVerification.expiredInMinutes,
-                          }
-                      )
-                    : Promise.resolve(),
-            ]);
+            await this.emailService.sendWelcomeByAdmin(
+                created.id,
+                {
+                    email,
+                    username: randomUsername,
+                },
+                {
+                    password: passwordString,
+                    passwordCreatedAt: password.passwordCreated.toISOString(),
+                    passwordExpiredAt: password.passwordExpired.toISOString(),
+                }
+            );
 
             return {
                 data: { id: created.id },
@@ -505,11 +493,10 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         try {
-            const sessions = await this.sessionRepository.findAllByUser(userId);
+            const sessions = await this.sessionRepository.findAll(userId);
             await Promise.all([
                 this.userRepository.deleteSelf(userId, requestLog),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                this.sessionRepository.revokeAllByUser(userId, requestLog),
             ]);
 
             return;
@@ -798,7 +785,7 @@ export class UserService implements IUserService {
                 temporary: true,
             });
 
-            const sessions = await this.sessionRepository.findAllByUser(userId);
+            const sessions = await this.sessionRepository.findAll(userId);
             const [updated] = await Promise.all([
                 this.userRepository.updatePasswordByAdmin(
                     userId,
@@ -807,11 +794,6 @@ export class UserService implements IUserService {
                     updatedBy
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                this.sessionRepository.revokeAllByAdmin(
-                    userId,
-                    requestLog,
-                    updatedBy
-                ),
             ]);
 
             // @note: send email after all creation
@@ -823,8 +805,8 @@ export class UserService implements IUserService {
                 },
                 {
                     password: passwordString,
-                    passwordCreatedAt: password.passwordCreated,
-                    passwordExpiredAt: password.passwordExpired,
+                    passwordCreatedAt: password.passwordCreated.toISOString(),
+                    passwordExpiredAt: password.passwordExpired.toISOString(),
                 }
             );
 
@@ -871,7 +853,7 @@ export class UserService implements IUserService {
         await this.userRepository.resetPasswordAttempt(user.id);
 
         const passwordHistories =
-            await this.passwordHistoryRepository.findAllActiveByUser(user.id);
+            await this.passwordHistoryRepository.findAllActiveUser(user.id);
         const passwordCheck = this.userUtil.checkPasswordPeriod(
             passwordHistories,
             newPassword
@@ -898,9 +880,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const sessions = await this.sessionRepository.findAllByUser(
-                user.id
-            );
+            const sessions = await this.sessionRepository.findAll(user.id);
             const password = this.authUtil.createPassword(newPassword);
 
             await Promise.all([
@@ -910,7 +890,6 @@ export class UserService implements IUserService {
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(user.id, sessions),
-                this.sessionRepository.revokeAllByUser(user.id, requestLog),
                 twoFactorVerified
                     ? this.userRepository.verifyTwoFactor(
                           user.id,
@@ -1193,7 +1172,7 @@ export class UserService implements IUserService {
                         username: created.username,
                     },
                     {
-                        expiredAt: emailVerification.expiredAt,
+                        expiredAt: emailVerification.expiredAt.toISOString(),
                         reference: emailVerification.reference,
                         link: emailVerification.link,
                         expiredInMinutes: emailVerification.expiredInMinutes,
@@ -1318,7 +1297,7 @@ export class UserService implements IUserService {
                     username: user.username,
                 },
                 {
-                    expiredAt: emailVerification.expiredAt,
+                    expiredAt: emailVerification.expiredAt.toISOString(),
                     reference: emailVerification.reference,
                     link: emailVerification.link,
                     expiredInMinutes: emailVerification.expiredInMinutes,
@@ -1391,7 +1370,7 @@ export class UserService implements IUserService {
                     username: user.username,
                 },
                 {
-                    expiredAt: resetPassword.expiredAt,
+                    expiredAt: resetPassword.expiredAt.toISOString(),
                     link: resetPassword.link,
                     reference: resetPassword.reference,
                     expiredInMinutes: resetPassword.expiredInMinutes,
@@ -1429,7 +1408,7 @@ export class UserService implements IUserService {
         }
 
         const passwordHistories =
-            await this.passwordHistoryRepository.findAllActiveByUser(
+            await this.passwordHistoryRepository.findAllActiveUser(
                 resetPassword.userId
             );
         const passwordCheck = this.userUtil.checkPasswordPeriod(
@@ -1461,24 +1440,21 @@ export class UserService implements IUserService {
         }
 
         try {
-            const sessions = await this.sessionRepository.findAllByUser(
+            const sessions = await this.sessionRepository.findAll(
                 resetPassword.userId
             );
             const password = this.authUtil.createPassword(newPassword);
 
             await Promise.all([
-                this.userRepository.changePassword(
+                this.userRepository.resetPassword(
                     resetPassword.userId,
+                    resetPassword.id,
                     password,
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(
                     resetPassword.userId,
                     sessions
-                ),
-                this.sessionRepository.revokeAllByUser(
-                    resetPassword.userId,
-                    requestLog
                 ),
                 twoFactorVerified
                     ? this.userRepository.verifyTwoFactor(
@@ -2001,7 +1977,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const sessions = await this.sessionRepository.findAllByUser(userId);
+            const sessions = await this.sessionRepository.findAll(userId);
 
             await Promise.all([
                 this.userRepository.resetTwoFactorByAdmin(
@@ -2010,11 +1986,6 @@ export class UserService implements IUserService {
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                this.sessionRepository.revokeAllByAdmin(
-                    userId,
-                    requestLog,
-                    updatedBy
-                ),
             ]);
 
             // @note: send email after all creation
@@ -2033,35 +2004,122 @@ export class UserService implements IUserService {
         }
     }
 
-    async generateImportPresign(
-        _dto: UserGenerateImportRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
-        // TODO: Generate user data import presign url
-        // generate unique key for import
-        // consider to add date prefix for easier management
-        // consider to add file expiration time if needed
-        return;
-    }
-
-    async import(
-        _dto: UserImportRequestDto,
-        _createdBy: string,
-        _requestLog: IRequestLog
+    async importByAdmin(
+        data: UserImportRequestDto[],
+        createdBy: string,
+        requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        // TODO: Import user data from S3
-        // consider to remove file from S3 after import
-        return;
+        // TODO: Optimize by doing
+        // - in background job with bullmq, also before create check username uniqueness
+        // - when upload file, upload using presign
+        // - load data from s3, and not process all in one time
+        // - think about how to show progress status to user with bullmq
+
+        const emails = data.map(item => item.email);
+        const [checkRole, checkCountry, existingUsers] = await Promise.all([
+            this.roleRepository.existByName(this.userRoleName),
+            this.countryRepository.existByAlpha2Code(this.userCountryName),
+            this.userRepository.findAllByEmails(emails),
+        ]);
+
+        if (existingUsers.length > 0) {
+            throw new ConflictException({
+                statusCode: EnumUserStatus_CODE_ERROR.emailExist,
+                message: 'user.error.importEmailExist',
+                messageProperties: {
+                    emails: existingUsers.map(user => user.email).join(', '),
+                },
+            });
+        } else if (!checkRole) {
+            throw new NotFoundException({
+                statusCode: EnumRoleStatusCodeError.notFound,
+                message: 'role.error.notFound',
+            });
+        } else if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: EnumCountryStatusCodeError.notFound,
+                message: 'country.error.notFound',
+            });
+        }
+
+        try {
+            const totalData = data.length;
+            const usernames = Array(totalData)
+                .fill(0)
+                .map(() => this.userUtil.createRandomUsername());
+            const passwords = Array(totalData)
+                .fill(0)
+                .map(() => this.authUtil.createPasswordRandom());
+            const passwordHasheds = passwords.map(e =>
+                this.authUtil.createPassword(e)
+            );
+
+            const newUsers = await this.userRepository.importByAdmin(
+                data,
+                usernames,
+                passwordHasheds,
+                checkCountry.id,
+                checkRole,
+                requestLog,
+                createdBy
+            );
+
+            // @note: send email after all creation
+            const sendEmailPromises = [];
+            for (const [index, newUser] of newUsers.entries()) {
+                sendEmailPromises.push(
+                    this.emailService.sendWelcomeByAdmin(
+                        newUser.id,
+                        {
+                            email: newUser.email,
+                            username: newUser.username,
+                        },
+                        {
+                            password: passwords[index],
+                            passwordCreatedAt:
+                                newUser.passwordCreated.toISOString(),
+                            passwordExpiredAt:
+                                newUser.passwordExpired.toISOString(),
+                        }
+                    )
+                );
+            }
+
+            await Promise.all(sendEmailPromises);
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
-    async export(
-        _status?: Record<string, IPaginationIn>,
-        _role?: Record<string, IPaginationEqual>,
-        _country?: Record<string, IPaginationEqual>
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
-        // TODO: export user data to S3 and generate presign url
-        // consider to export in background job if data is too large
-        // export to s3 private bucket and generate presign url
-        // TODO: Enchant export to create a separate module to handle large data export, combine with bullmq
-        return;
+    async exportByAdmin(
+        status?: Record<string, IPaginationIn>,
+        role?: Record<string, IPaginationEqual>,
+        country?: Record<string, IPaginationEqual>
+    ): Promise<IResponseFileReturn> {
+        // TODO: Optimize by doing
+        // - in background job with bullmq
+        // - return aws s3 link
+        // - think about how to show progress status to user with bullmq
+
+        const data = await this.userRepository.findAllExport(
+            status,
+            role,
+            country
+        );
+
+        const users: UserExportResponseDto[] = this.userUtil.mapExport(data);
+        const csvString =
+            this.fileService.writeCsv<UserExportResponseDto>(users);
+
+        return {
+            data: csvString,
+            extension: EnumFileExtensionDocument.csv,
+        };
     }
 }

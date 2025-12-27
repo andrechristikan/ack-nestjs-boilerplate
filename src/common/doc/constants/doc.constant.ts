@@ -43,14 +43,84 @@ export const DocStandardErrorResponse = {
 
 export const DocPaginationErrorResponses = {
     orderByNotAllowed: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        httpStatus: HttpStatus.BAD_REQUEST,
         statusCode: EnumPaginationStatusCodeError.orderByNotAllowed,
         messagePath: 'pagination.error.orderByNotAllowed',
     }),
     filterInvalidValue: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        httpStatus: HttpStatus.BAD_REQUEST,
         statusCode: EnumPaginationStatusCodeError.filterInvalidValue,
         messagePath: 'pagination.error.filterInvalidValue',
+    }),
+    invalidPerPage: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.invalidPerPage,
+        messagePath: 'pagination.error.invalidPerPage',
+    }),
+    invalidCursorPaginationParams: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.invalidCursorPaginationParams,
+        messagePath: 'pagination.error.invalidCursorPaginationParams',
+    }),
+    cursorTooLong: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.cursorTooLong,
+        messagePath: 'pagination.error.cursorTooLong',
+    }),
+    invalidCursorFormat: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.invalidCursorFormat,
+        messagePath: 'pagination.error.invalidCursorFormat',
+    }),
+    invalidOffsetPaginationParams: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.invalidOffsetPaginationParams,
+        messagePath: 'pagination.error.invalidOffsetPaginationParams',
+    }),
+    invalidPage: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.invalidPage,
+        messagePath: 'pagination.error.invalidPage',
+    }),
+    pageExceedsMaximum: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.pageExceedsMaximum,
+        messagePath: 'pagination.error.pageExceedsMaximum',
+    }),
+    pageCannotBeLessThanOne: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.pageCannotBeLessThanOne,
+        messagePath: 'pagination.error.pageCannotBeLessThanOne',
+    }),
+    perPageExceedsMaximum: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.perPageExceedsMaximum,
+        messagePath: 'pagination.error.perPageExceedsMaximum',
+    }),
+    perPageCannotBeLessThanOne: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.perPageCannotBeLessThanOne,
+        messagePath: 'pagination.error.perPageCannotBeLessThanOne',
+    }),
+    invalidCursorData: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.invalidCursorData,
+        messagePath: 'pagination.error.invalidCursorData',
+    }),
+    failedToEncodeCursor: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.failedToEncodeCursor,
+        messagePath: 'pagination.error.failedToEncodeCursor',
+    }),
+    failedToDecodeCursor: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.failedToDecodeCursor,
+        messagePath: 'pagination.error.failedToDecodeCursor',
+    }),
+    paginationConditionsChanged: DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumPaginationStatusCodeError.invalidCursorPaginationParams,
+        messagePath: 'pagination.error.paginationConditionsChanged',
     }),
 };
 

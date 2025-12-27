@@ -1,8 +1,8 @@
 import {
+    BadRequestException,
     Inject,
     Injectable,
     Type,
-    UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
 import {
@@ -79,12 +79,13 @@ export function PaginationQueryFilterInEnumPipe<T>(
                 defaultEnum.includes(v as T)
             );
             if (!validated) {
-                throw new UnprocessableEntityException({
+                throw new BadRequestException({
                     statusCode:
                         EnumPaginationStatusCodeError.filterInvalidValue,
-                    message: `pagination.error.filterInvalidValue`,
+                    message: `pagination.error.filterInvalidValueEnum`,
                     messageProperties: {
                         property: metadata.data,
+                        allowedValues: defaultEnum.join(', '),
                     },
                 });
             }
@@ -168,12 +169,13 @@ export function PaginationQueryFilterNinEnumPipe<T>(
                 defaultEnum.includes(v as T)
             );
             if (!validated) {
-                throw new UnprocessableEntityException({
+                throw new BadRequestException({
                     statusCode:
                         EnumPaginationStatusCodeError.filterInvalidValue,
-                    message: `pagination.error.filterInvalidValue`,
+                    message: `pagination.error.filterInvalidValueEnum`,
                     messageProperties: {
                         property: metadata.data,
+                        allowedValues: defaultEnum.join(', '),
                     },
                 });
             }
@@ -236,7 +238,7 @@ export function PaginationQueryFilterEqualPipe<T>(
             if ('isBoolean' in options && options.isBoolean) {
                 const booleanString = value.trim();
                 if (booleanString !== 'true' && booleanString !== 'false') {
-                    throw new UnprocessableEntityException({
+                    throw new BadRequestException({
                         statusCode:
                             EnumPaginationStatusCodeError.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
@@ -251,7 +253,7 @@ export function PaginationQueryFilterEqualPipe<T>(
                 finalValue = Number.parseFloat(value.trim()) as T;
 
                 if (isNaN(finalValue as number)) {
-                    throw new UnprocessableEntityException({
+                    throw new BadRequestException({
                         statusCode:
                             EnumPaginationStatusCodeError.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
@@ -329,7 +331,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
             if ('isBoolean' in options && options.isBoolean) {
                 const booleanString = value.trim();
                 if (booleanString !== 'true' && booleanString !== 'false') {
-                    throw new UnprocessableEntityException({
+                    throw new BadRequestException({
                         statusCode:
                             EnumPaginationStatusCodeError.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
@@ -344,7 +346,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
                 finalValue = Number.parseFloat(value.trim()) as T;
 
                 if (isNaN(finalValue as number)) {
-                    throw new UnprocessableEntityException({
+                    throw new BadRequestException({
                         statusCode:
                             EnumPaginationStatusCodeError.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
@@ -421,7 +423,7 @@ export function PaginationQueryFilterDatePipe(
             }
 
             if (!this.helperService.dateCheckIso(value)) {
-                throw new UnprocessableEntityException({
+                throw new BadRequestException({
                     statusCode:
                         EnumPaginationStatusCodeError.filterInvalidValue,
                     message: `pagination.error.filterInvalidValue`,

@@ -57,7 +57,8 @@
         "VJMV",
         "Vnwnyr",
         "weakpassword",
-        "Zgoh"
+        "Zgoh",
+        "passwordHasheds"
     ],
     "ignorePaths": [
         "node_modules/**",

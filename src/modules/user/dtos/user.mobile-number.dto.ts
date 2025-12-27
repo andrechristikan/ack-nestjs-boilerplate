@@ -1,7 +1,7 @@
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { faker } from '@faker-js/faker';
 import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
-import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class UserMobileNumberResponseDto extends DatabaseDto {
@@ -27,7 +27,6 @@ export class UserMobileNumberResponseDto extends DatabaseDto {
     @ApiProperty({
         required: true,
         type: CountryResponseDto,
-        oneOf: [{ $ref: getSchemaPath(CountryResponseDto) }],
     })
     @Type(() => CountryResponseDto)
     country: CountryResponseDto;

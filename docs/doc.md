@@ -239,16 +239,16 @@ Documents paginated response with automatic pagination parameters.
 **Auto-includes:**
 
 - Standard pagination query parameters (depends on type):
-  - **Offset type (default)**:
-    - `perPage` - Data per page (max: 100)
-    - `page` - Page number (max: 20)
-  - **Cursor type**:
-    - `perPage` - Data per page (max: 100)
-    - `cursor` - The pagination cursor returned from the previous request
+    - **Offset type (default)**:
+        - `perPage` - Data per page (max: 100)
+        - `page` - Page number (max: 20)
+    - **Cursor type**:
+        - `perPage` - Data per page (max: 100)
+        - `cursor` - The pagination cursor returned from the previous request
 - Optional search query when `availableSearch` provided
 - Optional ordering queries when `availableOrder` provided:
-  - `orderBy` - Field to order by
-  - `orderDirection` - ASC or DESC
+    - `orderBy` - Field to order by
+    - `orderDirection` - ASC or DESC
 
 **Usage:**
 

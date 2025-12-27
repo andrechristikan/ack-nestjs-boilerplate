@@ -1,0 +1,20 @@
+{
+    "error": {
+        "invalidPerPage": "The 'perPage' parameter must be between 1 and {maxPerPage}.",
+        "invalidCursorPaginationParams": "Invalid cursor pagination parameters provided.",
+        "invalidOffsetPaginationParams": "Invalid offset pagination parameters provided.",
+        "cursorTooLong": "The cursor length must not exceed {maxCursorLength} characters.",
+        "invalidCursorFormat": "The provided cursor is not in a valid format.",
+        "invalidPage": "The 'page' parameter must be a positive integer and maximum {maxPage}.",
+        "filterInvalidValueEnum": "'{property}' value provided is invalid. Allowed values are: {allowedValues}.",
+        "filterInvalidValue": "'{property}' value provided is invalid.",
+        "orderByNotAllowed": "The 'orderBy' field '{field}' is not allowed. Allowed fields are: {allowedFields}.",
+        "pageExceedsMaximum": "The 'page' parameter exceeds the maximum allowed value of {maxPage}. Received: {receivedPage}.",
+        "pageCannotBeLessThanOne": "The 'page' parameter cannot be less than {minPage}. Received: {receivedPage}.",
+        "perPageExceedsMaximum": "The 'perPage' parameter exceeds the maximum allowed value of {maxPerPage}. Received: {receivedPerPage}.",
+        "perPageCannotBeLessThanOne": "The 'perPage' parameter cannot be less than {minPerPage}. Received: {receivedPerPage}.",
+        "invalidCursorData": "The provided cursor data is invalid.",
+        "failedToEncodeCursor": "Failed to encode cursor data.",
+        "failedToDecodeCursor": "Failed to decode cursor data."
+    }
+}

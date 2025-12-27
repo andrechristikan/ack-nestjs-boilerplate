@@ -38,7 +38,7 @@ export class ApiKeyService implements IApiKeyService {
         private readonly apiKeyRepository: ApiKeyRepository
     ) {}
 
-    async getList(
+    async getListByAdmin(
         pagination: IPaginationQueryOffsetParams,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
@@ -57,7 +57,7 @@ export class ApiKeyService implements IApiKeyService {
         };
     }
 
-    async create({
+    async createByAdmin({
         startAt,
         endAt,
         ...others
@@ -92,7 +92,7 @@ export class ApiKeyService implements IApiKeyService {
         };
     }
 
-    async updateStatus(
+    async updateStatusByAdmin(
         id: string,
         data: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<ApiKeyDto>> {
@@ -122,7 +122,7 @@ export class ApiKeyService implements IApiKeyService {
         };
     }
 
-    async update(
+    async updateByAdmin(
         id: string,
         { name }: ApiKeyUpdateRequestDto
     ): Promise<IResponseReturn<ApiKeyDto>> {
@@ -141,7 +141,7 @@ export class ApiKeyService implements IApiKeyService {
         };
     }
 
-    async updateDates(
+    async updateDatesByAdmin(
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
     ): Promise<IResponseReturn<ApiKeyDto>> {
@@ -167,7 +167,9 @@ export class ApiKeyService implements IApiKeyService {
         };
     }
 
-    async reset(id: string): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
+    async resetByAdmin(
+        id: string
+    ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
@@ -185,7 +187,7 @@ export class ApiKeyService implements IApiKeyService {
         };
     }
 
-    async delete(id: string): Promise<IResponseReturn<ApiKeyDto>> {
+    async deleteByAdmin(id: string): Promise<IResponseReturn<ApiKeyDto>> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new NotFoundException({

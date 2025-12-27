@@ -26,7 +26,7 @@ export interface ITermPolicyService {
         request: IRequestApp,
         requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void>;
-    getList(
+    getListByAdmin(
         pagination: IPaginationQueryOffsetParams,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
@@ -44,14 +44,14 @@ export interface ITermPolicyService {
         { type }: TermPolicyAcceptRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
-    create(
+    createByAdmin(
         { contents, type, version }: TermPolicyCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<TermPolicyResponseDto>>;
-    delete(
+    deleteByAdmin(
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicyResponseDto>>;
-    generateContentPresign({
+    generateContentPresignByAdmin({
         language,
         size,
         type,
@@ -59,17 +59,17 @@ export interface ITermPolicyService {
     }: TermPolicyContentPresignRequestDto): Promise<
         IResponseReturn<AwsS3PresignDto>
     >;
-    updateContent(
+    updateContentByAdmin(
         termPolicyId: string,
         { key, size, language }: TermPolicyContentRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>>;
-    addContent(
+    addContentByAdmin(
         termPolicyId: string,
         { key, size, language }: TermPolicyContentRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>>;
-    removeContent(
+    removeContentByAdmin(
         termPolicyId: string,
         { language }: TermPolicyRemoveContentRequestDto,
         updatedBy: string

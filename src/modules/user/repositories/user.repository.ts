@@ -18,9 +18,11 @@ import {
     IAuthPassword,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
+import { IRole } from '@modules/role/interfaces/role.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
@@ -47,6 +49,7 @@ import {
     EnumVerificationType,
     ForgotPassword,
     Prisma,
+    TermPolicyUserAcceptance,
     User,
     UserMobileNumber,
     Verification,
@@ -83,7 +86,7 @@ export class UserRepository {
         });
     }
 
-    async findActiveWithPaginationCursor(
+    async findWithPaginationCursor(
         { where, ...params }: IPaginationQueryCursorParams,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
@@ -97,7 +100,37 @@ export class UserRepository {
                 ...country,
                 ...role,
                 deletedAt: null,
-                status: EnumUserStatus.active,
+            },
+            include: {
+                role: true,
+                twoFactor: true,
+            },
+        });
+    }
+
+    async findAllByEmails(emails: string[]): Promise<IUser[]> {
+        return this.databaseService.user.findMany({
+            where: {
+                email: { in: emails },
+            },
+            include: {
+                role: true,
+                twoFactor: true,
+            },
+        });
+    }
+
+    async findAllExport(
+        status?: Record<string, IPaginationIn>,
+        role?: Record<string, IPaginationEqual>,
+        country?: Record<string, IPaginationEqual>
+    ): Promise<IUser[]> {
+        return this.databaseService.user.findMany({
+            where: {
+                ...status,
+                ...country,
+                ...role,
+                deletedAt: null,
             },
             include: {
                 role: true,
@@ -311,19 +344,7 @@ export class UserRepository {
             passwordHash,
             passwordPeriodExpired,
         }: IAuthPassword,
-        {
-            expiredAt,
-            reference,
-            token,
-            type: verificationType,
-        }: IUserVerificationCreate,
-        {
-            id: roleId,
-            type: roleType,
-        }: {
-            id: string;
-            type: EnumRoleType;
-        },
+        { id: roleId, type: roleType }: IRole,
         { ipAddress, userAgent }: IRequestLog,
         createdBy: string
     ): Promise<User> {
@@ -368,16 +389,6 @@ export class UserRepository {
                     },
                     createdBy,
                     deletedAt: null,
-                    verifications: {
-                        create: {
-                            expiredAt,
-                            reference,
-                            token,
-                            type: verificationType,
-                            to: email,
-                            createdBy,
-                        },
-                    },
                     passwordHistories: {
                         create: {
                             password: passwordHash,
@@ -528,8 +539,15 @@ export class UserRepository {
                 },
                 sessions: {
                     updateMany: {
-                        where: { isRevoked: false },
-                        data: { isRevoked: true },
+                        where: {
+                            isRevoked: false,
+                            expiredAt: { gte: deletedAt },
+                        },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: deletedAt,
+                            updatedBy: userId,
+                        },
                     },
                 },
             },
@@ -756,6 +774,19 @@ export class UserRepository {
                         createdBy: updatedBy,
                     },
                 },
+                sessions: {
+                    updateMany: {
+                        where: {
+                            isRevoked: false,
+                            expiredAt: { gte: passwordCreated },
+                        },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: passwordCreated,
+                            updatedBy,
+                        },
+                    },
+                },
             },
         });
     }
@@ -817,8 +848,17 @@ export class UserRepository {
                 },
                 sessions: {
                     updateMany: {
-                        where: { isRevoked: false },
-                        data: { isRevoked: true },
+                        where: {
+                            isRevoked: false,
+                            expiredAt: {
+                                gte: passwordCreated,
+                            },
+                        },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: passwordCreated,
+                            updatedBy: userId,
+                        },
                     },
                 },
             },
@@ -1164,6 +1204,70 @@ export class UserRepository {
         });
 
         return;
+    }
+
+    async resetPassword(
+        userId: string,
+        forgotPasswordId: string,
+        {
+            passwordCreated,
+            passwordExpired,
+            passwordHash,
+            passwordPeriodExpired,
+        }: IAuthPassword,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                password: passwordHash,
+                passwordCreated,
+                passwordExpired,
+                passwordAttempt: 0,
+                updatedBy: userId,
+                passwordHistories: {
+                    create: {
+                        password: passwordHash,
+                        type: EnumPasswordHistoryType.forgot,
+                        expiredAt: passwordPeriodExpired,
+                        createdAt: passwordCreated,
+                        createdBy: userId,
+                    },
+                },
+                activityLogs: {
+                    create: {
+                        action: EnumActivityLogAction.userResetPassword,
+                        ipAddress,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        createdBy: userId,
+                    },
+                },
+                forgotPasswords: {
+                    update: {
+                        where: { id: forgotPasswordId },
+                        data: {
+                            isUsed: true,
+                            resetAt: passwordCreated,
+                        },
+                    },
+                },
+                sessions: {
+                    updateMany: {
+                        where: {
+                            isRevoked: false,
+                            expiredAt: {
+                                gte: passwordCreated,
+                            },
+                        },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: passwordCreated,
+                            updatedBy: userId,
+                        },
+                    },
+                },
+            },
+        });
     }
 
     async verifyEmail(
@@ -1532,6 +1636,12 @@ export class UserRepository {
                         createdAt: now,
                     },
                 },
+                sessions: {
+                    updateMany: {
+                        where: { isRevoked: false, expiredAt: { gte: now } },
+                        data: { isRevoked: true, revokedAt: now, updatedBy },
+                    },
+                },
             },
             include: {
                 role: true,
@@ -1566,5 +1676,139 @@ export class UserRepository {
                 },
             },
         });
+    }
+
+    async importByAdmin(
+        data: UserImportRequestDto[],
+        usernames: string[],
+        passwordHasheds: IAuthPassword[],
+        countryId: string,
+        { id: roleId, type: roleType }: IRole,
+        { ipAddress, userAgent }: IRequestLog,
+        createdBy: string
+    ): Promise<User[]> {
+        const termPolicies = await this.databaseService.termPolicy.findMany({
+            where: {
+                type: {
+                    in: [
+                        EnumTermPolicyType.termsOfService,
+                        EnumTermPolicyType.privacy,
+                    ],
+                },
+                status: EnumTermPolicyStatus.published,
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        const users = await this.databaseService.$transaction(
+            async (tx: Prisma.TransactionClient) => {
+                const usersToCreate: Prisma.PrismaPromise<User>[] = [];
+                const termPolicyUserAcceptancesToCreate: Prisma.PrismaPromise<TermPolicyUserAcceptance>[] =
+                    [];
+
+                for (const [index, { email, name }] of data.entries()) {
+                    const userId = this.databaseUtil.createId();
+                    const username = usernames[index];
+                    const {
+                        passwordCreated,
+                        passwordExpired,
+                        passwordHash,
+                        passwordPeriodExpired,
+                    } = passwordHasheds[index];
+
+                    usersToCreate.push(
+                        tx.user.create({
+                            data: {
+                                id: userId,
+                                email,
+                                countryId,
+                                roleId,
+                                name,
+                                signUpFrom: EnumUserSignUpFrom.admin,
+                                signUpWith: EnumUserSignUpWith.credential,
+                                passwordCreated,
+                                passwordExpired,
+                                password: passwordHash,
+                                passwordAttempt: 0,
+                                username,
+                                isVerified:
+                                    roleType === EnumRoleType.user
+                                        ? false
+                                        : true,
+                                status: EnumUserStatus.active,
+                                termPolicy: {
+                                    [EnumTermPolicyType.cookies]: false,
+                                    [EnumTermPolicyType.marketing]: false,
+                                    [EnumTermPolicyType.privacy]: true,
+                                    [EnumTermPolicyType.termsOfService]: true,
+                                },
+                                createdBy,
+                                deletedAt: null,
+                                passwordHistories: {
+                                    create: {
+                                        password: passwordHash,
+                                        type: EnumPasswordHistoryType.admin,
+                                        expiredAt: passwordPeriodExpired,
+                                        createdAt: passwordCreated,
+                                        createdBy,
+                                    },
+                                },
+                                activityLogs: {
+                                    createMany: {
+                                        data: [
+                                            {
+                                                action: EnumActivityLogAction.userCreated,
+                                                ipAddress,
+                                                userAgent:
+                                                    this.databaseUtil.toPlainObject(
+                                                        userAgent
+                                                    ),
+                                                createdBy,
+                                            },
+                                            {
+                                                action: EnumActivityLogAction.userSendVerificationEmail,
+                                                ipAddress,
+                                                userAgent:
+                                                    this.databaseUtil.toPlainObject(
+                                                        userAgent
+                                                    ),
+                                                createdBy,
+                                            },
+                                        ],
+                                    },
+                                },
+                                twoFactor: {
+                                    create: {
+                                        enabled: false,
+                                        requiredSetup: false,
+                                        createdBy,
+                                    },
+                                },
+                            },
+                        })
+                    );
+                    termPolicyUserAcceptancesToCreate.push(
+                        ...termPolicies.map(termPolicy =>
+                            tx.termPolicyUserAcceptance.create({
+                                data: {
+                                    userId,
+                                    termPolicyId: termPolicy.id,
+                                    createdBy,
+                                },
+                            })
+                        )
+                    );
+                }
+
+                const users = await Promise.all(usersToCreate);
+                await Promise.all(termPolicyUserAcceptancesToCreate);
+
+                return users;
+            }
+        );
+
+        return users;
     }
 }

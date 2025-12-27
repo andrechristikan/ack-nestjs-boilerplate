@@ -2,7 +2,7 @@ import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { faker } from '@faker-js/faker';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
-import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class TermPolicyUserAcceptanceResponseDto extends DatabaseDto {
@@ -16,7 +16,6 @@ export class TermPolicyUserAcceptanceResponseDto extends DatabaseDto {
     @ApiProperty({
         required: true,
         type: UserListResponseDto,
-        oneOf: [{ $ref: getSchemaPath(UserListResponseDto) }],
     })
     @Type(() => UserListResponseDto)
     readonly user: UserListResponseDto;
@@ -31,7 +30,6 @@ export class TermPolicyUserAcceptanceResponseDto extends DatabaseDto {
     @ApiProperty({
         required: true,
         type: TermPolicyResponseDto,
-        oneOf: [{ $ref: getSchemaPath(TermPolicyResponseDto) }],
     })
     @Type(() => TermPolicyResponseDto)
     readonly termPolicy: TermPolicyResponseDto;

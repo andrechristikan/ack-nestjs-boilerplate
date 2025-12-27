@@ -6,11 +6,11 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 
 export interface IActivityLogService {
-    getListOffsetByUser(
+    getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
-    getListCursorByUser(
+    getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;

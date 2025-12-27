@@ -35,6 +35,6 @@ export class ActivityLogSharedController {
         pagination: IPaginationQueryCursorParams,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListCursorByUser(userId, pagination);
+        return this.activityLogService.getListCursor(userId, pagination);
     }
 }

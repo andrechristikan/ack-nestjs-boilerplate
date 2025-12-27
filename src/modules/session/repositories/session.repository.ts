@@ -21,12 +21,12 @@ export class SessionRepository {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    async findWithPaginationOffsetByUser(
+    async findWithPaginationOffsetByAdmin(
         userId: string,
         { where, ...others }: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ISession>> {
         return this.paginationService.offset<ISession>(
-            this.databaseService.passwordHistory,
+            this.databaseService.session,
             {
                 ...others,
                 where: {
@@ -40,12 +40,12 @@ export class SessionRepository {
         );
     }
 
-    async findWithPaginationCursorByUser(
+    async findWithPaginationCursor(
         userId: string,
         { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<ISession>> {
         return this.paginationService.cursor<ISession>(
-            this.databaseService.passwordHistory,
+            this.databaseService.session,
             {
                 ...others,
                 where: {
@@ -59,7 +59,7 @@ export class SessionRepository {
         );
     }
 
-    async findAllByUser(userId: string): Promise<
+    async findAll(userId: string): Promise<
         {
             id: string;
         }[]
@@ -78,10 +78,7 @@ export class SessionRepository {
         });
     }
 
-    async findOneActiveByUser(
-        userId: string,
-        sessionId: string
-    ): Promise<Session> {
+    async findOneActive(userId: string, sessionId: string): Promise<Session> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.session.findFirst({
@@ -96,7 +93,7 @@ export class SessionRepository {
         });
     }
 
-    async revokeByUser(
+    async revoke(
         userId: string,
         sessionId: string,
         { ipAddress, userAgent }: IRequestLog
@@ -158,66 +155,5 @@ export class SessionRepository {
                 user: true,
             },
         });
-    }
-
-    async revokeAllByUser(
-        userId: string,
-        { ipAddress, userAgent }: IRequestLog
-    ): Promise<void> {
-        await this.databaseService.$transaction([
-            this.databaseService.session.updateMany({
-                where: {
-                    userId,
-                    isRevoked: false,
-                    expiredAt: {
-                        gte: this.helperService.dateCreate(),
-                    },
-                },
-                data: {
-                    isRevoked: true,
-                    revokedAt: this.helperService.dateCreate(),
-                    updatedBy: userId,
-                },
-            }),
-            this.databaseService.activityLog.create({
-                data: {
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    ipAddress,
-                    userAgent: this.databaseUtil.toPlainObject(userAgent),
-                    createdBy: userId,
-                },
-            }),
-        ]);
-    }
-
-    async revokeAllByAdmin(
-        userId: string,
-        { ipAddress, userAgent }: IRequestLog,
-        revokeBy: string
-    ): Promise<void> {
-        await this.databaseService.$transaction([
-            this.databaseService.session.updateMany({
-                where: {
-                    userId,
-                    isRevoked: false,
-                    expiredAt: {
-                        gte: this.helperService.dateCreate(),
-                    },
-                },
-                data: {
-                    isRevoked: true,
-                    revokedAt: this.helperService.dateCreate(),
-                    updatedBy: revokeBy,
-                },
-            }),
-            this.databaseService.activityLog.create({
-                data: {
-                    action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                    ipAddress,
-                    userAgent: this.databaseUtil.toPlainObject(userAgent),
-                    createdBy: revokeBy,
-                },
-            }),
-        ]);
     }
 }

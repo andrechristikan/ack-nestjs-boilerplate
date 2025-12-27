@@ -15,12 +15,12 @@ export class PasswordHistoryService implements IPasswordHistoryService {
         private readonly passwordHistoryUtil: PasswordHistoryUtil
     ) {}
 
-    async getListOffsetByUser(
+    async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {
         const { data, ...others } =
-            await this.passwordHistoryRepository.findWithPaginationOffsetByUser(
+            await this.passwordHistoryRepository.findWithPaginationOffsetByAdmin(
                 userId,
                 pagination
             );
@@ -33,12 +33,12 @@ export class PasswordHistoryService implements IPasswordHistoryService {
         };
     }
 
-    async getListCursorByUser(
+    async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {
         const { data, ...others } =
-            await this.passwordHistoryRepository.findWithPaginationCursorByUser(
+            await this.passwordHistoryRepository.findWithPaginationCursor(
                 userId,
                 pagination
             );

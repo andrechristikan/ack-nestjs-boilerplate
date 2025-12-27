@@ -10,10 +10,10 @@ export class EmailVerificationDto {
 
     @ApiProperty({
         required: true,
-        example: faker.date.future(),
+        example: faker.date.future().toString(),
         description: 'Expired at by date',
     })
-    expiredAt: Date;
+    expiredAt: string;
 
     @ApiProperty({
         required: true,

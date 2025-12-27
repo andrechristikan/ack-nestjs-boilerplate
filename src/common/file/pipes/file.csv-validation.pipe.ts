@@ -5,6 +5,7 @@ import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { IMessageValidationImportErrorParam } from '@common/message/interfaces/message.interface';
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { validate } from 'class-validator';
+import { FileMaxDataImport } from '@common/file/constants/file.constant';
 
 /**
  * A NestJS pipe that validates Csv file data by transforming raw sheet data into DTOs
@@ -37,6 +38,11 @@ export class FilCsvValidationPipe<
                 statusCode: EnumFileStatusCodeError.requiredExtractFirst,
                 message: 'file.error.requiredParseFirst',
             });
+        } else if (value.length > FileMaxDataImport) {
+            throw new UnprocessableEntityException({
+                statusCode: EnumFileStatusCodeError.exceedMaxDataImport,
+                message: 'file.error.exceedMaxDataImport',
+            });
         }
 
         return this.validateDto(value);
@@ -61,7 +67,18 @@ export class FilCsvValidationPipe<
                 this.dto as ClassConstructor<TDto>,
                 item
             );
-            const validationErrors = await validate(validator);
+            const validationErrors = await validate(validator, {
+                skipMissingProperties: false,
+                skipNullProperties: false,
+                skipUndefinedProperties: false,
+                forbidUnknownValues: false,
+                whitelist: true,
+                forbidNonWhitelisted: true,
+                validationError: {
+                    target: false,
+                    value: true,
+                },
+            });
 
             if (validationErrors.length > 0) {
                 errors.push({

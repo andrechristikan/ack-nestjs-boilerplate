@@ -16,7 +16,7 @@ export class ActivityLogService implements IActivityLogService {
         private readonly activityUtil: ActivityLogUtil
     ) {}
 
-    async getListOffsetByUser(
+    async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
@@ -34,7 +34,7 @@ export class ActivityLogService implements IActivityLogService {
         };
     }
 
-    async getListCursorByUser(
+    async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {

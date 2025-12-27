@@ -259,8 +259,8 @@ Prisma, combined with the Repository Pattern, allows you to switch databases wit
 
 | Database | Best For | Transaction Support |
 |----------|----------|---------------------|
-| **PostgreSQL** | Production apps, complex queries | ✅ Yes |
 | **MongoDB** | Document-based, flexible schema | ✅ Yes (replica set) |
+| **PostgreSQL** | Production apps, complex queries | ✅ Yes |
 
 **Other supported databases:** MySQL, SQLite, SQL Server, CockroachDB
 

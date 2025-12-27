@@ -20,7 +20,7 @@ import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-passwor
 export class EmailUtil {
     private readonly logger = new Logger(EmailUtil.name);
 
-    private readonly fromEmail: string;
+    private readonly noreplyEmail: string;
     private readonly supportEmail: string;
 
     private readonly homeName: string;
@@ -31,9 +31,8 @@ export class EmailUtil {
         private readonly helperService: HelperService,
         private readonly configService: ConfigService
     ) {
-        this.fromEmail = this.configService.get<string>('email.fromEmail');
-        this.supportEmail =
-            this.configService.get<string>('email.supportEmail');
+        this.noreplyEmail = this.configService.get<string>('email.noreply');
+        this.supportEmail = this.configService.get<string>('email.support');
 
         this.homeName = this.configService.get<string>('home.name');
         this.homeUrl = this.configService.get<string>('home.url');
@@ -52,7 +51,7 @@ export class EmailUtil {
             await this.awsSESService.send({
                 templateName: EnumSendEmailProcess.changePassword,
                 recipients: [email],
-                sender: this.fromEmail,
+                sender: this.noreplyEmail,
                 templateData: {
                     homeName: this.homeName,
                     supportEmail: this.supportEmail,
@@ -79,7 +78,7 @@ export class EmailUtil {
             await this.awsSESService.send({
                 templateName: EnumSendEmailProcess.welcome,
                 recipients: [email],
-                sender: this.fromEmail,
+                sender: this.noreplyEmail,
                 templateData: {
                     homeName: this.homeName,
                     supportEmail: title(this.supportEmail),
@@ -113,9 +112,9 @@ export class EmailUtil {
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.welcome,
+                templateName: EnumSendEmailProcess.createByAdmin,
                 recipients: [email],
-                sender: this.fromEmail,
+                sender: this.noreplyEmail,
                 templateData: {
                     homeName: this.homeName,
                     supportEmail: title(this.supportEmail),
@@ -123,14 +122,12 @@ export class EmailUtil {
                     username,
                     email: title(email),
                     password: passwordString,
-                    passwordExpiredAt:
-                        this.helperService.dateFormatToRFC2822(
-                            passwordExpiredAt
-                        ),
-                    passwordCreatedAt:
-                        this.helperService.dateFormatToRFC2822(
-                            passwordCreatedAt
-                        ),
+                    passwordExpiredAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(passwordExpiredAt)
+                    ),
+                    passwordCreatedAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(passwordCreatedAt)
+                    ),
                 },
             });
 
@@ -160,21 +157,19 @@ export class EmailUtil {
             await this.awsSESService.send({
                 templateName: EnumSendEmailProcess.temporaryPassword,
                 recipients: [email],
-                sender: this.fromEmail,
+                sender: this.noreplyEmail,
                 templateData: {
                     homeName: this.homeName,
                     supportEmail: title(this.supportEmail),
                     homeUrl: this.homeUrl,
                     username,
                     password: passwordString,
-                    passwordExpiredAt:
-                        this.helperService.dateFormatToRFC2822(
-                            passwordExpiredAt
-                        ),
-                    passwordCreatedAt:
-                        this.helperService.dateFormatToRFC2822(
-                            passwordCreatedAt
-                        ),
+                    passwordExpiredAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(passwordExpiredAt)
+                    ),
+                    passwordCreatedAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(passwordCreatedAt)
+                    ),
                 },
             });
 
@@ -200,15 +195,16 @@ export class EmailUtil {
             await this.awsSESService.send({
                 templateName: EnumSendEmailProcess.forgotPassword,
                 recipients: [email],
-                sender: this.fromEmail,
+                sender: this.noreplyEmail,
                 templateData: {
                     homeName: this.homeName,
                     supportEmail: title(this.supportEmail),
                     homeUrl: this.homeUrl,
                     username,
                     link,
-                    expiredAt:
-                        this.helperService.dateFormatToRFC2822(expiredAt),
+                    expiredAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(expiredAt)
+                    ),
                     reference,
                     expiredInMinutes,
                 },
@@ -236,7 +232,7 @@ export class EmailUtil {
             await this.awsSESService.send({
                 templateName: EnumSendEmailProcess.verification,
                 recipients: [email],
-                sender: this.fromEmail,
+                sender: this.noreplyEmail,
                 templateData: {
                     homeName: this.homeName,
                     supportEmail: title(this.supportEmail),
@@ -244,8 +240,9 @@ export class EmailUtil {
                     username,
                     link,
                     reference,
-                    expiredAt:
-                        this.helperService.dateFormatToRFC2822(expiredAt),
+                    expiredAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(expiredAt)
+                    ),
                     expiredInMinutes,
                 },
             });
@@ -272,7 +269,7 @@ export class EmailUtil {
             await this.awsSESService.send({
                 templateName: EnumSendEmailProcess.emailVerified,
                 recipients: [email],
-                sender: this.fromEmail,
+                sender: this.noreplyEmail,
                 templateData: {
                     homeName: this.homeName,
                     supportEmail: title(this.supportEmail),
@@ -304,7 +301,7 @@ export class EmailUtil {
             await this.awsSESService.send({
                 templateName: EnumSendEmailProcess.mobileNumberVerified,
                 recipients: [email],
-                sender: this.fromEmail,
+                sender: this.noreplyEmail,
                 templateData: {
                     homeName: this.homeName,
                     supportEmail: title(this.supportEmail),
@@ -336,7 +333,7 @@ export class EmailUtil {
             await this.awsSESService.send({
                 templateName: EnumSendEmailProcess.resetTwoFactorByAdmin,
                 recipients: [email],
-                sender: this.fromEmail,
+                sender: this.noreplyEmail,
                 templateData: {
                     homeName: this.homeName,
                     supportEmail: title(this.supportEmail),

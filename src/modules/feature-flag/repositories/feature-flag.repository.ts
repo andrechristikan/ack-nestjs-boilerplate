@@ -1,5 +1,8 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
@@ -14,11 +17,20 @@ export class FeatureFlagRepository {
         private readonly paginationService: PaginationService
     ) {}
 
-    async findWithPaginationOffsetByUser(
+    async findWithPaginationOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<FeatureFlag>> {
         return this.paginationService.offset<FeatureFlag>(
-            this.databaseService.passwordHistory,
+            this.databaseService.featureFlag,
+            pagination
+        );
+    }
+
+    async findWithPaginationCursor(
+        pagination: IPaginationQueryCursorParams
+    ): Promise<IResponsePagingReturn<FeatureFlag>> {
+        return this.paginationService.cursor<FeatureFlag>(
+            this.databaseService.featureFlag,
             pagination
         );
     }

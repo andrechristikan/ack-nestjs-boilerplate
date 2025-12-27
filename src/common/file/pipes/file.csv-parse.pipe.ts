@@ -37,7 +37,9 @@ export class FileCsvParsePipe<T> implements PipeTransform {
         }
 
         await this.validate(value);
-        return this.fileService.readCsv(value.buffer.toString('utf-8'));
+        const data = this.fileService.readCsv(value.buffer.toString('utf-8'));
+
+        return data as T[];
     }
 
     /**
@@ -59,23 +61,23 @@ export class FileCsvParsePipe<T> implements PipeTransform {
             });
         }
 
-        if (value.filename) {
-            const extension = this.fileService.extractExtensionFromFilename(
-                value.filename
-            );
+        if (!value.originalname) {
+            throw new UnsupportedMediaTypeException({
+                statusCode: EnumFileStatusCodeError.extensionInvalid,
+                message: 'file.error.extensionInvalid',
+            });
+        }
 
-            if (
-                extension === undefined ||
-                extension === null ||
-                extension === '' ||
-                extension !== EnumFileExtensionDocument.csv
-            ) {
-                throw new UnsupportedMediaTypeException({
-                    statusCode: EnumFileStatusCodeError.extensionInvalid,
-                    message: 'file.error.extensionInvalid',
-                });
-            }
-        } else {
+        const extension = this.fileService.extractExtensionFromFilename(
+            value.originalname
+        );
+
+        if (
+            extension === undefined ||
+            extension === null ||
+            extension === '' ||
+            extension !== EnumFileExtensionDocument.csv
+        ) {
             throw new UnsupportedMediaTypeException({
                 statusCode: EnumFileStatusCodeError.extensionInvalid,
                 message: 'file.error.extensionInvalid',

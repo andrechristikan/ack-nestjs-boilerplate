@@ -71,7 +71,7 @@ export class SessionAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        return this.sessionService.getListOffsetByUser(userId, pagination);
+        return this.sessionService.getListOffsetByAdmin(userId, pagination);
     }
 
     @SessionAdminRevokeDoc()

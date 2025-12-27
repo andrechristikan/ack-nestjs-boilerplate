@@ -17,12 +17,12 @@ import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.
 import { ApiKey, EnumApiKeyType } from '@prisma/client';
 
 export interface IApiKeyService {
-    getList(
+    getListByAdmin(
         { where, ...params }: IPaginationQueryOffsetParams,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKeyDto>>;
-    create({
+    createByAdmin({
         name,
         type,
         startAt,
@@ -30,20 +30,20 @@ export interface IApiKeyService {
     }: ApiKeyCreateRequestDto): Promise<
         IResponseReturn<ApiKeyCreateResponseDto>
     >;
-    updateStatus(
+    updateStatusByAdmin(
         id: string,
         data: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<ApiKeyDto>>;
-    update(
+    updateByAdmin(
         id: string,
         { name }: ApiKeyUpdateRequestDto
     ): Promise<IResponseReturn<ApiKeyDto>>;
-    updateDates(
+    updateDatesByAdmin(
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
     ): Promise<IResponseReturn<ApiKeyDto>>;
-    reset(id: string): Promise<IResponseReturn<ApiKeyCreateResponseDto>>;
-    delete(id: string): Promise<IResponseReturn<ApiKeyDto>>;
+    resetByAdmin(id: string): Promise<IResponseReturn<ApiKeyCreateResponseDto>>;
+    deleteByAdmin(id: string): Promise<IResponseReturn<ApiKeyDto>>;
     findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null>;
     validateApiKey(apiKey: ApiKey, includeActive: boolean): void;
     findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null>;
