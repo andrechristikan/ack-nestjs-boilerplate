@@ -51,6 +51,12 @@ The system is built using NestJS guards and decorators, making it easy to apply 
   - [Guards](#guards-3)
     - [TermPolicyGuard](#termpolicyguard)
   - [Important Notes](#important-notes-3)
+- [Creating Custom Roles](#creating-custom-roles)
+  - [Overview](#overview-1)
+  - [How to Create a New Role](#how-to-create-a-new-role)
+  - [Role Configuration](#role-configuration)
+  - [Assigning Roles to Users](#assigning-roles-to-users)
+  - [Important Notes](#important-notes-4)
 
 ## User Protected
 
@@ -521,6 +527,91 @@ flowchart TD
 - All specified term policies must be accepted by the user for access to be granted
 - Incorrect decorator ordering will result in runtime errors
 
+## Creating Custom Roles
+
+The boilerplate supports creating custom roles through the role management API. Each role can have a unique combination of permissions (abilities) that define what actions users with that role can perform on different resources.
+
+This feature allows you to create specialized roles beyond the default `superAdmin`, `admin`, and `user` types - for example, you could create roles like "ContentModerator", "Accountant", "CustomerSupport", etc., each with their own specific set of permissions.
+
+### How to Create a New Role
+
+Custom roles are created through the admin role management endpoints. The API documentation is available in your Swagger docs at `/docs`.
+
+**Basic steps:**
+
+1. Authenticate as an admin user
+2. Call the role creation endpoint
+3. Provide role details including name, type, description, and abilities
+4. The new role is immediately available for assignment to users
+
+**Example role creation request:**
+
+```json
+{
+  "name": "contentmoderator",
+  "description": "Role for moderating user-generated content",
+  "type": "admin",
+  "abilities": [
+    {
+      "subject": "user",
+      "action": ["read", "update"]
+    },
+    {
+      "subject": "activityLog",
+      "action": ["read"]
+    }
+  ]
+}
+```
+
+### Role Configuration
+
+**Role Properties:**
+
+- **name**: Unique identifier for the role (alphanumeric, lowercase, 3-30 characters)
+- **description**: Optional description explaining the role's purpose (max 500 characters)
+- **type**: Role type from `EnumRoleType` (superAdmin, admin, or user)
+- **abilities**: Array of permission objects defining what the role can do
+
+**Ability Structure:**
+
+Each ability consists of:
+- **subject**: The resource type (e.g., user, role, apiKey, session, termPolicy, activityLog)
+- **action**: Array of allowed actions (manage, read, create, update, delete)
+
+**Available subjects and actions are defined in:**
+- `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, futureFlag
+- `EnumPolicyAction`: manage, read, create, update, delete
+
+### Assigning Roles to Users
+
+Once a custom role is created, it can be assigned to users through:
+
+1. **User creation**: Specify the `roleId` when creating new users
+2. **User update**: Update existing users to assign them the new role
+
+**How it works automatically:**
+
+- When a user is assigned a role, they immediately inherit all abilities defined for that role
+- The `RoleGuard` automatically loads the user's role and abilities during authentication
+- The `PolicyAbilityGuard` validates permissions based on the role's abilities
+- No application restart or additional configuration is needed
+
+**Permission enforcement flow:**
+
+```mermaid
+flowchart LR
+    User[User logs in] --> LoadRole[Role & abilities loaded<br/>from database]
+    LoadRole --> RoleGuard[RoleGuard validates<br/>role type]
+    RoleGuard --> PolicyGuard[PolicyAbilityGuard validates<br/>specific permissions]
+    PolicyGuard --> Access[Access granted/denied<br/>based on abilities]
+```
+
+### Important Notes
+
+- **Role names must be unique** - You cannot create two roles with the same name
+- **Roles cannot be deleted if in use** - You must first reassign users to different roles before deleting
+
 
 <!-- REFERENCES -->
 
@@ -615,4 +706,3 @@ flowchart TD
 
 [ref-contributor-gzerox]: https://github.com/Gzerox
 [ref-contributor-ak2g]: https://github.com/ak2g
-

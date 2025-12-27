@@ -539,8 +539,15 @@ export class UserRepository {
                 },
                 sessions: {
                     updateMany: {
-                        where: { isRevoked: false },
-                        data: { isRevoked: true },
+                        where: {
+                            isRevoked: false,
+                            expiredAt: { gte: deletedAt },
+                        },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: deletedAt,
+                            updatedBy: userId,
+                        },
                     },
                 },
             },
@@ -769,8 +776,15 @@ export class UserRepository {
                 },
                 sessions: {
                     updateMany: {
-                        where: { isRevoked: false },
-                        data: { isRevoked: true },
+                        where: {
+                            isRevoked: false,
+                            expiredAt: { gte: passwordCreated },
+                        },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: passwordCreated,
+                            updatedBy,
+                        },
                     },
                 },
             },
@@ -837,12 +851,12 @@ export class UserRepository {
                         where: {
                             isRevoked: false,
                             expiredAt: {
-                                gte: this.helperService.dateCreate(),
+                                gte: passwordCreated,
                             },
                         },
                         data: {
                             isRevoked: true,
-                            revokedAt: this.helperService.dateCreate(),
+                            revokedAt: passwordCreated,
                             updatedBy: userId,
                         },
                     },
@@ -1233,7 +1247,7 @@ export class UserRepository {
                         where: { id: forgotPasswordId },
                         data: {
                             isUsed: true,
-                            resetAt: this.helperService.dateCreate(),
+                            resetAt: passwordCreated,
                         },
                     },
                 },
@@ -1242,12 +1256,12 @@ export class UserRepository {
                         where: {
                             isRevoked: false,
                             expiredAt: {
-                                gte: this.helperService.dateCreate(),
+                                gte: passwordCreated,
                             },
                         },
                         data: {
                             isRevoked: true,
-                            revokedAt: this.helperService.dateCreate(),
+                            revokedAt: passwordCreated,
                             updatedBy: userId,
                         },
                     },
@@ -1624,8 +1638,8 @@ export class UserRepository {
                 },
                 sessions: {
                     updateMany: {
-                        where: { isRevoked: false },
-                        data: { isRevoked: true },
+                        where: { isRevoked: false, expiredAt: { gte: now } },
+                        data: { isRevoked: true, revokedAt: now, updatedBy },
                     },
                 },
             },
