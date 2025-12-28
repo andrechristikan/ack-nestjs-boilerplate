@@ -156,7 +156,7 @@ export class TermPolicyService implements ITermPolicyService {
         const exist =
             await this.termPolicyRepository.existAcceptanceByPolicyAndUser(
                 userId,
-                type
+                policy.id
             );
         if (exist) {
             throw new ConflictException({

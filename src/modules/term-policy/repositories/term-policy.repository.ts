@@ -145,12 +145,17 @@ export class TermPolicyRepository {
         { ipAddress, userAgent }: IRequestLog
     ): Promise<ITermPolicyUserAcceptance> {
         const acceptedAt = this.helperService.dateCreate();
+        const user = await this.databaseService.user.findUniqueOrThrow({
+            where: { id: userId },
+            select: { termPolicy: true },
+        });
         const [userAcceptance] = await this.databaseService.$transaction([
             this.databaseService.termPolicyUserAcceptance.create({
                 data: {
                     acceptedAt,
                     userId,
                     termPolicyId,
+                    createdBy: userId,
                 },
                 include: {
                     termPolicy: true,
@@ -165,6 +170,7 @@ export class TermPolicyRepository {
                 },
                 data: {
                     termPolicy: {
+                        ...(user.termPolicy as Prisma.JsonObject),
                         [type]: true,
                     },
                     activityLogs: {
