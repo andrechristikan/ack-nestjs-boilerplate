@@ -22,11 +22,19 @@ services:
             jwks-server:
                 condition: service_healthy
         healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:3000/api/hello"]
+            test:
+                [
+                    "CMD",
+                    "wget",
+                    "--no-verbose",
+                    "--tries=1",
+                    "--spider",
+                    "http://localhost:3000/api/hello",
+                ]
             interval: 30s
             timeout: 10s
             retries: 3
-            start_period: 40s
+            start_period: 30s
         profiles: ["apis"]
         deploy:
             resources:
@@ -54,14 +62,16 @@ services:
             test:
                 [
                     "CMD",
-                    "curl",
-                    "-f",
+                    "wget",
+                    "--no-verbose",
+                    "--tries=1",
+                    "--spider",
                     "http://localhost:80/.well-known/access-jwks.json",
                 ]
             interval: 30s
             timeout: 10s
             retries: 3
-            start_period: 5s
+            start_period: 10s
 
     redis:
         image: redis:latest
@@ -129,7 +139,7 @@ services:
             interval: 10s
             timeout: 5s
             retries: 5
-            start_period: 20s
+            start_period: 30s
 
     mongo-init:
         image: mongo:latest
