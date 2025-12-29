@@ -244,12 +244,12 @@ ACK NestJS Boilerplate uses **[Prisma][ref-prisma] v6.19.x** as the primary data
 
 ### **Why Prisma for Repository Design Pattern?**
 
-Prisma perfectly enables ACK NestJS Boilerplate's **Repository Design Pattern** implementation:
+Prisma perfectly enables **Repository Design Pattern** implementation:
 
 - **Type-Safe Repository Layer**: Auto-generated TypeScript types ensure compile-time validation throughout repositories
 - **Clean Architecture**: PrismaClient provides foundation for clean separation between database and business logic  
 - **Easy Implementation**: Consistent query API and transaction support simplify repository development
-- **Database Agnostic**: Switch between MongoDB, PostgreSQL, MySQL, SQLite without changing repository code
+- **Database Agnostic**: Switch between MongoDB, PostgreSQL without changing repository code
 
 ### Change DB with Minimal Effort
 
@@ -276,8 +276,8 @@ datasource db {
 
 // Update ID fields in all models
 model User {
-  id String @id @default(uuid())  // was: @default(auto()) @map("_id") @db.ObjectId
-  // Remove @db.ObjectId from all foreign keys
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid  // was: @default(auto()) @map("_id") @db.ObjectId
+  // Replace @db.ObjectId with @db.Uuid from all foreign keys
 }
 ```
 
@@ -296,7 +296,7 @@ pnpm prisma migrate dev --name init  # PostgreSQL
 pnpm db:generate                      # Regenerate client
 ```
 
-**4. Update Database-Specific Code:**
+**4. Update DatabaseService Code:**
 
 - **DatabaseService** (`src/common/database/services/database.service.ts`) - May require updates for connection management, health checks, and database-specific features
 - **DatabaseUtil** (`src/common/database/utils/database.util.ts`) - Replace MongoDB `ObjectId` helpers with UUID validators

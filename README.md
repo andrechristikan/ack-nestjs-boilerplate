@@ -30,27 +30,28 @@ This boilerplate is perfect for:
 - 🚀 **Microservices** - Stateful sessions with Redis and async job processing
 - 💼 **Startup MVPs** - Production-ready foundation to ship faster
 
-## Table of contents
 
-  - [Important](#important)
-  - [TODO](#todo)
-  - [Prerequisites](#prerequisites)
-  - [Build with](#build-with)
-  - [Objective](#objective)
-  - [Features](#features)
-    - [Authentication & Security](#authentication--security)
-    - [Database & Storage](#database--storage)
-    - [Performance & Optimization](#performance--optimization)
-    - [Development Experience](#development-experience)
-    - [Integrations & Monitoring](#integrations--monitoring)
-    - [Testing & Documentation](#testing--documentation)
-    - [Architecture Highlights](#architecture-highlights)
-  - [Quick Start](#quick-start)
-  - [Change DB with Minimal Effort](#change-db-with-minimal-effort)
-  - [Installation](#installation)
-  - [License](#license)
-  - [Contribute](#contribute)
-  - [Contact](#contact)
+## Table of Contents
+
+- [Important](#important)
+- [TODO](#todo)
+- [Prerequisites](#prerequisites)
+- [Build with](#build-with)
+- [Objective](#objective)
+- [Features](#features)
+  - [🎯 Architecture Highlights](#-architecture-highlights)
+  - [🔐 Authentication & Security](#-authentication--security)
+  - [📊 Database & Storage](#-database--storage)
+  - [⚡ Performance & Optimization](#-performance--optimization)
+  - [🛠 Development Experience](#-development-experience)
+  - [📡 Integrations & Monitoring](#-integrations--monitoring)
+  - [📝 Testing & Documentation](#-testing--documentation)
+- [Quick Start](#quick-start)
+- [Change DB with Minimal Effort](#change-db-with-minimal-effort)
+- [Installation](#installation)
+- [License](#license)
+- [Contribute](#contribute)
+- [Contact](#contact)
 
 ## Important
 
@@ -149,6 +150,14 @@ For more information see [package.json][ref-package-json]
 
 ## Features
 
+### 🎯 Architecture Highlights
+
+- **Repository Pattern** - Clean data access abstraction
+- **SOLID Principles** - Maintainable and testable codebase  
+- **Modular Structure** - Component-based folder organization
+- **12-Factor App** - Cloud-native best practices
+- **Production Ready** - Enterprise-grade security and scalability
+
 ### 🔐 Authentication & Security
 Production-ready authentication system with multiple strategies and security layers.
 
@@ -208,14 +217,6 @@ Comprehensive testing framework and documentation.
 - **Detailed Docs** - 20+ documentation files covering all features
 - **Docker Support** - Complete containerization with docker-compose
 
-### 🎯 Architecture Highlights
-
-- **Repository Pattern** - Clean data access abstraction
-- **SOLID Principles** - Maintainable and testable codebase  
-- **Modular Structure** - Component-based folder organization
-- **12-Factor App** - Cloud-native best practices
-- **Production Ready** - Enterprise-grade security and scalability
-
 ## Quick Start
 
 ```bash
@@ -241,15 +242,16 @@ Thanks to **Repository Pattern** and **Prisma ORM**, switching databases require
 
 ### Supported Databases
 
-Prisma supports multiple databases out of the box:
+| Database | Best For | Transaction Support |
+|----------|----------|---------------------|
+| **MongoDB** | Document-based, flexible schema | ✅ Yes (replica set) |
+| **PostgreSQL** | Production apps, complex queries | ✅ Yes |
 
-- 🐘 **PostgreSQL** - Recommended for production
-- 🐬 **MySQL** - Popular relational database
-- There are more many database
+**Other supported databases:** MySQL, SQLite, SQL Server, CockroachDB
 
 **Migration typically requires:**
 - Updating `prisma/schema.prisma` provider
-- Adjusting ID strategy (ObjectId → UUID)
+- Adjusting ID strategy (ObjectId → UUID). Update DatabaseService Code.
 - Running `npx prisma migrate dev`
 - Running `pnpm migration:seed`
 
@@ -401,6 +403,7 @@ If you find this project helpful and would like to support its development, plea
 [ref-doc-third-party-integration]: docs/third-party-integration.md
 [ref-doc-presign]: docs/presign.md
 [ref-doc-term-policy]: docs/term-policy.md
+[ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->
 
