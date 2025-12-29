@@ -92,10 +92,7 @@ export interface IAwsS3Service {
         options?: IAwsS3Options
     ): Promise<AwsS3Dto[]>;
     settingBucketExpiredObjectLifecycle(options: IAwsS3Options): Promise<void>;
-    settingBucketPolicy(
-        folders: string[],
-        options?: IAwsS3Options
-    ): Promise<void>;
+    settingBucketPolicy(options?: IAwsS3Options): Promise<void>;
     settingCorsConfiguration(options?: IAwsS3Options): Promise<void>;
     settingDisableAclConfiguration(options?: IAwsS3Options): Promise<void>;
     settingBlockPublicAccessConfiguration(

@@ -13,6 +13,9 @@ import {
     CreateMultipartUploadCommand,
     CreateMultipartUploadCommandInput,
     CreateMultipartUploadCommandOutput,
+    DeleteBucketPolicyCommand,
+    DeleteBucketPolicyCommandInput,
+    DeleteBucketPolicyCommandOutput,
     DeleteObjectCommand,
     DeleteObjectCommandInput,
     DeleteObjectCommandOutput,
@@ -111,9 +114,6 @@ export class AwsS3Service implements IAwsS3Service {
 
     private readonly client: S3Client;
 
-    private readonly bucketPublicArn: string | undefined;
-    private readonly bucketPrivateArn: string | undefined;
-
     private readonly presignExpired: number;
     private readonly multipartExpiredInDay: number;
 
@@ -163,13 +163,6 @@ export class AwsS3Service implements IAwsS3Service {
             ),
             access: EnumAwsS3Accessibility.private,
         });
-
-        this.bucketPublicArn = this.configService.get<string>(
-            'aws.s3.config.public.arn'
-        );
-        this.bucketPrivateArn = this.configService.get<string>(
-            'aws.s3.config.private.arn'
-        );
 
         this.presignExpired = this.configService.get<number>(
             'aws.s3.presignExpired'
@@ -1098,35 +1091,34 @@ export class AwsS3Service implements IAwsS3Service {
     }
 
     /**
-     * Sets the bucket policy for public or private buckets, allowing or restricting access as needed.
-     * @param {string[]} folders - List of folder ARNs or paths for policy
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<void>}
+     * Sets the S3 bucket policy to allow or restrict access based on the bucket's accessibility.
+     *
+     * For public buckets, grants public read access (s3:GetObject) to all objects in the bucket and ensures full access for the configured IAM user.
+     * For private buckets, removes any existing bucket policy to restrict public access.
+     *
+     * @param {IAwsS3Options} [options] - Optional configuration to specify the bucket access level (public or private).
+     * @returns {Promise<void>} Resolves when the bucket policy is updated.
      */
-    async settingBucketPolicy(
-        folders: string[],
-        options?: IAwsS3Options
-    ): Promise<void> {
+    async settingBucketPolicy(options?: IAwsS3Options): Promise<void> {
         const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
         const config = this.config.get(accessibility);
 
-        let command: PutBucketPolicyCommand;
         if (accessibility === EnumAwsS3Accessibility.public) {
-            const resource = [
-                this.bucketPublicArn,
-                `arn:aws:s3:::${config.bucket}/*`,
-            ];
+            const resourceObject: string = `${config.arn}/*`;
+            const resources: string[] = [config.arn, resourceObject];
 
             const bucketPolicy = {
                 Version: '2012-10-17',
                 Statement: [
+                    // Allow public read access to specified folders
                     {
                         Sid: 'PublicReadForSpecificFolder',
                         Effect: 'Allow',
                         Principal: '*',
                         Action: 's3:GetObject',
-                        Resource: folders,
+                        Resource: resources,
                     },
+                    // Keep full access for IAM user
                     {
                         Sid: 'IAMUserFullAccess',
                         Effect: 'Allow',
@@ -1134,89 +1126,32 @@ export class AwsS3Service implements IAwsS3Service {
                             AWS: this.iamArn,
                         },
                         Action: 's3:*',
-                        Resource: resource,
+                        Resource: resources,
                     },
                 ],
             };
 
-            command = new PutBucketPolicyCommand({
+            const command: PutBucketPolicyCommand = new PutBucketPolicyCommand({
                 Bucket: config.bucket,
                 ChecksumAlgorithm: 'SHA256',
                 Policy: JSON.stringify(bucketPolicy),
             });
+
+            await this.client.send<
+                PutBucketPolicyCommandInput,
+                PutBucketPolicyCommandOutput
+            >(command);
         } else {
-            const resource = [
-                this.bucketPrivateArn,
-                `arn:aws:s3:::${config.bucket}/*`,
-            ];
-            const bucketPolicy = {
-                Version: '2012-10-17',
-                Statement: [
-                    {
-                        // Deny public access
-                        Sid: 'DenyPublicAccess',
-                        Effect: 'Deny',
-                        Principal: '*',
-                        Action: [
-                            's3:GetObject',
-                            's3:GetObjectVersion',
-                            's3:ListBucket',
-                        ],
-                        Resource: resource,
-                        Condition: {
-                            StringEquals: {
-                                'aws:PrincipalType': 'Anonymous',
-                            },
-                        },
-                    },
-                    {
-                        // Deny HTTP, allow HTTPS only
-                        Sid: 'DenyInsecureTransport',
-                        Effect: 'Deny',
-                        Principal: '*',
-                        Action: 's3:*',
-                        Resource: resource,
-                        Condition: {
-                            Bool: {
-                                'aws:SecureTransport': 'false',
-                            },
-                        },
-                    },
-                    {
-                        // Allow Presigned URL Access
-                        Sid: 'AllowPresignedURLAccess',
-                        Effect: 'Allow',
-                        Principal: '*',
-                        Action: [
-                            's3:GetObject',
-                            's3:PutObject',
-                            's3:DeleteObject',
-                        ],
-                        Resource: `arn:aws:s3:::${config.bucket}/*`,
-                    },
-                    {
-                        // Allow full access to IAM user
-                        Sid: 'AllowIAMFullAccess',
-                        Effect: 'Allow',
-                        Principal: {
-                            AWS: this.iamArn,
-                        },
-                        Action: 's3:*',
-                        Resource: resource,
-                    },
-                ],
-            };
+            const command: DeleteBucketPolicyCommand =
+                new DeleteBucketPolicyCommand({
+                    Bucket: config.bucket,
+                });
 
-            command = new PutBucketPolicyCommand({
-                Bucket: config.bucket,
-                Policy: JSON.stringify(bucketPolicy),
-            });
+            await this.client.send<
+                DeleteBucketPolicyCommandInput,
+                DeleteBucketPolicyCommandOutput
+            >(command);
         }
-
-        await this.client.send<
-            PutBucketPolicyCommandInput,
-            PutBucketPolicyCommandOutput
-        >(command);
     }
 
     /**
@@ -1235,7 +1170,7 @@ export class AwsS3Service implements IAwsS3Service {
                 CORSConfiguration: {
                     CORSRules: [
                         {
-                            AllowedOrigins: this.corsAllowedOrigin,
+                            AllowedOrigins: ['*'],
                             AllowedMethods: ['GET', 'HEAD'],
                             AllowedHeaders: ['*'],
                             ExposeHeaders: [
@@ -1273,18 +1208,7 @@ export class AwsS3Service implements IAwsS3Service {
                                 'POST',
                                 'DELETE',
                             ],
-                            AllowedHeaders: [
-                                'Content-Type',
-                                'Content-Length',
-                                'Content-Disposition',
-                                'x-amz-date',
-                                'x-amz-content-sha256',
-                                'x-amz-security-token',
-                                'x-amz-meta-*',
-                                'x-amz-server-side-encryption',
-                                'Authorization',
-                                'Cache-Control',
-                            ],
+                            AllowedHeaders: ['*'],
                             ExposeHeaders: [
                                 'ETag',
                                 'Content-Length',
@@ -1294,8 +1218,9 @@ export class AwsS3Service implements IAwsS3Service {
                                 'Last-Modified',
                                 'x-amz-server-side-encryption',
                                 'x-amz-request-id',
+                                'x-amz-id-2',
                                 'x-amz-version-id',
-                                'x-amz-meta-*',
+                                'x-amz-delete-marker',
                             ],
                             MaxAgeSeconds: 3600,
                         },

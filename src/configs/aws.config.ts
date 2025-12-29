@@ -49,7 +49,7 @@ export default registerAs(
             region: process.env.AWS_S3_REGION,
             iam: {
                 key: process.env.AWS_S3_IAM_CREDENTIAL_KEY,
-                secret: process.env.AWS_IAM_S3_CREDENTIAL_SECRET,
+                secret: process.env.AWS_S3_IAM_CREDENTIAL_SECRET,
                 arn: process.env.AWS_S3_IAM_ARN,
             },
             config: {

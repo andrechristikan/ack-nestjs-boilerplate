@@ -44,6 +44,7 @@ export interface IAwsS3ConfigBucket {
     bucket: string;
     baseUrl: string;
     access: EnumAwsS3Accessibility;
+    arn: string;
     cdnUrl?: string;
 }
 

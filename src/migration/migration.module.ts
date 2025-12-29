@@ -11,7 +11,7 @@ import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
 import { MigrationTemplateEmailSeed } from '@migration/seeds/migration.template-email.seed';
 import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
 import { EmailModule } from '@modules/email/email.module';
-import { MigrationAwsS3PolicySeed } from '@migration/seeds/migration.aws-s3-policy.seed';
+import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
 import { AwsModule } from '@common/aws/aws.module';
 
 /**
@@ -29,7 +29,7 @@ import { AwsModule } from '@common/aws/aws.module';
         MigrationUserSeed,
         MigrationTemplateEmailSeed,
         MigrationTemplateTermPolicySeed,
-        MigrationAwsS3PolicySeed,
+        MigrationAwsS3ConfigSeed,
     ],
     exports: [],
 })
