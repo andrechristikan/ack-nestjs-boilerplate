@@ -42,6 +42,7 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     TermPolicy,
+    UserTermPolicy,
 } from '@prisma/client';
 
 @Injectable()
@@ -142,6 +143,7 @@ export class TermPolicyService implements ITermPolicyService {
     async userAccept(
         userId: string,
         { type }: TermPolicyAcceptRequestDto,
+        existingTermPolicies: UserTermPolicy,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         const policy =
@@ -170,6 +172,7 @@ export class TermPolicyService implements ITermPolicyService {
                 userId,
                 policy.id,
                 type,
+                existingTermPolicies,
                 requestLog
             );
 

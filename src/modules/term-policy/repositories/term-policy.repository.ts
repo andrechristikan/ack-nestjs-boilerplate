@@ -20,7 +20,7 @@ import {
     EnumTermPolicyType,
     EnumUserStatus,
     Prisma,
-    TermPolicy,
+    TermPolicy, UserTermPolicy,
 } from '@prisma/client';
 
 @Injectable()
@@ -142,13 +142,10 @@ export class TermPolicyRepository {
         userId: string,
         termPolicyId: string,
         type: EnumTermPolicyType,
+        userTermPolicies: UserTermPolicy,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<ITermPolicyUserAcceptance> {
         const acceptedAt = this.helperService.dateCreate();
-        const user = await this.databaseService.user.findUniqueOrThrow({
-            where: { id: userId },
-            select: { termPolicy: true },
-        });
         const [userAcceptance] = await this.databaseService.$transaction([
             this.databaseService.termPolicyUserAcceptance.create({
                 data: {
@@ -170,7 +167,7 @@ export class TermPolicyRepository {
                 },
                 data: {
                     termPolicy: {
-                        ...(user.termPolicy as Prisma.JsonObject),
+                        ...userTermPolicies,
                         [type]: true,
                     },
                     activityLogs: {
