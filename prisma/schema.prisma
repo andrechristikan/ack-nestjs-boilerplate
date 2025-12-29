@@ -267,14 +267,16 @@ model NotificationSetting {
 }
 
 model NotificationPushToken {
-  id        String                       @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String                       @db.ObjectId
-  sessionId String                       @db.ObjectId
-  provider  EnumNotificationPushProvider
-  token     String
-  userAgent Json?
-  isRevoked Boolean                      @default(false)
-  revokedAt DateTime?
+  id           String                       @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String                       @db.ObjectId
+  sessionId    String                       @db.ObjectId
+  provider     EnumNotificationPushProvider
+  token        String
+  userAgent    Json?
+  isRevoked    Boolean                      @default(false)
+  revokedAt    DateTime?
+  failureCount Int                          @default(0)
+  lastFailedAt DateTime?
 
   user    User?    @relation("UserNotificationPushTokens", fields: [userId], references: [id])
   session Session? @relation("SessionNotificationPushTokens", fields: [sessionId], references: [id])
@@ -289,6 +291,7 @@ model NotificationPushToken {
   @@index(fields: [userId])
   @@index(fields: [sessionId])
   @@index(fields: [userId, isRevoked])
+  @@index(fields: [isRevoked, failureCount, lastFailedAt])
   @@map("NotificationPushTokens")
 }
 

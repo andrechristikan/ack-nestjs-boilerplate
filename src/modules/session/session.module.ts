@@ -11,6 +11,7 @@ import KeyvRedis from '@keyv/redis';
 import { SessionCacheProvider } from '@modules/session/constants/session.constant';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import { NotificationModule } from '@modules/notification/notification.module';
 
 @Global()
 @Module({
@@ -28,6 +29,7 @@ import { RedisClientCachedProvider } from '@common/redis/constants/redis.constan
                 };
             },
         }),
+        NotificationModule,
     ],
     exports: [SessionUtil, SessionService, SessionRepository],
     providers: [

@@ -44,6 +44,9 @@ export class NotificationProcessor extends QueueProcessorBase {
                         job.data as NotificationPushJobDto
                     );
                     break;
+                case EnumNotificationProcess.cleanupInvalidTokens:
+                    await this.notificationPushService.processTokenCleanup();
+                    break;
                 default:
                     break;
             }

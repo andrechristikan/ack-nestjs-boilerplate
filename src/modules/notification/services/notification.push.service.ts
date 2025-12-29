@@ -122,9 +122,34 @@ export class NotificationPushService {
             invalidTokenCount: result.invalidTokens.length,
         });
 
-        // Handle invalid tokens - revoke them
-        if (result.invalidTokens.length > 0) {
-            await this.handleInvalidTokens(result.invalidTokens);
+        // Determine successful tokens (all tokens minus invalid ones)
+        const invalidSet = new Set(result.invalidTokens);
+        const successfulTokens = tokenStrings.filter(t => !invalidSet.has(t));
+
+        // Update token failure counts (awaited - critical data)
+        try {
+            // Reset failure count for successful tokens
+            if (successfulTokens.length > 0) {
+                await this.notificationPushTokenRepository.resetFailureCountBatch(
+                    successfulTokens
+                );
+            }
+
+            // Increment failure count for invalid tokens
+            // Don't immediately revoke - use lazy cleanup strategy
+            if (result.invalidTokens.length > 0) {
+                await this.notificationPushTokenRepository.incrementFailureCountBatch(
+                    result.invalidTokens
+                );
+
+                // Enqueue async cleanup job (fire-and-forget, low priority)
+                // This is just scheduling - not critical data storage
+                this.enqueueTokenCleanup().catch(err =>
+                    this.logger.error('Failed to enqueue token cleanup', err)
+                );
+            }
+        } catch (error: unknown) {
+            this.logger.error('Failed to update token failure counts', error);
         }
 
         // Update delivery status
@@ -140,17 +165,38 @@ export class NotificationPushService {
         }
     }
 
-    private async handleInvalidTokens(invalidTokens: string[]): Promise<void> {
-        for (const token of invalidTokens) {
-            try {
-                await this.notificationPushTokenRepository.revokeByToken(token);
-                this.logger.log({
-                    message: 'invalidTokenRevoked',
-                    token: token.substring(0, 20) + '...',
-                });
-            } catch (error: unknown) {
-                this.logger.error('Failed to revoke invalid token', error);
+    /**
+     * Enqueue async token cleanup job (fire-and-forget)
+     */
+    private async enqueueTokenCleanup(): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.cleanupInvalidTokens,
+            {},
+            {
+                jobId: `${EnumNotificationProcess.cleanupInvalidTokens}-${Date.now()}`,
+                priority: EnumQueuePriority.LOW,
+                delay: 60000, // Wait 1 minute before cleanup
             }
+        );
+    }
+
+    /**
+     * Process token cleanup job - revokes stale tokens
+     * Called by queue processor
+     */
+    async processTokenCleanup(): Promise<void> {
+        const revokedCount =
+            await this.notificationPushTokenRepository.revokeStaleTokens(
+                3, // Max failures before revoke
+                7 // Days since last failure
+            );
+
+        if (revokedCount > 0) {
+            this.logger.log({
+                message: 'staleTokensRevoked',
+                count: revokedCount,
+            });
         }
     }
 }
+
