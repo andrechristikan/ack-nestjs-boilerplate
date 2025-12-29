@@ -8,4 +8,5 @@ export enum EnumSendEmailProcess {
     emailVerified = 'emailVerified',
     mobileNumberVerified = 'mobileNumberVerified',
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
+    login = 'login',
 }

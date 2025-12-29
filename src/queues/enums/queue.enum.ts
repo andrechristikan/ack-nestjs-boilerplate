@@ -1,5 +1,6 @@
 export enum EnumQueue {
     EMAIL = 'email',
+    NOTIFICATION = 'notification',
 }
 
 export enum EnumQueuePriority {

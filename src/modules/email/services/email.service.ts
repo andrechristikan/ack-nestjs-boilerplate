@@ -4,6 +4,7 @@ import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
 import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
+import { EmailLoginDto } from '@modules/email/dtos/email.login.dto';
 import { EnumSendEmailProcess } from '@modules/email/enums/email.enum';
 import { IEmailService } from '@modules/email/interfaces/email.service.interface';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -187,6 +188,32 @@ export class EmailService implements IEmailService {
             },
             {
                 jobId: `${EnumSendEmailProcess.resetTwoFactorByAdmin}-${userId}`,
+                priority: EnumQueuePriority.MEDIUM,
+            }
+        );
+    }
+
+    async sendLoginNotification(
+        userId: string,
+        { email, username }: EmailSendDto,
+        { loginFrom, loginWith, ipAddress, loginAt }: EmailLoginDto
+    ): Promise<void> {
+        await this.emailQueue.add(
+            EnumSendEmailProcess.login,
+            {
+                send: { email, username },
+                data: {
+                    loginFrom,
+                    loginWith,
+                    ipAddress,
+                    loginAt,
+                },
+            },
+            {
+                deduplication: {
+                    id: `${EnumSendEmailProcess.login}-${userId}`,
+                    ttl: 1000,
+                },
                 priority: EnumQueuePriority.MEDIUM,
             }
         );

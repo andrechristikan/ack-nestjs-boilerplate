@@ -81,4 +81,30 @@ export class NotificationRepository {
             },
         });
     }
+
+    async createMany(
+        userIds: string[],
+        type: EnumNotificationType,
+        title: string,
+        body: string,
+        data?: Record<string, unknown>,
+        createdBy?: string
+    ): Promise<number> {
+        const payload = data
+            ? (this.databaseUtil.toPlainObject(data) as Prisma.InputJsonValue)
+            : null;
+
+        const result = await this.databaseService.notification.createMany({
+            data: userIds.map(userId => ({
+                userId,
+                type,
+                title,
+                body,
+                data: payload,
+                createdBy,
+            })),
+        });
+
+        return result.count;
+    }
 }

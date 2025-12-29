@@ -44,6 +44,7 @@ import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { EnumNotificationDelivery } from '@modules/notification/enums/notification.enum';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import {
     UserCheckEmailRequestDto,
@@ -1538,10 +1539,11 @@ export class UserService implements IUserService {
                 requestLog
             ),
             this.notificationService.createLoginNotification(
-                user.id,
+                user,
                 loginFrom,
                 loginWith,
-                requestLog
+                requestLog,
+                EnumNotificationDelivery.all
             ),
         ]);
 

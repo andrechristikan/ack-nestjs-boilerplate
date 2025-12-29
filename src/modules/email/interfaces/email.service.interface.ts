@@ -4,6 +4,7 @@ import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
 import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
+import { EmailLoginDto } from '@modules/email/dtos/email.login.dto';
 
 export interface IEmailService {
     sendChangePassword(
@@ -52,5 +53,10 @@ export interface IEmailService {
     sendResetTwoFactorByAdmin(
         userId: string,
         { email, username }: EmailSendDto
+    ): Promise<void>;
+    sendLoginNotification(
+        userId: string,
+        { email, username }: EmailSendDto,
+        { loginFrom, loginWith, ipAddress, loginAt }: EmailLoginDto
     ): Promise<void>;
 }

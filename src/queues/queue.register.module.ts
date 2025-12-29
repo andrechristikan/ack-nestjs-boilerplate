@@ -9,20 +9,33 @@ import {
 import { EnumQueue } from 'src/queues/enums/queue.enum';
 
 /**
- * Global module for registering Bull queues with default configurations
- * Provides dynamic module registration for email queuing system
+ * Global module for registering Bull queues with default configurations.
+ * Provides dynamic module registration for background job processing.
  */
 @Global()
 @Module({})
 export class QueueRegisterModule {
     /**
-     * Creates and configures email queue with default job options
-     * @returns {DynamicModule} Dynamic module with email queue configuration
+     * Creates and configures queues with default job options.
+     * @returns {DynamicModule} Dynamic module with queue configurations.
      */
     static forRoot(): DynamicModule {
         const queues = [
             BullModule.registerQueue({
                 name: EnumQueue.EMAIL,
+                configKey: QueueConfigKey,
+                defaultJobOptions: {
+                    attempts: 3,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 5000,
+                    },
+                    removeOnComplete: 20,
+                    removeOnFail: 50,
+                },
+            }),
+            BullModule.registerQueue({
+                name: EnumQueue.NOTIFICATION,
                 configKey: QueueConfigKey,
                 defaultJobOptions: {
                     attempts: 3,

@@ -20,9 +20,9 @@ model ApiKey {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   @@unique(fields: [key])
   @@index(fields: [name, isActive, type, createdAt])
@@ -39,9 +39,9 @@ model Role {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   users User[] @relation("UserRole")
 
@@ -65,9 +65,9 @@ model Country {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   @@unique(fields: [alpha2Code])
   @@unique(fields: [alpha3Code])
@@ -87,9 +87,9 @@ model UserMobileNumber {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   country       Country?       @relation("UserMobileNumberCountry", fields: [countryId], references: [id])
   user          User?          @relation("UserMobileNumberUser", fields: [userId], references: [id])
@@ -103,23 +103,23 @@ model UserMobileNumber {
 }
 
 model User {
-  id              String              @id @default(auto()) @map("_id") @db.ObjectId
+  id              String             @id @default(auto()) @map("_id") @db.ObjectId
   name            String?
   username        String
-  isVerified      Boolean             @default(false)
+  isVerified      Boolean            @default(false)
   verifiedAt      DateTime?
   email           String
-  roleId          String              @db.ObjectId
+  roleId          String             @db.ObjectId
   password        String?
   passwordExpired DateTime?
   passwordCreated DateTime?
   passwordAttempt Int?
-  signUpAt        DateTime            @default(now())
+  signUpAt        DateTime           @default(now())
   signUpFrom      EnumUserSignUpFrom
   signUpWith      EnumUserSignUpWith
-  status          EnumUserStatus      @default(active)
+  status          EnumUserStatus     @default(active)
   gender          EnumUserGender?
-  countryId       String              @db.ObjectId
+  countryId       String             @db.ObjectId
   lastLoginAt     DateTime?
   lastIPAddress   String?
   lastLoginFrom   EnumUserLoginFrom?
@@ -129,23 +129,25 @@ model User {
 
   // timestamps fields
   createdAt DateTime  @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?   @db.ObjectId
   updatedAt DateTime  @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?   @db.ObjectId
   deletedAt DateTime?
-  deletedBy String? @db.ObjectId
+  deletedBy String?   @db.ObjectId
 
-  mobileNumbers     UserMobileNumber[]         @relation("UserMobileNumberUser")
-  verifications     Verification[]             @relation("UserVerifications")
-  passwordHistories PasswordHistory[]          @relation("UserPasswordHistories")
-  activityLogs      ActivityLog[]              @relation("UserActivityLogs")
-  notificationSettings NotificationSetting[]   @relation("UserNotificationSettings")
-  role              Role?                      @relation("UserRole", fields: [roleId], references: [id])
-  country           Country?                   @relation("UserCountry", fields: [countryId], references: [id])
-  sessions          Session[]                  @relation("UserSessions")
-  acceptances       TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
-  forgotPasswords   ForgotPassword[]           @relation("UserForgotPassword")
-  twoFactor         TwoFactor?                 @relation("UserTwoFactor")
+  mobileNumbers          UserMobileNumber[]         @relation("UserMobileNumberUser")
+  verifications          Verification[]             @relation("UserVerifications")
+  passwordHistories      PasswordHistory[]          @relation("UserPasswordHistories")
+  activityLogs           ActivityLog[]              @relation("UserActivityLogs")
+  notifications          Notification[]             @relation("UserNotifications")
+  notificationSettings   NotificationSetting[]      @relation("UserNotificationSettings")
+  notificationPushTokens NotificationPushToken[]    @relation("UserNotificationPushTokens")
+  role                   Role?                      @relation("UserRole", fields: [roleId], references: [id])
+  country                Country?                   @relation("UserCountry", fields: [countryId], references: [id])
+  sessions               Session[]                  @relation("UserSessions")
+  acceptances            TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
+  forgotPasswords        ForgotPassword[]           @relation("UserForgotPassword")
+  twoFactor              TwoFactor?                 @relation("UserTwoFactor")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -170,9 +172,9 @@ model Verification {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   user         User?             @relation("UserVerifications", fields: [userId], references: [id])
   mobileNumber UserMobileNumber? @relation("UserMobileNumberVerification", fields: [mobileNumberId], references: [id])
@@ -194,7 +196,7 @@ model PasswordHistory {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
 }
 
 model ActivityLog {
@@ -209,7 +211,7 @@ model ActivityLog {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
 
   @@index(fields: [userId])
   @@index(fields: [createdAt])
@@ -217,25 +219,28 @@ model ActivityLog {
 }
 
 model Notification {
-  id     String               @id @default(auto()) @map("_id") @db.ObjectId
-  userId String               @db.ObjectId
-  type   EnumNotificationType
-  title  String
-  body   String
-  data   Json?
-  isRead Boolean  @default(false)
-  readAt DateTime?
+  id       String                   @id @default(auto()) @map("_id") @db.ObjectId
+  userId   String                   @db.ObjectId
+  type     EnumNotificationType
+  priority EnumNotificationPriority @default(normal)
+  title    String
+  body     String
+  data     Json?
+  isRead   Boolean                  @default(false)
+  readAt   DateTime?
 
-  user User? @relation("UserNotifications", fields: [userId], references: [id])
+  user       User?                  @relation("UserNotifications", fields: [userId], references: [id])
+  deliveries NotificationDelivery[] @relation("NotificationDeliveries")
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   @@index(fields: [userId])
   @@index(fields: [userId, isRead, createdAt])
+  @@index(fields: [userId, priority, createdAt])
   @@index(fields: [createdAt])
   @@map("Notifications")
 }
@@ -245,20 +250,110 @@ model NotificationSetting {
   userId  String                      @db.ObjectId
   channel EnumNotificationChannel
   type    EnumNotificationSettingType
-  enabled Boolean @default(true)
+  enabled Boolean                     @default(true)
 
   user User? @relation("UserNotificationSettings", fields: [userId], references: [id])
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   @@unique(fields: [userId, channel, type])
   @@index(fields: [userId])
   @@index(fields: [userId, channel])
   @@map("NotificationSettings")
+}
+
+model NotificationPushToken {
+  id        String                       @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String                       @db.ObjectId
+  sessionId String                       @db.ObjectId
+  provider  EnumNotificationPushProvider
+  token     String
+  userAgent Json?
+  isRevoked Boolean                      @default(false)
+  revokedAt DateTime?
+
+  user    User?    @relation("UserNotificationPushTokens", fields: [userId], references: [id])
+  session Session? @relation("SessionNotificationPushTokens", fields: [sessionId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@unique(fields: [provider, token])
+  @@index(fields: [userId])
+  @@index(fields: [sessionId])
+  @@index(fields: [userId, isRevoked])
+  @@map("NotificationPushTokens")
+}
+
+model NotificationDelivery {
+  id             String                  @id @default(auto()) @map("_id") @db.ObjectId
+  notificationId String                  @db.ObjectId
+  channel        EnumNotificationChannel
+  status         EnumDeliveryStatus      @default(pending)
+  attemptCount   Int                     @default(0)
+  lastAttemptAt  DateTime?
+  deliveredAt    DateTime?
+  failedReason   String?
+
+  notification Notification @relation("NotificationDeliveries", fields: [notificationId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index(fields: [notificationId])
+  @@index(fields: [status])
+  @@index(fields: [createdAt])
+  @@map("NotificationDeliveries")
+}
+
+model NotificationTemplate {
+  id       String               @id @default(auto()) @map("_id") @db.ObjectId
+  key      String
+  type     EnumNotificationType
+  locale   String               @default("en")
+  title    String
+  body     String
+  isActive Boolean              @default(true)
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@unique(fields: [key, locale])
+  @@index(fields: [type, locale, isActive])
+  @@map("NotificationTemplates")
+}
+
+model OutboxEvent {
+  id           String              @id @default(auto()) @map("_id") @db.ObjectId
+  type         EnumOutboxEventType
+  status       EnumOutboxStatus    @default(pending)
+  payload      Json
+  attempts     Int                 @default(0)
+  nextRunAt    DateTime?
+  processedAt  DateTime?
+  errorMessage String?
+  errorStack   String?
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@index(fields: [status, nextRunAt, createdAt])
+  @@index(fields: [createdAt])
+  @@map("OutboxEvents")
 }
 
 model Session {
@@ -271,13 +366,14 @@ model Session {
   revokedAt DateTime?
   isRevoked Boolean   @default(false)
 
-  user User? @relation("UserSessions", fields: [userId], references: [id])
+  user                   User?                   @relation("UserSessions", fields: [userId], references: [id])
+  notificationPushTokens NotificationPushToken[] @relation("SessionNotificationPushTokens")
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   @@index(fields: [userId])
   @@index(fields: [userId, isRevoked, expiredAt])
@@ -287,22 +383,22 @@ model Session {
 }
 
 model TwoFactor {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String   @db.ObjectId
-  secret         String?
-  iv             String?
-  backupCodes    String[] @default([])
-  enabled        Boolean  @default(false)
-  requiredSetup  Boolean  @default(false)
-  confirmedAt    DateTime?
-  lastUsedAt     DateTime?
-  attempt       Int      @default(0)
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  secret        String?
+  iv            String?
+  backupCodes   String[]  @default([])
+  enabled       Boolean   @default(false)
+  requiredSetup Boolean   @default(false)
+  confirmedAt   DateTime?
+  lastUsedAt    DateTime?
+  attempt       Int       @default(0)
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   user User? @relation("UserTwoFactor", fields: [userId], references: [id])
 
@@ -322,9 +418,9 @@ model TermPolicy {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   userAcceptances TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceTermPolicy")
 
@@ -347,7 +443,7 @@ model TermPolicyUserAcceptance {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
 
   @@unique(fields: [userId, termPolicyId])
   @@index(fields: [userId])
@@ -366,9 +462,9 @@ model FeatureFlag {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   @@unique(fields: [key])
   @@index(fields: [key, createdAt])
@@ -388,9 +484,9 @@ model ForgotPassword {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   user User? @relation("UserForgotPassword", fields: [userId], references: [id])
 
@@ -530,6 +626,27 @@ enum EnumActivityLogAction {
 
 enum EnumNotificationType {
   login
+  security_alert
+  password_changed
+  marketing
+  transactional
+  system
+  announcement
+}
+
+enum EnumNotificationPriority {
+  low
+  normal
+  high
+  critical
+}
+
+enum EnumDeliveryStatus {
+  pending
+  sent
+  delivered
+  failed
+  bounced
 }
 
 enum EnumNotificationChannel {
@@ -537,7 +654,23 @@ enum EnumNotificationChannel {
   push
 }
 
+enum EnumNotificationPushProvider {
+  fcm
+  apns
+}
+
 enum EnumNotificationSettingType {
   login
   newsletter
+}
+
+enum EnumOutboxEventType {
+  notificationFanout
+}
+
+enum EnumOutboxStatus {
+  pending
+  processing
+  processed
+  failed
 }

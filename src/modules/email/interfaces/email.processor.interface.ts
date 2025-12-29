@@ -5,6 +5,7 @@ import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
 import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
+import { EmailLoginDto } from '@modules/email/dtos/email.login.dto';
 
 export interface IEmailProcessor {
     processChangePassword(data: EmailSendDto): Promise<boolean>;
@@ -32,5 +33,9 @@ export interface IEmailProcessor {
     processMobileNumberVerified(
         data: EmailSendDto,
         mobileNumberVerified: EmailMobileNumberVerifiedDto
+    ): Promise<boolean>;
+    processLoginNotification(
+        data: EmailSendDto,
+        login: EmailLoginDto
     ): Promise<boolean>;
 }
