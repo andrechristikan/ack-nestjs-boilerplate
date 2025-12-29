@@ -139,6 +139,7 @@ model User {
   verifications     Verification[]             @relation("UserVerifications")
   passwordHistories PasswordHistory[]          @relation("UserPasswordHistories")
   activityLogs      ActivityLog[]              @relation("UserActivityLogs")
+  notificationSettings NotificationSetting[]   @relation("UserNotificationSettings")
   role              Role?                      @relation("UserRole", fields: [roleId], references: [id])
   country           Country?                   @relation("UserCountry", fields: [countryId], references: [id])
   sessions          Session[]                  @relation("UserSessions")
@@ -213,6 +214,51 @@ model ActivityLog {
   @@index(fields: [userId])
   @@index(fields: [createdAt])
   @@map("ActivityLogs")
+}
+
+model Notification {
+  id     String               @id @default(auto()) @map("_id") @db.ObjectId
+  userId String               @db.ObjectId
+  type   EnumNotificationType
+  title  String
+  body   String
+  data   Json?
+  isRead Boolean  @default(false)
+  readAt DateTime?
+
+  user User? @relation("UserNotifications", fields: [userId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String? @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String? @db.ObjectId
+
+  @@index(fields: [userId])
+  @@index(fields: [userId, isRead, createdAt])
+  @@index(fields: [createdAt])
+  @@map("Notifications")
+}
+
+model NotificationSetting {
+  id      String                      @id @default(auto()) @map("_id") @db.ObjectId
+  userId  String                      @db.ObjectId
+  channel EnumNotificationChannel
+  type    EnumNotificationSettingType
+  enabled Boolean @default(true)
+
+  user User? @relation("UserNotificationSettings", fields: [userId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String? @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String? @db.ObjectId
+
+  @@unique(fields: [userId, channel, type])
+  @@index(fields: [userId])
+  @@index(fields: [userId, channel])
+  @@map("NotificationSettings")
 }
 
 model Session {
@@ -429,6 +475,7 @@ enum EnumActivityLogAction {
   userBlocked
   userUpdateStatus
   userUpdateProfile
+  userUpdateNotificationSetting
   userUpdatePhotoProfile
   userChangePassword
   userDeleteSelf
@@ -479,4 +526,18 @@ enum EnumActivityLogAction {
   adminUserUpdatePassword
   adminUserResetTwoFactor
   adminUserImport
+}
+
+enum EnumNotificationType {
+  login
+}
+
+enum EnumNotificationChannel {
+  email
+  push
+}
+
+enum EnumNotificationSettingType {
+  login
+  newsletter
 }

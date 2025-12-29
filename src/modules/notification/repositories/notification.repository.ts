@@ -1,0 +1,84 @@
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import { PaginationService } from '@common/pagination/services/pagination.service';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { INotification } from '@modules/notification/interfaces/notification.interface';
+import { Injectable } from '@nestjs/common';
+import {
+    EnumNotificationType,
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
+    Notification,
+    Prisma,
+} from '@prisma/client';
+
+@Injectable()
+export class NotificationRepository {
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly paginationService: PaginationService
+    ) {}
+
+    async findWithPaginationOffset(
+        userId: string,
+        { where, ...params }: IPaginationQueryOffsetParams
+    ): Promise<IResponsePagingReturn<INotification>> {
+        return this.paginationService.offset<INotification>(
+            this.databaseService.notification,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    userId,
+                },
+            }
+        );
+    }
+
+    async findWithPaginationCursor(
+        userId: string,
+        { where, ...params }: IPaginationQueryCursorParams
+    ): Promise<IResponsePagingReturn<INotification>> {
+        return this.paginationService.cursor<INotification>(
+            this.databaseService.notification,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    userId,
+                },
+            }
+        );
+    }
+
+    async createLogin(
+        userId: string,
+        loginFrom: EnumUserLoginFrom,
+        loginWith: EnumUserLoginWith,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<Notification> {
+        const data = this.databaseUtil.toPlainObject({
+            loginFrom,
+            loginWith,
+            ipAddress,
+            userAgent,
+        });
+
+        return this.databaseService.notification.create({
+            data: {
+                userId,
+                type: EnumNotificationType.login,
+                title: 'Login',
+                body: `Login from ${loginFrom} via ${loginWith}`,
+                data: data as Prisma.InputJsonValue,
+                createdBy: userId,
+            },
+        });
+    }
+}
