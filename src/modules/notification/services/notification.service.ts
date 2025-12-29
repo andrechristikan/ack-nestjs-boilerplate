@@ -173,4 +173,37 @@ export class NotificationService implements INotificationService {
             EnumNotificationSettingType.login
         );
     }
+
+    /**
+     * Revoke push token for current session
+     */
+    async revokePushToken(
+        userId: string,
+        sessionId: string
+    ): Promise<IResponseReturn<void>> {
+        await this.notificationPushTokenRepository.revokeBySessionId(
+            sessionId,
+            userId
+        );
+        return;
+    }
+
+    /**
+     * Mark a specific notification as read
+     */
+    async markAsRead(
+        userId: string,
+        notificationId: string
+    ): Promise<IResponseReturn<void>> {
+        await this.notificationRepository.markAsRead(userId, notificationId);
+        return;
+    }
+
+    /**
+     * Mark all notifications as read for user
+     */
+    async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
+        await this.notificationRepository.markAllAsRead(userId);
+        return;
+    }
 }

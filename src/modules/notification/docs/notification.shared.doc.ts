@@ -12,10 +12,13 @@ import { NotificationRegisterPushTokenRequestDto } from '@modules/notification/d
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
+/**
+ * Documentation for listing user notifications
+ */
 export function NotificationSharedListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'get all notifications',
+            summary: 'Get all notifications for current user',
         }),
         DocAuth({
             xApiKey: true,
@@ -29,10 +32,13 @@ export function NotificationSharedListDoc(): MethodDecorator {
     );
 }
 
+/**
+ * Documentation for registering push notification token
+ */
 export function NotificationSharedRegisterPushTokenDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'register push token',
+            summary: 'Register push notification token for current session',
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
@@ -46,3 +52,55 @@ export function NotificationSharedRegisterPushTokenDoc(): MethodDecorator {
         DocResponse('notification.registerPushToken')
     );
 }
+
+/**
+ * Documentation for revoking push notification token
+ */
+export function NotificationSharedRevokePushTokenDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'Revoke push notification token for current session',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ termPolicy: true }),
+        DocResponse('notification.revokePushToken')
+    );
+}
+
+/**
+ * Documentation for marking notification as read
+ */
+export function NotificationSharedMarkAsReadDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'Mark a notification as read',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ termPolicy: true }),
+        DocResponse('notification.markAsRead')
+    );
+}
+
+/**
+ * Documentation for marking all notifications as read
+ */
+export function NotificationSharedMarkAllAsReadDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'Mark all notifications as read',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ termPolicy: true }),
+        DocResponse('notification.markAllAsRead')
+    );
+}
+

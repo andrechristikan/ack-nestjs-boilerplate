@@ -12,7 +12,10 @@ import {
 } from '@common/response/interfaces/response.interface';
 import {
     NotificationSharedListDoc,
+    NotificationSharedMarkAllAsReadDoc,
+    NotificationSharedMarkAsReadDoc,
     NotificationSharedRegisterPushTokenDoc,
+    NotificationSharedRevokePushTokenDoc,
 } from '@modules/notification/docs/notification.shared.doc';
 import { NotificationRegisterPushTokenRequestDto } from '@modules/notification/dtos/request/notification.push-token.request.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
@@ -24,7 +27,17 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Patch,
+    Post,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.shared.user.notification')
@@ -70,4 +83,48 @@ export class NotificationSharedController {
             userAgent
         );
     }
+
+    @NotificationSharedRevokePushTokenDoc()
+    @Response('notification.revokePushToken')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Delete('/push-token/revoke')
+    async revokePushToken(
+        @AuthJwtPayload('userId') userId: string,
+        @AuthJwtPayload('sessionId') sessionId: string
+    ): Promise<IResponseReturn<void>> {
+        return this.notificationService.revokePushToken(userId, sessionId);
+    }
+
+    @NotificationSharedMarkAsReadDoc()
+    @Response('notification.markAsRead')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/:notificationId/read')
+    async markAsRead(
+        @AuthJwtPayload('userId') userId: string,
+        @Param('notificationId') notificationId: string
+    ): Promise<IResponseReturn<void>> {
+        return this.notificationService.markAsRead(userId, notificationId);
+    }
+
+    @NotificationSharedMarkAllAsReadDoc()
+    @Response('notification.markAllAsRead')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/read-all')
+    async markAllAsRead(
+        @AuthJwtPayload('userId') userId: string
+    ): Promise<IResponseReturn<void>> {
+        return this.notificationService.markAllAsRead(userId);
+    }
 }
+

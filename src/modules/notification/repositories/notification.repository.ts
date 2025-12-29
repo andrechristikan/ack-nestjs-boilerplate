@@ -107,4 +107,40 @@ export class NotificationRepository {
 
         return result.count;
     }
+
+    /**
+     * Mark a specific notification as read
+     */
+    async markAsRead(userId: string, notificationId: string): Promise<void> {
+        await this.databaseService.notification.updateMany({
+            where: {
+                id: notificationId,
+                userId,
+                isRead: false,
+            },
+            data: {
+                isRead: true,
+                readAt: new Date(),
+            },
+        });
+    }
+
+    /**
+     * Mark all notifications as read for user
+     */
+    async markAllAsRead(userId: string): Promise<number> {
+        const result = await this.databaseService.notification.updateMany({
+            where: {
+                userId,
+                isRead: false,
+            },
+            data: {
+                isRead: true,
+                readAt: new Date(),
+            },
+        });
+
+        return result.count;
+    }
 }
+
