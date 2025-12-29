@@ -17,9 +17,8 @@ export class MigrationAwsS3PolicySeed
 {
     private readonly logger = new Logger(MigrationAwsS3PolicySeed.name);
 
-    private readonly termPolicyContentPublicPath: string;
-    private readonly termPolicyUploadContentPath: string;
-    private readonly userUploadPhotoProfilePath: string;
+    private readonly publicPaths: string[] = [];
+    private readonly privatePaths: string[] = [];
 
     constructor(
         private readonly awsS3Service: AwsS3Service,
@@ -27,15 +26,14 @@ export class MigrationAwsS3PolicySeed
     ) {
         super();
 
-        this.termPolicyContentPublicPath = this.configService.get<string>(
-            'termPolicy.contentPublicPath'
-        );
-        this.termPolicyUploadContentPath = this.configService.get<string>(
-            'termPolicy.uploadContentPath'
-        );
-        this.userUploadPhotoProfilePath = this.configService.get<string>(
-            'user.uploadPhotoProfilePath'
-        );
+        this.publicPaths = [
+            this.configService.get<string>('termPolicy.contentPublicPath'),
+            this.configService.get<string>('user.uploadPhotoProfilePath'),
+        ];
+
+        this.privatePaths = [
+            this.configService.get<string>('termPolicy.uploadContentPath'),
+        ];
     }
 
     async seed(): Promise<void> {
@@ -43,52 +41,48 @@ export class MigrationAwsS3PolicySeed
 
         this.logger.log('Setting policies for public bucket...');
 
-        await Promise.all([
-            this.awsS3Service.settingBlockPublicAccessConfiguration({
-                access: EnumAwsS3Accessibility.public,
-            }),
-            this.awsS3Service.settingBucketExpiredObjectLifecycle({
-                access: EnumAwsS3Accessibility.public,
-            }),
-            this.awsS3Service.settingBucketPolicy(
-                [
-                    this.termPolicyContentPublicPath,
-                    this.userUploadPhotoProfilePath,
-                ],
-                {
+        try {
+            await Promise.all([
+                this.awsS3Service.settingBlockPublicAccessConfiguration({
                     access: EnumAwsS3Accessibility.public,
-                }
-            ),
-            this.awsS3Service.settingCorsConfiguration({
-                access: EnumAwsS3Accessibility.public,
-            }),
-            this.awsS3Service.settingDisableAclConfiguration({
-                access: EnumAwsS3Accessibility.public,
-            }),
-        ]);
+                }),
+                this.awsS3Service.settingBucketExpiredObjectLifecycle({
+                    access: EnumAwsS3Accessibility.public,
+                }),
+                this.awsS3Service.settingBucketPolicy(this.publicPaths, {
+                    access: EnumAwsS3Accessibility.public,
+                }),
+                this.awsS3Service.settingCorsConfiguration({
+                    access: EnumAwsS3Accessibility.public,
+                }),
+                this.awsS3Service.settingDisableAclConfiguration({
+                    access: EnumAwsS3Accessibility.public,
+                }),
+            ]);
 
-        this.logger.log('Setting policies for private bucket...');
+            this.logger.log('Setting policies for private bucket...');
 
-        await Promise.all([
-            this.awsS3Service.settingBlockPublicAccessConfiguration({
-                access: EnumAwsS3Accessibility.private,
-            }),
-            this.awsS3Service.settingBucketExpiredObjectLifecycle({
-                access: EnumAwsS3Accessibility.private,
-            }),
-            this.awsS3Service.settingBucketPolicy(
-                [this.termPolicyUploadContentPath],
-                {
+            await Promise.all([
+                this.awsS3Service.settingBlockPublicAccessConfiguration({
                     access: EnumAwsS3Accessibility.private,
-                }
-            ),
-            this.awsS3Service.settingCorsConfiguration({
-                access: EnumAwsS3Accessibility.private,
-            }),
-            this.awsS3Service.settingDisableAclConfiguration({
-                access: EnumAwsS3Accessibility.private,
-            }),
-        ]);
+                }),
+                this.awsS3Service.settingBucketExpiredObjectLifecycle({
+                    access: EnumAwsS3Accessibility.private,
+                }),
+                this.awsS3Service.settingBucketPolicy(this.privatePaths, {
+                    access: EnumAwsS3Accessibility.private,
+                }),
+                this.awsS3Service.settingCorsConfiguration({
+                    access: EnumAwsS3Accessibility.private,
+                }),
+                this.awsS3Service.settingDisableAclConfiguration({
+                    access: EnumAwsS3Accessibility.private,
+                }),
+            ]);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error setting AWS S3 policies');
+            throw error;
+        }
 
         this.logger.log('Finished seeding AWS S3 Policies.');
 

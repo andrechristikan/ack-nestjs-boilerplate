@@ -38,23 +38,28 @@ export class MigrationRoleSeed
         this.logger.log('Seeding Roles...');
         this.logger.log(`Found ${this.roles.length} Roles to seed.`);
 
-        await this.databaseService.$transaction(
-            this.roles.map(role =>
-                this.databaseService.role.upsert({
-                    where: {
-                        name: role.name.toLowerCase(),
-                    },
-                    create: {
-                        ...role,
-                        name: role.name.toLowerCase(),
-                        abilities: this.databaseUtil.toPlainArray(
-                            role.abilities
-                        ),
-                    },
-                    update: {},
-                })
-            )
-        );
+        try {
+            await this.databaseService.$transaction(
+                this.roles.map(role =>
+                    this.databaseService.role.upsert({
+                        where: {
+                            name: role.name.toLowerCase(),
+                        },
+                        create: {
+                            ...role,
+                            name: role.name.toLowerCase(),
+                            abilities: this.databaseUtil.toPlainArray(
+                                role.abilities
+                            ),
+                        },
+                        update: {},
+                    })
+                )
+            );
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error seeding roles');
+            throw error;
+        }
 
         this.logger.log('Roles seeded successfully.');
 
@@ -64,7 +69,12 @@ export class MigrationRoleSeed
     async remove(): Promise<void> {
         this.logger.log('Removing back Roles...');
 
-        await this.databaseService.role.deleteMany({});
+        try {
+            await this.databaseService.role.deleteMany({});
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error removing roles');
+            throw error;
+        }
 
         this.logger.log('Roles removed successfully.');
 

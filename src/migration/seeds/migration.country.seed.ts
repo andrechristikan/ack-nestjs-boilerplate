@@ -36,17 +36,22 @@ export class MigrationCountrySeed
         this.logger.log('Seeding Countries...');
         this.logger.log(`Found ${this.countries.length} Countries to seed.`);
 
-        await this.databaseService.$transaction(
-            this.countries.map(country =>
-                this.databaseService.country.upsert({
-                    where: {
-                        alpha2Code: country.alpha2Code,
-                    },
-                    create: country,
-                    update: {},
-                })
-            )
-        );
+        try {
+            await this.databaseService.$transaction(
+                this.countries.map(country =>
+                    this.databaseService.country.upsert({
+                        where: {
+                            alpha2Code: country.alpha2Code,
+                        },
+                        create: country,
+                        update: {},
+                    })
+                )
+            );
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error seeding countries');
+            throw error;
+        }
 
         this.logger.log('Countries seeded successfully.');
 
@@ -56,9 +61,14 @@ export class MigrationCountrySeed
     async remove(): Promise<void> {
         this.logger.log('Removing back Countries...');
 
-        await this.databaseService.country.deleteMany({
-            where: {},
-        });
+        try {
+            await this.databaseService.country.deleteMany({
+                where: {},
+            });
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error removing countries');
+            throw error;
+        }
 
         this.logger.log('Countries removed successfully.');
 

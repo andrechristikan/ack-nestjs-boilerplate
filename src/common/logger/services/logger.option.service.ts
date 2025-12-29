@@ -4,6 +4,7 @@ import { Params } from 'nestjs-pino';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
+    LoggerAutoContext,
     LoggerExcludedRoutes,
     LoggerRequestIdHeaders,
     LoggerSensitiveFields,
@@ -13,12 +14,20 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { Response } from 'express';
 import { LoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
 import stripAnsi from 'strip-ansi';
+import { EnumLoggerSeverity } from '@common/logger/enums/logger.enum';
+import { Options } from 'pino-http';
 
 /**
  * Service responsible for configuring logger options for the application.
  *
- * Creates Pino logger configurations with file rotation, sensitive data redaction,
- * and custom serializers for request/response logging.
+ * Provides Pino logger configuration with file rotation, sensitive data redaction,
+ * custom serializers, and auto-logging controls. All logger options are derived from
+ * application configuration and environment variables.
+ *
+ * @remarks
+ * - Follows project conventions for sensitive data redaction and request/response serialization.
+ * - Uses rotating-file-stream for file logging if enabled.
+ * - All configuration values are injected via ConfigService.
  */
 @Injectable()
 export class LoggerOptionService {
@@ -37,6 +46,12 @@ export class LoggerOptionService {
     private readonly sensitiveFields: Set<string>;
     private readonly sensitivePaths: string[];
 
+    /**
+     * Constructs LoggerOptionService with injected configuration and helper services.
+     *
+     * @param {ConfigService} configService - Service for accessing application configuration
+     * @param {HelperService} helperService - Helper utilities for date, hostname, etc.
+     */
     constructor(
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
@@ -64,28 +79,24 @@ export class LoggerOptionService {
     }
 
     /**
-     * Creates and configures Pino logger options based on application configuration.
+     * Assembles and returns the full Pino logger configuration for the application.
+     *
+     * @returns {Promise<Params>} Promise resolving to Pino logger configuration parameters
      */
     async createOptions(): Promise<Params> {
-        const rfs = await import('rotating-file-stream');
-
-        const transports = this.buildTransports();
-
         return {
             pinoHttp: {
                 genReqId: this.getReqId,
                 formatters: {
                     log: this.createLogFormatter(),
                 },
+                mixin: this.createMixin(),
                 messageKey: 'msg',
                 timestamp: false,
                 wrapSerializers: false,
                 base: null,
-
-                transport:
-                    transports.length > 0 ? { targets: transports } : undefined,
+                transport: this.buildTransports(),
                 level: this.enable ? this.level : 'silent',
-                stream: this.createFileStream(rfs),
                 redact: this.createRedactionConfig(),
                 serializers: this.createSerializers(),
                 autoLogging: this.createAutoLoggingConfig(),
@@ -94,9 +105,9 @@ export class LoggerOptionService {
     }
 
     /**
-     * Generates or extracts a request ID from HTTP headers or request object.
+     * Extracts or generates a unique request ID from the HTTP request headers or object.
      *
-     * @param {IRequestApp} request - The HTTP request object to extract ID from
+     * @param {IRequestApp} request - The HTTP request object
      * @returns {string} Unique request identifier
      */
     private getReqId(request: IRequestApp): string {
@@ -116,48 +127,51 @@ export class LoggerOptionService {
     }
 
     /**
-     * Builds transport configurations for console and file logging.
+     * Builds the array of transport targets for Pino logger (console/file).
      *
-     * @returns {Array<{target: string; options: Record<string, unknown>}>} Array of transport configurations
+     * @returns {Options['transport']} Array of transport configurations or undefined
      */
-    private buildTransports(): Array<{
-        target: string;
-        options: Record<string, unknown>;
-    }> {
-        const transports = [];
+    private buildTransports(): Options['transport'] {
+        const transport = {
+            targets: [],
+        };
 
         if (this.prettier) {
-            transports.push({
+            transport.targets.push({
                 target: 'pino-pretty',
+                level: this.level,
                 options: {
                     colorize: true,
                     levelFirst: true,
                     translateTime: 'SYS:standard',
                     messageFormat: '[{context}] {msg}',
-                    ignore: 'pid,hostname,context',
+                    ignore: 'context',
                     singleLine: false,
                 },
             });
         }
 
         if (this.intoFile) {
-            transports.push({
-                target: 'pino/file',
+            transport.targets.push({
+                target: 'pino-roll',
+                level: this.level,
                 options: {
-                    destination: `.${this.filePath}/api.log`,
+                    file: `.${this.filePath}/api.log`,
+                    frequency: 'daily',
+                    size: '10m',
                     mkdir: true,
                 },
             });
         }
 
-        return transports;
+        return transport.targets.length > 0 ? transport : undefined;
     }
 
     /**
-     * Sanitizes log messages by removing ANSI escape codes and formatting.
+     * Removes ANSI escape codes and normalizes whitespace in log messages.
      *
      * @param {unknown} message - The message to sanitize
-     * @returns {string | unknown} Sanitized message or original if not a string
+     * @returns {string | unknown} Sanitized string or original value if not a string
      */
     private sanitizeMessage(message: unknown): string | unknown {
         if (typeof message === 'string') {
@@ -172,68 +186,70 @@ export class LoggerOptionService {
     }
 
     /**
-     * Creates a log formatter function that adds timestamp and application metadata.
+     * Returns a log formatter function that adds timestamp, service info, and debug info to log entries.
      *
-     * @returns {(object: Record<string, unknown>) => Record<string, unknown>} Log formatter function
+     * @returns {(obj: Record<string, unknown>) => Record<string, unknown>} Log formatter function for Pino
      */
     private createLogFormatter(): (
-        object: Record<string, unknown>
+        obj: Record<string, unknown>
     ) => Record<string, unknown> {
         return (obj: Record<string, unknown>) => {
+            const pid = process.pid;
+            const hostname = this.helperService.getHostname();
             const today = this.helperService.dateCreate();
 
-            const { message, msg, res, req, err, ...other } = obj;
+            const {
+                time: _time, // ignored
+                responseTime: _responseTime, // ignored
+                level,
+                req,
+                res,
+                err,
+                error,
+                msg,
+                message,
+                context,
+                ...additionalData
+            } = obj;
+
+            const severity = this.mapLevelToSeverity(level as number);
 
             return {
+                severity,
+                context: context ?? LoggerAutoContext,
                 timestamp: today.valueOf(),
+                msg: this.sanitizeMessage(message ?? msg),
                 service: {
                     name: this.name,
                     environment: this.env,
                     version: this.version,
                 },
-                msg: this.sanitizeMessage(message ?? msg),
-                ...other,
-                ...(req && {
-                    request: req,
-                }),
-                ...(res && {
-                    response: this.createResponseSerializer(
-                        res as Response & { body: unknown }
-                    ),
-                }),
-                ...(err && {
-                    error: this.createErrorSerializer(err as Error),
+                ...(Object.keys(additionalData).length > 0 && {
+                    additionalData: this.sanitizeObject(additionalData),
                 }),
                 ...(this.env !== EnumAppEnvironment.production && {
-                    debug: this.addDebugInfo(),
+                    debug: this.addDebugInfo({
+                        pid,
+                        hostname,
+                    }),
+                }),
+                ...(err && {
+                    err: this.createErrorSerializer()(
+                        (error as Error) ?? (err as Error)
+                    ),
+                }),
+                ...(res && {
+                    res,
+                }),
+                ...(req && {
+                    req,
                 }),
             };
         };
     }
 
     /**
-     * Creates a rotating file stream for log files if file logging is enabled.
-     *
-     * @param {typeof import('rotating-file-stream')} rfs - The rotating file stream module
-     * @returns {import('rotating-file-stream').RotatingFileStream | undefined} File stream or undefined if disabled
-     */
-    private createFileStream(
-        rfs: typeof import('rotating-file-stream')
-    ): import('rotating-file-stream').RotatingFileStream | undefined {
-        return this.intoFile
-            ? rfs.createStream('api.log', {
-                  size: '10M',
-                  interval: '1d',
-                  compress: 'gzip',
-                  path: `.${this.filePath}`,
-                  maxFiles: 10,
-                  rotate: 7,
-              })
-            : undefined;
-    }
-
-    /**
-     * Creates redaction configuration to hide sensitive data in logs.
+     * Returns the redaction configuration for Pino to hide sensitive fields in logs.
      *
      * @returns {{paths: string[]; censor: string; remove: boolean}} Redaction configuration object
      */
@@ -250,24 +266,28 @@ export class LoggerOptionService {
     }
 
     /**
-     * Creates custom serializers for request, response, and error objects.
+     * Returns custom serializer functions for request, response, and error objects for Pino.
      *
-     * @returns {{req: (request: IRequestApp) => Record<string, unknown>}} Object containing serializer functions
+     * @returns {{req: (request: IRequestApp) => Record<string, unknown>; res: (response: Response) => Record<string, unknown>; err: (error: Error) => Record<string, unknown>;}} Object containing serializer functions
      */
     private createSerializers(): {
         req: (request: IRequestApp) => Record<string, unknown>;
+        res: (response: Response) => Record<string, unknown>;
+        err: (error: Error) => Record<string, unknown>;
     } {
         return {
             req: this.createRequestSerializer(),
+            res: this.createResponseSerializer(),
+            err: this.createErrorSerializer(),
         };
     }
 
     /**
-     * Recursively sanitizes objects by redacting sensitive fields.
+     * Recursively sanitizes an object by redacting sensitive fields and truncating large arrays.
      *
      * @param {unknown} obj - The object to sanitize
-     * @param {number} maxDepth - Maximum recursion depth (default: 5)
-     * @param {number} currentDepth - Current recursion depth (default: 0)
+     * @param {number} [maxDepth=5] - Maximum recursion depth
+     * @param {number} [currentDepth=0] - Current recursion depth
      * @returns {unknown} Sanitized object with sensitive fields redacted
      */
     private sanitizeObject(
@@ -326,10 +346,10 @@ export class LoggerOptionService {
     }
 
     /**
-     * Extracts the client's IP address from HTTP request.
+     * Extracts the client's IP address from the HTTP request, considering headers and socket info.
      *
      * @param {IRequestApp} request - The HTTP request object
-     * @returns {string} Client IP address or 'unknown' if not found
+     * @returns {string} Client IP address, or 'unknown' if not found
      */
     private extractClientIP(request: IRequestApp): string {
         if (request.ip) {
@@ -360,21 +380,24 @@ export class LoggerOptionService {
     }
 
     /**
-     * Extracts and serializes user information from the request object.
+     * Extracts the user ID from the request object if available.
      *
      * @param {IRequestApp} request - The HTTP request object
-     * @returns {string | null} User ID or null if not authenticated
+     * @returns {string | null} User ID if authenticated, otherwise null
      */
     private serializeUser(request: IRequestApp): string | null {
         return (request.user as unknown as { userId: string })?.userId ?? null;
     }
 
     /**
-     * Adds debug information including memory usage and uptime to log entries.
+     * Adds debug information (memory usage, uptime, etc.) to log entries in non-production environments.
      *
-     * @returns {LoggerDebugInfo | undefined} Debug information object or undefined in production
+     * @param {Record<string, unknown>} additionalParams - Additional debug parameters to include
+     * @returns {LoggerDebugInfo | undefined} Debug information object, or undefined in production
      */
-    private addDebugInfo(): LoggerDebugInfo | undefined {
+    private addDebugInfo(
+        additionalParams: Record<string, unknown>
+    ): LoggerDebugInfo | undefined {
         if (this.env === EnumAppEnvironment.production) {
             return undefined;
         }
@@ -386,13 +409,14 @@ export class LoggerOptionService {
                 heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
             },
             uptime: Math.round(process.uptime()),
+            ...additionalParams,
         };
     }
 
     /**
-     * Creates a serializer function for HTTP request objects.
+     * Returns a serializer function for HTTP request objects for logging.
      *
-     * @returns {(request: IRequestApp) => Record<string, unknown>} Request serializer function
+     * @returns {(request: IRequestApp) => Record<string, unknown>} Serializer function for HTTP requests
      */
     private createRequestSerializer(): (
         request: IRequestApp
@@ -404,11 +428,6 @@ export class LoggerOptionService {
                 url: request.url,
                 path: request.path,
                 route: request.route?.path,
-                query: this.sanitizeObject(request.query),
-                params: this.sanitizeObject(request.params),
-                headers: this.sanitizeObject(request.headers),
-                ip: this.extractClientIP(request),
-                user: this.serializeUser(request),
                 userAgent: request.headers['user-agent'],
                 contentType: request.headers?.['content-type'],
                 referer: request.headers.referer,
@@ -416,63 +435,70 @@ export class LoggerOptionService {
                     .remoteAddress,
                 remotePort: (request as unknown as { remotePort: number })
                     .remotePort,
+                ip: this.extractClientIP(request),
+                user: this.serializeUser(request),
+                query: this.sanitizeObject(request.query),
+                params: this.sanitizeObject(request.params),
+                headers: this.sanitizeObject(request.headers),
             };
         };
     }
 
     /**
-     * Creates a serialized representation of HTTP response objects.
+     * Returns a serializer function for HTTP response objects for logging.
      *
-     * @param {Response} response - The HTTP response object to serialize
-     * @returns {Record<string, unknown>} Serialized response object
+     * @returns {(response: Response) => Record<string, unknown>} Serializer function for HTTP responses
      */
-    private createResponseSerializer(
+    private createResponseSerializer(): (
         response: Response
-    ): Record<string, unknown> {
-        return {
-            httpCode: response.statusCode,
-            headers: this.sanitizeObject(
-                response.getHeaders() as Record<string, unknown>
-            ),
-            contentLength: response.getHeader('content-length'),
-            responseTime: response.getHeader('X-Response-Time'),
-        };
-    }
-
-    /**
-     * Creates a serialized representation of error objects for logging.
-     *
-     * @param {Error} error - The error object to serialize
-     * @returns {Record<string, unknown>} Serialized error object
-     */
-    private createErrorSerializer(error: Error): Record<string, unknown> {
-        const defaultError = {
-            type: error.name,
-            message: this.sanitizeMessage(error.message),
-            code: (error as unknown as { status?: number })?.status,
-            statusCode: (
-                error as unknown as { response?: { statusCode?: number } }
-            )?.response?.statusCode,
-            stack: error.stack,
-        };
-
-        if (error instanceof HttpException) {
-            const response = error.getResponse() as { _error?: unknown };
+    ) => Record<string, unknown> {
+        return (response: Response) => {
             return {
-                ...defaultError,
-                stack: response._error
-                    ? String(response._error)
-                    : defaultError.stack,
+                httpCode: response.statusCode,
+                contentLength: response.getHeader('content-length'),
+                responseTime: response.getHeader('X-Response-Time'),
+                headers: this.sanitizeObject(
+                    response.getHeaders() as Record<string, unknown>
+                ),
             };
-        }
-
-        return defaultError;
+        };
     }
 
     /**
-     * Creates auto-logging configuration based on application settings.
+     * Returns a serializer function for error objects for logging, including stack and status info.
      *
-     * @returns {{ignore: (req: IRequestApp) => boolean} | boolean} Auto-logging configuration or boolean flag
+     * @returns {(error: Error) => Record<string, unknown>} Serializer function for errors
+     */
+    private createErrorSerializer(): (error: Error) => Record<string, unknown> {
+        return (error: Error) => {
+            const defaultError = {
+                type: error.name,
+                message: this.sanitizeMessage(error.message),
+                code: (error as unknown as { status?: number })?.status,
+                statusCode: (
+                    error as unknown as { response?: { statusCode?: number } }
+                )?.response?.statusCode,
+                stack: error.stack,
+            };
+
+            if (error instanceof HttpException) {
+                const response = error.getResponse() as { _error?: unknown };
+                return {
+                    ...defaultError,
+                    stack: response._error
+                        ? String(response._error)
+                        : defaultError.stack,
+                };
+            }
+
+            return defaultError;
+        };
+    }
+
+    /**
+     * Returns the auto-logging configuration for Pino, optionally ignoring excluded routes.
+     *
+     * @returns {{ignore: (req: IRequestApp) => boolean} | boolean} Auto-logging configuration object or boolean flag
      */
     private createAutoLoggingConfig():
         | { ignore: (req: IRequestApp) => boolean }
@@ -486,5 +512,45 @@ export class LoggerOptionService {
                       ),
               }
             : false;
+    }
+
+    /**
+     * Maps a numeric log level to a string severity for log output.
+     *
+     * @param {number} level - Numeric log level
+     * @returns {string} Severity string (e.g., 'INFO', 'ERROR')
+     */
+    private mapLevelToSeverity(level: number): string {
+        if (level >= 60) {
+            return EnumLoggerSeverity.critical.toUpperCase();
+        } else if (level >= 50) {
+            return EnumLoggerSeverity.error.toUpperCase();
+        } else if (level >= 40) {
+            return EnumLoggerSeverity.warning.toUpperCase();
+        } else if (level >= 30) {
+            return EnumLoggerSeverity.info.toUpperCase();
+        } else if (level >= 20) {
+            return EnumLoggerSeverity.debug.toUpperCase();
+        }
+
+        return EnumLoggerSeverity.trace.toUpperCase();
+    }
+
+    /**
+     * Returns a mixin function for Pino that adds the log level to each log entry.
+     *
+     * @param {Record<string, unknown>} _ - Unused log object
+     * @param {number} level - Log level
+     * @returns {Record<string, unknown>} Object containing the log level
+     */
+    private createMixin(): (
+        _: Record<string, unknown>,
+        level: number
+    ) => Record<string, unknown> {
+        return (_: Record<string, unknown>, level: number) => {
+            return {
+                level: level,
+            };
+        };
     }
 }

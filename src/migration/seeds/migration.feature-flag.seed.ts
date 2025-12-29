@@ -38,17 +38,22 @@ export class MigrationFeatureFlagSeed
             `Found ${this.featureFlags.length} Feature Flags to seed.`
         );
 
-        await this.databaseService.$transaction(
-            this.featureFlags.map(featureFlag =>
-                this.databaseService.featureFlag.upsert({
-                    where: {
-                        key: featureFlag.key,
-                    },
-                    create: featureFlag,
-                    update: {},
-                })
-            )
-        );
+        try {
+            await this.databaseService.$transaction(
+                this.featureFlags.map(featureFlag =>
+                    this.databaseService.featureFlag.upsert({
+                        where: {
+                            key: featureFlag.key,
+                        },
+                        create: featureFlag,
+                        update: {},
+                    })
+                )
+            );
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error seeding feature flags');
+            throw error;
+        }
 
         this.logger.log('Feature Flags seeded successfully.');
 
@@ -58,7 +63,12 @@ export class MigrationFeatureFlagSeed
     async remove(): Promise<void> {
         this.logger.log('Removing back Feature Flags...');
 
-        await this.databaseService.featureFlag.deleteMany({});
+        try {
+            await this.databaseService.featureFlag.deleteMany({});
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error removing feature flags');
+            throw error;
+        }
 
         this.logger.log('Feature Flags removed successfully.');
 

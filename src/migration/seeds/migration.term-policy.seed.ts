@@ -41,26 +41,31 @@ export class MigrationTermPolicySeed
             `Found ${this.termPolicies.length} TermPolicies to seed.`
         );
 
-        await this.databaseService.$transaction(
-            this.termPolicies.map(termPolicy =>
-                this.databaseService.termPolicy.upsert({
-                    where: {
-                        type_version: {
-                            type: termPolicy.type,
-                            version: termPolicy.version,
+        try {
+            await this.databaseService.$transaction(
+                this.termPolicies.map(termPolicy =>
+                    this.databaseService.termPolicy.upsert({
+                        where: {
+                            type_version: {
+                                type: termPolicy.type,
+                                version: termPolicy.version,
+                            },
                         },
-                    },
-                    create: {
-                        ...termPolicy,
-                        contents: this.databaseUtil.toPlainArray(
-                            termPolicy.contents
-                        ),
-                        status: EnumTermPolicyStatus.published,
-                    },
-                    update: {},
-                })
-            )
-        );
+                        create: {
+                            ...termPolicy,
+                            contents: this.databaseUtil.toPlainArray(
+                                termPolicy.contents
+                            ),
+                            status: EnumTermPolicyStatus.published,
+                        },
+                        update: {},
+                    })
+                )
+            );
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error seeding term policies');
+            throw error;
+        }
 
         this.logger.log('TermPolicies seeded successfully.');
 
