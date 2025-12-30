@@ -502,7 +502,7 @@ export class UserRepository {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                photo: photo as unknown as Prisma.InputJsonValue,
+                photo: this.databaseUtil.toPlainObject(photo),
                 updatedBy: userId,
                 activityLogs: {
                     create: {

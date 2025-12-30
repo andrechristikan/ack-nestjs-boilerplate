@@ -1,14 +1,15 @@
 /**
- * Routes excluded from Sentry monitoring and detailed logging.
- * Supports wildcard patterns (*) for flexible matching.
+ * Default context string used for logger entries when no explicit context is provided.
+ * Used to tag log messages with a generic context for easier filtering and searching.
+ */
+export const LoggerAutoContext = 'LoggerAutoContext';
+
+/**
+ * List of routes to be excluded from logging and monitoring.
+ * These routes are typically health checks, documentation, or metrics endpoints
+ * that do not require detailed logging or error tracking.
  *
- * Pattern rules:
- * - Exact match: "/api/health" - matches only this exact path
- * - Trailing wildcard: "/api/health*" - matches /api/health and /api/health/anything
- * - Path wildcard: "/api/health/*" - matches only /api/health/something (requires slash)
- * - Full wildcard: "*" - matches everything (use with caution!)
- *
- * All patterns are case-insensitive and work with both full URLs and paths.
+ * Supports wildcard patterns for flexible matching.
  */
 export const LoggerExcludedRoutes: string[] = [
     '/api/health',
@@ -22,8 +23,8 @@ export const LoggerExcludedRoutes: string[] = [
 ] as const;
 
 /**
- * Array of HTTP header names used to extract or identify request IDs.
- * These headers are checked in order to maintain request tracing across services.
+ * List of HTTP header names used to extract or identify request IDs for tracing.
+ * Checked in order to maintain request correlation across distributed systems.
  */
 export const LoggerRequestIdHeaders = [
     'x-correlation-id',
@@ -31,7 +32,7 @@ export const LoggerRequestIdHeaders = [
 ] as const;
 
 /**
- * Array of object paths that may contain sensitive data in request/response objects.
+ * List of object paths in request/response objects that may contain sensitive data.
  * Used by the logger redaction system to identify where sensitive fields might be located.
  */
 export const LoggerSensitivePaths = [
@@ -46,8 +47,8 @@ export const LoggerSensitivePaths = [
 ];
 
 /**
- * Array of field names containing sensitive data that should be masked in logs.
- * Includes authentication tokens, personal identification, financial data, and biometric information.
+ * List of field names considered sensitive and subject to redaction in logs.
+ * Includes authentication, credential, and personal data fields.
  */
 export const LoggerSensitiveFields: string[] = [
     'password',
@@ -73,4 +74,6 @@ export const LoggerSensitiveFields: string[] = [
     'coordinates',
     'latitude',
     'longitude',
+    'cookie',
+    'cookies',
 ];

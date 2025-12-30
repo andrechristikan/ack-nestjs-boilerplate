@@ -9,19 +9,19 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class RequestCorsMiddleware implements NestMiddleware {
-    private readonly allowOrigin: string | boolean | string[];
-    private readonly allowMethod: string[];
-    private readonly allowHeader: string[];
+    private readonly allowedOrigin: string | boolean | string[];
+    private readonly allowedMethod: string[];
+    private readonly allowedHeader: string[];
 
     constructor(private readonly configService: ConfigService) {
-        this.allowOrigin = this.configService.get<string | boolean | string[]>(
-            'request.cors.allowOrigin'
+        this.allowedOrigin = this.configService.get<
+            string | boolean | string[]
+        >('request.cors.allowedOrigin');
+        this.allowedMethod = this.configService.get<string[]>(
+            'request.cors.allowedMethod'
         );
-        this.allowMethod = this.configService.get<string[]>(
-            'request.cors.allowMethod'
-        );
-        this.allowHeader = this.configService.get<string[]>(
-            'request.cors.allowHeader'
+        this.allowedHeader = this.configService.get<string[]>(
+            'request.cors.allowedHeader'
         );
     }
 
@@ -36,8 +36,8 @@ export class RequestCorsMiddleware implements NestMiddleware {
         const corsOptions: CorsOptions = {
             origin: (origin, callback) =>
                 this.originValidator(origin, callback),
-            methods: this.allowMethod,
-            allowedHeaders: this.allowHeader,
+            methods: this.allowedMethod,
+            allowedHeaders: this.allowedHeader,
             preflightContinue: false,
             credentials: this.shouldAllowCredentials(),
             optionsSuccessStatus: HttpStatus.NO_CONTENT,
@@ -62,25 +62,25 @@ export class RequestCorsMiddleware implements NestMiddleware {
             return callback(null, true);
         }
 
-        if (typeof this.allowOrigin === 'boolean') {
-            return callback(null, this.allowOrigin);
+        if (typeof this.allowedOrigin === 'boolean') {
+            return callback(null, this.allowedOrigin);
         }
 
-        if (typeof this.allowOrigin === 'string') {
-            if (this.allowOrigin === '*') {
+        if (typeof this.allowedOrigin === 'string') {
+            if (this.allowedOrigin === '*') {
                 return callback(null, true);
             }
 
-            const allowed = this.isOriginAllowed(origin, [this.allowOrigin]);
+            const allowed = this.isOriginAllowed(origin, [this.allowedOrigin]);
             return callback(null, allowed);
         }
 
-        if (Array.isArray(this.allowOrigin)) {
-            if (this.allowOrigin.includes('*')) {
+        if (Array.isArray(this.allowedOrigin)) {
+            if (this.allowedOrigin.includes('*')) {
                 return callback(null, true);
             }
 
-            const allowed = this.isOriginAllowed(origin, this.allowOrigin);
+            const allowed = this.isOriginAllowed(origin, this.allowedOrigin);
             return callback(null, allowed);
         }
 
@@ -94,11 +94,11 @@ export class RequestCorsMiddleware implements NestMiddleware {
      * @returns True if credentials should be allowed
      */
     private shouldAllowCredentials(): boolean {
-        if (typeof this.allowOrigin === 'string') {
-            return this.allowOrigin !== '*';
+        if (typeof this.allowedOrigin === 'string') {
+            return this.allowedOrigin !== '*';
         }
-        if (Array.isArray(this.allowOrigin)) {
-            return !this.allowOrigin.includes('*');
+        if (Array.isArray(this.allowedOrigin)) {
+            return !this.allowedOrigin.includes('*');
         }
         return true;
     }

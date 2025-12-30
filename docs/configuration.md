@@ -251,7 +251,7 @@ debug: boolean                  // Enable/disable database query logging
 **File**: `src/configs/aws.config.ts`
 **Interface**: `IConfigAws`
 
-This configuration handles AWS service integration including S3 and SES services.
+This configuration handles AWS service integration including S3 and SES services with support for IAM role-based authentication.
 
 > **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
@@ -260,37 +260,56 @@ This configuration handles AWS service integration including S3 and SES services
 **`s3`** - S3 service configuration
 ```typescript
 s3: {
-  presignExpired: number;         // Presigned URL expiration time in seconds
+  multipartExpiredInDay: number;  // Multipart upload expiration in days (default: 3)
+  presignExpired: number;         // Presigned URL expiration time in seconds (default: 1800)
+  maxAttempts: number;            // Maximum retry attempts for S3 operations (default: 3)
+  timeoutInMs: number;            // Request timeout in milliseconds (default: 30000ms)
   region?: string;                // AWS region for S3
-  credential: {
-    key?: string;                 // AWS access key
-    secret?: string;              // AWS secret key
+  iam: {
+    key?: string;                 // AWS IAM access key ID
+    secret?: string;              // AWS IAM secret access key
+    arn?: string;                 // AWS IAM Role ARN for role-based access
   };
   config: {
     public: {
       bucket?: string;            // Public S3 bucket name
-      baseUrl?: string;           // S3 base URL
+      arn?: string;               // Public S3 bucket ARN
+      baseUrl?: string;           // S3 base URL (auto-generated)
       cdnUrl?: string;            // CDN URL if available
     };
     private: {
       bucket?: string;            // Private S3 bucket name
-      baseUrl?: string;           // S3 base URL
+      arn?: string;               // Private S3 bucket ARN
+      baseUrl?: string;           // S3 base URL (auto-generated)
       cdnUrl?: string;            // CDN URL if available
     };
   };
 }
 ```
 
+> **IAM Configuration Notes**:
+> - The `iam.key` and `iam.secret` are used for standard IAM user credentials
+> - The `iam.arn` is used for IAM role assumption (recommended for production)
+> - When using IAM roles, temporary credentials are automatically rotated
+> - Bucket ARNs are auto-generated as `arn:aws:s3:::{bucket-name}`
+> - Base URLs are auto-generated as `https://{bucket}.s3.{region}.amazonaws.com`
+
 **`ses`** - Simple Email Service configuration
 ```typescript
 ses: {
-  credential: {
-    key?: string;                 // AWS access key for SES
-    secret?: string;              // AWS secret key for SES
+  iam: {
+    key?: string;                 // AWS IAM access key ID for SES
+    secret?: string;              // AWS IAM secret access key for SES
+    arn?: string;                 // AWS IAM Role ARN for SES operations
   };
-  region: string;                 // AWS region for SES
+  region?: string;                // AWS region for SES
 }
 ```
+
+> **SES IAM Configuration**:
+> - Similar to S3, SES supports both standard credentials and IAM role-based access
+> - Using IAM roles (`iam.arn`) is recommended for better security
+> - Credentials are used for sending emails and managing SES operations
 
 ### Logger Configuration
 
@@ -356,42 +375,45 @@ This configuration handles HTTP request settings including body size limits, COR
 ```typescript
 body: {
   json: {
-    limitInBytes: number;         // Maximum JSON request size
-  };
-  raw: {
-    limitInBytes: number;         // Maximum raw body size
+    limitInBytes: number;         // Maximum JSON request size (default: 500kb)
   };
   text: {
-    limitInBytes: number;         // Maximum text request size
+    limitInBytes: number;         // Maximum text request size (default: 1mb)
   };
   urlencoded: {
-    limitInBytes: number;         // Maximum URL-encoded request size
+    limitInBytes: number;         // Maximum URL-encoded request size (default: 1mb)
   };
   applicationOctetStream: {
-    limitInBytes: number;         // Maximum octet-stream size
+    limitInBytes: number;         // Maximum octet-stream size (from FileSizeInBytes constant)
   };
 }
 ```
 
 **`timeoutInMs`** - Request timeout setting
 ```typescript
-timeoutInMs: number             // Request timeout in milliseconds
+timeoutInMs: number             // Request timeout in milliseconds (default: 30000ms)
 ```
 
 **`cors`** - CORS configuration
 ```typescript
 cors: {
-  allowMethod: string[];          // Allowed HTTP methods
-  allowOrigin: string[];          // Allowed origins (supports subdomain wildcards)
-  allowHeader: string[];          // Allowed headers for CORS requests
+  allowedMethod: string[];        // Allowed HTTP methods (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS)
+  allowedOrigin: string[];        // Allowed origins (from CORS_ALLOWED_ORIGIN env variable, supports subdomain wildcards)
+  allowedHeader: string[];        // Allowed headers for CORS requests
 }
 ```
+
+> **CORS Configuration Notes**:
+> - `allowedOrigin` is populated from `CORS_ALLOWED_ORIGIN` environment variable
+> - Multiple origins can be specified using comma separation
+> - Subdomain wildcards are supported (e.g., `*.example.com`)
+> - Default headers include standard headers plus custom headers like `x-api-key`, `x-timezone`, etc.
 
 **`throttle`** - Rate limiting configuration
 ```typescript
 throttle: {
-  ttlInMs: number;                // Time window in milliseconds
-  limit: number;                  // Maximum requests per time window
+  ttlInMs: number;                // Time window in milliseconds (default: 500ms)
+  limit: number;                  // Maximum requests per time window (default: 10)
 }
 ```
 

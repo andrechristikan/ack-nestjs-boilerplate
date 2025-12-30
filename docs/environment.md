@@ -26,7 +26,7 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
   - [Home/Organization Settings](#homeorganization-settings)
   - [HTTP Server Settings](#http-server-settings)
   - [Logging Settings](#logging-settings)
-  - [Middleware Settings](#middleware-settings)
+  - [CORS Settings](#cors-settings)
   - [URL Versioning Settings](#url-versioning-settings)
   - [Database Settings](#database-settings)
   - [Authentication Settings](#authentication-settings)
@@ -88,8 +88,8 @@ LOGGER_INTO_FILE=true
 LOGGER_PRETTIER=true
 LOGGER_AUTO=false
 
-# Middleware
-MIDDLEWARE_CORS_ORIGIN=*
+# CORS
+CORS_ALLOWED_ORIGIN=*
 
 # URL Versioning
 URL_VERSIONING_ENABLE=true
@@ -117,31 +117,35 @@ AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY=qwerty1234567890
 AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY=qwerty1234567890
 AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d
 
+# Two-Factor Authentication
+AUTH_TWO_FACTOR_ISSUER=ACKNestJsTwoFactor
+AUTH_TWO_FACTOR_ENCRYPTION_KEY=qwerty1234567890
+
 # Social Authentication (Optional)
 AUTH_SOCIAL_GOOGLE_CLIENT_ID=
 AUTH_SOCIAL_GOOGLE_CLIENT_SECRET=
 AUTH_SOCIAL_APPLE_CLIENT_ID=
 AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 
-# AWS Configuration (Optional)
-AWS_S3_CREDENTIAL_KEY=
-AWS_S3_CREDENTIAL_SECRET=
+# AWS S3 Configuration (Optional)
+AWS_S3_IAM_CREDENTIAL_KEY=
+AWS_S3_IAM_CREDENTIAL_SECRET=
+AWS_S3_IAM_ARN=
 AWS_S3_REGION=ap-southeast-3
 AWS_S3_PUBLIC_BUCKET=
 AWS_S3_PUBLIC_CDN=
 AWS_S3_PRIVATE_BUCKET=
 AWS_S3_PRIVATE_CDN=
-AWS_SES_CREDENTIAL_KEY=
-AWS_SES_CREDENTIAL_SECRET=
+
+# AWS SES Configuration (Optional)
+AWS_SES_IAM_CREDENTIAL_KEY=
+AWS_SES_IAM_CREDENTIAL_SECRET=
+AWS_SES_IAM_ARN=
 AWS_SES_REGION=ap-southeast-3
 
 # Redis
 CACHE_REDIS_URL=redis://localhost:6379/0
 QUEUE_REDIS_URL=redis://localhost:6379/1
-
-# Two-Factor Authentication
-AUTH_TWO_FACTOR_ISSUER=ACK
-AUTH_TWO_FACTOR_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
 
 # Debug (Optional)
 SENTRY_DSN=
@@ -237,24 +241,24 @@ Enable automatic logging features.
 LOGGER_AUTO=false
 ```
 
-### Middleware Settings
+### CORS Settings
 
-**`MIDDLEWARE_CORS_ORIGIN`** *(required)*  
+**`CORS_ALLOWED_ORIGIN`** *(required)*  
 Comma-separated list of allowed CORS origins. Supports subdomain wildcards but not port wildcards.
 
 **Examples:**
 ```bash
 # Allow all origins (development only)
-MIDDLEWARE_CORS_ORIGIN=*
+CORS_ALLOWED_ORIGIN=*
 
 # Specific origins
-MIDDLEWARE_CORS_ORIGIN=example.com,app.example.com
+CORS_ALLOWED_ORIGIN=example.com,app.example.com
 
 # Subdomain wildcard (supported)
-MIDDLEWARE_CORS_ORIGIN=*.example.com,api.myapp.com
+CORS_ALLOWED_ORIGIN=*.example.com,api.myapp.com
 
 # Multiple domains with subdomains
-MIDDLEWARE_CORS_ORIGIN=*.example.com,*.myapp.com,localhost:3000
+CORS_ALLOWED_ORIGIN=*.example.com,*.myapp.com,localhost:3000
 ```
 
 > **Note**: While subdomain wildcards (`*.example.com`) are supported, port wildcards (`example.com:*`) are not supported. Specify exact ports when needed.
@@ -402,13 +406,13 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 **`AUTH_TWO_FACTOR_ISSUER`** *(optional)*  
 Issuer name displayed in authenticator apps.  
 ```bash
-AUTH_TWO_FACTOR_ISSUER=ACK
+AUTH_TWO_FACTOR_ISSUER=ACKNestJsTwoFactor
 ```
 
 **`AUTH_TWO_FACTOR_ENCRYPTION_KEY`** *(required for 2FA)*  
 Secret used to derive an AES-256 key for encrypting TOTP secrets (recommended 32+ chars).  
 ```bash
-AUTH_TWO_FACTOR_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
+AUTH_TWO_FACTOR_ENCRYPTION_KEY=qwerty1234567890
 ```
 
 ### AWS Settings
@@ -416,17 +420,30 @@ AUTH_TWO_FACTOR_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
 > **Note**: AWS settings are optional by default. However, if you want to test file uploads (S3) or email functionality (SES), these become required for those specific features to work.
 
 #### S3 Configuration
-**`AWS_S3_CREDENTIAL_KEY`** *(optional/required for file uploads)*  
-AWS access key for S3 bucket operations.
+
+**`AWS_S3_IAM_CREDENTIAL_KEY`** *(optional/required for file uploads)*  
+AWS IAM access key ID for S3 bucket operations.
 ```bash
-AWS_S3_CREDENTIAL_KEY=
+AWS_S3_IAM_CREDENTIAL_KEY=
 ```
 
-**`AWS_S3_CREDENTIAL_SECRET`** *(optional/required for file uploads)*  
-AWS secret key for S3 bucket operations.
+**`AWS_S3_IAM_CREDENTIAL_SECRET`** *(optional/required for file uploads)*  
+AWS IAM secret access key for S3 bucket operations.
 ```bash
-AWS_S3_CREDENTIAL_SECRET=
+AWS_S3_IAM_CREDENTIAL_SECRET=
 ```
+
+**`AWS_S3_IAM_ARN`** *(optional)*  
+AWS IAM Role ARN for S3 operations. Used for role-based access control and temporary credentials.
+```bash
+AWS_S3_IAM_ARN=
+```
+
+> **Best Practice**: Using IAM Role ARN (`AWS_S3_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
+> - Temporary security credentials
+> - Better security through role assumption
+> - Fine-grained access control
+> - Automatic credential rotation
 
 **`AWS_S3_REGION`** *(optional/required for file uploads)*  
 AWS region for S3 services.
@@ -447,6 +464,7 @@ AWS_S3_PUBLIC_CDN=
 ```
 
 #### S3 Private Bucket (for private files)
+
 **`AWS_S3_PRIVATE_BUCKET`** *(optional/required for private file uploads)*  
 Name of the private S3 bucket for secure file storage.
 ```bash
@@ -460,17 +478,30 @@ AWS_S3_PRIVATE_CDN=
 ```
 
 #### SES (Email Service)
-**`AWS_SES_CREDENTIAL_KEY`** *(optional/required for email features)*  
-AWS access key for SES email service.
+
+**`AWS_SES_IAM_CREDENTIAL_KEY`** *(optional/required for email features)*  
+AWS IAM access key ID for SES email service.
 ```bash
-AWS_SES_CREDENTIAL_KEY=
+AWS_SES_IAM_CREDENTIAL_KEY=
 ```
 
-**`AWS_SES_CREDENTIAL_SECRET`** *(optional/required for email features)*  
-AWS secret key for SES email service.
+**`AWS_SES_IAM_CREDENTIAL_SECRET`** *(optional/required for email features)*  
+AWS IAM secret access key for SES email service.
 ```bash
-AWS_SES_CREDENTIAL_SECRET=
+AWS_SES_IAM_CREDENTIAL_SECRET=
 ```
+
+**`AWS_SES_IAM_ARN`** *(optional)*  
+AWS IAM Role ARN for SES operations. Used for role-based access control and temporary credentials.
+```bash
+AWS_SES_IAM_ARN=
+```
+
+> **Best Practice**: Using IAM Role ARN (`AWS_SES_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
+> - Temporary security credentials
+> - Better security through role assumption
+> - Fine-grained access control
+> - Automatic credential rotation
 
 **`AWS_SES_REGION`** *(optional/required for email features)*  
 AWS region for SES service.

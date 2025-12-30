@@ -20,9 +20,9 @@ model ApiKey {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   @@unique(fields: [key])
   @@index(fields: [name, isActive, type, createdAt])
@@ -31,17 +31,17 @@ model ApiKey {
 }
 
 model Role {
-  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String?
-  type        EnumRoleType @default(user)
-  abilities   Json[]       @default([])
+  type        EnumRoleType  @default(user)
+  abilities   RoleAbility[]
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   users User[] @relation("UserRole")
 
@@ -65,9 +65,9 @@ model Country {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   @@unique(fields: [alpha2Code])
   @@unique(fields: [alpha3Code])
@@ -87,9 +87,9 @@ model UserMobileNumber {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   country       Country?       @relation("UserMobileNumberCountry", fields: [countryId], references: [id])
   user          User?          @relation("UserMobileNumberUser", fields: [userId], references: [id])
@@ -103,37 +103,37 @@ model UserMobileNumber {
 }
 
 model User {
-  id              String              @id @default(auto()) @map("_id") @db.ObjectId
+  id              String             @id @default(auto()) @map("_id") @db.ObjectId
   name            String?
   username        String
-  isVerified      Boolean             @default(false)
+  isVerified      Boolean            @default(false)
   verifiedAt      DateTime?
   email           String
-  roleId          String              @db.ObjectId
+  roleId          String             @db.ObjectId
   password        String?
   passwordExpired DateTime?
   passwordCreated DateTime?
   passwordAttempt Int?
-  signUpAt        DateTime            @default(now())
+  signUpAt        DateTime           @default(now())
   signUpFrom      EnumUserSignUpFrom
   signUpWith      EnumUserSignUpWith
-  status          EnumUserStatus      @default(active)
+  status          EnumUserStatus     @default(active)
   gender          EnumUserGender?
-  countryId       String              @db.ObjectId
+  countryId       String             @db.ObjectId
   lastLoginAt     DateTime?
   lastIPAddress   String?
   lastLoginFrom   EnumUserLoginFrom?
   lastLoginWith   EnumUserLoginWith?
-  termPolicy      Json
-  photo           Json?
+  termPolicy      UserTermPolicy
+  photo           UserPhoto?
 
   // timestamps fields
   createdAt DateTime  @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?   @db.ObjectId
   updatedAt DateTime  @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?   @db.ObjectId
   deletedAt DateTime?
-  deletedBy String? @db.ObjectId
+  deletedBy String?   @db.ObjectId
 
   mobileNumbers     UserMobileNumber[]         @relation("UserMobileNumberUser")
   verifications     Verification[]             @relation("UserVerifications")
@@ -169,9 +169,9 @@ model Verification {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   user         User?             @relation("UserVerifications", fields: [userId], references: [id])
   mobileNumber UserMobileNumber? @relation("UserMobileNumberVerification", fields: [mobileNumberId], references: [id])
@@ -193,7 +193,7 @@ model PasswordHistory {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
 }
 
 model ActivityLog {
@@ -201,14 +201,14 @@ model ActivityLog {
   userId    String                @db.ObjectId
   action    EnumActivityLogAction
   ipAddress String
-  userAgent Json
+  userAgent UserAgent
   metadata  Json?
 
   user User? @relation("UserActivityLogs", fields: [userId], references: [id])
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
 
   @@index(fields: [userId])
   @@index(fields: [createdAt])
@@ -220,7 +220,7 @@ model Session {
   userId    String    @db.ObjectId
   jti       String
   ipAddress String
-  userAgent Json
+  userAgent UserAgent
   expiredAt DateTime
   revokedAt DateTime?
   isRevoked Boolean   @default(false)
@@ -229,9 +229,9 @@ model Session {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   @@index(fields: [userId])
   @@index(fields: [userId, isRevoked, expiredAt])
@@ -241,22 +241,22 @@ model Session {
 }
 
 model TwoFactor {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String   @db.ObjectId
-  secret         String?
-  iv             String?
-  backupCodes    String[] @default([])
-  enabled        Boolean  @default(false)
-  requiredSetup  Boolean  @default(false)
-  confirmedAt    DateTime?
-  lastUsedAt     DateTime?
-  attempt       Int      @default(0)
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  secret        String?
+  iv            String?
+  backupCodes   String[]  @default([])
+  enabled       Boolean   @default(false)
+  requiredSetup Boolean   @default(false)
+  confirmedAt   DateTime?
+  lastUsedAt    DateTime?
+  attempt       Int       @default(0)
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   user User? @relation("UserTwoFactor", fields: [userId], references: [id])
 
@@ -269,16 +269,16 @@ model TwoFactor {
 model TermPolicy {
   id          String               @id @default(auto()) @map("_id") @db.ObjectId
   type        EnumTermPolicyType
-  contents    Json[]               @default([])
+  contents    TermPolicyContent[]
   version     Int                  @default(1)
   status      EnumTermPolicyStatus @default(draft)
   publishedAt DateTime?
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   userAcceptances TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceTermPolicy")
 
@@ -301,7 +301,7 @@ model TermPolicyUserAcceptance {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
 
   @@unique(fields: [userId, termPolicyId])
   @@index(fields: [userId])
@@ -320,9 +320,9 @@ model FeatureFlag {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   @@unique(fields: [key])
   @@index(fields: [key, createdAt])
@@ -342,9 +342,9 @@ model ForgotPassword {
 
   // timestamps fields
   createdAt DateTime @default(now())
-  createdBy String? @db.ObjectId
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  updatedBy String? @db.ObjectId
+  updatedBy String?  @db.ObjectId
 
   user User? @relation("UserForgotPassword", fields: [userId], references: [id])
 
@@ -352,6 +352,76 @@ model ForgotPassword {
   @@index(fields: [token, expiredAt, isUsed])
   @@index(fields: [token])
   @@map("ForgotPasswords")
+}
+
+type UserTermPolicy {
+  termsOfService Boolean
+  privacy        Boolean
+  marketing      Boolean
+  cookies        Boolean
+}
+
+type RoleAbility {
+  action  String[]
+  subject String
+}
+
+type UserPhoto {
+  bucket       String
+  key          String
+  cdnUrl       String?
+  completedUrl String
+  mime         String
+  extension    String
+  access       String
+}
+
+type TermPolicyContent {
+  language     String
+  bucket       String
+  key          String
+  cdnUrl       String?
+  completedUrl String
+  mime         String
+  extension    String
+  access       String
+  size         Int
+}
+
+type UserAgentBrowser {
+  name    String?
+  version String?
+  major   String?
+  type    String?
+}
+
+type UserAgentCpu {
+  architecture String?
+}
+
+type UserAgentDevice {
+  type   String?
+  vendor String?
+  model  String?
+}
+
+type UserAgentEngine {
+  name    String?
+  version String?
+}
+
+type UserAgentOs {
+  name    String?
+  version String?
+}
+
+type UserAgent {
+  ua      String?
+  browser UserAgentBrowser?
+  cpu     UserAgentCpu?
+  device  UserAgentDevice?
+  engine  UserAgentEngine?
+  os      UserAgentOs?
 }
 
 enum EnumUserGender {

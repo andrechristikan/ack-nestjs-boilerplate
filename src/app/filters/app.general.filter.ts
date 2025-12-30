@@ -107,7 +107,7 @@ export class AppGeneralFilter implements ExceptionFilter {
             this.logger.error(exception);
             Sentry.captureException(exception);
         } catch (error: unknown) {
-            this.logger.error('Failed to send exception to Sentry', error);
+            this.logger.error(error, 'Failed to send exception to Sentry');
         }
 
         return;

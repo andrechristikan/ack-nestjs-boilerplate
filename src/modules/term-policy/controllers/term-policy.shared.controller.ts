@@ -7,7 +7,10 @@ import {
     HttpStatus,
     Post,
 } from '@nestjs/common';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserCurrent,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -36,6 +39,7 @@ import {
 } from '@common/request/decorators/request.decorator';
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
+import { IUser } from '@modules/user/interfaces/user.interface';
 
 @ApiTags('modules.shared.user.termPolicy')
 @Controller({
@@ -69,12 +73,12 @@ export class TermPolicySharedController {
     @HttpCode(HttpStatus.OK)
     @Post('/accept')
     async accept(
-        @AuthJwtPayload('userId') userId: string,
+        @UserCurrent() user: IUser,
         @Body() body: TermPolicyAcceptRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.userAccept(userId, body, {
+        return this.termPolicyService.userAccept(user, body, {
             ipAddress,
             userAgent,
         });

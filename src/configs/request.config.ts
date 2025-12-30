@@ -12,9 +12,9 @@ export interface IConfigRequest {
     };
     timeoutInMs: number;
     cors: {
-        allowMethod: string[];
-        allowOrigin: string[];
-        allowHeader: string[];
+        allowedMethod: string[];
+        allowedOrigin: string[];
+        allowedHeader: string[];
     };
     throttle: {
         ttlInMs: number;
@@ -41,7 +41,7 @@ export default registerAs(
         },
         timeoutInMs: ms('30s'),
         cors: {
-            allowMethod: [
+            allowedMethod: [
                 'GET',
                 'DELETE',
                 'PUT',
@@ -50,8 +50,8 @@ export default registerAs(
                 'HEAD',
                 'OPTIONS',
             ],
-            allowOrigin: process.env.MIDDLEWARE_CORS_ORIGIN?.split(',') ?? [],
-            allowHeader: [
+            allowedOrigin: process.env.CORS_ALLOWED_ORIGIN?.split(',') ?? [],
+            allowedHeader: [
                 'Accept',
                 'Accept-Language',
                 'Content-Language',

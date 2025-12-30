@@ -94,10 +94,10 @@ export class HelloService implements IHelloService {
                 auth: {
                     passwordAttempt: authPasswordAttempt,
                     passwordMaxAttempt: authPasswordMaxAttempt,
-                    passwordExpiredIn: authPasswordExpiredInSeconds,
-                    passwordExpiredInTemporary:
+                    passwordExpiredInSeconds: authPasswordExpiredInSeconds,
+                    passwordExpiredTemporaryInSeconds:
                         authPasswordExpiredTemporaryInSeconds,
-                    passwordPeriod: authPasswordPeriodInSeconds,
+                    passwordPeriodInSeconds: authPasswordPeriodInSeconds,
                 },
                 message: {
                     availableLanguage: messageAvailableLanguage,

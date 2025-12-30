@@ -30,6 +30,7 @@ import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-p
 import { ITermPolicyService } from '@modules/term-policy/interfaces/term-policy.service.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
+import { IUser } from '@modules/user/interfaces/user.interface';
 import {
     BadRequestException,
     ConflictException,
@@ -140,7 +141,7 @@ export class TermPolicyService implements ITermPolicyService {
     }
 
     async userAccept(
-        userId: string,
+        user: IUser,
         { type }: TermPolicyAcceptRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
@@ -155,8 +156,8 @@ export class TermPolicyService implements ITermPolicyService {
 
         const exist =
             await this.termPolicyRepository.existAcceptanceByPolicyAndUser(
-                userId,
-                type
+                user.id,
+                policy.id
             );
         if (exist) {
             throw new ConflictException({
@@ -167,7 +168,7 @@ export class TermPolicyService implements ITermPolicyService {
 
         try {
             await this.termPolicyRepository.accept(
-                userId,
+                user,
                 policy.id,
                 type,
                 requestLog

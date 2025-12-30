@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
@@ -20,7 +21,8 @@ export class MigrationTemplateTermPolicySeed
 
     constructor(
         private readonly termPolicyTemplateService: TermPolicyTemplateService,
-        private readonly databaseService: DatabaseService
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil
     ) {
         super();
     }
@@ -28,132 +30,133 @@ export class MigrationTemplateTermPolicySeed
     async seed(): Promise<void> {
         this.logger.log('Seeding Term Policies...');
 
-        const [termsOfServiceKey, privacyKey, cookieKey, marketingKey] =
-            await Promise.all([
+        try {
+            const [
+                termsOfServiceAsset,
+                privacyAsset,
+                cookieAsset,
+                marketingAsset,
+            ] = await Promise.all([
                 this.termPolicyTemplateService.importTermsOfService(),
                 this.termPolicyTemplateService.importPrivacy(),
                 this.termPolicyTemplateService.importCookie(),
                 this.termPolicyTemplateService.importMarketing(),
             ]);
 
-        await this.databaseService.$transaction([
-            this.databaseService.termPolicy.upsert({
-                where: {
-                    type_version: {
+            await this.databaseService.$transaction([
+                this.databaseService.termPolicy.upsert({
+                    where: {
+                        type_version: {
+                            type: EnumTermPolicyType.termsOfService,
+                            version: 1,
+                        },
+                    },
+                    create: {
                         type: EnumTermPolicyType.termsOfService,
                         version: 1,
+                        status: EnumTermPolicyStatus.published,
+                        contents: this.databaseUtil.toPlainArray([
+                            {
+                                language: EnumMessageLanguage.en,
+                                ...termsOfServiceAsset,
+                            },
+                        ]),
                     },
-                },
-                create: {
-                    type: EnumTermPolicyType.termsOfService,
-                    version: 1,
-                    status: EnumTermPolicyStatus.published,
-                    contents: [
-                        {
-                            key: termsOfServiceKey.key,
-                            language: EnumMessageLanguage.en,
-                            size: termsOfServiceKey.size,
+                    update: {
+                        contents: this.databaseUtil.toPlainArray([
+                            {
+                                language: EnumMessageLanguage.en,
+                                ...termsOfServiceAsset,
+                            },
+                        ]),
+                    },
+                }),
+                this.databaseService.termPolicy.upsert({
+                    where: {
+                        type_version: {
+                            type: EnumTermPolicyType.privacy,
+                            version: 1,
                         },
-                    ],
-                },
-                update: {
-                    contents: [
-                        {
-                            key: termsOfServiceKey.key,
-                            language: EnumMessageLanguage.en,
-                            size: termsOfServiceKey.size,
-                        },
-                    ],
-                },
-            }),
-            this.databaseService.termPolicy.upsert({
-                where: {
-                    type_version: {
+                    },
+                    create: {
                         type: EnumTermPolicyType.privacy,
                         version: 1,
+                        status: EnumTermPolicyStatus.published,
+                        contents: this.databaseUtil.toPlainArray([
+                            {
+                                language: EnumMessageLanguage.en,
+                                ...privacyAsset,
+                            },
+                        ]),
                     },
-                },
-                create: {
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    status: EnumTermPolicyStatus.published,
-                    contents: [
-                        {
-                            key: privacyKey.key,
-                            language: EnumMessageLanguage.en,
-                            size: privacyKey.size,
+                    update: {
+                        contents: this.databaseUtil.toPlainArray([
+                            {
+                                language: EnumMessageLanguage.en,
+                                ...privacyAsset,
+                            },
+                        ]),
+                    },
+                }),
+                this.databaseService.termPolicy.upsert({
+                    where: {
+                        type_version: {
+                            type: EnumTermPolicyType.cookies,
+                            version: 1,
                         },
-                    ],
-                },
-                update: {
-                    contents: [
-                        {
-                            key: privacyKey.key,
-                            language: EnumMessageLanguage.en,
-                            size: privacyKey.size,
-                        },
-                    ],
-                },
-            }),
-            this.databaseService.termPolicy.upsert({
-                where: {
-                    type_version: {
+                    },
+                    create: {
                         type: EnumTermPolicyType.cookies,
                         version: 1,
+                        status: EnumTermPolicyStatus.published,
+                        contents: this.databaseUtil.toPlainArray([
+                            {
+                                language: EnumMessageLanguage.en,
+                                ...cookieAsset,
+                            },
+                        ]),
                     },
-                },
-                create: {
-                    type: EnumTermPolicyType.cookies,
-                    version: 1,
-                    status: EnumTermPolicyStatus.published,
-                    contents: [
-                        {
-                            key: cookieKey.key,
-                            language: EnumMessageLanguage.en,
-                            size: cookieKey.size,
+                    update: {
+                        contents: this.databaseUtil.toPlainArray([
+                            {
+                                language: EnumMessageLanguage.en,
+                                ...cookieAsset,
+                            },
+                        ]),
+                    },
+                }),
+                this.databaseService.termPolicy.upsert({
+                    where: {
+                        type_version: {
+                            type: EnumTermPolicyType.marketing,
+                            version: 1,
                         },
-                    ],
-                },
-                update: {
-                    contents: [
-                        {
-                            key: cookieKey.key,
-                            language: EnumMessageLanguage.en,
-                            size: cookieKey.size,
-                        },
-                    ],
-                },
-            }),
-            this.databaseService.termPolicy.upsert({
-                where: {
-                    type_version: {
+                    },
+                    create: {
                         type: EnumTermPolicyType.marketing,
                         version: 1,
+                        status: EnumTermPolicyStatus.published,
+                        contents: this.databaseUtil.toPlainArray([
+                            {
+                                language: EnumMessageLanguage.en,
+                                ...marketingAsset,
+                            },
+                        ]),
                     },
-                },
-                create: {
-                    type: EnumTermPolicyType.marketing,
-                    version: 1,
-                    status: EnumTermPolicyStatus.published,
-                    contents: [
-                        {
-                            key: marketingKey.key,
-                            language: EnumMessageLanguage.en,
-                            size: marketingKey.size,
-                        },
-                    ],
-                },
-                update: {
-                    contents: [
-                        {
-                            key: marketingKey.key,
-                            language: EnumMessageLanguage.en,
-                            size: marketingKey.size,
-                        },
-                    ],
-                },
-            }),
-        ]);
+                    update: {
+                        contents: this.databaseUtil.toPlainArray([
+                            {
+                                language: EnumMessageLanguage.en,
+                                ...marketingAsset,
+                            },
+                        ]),
+                    },
+                }),
+            ]);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error seeding term policies');
+            throw error;
+        }
 
         this.logger.log('Term Policies seeded successfully.');
 
@@ -161,11 +164,7 @@ export class MigrationTemplateTermPolicySeed
     }
 
     async remove(): Promise<void> {
-        this.logger.log('Removing back Term Policies...');
-
-        await Promise.all([]);
-
-        this.logger.log('Term Policies removed successfully.');
+        this.logger.log('Skipping removal of Term Policies seed.');
 
         return;
     }

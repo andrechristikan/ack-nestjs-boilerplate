@@ -1,7 +1,7 @@
+import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { ITermPolicyImportResult } from '@modules/term-policy/interfaces/term-policy.interface';
 import { ITermPolicyTemplateService } from '@modules/term-policy/interfaces/term-policy.template-service.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable, Logger } from '@nestjs/common';
@@ -22,7 +22,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         private readonly awsS3Service: AwsS3Service
     ) {}
 
-    async importTermsOfService(): Promise<ITermPolicyImportResult> {
+    async importTermsOfService(): Promise<AwsS3Dto> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -39,7 +39,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     }
                 );
 
-            await this.awsS3Service.putItem(
+            return this.awsS3Service.putItem(
                 {
                     file: templateContent,
                     key: randomKey,
@@ -49,11 +49,6 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     forceUpdate: true,
                 }
             );
-
-            return {
-                key: randomKey,
-                size: templateContent.length,
-            };
         } catch (err: unknown) {
             this.logger.error(err);
 
@@ -61,7 +56,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         }
     }
 
-    async importPrivacy(): Promise<ITermPolicyImportResult> {
+    async importPrivacy(): Promise<AwsS3Dto> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -78,7 +73,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     }
                 );
 
-            await this.awsS3Service.putItem(
+            return this.awsS3Service.putItem(
                 {
                     file: templateContent,
                     key: randomKey,
@@ -88,11 +83,6 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     forceUpdate: true,
                 }
             );
-
-            return {
-                key: randomKey,
-                size: templateContent.length,
-            };
         } catch (err: unknown) {
             this.logger.error(err);
 
@@ -100,7 +90,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         }
     }
 
-    async importCookie(): Promise<ITermPolicyImportResult> {
+    async importCookie(): Promise<AwsS3Dto> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -117,7 +107,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     }
                 );
 
-            await this.awsS3Service.putItem(
+            return this.awsS3Service.putItem(
                 {
                     file: templateContent,
                     key: randomKey,
@@ -127,11 +117,6 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     forceUpdate: true,
                 }
             );
-
-            return {
-                key: randomKey,
-                size: templateContent.length,
-            };
         } catch (err: unknown) {
             this.logger.error(err);
 
@@ -139,7 +124,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         }
     }
 
-    async importMarketing(): Promise<ITermPolicyImportResult> {
+    async importMarketing(): Promise<AwsS3Dto> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -156,7 +141,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     }
                 );
 
-            await this.awsS3Service.putItem(
+            return this.awsS3Service.putItem(
                 {
                     file: templateContent,
                     key: randomKey,
@@ -166,11 +151,6 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                     forceUpdate: true,
                 }
             );
-
-            return {
-                key: randomKey,
-                size: templateContent.length,
-            };
         } catch (err: unknown) {
             this.logger.error(err);
 

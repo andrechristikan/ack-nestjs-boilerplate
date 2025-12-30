@@ -22,7 +22,6 @@ import {
     IAwsS3PresignPutItemOptions,
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
-    IAwsS3PutItemWithAclOptions,
 } from '@common/aws/interfaces/aws.interface';
 
 export interface IAwsS3Service {
@@ -38,10 +37,6 @@ export interface IAwsS3Service {
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3Dto>;
-    putItemWithAcl(
-        file: IAwsS3PutItem,
-        options?: IAwsS3PutItemWithAclOptions
-    ): Promise<AwsS3Dto>;
     deleteItem(key: string, options?: IAwsS3Options): Promise<void>;
     deleteItems(keys: string[], options?: IAwsS3Options): Promise<void>;
     deleteDir(
@@ -52,11 +47,6 @@ export interface IAwsS3Service {
         file: IAwsS3CreateMultiplePart,
         maxPartNumber: number,
         options?: IAwsS3PutItemOptions
-    ): Promise<AwsS3MultipartDto>;
-    createMultiPartWithAcl(
-        file: IAwsS3CreateMultiplePart,
-        maxPartNumber: number,
-        options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3MultipartDto>;
     putItemMultiPart(
         multipart: AwsS3MultipartDto,
@@ -93,7 +83,7 @@ export interface IAwsS3Service {
     ): AwsS3Dto;
     moveItem(
         source: AwsS3Dto,
-        destinationKey: string,
+        destination: string,
         options?: IAwsS3MoveItemOptions
     ): Promise<AwsS3Dto>;
     moveItems(
@@ -101,4 +91,11 @@ export interface IAwsS3Service {
         destination: string,
         options?: IAwsS3Options
     ): Promise<AwsS3Dto[]>;
+    settingBucketExpiredObjectLifecycle(options: IAwsS3Options): Promise<void>;
+    settingBucketPolicy(options?: IAwsS3Options): Promise<void>;
+    settingCorsConfiguration(options?: IAwsS3Options): Promise<void>;
+    settingDisableAclConfiguration(options?: IAwsS3Options): Promise<void>;
+    settingBlockPublicAccessConfiguration(
+        options?: IAwsS3Options
+    ): Promise<void>;
 }

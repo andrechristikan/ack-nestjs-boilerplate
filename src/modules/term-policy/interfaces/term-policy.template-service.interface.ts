@@ -1,8 +1,8 @@
-import { ITermPolicyImportResult } from '@modules/term-policy/interfaces/term-policy.interface';
+import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 
 export interface ITermPolicyTemplateService {
-    importTermsOfService(): Promise<ITermPolicyImportResult>;
-    importPrivacy(): Promise<ITermPolicyImportResult>;
-    importCookie(): Promise<ITermPolicyImportResult>;
-    importMarketing(): Promise<ITermPolicyImportResult>;
+    importTermsOfService(): Promise<AwsS3Dto>;
+    importPrivacy(): Promise<AwsS3Dto>;
+    importCookie(): Promise<AwsS3Dto>;
+    importMarketing(): Promise<AwsS3Dto>;
 }

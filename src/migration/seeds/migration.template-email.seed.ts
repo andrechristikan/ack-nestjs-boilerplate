@@ -111,7 +111,12 @@ export class MigrationTemplateEmailSeed
         }
 
         if (promises.length > 0) {
-            await Promise.all(promises);
+            try {
+                await Promise.all(promises);
+            } catch (error: unknown) {
+                this.logger.error(error, 'Error seeding emails');
+                throw error;
+            }
         }
 
         this.logger.log('Emails seeded successfully.');
@@ -122,17 +127,22 @@ export class MigrationTemplateEmailSeed
     async remove(): Promise<void> {
         this.logger.log('Removing back Emails...');
 
-        await Promise.all([
-            this.emailTemplateService.deleteChangePassword(),
-            this.emailTemplateService.deleteCreateByAdmin(),
-            this.emailTemplateService.deleteEmailVerified(),
-            this.emailTemplateService.deleteForgotPassword(),
-            this.emailTemplateService.deleteMobileNumberVerified(),
-            this.emailTemplateService.deleteTempPassword(),
-            this.emailTemplateService.deleteVerification(),
-            this.emailTemplateService.deleteWelcome(),
-            this.emailTemplateService.deleteResetTwoFactorByAdmin(),
-        ]);
+        try {
+            await Promise.all([
+                this.emailTemplateService.deleteChangePassword(),
+                this.emailTemplateService.deleteCreateByAdmin(),
+                this.emailTemplateService.deleteEmailVerified(),
+                this.emailTemplateService.deleteForgotPassword(),
+                this.emailTemplateService.deleteMobileNumberVerified(),
+                this.emailTemplateService.deleteTempPassword(),
+                this.emailTemplateService.deleteVerification(),
+                this.emailTemplateService.deleteWelcome(),
+                this.emailTemplateService.deleteResetTwoFactorByAdmin(),
+            ]);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error removing emails');
+            throw error;
+        }
 
         this.logger.log('Emails removed successfully.');
 

@@ -62,19 +62,19 @@ class HelloAuthResponseDto {
         required: true,
         example: 86400,
     })
-    passwordExpiredIn: number;
+    passwordExpiredInSeconds: number;
 
     @ApiProperty({
         required: true,
         example: 3600,
     })
-    passwordExpiredInTemporary: number;
+    passwordExpiredTemporaryInSeconds: number;
 
     @ApiProperty({
         required: true,
         example: 31536000,
     })
-    passwordPeriod: number;
+    passwordPeriodInSeconds: number;
 }
 
 class HelloMessageResponseDto {

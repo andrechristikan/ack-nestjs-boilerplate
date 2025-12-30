@@ -46,12 +46,9 @@ export class AwsSESService implements IAwsSESService {
     constructor(private readonly configService: ConfigService) {
         this.sesClient = new SESClient({
             credentials: {
-                accessKeyId: this.configService.get<string>(
-                    'aws.ses.credential.key'
-                ),
-                secretAccessKey: this.configService.get<string>(
-                    'aws.ses.credential.secret'
-                ),
+                accessKeyId: this.configService.get<string>('aws.ses.iam.key'),
+                secretAccessKey:
+                    this.configService.get<string>('aws.ses.iam.secret'),
             },
             region: this.configService.get<string>('aws.ses.region'),
         });

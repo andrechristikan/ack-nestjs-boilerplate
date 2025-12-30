@@ -38,26 +38,34 @@ export class MigrationApiKeySeed
         this.logger.log('Seeding Api Keys...');
         this.logger.log(`Found ${this.apiKeys.length} Api Keys to seed.`);
 
-        await this.databaseService.$transaction(
-            this.apiKeys.map(apiKey => {
-                const key = this.apiKeyUtil.createKey(apiKey.key);
-                const hashed = this.apiKeyUtil.createHash(key, apiKey.secret);
+        try {
+            await this.databaseService.$transaction(
+                this.apiKeys.map(apiKey => {
+                    const key = this.apiKeyUtil.createKey(apiKey.key);
+                    const hashed = this.apiKeyUtil.createHash(
+                        key,
+                        apiKey.secret
+                    );
 
-                return this.databaseService.apiKey.upsert({
-                    where: {
-                        key: apiKey.key,
-                    },
-                    create: {
-                        hash: hashed,
-                        key: key,
-                        type: apiKey.type,
-                        name: apiKey.name,
-                        isActive: true,
-                    },
-                    update: {},
-                });
-            })
-        );
+                    return this.databaseService.apiKey.upsert({
+                        where: {
+                            key: apiKey.key,
+                        },
+                        create: {
+                            hash: hashed,
+                            key: key,
+                            type: apiKey.type,
+                            name: apiKey.name,
+                            isActive: true,
+                        },
+                        update: {},
+                    });
+                })
+            );
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error seeding Api Keys');
+            throw error;
+        }
 
         this.logger.log('Api Keys seeded successfully.');
 
@@ -67,18 +75,23 @@ export class MigrationApiKeySeed
     async remove(): Promise<void> {
         this.logger.log('Removing back Api Keys...');
 
-        await Promise.all([
-            ...this.apiKeys
-                .map(apiKey => {
-                    return [
-                        this.apiKeyUtil.deleteCacheByKey(
-                            this.apiKeyUtil.createKey(apiKey.key)
-                        ),
-                    ];
-                })
-                .flat(),
-            this.databaseService.apiKey.deleteMany({}),
-        ]);
+        try {
+            await Promise.all([
+                ...this.apiKeys
+                    .map(apiKey => {
+                        return [
+                            this.apiKeyUtil.deleteCacheByKey(
+                                this.apiKeyUtil.createKey(apiKey.key)
+                            ),
+                        ];
+                    })
+                    .flat(),
+                this.databaseService.apiKey.deleteMany({}),
+            ]);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Error removing Api Keys');
+            throw error;
+        }
 
         this.logger.log('Api Keys removed successfully.');
 
