@@ -8,6 +8,7 @@ import { AwsModule } from '@common/aws/aws.module';
 import { SessionModule } from '@modules/session/session.module';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { EmailModule } from '@modules/email/email.module';
+import { NotificationModule } from '@modules/notification/notification.module';
 
 @Module({
     imports: [
@@ -17,6 +18,7 @@ import { EmailModule } from '@modules/email/email.module';
         AwsModule,
         SessionModule,
         EmailModule,
+        NotificationModule,
     ],
     exports: [UserService, UserUtil, UserRepository],
     providers: [UserService, UserUtil, UserRepository],

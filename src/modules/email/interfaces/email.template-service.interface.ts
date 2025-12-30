@@ -28,4 +28,7 @@ export interface IEmailTemplateService {
     importResetTwoFactorByAdmin(): Promise<boolean>;
     getResetTwoFactorByAdmin(): Promise<GetTemplateCommandOutput | null>;
     deleteResetTwoFactorByAdmin(): Promise<boolean>;
+    importLogin(): Promise<boolean>;
+    getLogin(): Promise<GetTemplateCommandOutput | null>;
+    deleteLogin(): Promise<boolean>;
 }

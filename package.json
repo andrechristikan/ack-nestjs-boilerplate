@@ -81,6 +81,7 @@
         "cors": "^2.8.5",
         "crypto-js": "^4.2.0",
         "dotenv": "^17.2.3",
+        "firebase-admin": "^13.6.0",
         "google-auth-library": "^10.5.0",
         "helmet": "^8.1.0",
         "jsonwebtoken": "^9.0.3",

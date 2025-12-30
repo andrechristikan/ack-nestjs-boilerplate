@@ -32,6 +32,7 @@ export class MigrationTemplateEmailSeed
             verificationEmail,
             welcomeEmail,
             resetTwoFactorByAdminEmail,
+            loginEmail,
         ] = await Promise.all([
             this.emailTemplateService.getChangePassword(),
             this.emailTemplateService.getCreateByAdmin(),
@@ -42,6 +43,7 @@ export class MigrationTemplateEmailSeed
             this.emailTemplateService.getVerification(),
             this.emailTemplateService.getWelcome(),
             this.emailTemplateService.getResetTwoFactorByAdmin(),
+            this.emailTemplateService.getLogin(),
         ]);
 
         const promises: Promise<boolean>[] = [];
@@ -110,6 +112,11 @@ export class MigrationTemplateEmailSeed
             );
         }
 
+        if (!loginEmail) {
+            this.logger.log('Login Email template missing, importing...');
+            promises.push(this.emailTemplateService.importLogin());
+        }
+
         if (promises.length > 0) {
             try {
                 await Promise.all(promises);
@@ -138,6 +145,7 @@ export class MigrationTemplateEmailSeed
                 this.emailTemplateService.deleteVerification(),
                 this.emailTemplateService.deleteWelcome(),
                 this.emailTemplateService.deleteResetTwoFactorByAdmin(),
+                this.emailTemplateService.deleteLogin(),
             ]);
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing emails');

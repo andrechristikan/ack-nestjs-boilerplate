@@ -559,4 +559,52 @@ export class EmailTemplateService implements IEmailTemplateService {
             return false;
         }
     }
+
+    async importLogin(): Promise<boolean> {
+        try {
+            const templatePath = join(
+                this.templatesDir,
+                'email.login.template.hbs'
+            );
+
+            await this.awsSESService.createTemplate({
+                name: EnumSendEmailProcess.login,
+                subject: `Login Notification`,
+                htmlBody: readFileSync(templatePath, 'utf8'),
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async getLogin(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            const template = await this.awsSESService.getTemplate({
+                name: EnumSendEmailProcess.login,
+            });
+            return template;
+        } catch (err: unknown) {
+            this.logger.warn(err);
+
+            return null;
+        }
+    }
+
+    async deleteLogin(): Promise<boolean> {
+        try {
+            await this.awsSESService.deleteTemplate({
+                name: EnumSendEmailProcess.login,
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
 }
