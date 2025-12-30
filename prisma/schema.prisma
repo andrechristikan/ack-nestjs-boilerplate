@@ -124,7 +124,7 @@ model User {
   lastIPAddress   String?
   lastLoginFrom   EnumUserLoginFrom?
   lastLoginWith   EnumUserLoginWith?
-  termPolicy      Json
+  termPolicy      UserTermPolicy
   photo           Json?
 
   // timestamps fields
@@ -352,6 +352,13 @@ model ForgotPassword {
   @@index(fields: [token, expiredAt, isUsed])
   @@index(fields: [token])
   @@map("ForgotPasswords")
+}
+
+type UserTermPolicy {
+  termsOfService Boolean
+  privacy        Boolean
+  marketing      Boolean
+  cookies        Boolean
 }
 
 enum EnumUserGender {

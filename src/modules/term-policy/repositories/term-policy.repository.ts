@@ -20,7 +20,7 @@ import {
     EnumTermPolicyType,
     EnumUserStatus,
     Prisma,
-    TermPolicy,
+    TermPolicy, UserTermPolicy,
 } from '@prisma/client';
 
 @Injectable()
@@ -142,6 +142,7 @@ export class TermPolicyRepository {
         userId: string,
         termPolicyId: string,
         type: EnumTermPolicyType,
+        userTermPolicies: UserTermPolicy,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<ITermPolicyUserAcceptance> {
         const acceptedAt = this.helperService.dateCreate();
@@ -151,6 +152,7 @@ export class TermPolicyRepository {
                     acceptedAt,
                     userId,
                     termPolicyId,
+                    createdBy: userId,
                 },
                 include: {
                     termPolicy: true,
@@ -165,6 +167,7 @@ export class TermPolicyRepository {
                 },
                 data: {
                     termPolicy: {
+                        ...userTermPolicies,
                         [type]: true,
                     },
                     activityLogs: {
