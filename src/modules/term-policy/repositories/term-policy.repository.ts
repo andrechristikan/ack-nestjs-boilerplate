@@ -13,6 +13,7 @@ import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/te
 import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
 import { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
+import { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
@@ -20,7 +21,7 @@ import {
     EnumTermPolicyType,
     EnumUserStatus,
     Prisma,
-    TermPolicy, UserTermPolicy,
+    TermPolicy,
 } from '@prisma/client';
 
 @Injectable()
@@ -139,10 +140,9 @@ export class TermPolicyRepository {
     }
 
     async accept(
-        userId: string,
+        user: IUser,
         termPolicyId: string,
         type: EnumTermPolicyType,
-        userTermPolicies: UserTermPolicy,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<ITermPolicyUserAcceptance> {
         const acceptedAt = this.helperService.dateCreate();
@@ -150,9 +150,9 @@ export class TermPolicyRepository {
             this.databaseService.termPolicyUserAcceptance.create({
                 data: {
                     acceptedAt,
-                    userId,
+                    userId: user.id,
                     termPolicyId,
-                    createdBy: userId,
+                    createdBy: user.id,
                 },
                 include: {
                     termPolicy: true,
@@ -161,13 +161,12 @@ export class TermPolicyRepository {
             }),
             this.databaseService.user.update({
                 where: {
-                    id: userId,
+                    id: user.id,
                     deletedAt: null,
                     status: EnumUserStatus.active,
                 },
                 data: {
                     termPolicy: {
-                        ...userTermPolicies,
                         [type]: true,
                     },
                     activityLogs: {
@@ -176,7 +175,7 @@ export class TermPolicyRepository {
                             ipAddress,
                             userAgent:
                                 this.databaseUtil.toPlainObject(userAgent),
-                            createdBy: userId,
+                            createdBy: user.id,
                             metadata: {
                                 termPolicyType: type,
                             },
@@ -199,7 +198,7 @@ export class TermPolicyRepository {
                 type,
                 version,
                 status: EnumTermPolicyStatus.draft,
-                contents: contents as unknown as Prisma.InputJsonArray[],
+                contents: this.databaseUtil.toPlainArray(contents),
                 createdBy,
             },
         });
@@ -231,7 +230,7 @@ export class TermPolicyRepository {
                 id: termPolicyId,
             },
             data: {
-                contents: contents as unknown as Prisma.InputJsonArray[],
+                contents: this.databaseUtil.toPlainArray(contents),
                 updatedBy,
             },
         });
@@ -239,7 +238,7 @@ export class TermPolicyRepository {
 
     async addContent(
         termPolicyId: string,
-        content: TermContentDto,
+        newContent: TermContentDto,
         updatedBy: string
     ): Promise<TermPolicy> {
         return this.databaseService.termPolicy.update({
@@ -248,7 +247,10 @@ export class TermPolicyRepository {
             },
             data: {
                 contents: {
-                    push: content as unknown as Prisma.InputJsonValue,
+                    push: this.databaseUtil.toPlainObject<
+                        TermContentDto,
+                        Prisma.TermPolicyContentCreateInput
+                    >(newContent),
                 },
                 updatedBy,
             },
@@ -271,7 +273,7 @@ export class TermPolicyRepository {
                 id: termPolicyId,
             },
             data: {
-                contents: contents as unknown as Prisma.InputJsonArray[],
+                contents: this.databaseUtil.toPlainArray(contents),
                 updatedBy,
             },
         });
@@ -291,7 +293,7 @@ export class TermPolicyRepository {
                 data: {
                     status: EnumTermPolicyStatus.published,
                     publishedAt: this.helperService.dateCreate(),
-                    contents: contents as unknown as Prisma.InputJsonArray[],
+                    contents,
                     updatedBy,
                 },
             }),

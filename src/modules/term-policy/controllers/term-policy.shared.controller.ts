@@ -78,7 +78,7 @@ export class TermPolicySharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.userAccept(user.id, body, user.termPolicy, {
+        return this.termPolicyService.userAccept(user, body, {
             ipAddress,
             userAgent,
         });

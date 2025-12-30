@@ -42,22 +42,32 @@ export class DatabaseUtil {
     }
 
     /**
-     * Converts data to a plain object compatible with Prisma JsonObject format.
+     * Converts the provided data to a plain object compatible with Prisma JsonObject format.
      *
-     * @param {T} data - The data to convert to plain object
-     * @returns {Prisma.JsonObject} Plain object representation of the data
+     * Performs a deep clone of the input and casts it to Prisma.JsonObject, ensuring
+     * compatibility for Prisma JSON fields.
+     *
+     * @template T Input data type
+     * @template N Output type, defaults to Prisma.JsonObject
+     * @param {T} data - The data to convert
+     * @returns {N} The plain object representation, compatible with Prisma JsonObject
      */
-    toPlainObject<T>(data: T): Prisma.JsonObject {
-        return structuredClone(data) as unknown as Prisma.JsonObject;
+    toPlainObject<T, N = Prisma.JsonObject>(data: T): N {
+        return structuredClone(data as unknown) as N;
     }
 
     /**
-     * Converts data to a plain array compatible with Prisma JsonObject array format.
+     * Converts the provided data to a plain array compatible with Prisma JsonObject array format.
      *
-     * @param {T} data - The data to convert to plain array
-     * @returns {Prisma.JsonObject[]} Plain array representation of the data
+     * Performs a deep clone of the input and casts it to an array of Prisma.JsonObject,
+     * making it suitable for Prisma JSON array fields.
+     *
+     * @template T Input data type
+     * @template N Output array element type, defaults to Prisma.JsonObject
+     * @param {T} data - The data to convert
+     * @returns {N[]} The plain array representation, compatible with Prisma JsonObject[]
      */
-    toPlainArray<T>(data: T): Prisma.JsonObject[] {
-        return structuredClone(data) as unknown as Prisma.JsonObject[];
+    toPlainArray<T, N = Prisma.JsonObject>(data: T): N[] {
+        return structuredClone(data) as N[];
     }
 }

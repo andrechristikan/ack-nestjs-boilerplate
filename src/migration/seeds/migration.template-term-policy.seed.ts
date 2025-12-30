@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
@@ -20,7 +21,8 @@ export class MigrationTemplateTermPolicySeed
 
     constructor(
         private readonly termPolicyTemplateService: TermPolicyTemplateService,
-        private readonly databaseService: DatabaseService
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil
     ) {
         super();
     }
@@ -29,13 +31,17 @@ export class MigrationTemplateTermPolicySeed
         this.logger.log('Seeding Term Policies...');
 
         try {
-            const [termsOfServiceKey, privacyKey, cookieKey, marketingKey] =
-                await Promise.all([
-                    this.termPolicyTemplateService.importTermsOfService(),
-                    this.termPolicyTemplateService.importPrivacy(),
-                    this.termPolicyTemplateService.importCookie(),
-                    this.termPolicyTemplateService.importMarketing(),
-                ]);
+            const [
+                termsOfServiceAsset,
+                privacyAsset,
+                cookieAsset,
+                marketingAsset,
+            ] = await Promise.all([
+                this.termPolicyTemplateService.importTermsOfService(),
+                this.termPolicyTemplateService.importPrivacy(),
+                this.termPolicyTemplateService.importCookie(),
+                this.termPolicyTemplateService.importMarketing(),
+            ]);
 
             await this.databaseService.$transaction([
                 this.databaseService.termPolicy.upsert({
@@ -49,22 +55,20 @@ export class MigrationTemplateTermPolicySeed
                         type: EnumTermPolicyType.termsOfService,
                         version: 1,
                         status: EnumTermPolicyStatus.published,
-                        contents: [
+                        contents: this.databaseUtil.toPlainArray([
                             {
-                                key: termsOfServiceKey.key,
                                 language: EnumMessageLanguage.en,
-                                size: termsOfServiceKey.size,
+                                ...termsOfServiceAsset,
                             },
-                        ],
+                        ]),
                     },
                     update: {
-                        contents: [
+                        contents: this.databaseUtil.toPlainArray([
                             {
-                                key: termsOfServiceKey.key,
                                 language: EnumMessageLanguage.en,
-                                size: termsOfServiceKey.size,
+                                ...termsOfServiceAsset,
                             },
-                        ],
+                        ]),
                     },
                 }),
                 this.databaseService.termPolicy.upsert({
@@ -78,22 +82,20 @@ export class MigrationTemplateTermPolicySeed
                         type: EnumTermPolicyType.privacy,
                         version: 1,
                         status: EnumTermPolicyStatus.published,
-                        contents: [
+                        contents: this.databaseUtil.toPlainArray([
                             {
-                                key: privacyKey.key,
                                 language: EnumMessageLanguage.en,
-                                size: privacyKey.size,
+                                ...privacyAsset,
                             },
-                        ],
+                        ]),
                     },
                     update: {
-                        contents: [
+                        contents: this.databaseUtil.toPlainArray([
                             {
-                                key: privacyKey.key,
                                 language: EnumMessageLanguage.en,
-                                size: privacyKey.size,
+                                ...privacyAsset,
                             },
-                        ],
+                        ]),
                     },
                 }),
                 this.databaseService.termPolicy.upsert({
@@ -107,22 +109,20 @@ export class MigrationTemplateTermPolicySeed
                         type: EnumTermPolicyType.cookies,
                         version: 1,
                         status: EnumTermPolicyStatus.published,
-                        contents: [
+                        contents: this.databaseUtil.toPlainArray([
                             {
-                                key: cookieKey.key,
                                 language: EnumMessageLanguage.en,
-                                size: cookieKey.size,
+                                ...cookieAsset,
                             },
-                        ],
+                        ]),
                     },
                     update: {
-                        contents: [
+                        contents: this.databaseUtil.toPlainArray([
                             {
-                                key: cookieKey.key,
                                 language: EnumMessageLanguage.en,
-                                size: cookieKey.size,
+                                ...cookieAsset,
                             },
-                        ],
+                        ]),
                     },
                 }),
                 this.databaseService.termPolicy.upsert({
@@ -136,22 +136,20 @@ export class MigrationTemplateTermPolicySeed
                         type: EnumTermPolicyType.marketing,
                         version: 1,
                         status: EnumTermPolicyStatus.published,
-                        contents: [
+                        contents: this.databaseUtil.toPlainArray([
                             {
-                                key: marketingKey.key,
                                 language: EnumMessageLanguage.en,
-                                size: marketingKey.size,
+                                ...marketingAsset,
                             },
-                        ],
+                        ]),
                     },
                     update: {
-                        contents: [
+                        contents: this.databaseUtil.toPlainArray([
                             {
-                                key: marketingKey.key,
                                 language: EnumMessageLanguage.en,
-                                size: marketingKey.size,
+                                ...marketingAsset,
                             },
-                        ],
+                        ]),
                     },
                 }),
             ]);

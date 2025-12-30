@@ -19,7 +19,8 @@ import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/te
 import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
-import { EnumTermPolicyType, UserTermPolicy } from '@prisma/client';
+import { IUser } from '@modules/user/interfaces/user.interface';
+import { EnumTermPolicyType } from '@prisma/client';
 
 export interface ITermPolicyService {
     validateTermPolicyGuard(
@@ -40,9 +41,8 @@ export interface ITermPolicyService {
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>>;
     userAccept(
-        userId: string,
+        user: IUser,
         { type }: TermPolicyAcceptRequestDto,
-        existingTermPolicies: UserTermPolicy,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
     createByAdmin(

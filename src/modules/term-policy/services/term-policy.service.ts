@@ -30,6 +30,7 @@ import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-p
 import { ITermPolicyService } from '@modules/term-policy/interfaces/term-policy.service.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
+import { IUser } from '@modules/user/interfaces/user.interface';
 import {
     BadRequestException,
     ConflictException,
@@ -42,7 +43,6 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     TermPolicy,
-    UserTermPolicy,
 } from '@prisma/client';
 
 @Injectable()
@@ -141,9 +141,8 @@ export class TermPolicyService implements ITermPolicyService {
     }
 
     async userAccept(
-        userId: string,
+        user: IUser,
         { type }: TermPolicyAcceptRequestDto,
-        existingTermPolicies: UserTermPolicy,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         const policy =
@@ -157,7 +156,7 @@ export class TermPolicyService implements ITermPolicyService {
 
         const exist =
             await this.termPolicyRepository.existAcceptanceByPolicyAndUser(
-                userId,
+                user.id,
                 policy.id
             );
         if (exist) {
@@ -169,10 +168,9 @@ export class TermPolicyService implements ITermPolicyService {
 
         try {
             await this.termPolicyRepository.accept(
-                userId,
+                user,
                 policy.id,
                 type,
-                existingTermPolicies,
                 requestLog
             );
 
