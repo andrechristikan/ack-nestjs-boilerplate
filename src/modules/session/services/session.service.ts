@@ -7,6 +7,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { NotificationPushTokenRepository } from '@modules/notification/repositories/notification-push-token.repository';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { ISessionService } from '@modules/session/interfaces/session.service.interface';
@@ -26,7 +27,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 export class SessionService implements ISessionService {
     constructor(
         private readonly sessionRepository: SessionRepository,
-        private readonly sessionUtil: SessionUtil
+        private readonly sessionUtil: SessionUtil,
+        private readonly notificationPushTokenRepository: NotificationPushTokenRepository
     ) {}
 
     /**
@@ -91,7 +93,8 @@ export class SessionService implements ISessionService {
      * Revokes a specific user session.
      *
      * Validates that the session exists and is active for the user, then revokes the session
-     * in both the database and cache simultaneously. Removes the session from the user's active sessions.
+     * in both the database and cache simultaneously. Also revokes all push tokens associated
+     * with this session. Removes the session from the user's active sessions.
      *
      * @param userId - The unique identifier of the user
      * @param sessionId - The unique identifier of the session to revoke
@@ -118,6 +121,10 @@ export class SessionService implements ISessionService {
         await Promise.all([
             this.sessionRepository.revoke(userId, sessionId, requestLog),
             this.sessionUtil.deleteOneLogin(userId, sessionId),
+            this.notificationPushTokenRepository.revokeBySessionId(
+                sessionId,
+                userId
+            ),
         ]);
 
         return;
@@ -128,7 +135,7 @@ export class SessionService implements ISessionService {
      *
      * Similar to revoke() but records the admin/revoker information for audit purposes.
      * Validates that the session exists and is active, then revokes it from both database
-     * and cache while tracking who initiated the revocation.
+     * and cache while tracking who initiated the revocation. Also revokes associated push tokens.
      *
      * @param userId - The unique identifier of the user
      * @param sessionId - The unique identifier of the session to revoke
@@ -161,6 +168,10 @@ export class SessionService implements ISessionService {
                 revokeBy
             ),
             this.sessionUtil.deleteOneLogin(userId, sessionId),
+            this.notificationPushTokenRepository.revokeBySessionId(
+                sessionId,
+                revokeBy
+            ),
         ]);
 
         return {

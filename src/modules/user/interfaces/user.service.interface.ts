@@ -37,6 +37,7 @@ import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
+import { UserUpdateNotificationSettingRequestDto } from '@modules/user/dtos/request/user.notification-setting.request.dto';
 import {
     UserCheckEmailResponseDto,
     UserCheckUsernameResponseDto,
@@ -100,6 +101,11 @@ export interface IUserService {
     updateProfile(
         userId: string,
         { countryId, ...data }: UserUpdateProfileRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
+    updateNotificationSetting(
+        userId: string,
+        data: UserUpdateNotificationSettingRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
     generatePhotoProfilePresign(

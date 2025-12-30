@@ -43,6 +43,8 @@ import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.en
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { EnumNotificationDelivery } from '@modules/notification/enums/notification.enum';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import {
     UserCheckEmailRequestDto,
@@ -56,6 +58,7 @@ import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.fo
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
+import { UserUpdateNotificationSettingRequestDto } from '@modules/user/dtos/request/user.notification-setting.request.dto';
 import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
@@ -129,6 +132,7 @@ export class UserService implements IUserService {
         private readonly featureFlagService: FeatureFlagService,
         private readonly emailService: EmailService,
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
+        private readonly notificationService: NotificationService,
         private readonly configService: ConfigService
     ) {
         this.userRoleName = this.configService.get<string>('user.default.role');
@@ -426,6 +430,28 @@ export class UserService implements IUserService {
                     countryId,
                     ...data,
                 },
+                requestLog
+            );
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async updateNotificationSetting(
+        userId: string,
+        data: UserUpdateNotificationSettingRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        try {
+            await this.userRepository.updateNotificationSetting(
+                userId,
+                data,
                 requestLog
             );
 
@@ -1511,6 +1537,13 @@ export class UserService implements IUserService {
                     expiredAt,
                 },
                 requestLog
+            ),
+            this.notificationService.createLoginNotification(
+                user,
+                loginFrom,
+                loginWith,
+                requestLog,
+                EnumNotificationDelivery.all
             ),
         ]);
 

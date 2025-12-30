@@ -135,16 +135,19 @@ model User {
   deletedAt DateTime?
   deletedBy String?   @db.ObjectId
 
-  mobileNumbers     UserMobileNumber[]         @relation("UserMobileNumberUser")
-  verifications     Verification[]             @relation("UserVerifications")
-  passwordHistories PasswordHistory[]          @relation("UserPasswordHistories")
-  activityLogs      ActivityLog[]              @relation("UserActivityLogs")
-  role              Role?                      @relation("UserRole", fields: [roleId], references: [id])
-  country           Country?                   @relation("UserCountry", fields: [countryId], references: [id])
-  sessions          Session[]                  @relation("UserSessions")
-  acceptances       TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
-  forgotPasswords   ForgotPassword[]           @relation("UserForgotPassword")
-  twoFactor         TwoFactor?                 @relation("UserTwoFactor")
+  mobileNumbers          UserMobileNumber[]         @relation("UserMobileNumberUser")
+  verifications          Verification[]             @relation("UserVerifications")
+  passwordHistories      PasswordHistory[]          @relation("UserPasswordHistories")
+  activityLogs           ActivityLog[]              @relation("UserActivityLogs")
+  notifications          Notification[]             @relation("UserNotifications")
+  notificationSettings   NotificationSetting[]      @relation("UserNotificationSettings")
+  notificationPushTokens NotificationPushToken[]    @relation("UserNotificationPushTokens")
+  role                   Role?                      @relation("UserRole", fields: [roleId], references: [id])
+  country                Country?                   @relation("UserCountry", fields: [countryId], references: [id])
+  sessions               Session[]                  @relation("UserSessions")
+  acceptances            TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
+  forgotPasswords        ForgotPassword[]           @relation("UserForgotPassword")
+  twoFactor              TwoFactor?                 @relation("UserTwoFactor")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -215,6 +218,147 @@ model ActivityLog {
   @@map("ActivityLogs")
 }
 
+model Notification {
+  id       String                   @id @default(auto()) @map("_id") @db.ObjectId
+  userId   String                   @db.ObjectId
+  type     EnumNotificationType
+  priority EnumNotificationPriority @default(normal)
+  title    String
+  body     String
+  data     Json?
+  isRead   Boolean                  @default(false)
+  readAt   DateTime?
+
+  user       User?                  @relation("UserNotifications", fields: [userId], references: [id])
+  deliveries NotificationDelivery[] @relation("NotificationDeliveries")
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@index(fields: [userId])
+  @@index(fields: [userId, isRead, createdAt])
+  @@index(fields: [userId, priority, createdAt])
+  @@index(fields: [createdAt])
+  @@map("Notifications")
+}
+
+model NotificationSetting {
+  id      String                      @id @default(auto()) @map("_id") @db.ObjectId
+  userId  String                      @db.ObjectId
+  channel EnumNotificationChannel
+  type    EnumNotificationSettingType
+  enabled Boolean                     @default(true)
+
+  user User? @relation("UserNotificationSettings", fields: [userId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@unique(fields: [userId, channel, type])
+  @@index(fields: [userId])
+  @@index(fields: [userId, channel])
+  @@map("NotificationSettings")
+}
+
+model NotificationPushToken {
+  id           String                       @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String                       @db.ObjectId
+  sessionId    String                       @db.ObjectId
+  provider     EnumNotificationPushProvider
+  token        String
+  userAgent    Json?
+  isRevoked    Boolean                      @default(false)
+  revokedAt    DateTime?
+  failureCount Int                          @default(0)
+  lastFailedAt DateTime?
+
+  user    User?    @relation("UserNotificationPushTokens", fields: [userId], references: [id])
+  session Session? @relation("SessionNotificationPushTokens", fields: [sessionId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@unique(fields: [provider, token])
+  @@index(fields: [userId])
+  @@index(fields: [sessionId])
+  @@index(fields: [userId, isRevoked])
+  @@index(fields: [isRevoked, failureCount, lastFailedAt])
+  @@map("NotificationPushTokens")
+}
+
+model NotificationDelivery {
+  id             String                  @id @default(auto()) @map("_id") @db.ObjectId
+  notificationId String                  @db.ObjectId
+  channel        EnumNotificationChannel
+  status         EnumDeliveryStatus      @default(pending)
+  attemptCount   Int                     @default(0)
+  lastAttemptAt  DateTime?
+  deliveredAt    DateTime?
+  failedReason   String?
+
+  notification Notification @relation("NotificationDeliveries", fields: [notificationId], references: [id])
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index(fields: [notificationId])
+  @@index(fields: [status])
+  @@index(fields: [createdAt])
+  @@map("NotificationDeliveries")
+}
+
+model NotificationTemplate {
+  id       String               @id @default(auto()) @map("_id") @db.ObjectId
+  key      String
+  type     EnumNotificationType
+  locale   String               @default("en")
+  title    String
+  body     String
+  isActive Boolean              @default(true)
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@unique(fields: [key, locale])
+  @@index(fields: [type, locale, isActive])
+  @@map("NotificationTemplates")
+}
+
+model OutboxEvent {
+  id           String              @id @default(auto()) @map("_id") @db.ObjectId
+  type         EnumOutboxEventType
+  status       EnumOutboxStatus    @default(pending)
+  payload      Json
+  attempts     Int                 @default(0)
+  nextRunAt    DateTime?
+  processedAt  DateTime?
+  errorMessage String?
+  errorStack   String?
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@index(fields: [status, nextRunAt, createdAt])
+  @@index(fields: [createdAt])
+  @@map("OutboxEvents")
+}
+
 model Session {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
   userId    String    @db.ObjectId
@@ -225,7 +369,8 @@ model Session {
   revokedAt DateTime?
   isRevoked Boolean   @default(false)
 
-  user User? @relation("UserSessions", fields: [userId], references: [id])
+  user                   User?                   @relation("UserSessions", fields: [userId], references: [id])
+  notificationPushTokens NotificationPushToken[] @relation("SessionNotificationPushTokens")
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -499,6 +644,7 @@ enum EnumActivityLogAction {
   userBlocked
   userUpdateStatus
   userUpdateProfile
+  userUpdateNotificationSetting
   userUpdatePhotoProfile
   userChangePassword
   userDeleteSelf
@@ -549,4 +695,55 @@ enum EnumActivityLogAction {
   adminUserUpdatePassword
   adminUserResetTwoFactor
   adminUserImport
+}
+
+enum EnumNotificationType {
+  login
+  security_alert
+  password_changed
+  marketing
+  transactional
+  system
+  announcement
+}
+
+enum EnumNotificationPriority {
+  low
+  normal
+  high
+  critical
+}
+
+enum EnumDeliveryStatus {
+  pending
+  sent
+  delivered
+  failed
+  bounced
+}
+
+enum EnumNotificationChannel {
+  email
+  push
+}
+
+enum EnumNotificationPushProvider {
+  fcm
+  apns
+}
+
+enum EnumNotificationSettingType {
+  login
+  newsletter
+}
+
+enum EnumOutboxEventType {
+  notificationFanout
+}
+
+enum EnumOutboxStatus {
+  pending
+  processing
+  processed
+  failed
 }

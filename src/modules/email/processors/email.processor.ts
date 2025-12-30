@@ -13,6 +13,7 @@ import { QueueProcessorBase } from 'src/queues/bases/queue.processor.base';
 import { QueueProcessor } from 'src/queues/decorators/queue.decorator';
 import { EmailUtil } from '@modules/email/utils/email.util';
 import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
+import { EmailLoginDto } from '@modules/email/dtos/email.login.dto';
 
 @QueueProcessor(EnumQueue.EMAIL)
 export class EmailProcessor
@@ -81,6 +82,13 @@ export class EmailProcessor
                     );
 
                     break;
+                case EnumSendEmailProcess.login:
+                    await this.processLoginNotification(
+                        job.data.send,
+                        job.data.data as EmailLoginDto
+                    );
+
+                    break;
                 default:
                     break;
             }
@@ -142,5 +150,12 @@ export class EmailProcessor
             data,
             mobileNumberVerified
         );
+    }
+
+    async processLoginNotification(
+        data: EmailSendDto,
+        login: EmailLoginDto
+    ): Promise<boolean> {
+        return this.emailUtil.sendLoginNotification(data, login);
     }
 }

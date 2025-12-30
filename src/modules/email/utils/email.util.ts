@@ -11,6 +11,7 @@ import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
 import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
+import { EmailLoginDto } from '@modules/email/dtos/email.login.dto';
 
 /**
  * Util for handling email operations using AWS SES
@@ -339,6 +340,37 @@ export class EmailUtil {
                     supportEmail: title(this.supportEmail),
                     homeUrl: this.homeUrl,
                     username,
+                },
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async sendLoginNotification(
+        { username, email }: EmailSendDto,
+        { loginFrom, loginWith, ipAddress, loginAt }: EmailLoginDto
+    ): Promise<boolean> {
+        try {
+            await this.awsSESService.send({
+                templateName: EnumSendEmailProcess.login,
+                recipients: [email],
+                sender: this.noreplyEmail,
+                templateData: {
+                    homeName: this.homeName,
+                    supportEmail: this.supportEmail,
+                    homeUrl: this.homeUrl,
+                    username,
+                    loginFrom,
+                    loginWith,
+                    ipAddress,
+                    loginAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(loginAt)
+                    ),
                 },
             });
 

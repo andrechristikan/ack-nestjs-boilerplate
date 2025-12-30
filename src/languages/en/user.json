@@ -4,6 +4,7 @@
     "create": "New user created successfully.",
     "profile": "User profile retrieved successfully.",
     "updateProfile": "User profile updated successfully.",
+    "updateNotificationSetting": "Notification settings updated successfully.",
     "uploadPhotoProfile": "Profile photo upload request successful.",
     "updatePhotoProfile": "Profile picture uploaded successfully.",
     "generatePhotoProfilePresign": "Presigned URL for profile photo upload generated successfully.",

@@ -24,6 +24,7 @@ import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.crea
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
+import { UserUpdateNotificationSettingRequestDto } from '@modules/user/dtos/request/user.notification-setting.request.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
@@ -38,6 +39,8 @@ import { Injectable } from '@nestjs/common';
 import {
     Country,
     EnumActivityLogAction,
+    EnumNotificationChannel,
+    EnumNotificationSettingType,
     EnumPasswordHistoryType,
     EnumRoleType,
     EnumTermPolicyStatus,
@@ -63,6 +66,35 @@ export class UserRepository {
         private readonly paginationService: PaginationService,
         private readonly helperService: HelperService
     ) {}
+
+    private buildDefaultNotificationSettings(createdBy: string) {
+        return [
+            {
+                channel: EnumNotificationChannel.email,
+                type: EnumNotificationSettingType.login,
+                enabled: true,
+                createdBy,
+            },
+            {
+                channel: EnumNotificationChannel.email,
+                type: EnumNotificationSettingType.newsletter,
+                enabled: true,
+                createdBy,
+            },
+            {
+                channel: EnumNotificationChannel.push,
+                type: EnumNotificationSettingType.login,
+                enabled: true,
+                createdBy,
+            },
+            {
+                channel: EnumNotificationChannel.push,
+                type: EnumNotificationSettingType.newsletter,
+                enabled: true,
+                createdBy,
+            },
+        ];
+    }
 
     async findWithPaginationOffset(
         { where, ...params }: IPaginationQueryOffsetParams,
@@ -422,6 +454,13 @@ export class UserRepository {
                             ],
                         },
                     },
+                    notificationSettings: {
+                        createMany: {
+                            data: this.buildDefaultNotificationSettings(
+                                createdBy
+                            ),
+                        },
+                    },
                     twoFactor: {
                         create: {
                             enabled: false,
@@ -492,6 +531,54 @@ export class UserRepository {
                 },
             },
         });
+    }
+
+    async updateNotificationSetting(
+        userId: string,
+        { channel, type, enabled }: UserUpdateNotificationSettingRequestDto,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        const [, user] = await this.databaseService.$transaction([
+            this.databaseService.notificationSetting.upsert({
+                where: {
+                    userId_channel_type: {
+                        userId,
+                        channel,
+                        type,
+                    },
+                },
+                create: {
+                    userId,
+                    channel,
+                    type,
+                    enabled,
+                    createdBy: userId,
+                },
+                update: {
+                    enabled,
+                    updatedBy: userId,
+                },
+            }),
+            this.databaseService.user.update({
+                where: { id: userId, deletedAt: null },
+                data: {
+                    updatedBy: userId,
+                    activityLogs: {
+                        create: {
+                            action:
+                                EnumActivityLogAction.userUpdateNotificationSetting,
+                            ipAddress,
+                            userAgent: this.databaseUtil.toPlainObject(
+                                userAgent
+                            ),
+                            createdBy: userId,
+                        },
+                    },
+                },
+            }),
+        ]);
+
+        return user;
     }
 
     async updatePhotoProfile(
@@ -983,6 +1070,13 @@ export class UserRepository {
                             createdBy: userId,
                         },
                     },
+                    notificationSettings: {
+                        createMany: {
+                            data: this.buildDefaultNotificationSettings(
+                                userId
+                            ),
+                        },
+                    },
                     twoFactor: {
                         create: {
                             enabled: false,
@@ -1125,6 +1219,13 @@ export class UserRepository {
                                     createdBy: userId,
                                 },
                             ],
+                        },
+                    },
+                    notificationSettings: {
+                        createMany: {
+                            data: this.buildDefaultNotificationSettings(
+                                userId
+                            ),
                         },
                     },
                     verifications: {
@@ -1777,6 +1878,13 @@ export class UserRepository {
                                                 createdBy,
                                             },
                                         ],
+                                    },
+                                },
+                                notificationSettings: {
+                                    createMany: {
+                                        data: this.buildDefaultNotificationSettings(
+                                            createdBy
+                                        ),
                                     },
                                 },
                                 twoFactor: {
