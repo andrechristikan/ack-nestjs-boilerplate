@@ -62,7 +62,7 @@
         "@nestjs/swagger": "^11.2.3",
         "@nestjs/terminus": "^11.0.0",
         "@nestjs/throttler": "^6.5.0",
-        "@prisma/client": "^6.19.0",
+        "@prisma/client": "^7.2.0",
         "@sentry/nestjs": "^10.32.1",
         "@sentry/profiling-node": "^10.32.1",
         "@smithy/types": "^4.11.0",
