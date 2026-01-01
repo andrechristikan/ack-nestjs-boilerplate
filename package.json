@@ -53,7 +53,7 @@
         "@nestjs/axios": "^4.0.1",
         "@nestjs/bullmq": "^11.0.4",
         "@nestjs/cache-manager": "^3.1.0",
-        "@nestjs/common": "^11.1.10",
+        "@nestjs/common": "^11.1.11",
         "@nestjs/config": "^4.0.2",
         "@nestjs/core": "^11.1.10",
         "@nestjs/jwt": "^11.0.2",
