@@ -1,9 +1,3 @@
-export interface IFirebaseConfig {
-    projectId?: string;
-    clientEmail?: string;
-    privateKey?: string;
-}
-
 export interface IFirebasePushPayload {
     title: string;
     body: string;

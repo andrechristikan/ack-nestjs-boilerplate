@@ -1,58 +1,99 @@
 import {
-    IFirebaseConfig,
+    FirebaseInvalidTokenCodes,
+    FirebaseMaxSendPushBatchSize,
+} from '@common/firebase/constants/firebase.constant';
+import {
     IFirebasePushPayload,
     IFirebasePushResult,
 } from '@common/firebase/interfaces/firebase.interface';
+import { HelperService } from '@common/helper/services/helper.service';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as admin from 'firebase-admin';
+import { createPrivateKey } from 'crypto';
+import * as firebaseAdmin from 'firebase-admin';
+import { App as FirebaseApp } from 'firebase-admin/app';
+import { Messaging } from 'firebase-admin/lib/messaging/messaging';
+import {
+    BatchResponse,
+    MulticastMessage,
+} from 'firebase-admin/lib/messaging/messaging-api';
 
 @Injectable()
 export class FirebaseService implements OnModuleInit {
     private readonly logger = new Logger(FirebaseService.name);
-    private app: admin.app.App | null = null;
 
-    constructor(private readonly configService: ConfigService) {}
+    private readonly projectId: string;
+    private readonly clientEmail: string;
+    private readonly privateKey: string;
+
+    private app: FirebaseApp | null = null;
+    private messaging: Messaging | null = null;
+
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly helperService: HelperService
+    ) {
+        this.projectId = this.configService.get<string>('firebase.projectId');
+        this.clientEmail = this.configService.get<string>(
+            'firebase.clientEmail'
+        );
+
+        const privateKeyBuffer = Buffer.from(
+            this.configService.get<string>('firebase.privateKey'),
+            'base64'
+        );
+        this.privateKey = createPrivateKey({
+            key: privateKeyBuffer,
+            format: 'der',
+            type: 'pkcs8',
+        }).export({ type: 'pkcs8', format: 'pem' }) as string;
+    }
 
     async onModuleInit(): Promise<void> {
-        const config = this.configService.get<IFirebaseConfig>('firebase');
-
-        if (!config?.projectId || !config?.clientEmail || !config?.privateKey) {
+        if (!this.projectId || !this.clientEmail || !this.privateKey) {
             this.logger.warn(
                 'Firebase credentials not configured. Push notifications will be disabled.'
             );
+
             return;
         }
 
         try {
-            this.app = admin.initializeApp({
-                credential: admin.credential.cert({
-                    projectId: config.projectId,
-                    clientEmail: config.clientEmail,
-                    privateKey: config.privateKey,
+            this.app = firebaseAdmin.initializeApp({
+                credential: firebaseAdmin.credential.cert({
+                    projectId: this.projectId,
+                    clientEmail: this.clientEmail,
+                    privateKey: this.privateKey,
                 }),
             });
+
+            this.messaging = firebaseAdmin.messaging(this.app);
+
             this.logger.log('Firebase Admin SDK initialized successfully');
         } catch (error: unknown) {
-            this.logger.error('Failed to initialize Firebase Admin SDK', error);
+            this.logger.error(error, 'Failed to initialize Firebase Admin SDK');
         }
     }
 
-    isInitialized(): boolean {
-        return this.app !== null;
+    private isInitialized(): boolean {
+        return !!this.app || !!this.messaging;
+    }
+
+    private isInvalidTokenError(error?: { code?: string }): boolean {
+        return FirebaseInvalidTokenCodes.includes(error?.code);
     }
 
     async sendPush(
         token: string,
         payload: IFirebasePushPayload
     ): Promise<boolean> {
-        if (!this.app) {
+        if (!this.isInitialized()) {
             this.logger.warn('Firebase not initialized, skipping push');
             return false;
         }
 
         try {
-            const message: admin.messaging.Message = {
+            await this.messaging.send({
                 token,
                 notification: {
                     title: payload.title,
@@ -60,91 +101,126 @@ export class FirebaseService implements OnModuleInit {
                     imageUrl: payload.imageUrl,
                 },
                 data: payload.data,
-            };
+            });
 
-            await admin.messaging().send(message);
             return true;
         } catch (error: unknown) {
-            this.handleSendError(error, token);
+            if (
+                typeof error === 'object' &&
+                error !== null &&
+                this.isInvalidTokenError(error as { code?: string })
+            ) {
+                this.logger.warn(error, 'Invalid FCM token detected');
+            } else {
+                this.logger.error(error, 'Failed to send push notification');
+            }
+
             return false;
         }
     }
 
     async sendMulticast(
         tokens: string[],
-        payload: IFirebasePushPayload
+        payload: IFirebasePushPayload,
+        chunkSize: number
     ): Promise<IFirebasePushResult> {
-        if (!this.app) {
-            this.logger.warn('Firebase not initialized, skipping multicast');
+        if (!this.isInitialized() || tokens.length === 0) {
+            if (!this.isInitialized()) {
+                this.logger.warn(
+                    'Firebase not initialized, skipping multicast'
+                );
+            }
+
             return {
                 successCount: 0,
                 failureCount: tokens.length,
                 invalidTokens: [],
             };
-        }
-
-        if (tokens.length === 0) {
-            return {
-                successCount: 0,
-                failureCount: 0,
-                invalidTokens: [],
-            };
+        } else if (chunkSize < 1) {
+            throw new Error('chunkSize must be at least 1');
+        } else if (chunkSize > FirebaseMaxSendPushBatchSize) {
+            throw new Error(
+                `chunkSize cannot be greater than ${FirebaseMaxSendPushBatchSize}`
+            );
         }
 
         try {
-            const message: admin.messaging.MulticastMessage = {
+            const chunkedTokens = this.helperService.arrayChunk(
                 tokens,
-                notification: {
-                    title: payload.title,
-                    body: payload.body,
-                    imageUrl: payload.imageUrl,
-                },
-                data: payload.data,
-            };
+                chunkSize
+            );
 
-            const response = await admin.messaging().sendEachForMulticast(message);
-            const invalidTokens: string[] = [];
+            let successCount = 0;
+            let failureCount = 0;
+            let invalidTokens: string[] = [];
+            const messages: Promise<BatchResponse>[] = [];
 
-            response.responses.forEach((resp, index) => {
-                if (!resp.success && this.isInvalidTokenError(resp.error)) {
-                    invalidTokens.push(tokens[index]);
+            for (const chunk of chunkedTokens) {
+                const message: MulticastMessage = {
+                    tokens: chunk,
+                    notification: {
+                        title: payload.title,
+                        body: payload.body,
+                        imageUrl: payload.imageUrl,
+                    },
+                    data: payload.data,
+                };
+
+                messages.push(this.messaging.sendEachForMulticast(message));
+            }
+
+            const responses: PromiseSettledResult<BatchResponse>[] =
+                await Promise.allSettled(messages);
+
+            for (const response of responses) {
+                if (response.status === 'fulfilled') {
+                    successCount += response.value.successCount;
+
+                    if (response.value.failureCount !== 0) {
+                        failureCount += response.value.failureCount;
+
+                        const invalidTokensInChunk = response.value.responses
+                            .map((resp, index) => {
+                                if (
+                                    !resp.success &&
+                                    resp.error &&
+                                    this.isInvalidTokenError(
+                                        resp.error as { code?: string }
+                                    )
+                                ) {
+                                    return chunkedTokens[
+                                        responses.indexOf(response)
+                                    ][index];
+                                }
+
+                                return null;
+                            })
+                            .filter((token): token is string => token !== null);
+
+                        invalidTokens =
+                            invalidTokens.concat(invalidTokensInChunk);
+                    }
+                } else {
+                    failureCount += chunkSize;
                 }
-            });
+            }
 
             return {
-                successCount: response.successCount,
-                failureCount: response.failureCount,
+                successCount,
+                failureCount,
                 invalidTokens,
             };
         } catch (error: unknown) {
-            this.logger.error('Failed to send multicast push notification', error);
+            this.logger.error(
+                'Failed to send multicast push notification',
+                error
+            );
+
             return {
                 successCount: 0,
                 failureCount: tokens.length,
                 invalidTokens: [],
             };
         }
-    }
-
-    private handleSendError(error: unknown, token: string): void {
-        const fcmError = error as admin.FirebaseError;
-        if (this.isInvalidTokenError(fcmError)) {
-            this.logger.warn({
-                message: 'Invalid FCM token detected',
-                token: token.substring(0, 20) + '...',
-                errorCode: fcmError?.code,
-            });
-        } else {
-            this.logger.error('Failed to send push notification', error);
-        }
-    }
-
-    private isInvalidTokenError(error?: admin.FirebaseError): boolean {
-        const invalidTokenCodes = [
-            'messaging/invalid-registration-token',
-            'messaging/registration-token-not-registered',
-            'messaging/invalid-argument',
-        ];
-        return Boolean(error?.code && invalidTokenCodes.includes(error.code));
     }
 }

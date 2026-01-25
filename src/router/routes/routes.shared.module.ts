@@ -2,8 +2,6 @@ import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { ActivityLogSharedController } from '@modules/activity-log/controllers/activity-log.shared.controller';
 import { PasswordHistorySharedController } from '@modules/password-history/controllers/password-history.shared.controller';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
-import { NotificationSharedController } from '@modules/notification/controllers/notification.shared.controller';
-import { NotificationModule } from '@modules/notification/notification.module';
 import { SessionSharedController } from '@modules/session/controllers/session.shared.controller';
 import { SessionModule } from '@modules/session/session.module';
 import { TermPolicySharedController } from '@modules/term-policy/controllers/term-policy.shared.controller';
@@ -20,7 +18,6 @@ import { Module } from '@nestjs/common';
         UserSharedController,
         PasswordHistorySharedController,
         ActivityLogSharedController,
-        NotificationSharedController,
         SessionSharedController,
         TermPolicySharedController,
     ],
@@ -30,7 +27,6 @@ import { Module } from '@nestjs/common';
         UserModule,
         PasswordHistoryModule,
         ActivityLogModule,
-        NotificationModule,
         SessionModule,
     ],
 })

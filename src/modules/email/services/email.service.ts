@@ -1,11 +1,14 @@
-import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
-import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
-import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
-import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
-import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
-import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
-import { EmailLoginDto } from '@modules/email/dtos/email.login.dto';
-import { EnumSendEmailProcess } from '@modules/email/enums/email.enum';
+import { EnumEmailProcess } from '@modules/email/enums/email.enum';
+import {
+    ICreateByAdminPayload,
+    IEmailForgotPasswordPayload,
+    IEmailMobileNumberVerifiedPayload,
+    IEmailNewLoginPayload,
+    IEmailSendPayload,
+    IEmailTempPasswordPayload,
+    IEmailVerificationPayload,
+    IEmailVerifiedPayload,
+} from '@modules/email/interfaces/email.interface';
 import { IEmailService } from '@modules/email/interfaces/email.service.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
@@ -15,22 +18,22 @@ import { EnumQueue, EnumQueuePriority } from 'src/queues/enums/queue.enum';
 @Injectable()
 export class EmailService implements IEmailService {
     constructor(
-        @InjectQueue(EnumQueue.EMAIL) private readonly emailQueue: Queue
+        @InjectQueue(EnumQueue.email) private readonly emailQueue: Queue
     ) {}
 
     async sendChangePassword(
         userId: string,
-        { email, username }: EmailSendDto
+        { email, username }: IEmailSendPayload
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.changePassword,
+            EnumEmailProcess.changePassword,
             {
                 send: { email: email, name: username },
             },
             {
-                priority: EnumQueuePriority.MEDIUM,
+                priority: EnumQueuePriority.low,
                 deduplication: {
-                    id: `${EnumSendEmailProcess.changePassword}-${userId}`,
+                    id: `${EnumEmailProcess.changePassword}-${userId}`,
                     ttl: 1000,
                 },
             }
@@ -39,15 +42,15 @@ export class EmailService implements IEmailService {
 
     async sendWelcomeByAdmin(
         userId: string,
-        { email, username }: EmailSendDto,
+        { email, username }: IEmailSendPayload,
         {
             passwordCreatedAt,
             passwordExpiredAt,
             password,
-        }: EmailCreateByAdminDto
+        }: ICreateByAdminPayload
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.createByAdmin,
+            EnumEmailProcess.createByAdmin,
             {
                 send: {
                     email,
@@ -60,19 +63,24 @@ export class EmailService implements IEmailService {
                 },
             },
             {
-                jobId: `${EnumSendEmailProcess.createByAdmin}-${userId}`,
-                priority: EnumQueuePriority.LOW,
+                jobId: `${EnumEmailProcess.createByAdmin}-${userId}`,
+                priority: EnumQueuePriority.low,
             }
         );
     }
 
     async sendVerification(
         userId: string,
-        { email, username }: EmailSendDto,
-        { expiredAt, expiredInMinutes, link, reference }: EmailVerificationDto
+        { email, username }: IEmailSendPayload,
+        {
+            expiredAt,
+            expiredInMinutes,
+            link,
+            reference,
+        }: IEmailVerificationPayload
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.verification,
+            EnumEmailProcess.verification,
             {
                 send: {
                     email,
@@ -81,56 +89,60 @@ export class EmailService implements IEmailService {
                 data: { expiredAt, expiredInMinutes, link, reference },
             },
             {
-                jobId: `${EnumSendEmailProcess.verification}-${userId}`,
-                priority: EnumQueuePriority.HIGH,
+                jobId: `${EnumEmailProcess.verification}-${userId}`,
+                priority: EnumQueuePriority.high,
             }
         );
     }
 
     async sendTemporaryPassword(
         userId: string,
-        { email, username }: EmailSendDto,
-        { password, passwordCreatedAt, passwordExpiredAt }: EmailTempPasswordDto
+        { email, username }: IEmailSendPayload,
+        {
+            password,
+            passwordCreatedAt,
+            passwordExpiredAt,
+        }: IEmailTempPasswordPayload
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.temporaryPassword,
+            EnumEmailProcess.temporaryPassword,
             {
                 send: { email, username },
                 data: { password, passwordCreatedAt, passwordExpiredAt },
             },
             {
                 deduplication: {
-                    id: `${EnumSendEmailProcess.temporaryPassword}-${userId}`,
+                    id: `${EnumEmailProcess.temporaryPassword}-${userId}`,
                     ttl: 1000,
                 },
-                priority: EnumQueuePriority.HIGH,
+                priority: EnumQueuePriority.medium,
             }
         );
     }
 
     async sendWelcome(
         userId: string,
-        { email, username }: EmailSendDto
+        { email, username }: IEmailSendPayload
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.welcome,
+            EnumEmailProcess.welcome,
             {
                 send: { email, username },
             },
             {
-                jobId: `${EnumSendEmailProcess.welcome}-${userId}`,
-                priority: EnumQueuePriority.LOW,
+                jobId: `${EnumEmailProcess.welcome}-${userId}`,
+                priority: EnumQueuePriority.low,
             }
         );
     }
 
     async sendVerified(
         userId: string,
-        { email, username }: EmailSendDto,
-        { reference }: EmailVerifiedDto
+        { email, username }: IEmailSendPayload,
+        { reference }: IEmailVerifiedPayload
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.emailVerified,
+            EnumEmailProcess.emailVerified,
             {
                 send: {
                     email,
@@ -141,25 +153,25 @@ export class EmailService implements IEmailService {
                 },
             },
             {
-                jobId: `${EnumSendEmailProcess.emailVerified}-${userId}`,
-                priority: EnumQueuePriority.MEDIUM,
+                jobId: `${EnumEmailProcess.emailVerified}-${userId}`,
+                priority: EnumQueuePriority.low,
             }
         );
     }
 
     async sendForgotPassword(
         userId: string,
-        { email, username }: EmailSendDto,
+        { email, username }: IEmailSendPayload,
         {
             expiredAt,
             expiredInMinutes,
             link,
             reference,
-        }: EmailForgotPasswordDto,
+        }: IEmailForgotPasswordPayload,
         resendInMinutes: number
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.forgotPassword,
+            EnumEmailProcess.forgotPassword,
             {
                 send: {
                     email,
@@ -169,52 +181,84 @@ export class EmailService implements IEmailService {
             },
             {
                 deduplication: {
-                    id: `${EnumSendEmailProcess.forgotPassword}-${userId}`,
+                    id: `${EnumEmailProcess.forgotPassword}-${userId}`,
                     ttl: resendInMinutes * 60 * 1000,
                 },
-                priority: EnumQueuePriority.HIGH,
+                priority: EnumQueuePriority.high,
+            }
+        );
+    }
+
+    async sendVerifiedMobileNumber(
+        userId: string,
+        { email, username }: IEmailSendPayload,
+        { mobileNumber, reference }: IEmailMobileNumberVerifiedPayload,
+        resendInMinutes: number
+    ): Promise<void> {
+        await this.emailQueue.add(
+            EnumEmailProcess.mobileNumberVerified,
+            {
+                send: {
+                    email,
+                    username,
+                },
+                data: { mobileNumber, reference },
+            },
+            {
+                deduplication: {
+                    id: `${EnumEmailProcess.mobileNumberVerified}-${userId}`,
+                    ttl: resendInMinutes * 60 * 1000,
+                },
+                priority: EnumQueuePriority.low,
             }
         );
     }
 
     async sendResetTwoFactorByAdmin(
         userId: string,
-        { email, username }: EmailSendDto
+        { email, username }: IEmailSendPayload
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.resetTwoFactorByAdmin,
+            EnumEmailProcess.resetTwoFactorByAdmin,
             {
                 send: { email, username },
             },
             {
-                jobId: `${EnumSendEmailProcess.resetTwoFactorByAdmin}-${userId}`,
-                priority: EnumQueuePriority.MEDIUM,
+                jobId: `${EnumEmailProcess.resetTwoFactorByAdmin}-${userId}`,
+                priority: EnumQueuePriority.high,
             }
         );
     }
 
-    async sendLoginNotification(
+    async sendNewLogin(
         userId: string,
-        { email, username }: EmailSendDto,
-        { loginFrom, loginWith, ipAddress, loginAt }: EmailLoginDto
+        { email, username }: IEmailSendPayload,
+        {
+            loginFrom,
+            loginWith,
+            loginAt,
+            userAgent,
+            ipAddress,
+        }: IEmailNewLoginPayload
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.login,
+            EnumEmailProcess.newLogin,
             {
                 send: { email, username },
                 data: {
                     loginFrom,
                     loginWith,
                     ipAddress,
+                    userAgent,
                     loginAt,
                 },
             },
             {
                 deduplication: {
-                    id: `${EnumSendEmailProcess.login}-${userId}`,
+                    id: `${EnumEmailProcess.newLogin}-${userId}`,
                     ttl: 1000,
                 },
-                priority: EnumQueuePriority.MEDIUM,
+                priority: EnumQueuePriority.medium,
             }
         );
     }

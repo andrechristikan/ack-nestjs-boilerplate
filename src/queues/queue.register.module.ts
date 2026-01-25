@@ -22,7 +22,7 @@ export class QueueRegisterModule {
     static forRoot(): DynamicModule {
         const queues = [
             BullModule.registerQueue({
-                name: EnumQueue.EMAIL,
+                name: EnumQueue.email,
                 configKey: QueueConfigKey,
                 defaultJobOptions: {
                     attempts: 3,
@@ -35,7 +35,7 @@ export class QueueRegisterModule {
                 },
             }),
             BullModule.registerQueue({
-                name: EnumQueue.NOTIFICATION,
+                name: EnumQueue.notification,
                 configKey: QueueConfigKey,
                 defaultJobOptions: {
                     attempts: 3,

@@ -275,7 +275,7 @@ export class EmailService {
 
     async sendWelcomeEmail(userId: string): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.welcome,
+            EnumEmailProcess.welcome,
             { userId },
             {
                 priority: EnumQueuePriority.high,
@@ -293,7 +293,7 @@ Extend `QueueProcessorBase`:
 ```typescript
 @QueueProcessor(EnumQueue.email)
 export class EmailProcessor extends QueueProcessorBase {
-    @Process(EnumSendEmailProcess.welcome)
+    @Process(EnumEmailProcess.welcome)
     async processWelcome(job: Job<EmailWorkerDto>): Promise<void> {
         try {
             const { userId } = job.data;

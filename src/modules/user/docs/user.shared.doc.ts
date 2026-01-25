@@ -18,7 +18,6 @@ import {
     UserAddMobileNumberRequestDto,
     UserUpdateMobileNumberRequestDto,
 } from '@modules/user/dtos/request/user.mobile-number.request.dto';
-import { UserUpdateNotificationSettingRequestDto } from '@modules/user/dtos/request/user.notification-setting.request.dto';
 import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
@@ -85,26 +84,6 @@ export function UserSharedUpdateProfileDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocResponse('user.updateProfile')
-    );
-}
-
-export function UserSharedUpdateNotificationSettingDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'update notification setting',
-        }),
-        DocRequest({
-            bodyType: EnumDocRequestBodyType.json,
-            dto: UserUpdateNotificationSettingRequestDto,
-        }),
-        DocGuard({
-            termPolicy: true,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocResponse('user.updateNotificationSetting')
     );
 }
 

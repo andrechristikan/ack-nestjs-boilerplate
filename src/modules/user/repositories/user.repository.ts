@@ -24,7 +24,6 @@ import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.crea
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
-import { UserUpdateNotificationSettingRequestDto } from '@modules/user/dtos/request/user.notification-setting.request.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
@@ -40,7 +39,7 @@ import {
     Country,
     EnumActivityLogAction,
     EnumNotificationChannel,
-    EnumNotificationSettingType,
+    EnumNotificationType,
     EnumPasswordHistoryType,
     EnumRoleType,
     EnumTermPolicyStatus,
@@ -66,35 +65,6 @@ export class UserRepository {
         private readonly paginationService: PaginationService,
         private readonly helperService: HelperService
     ) {}
-
-    private buildDefaultNotificationSettings(createdBy: string) {
-        return [
-            {
-                channel: EnumNotificationChannel.email,
-                type: EnumNotificationSettingType.login,
-                enabled: true,
-                createdBy,
-            },
-            {
-                channel: EnumNotificationChannel.email,
-                type: EnumNotificationSettingType.newsletter,
-                enabled: true,
-                createdBy,
-            },
-            {
-                channel: EnumNotificationChannel.push,
-                type: EnumNotificationSettingType.login,
-                enabled: true,
-                createdBy,
-            },
-            {
-                channel: EnumNotificationChannel.push,
-                type: EnumNotificationSettingType.newsletter,
-                enabled: true,
-                createdBy,
-            },
-        ];
-    }
 
     async findWithPaginationOffset(
         { where, ...params }: IPaginationQueryOffsetParams,
@@ -456,9 +426,18 @@ export class UserRepository {
                     },
                     notificationSettings: {
                         createMany: {
-                            data: this.buildDefaultNotificationSettings(
-                                createdBy
-                            ),
+                            data: Object.values(EnumNotificationChannel)
+                                .map(channel =>
+                                    Object.values(EnumNotificationType).map(
+                                        type => ({
+                                            channel,
+                                            userId,
+                                            type,
+                                            isActive: true,
+                                        })
+                                    )
+                                )
+                                .flat(),
                         },
                     },
                     twoFactor: {
@@ -533,54 +512,6 @@ export class UserRepository {
         });
     }
 
-    async updateNotificationSetting(
-        userId: string,
-        { channel, type, enabled }: UserUpdateNotificationSettingRequestDto,
-        { ipAddress, userAgent }: IRequestLog
-    ): Promise<User> {
-        const [, user] = await this.databaseService.$transaction([
-            this.databaseService.notificationSetting.upsert({
-                where: {
-                    userId_channel_type: {
-                        userId,
-                        channel,
-                        type,
-                    },
-                },
-                create: {
-                    userId,
-                    channel,
-                    type,
-                    enabled,
-                    createdBy: userId,
-                },
-                update: {
-                    enabled,
-                    updatedBy: userId,
-                },
-            }),
-            this.databaseService.user.update({
-                where: { id: userId, deletedAt: null },
-                data: {
-                    updatedBy: userId,
-                    activityLogs: {
-                        create: {
-                            action:
-                                EnumActivityLogAction.userUpdateNotificationSetting,
-                            ipAddress,
-                            userAgent: this.databaseUtil.toPlainObject(
-                                userAgent
-                            ),
-                            createdBy: userId,
-                        },
-                    },
-                },
-            }),
-        ]);
-
-        return user;
-    }
-
     async updatePhotoProfile(
         userId: string,
         photo: AwsS3Dto,
@@ -633,7 +564,6 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: deletedAt,
-                            updatedBy: userId,
                         },
                     },
                 },
@@ -870,7 +800,6 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: passwordCreated,
-                            updatedBy,
                         },
                     },
                 },
@@ -944,7 +873,6 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: passwordCreated,
-                            updatedBy: userId,
                         },
                     },
                 },
@@ -988,7 +916,6 @@ export class UserRepository {
                         isRevoked: false,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        createdBy: userId,
                     },
                 },
                 activityLogs: {
@@ -1072,9 +999,18 @@ export class UserRepository {
                     },
                     notificationSettings: {
                         createMany: {
-                            data: this.buildDefaultNotificationSettings(
-                                userId
-                            ),
+                            data: Object.values(EnumNotificationChannel)
+                                .map(channel =>
+                                    Object.values(EnumNotificationType).map(
+                                        type => ({
+                                            channel,
+                                            userId,
+                                            type,
+                                            isActive: true,
+                                        })
+                                    )
+                                )
+                                .flat(),
                         },
                     },
                     twoFactor: {
@@ -1223,9 +1159,18 @@ export class UserRepository {
                     },
                     notificationSettings: {
                         createMany: {
-                            data: this.buildDefaultNotificationSettings(
-                                userId
-                            ),
+                            data: Object.values(EnumNotificationChannel)
+                                .map(channel =>
+                                    Object.values(EnumNotificationType).map(
+                                        type => ({
+                                            channel,
+                                            userId,
+                                            type,
+                                            isActive: true,
+                                        })
+                                    )
+                                )
+                                .flat(),
                         },
                     },
                     verifications: {
@@ -1363,7 +1308,6 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: passwordCreated,
-                            updatedBy: userId,
                         },
                     },
                 },
@@ -1740,7 +1684,7 @@ export class UserRepository {
                 sessions: {
                     updateMany: {
                         where: { isRevoked: false, expiredAt: { gte: now } },
-                        data: { isRevoked: true, revokedAt: now, updatedBy },
+                        data: { isRevoked: true, revokedAt: now },
                     },
                 },
             },
@@ -1882,9 +1826,20 @@ export class UserRepository {
                                 },
                                 notificationSettings: {
                                     createMany: {
-                                        data: this.buildDefaultNotificationSettings(
-                                            createdBy
-                                        ),
+                                        data: Object.values(
+                                            EnumNotificationChannel
+                                        )
+                                            .map(channel =>
+                                                Object.values(
+                                                    EnumNotificationType
+                                                ).map(type => ({
+                                                    channel,
+                                                    userId,
+                                                    type,
+                                                    isActive: true,
+                                                }))
+                                            )
+                                            .flat(),
                                     },
                                 },
                                 twoFactor: {

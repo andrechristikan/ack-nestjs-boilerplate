@@ -1,62 +1,79 @@
-import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
-import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
-import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
-import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
-import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
-import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
-import { EmailLoginDto } from '@modules/email/dtos/email.login.dto';
+import {
+    ICreateByAdminPayload,
+    IEmailForgotPasswordPayload,
+    IEmailNewLoginPayload,
+    IEmailSendPayload,
+    IEmailTempPasswordPayload,
+    IEmailVerificationPayload,
+    IEmailVerifiedPayload,
+} from '@modules/email/interfaces/email.interface';
 
 export interface IEmailService {
     sendChangePassword(
         userId: string,
-        { email, username }: EmailSendDto
+        { email, username }: IEmailSendPayload
     ): Promise<void>;
     sendWelcomeByAdmin(
         userId: string,
-        { email, username }: EmailSendDto,
+        { email, username }: IEmailSendPayload,
         {
             passwordCreatedAt,
             passwordExpiredAt,
             password,
-        }: EmailCreateByAdminDto
+        }: ICreateByAdminPayload
     ): Promise<void>;
     sendVerification(
         userId: string,
-        { email, username }: EmailSendDto,
-        { expiredAt, expiredInMinutes, link, reference }: EmailVerificationDto
-    ): Promise<void>;
-    sendTemporaryPassword(
-        userId: string,
-        { email, username }: EmailSendDto,
-        { password, passwordCreatedAt, passwordExpiredAt }: EmailTempPasswordDto
-    ): Promise<void>;
-    sendWelcome(
-        userId: string,
-        { email, username }: EmailSendDto
-    ): Promise<void>;
-    sendVerified(
-        userId: string,
-        { email, username }: EmailSendDto,
-        { reference }: EmailVerifiedDto
-    ): Promise<void>;
-    sendForgotPassword(
-        userId: string,
-        { email, username }: EmailSendDto,
+        { email, username }: IEmailSendPayload,
         {
             expiredAt,
             expiredInMinutes,
             link,
             reference,
-        }: EmailForgotPasswordDto,
+        }: IEmailVerificationPayload
+    ): Promise<void>;
+    sendTemporaryPassword(
+        userId: string,
+        { email, username }: IEmailSendPayload,
+        {
+            password,
+            passwordCreatedAt,
+            passwordExpiredAt,
+        }: IEmailTempPasswordPayload
+    ): Promise<void>;
+    sendWelcome(
+        userId: string,
+        { email, username }: IEmailSendPayload
+    ): Promise<void>;
+    sendVerified(
+        userId: string,
+        { email, username }: IEmailSendPayload,
+        { reference }: IEmailVerifiedPayload
+    ): Promise<void>;
+    sendForgotPassword(
+        userId: string,
+        { email, username }: IEmailSendPayload,
+        {
+            expiredAt,
+            expiredInMinutes,
+            link,
+            reference,
+        }: IEmailForgotPasswordPayload,
         resendInMinutes: number
     ): Promise<void>;
     sendResetTwoFactorByAdmin(
         userId: string,
-        { email, username }: EmailSendDto
+        { email, username }: IEmailSendPayload
     ): Promise<void>;
-    sendLoginNotification(
-        userId: string,
-        { email, username }: EmailSendDto,
-        { loginFrom, loginWith, ipAddress, loginAt }: EmailLoginDto
+    sendNewLogin(
+        sendNewLogin: string,
+        { email, username }: IEmailSendPayload,
+        {
+            loginFrom,
+            loginWith,
+            loginAt,
+            userAgent,
+            ipAddress,
+        }: IEmailNewLoginPayload
     ): Promise<void>;
 }

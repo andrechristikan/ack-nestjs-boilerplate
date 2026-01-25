@@ -245,7 +245,7 @@ Thanks to **Repository Pattern** and **Prisma ORM**, switching databases require
 | Database | Best For | Transaction Support |
 |----------|----------|---------------------|
 | **MongoDB** | Document-based, flexible schema | ✅ Yes (replica set) |
-| **PostgreSQL** | Production apps, complex queries | ✅ Yes |
+| **PostgreSQL** | Relational Database, reliability | ✅ Yes |
 
 **Other supported databases:** MySQL, SQLite, SQL Server, CockroachDB
 

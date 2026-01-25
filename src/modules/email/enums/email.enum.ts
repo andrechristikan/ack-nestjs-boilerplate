@@ -1,4 +1,4 @@
-export enum EnumSendEmailProcess {
+export enum EnumEmailProcess {
     changePassword = 'changePassword',
     temporaryPassword = 'temporaryPassword',
     welcome = 'welcome',
@@ -8,5 +8,5 @@ export enum EnumSendEmailProcess {
     emailVerified = 'emailVerified',
     mobileNumberVerified = 'mobileNumberVerified',
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
-    login = 'login',
+    newLogin = 'newLogin',
 }

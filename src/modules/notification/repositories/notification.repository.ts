@@ -1,5 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -7,29 +8,32 @@ import {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { INotification } from '@modules/notification/interfaces/notification.interface';
+import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumActivityLogAction,
+    EnumNotificationChannel,
     EnumNotificationType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     Notification,
-    Prisma,
+    User,
 } from '@prisma/client';
 
 @Injectable()
 export class NotificationRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly helperService: HelperService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findWithPaginationOffset(
         userId: string,
         { where, ...params }: IPaginationQueryOffsetParams
-    ): Promise<IResponsePagingReturn<INotification>> {
-        return this.paginationService.offset<INotification>(
+    ): Promise<IResponsePagingReturn<Notification>> {
+        return this.paginationService.offset<Notification>(
             this.databaseService.notification,
             {
                 ...params,
@@ -44,8 +48,8 @@ export class NotificationRepository {
     async findWithPaginationCursor(
         userId: string,
         { where, ...params }: IPaginationQueryCursorParams
-    ): Promise<IResponsePagingReturn<INotification>> {
-        return this.paginationService.cursor<INotification>(
+    ): Promise<IResponsePagingReturn<Notification>> {
+        return this.paginationService.cursor<Notification>(
             this.databaseService.notification,
             {
                 ...params,
@@ -57,62 +61,59 @@ export class NotificationRepository {
         );
     }
 
-    async createLogin(
+    async existById(
+        userId: string,
+        notificationId: string
+    ): Promise<{
+        id: string;
+        isRead: boolean;
+    } | null> {
+        return this.databaseService.notification.findFirst({
+            where: {
+                id: notificationId,
+                userId,
+            },
+            select: { id: true, isRead: true },
+        });
+    }
+
+    async createNewLogin(
         userId: string,
         loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserLoginWith,
-        { ipAddress, userAgent }: IRequestLog
+        loginWith: EnumUserLoginWith
     ): Promise<Notification> {
-        const data = this.databaseUtil.toPlainObject({
-            loginFrom,
-            loginWith,
-            ipAddress,
-            userAgent,
-        });
-
         return this.databaseService.notification.create({
             data: {
                 userId,
-                type: EnumNotificationType.login,
-                title: 'Login',
-                body: `Login from ${loginFrom} via ${loginWith}`,
-                data: data as Prisma.InputJsonValue,
+                type: EnumNotificationType.security_alert,
+                title: 'notification.notify.newLogin.title',
+                body: `notification.notify.newLogin.body`,
+                data: {
+                    loginFrom,
+                    loginWith,
+                },
                 createdBy: userId,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.email,
+                            },
+                            {
+                                channel: EnumNotificationChannel.push,
+                            },
+                        ],
+                    },
+                },
             },
         });
     }
 
-    async createMany(
-        userIds: string[],
-        type: EnumNotificationType,
-        title: string,
-        body: string,
-        data?: Record<string, unknown>,
-        createdBy?: string
-    ): Promise<number> {
-        const payload = data
-            ? (this.databaseUtil.toPlainObject(data) as Prisma.InputJsonValue)
-            : null;
-
-        const result = await this.databaseService.notification.createMany({
-            data: userIds.map(userId => ({
-                userId,
-                type,
-                title,
-                body,
-                data: payload,
-                createdBy,
-            })),
-        });
-
-        return result.count;
-    }
-
-    /**
-     * Mark a specific notification as read
-     */
-    async markAsRead(userId: string, notificationId: string): Promise<void> {
-        await this.databaseService.notification.updateMany({
+    async markAsRead(
+        userId: string,
+        notificationId: string
+    ): Promise<Notification> {
+        return this.databaseService.notification.update({
             where: {
                 id: notificationId,
                 userId,
@@ -120,14 +121,11 @@ export class NotificationRepository {
             },
             data: {
                 isRead: true,
-                readAt: new Date(),
+                readAt: this.helperService.dateCreate(),
             },
         });
     }
 
-    /**
-     * Mark all notifications as read for user
-     */
     async markAllAsRead(userId: string): Promise<number> {
         const result = await this.databaseService.notification.updateMany({
             where: {
@@ -136,11 +134,49 @@ export class NotificationRepository {
             },
             data: {
                 isRead: true,
-                readAt: new Date(),
+                readAt: this.helperService.dateCreate(),
             },
         });
 
         return result.count;
     }
-}
 
+    async updateUserSetting(
+        userId: string,
+        { channel, type, isActive }: NotificationUserSettingRequestDto,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        const [user] = await this.databaseService.$transaction([
+            this.databaseService.user.update({
+                where: { id: userId, deletedAt: null },
+                data: {
+                    updatedBy: userId,
+                    activityLogs: {
+                        create: {
+                            action: EnumActivityLogAction.userUpdateNotificationSetting,
+                            ipAddress,
+                            userAgent:
+                                this.databaseUtil.toPlainObject(userAgent),
+                            createdBy: userId,
+                        },
+                    },
+                },
+            }),
+            this.databaseService.notificationUserSetting.update({
+                where: {
+                    userId_channel_type: {
+                        userId,
+                        channel,
+                        type,
+                    },
+                },
+                data: {
+                    isActive,
+                    updatedBy: userId,
+                },
+            }),
+        ]);
+
+        return user;
+    }
+}

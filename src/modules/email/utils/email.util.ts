@@ -1,21 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EnumSendEmailProcess } from '@modules/email/enums/email.enum';
+import { EnumEmailProcess } from '@modules/email/enums/email.enum';
 import { title } from 'case';
 import { ConfigService } from '@nestjs/config';
-import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
-import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
-import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
-import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
-import { EmailMobileNumberVerifiedDto } from '@modules/email/dtos/email.mobile-number-verified.dto';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperService } from '@common/helper/services/helper.service';
-import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
-import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
-import { EmailLoginDto } from '@modules/email/dtos/email.login.dto';
+import { flatten } from 'flat';
+import {
+    ICreateByAdminPayload,
+    IEmailForgotPasswordPayload,
+    IEmailMobileNumberVerifiedPayload,
+    IEmailNewLoginPayload,
+    IEmailSendPayload,
+    IEmailTempPasswordPayload,
+    IEmailVerificationPayload,
+    IEmailVerifiedPayload,
+} from '@modules/email/interfaces/email.interface';
 
 /**
- * Util for handling email operations using AWS SES
- * Provides methods to send various types of emails like welcome, forgot password, verification, etc.
+ * Email utility service for handling various email operations using AWS SES.
+ * Provides methods to send transactional emails including welcome, password reset,
+ * verification, and security notification emails.
  */
 @Injectable()
 export class EmailUtil {
@@ -40,17 +44,18 @@ export class EmailUtil {
     }
 
     /**
-     * Send change password notification email
-     * @param {EmailSendDto} emailData - Email and username data
+     * Sends a change password notification email to the user.
+     *
+     * @param {IEmailSendPayload} emailData - The recipient's email and username
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
     async sendChangePassword({
         username,
         email,
-    }: EmailSendDto): Promise<boolean> {
+    }: IEmailSendPayload): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.changePassword,
+                templateName: EnumEmailProcess.changePassword,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -70,14 +75,18 @@ export class EmailUtil {
     }
 
     /**
-     * Send welcome email to new users
-     * @param {EmailSendDto} emailData - Email and username data
+     * Sends a welcome email to newly registered users.
+     *
+     * @param {IEmailSendPayload} emailData - The recipient's email and username
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
-    async sendWelcome({ username, email }: EmailSendDto): Promise<boolean> {
+    async sendWelcome({
+        username,
+        email,
+    }: IEmailSendPayload): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.welcome,
+                templateName: EnumEmailProcess.welcome,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -98,22 +107,24 @@ export class EmailUtil {
     }
 
     /**
-     * Send email notification when user is created by admin
-     * @param {EmailSendDto} emailData - Email and username data
-     * @param {EmailCreateByAdminDto} passwordData - Password information including expiration dates
+     * Sends an email notification when a user account is created by admin.
+     * Contains the temporary password and expiration information.
+     *
+     * @param {IEmailSendPayload} emailData - The recipient's email and username
+     * @param {ICreateByAdminPayload} passwordData - Temporary password and expiration dates
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
     async sendCreateByAdmin(
-        { username, email }: EmailSendDto,
+        { username, email }: IEmailSendPayload,
         {
             password: passwordString,
             passwordExpiredAt,
             passwordCreatedAt,
-        }: EmailCreateByAdminDto
+        }: ICreateByAdminPayload
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.createByAdmin,
+                templateName: EnumEmailProcess.createByAdmin,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -141,22 +152,23 @@ export class EmailUtil {
     }
 
     /**
-     * Send temporary password email
-     * @param {EmailSendDto} emailData - Email and username data
-     * @param {EmailTempPasswordDto} passwordData - Temporary password information including expiration dates
+     * Sends a temporary password email to a user.
+     *
+     * @param {IEmailSendPayload} emailData - The recipient's email and username
+     * @param {IEmailTempPasswordPayload} passwordData - Temporary password and expiration dates
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
     async sendTempPassword(
-        { username, email }: EmailSendDto,
+        { username, email }: IEmailSendPayload,
         {
             password: passwordString,
             passwordExpiredAt,
             passwordCreatedAt,
-        }: EmailTempPasswordDto
+        }: IEmailTempPasswordPayload
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.temporaryPassword,
+                templateName: EnumEmailProcess.temporaryPassword,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -183,18 +195,24 @@ export class EmailUtil {
     }
 
     /**
-     * Send forgot password email with link
-     * @param {EmailSendDto} emailData - Email and username data
-     * @param {EmailForgotPasswordDto} forgotPasswordData - Forgot password link and expiration data
+     * Sends a forgot password email with password reset link.
+     *
+     * @param {IEmailSendPayload} emailData - The recipient's email and username
+     * @param {IEmailForgotPasswordPayload} forgotPasswordData - Password reset link and expiration data
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
     async sendForgotPassword(
-        { username, email }: EmailSendDto,
-        { expiredAt, link, reference, expiredInMinutes }: EmailForgotPasswordDto
+        { username, email }: IEmailSendPayload,
+        {
+            expiredAt,
+            link,
+            reference,
+            expiredInMinutes,
+        }: IEmailForgotPasswordPayload
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.forgotPassword,
+                templateName: EnumEmailProcess.forgotPassword,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -220,18 +238,24 @@ export class EmailUtil {
     }
 
     /**
-     * Send email verification message
-     * @param {EmailSendDto} emailData - Email and username data
-     * @param {EmailVerificationDto} verificationData - Verification token, link, reference and expiration data
+     * Sends an email verification message with confirmation link.
+     *
+     * @param {IEmailSendPayload} emailData - The recipient's email and username
+     * @param {IEmailVerificationPayload} verificationData - Verification link and expiration data
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
     async sendVerification(
-        { username, email }: EmailSendDto,
-        { expiredAt, reference, link, expiredInMinutes }: EmailVerificationDto
+        { username, email }: IEmailSendPayload,
+        {
+            expiredAt,
+            reference,
+            link,
+            expiredInMinutes,
+        }: IEmailVerificationPayload
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.verification,
+                templateName: EnumEmailProcess.verification,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -257,18 +281,19 @@ export class EmailUtil {
     }
 
     /**
-     * Send email verified confirmation
-     * @param {EmailSendDto} emailData - Email and username data
-     * @param {EmailVerifiedDto} verifiedData - Verification reference data
+     * Sends a confirmation email after successful email verification.
+     *
+     * @param {IEmailSendPayload} emailData - The recipient's email and username
+     * @param {IEmailVerifiedPayload} verifiedData - Verification reference data
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
     async sendEmailVerified(
-        { username, email }: EmailSendDto,
-        { reference }: EmailVerifiedDto
+        { username, email }: IEmailSendPayload,
+        { reference }: IEmailVerifiedPayload
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.emailVerified,
+                templateName: EnumEmailProcess.emailVerified,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -289,18 +314,19 @@ export class EmailUtil {
     }
 
     /**
-     * Send mobile number verified confirmation email
-     * @param {EmailSendDto} emailData - Email and username data
-     * @param {EmailMobileNumberVerifiedDto} mobileData - Mobile number and reference data
+     * Sends a confirmation email after successful mobile number verification.
+     *
+     * @param {IEmailSendPayload} emailData - The recipient's email and username
+     * @param {IEmailMobileNumberVerifiedPayload} mobileData - Mobile number and reference data
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
     async sendMobileNumberVerified(
-        { username, email }: EmailSendDto,
-        { reference, mobileNumber }: EmailMobileNumberVerifiedDto
+        { username, email }: IEmailSendPayload,
+        { reference, mobileNumber }: IEmailMobileNumberVerifiedPayload
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.mobileNumberVerified,
+                templateName: EnumEmailProcess.mobileNumberVerified,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -322,17 +348,18 @@ export class EmailUtil {
     }
 
     /**
-     * Send email notification when 2FA is reset by admin
-     * @param {EmailSendDto} emailData - Email and username data
+     * Sends an email notification when 2FA is reset by admin.
+     *
+     * @param {IEmailSendPayload} emailData - The recipient's email and username
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
     async sendResetTwoFactorByAdmin({
         username,
         email,
-    }: EmailSendDto): Promise<boolean> {
+    }: IEmailSendPayload): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.resetTwoFactorByAdmin,
+                templateName: EnumEmailProcess.resetTwoFactorByAdmin,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -351,13 +378,26 @@ export class EmailUtil {
         }
     }
 
-    async sendLoginNotification(
-        { username, email }: EmailSendDto,
-        { loginFrom, loginWith, ipAddress, loginAt }: EmailLoginDto
+    /**
+     * Sends a security alert email when a new login is detected.
+     *
+     * @param {IEmailSendPayload} emailData - The recipient's email and username
+     * @param {IEmailNewLoginPayload} loginData - Login information including location, device, and time
+     * @returns {Promise<boolean>} True if email sent successfully, false otherwise
+     */
+    async sendNewLogin(
+        { username, email }: IEmailSendPayload,
+        {
+            loginFrom,
+            loginWith,
+            loginAt,
+            userAgent,
+            ipAddress,
+        }: IEmailNewLoginPayload
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.login,
+                templateName: EnumEmailProcess.newLogin,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -367,10 +407,9 @@ export class EmailUtil {
                     username,
                     loginFrom,
                     loginWith,
+                    loginAt: this.helperService.dateFormatToRFC2822(loginAt),
+                    userAgent: flatten(userAgent),
                     ipAddress,
-                    loginAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(loginAt)
-                    ),
                 },
             });
 

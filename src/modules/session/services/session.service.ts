@@ -7,7 +7,6 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { NotificationPushTokenRepository } from '@modules/notification/repositories/notification-push-token.repository';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { ISessionService } from '@modules/session/interfaces/session.service.interface';
@@ -27,8 +26,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 export class SessionService implements ISessionService {
     constructor(
         private readonly sessionRepository: SessionRepository,
-        private readonly sessionUtil: SessionUtil,
-        private readonly notificationPushTokenRepository: NotificationPushTokenRepository
+        private readonly sessionUtil: SessionUtil
     ) {}
 
     /**
@@ -121,10 +119,11 @@ export class SessionService implements ISessionService {
         await Promise.all([
             this.sessionRepository.revoke(userId, sessionId, requestLog),
             this.sessionUtil.deleteOneLogin(userId, sessionId),
-            this.notificationPushTokenRepository.revokeBySessionId(
-                sessionId,
-                userId
-            ),
+            // TODO: NEXT
+            // this.notificationPushTokenRepository.revokeBySessionId(
+            //     sessionId,
+            //     userId
+            // ),
         ]);
 
         return;
@@ -168,10 +167,11 @@ export class SessionService implements ISessionService {
                 revokeBy
             ),
             this.sessionUtil.deleteOneLogin(userId, sessionId),
-            this.notificationPushTokenRepository.revokeBySessionId(
-                sessionId,
-                revokeBy
-            ),
+            // TODO: NEXT
+            // this.notificationPushTokenRepository.revokeBySessionId(
+            //     sessionId,
+            //     revokeBy
+            // ),
         ]);
 
         return {

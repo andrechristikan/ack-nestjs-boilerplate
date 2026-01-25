@@ -87,7 +87,7 @@ export class YourService {
 
     async sendEmail(data: EmailWorkerDto<unknown>): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.welcome,
+            EnumEmailProcess.welcome,
             data,
             {
                 priority: EnumQueueProperty.high,

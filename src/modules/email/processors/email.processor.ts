@@ -1,161 +1,97 @@
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { EmailMobileNumberVerifiedDto } from '@modules/email/dtos/email.mobile-number-verified.dto';
-import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
-import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
-import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
-import { EmailVerifiedDto } from '@modules/email/dtos/email.verified.dto';
-import { EmailWorkerDto } from '@modules/email/dtos/email.worker.dto';
-import { EnumSendEmailProcess } from '@modules/email/enums/email.enum';
-import { IEmailProcessor } from '@modules/email/interfaces/email.processor.interface';
+import { EnumEmailProcess } from '@modules/email/enums/email.enum';
 import { EnumQueue } from 'src/queues/enums/queue.enum';
 import { QueueProcessorBase } from 'src/queues/bases/queue.processor.base';
 import { QueueProcessor } from 'src/queues/decorators/queue.decorator';
-import { EmailUtil } from '@modules/email/utils/email.util';
-import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
-import { EmailLoginDto } from '@modules/email/dtos/email.login.dto';
+import {
+    ICreateByAdminPayload,
+    IEmailForgotPasswordPayload,
+    IEmailMobileNumberVerifiedPayload,
+    IEmailNewLoginPayload,
+    IEmailTempPasswordPayload,
+    IEmailVerificationPayload,
+    IEmailVerifiedPayload,
+    IEmailWorkerPayload,
+} from '@modules/email/interfaces/email.interface';
+import { EmailProcessorService } from '@modules/email/services/email.processor.service';
+import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
-@QueueProcessor(EnumQueue.EMAIL)
-export class EmailProcessor
-    extends QueueProcessorBase
-    implements IEmailProcessor
-{
+@QueueProcessor(EnumQueue.email)
+export class EmailProcessor extends QueueProcessorBase {
     private readonly logger = new Logger(EmailProcessor.name);
 
-    constructor(private readonly emailUtil: EmailUtil) {
+    constructor(private readonly emailProcessorService: EmailProcessorService) {
         super();
     }
 
     async process(
-        job: Job<EmailWorkerDto<unknown>, unknown, string>
-    ): Promise<void> {
+        job: Job<IEmailWorkerPayload<unknown>, unknown, string>
+    ): Promise<IQueueResponse> {
         try {
             const jobName = job.name;
             switch (jobName) {
-                case EnumSendEmailProcess.changePassword:
-                    await this.processChangePassword(job.data.send);
-
-                    break;
-                case EnumSendEmailProcess.welcome:
-                    await this.processWelcome(job.data.send);
-
-                    break;
-                case EnumSendEmailProcess.createByAdmin:
-                    await this.processCreateByAdmin(
-                        job.data.send,
-                        job.data.data as EmailTempPasswordDto
+                case EnumEmailProcess.changePassword:
+                    return this.emailProcessorService.processChangePassword(
+                        job.data.send
                     );
 
-                    break;
-                case EnumSendEmailProcess.temporaryPassword:
-                    await this.processTempPassword(
-                        job.data.send,
-                        job.data.data as EmailTempPasswordDto
+                case EnumEmailProcess.welcome:
+                    return this.emailProcessorService.processWelcome(
+                        job.data.send
                     );
 
-                    break;
-                case EnumSendEmailProcess.forgotPassword:
-                    await this.processForgotPassword(
+                case EnumEmailProcess.createByAdmin:
+                    return this.emailProcessorService.processCreateByAdmin(
                         job.data.send,
-                        job.data.data as EmailForgotPasswordDto
+                        job.data.data as ICreateByAdminPayload
                     );
 
-                    break;
-                case EnumSendEmailProcess.verification:
-                    await this.processVerification(
+                case EnumEmailProcess.temporaryPassword:
+                    return this.emailProcessorService.processTempPassword(
                         job.data.send,
-                        job.data.data as EmailVerificationDto
+                        job.data.data as IEmailTempPasswordPayload
                     );
 
-                    break;
-                case EnumSendEmailProcess.emailVerified:
-                    await this.processEmailVerified(
+                case EnumEmailProcess.forgotPassword:
+                    return this.emailProcessorService.processForgotPassword(
                         job.data.send,
-                        job.data.data as EmailVerifiedDto
+                        job.data.data as IEmailForgotPasswordPayload
                     );
 
-                    break;
-                case EnumSendEmailProcess.mobileNumberVerified:
-                    await this.processMobileNumberVerified(
+                case EnumEmailProcess.verification:
+                    return this.emailProcessorService.processVerification(
                         job.data.send,
-                        job.data.data as EmailMobileNumberVerifiedDto
+                        job.data.data as IEmailVerificationPayload
                     );
 
-                    break;
-                case EnumSendEmailProcess.login:
-                    await this.processLoginNotification(
+                case EnumEmailProcess.emailVerified:
+                    return this.emailProcessorService.processEmailVerified(
                         job.data.send,
-                        job.data.data as EmailLoginDto
+                        job.data.data as IEmailVerifiedPayload
                     );
 
-                    break;
+                case EnumEmailProcess.mobileNumberVerified:
+                    return this.emailProcessorService.processMobileNumberVerified(
+                        job.data.send,
+                        job.data.data as IEmailMobileNumberVerifiedPayload
+                    );
+
+                case EnumEmailProcess.newLogin:
+                    return this.emailProcessorService.processNewLoginNotification(
+                        job.data.send,
+                        job.data.data as IEmailNewLoginPayload
+                    );
+
                 default:
-                    break;
+                    return {
+                        message: 'unhandledJob',
+                    };
             }
         } catch (error: unknown) {
             this.logger.error(error);
         }
 
         return;
-    }
-
-    async processWelcome(data: EmailSendDto): Promise<boolean> {
-        return this.emailUtil.sendWelcome(data);
-    }
-
-    async processChangePassword(data: EmailSendDto): Promise<boolean> {
-        return this.emailUtil.sendChangePassword(data);
-    }
-
-    async processTempPassword(
-        data: EmailSendDto,
-        tempPassword: EmailTempPasswordDto
-    ): Promise<boolean> {
-        return this.emailUtil.sendTempPassword(data, tempPassword);
-    }
-
-    async processCreateByAdmin(
-        data: EmailSendDto,
-        createdByAdmin: EmailTempPasswordDto
-    ): Promise<boolean> {
-        return this.emailUtil.sendCreateByAdmin(data, createdByAdmin);
-    }
-
-    async processForgotPassword(
-        data: EmailSendDto,
-        forgotPassword: EmailForgotPasswordDto
-    ): Promise<boolean> {
-        return this.emailUtil.sendForgotPassword(data, forgotPassword);
-    }
-
-    async processVerification(
-        data: EmailSendDto,
-        verification: EmailVerificationDto
-    ): Promise<boolean> {
-        return this.emailUtil.sendVerification(data, verification);
-    }
-
-    async processEmailVerified(
-        data: EmailSendDto,
-        emailVerified: EmailVerifiedDto
-    ): Promise<boolean> {
-        return this.emailUtil.sendEmailVerified(data, emailVerified);
-    }
-
-    async processMobileNumberVerified(
-        data: EmailSendDto,
-        mobileNumberVerified: EmailMobileNumberVerifiedDto
-    ): Promise<boolean> {
-        return this.emailUtil.sendMobileNumberVerified(
-            data,
-            mobileNumberVerified
-        );
-    }
-
-    async processLoginNotification(
-        data: EmailSendDto,
-        login: EmailLoginDto
-    ): Promise<boolean> {
-        return this.emailUtil.sendLoginNotification(data, login);
     }
 }

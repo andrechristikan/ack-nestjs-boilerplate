@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumNotificationChannel, EnumNotificationSettingType } from '@prisma/client';
+import { EnumNotificationChannel, EnumNotificationType } from '@prisma/client';
 import { IsBoolean, IsEnum, IsNotEmpty } from 'class-validator';
 
-export class UserUpdateNotificationSettingRequestDto {
+export class NotificationUserSettingRequestDto {
     @ApiProperty({
         required: true,
         enum: EnumNotificationChannel,
@@ -14,12 +14,12 @@ export class UserUpdateNotificationSettingRequestDto {
 
     @ApiProperty({
         required: true,
-        enum: EnumNotificationSettingType,
-        example: EnumNotificationSettingType.login,
+        enum: EnumNotificationType,
+        example: EnumNotificationType.security_alert,
     })
-    @IsEnum(EnumNotificationSettingType)
+    @IsEnum(EnumNotificationType)
     @IsNotEmpty()
-    type: EnumNotificationSettingType;
+    type: EnumNotificationType;
 
     @ApiProperty({
         required: true,
@@ -27,5 +27,5 @@ export class UserUpdateNotificationSettingRequestDto {
     })
     @IsBoolean()
     @IsNotEmpty()
-    enabled: boolean;
+    isActive: boolean;
 }

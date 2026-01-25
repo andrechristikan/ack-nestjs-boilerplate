@@ -428,4 +428,25 @@ export class AppEnvDto {
     @IsOptional()
     @IsString()
     SENTRY_DSN?: string;
+
+    /**
+     * Firebase project ID for Firebase integration (optional)
+     */
+    @IsOptional()
+    @IsString()
+    FIREBASE_PROJECT_ID?: string;
+
+    /**
+     * Firebase client email for Firebase integration (optional)
+     */
+    @IsOptional()
+    @IsString()
+    FIREBASE_CLIENT_EMAIL?: string;
+
+    /**
+     * Firebase private key for Firebase integration (optional)
+     */
+    @IsOptional()
+    @IsString()
+    FIREBASE_PRIVATE_KEY?: string;
 }

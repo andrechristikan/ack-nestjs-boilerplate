@@ -1,3 +1,11 @@
 {
-    "list": "Here are your notifications."
+    "list": "Here are your notifications.",
+    "markAsRead": "Notification marked as read.",
+    "markAllAsRead": "All notifications marked as read.",
+    "notify": {
+        "newLogin": {
+            "title": "New Login Detected",
+            "body": "A new login to your account was detected."
+        }
+    }
 }
