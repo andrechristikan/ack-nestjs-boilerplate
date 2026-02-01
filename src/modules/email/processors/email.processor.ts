@@ -85,11 +85,13 @@ export class EmailProcessor extends QueueProcessorBase {
 
                 default:
                     return {
-                        message: 'unhandledJob',
+                        message:
+                            'No email processor found for the given job name',
                     };
             }
         } catch (error: unknown) {
             this.logger.error(error);
+            throw error;
         }
 
         return;

@@ -233,13 +233,7 @@ export class EmailService implements IEmailService {
     async sendNewLogin(
         userId: string,
         { email, username }: IEmailSendPayload,
-        {
-            loginFrom,
-            loginWith,
-            loginAt,
-            userAgent,
-            ipAddress,
-        }: IEmailNewLoginPayload
+        { loginFrom, loginWith, loginAt, requestLog }: IEmailNewLoginPayload
     ): Promise<void> {
         await this.emailQueue.add(
             EnumEmailProcess.newLogin,
@@ -248,9 +242,8 @@ export class EmailService implements IEmailService {
                 data: {
                     loginFrom,
                     loginWith,
-                    ipAddress,
-                    userAgent,
                     loginAt,
+                    requestLog,
                 },
             },
             {

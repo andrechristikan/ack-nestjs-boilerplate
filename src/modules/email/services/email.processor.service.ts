@@ -11,7 +11,6 @@ import {
 import { IEmailProcessorService } from '@modules/email/interfaces/email.processor.service.interface';
 import { EmailUtil } from '@modules/email/utils/email.util';
 import { Injectable } from '@nestjs/common';
-import { Queue } from 'bullmq';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
 @Injectable()

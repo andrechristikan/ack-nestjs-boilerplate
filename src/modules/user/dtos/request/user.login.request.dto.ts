@@ -1,9 +1,17 @@
 import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
 import { faker } from '@faker-js/faker';
+import { UserDeviceDto } from '@modules/user/dtos/request/user.device.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { EnumUserLoginFrom } from '@prisma/client';
-import { Transform } from 'class-transformer';
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+    IsEnum,
+    IsNotEmpty,
+    IsNotEmptyObject,
+    IsObject,
+    IsString,
+    ValidateNested,
+} from 'class-validator';
 
 export class UserLoginRequestDto {
     @ApiProperty({
@@ -34,4 +42,16 @@ export class UserLoginRequestDto {
     @IsNotEmpty()
     @IsEnum(EnumUserLoginFrom)
     from: EnumUserLoginFrom;
+
+    @ApiProperty({
+        description: 'Device information',
+        required: true,
+        type: UserDeviceDto,
+    })
+    @Type(() => UserDeviceDto)
+    @IsNotEmpty()
+    @IsObject()
+    @IsNotEmptyObject()
+    @ValidateNested()
+    device: UserDeviceDto;
 }

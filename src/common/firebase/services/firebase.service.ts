@@ -29,6 +29,8 @@ export class FirebaseService implements OnModuleInit {
     private app: FirebaseApp | null = null;
     private messaging: Messaging | null = null;
 
+    isInitializedFlag = false;
+
     constructor(
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
@@ -68,6 +70,8 @@ export class FirebaseService implements OnModuleInit {
             });
 
             this.messaging = firebaseAdmin.messaging(this.app);
+
+            this.isInitializedFlag = true;
 
             this.logger.log('Firebase Admin SDK initialized successfully');
         } catch (error: unknown) {

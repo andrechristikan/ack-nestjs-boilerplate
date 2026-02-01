@@ -46,6 +46,7 @@ import {
 } from '@modules/user/docs/user.shared.doc';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
+import { UserDeviceDto } from '@modules/user/dtos/request/user.device.dto';
 import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import {
     UserAddMobileNumberRequestDto,
@@ -99,9 +100,10 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @AuthJwtToken() refreshToken: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: RequestUserAgentDto,
+        @Body() body: UserDeviceDto
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
-        return this.userService.refreshToken(user, refreshToken, {
+        return this.userService.refreshToken(user, refreshToken, body, {
             ipAddress,
             userAgent,
         });

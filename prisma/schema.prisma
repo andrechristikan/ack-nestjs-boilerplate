@@ -263,8 +263,8 @@ model Device {
   user     User      @relation("UserDevices", fields: [userId], references: [id])
   sessions Session[] @relation("DeviceSessions")
 
-  @@index(fields: [notificationToken])
   @@unique(fields: [userId, fingerprint])
+  @@index(fields: [notificationToken])
   @@index(fields: [userId, lastActiveAt(sort: Desc)])
   @@map("Devices")
 }

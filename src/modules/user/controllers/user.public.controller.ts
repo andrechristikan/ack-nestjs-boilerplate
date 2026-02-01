@@ -19,7 +19,7 @@ import {
     AuthPublicLoginSocialGoogleDoc,
     UserPublicForgotPasswordDoc,
     UserPublicLoginCredentialDoc,
-    UserPublicLoginEnableTwoFactorDoc,
+    UserPublicLoginSetupTwoFactorDoc,
     UserPublicLoginVerifyTwoFactorDoc,
     UserPublicResetPasswordDoc,
     UserPublicSendEmailVerificationDoc,
@@ -29,7 +29,7 @@ import {
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
-import { UserLoginEnableTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-enable-two-factor.request.dto';
+import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
@@ -218,17 +218,17 @@ export class UserPublicController {
         });
     }
 
-    @UserPublicLoginEnableTwoFactorDoc()
-    @Response('user.loginEnableTwoFactor')
+    @UserPublicLoginSetupTwoFactorDoc()
+    @Response('user.loginSetupTwoFactor')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/login/2fa/enable')
     async verifyLoginTwoFactor(
-        @Body() body: UserLoginEnableTwoFactorRequestDto,
+        @Body() body: UserLoginSetupTwoFactorRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userService.loginEnableTwoFactor(body, {
+        return this.userService.loginSetupTwoFactor(body, {
             ipAddress,
             userAgent,
         });

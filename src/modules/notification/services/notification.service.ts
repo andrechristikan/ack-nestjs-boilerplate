@@ -1,34 +1,12 @@
-import { HelperService } from '@common/helper/services/helper.service';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import {
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    User,
-} from '@generated/prisma-client';
-import { EmailService } from '@modules/email/services/email.service';
-import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
-import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
 import {
     INotificationNewLoginPayload,
     INotificationSendPayload,
     INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { INotificationService } from '@modules/notification/interfaces/notification.service.interface';
-import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { InjectQueue } from '@nestjs/bullmq';
-import {
-    BadRequestException,
-    Injectable,
-    NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { EnumQueue, EnumQueuePriority } from 'src/queues/enums/queue.enum';
 
@@ -54,6 +32,8 @@ export class NotificationService implements INotificationService {
             }
         );
     }
+
+    // TODO: NEXT
 
     // async getListCursor(
     //     userId: string,

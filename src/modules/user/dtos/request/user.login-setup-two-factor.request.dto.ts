@@ -2,7 +2,7 @@ import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/u
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { IntersectionType, PickType } from '@nestjs/swagger';
 
-export class UserLoginEnableTwoFactorRequestDto extends IntersectionType(
+export class UserLoginSetupTwoFactorRequestDto extends IntersectionType(
     UserTwoFactorEnableRequestDto,
     PickType(UserLoginVerifyTwoFactorRequestDto, ['challengeToken'] as const)
 ) {}

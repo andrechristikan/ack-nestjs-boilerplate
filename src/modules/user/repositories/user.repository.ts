@@ -22,6 +22,7 @@ import { IRole } from '@modules/role/interfaces/role.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { UserDeviceDto } from '@modules/user/dtos/request/user.device.dto';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
@@ -38,6 +39,8 @@ import { Injectable } from '@nestjs/common';
 import {
     Country,
     EnumActivityLogAction,
+    EnumDeviceNotificationProvider,
+    EnumDevicePlatform,
     EnumNotificationChannel,
     EnumNotificationType,
     EnumPasswordHistoryType,
@@ -333,6 +336,21 @@ export class UserRepository {
     async existByUsername(username: string): Promise<{ id: string } | null> {
         return this.databaseService.user.findUnique({
             where: { username },
+            select: { id: true },
+        });
+    }
+
+    async existDevice(
+        userId: string,
+        fingerprint: string
+    ): Promise<{ id: string } | null> {
+        return this.databaseService.device.findUnique({
+            where: {
+                userId_fingerprint: {
+                    userId,
+                    fingerprint,
+                },
+            },
             select: { id: true },
         });
     }
@@ -883,8 +901,11 @@ export class UserRepository {
     async login(
         userId: string,
         { loginFrom, loginWith, sessionId, expiredAt, jti }: IUserLogin,
+        { fingerprint, name, notificationToken, platform }: UserDeviceDto,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<User> {
+        const today = this.helperService.dateCreate();
+
         let action: EnumActivityLogAction =
             EnumActivityLogAction.userLoginCredential;
         switch (loginWith) {
@@ -900,14 +921,52 @@ export class UserRepository {
                 break;
         }
 
+        let notificationProvider: EnumDeviceNotificationProvider | null = null;
+        switch (platform) {
+            case EnumDevicePlatform.android:
+                notificationProvider = EnumDeviceNotificationProvider.fcm;
+                break;
+            case EnumDevicePlatform.ios:
+                notificationProvider = EnumDeviceNotificationProvider.apns;
+                break;
+            default:
+                notificationProvider = null;
+                break;
+        }
+
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                lastLoginAt: this.helperService.dateCreate(),
+                lastLoginAt: today,
                 lastIPAddress: ipAddress,
                 lastLoginFrom: loginFrom,
                 lastLoginWith: loginWith,
                 updatedBy: userId,
+                devices: {
+                    upsert: {
+                        where: {
+                            userId_fingerprint: {
+                                userId,
+                                fingerprint,
+                            },
+                        },
+                        create: {
+                            fingerprint,
+                            name,
+                            platform,
+                            notificationProvider,
+                            notificationToken,
+                            lastActiveAt: today,
+                        },
+                        update: {
+                            name,
+                            platform,
+                            notificationProvider,
+                            notificationToken,
+                            lastActiveAt: today,
+                        },
+                    },
+                },
                 sessions: {
                     create: {
                         id: sessionId,
@@ -1410,12 +1469,28 @@ export class UserRepository {
     async refresh(
         userId: string,
         { loginFrom, loginWith, sessionId, jti }: IUserLogin,
+        { fingerprint, name, notificationToken, platform }: UserDeviceDto,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<User> {
+        const today = this.helperService.dateCreate();
+
+        let notificationProvider: EnumDeviceNotificationProvider | null = null;
+        switch (platform) {
+            case EnumDevicePlatform.android:
+                notificationProvider = EnumDeviceNotificationProvider.fcm;
+                break;
+            case EnumDevicePlatform.ios:
+                notificationProvider = EnumDeviceNotificationProvider.apns;
+                break;
+            default:
+                notificationProvider = null;
+                break;
+        }
+
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                lastLoginAt: this.helperService.dateCreate(),
+                lastLoginAt: today,
                 lastIPAddress: ipAddress,
                 lastLoginFrom: loginFrom,
                 lastLoginWith: loginWith,
@@ -1427,6 +1502,31 @@ export class UserRepository {
                         },
                         data: {
                             jti,
+                        },
+                    },
+                },
+                devices: {
+                    upsert: {
+                        where: {
+                            userId_fingerprint: {
+                                userId,
+                                fingerprint,
+                            },
+                        },
+                        create: {
+                            fingerprint,
+                            name,
+                            platform,
+                            notificationProvider,
+                            notificationToken,
+                            lastActiveAt: today,
+                        },
+                        update: {
+                            name,
+                            platform,
+                            notificationProvider,
+                            notificationToken,
+                            lastActiveAt: today,
                         },
                     },
                 },

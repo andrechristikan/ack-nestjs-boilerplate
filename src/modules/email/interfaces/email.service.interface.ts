@@ -68,12 +68,6 @@ export interface IEmailService {
     sendNewLogin(
         sendNewLogin: string,
         { email, username }: IEmailSendPayload,
-        {
-            loginFrom,
-            loginWith,
-            loginAt,
-            userAgent,
-            ipAddress,
-        }: IEmailNewLoginPayload
+        { loginFrom, loginWith, loginAt, requestLog }: IEmailNewLoginPayload
     ): Promise<void>;
 }

@@ -90,7 +90,6 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import {
-    EnumNotificationChannel,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserStatus,
@@ -102,13 +101,14 @@ import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
-import { UserLoginEnableTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-enable-two-factor.request.dto';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { RequestTooManyException } from '@common/request/exceptions/request.too-many.exception';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { ConfigService } from '@nestjs/config';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
+import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
+import { UserDeviceDto } from '@modules/user/dtos/request/user.device.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -919,7 +919,7 @@ export class UserService implements IUserService {
     }
 
     async loginCredential(
-        { email, password, from }: UserLoginRequestDto,
+        { email, password, from, device }: UserLoginRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         const user = await this.userRepository.findOneWithRoleByEmail(email);
@@ -979,6 +979,7 @@ export class UserService implements IUserService {
             user,
             from,
             EnumUserLoginWith.credential,
+            device,
             requestLog
         );
     }
@@ -986,7 +987,7 @@ export class UserService implements IUserService {
     async loginWithSocial(
         email: string,
         loginWith: EnumUserLoginWith,
-        { from, ...others }: UserCreateSocialRequestDto,
+        { from, device, ...others }: UserCreateSocialRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         const featureFlag =
@@ -1016,7 +1017,7 @@ export class UserService implements IUserService {
                 randomUsername,
                 role.id,
                 loginWith,
-                { from, ...others },
+                { from, device, ...others },
                 requestLog
             );
 
@@ -1043,12 +1044,13 @@ export class UserService implements IUserService {
             await Promise.all(promises);
         }
 
-        return this.handleLogin(user, from, loginWith, requestLog);
+        return this.handleLogin(user, from, loginWith, device, requestLog);
     }
 
     async refreshToken(
         user: IUser,
         refreshToken: string,
+        device: UserDeviceDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
         const {
@@ -1093,6 +1095,7 @@ export class UserService implements IUserService {
                         loginFrom: loginFrom,
                         loginWith: loginWith,
                     },
+                    device,
                     requestLog
                 ),
             ]);
@@ -1488,13 +1491,13 @@ export class UserService implements IUserService {
         user: IUser,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
+        device: UserDeviceDto,
         requestLog: IRequestLog
     ): Promise<AuthTokenResponseDto> {
-        const { tokens, sessionId, jti } = this.authService.createTokens(
-            user,
-            loginFrom,
-            loginWith
-        );
+        const [{ tokens, sessionId, jti }, existDevice] = await Promise.all([
+            this.authService.createTokens(user, loginFrom, loginWith),
+            this.userRepository.existDevice(user.id, device.fingerprint),
+        ]);
         const loginAt = this.helperService.dateCreate();
         const expiredAt = this.helperService.dateForward(
             loginAt,
@@ -1503,7 +1506,7 @@ export class UserService implements IUserService {
             })
         );
 
-        await Promise.all([
+        const promises = [
             this.sessionUtil.setLogin(user.id, sessionId, jti, expiredAt),
             this.userRepository.login(
                 user.id,
@@ -1514,20 +1517,42 @@ export class UserService implements IUserService {
                     sessionId,
                     expiredAt,
                 },
+                device,
                 requestLog
             ),
-            this.notificationService.sendNewLogin(
-                {
-                    userId: user.id,
-                    username: user.username,
-                },
-                {
-                    loginAt,
-                    loginFrom,
-                    loginWith,
-                }
-            ),
-        ]);
+        ];
+
+        if (!existDevice) {
+            promises.push(
+                this.notificationService.sendNewLogin(
+                    {
+                        userId: user.id,
+                        username: user.username,
+                    },
+                    {
+                        loginAt,
+                        loginFrom,
+                        loginWith,
+                        requestLog,
+                    }
+                ),
+                this.emailService.sendNewLogin(
+                    user.id,
+                    {
+                        email: user.email,
+                        username: user.username,
+                    },
+                    {
+                        loginAt,
+                        loginFrom,
+                        loginWith,
+                        requestLog,
+                    }
+                )
+            );
+        }
+
+        await Promise.all(promises);
 
         return tokens;
     }
@@ -1536,6 +1561,7 @@ export class UserService implements IUserService {
         user: IUser,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
+        device: UserDeviceDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         if (!user.twoFactor.enabled) {
@@ -1543,6 +1569,7 @@ export class UserService implements IUserService {
                 user,
                 loginFrom,
                 loginWith,
+                device,
                 requestLog
             );
 
@@ -1649,6 +1676,7 @@ export class UserService implements IUserService {
             code,
             backupCode,
             method,
+            device,
         }: UserLoginVerifyTwoFactorRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
@@ -1703,6 +1731,7 @@ export class UserService implements IUserService {
                     user,
                     challenge.loginFrom,
                     challenge.loginWith,
+                    device,
                     requestLog
                 ),
                 this.authTwoFactorUtil.clearChallenge(challengeToken),
@@ -1725,8 +1754,8 @@ export class UserService implements IUserService {
         }
     }
 
-    async loginEnableTwoFactor(
-        { code, challengeToken }: UserLoginEnableTwoFactorRequestDto,
+    async loginSetupTwoFactor(
+        { code, challengeToken }: UserLoginSetupTwoFactorRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         const challenge =

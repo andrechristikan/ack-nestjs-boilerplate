@@ -54,6 +54,8 @@ import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
+import { UserDeviceDto } from '@modules/user/dtos/request/user.device.dto';
 
 export interface IUserService {
     validateUserGuard(
@@ -158,12 +160,13 @@ export interface IUserService {
     loginWithSocial(
         email: string,
         loginWith: EnumUserLoginWith,
-        { from, ...others }: UserCreateSocialRequestDto,
+        { from, device, ...others }: UserCreateSocialRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserLoginResponseDto>>;
     refreshToken(
         user: IUser,
         refreshToken: string,
+        device: UserDeviceDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<AuthTokenResponseDto>>;
     signUp(
@@ -195,6 +198,10 @@ export interface IUserService {
         }: UserLoginVerifyTwoFactorRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<AuthTokenResponseDto>>;
+    loginSetupTwoFactor(
+        { code, challengeToken }: UserLoginSetupTwoFactorRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
     getTwoFactorStatus(
         user: IUser
     ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>>;

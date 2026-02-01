@@ -391,8 +391,7 @@ export class EmailUtil {
             loginFrom,
             loginWith,
             loginAt,
-            userAgent,
-            ipAddress,
+            requestLog: { userAgent, ipAddress },
         }: IEmailNewLoginPayload
     ): Promise<boolean> {
         try {

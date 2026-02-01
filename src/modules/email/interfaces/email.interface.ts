@@ -1,4 +1,4 @@
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
 
 export interface IEmailSendPayload {
@@ -38,8 +38,7 @@ export interface IEmailNewLoginPayload {
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
     loginAt: Date;
-    userAgent: RequestUserAgentDto;
-    ipAddress: string;
+    requestLog: IRequestLog;
 }
 
 export interface IEmailWorkerPayload<T = unknown> {
