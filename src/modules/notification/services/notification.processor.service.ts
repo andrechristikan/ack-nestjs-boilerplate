@@ -1,18 +1,31 @@
 import { FirebaseService } from '@common/firebase/services/firebase.service';
+import {
+    INotificationNewLoginPayload,
+    INotificationWorkerPayload,
+} from '@modules/notification/interfaces/notification.interface';
+import { UserRepository } from '@modules/user/repositories/user.repository';
 import { Injectable } from '@nestjs/common';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
 @Injectable()
 export class NotificationProcessorService {
-    constructor(private readonly firebaseService: FirebaseService) {}
+    constructor(
+        private readonly firebaseService: FirebaseService,
+        private readonly userRepository: UserRepository
+    ) {}
 
-    async processNewLogin(): Promise<IQueueResponse> {
+    async processNewLogin({
+        send: { deviceFingerprint, userId, username },
+        data,
+    }: INotificationWorkerPayload<INotificationNewLoginPayload>): Promise<IQueueResponse> {
         if (!this.firebaseService.isInitializedFlag) {
             return {
                 message:
                     'Firebase not initialized, skipping new login notification',
             };
         }
+
+        const devices = this.userRepository.findDeviceByUserId(userId);
 
         // TODO: Implement new login notification logic here
 

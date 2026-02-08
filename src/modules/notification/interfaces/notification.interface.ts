@@ -4,6 +4,7 @@ import { EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
 export interface INotificationSendPayload {
     userId: string;
     username: string;
+    deviceFingerprint: string;
 }
 
 export interface INotificationNewLoginPayload {

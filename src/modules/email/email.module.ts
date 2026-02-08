@@ -1,23 +1,12 @@
 import { Module } from '@nestjs/common';
 import { EmailTemplateService } from '@modules/email/services/email.template.service';
 import { AwsModule } from '@common/aws/aws.module';
-import { EmailUtil } from '@modules/email/utils/email.util';
-import { EmailService } from '@modules/email/services/email.service';
 import { EmailProcessorService } from '@modules/email/services/email.processor.service';
+import { EmailSharedModule } from '@modules/email/email.shared.module';
 
 @Module({
-    imports: [AwsModule],
-    providers: [
-        EmailUtil,
-        EmailTemplateService,
-        EmailService,
-        EmailProcessorService,
-    ],
-    exports: [
-        EmailUtil,
-        EmailTemplateService,
-        EmailService,
-        EmailProcessorService,
-    ],
+    imports: [AwsModule, EmailSharedModule],
+    providers: [EmailTemplateService, EmailProcessorService],
+    exports: [EmailTemplateService, EmailProcessorService],
 })
 export class EmailModule {}

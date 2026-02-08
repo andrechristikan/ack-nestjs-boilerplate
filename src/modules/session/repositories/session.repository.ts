@@ -59,7 +59,7 @@ export class SessionRepository {
         );
     }
 
-    async findAll(userId: string): Promise<
+    async findActive(userId: string): Promise<
         {
             id: string;
         }[]

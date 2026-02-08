@@ -1,46 +1,11 @@
-import { Global, Module } from '@nestjs/common';
-import { SessionUtil } from '@modules/session/utils/session.util';
+import { Module } from '@nestjs/common';
 import { SessionService } from '@modules/session/services/session.service';
-import {
-    CACHE_MANAGER,
-    CacheModule as CacheManagerModule,
-    CacheOptions,
-} from '@nestjs/cache-manager';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import KeyvRedis from '@keyv/redis';
-import { SessionCacheProvider } from '@modules/session/constants/session.constant';
-import { SessionRepository } from '@modules/session/repositories/session.repository';
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
-import { NotificationModule } from '@modules/notification/notification.module';
+import { SessionSharedModule } from '@modules/session/session.shared.module';
 
-@Global()
 @Module({
-    imports: [
-        CacheManagerModule.registerAsync({
-            imports: [ConfigModule],
-            inject: [ConfigService, RedisClientCachedProvider],
-            useFactory: (
-                configService: ConfigService,
-                redisClient: KeyvRedis<unknown>
-            ): CacheOptions => {
-                return {
-                    stores: [redisClient],
-                    ttl: configService.get<number>('redis.cache.ttlInMs'),
-                };
-            },
-        }),
-        NotificationModule,
-    ],
-    exports: [SessionUtil, SessionService, SessionRepository],
-    providers: [
-        SessionUtil,
-        SessionService,
-        SessionRepository,
-        {
-            provide: SessionCacheProvider,
-            useExisting: CACHE_MANAGER,
-        },
-    ],
+    imports: [SessionSharedModule],
+    exports: [SessionService],
+    providers: [SessionService],
     controllers: [],
 })
 export class SessionModule {}

@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
 import { CountryService } from '@modules/country/services/country.service';
-import { CountryUtil } from '@modules/country/utils/country.util';
-import { CountryRepository } from '@modules/country/repositories/country.repository';
+import { CountrySharedModule } from '@modules/country/country.shared.module';
 
 @Module({
-    imports: [],
-    exports: [CountryService, CountryUtil, CountryRepository],
-    providers: [CountryService, CountryUtil, CountryRepository],
+    imports: [CountrySharedModule],
+    exports: [CountryService],
+    providers: [CountryService],
     controllers: [],
 })
 export class CountryModule {}

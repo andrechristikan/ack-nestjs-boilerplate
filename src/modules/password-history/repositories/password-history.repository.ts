@@ -56,7 +56,7 @@ export class PasswordHistoryRepository {
         );
     }
 
-    async findAllActiveUser(userId: string): Promise<PasswordHistory[]> {
+    async findActiveUser(userId: string): Promise<PasswordHistory[]> {
         const today = this.helperService.dateCreate();
         return this.databaseService.passwordHistory.findMany({
             where: {

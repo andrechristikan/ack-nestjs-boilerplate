@@ -1,27 +1,34 @@
 import { Module } from '@nestjs/common';
 import { UserService } from '@modules/user/services/user.service';
-import { UserUtil } from '@modules/user/utils/user.util';
-import { UserRepository } from '@modules/user/repositories/user.repository';
-import { CountryModule } from '@modules/country/country.module';
-import { RoleModule } from '@modules/role/role.module';
 import { AwsModule } from '@common/aws/aws.module';
-import { SessionModule } from '@modules/session/session.module';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
-import { EmailModule } from '@modules/email/email.module';
-import { NotificationModule } from '@modules/notification/notification.module';
+import { UserSharedModule } from '@modules/user/user.shared.module';
+import { CountrySharedModule } from '@modules/country/country.shared.module';
+import { RoleSharedModule } from '@modules/role/role.shared.module';
+import { PasswordHistorySharedModule } from '@modules/password-history/password-history.shared.module';
+import { SessionSharedModule } from '@modules/session/session.shared.module';
+import { EmailSharedModule } from '@modules/email/email.shared.module';
+import { AuthSharedModule } from '@modules/auth/auth.shared.module';
+import { FeatureFlagSharedModule } from '@modules/feature-flag/feature-flag.shared.module';
+import { NotificationSharedModule } from '@modules/notification/notification.shared.module';
 
 @Module({
     imports: [
         PasswordHistoryModule,
-        CountryModule,
-        RoleModule,
+        CountrySharedModule,
+        RoleSharedModule,
+        UserSharedModule,
+        PasswordHistorySharedModule,
+        SessionSharedModule,
+        EmailSharedModule,
+        AuthSharedModule,
+        FeatureFlagSharedModule,
+        NotificationSharedModule,
+
         AwsModule,
-        SessionModule,
-        EmailModule,
-        NotificationModule,
     ],
-    exports: [UserService, UserUtil, UserRepository],
-    providers: [UserService, UserUtil, UserRepository],
+    exports: [UserService],
+    providers: [UserService],
     controllers: [],
 })
 export class UserModule {}

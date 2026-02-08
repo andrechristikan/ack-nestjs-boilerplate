@@ -1,58 +1,38 @@
-import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import {
-    INotificationNewLoginPayload,
-    INotificationSendPayload,
-    INotificationWorkerPayload,
-} from '@modules/notification/interfaces/notification.interface';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { INotificationService } from '@modules/notification/interfaces/notification.service.interface';
-import { InjectQueue } from '@nestjs/bullmq';
+import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
-import { Queue } from 'bullmq';
-import { EnumQueue, EnumQueuePriority } from 'src/queues/enums/queue.enum';
 
 @Injectable()
 export class NotificationService implements INotificationService {
     constructor(
-        @InjectQueue(EnumQueue.notification)
-        private readonly notificationQueue: Queue
+        private readonly notificationRepository: NotificationRepository,
+        private readonly notificationUtil: NotificationUtil
     ) {}
 
-    async sendNewLogin(
-        send: INotificationSendPayload,
-        payload: INotificationNewLoginPayload
-    ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.newLogin,
-            {
-                send,
-                data: payload,
-            } as INotificationWorkerPayload<INotificationNewLoginPayload>,
-            {
-                priority: EnumQueuePriority.medium,
-            }
-        );
+    async getListCursor(
+        userId: string,
+        pagination: IPaginationQueryCursorParams
+    ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
+        const { data, ...others } =
+            await this.notificationRepository.findWithPaginationCursor(
+                userId,
+                pagination
+            );
+
+        const notifications: NotificationResponseDto[] =
+            this.notificationUtil.mapList(data);
+
+        return {
+            data: notifications,
+            ...others,
+        };
     }
 
-    // TODO: NEXT
-
-    // async getListCursor(
-    //     userId: string,
-    //     pagination: IPaginationQueryCursorParams
-    // ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
-    //     const { data, ...others } =
-    //         await this.notificationRepository.findWithPaginationCursor(
-    //             userId,
-    //             pagination
-    //         );
-
-    //     const notifications: NotificationResponseDto[] =
-    //         this.notificationUtil.mapList(data);
-    //     return {
-    //         data: notifications,
-    //         ...others,
-    //     };
-    // }
-
+    // TODO:  see notification module
     // async markAsRead(
     //     userId: string,
     //     notificationId: string
@@ -72,16 +52,13 @@ export class NotificationService implements INotificationService {
     //             message: 'notification.error.alreadyRead',
     //         });
     //     }
-
     //     await this.notificationRepository.markAsRead(userId, notificationId);
     //     return;
     // }
-
     // async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
     //     await this.notificationRepository.markAllAsRead(userId);
     //     return;
     // }
-
     // async updateUserSetting(
     //     userId: string,
     //     data: NotificationUserSettingRequestDto,
@@ -92,10 +69,8 @@ export class NotificationService implements INotificationService {
     //         data,
     //         requestLog
     //     );
-
     //     return;
     // }
-
     // async newLoginNotification(
     //     user: User,
     //     loginFrom: EnumUserLoginFrom,
@@ -108,7 +83,6 @@ export class NotificationService implements INotificationService {
     //         loginFrom,
     //         loginWith
     //     );
-
     //     // @note: post action
     //     await Promise.all([
     //         this.emailService.sendNewLogin(
@@ -138,10 +112,8 @@ export class NotificationService implements INotificationService {
     //             }
     //         ),
     //     ]);
-
     //     return;
     // }
-
     // async registerPushToken(
     //     userId: string,
     //     sessionId: string,
@@ -155,10 +127,8 @@ export class NotificationService implements INotificationService {
     //         provider,
     //         userAgent
     //     );
-
     //     return;
     // }
-
     // private async isChannelEnabled(
     //     userId: string,
     //     channel: EnumNotificationChannel,
@@ -167,7 +137,6 @@ export class NotificationService implements INotificationService {
     //     if (delivery === EnumNotificationDelivery.silent) {
     //         return false;
     //     }
-
     //     if (delivery === EnumNotificationDelivery.email) {
     //         return (
     //             channel === EnumNotificationChannel.email &&
@@ -178,7 +147,6 @@ export class NotificationService implements INotificationService {
     //             ))
     //         );
     //     }
-
     //     if (delivery === EnumNotificationDelivery.push) {
     //         return (
     //             channel === EnumNotificationChannel.push &&
@@ -189,14 +157,12 @@ export class NotificationService implements INotificationService {
     //             ))
     //         );
     //     }
-
     //     return this.notificationSettingRepository.isEnabled(
     //         userId,
     //         channel,
     //         EnumNotificationSettingType.login
     //     );
     // }
-
     // async revokePushToken(
     //     userId: string,
     //     sessionId: string

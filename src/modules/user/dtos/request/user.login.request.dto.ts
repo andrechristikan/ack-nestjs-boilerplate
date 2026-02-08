@@ -1,6 +1,6 @@
 import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
 import { faker } from '@faker-js/faker';
-import { UserDeviceDto } from '@modules/user/dtos/request/user.device.dto';
+import { UserDeviceDto } from '@modules/user/dtos/user.device.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { EnumUserLoginFrom } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';

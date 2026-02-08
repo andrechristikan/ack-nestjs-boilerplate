@@ -1,4 +1,4 @@
-// TODO: NEXT
+// TODO: see notification module
 // @Injectable()
 // export class NotificationOutboxRepository {
 //     constructor(

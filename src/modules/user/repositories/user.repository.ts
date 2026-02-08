@@ -22,12 +22,12 @@ import { IRole } from '@modules/role/interfaces/role.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { UserDeviceDto } from '@modules/user/dtos/request/user.device.dto';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import { UserDeviceDto } from '@modules/user/dtos/user.device.dto';
 import {
     IUser,
     IUserForgotPasswordCreate,
@@ -38,6 +38,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import {
     Country,
+    Device,
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
@@ -113,7 +114,7 @@ export class UserRepository {
         });
     }
 
-    async findAllByEmails(emails: string[]): Promise<IUser[]> {
+    async findByEmails(emails: string[]): Promise<IUser[]> {
         return this.databaseService.user.findMany({
             where: {
                 email: { in: emails },
@@ -125,7 +126,7 @@ export class UserRepository {
         });
     }
 
-    async findAllExport(
+    async findExport(
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
@@ -140,6 +141,21 @@ export class UserRepository {
             include: {
                 role: true,
                 twoFactor: true,
+            },
+        });
+    }
+
+    async findDeviceByUserId(
+        userId: string,
+        excludeFingerprint?: string[]
+    ): Promise<Device[]> {
+        return this.databaseService.device.findMany({
+            where: {
+                userId,
+                ...(excludeFingerprint &&
+                    excludeFingerprint.length > 0 && {
+                        fingerprint: { notIn: excludeFingerprint },
+                    }),
             },
         });
     }

@@ -1,3 +1,4 @@
+import { ApiKeyModule } from '@modules/api-key/api-key.module';
 import { FeatureFlagSystemController } from '@modules/feature-flag/controllers/feature-flag.system.controller';
 import { HealthSystemController } from '@modules/health/controllers/health.system.controller';
 import { HealthModule } from '@modules/health/health.module';
@@ -19,6 +20,6 @@ import { Module } from '@nestjs/common';
     ],
     providers: [],
     exports: [],
-    imports: [UserModule, HealthModule],
+    imports: [ApiKeyModule, UserModule, HealthModule],
 })
 export class RoutesSystemModule {}

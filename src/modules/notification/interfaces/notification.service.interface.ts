@@ -1,11 +1,10 @@
-import {
-    INotificationNewLoginPayload,
-    INotificationSendPayload,
-} from '@modules/notification/interfaces/notification.interface';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 
 export interface INotificationService {
-    sendNewLogin(
-        send: INotificationSendPayload,
-        payload: INotificationNewLoginPayload
-    ): Promise<void>;
+    getListCursor(
+        userId: string,
+        pagination: IPaginationQueryCursorParams
+    ): Promise<IResponsePagingReturn<NotificationResponseDto>>;
 }

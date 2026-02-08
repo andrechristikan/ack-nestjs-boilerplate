@@ -1,34 +1,29 @@
-// import {
-//     Doc,
-//     DocAuth,
-//     DocGuard,
-//     DocRequest,
-//     DocResponse,
-//     DocResponsePaging,
-// } from '@common/doc/decorators/doc.decorator';
-// import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
-// import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-// import { NotificationDocParamsId } from '@modules/notification/constants/notification.doc';
-// import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
-// import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
-// import { applyDecorators } from '@nestjs/common';
+import {
+    Doc,
+    DocAuth,
+    DocGuard,
+    DocResponsePaging,
+} from '@common/doc/decorators/doc.decorator';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
+import { applyDecorators } from '@nestjs/common';
 
-// export function NotificationSharedListDoc(): MethodDecorator {
-//     return applyDecorators(
-//         Doc({
-//             summary: 'Get all notifications for current user',
-//         }),
-//         DocAuth({
-//             xApiKey: true,
-//             jwtAccessToken: true,
-//         }),
-//         DocGuard({ termPolicy: true }),
-//         DocResponsePaging<NotificationResponseDto>('notification.list', {
-//             dto: NotificationResponseDto,
-//             type: EnumPaginationType.cursor,
-//         })
-//     );
-// }
+export function NotificationSharedListDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'Get all notifications for current user',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ termPolicy: true }),
+        DocResponsePaging<NotificationResponseDto>('notification.list', {
+            dto: NotificationResponseDto,
+            type: EnumPaginationType.cursor,
+        })
+    );
+}
 
 // export function NotificationSharedUpdateMarkAsReadDoc(): MethodDecorator {
 //     return applyDecorators(

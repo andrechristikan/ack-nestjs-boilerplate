@@ -1,12 +1,10 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { RoleService } from '@modules/role/services/role.service';
-import { RoleUtil } from '@modules/role/utils/role.util';
-import { RoleRepository } from '@modules/role/repositories/role.repository';
+import { RoleSharedModule } from '@modules/role/role.shared.module';
 
-@Global()
 @Module({
-    providers: [RoleService, RoleUtil, RoleRepository],
-    exports: [RoleService, RoleUtil, RoleRepository],
-    imports: [],
+    providers: [RoleService],
+    exports: [RoleService],
+    imports: [RoleSharedModule],
 })
 export class RoleModule {}

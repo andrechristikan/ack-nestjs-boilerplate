@@ -32,18 +32,14 @@ import {
     IAuthTwoFactorVerify,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
-import { AuthService } from '@modules/auth/services/auth.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { CountryRepository } from '@modules/country/repositories/country.repository';
-import { EmailService } from '@modules/email/services/email.service';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import { NotificationService } from '@modules/notification/services/notification.service';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import {
     UserCheckEmailRequestDto,
@@ -108,7 +104,10 @@ import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.req
 import { ConfigService } from '@nestjs/config';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
-import { UserDeviceDto } from '@modules/user/dtos/request/user.device.dto';
+import { UserDeviceDto } from '@modules/user/dtos/user.device.dto';
+import { EmailUtil } from '@modules/email/utils/email.util';
+import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -125,13 +124,12 @@ export class UserService implements IUserService {
         private readonly helperService: HelperService,
         private readonly fileService: FileService,
         private readonly authUtil: AuthUtil,
-        private readonly authService: AuthService,
         private readonly sessionUtil: SessionUtil,
         private readonly sessionRepository: SessionRepository,
-        private readonly featureFlagService: FeatureFlagService,
-        private readonly emailService: EmailService,
+        private readonly featureFlagUtil: FeatureFlagUtil,
+        private readonly emailUtil: EmailUtil,
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
-        private readonly notificationService: NotificationService,
+        private readonly notificationUtil: NotificationUtil,
         private readonly configService: ConfigService
     ) {
         this.userRoleName = this.configService.get<string>('user.default.role');
@@ -288,7 +286,7 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await this.emailService.sendWelcomeByAdmin(
+            await this.emailUtil.sendWelcomeByAdmin(
                 created.id,
                 {
                     email,
@@ -496,7 +494,7 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         try {
-            const sessions = await this.sessionRepository.findAll(userId);
+            const sessions = await this.sessionRepository.findActive(userId);
             await Promise.all([
                 this.userRepository.deleteSelf(userId, requestLog),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
@@ -788,7 +786,7 @@ export class UserService implements IUserService {
                 temporary: true,
             });
 
-            const sessions = await this.sessionRepository.findAll(userId);
+            const sessions = await this.sessionRepository.findActive(userId);
             const [updated] = await Promise.all([
                 this.userRepository.updatePasswordByAdmin(
                     userId,
@@ -800,7 +798,7 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.emailService.sendTemporaryPassword(
+            await this.emailUtil.sendTemporaryPassword(
                 updated.id,
                 {
                     email: updated.email,
@@ -856,7 +854,7 @@ export class UserService implements IUserService {
         await this.userRepository.resetPasswordAttempt(user.id);
 
         const passwordHistories =
-            await this.passwordHistoryRepository.findAllActiveUser(user.id);
+            await this.passwordHistoryRepository.findActiveUser(user.id);
         const passwordCheck = this.userUtil.checkPasswordPeriod(
             passwordHistories,
             newPassword
@@ -883,7 +881,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const sessions = await this.sessionRepository.findAll(user.id);
+            const sessions = await this.sessionRepository.findActive(user.id);
             const password = this.authUtil.createPassword(newPassword);
 
             await Promise.all([
@@ -903,7 +901,7 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.emailService.sendChangePassword(user.id, {
+            await this.emailUtil.sendChangePassword(user.id, {
                 email: user.email,
                 username: user.username,
             });
@@ -991,7 +989,7 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         const featureFlag =
-            await this.featureFlagService.findOneMetadataByKeyAndCache<{
+            await this.featureFlagUtil.getMetadataByKeyAndCache<{
                 signUpAllowed: boolean;
             }>(
                 loginWith === EnumUserLoginWith.socialGoogle
@@ -1022,7 +1020,7 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await this.emailService.sendWelcome(user.id, {
+            await this.emailUtil.sendWelcome(user.id, {
                 email: user.email,
                 username: user.username,
             });
@@ -1076,7 +1074,7 @@ export class UserService implements IUserService {
                 jti: newJti,
                 tokens,
                 expiredInMs,
-            } = this.authService.refreshToken(user, refreshToken);
+            } = this.authUtil.refreshToken(user, refreshToken);
 
             await Promise.all([
                 this.sessionUtil.updateLogin(
@@ -1167,11 +1165,11 @@ export class UserService implements IUserService {
 
             // @note: send email after all creation
             await Promise.all([
-                this.emailService.sendWelcome(created.id, {
+                this.emailUtil.sendWelcome(created.id, {
                     email: created.email,
                     username: created.username,
                 }),
-                this.emailService.sendVerification(
+                this.emailUtil.sendVerification(
                     created.id,
                     {
                         email: created.email,
@@ -1219,7 +1217,7 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await this.emailService.sendVerified(
+            await this.emailUtil.sendVerified(
                 verification.user.id,
                 {
                     email: verification.user.email,
@@ -1296,7 +1294,7 @@ export class UserService implements IUserService {
                 requestLog
             );
 
-            await this.emailService.sendVerification(
+            await this.emailUtil.sendVerification(
                 user.id,
                 {
                     email: user.email,
@@ -1369,7 +1367,7 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await this.emailService.sendForgotPassword(
+            await this.emailUtil.sendForgotPassword(
                 user.id,
                 {
                     email: user.email,
@@ -1414,7 +1412,7 @@ export class UserService implements IUserService {
         }
 
         const passwordHistories =
-            await this.passwordHistoryRepository.findAllActiveUser(
+            await this.passwordHistoryRepository.findActiveUser(
                 resetPassword.userId
             );
         const passwordCheck = this.userUtil.checkPasswordPeriod(
@@ -1446,7 +1444,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const sessions = await this.sessionRepository.findAll(
+            const sessions = await this.sessionRepository.findActive(
                 resetPassword.userId
             );
             const password = this.authUtil.createPassword(newPassword);
@@ -1472,7 +1470,7 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.emailService.sendChangePassword(resetPassword.user.id, {
+            await this.emailUtil.sendChangePassword(resetPassword.user.id, {
                 email: resetPassword.user.email,
                 username: resetPassword.user.username,
             });
@@ -1495,7 +1493,7 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<AuthTokenResponseDto> {
         const [{ tokens, sessionId, jti }, existDevice] = await Promise.all([
-            this.authService.createTokens(user, loginFrom, loginWith),
+            this.authUtil.createTokens(user, loginFrom, loginWith),
             this.userRepository.existDevice(user.id, device.fingerprint),
         ]);
         const loginAt = this.helperService.dateCreate();
@@ -1524,10 +1522,11 @@ export class UserService implements IUserService {
 
         if (!existDevice) {
             promises.push(
-                this.notificationService.sendNewLogin(
+                this.notificationUtil.sendNewLogin(
                     {
                         userId: user.id,
                         username: user.username,
+                        deviceFingerprint: device.fingerprint,
                     },
                     {
                         loginAt,
@@ -1536,7 +1535,7 @@ export class UserService implements IUserService {
                         requestLog,
                     }
                 ),
-                this.emailService.sendNewLogin(
+                this.emailUtil.sendNewLogin(
                     user.id,
                     {
                         email: user.email,
@@ -2021,7 +2020,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const sessions = await this.sessionRepository.findAll(userId);
+            const sessions = await this.sessionRepository.findActive(userId);
 
             await Promise.all([
                 this.userRepository.resetTwoFactorByAdmin(
@@ -2033,7 +2032,7 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.emailService.sendResetTwoFactorByAdmin(user.id, {
+            await this.emailUtil.sendResetTwoFactorByAdmin(user.id, {
                 email: user.email,
                 username: user.username,
             });
@@ -2063,7 +2062,7 @@ export class UserService implements IUserService {
         const [checkRole, checkCountry, existingUsers] = await Promise.all([
             this.roleRepository.existByName(this.userRoleName),
             this.countryRepository.existByAlpha2Code(this.userCountryName),
-            this.userRepository.findAllByEmails(emails),
+            this.userRepository.findByEmails(emails),
         ]);
 
         if (existingUsers.length > 0) {
@@ -2112,7 +2111,7 @@ export class UserService implements IUserService {
             const sendEmailPromises = [];
             for (const [index, newUser] of newUsers.entries()) {
                 sendEmailPromises.push(
-                    this.emailService.sendWelcomeByAdmin(
+                    this.emailUtil.sendWelcomeByAdmin(
                         newUser.id,
                         {
                             email: newUser.email,
@@ -2151,7 +2150,7 @@ export class UserService implements IUserService {
         // - return aws s3 link
         // - think about how to show progress status to user with bullmq
 
-        const data = await this.userRepository.findAllExport(
+        const data = await this.userRepository.findExport(
             status,
             role,
             country

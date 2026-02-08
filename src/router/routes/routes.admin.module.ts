@@ -1,13 +1,17 @@
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { ActivityLogAdminController } from '@modules/activity-log/controllers/activity-log.admin.controller';
+import { ApiKeyModule } from '@modules/api-key/api-key.module';
 import { ApiKeyAdminController } from '@modules/api-key/controllers/api-key.admin.controller';
 import { FeatureFlagAdminController } from '@modules/feature-flag/controllers/feature-flag.admin.controller';
 import { PasswordHistoryAdminController } from '@modules/password-history/controllers/password-history.admin.controller';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
+import { PolicyModule } from '@modules/policy/policy.module';
 import { RoleAdminController } from '@modules/role/controllers/role.admin.controller';
+import { RoleModule } from '@modules/role/role.module';
 import { SessionAdminController } from '@modules/session/controllers/session.admin.controller';
 import { SessionModule } from '@modules/session/session.module';
 import { TermPolicyAdminController } from '@modules/term-policy/controllers/term-policy.admin.controller';
+import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { UserAdminController } from '@modules/user/controllers/user.admin.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
@@ -30,7 +34,11 @@ import { Module } from '@nestjs/common';
     providers: [],
     exports: [],
     imports: [
+        ApiKeyModule,
         UserModule,
+        RoleModule,
+        PolicyModule,
+        TermPolicyModule,
         PasswordHistoryModule,
         ActivityLogModule,
         SessionModule,

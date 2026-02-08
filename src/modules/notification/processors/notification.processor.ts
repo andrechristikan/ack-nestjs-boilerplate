@@ -1,5 +1,8 @@
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import { INotificationWorkerPayload } from '@modules/notification/interfaces/notification.interface';
+import {
+    INotificationNewLoginPayload,
+    INotificationWorkerPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { NotificationProcessorService } from '@modules/notification/services/notification.processor.service';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
@@ -24,7 +27,9 @@ export class NotificationProcessor extends QueueProcessorBase {
         try {
             switch (job.name) {
                 case EnumNotificationProcess.newLogin:
-                    return this.notificationProcessorService.processNewLogin();
+                    return this.notificationProcessorService.processNewLogin(
+                        job.data as INotificationWorkerPayload<INotificationNewLoginPayload>
+                    );
                 default:
                     return {
                         message:
