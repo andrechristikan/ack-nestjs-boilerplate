@@ -26,7 +26,8 @@ This boilerplate is perfect for:
 - 🏢 **Enterprise Applications** - Full-featured auth system with RBAC and audit logging
 - 🔐 **Authentication Services** - Ready-to-use JWT, OAuth, and 2FA implementation
 - 📱 **Mobile App Backends** - RESTful API with social login support
-- 🌐 **Multi-tenant SaaS** - Role-based access control and policy management
+- 🌐 **Multi-tenant SaaS** - Complete tenant isolation with role-based access and membership management
+- 🏛️ **B2B Platforms** - Manage multiple organizations/workspaces with separate data
 - 🚀 **Microservices** - Stateful sessions with Redis and async job processing
 - 💼 **Startup MVPs** - Production-ready foundation to ship faster
 
@@ -41,6 +42,7 @@ This boilerplate is perfect for:
 - [Features](#features)
   - [🎯 Architecture Highlights](#-architecture-highlights)
   - [🔐 Authentication & Security](#-authentication--security)
+  - [🏢 Multi-Tenancy System](#-multi-tenancy-system)
   - [📊 Database & Storage](#-database--storage)
   - [⚡ Performance & Optimization](#-performance--optimization)
   - [🛠 Development Experience](#-development-experience)
@@ -170,6 +172,17 @@ Production-ready authentication system with multiple strategies and security lay
 - **Rate Limiting** - DDoS protection with configurable throttling
 - **Security Headers** - Helmet integration for HTTP security
 
+### 🏢 Multi-Tenancy System
+Enterprise-grade multi-tenant architecture for SaaS applications.
+
+- **Tenant Isolation** - Complete data separation between organizations
+- **Membership Management** - Users can belong to multiple tenants with different roles
+- **Context Switching** - Seamless switching between tenant workspaces via `x-tenant-id` header
+- **Tenant Roles** - Built-in `tenant-admin` and `tenant-user` roles with customizable abilities
+- **Permission Guards** - `@TenantProtected()`, `@TenantMemberProtected()`, `@TenantRoleProtected()`, `@TenantPermissionProtected()`
+- **Soft Delete** - Safe tenant and member deactivation without data loss
+- **Legacy Migration** - Automatic migration from old TenantRole model to unified Role system
+
 ### 📊 Database & Storage
 Modern ORM with NoSQL database and file storage capabilities.
 
@@ -261,7 +274,9 @@ For detailed migration guides, see [Database Documentation][ref-doc-database].
 
 ## Installation
 
-For detailed installation instructions (both default and Docker-based), please refer to the [Installation](docs/installation.md).
+For detailed installation instructions (both default and Docker-based), please refer to the [Installation Documentation][ref-doc-installation].
+
+For multi-tenant setup, roles, guards, and usage examples, see the comprehensive [Tenant Documentation][ref-doc-tenant].
 
 ## License
 
@@ -404,6 +419,7 @@ If you find this project helpful and would like to support its development, plea
 [ref-doc-presign]: docs/presign.md
 [ref-doc-term-policy]: docs/term-policy.md
 [ref-doc-two-factor]: two-factor.md
+[ref-doc-tenant]: docs/tenant.md
 
 <!-- CONTRIBUTOR -->
 
