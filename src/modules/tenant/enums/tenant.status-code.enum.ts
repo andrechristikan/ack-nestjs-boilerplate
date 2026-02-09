@@ -10,4 +10,5 @@ export enum EnumTenantStatusCodeError {
     predefinedRoleNotFound = 5168,
     memberUserIdInvalid = 5169,
     memberIdInvalid = 5170,
+    loginNoMembership = 5171,
 }

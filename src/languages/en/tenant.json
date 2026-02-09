@@ -6,6 +6,7 @@
     "create": "Tenant created successfully.",
     "update": "Tenant updated successfully.",
     "delete": "Tenant deleted successfully.",
+    "loginCredential": "Logged in successfully to agency application.",
     "member": {
         "list": "Tenant members retrieved successfully.",
         "create": "Tenant member created successfully.",
@@ -16,6 +17,7 @@
         "xTenantIdRequired": "Tenant header is required.",
         "xTenantIdInvalid": "Tenant header is invalid.",
         "notFound": "Tenant was not found.",
-        "inactive": "Tenant is inactive."
+        "inactive": "Tenant is inactive.",
+        "loginNoMembership": "Your account does not have access to any agencies. Please contact your administrator."
     }
 }
