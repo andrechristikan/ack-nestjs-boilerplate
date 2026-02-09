@@ -43,12 +43,56 @@ model Role {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  users User[] @relation("UserRole")
+  users         User[]         @relation("UserRole")
+  tenantMembers TenantMember[] @relation("TenantMemberRole")
 
   @@unique(fields: [name])
   @@index(fields: [name, type, createdAt])
   @@index(fields: [createdAt])
   @@map("Roles")
+}
+
+model Tenant {
+  id     String           @id @default(auto()) @map("_id") @db.ObjectId
+  name   String
+  status EnumTenantStatus @default(active)
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  members TenantMember[] @relation("TenantMembers")
+
+  @@index(fields: [name, status, createdAt])
+  @@index(fields: [createdAt])
+  @@map("Tenants")
+}
+
+model TenantMember {
+  id       String                 @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String                 @db.ObjectId
+  userId   String                 @db.ObjectId
+  roleId   String                 @db.ObjectId
+  status   EnumTenantMemberStatus @default(active)
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  tenant Tenant? @relation("TenantMembers", fields: [tenantId], references: [id])
+  user   User?   @relation("UserTenantMembers", fields: [userId], references: [id])
+  role   Role?   @relation("TenantMemberRole", fields: [roleId], references: [id])
+
+  @@unique(fields: [tenantId, userId])
+  @@index(fields: [tenantId, status, createdAt])
+  @@index(fields: [userId, status, createdAt])
+  @@index(fields: [roleId])
+  @@index(fields: [createdAt])
+  @@map("TenantMembers")
 }
 
 model Country {
@@ -144,6 +188,7 @@ model User {
   sessions          Session[]                  @relation("UserSessions")
   acceptances       TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
   forgotPasswords   ForgotPassword[]           @relation("UserForgotPassword")
+  tenantMemberships TenantMember[]             @relation("UserTenantMembers")
   twoFactor         TwoFactor?                 @relation("UserTwoFactor")
 
   @@unique(fields: [username])
@@ -468,6 +513,16 @@ enum EnumRoleType {
 enum EnumApiKeyType {
   system
   default
+}
+
+enum EnumTenantStatus {
+  active
+  inactive
+}
+
+enum EnumTenantMemberStatus {
+  active
+  inactive
 }
 
 enum EnumTermPolicyType {
