@@ -13,10 +13,11 @@ import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.temp
 import { EmailModule } from '@modules/email/email.module';
 import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
 import { AwsModule } from '@common/aws/aws.module';
+import { MigrationTenantSeed } from '@migration/seeds/migration.tenant.seed';
 
 /**
  * Migration module that provides database seeding functionality.
- * Contains seed providers for API keys, countries, roles, users, and feature flags.
+ * Contains seed providers for API keys, countries, roles, users, tenants, and feature flags.
  */
 @Module({
     imports: [CommonModule, CountryModule, UserModule, EmailModule, AwsModule],
@@ -25,6 +26,7 @@ import { AwsModule } from '@common/aws/aws.module';
         MigrationCountrySeed,
         MigrationFeatureFlagSeed,
         MigrationRoleSeed,
+        MigrationTenantSeed,
         MigrationTermPolicySeed,
         MigrationUserSeed,
         MigrationTemplateEmailSeed,

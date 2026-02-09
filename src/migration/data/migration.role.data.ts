@@ -28,6 +28,46 @@ const roleData: RoleCreateRequestDto[] = [
         abilities: [],
         type: EnumRoleType.user,
     },
+    {
+        name: 'tenant-admin',
+        description:
+            'Tenant administrator. Can manage tenant settings and members.',
+        abilities: [
+            {
+                subject: EnumPolicySubject.tenant,
+                action: [
+                    EnumPolicyAction.read,
+                    EnumPolicyAction.update,
+                ],
+            },
+            {
+                subject: EnumPolicySubject.tenantMember,
+                action: [
+                    EnumPolicyAction.read,
+                    EnumPolicyAction.create,
+                    EnumPolicyAction.update,
+                    EnumPolicyAction.delete,
+                ],
+            },
+        ],
+        type: EnumRoleType.user,
+    },
+    {
+        name: 'tenant-user',
+        description:
+            'Tenant member. Can access and view tenant resources with limited permissions.',
+        abilities: [
+            {
+                subject: EnumPolicySubject.tenant,
+                action: [EnumPolicyAction.read],
+            },
+            {
+                subject: EnumPolicySubject.tenantMember,
+                action: [EnumPolicyAction.read],
+            },
+        ],
+        type: EnumRoleType.user,
+    },
 ];
 
 export const migrationRoleData: Record<
