@@ -11,6 +11,8 @@ import { TermPolicyAdminController } from '@modules/term-policy/controllers/term
 import { UserAdminController } from '@modules/user/controllers/user.admin.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
+import { TenantAdminController } from '@modules/tenant/controllers/tenant.admin.controller';
+import { TenantModule } from '@modules/tenant/tenant.module';
 
 /**
  * Admin routes module that provides administrative endpoints.
@@ -26,6 +28,7 @@ import { Module } from '@nestjs/common';
         SessionAdminController,
         TermPolicyAdminController,
         FeatureFlagAdminController,
+        TenantAdminController,
     ],
     providers: [],
     exports: [],
@@ -34,6 +37,7 @@ import { Module } from '@nestjs/common';
         PasswordHistoryModule,
         ActivityLogModule,
         SessionModule,
+        TenantModule,
     ],
 })
 export class RoutesAdminModule {}

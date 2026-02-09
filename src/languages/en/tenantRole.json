@@ -1,0 +1,7 @@
+{
+    "error": {
+        "notFound": "Tenant role was not found.",
+        "forbidden": "Tenant role does not have permission for this resource.",
+        "predefinedNotFound": "Predefined tenant role is not configured."
+    }
+}

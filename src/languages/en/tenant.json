@@ -1,0 +1,21 @@
+{
+    "list": "Tenants retrieved successfully.",
+    "memberships": "Tenant memberships retrieved successfully.",
+    "get": "Tenant details fetched successfully.",
+    "current": "Current tenant fetched successfully.",
+    "create": "Tenant created successfully.",
+    "update": "Tenant updated successfully.",
+    "delete": "Tenant deleted successfully.",
+    "member": {
+        "list": "Tenant members retrieved successfully.",
+        "create": "Tenant member created successfully.",
+        "update": "Tenant member updated successfully.",
+        "delete": "Tenant member deleted successfully."
+    },
+    "error": {
+        "xTenantIdRequired": "Tenant header is required.",
+        "xTenantIdInvalid": "Tenant header is invalid.",
+        "notFound": "Tenant was not found.",
+        "inactive": "Tenant is inactive."
+    }
+}

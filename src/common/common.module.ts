@@ -18,6 +18,7 @@ import { LoggerModule } from '@common/logger/logger.module';
 import { QueueRegisterModule } from 'src/queues/queue.register.module';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { SessionModule } from '@modules/session/session.module';
+import { TenantModule } from '@modules/tenant/tenant.module';
 
 /**
  * Common module that provides shared functionality across the application.
@@ -54,6 +55,7 @@ import { SessionModule } from '@modules/session/session.module';
         FeatureFlagModule,
         TermPolicyModule,
         SessionModule,
+        TenantModule,
     ],
 })
 export class CommonModule {}

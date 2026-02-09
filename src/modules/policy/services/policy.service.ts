@@ -39,8 +39,10 @@ export class PolicyService implements IPolicyService {
             });
         }
 
-        const userAbilities =
-            this.policyAbilityFactory.createForUser(__abilities);
+        const abilities =
+            __abilities ??
+            ((__user.role.abilities ?? []) as unknown as RoleAbilityRequestDto[]);
+        const userAbilities = this.policyAbilityFactory.createForUser(abilities);
         const policyHandler = this.policyAbilityFactory.handlerAbilities(
             userAbilities,
             requiredAbilities

@@ -8,6 +8,8 @@ import { TermPolicySharedController } from '@modules/term-policy/controllers/ter
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
+import { TenantModule } from '@modules/tenant/tenant.module';
+import { TenantSharedController } from '@modules/tenant/controllers/tenant.shared.controller';
 
 /**
  * Shared routes module that provides endpoints accessible by multiple user types.
@@ -20,6 +22,7 @@ import { Module } from '@nestjs/common';
         ActivityLogSharedController,
         SessionSharedController,
         TermPolicySharedController,
+        TenantSharedController,
     ],
     providers: [],
     exports: [],
@@ -28,6 +31,7 @@ import { Module } from '@nestjs/common';
         PasswordHistoryModule,
         ActivityLogModule,
         SessionModule,
+        TenantModule,
     ],
 })
 export class RoutesSharedModule {}

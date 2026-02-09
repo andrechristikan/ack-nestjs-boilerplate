@@ -15,6 +15,7 @@ import { RequestResponseTimeMiddleware } from '@common/request/middlewares/reque
 import { RequestCustomLanguageMiddleware } from '@common/request/middlewares/request.custom-language.middleware';
 import { RequestCompressionMiddleware } from '@common/request/middlewares/request.compression.middleware';
 import { SentryModule } from '@sentry/nestjs/setup';
+import { RequestTenantMiddleware } from '@common/request/middlewares/request.tenant.middleware';
 
 /**
  * Central middleware configuration module for HTTP request/response processing.
@@ -55,6 +56,7 @@ export class RequestMiddlewareModule implements NestModule {
         consumer
             .apply(
                 RequestRequestIdMiddleware,
+                RequestTenantMiddleware,
                 RequestHelmetMiddleware,
                 RequestBodyParserMiddleware,
                 RequestCorsMiddleware,
