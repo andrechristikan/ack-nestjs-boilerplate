@@ -32,6 +32,12 @@ The tenant system provides multi-tenancy support for SaaS applications where mul
   - [Data Model](#data-model)
   - [Request Flow](#request-flow)
   - [Tenant Context](#tenant-context)
+- [Tenant-Scoped Authentication](#tenant-scoped-authentication)
+  - [Overview](#tenant-auth-overview)
+  - [Login Endpoint](#tenant-login-endpoint)
+  - [Authentication Flow](#tenant-authentication-flow)
+  - [Response Structure](#tenant-response-structure)
+  - [Error Handling](#tenant-error-handling)
 - [Tenant Protected](#tenant-protected)
   - [Decorators](#decorators)
     - [TenantProtected() Decorator](#tenantprotected-decorator)
@@ -80,41 +86,15 @@ Multi-tenancy is ideal for:
 
 The tenant system uses three main models:
 
-```prisma
-model Tenant {
-  id     String           @id @default(auto()) @map("_id") @db.ObjectId
-  name   String
-  status EnumTenantStatus @default(active)
-
-  members TenantMember[] @relation("TenantMembers")
-}
-
-model TenantMember {
-  id       String                 @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId String                 @db.ObjectId
-  userId   String                 @db.ObjectId
-  roleId   String                 @db.ObjectId
-  status   EnumTenantMemberStatus @default(active)
-
-  tenant Tenant? @relation("TenantMembers", fields: [tenantId], references: [id])
-  user   User?   @relation("UserTenantMembers", fields: [userId], references: [id])
-  role   Role?   @relation("TenantMemberRole", fields: [roleId], references: [id])
-}
-
-// Tenant roles are stored in the main Role model
-model Role {
-  name          String
-  abilities     RoleAbility[]
-  tenantMembers TenantMember[] @relation("TenantMemberRole")
-}
-```
+**Models:**
+- **`Tenant`** - Represents an organization with name and status
+- **`TenantMember`** - Links users to tenants with roles and status (unique per tenant-user combination)
+- **`Role`** - Unified role model for both platform and tenant-specific roles with CASL abilities
 
 **Key Points:**
-- **Tenant** - Represents an organization (e.g., "Acme Corp")
-- **TenantMember** - Links users to tenants with roles
-- **Role** - Unified role model (both platform and tenant roles)
 - Users can be members of multiple tenants
 - Each membership has its own role and status
+- Tenant roles are stored in the main `Role` model alongside platform roles
 
 ### Request Flow
 
@@ -151,6 +131,325 @@ request.__tenant = { id: "...", name: "Acme Corp", ... }
 request.__tenantMember = { id: "...", userId: "...", role: {...} }
 request.__abilities = [{ subject: "tenant", action: ["read", "update"] }]
 ```
+
+## Tenant-Scoped Authentication
+
+### Overview {#tenant-auth-overview}
+
+For applications that require tenant membership validation at login time, the system provides a dedicated authentication endpoint. This is useful when you want to:
+
+- **Restrict access** to users who belong to at least one tenant
+- **Display tenant selection** immediately after login
+- **Enforce organizational boundaries** from the authentication layer
+- **Support multi-tenant applications** where users manage organizational resources
+
+**Use Cases:**
+- B2B SaaS admin panels where only tenant members can access
+- Organizational dashboards requiring tenant membership
+- Multi-tenant management applications
+- Enterprise applications with strict organizational access control
+
+**Key Features:**
+- ✅ Validates tenant membership during authentication
+- ✅ Returns list of available tenants in login response
+- ✅ Rejects users without any tenant memberships
+- ✅ Supports users with multiple tenant memberships
+- ✅ Uses standard JWT tokens (no token structure changes)
+- ✅ Compatible with existing tenant context system
+
+### Login Endpoint {#tenant-login-endpoint}
+
+**Endpoint:** `POST /api/v1/public/tenant/login/credential`
+
+This endpoint performs standard user authentication plus tenant membership validation.
+
+**Request:**
+
+```typescript
+POST /api/v1/public/tenant/login/credential
+Content-Type: application/json
+X-Api-Key: <your_api_key>
+
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "from": "website" | "mobile"
+}
+```
+
+**Request Body Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | Yes | User's email address |
+| `password` | string | Yes | User's password (min 8 characters) |
+| `from` | enum | Yes | Login source: `website` or `mobile` |
+
+**Headers:**
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-Api-Key` | Yes | API key for request authentication |
+| `Content-Type` | Yes | Must be `application/json` |
+
+### Authentication Flow {#tenant-authentication-flow}
+
+The tenant login process follows these steps:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Tenant Login Flow                             │
+└─────────────────────────────────────────────────────────────────┘
+
+1. User submits credentials (email, password)
+   ↓
+2. Validate user credentials
+   ├─ Check user exists
+   ├─ Validate user is active
+   ├─ Verify password correctness
+   ├─ Check password not expired
+   └─ Verify email is verified
+   ↓
+3. CRITICAL: Validate tenant membership
+   ├─ Query all active tenant memberships for user
+   ├─ If NO memberships → Reject with 403 Forbidden (statusCode: 5171)
+   └─ If has memberships → Continue
+   ↓
+4. Generate authentication tokens
+   ├─ Create JWT access token
+   ├─ Create JWT refresh token
+   └─ Store session in Redis
+   ↓
+5. Return tokens + tenant list
+   ├─ Standard JWT tokens
+   └─ Array of available tenants with roles
+   ↓
+6. Client receives response
+   ├─ Store access/refresh tokens
+   ├─ If single tenant → Auto-select
+   ├─ If multiple tenants → Show selector
+   └─ Store selected tenantId for subsequent requests
+```
+
+**Validation Steps:**
+
+1. **User Validation** (Standard)
+   - User must exist in database
+   - User status must be `active`
+   - Password must be set and match
+   - Password must not be expired
+   - Email must be verified
+   - Password attempt limits enforced
+
+2. **Tenant Membership Validation** (Additional)
+   - User must have at least one active tenant membership
+   - Only active memberships are considered
+   - Only memberships to active tenants are included
+   - Returns up to 100 most recent memberships
+
+### Response Structure {#tenant-response-structure}
+
+**Success Response (200 OK):**
+
+```json
+{
+  "statusCode": 200,
+  "message": "Logged in successfully to tenant application.",
+  "data": {
+    "isTwoFactorEnable": false,
+    "tokens": {
+      "accessToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "refreshToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9..."
+    },
+    "tenants": [
+      {
+        "tenantId": "507f1f77bcf86cd799439011",
+        "tenantName": "Acme Corporation",
+        "role": "tenant-admin",
+        "status": "active"
+      },
+      {
+        "tenantId": "507f191e810c19729de860ea",
+        "tenantName": "Beta Industries",
+        "role": "tenant-user",
+        "status": "active"
+      }
+    ]
+  }
+}
+```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `isTwoFactorEnable` | boolean | Whether 2FA verification is required |
+| `tokens` | object | JWT tokens (only if 2FA is disabled) |
+| `tokens.accessToken` | string | Short-lived JWT access token |
+| `tokens.refreshToken` | string | Long-lived JWT refresh token |
+| `twoFactor` | object | 2FA challenge data (only if 2FA is enabled) |
+| `tenants` | array | List of user's active tenant memberships |
+| `tenants[].tenantId` | string | Unique tenant identifier |
+| `tenants[].tenantName` | string | Human-readable tenant name |
+| `tenants[].role` | string | User's role in this tenant |
+| `tenants[].status` | enum | Membership status: `active` or `inactive` |
+
+**Token Structure:**
+
+The JWT tokens use the **standard** token structure (no tenant information in payload):
+
+```typescript
+{
+  userId: string;      // User ID
+  roleId: string;      // User's platform role ID
+  sessionId: string;   // Session ID in Redis
+  jti: string;         // Token unique identifier
+  loginAt: string;     // Login timestamp
+  loginFrom: string;   // Login source (website/mobile)
+  loginWith: string;   // Login method (credential/social)
+  iat: number;         // Issued at
+  exp: number;         // Expiration time
+  aud: string;         // Audience
+  iss: string;         // Issuer
+  sub: string;         // Subject (userId)
+}
+```
+
+**Important:** Tenant context is NOT stored in the JWT. Instead, clients must include the `x-tenant-id` header in subsequent requests.
+
+**Client Implementation Notes:**
+1. After successful login, store tokens and tenant list
+2. If user has multiple tenants, present a selector UI
+3. Store selected tenant ID for subsequent requests
+4. Include `x-tenant-id` header in all tenant-scoped API calls
+5. Users can switch tenants without re-authentication
+
+### Error Handling {#tenant-error-handling}
+
+**Error Responses:**
+
+#### 1. No Tenant Membership (403 Forbidden)
+
+```json
+{
+  "statusCode": 5171,
+  "message": "Your account does not have access to any tenants. Please contact your administrator.",
+  "error": "Forbidden"
+}
+```
+
+**Cause:** User has no active tenant memberships
+**Action:** Display message and direct user to contact administrator
+
+#### 2. User Not Found (404 Not Found)
+
+```json
+{
+  "statusCode": 5150,
+  "message": "user.error.notFound",
+  "error": "Not Found"
+}
+```
+
+**Cause:** Email address not registered
+**Action:** Display "Invalid email or password" message
+
+#### 3. Invalid Password (400 Bad Request)
+
+```json
+{
+  "statusCode": 5160,
+  "message": "auth.error.passwordNotMatch",
+  "error": "Bad Request"
+}
+```
+
+**Cause:** Incorrect password provided
+**Action:** Display "Invalid email or password" message
+
+#### 4. User Inactive (403 Forbidden)
+
+```json
+{
+  "statusCode": 5157,
+  "message": "user.error.inactive",
+  "error": "Forbidden"
+}
+```
+
+**Cause:** User account is deactivated
+**Action:** Display "Your account has been deactivated. Please contact support."
+
+#### 5. Email Not Verified (403 Forbidden)
+
+```json
+{
+  "statusCode": 5167,
+  "message": "user.error.emailNotVerified",
+  "error": "Forbidden"
+}
+```
+
+**Cause:** User hasn't verified their email
+**Action:** Display "Please verify your email address" and provide verification option
+
+#### 6. Password Expired (403 Forbidden)
+
+```json
+{
+  "statusCode": 5158,
+  "message": "auth.error.passwordExpired",
+  "error": "Forbidden"
+}
+```
+
+**Cause:** User's password has expired
+**Action:** Redirect to password reset flow
+
+#### 7. Too Many Failed Attempts (403 Forbidden)
+
+```json
+{
+  "statusCode": 5159,
+  "message": "auth.error.passwordAttemptMax",
+  "error": "Forbidden"
+}
+```
+
+**Cause:** Maximum password attempts reached
+**Action:** Display "Too many failed attempts. Please try again later."
+
+**Comparison with Standard User Login:**
+
+| Feature | Standard Login | Tenant Login |
+|---------|---------------|--------------|
+| **Endpoint** | `/api/v1/public/user/login/credential` | `/api/v1/public/tenant/login/credential` |
+| **Validation** | User credentials only | User credentials + tenant membership |
+| **Response** | Tokens only | Tokens + tenant list |
+| **Access Control** | All active users | Only users with tenant memberships |
+| **Use Case** | Consumer applications | B2B/organizational applications |
+| **Token Structure** | Standard JWT | Standard JWT (same structure) |
+| **Error Code** | N/A | 5171 for no membership |
+| **Tenant Context** | Optional (added via header if needed) | Required (via `x-tenant-id` header) |
+
+**When to Use Each:**
+
+- **Standard Login (`/user/login/credential`)**:
+  - Consumer-facing applications
+  - Applications without organizational boundaries
+  - Public user access
+
+- **Tenant Login (`/tenant/login/credential`)**:
+  - B2B SaaS applications
+  - Organizational management tools
+  - Multi-tenant admin panels
+  - Enterprise applications
+
+Both endpoints:
+- Return the same JWT token structure
+- Use the same session management
+- Support the same authentication features (2FA, password policies, etc.)
+- Can coexist in the same application
 
 ## Tenant Protected
 
@@ -608,6 +907,57 @@ The tenant system includes two predefined roles stored in the main `Role` model:
 - `EnumPolicyAction.delete` - Delete/deactivate resources
 
 ## REST API Endpoints
+
+### Public Endpoints
+
+Base path: `/api/v1/public/tenant`
+
+**Tenant-scoped authentication** (no authentication required):
+
+```typescript
+// Login with tenant membership validation
+POST /api/v1/public/tenant/login/credential
+X-Api-Key: <api_key>
+Body: {
+    email: "user@example.com",
+    password: "password123",
+    from: "website" | "mobile"
+}
+Response: {
+    statusCode: 200,
+    message: "Logged in successfully to tenant application.",
+    data: {
+        isTwoFactorEnable: false,
+        tokens: {
+            accessToken: "...",
+            refreshToken: "..."
+        },
+        tenants: [
+            {
+                tenantId: "...",
+                tenantName: "Acme Corp",
+                role: "tenant-admin",
+                status: "active"
+            }
+        ]
+    }
+}
+
+// Error: No tenant membership (403 Forbidden)
+Response: {
+    statusCode: 5171,
+    message: "Your account does not have access to any tenants. Please contact your administrator."
+}
+```
+
+**Key Differences from Standard Login:**
+- Validates user has at least one active tenant membership
+- Returns list of available tenants in response
+- Rejects users without tenant access (error 5171)
+- Same JWT token structure as standard login
+- Requires `x-tenant-id` header for subsequent requests
+
+See [Tenant-Scoped Authentication](#tenant-scoped-authentication) for complete documentation.
 
 ### Admin Endpoints
 
