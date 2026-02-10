@@ -79,6 +79,7 @@ model TenantMember {
   status    EnumTenantMemberStatus @default(active)
   isJit     Boolean                @default(false)
   expiresAt DateTime?
+  revokedAt DateTime?
   reason    String?
 
   // timestamps fields

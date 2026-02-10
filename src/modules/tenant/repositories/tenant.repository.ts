@@ -183,6 +183,7 @@ export class TenantRepository {
             },
             data: {
                 status: EnumTenantMemberStatus.inactive,
+                revokedAt: new Date(),
             },
         });
     }
