@@ -44,8 +44,9 @@ model Role {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  users         User[]         @relation("UserRole")
-  tenantMembers TenantMember[] @relation("TenantMemberRole")
+  users          User[]          @relation("UserRole")
+  tenantMembers  TenantMember[]  @relation("TenantMemberRole")
+  projectMembers ProjectMember[] @relation("ProjectMemberRole")
 
   @@unique(fields: [name, scope])
   @@index(fields: [name, type, scope, createdAt])
@@ -64,7 +65,8 @@ model Tenant {
   updatedAt DateTime @updatedAt
   updatedBy String?
 
-  members TenantMember[] @relation("TenantMembers")
+  members  TenantMember[] @relation("TenantMembers")
+  projects Project[]      @relation("TenantProjects")
 
   @@index(fields: [name, status, createdAt])
   @@index(fields: [createdAt])
@@ -98,6 +100,74 @@ model TenantMember {
   @@index(fields: [roleId])
   @@index(fields: [createdAt])
   @@map("TenantMembers")
+}
+
+model Project {
+  id       String           @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String           @db.ObjectId
+  name     String
+  status   EnumProjectStatus @default(active)
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  tenant  Tenant?         @relation("TenantProjects", fields: [tenantId], references: [id])
+  members ProjectMember[] @relation("ProjectMembers")
+  shares  ProjectShare[]  @relation("ProjectShares")
+
+  @@index(fields: [tenantId, status, createdAt])
+  @@index(fields: [createdAt])
+  @@map("Projects")
+}
+
+model ProjectMember {
+  id        String                  @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String                  @db.ObjectId
+  userId    String                  @db.ObjectId
+  roleId    String                  @db.ObjectId
+  status    EnumProjectMemberStatus @default(active)
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  project Project? @relation("ProjectMembers", fields: [projectId], references: [id])
+  user    User?    @relation("UserProjectMembers", fields: [userId], references: [id])
+  role    Role?    @relation("ProjectMemberRole", fields: [roleId], references: [id])
+
+  @@unique(fields: [projectId, userId])
+  @@index(fields: [projectId, status, createdAt])
+  @@index(fields: [userId, status, createdAt])
+  @@index(fields: [roleId])
+  @@index(fields: [createdAt])
+  @@map("ProjectMembers")
+}
+
+model ProjectShare {
+  id        String                  @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String                  @db.ObjectId
+  userId    String                  @db.ObjectId
+  access    EnumProjectShareAccess  @default(read)
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  project Project? @relation("ProjectShares", fields: [projectId], references: [id])
+  user    User?    @relation("UserProjectShares", fields: [userId], references: [id])
+
+  @@unique(fields: [projectId, userId])
+  @@index(fields: [projectId, createdAt])
+  @@index(fields: [userId, createdAt])
+  @@index(fields: [createdAt])
+  @@map("ProjectShares")
 }
 
 model Country {
@@ -194,6 +264,8 @@ model User {
   acceptances       TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
   forgotPasswords   ForgotPassword[]           @relation("UserForgotPassword")
   tenantMemberships TenantMember[]             @relation("UserTenantMembers")
+  projectMemberships ProjectMember[]           @relation("UserProjectMembers")
+  projectShares      ProjectShare[]            @relation("UserProjectShares")
   twoFactor         TwoFactor?                 @relation("UserTwoFactor")
 
   @@unique(fields: [username])
@@ -518,6 +590,7 @@ enum EnumRoleType {
 enum EnumRoleScope {
   platform
   tenant
+  project
 }
 
 enum EnumApiKeyType {
@@ -533,6 +606,20 @@ enum EnumTenantStatus {
 enum EnumTenantMemberStatus {
   active
   inactive
+}
+
+enum EnumProjectStatus {
+  active
+  inactive
+}
+
+enum EnumProjectMemberStatus {
+  active
+  inactive
+}
+
+enum EnumProjectShareAccess {
+  read
 }
 
 enum EnumTermPolicyType {

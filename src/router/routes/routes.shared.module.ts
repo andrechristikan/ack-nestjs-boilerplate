@@ -10,6 +10,9 @@ import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 import { TenantModule } from '@modules/tenant/tenant.module';
 import { TenantSharedController } from '@modules/tenant/controllers/tenant.shared.controller';
+import { ProjectModule } from '@modules/project/project.module';
+import { ProjectSharedController } from '@modules/project/controllers/project.shared.controller';
+import { ProjectTenantSharedController } from '@modules/project/controllers/project.tenant.shared.controller';
 
 /**
  * Shared routes module that provides endpoints accessible by multiple user types.
@@ -23,6 +26,8 @@ import { TenantSharedController } from '@modules/tenant/controllers/tenant.share
         SessionSharedController,
         TermPolicySharedController,
         TenantSharedController,
+        ProjectSharedController,
+        ProjectTenantSharedController,
     ],
     providers: [],
     exports: [],
@@ -32,6 +37,7 @@ import { TenantSharedController } from '@modules/tenant/controllers/tenant.share
         ActivityLogModule,
         SessionModule,
         TenantModule,
+        ProjectModule,
     ],
 })
 export class RoutesSharedModule {}

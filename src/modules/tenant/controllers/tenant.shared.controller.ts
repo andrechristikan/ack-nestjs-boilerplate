@@ -27,7 +27,6 @@ import {
 } from '@modules/policy/enums/policy.enum';
 import {
     TenantCurrent,
-    TenantMemberProtected,
     TenantPermissionProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
@@ -38,7 +37,6 @@ import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response
 import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
 import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
 import { TenantService } from '@modules/tenant/services/tenant.service';
-import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     Body,
@@ -63,7 +61,6 @@ export class TenantSharedController {
     ) {}
 
     @ResponsePaging('tenant.memberships')
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -77,8 +74,6 @@ export class TenantSharedController {
     }
 
     @Response('tenant.current')
-    @TenantMemberProtected()
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     //@ApiKeyProtected()
@@ -95,7 +90,6 @@ export class TenantSharedController {
         subject: EnumPolicySubject.tenant,
         action: [EnumPolicyAction.read],
     })
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -111,7 +105,6 @@ export class TenantSharedController {
         subject: EnumPolicySubject.tenant,
         action: [EnumPolicyAction.update],
     })
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -129,7 +122,6 @@ export class TenantSharedController {
         subject: EnumPolicySubject.tenantMember,
         action: [EnumPolicyAction.read],
     })
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -147,7 +139,6 @@ export class TenantSharedController {
         subject: EnumPolicySubject.tenantMember,
         action: [EnumPolicyAction.create],
     })
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -165,7 +156,6 @@ export class TenantSharedController {
         subject: EnumPolicySubject.tenantMember,
         action: [EnumPolicyAction.update],
     })
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -190,7 +180,6 @@ export class TenantSharedController {
         subject: EnumPolicySubject.tenantMember,
         action: [EnumPolicyAction.delete],
     })
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

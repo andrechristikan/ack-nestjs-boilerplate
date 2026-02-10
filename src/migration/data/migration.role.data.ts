@@ -70,6 +70,15 @@ const roleData: RoleCreateRequestDto[] = [
                     EnumPolicyAction.delete,
                 ],
             },
+            {
+                subject: EnumPolicySubject.project,
+                action: [
+                    EnumPolicyAction.create,
+                    EnumPolicyAction.read,
+                    EnumPolicyAction.update,
+                    EnumPolicyAction.delete,
+                ],
+            },
         ],
         type: EnumRoleType.user,
         scope: EnumRoleScope.tenant,
@@ -86,6 +95,15 @@ const roleData: RoleCreateRequestDto[] = [
             {
                 subject: EnumPolicySubject.tenantMember,
                 action: [EnumPolicyAction.read],
+            },
+            {
+                subject: EnumPolicySubject.project,
+                action: [
+                    EnumPolicyAction.create,
+                    EnumPolicyAction.read,
+                    EnumPolicyAction.update,
+                    EnumPolicyAction.delete,
+                ],
             },
         ],
         type: EnumRoleType.user,
@@ -108,9 +126,52 @@ const roleData: RoleCreateRequestDto[] = [
                     EnumPolicyAction.update,
                 ],
             },
+            {
+                subject: EnumPolicySubject.project,
+                action: [EnumPolicyAction.read],
+            },
         ],
         type: EnumRoleType.user,
         scope: EnumRoleScope.tenant,
+    },
+    {
+        name: 'project-admin',
+        description: 'Project administrator. Full project access.',
+        abilities: [
+            {
+                subject: EnumPolicySubject.project,
+                action: Object.values(EnumPolicyAction),
+            },
+        ],
+        type: EnumRoleType.user,
+        scope: EnumRoleScope.project,
+    },
+    {
+        name: 'project-editor',
+        description: 'Project editor. Can read and update projects.',
+        abilities: [
+            {
+                subject: EnumPolicySubject.project,
+                action: [
+                    EnumPolicyAction.read,
+                    EnumPolicyAction.update,
+                ],
+            },
+        ],
+        type: EnumRoleType.user,
+        scope: EnumRoleScope.project,
+    },
+    {
+        name: 'project-viewer',
+        description: 'Project viewer. Read-only access to projects.',
+        abilities: [
+            {
+                subject: EnumPolicySubject.project,
+                action: [EnumPolicyAction.read],
+            },
+        ],
+        type: EnumRoleType.user,
+        scope: EnumRoleScope.project,
     },
 ];
 
