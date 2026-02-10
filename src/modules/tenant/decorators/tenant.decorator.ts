@@ -17,14 +17,23 @@ import {
     createParamDecorator,
 } from '@nestjs/common';
 
+/**
+ * Requires a valid tenant context for the route.
+ */
 export function TenantProtected(): MethodDecorator {
     return applyDecorators(UseGuards(TenantGuard));
 }
 
+/**
+ * Requires a valid tenant membership for the route.
+ */
 export function TenantMemberProtected(): MethodDecorator {
     return applyDecorators(UseGuards(TenantMemberGuard));
 }
 
+/**
+ * Requires the caller to have one of the specified tenant roles.
+ */
 export function TenantRoleProtected(
     ...requiredRoleNames: string[]
 ): MethodDecorator {
@@ -34,6 +43,9 @@ export function TenantRoleProtected(
     );
 }
 
+/**
+ * Requires the caller to have the specified tenant abilities.
+ */
 export function TenantPermissionProtected(
     ...requiredAbilities: RoleAbilityRequestDto[]
 ): MethodDecorator {
@@ -43,6 +55,9 @@ export function TenantPermissionProtected(
     );
 }
 
+/**
+ * Injects the current tenant resolved by tenant guards.
+ */
 export const TenantCurrent = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): ITenant | undefined => {
         const { __tenant } = ctx.switchToHttp().getRequest<IRequestApp>();
@@ -50,6 +65,9 @@ export const TenantCurrent = createParamDecorator(
     }
 );
 
+/**
+ * Injects the current tenant member resolved by tenant guards.
+ */
 export const TenantMemberCurrent = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): ITenantMember | undefined => {
         const { __tenantMember } =

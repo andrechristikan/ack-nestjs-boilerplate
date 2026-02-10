@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { TenantService } from '@modules/tenant/services/tenant.service';
+import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { TenantGuard } from '@modules/tenant/guards/tenant.guard';
 import { TenantMemberGuard } from '@modules/tenant/guards/tenant.member.guard';
@@ -15,6 +16,7 @@ import { AuthModule } from '@modules/auth/auth.module';
 @Module({
     providers: [
         TenantService,
+        TenantMemberService,
         TenantRepository,
         TenantAuthService,
         TenantGuard,
@@ -22,7 +24,7 @@ import { AuthModule } from '@modules/auth/auth.module';
         TenantRoleGuard,
         TenantPermissionGuard,
     ],
-    exports: [TenantService, TenantRepository],
+    exports: [TenantService, TenantMemberService, TenantRepository],
     imports: [UserModule, RoleModule, AuthModule],
     controllers: [TenantPublicController],
 })

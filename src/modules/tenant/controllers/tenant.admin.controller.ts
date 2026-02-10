@@ -26,6 +26,7 @@ import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.j
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
+import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
 import { TenantService } from '@modules/tenant/services/tenant.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -46,7 +47,10 @@ import { EnumActivityLogAction } from '@prisma/client';
     path: '/tenants',
 })
 export class TenantAdminController {
-    constructor(private readonly tenantService: TenantService) {}
+    constructor(
+        private readonly tenantService: TenantService,
+        private readonly tenantMemberService: TenantMemberService
+    ) {}
 
     @ResponsePaging('tenant.list')
     @PolicyAbilityProtected({
@@ -146,7 +150,7 @@ export class TenantAdminController {
         @Body() body: TenantJitAccessRequestDto,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<TenantJitAccessResponseDto>> {
-        return this.tenantService.assumeAccess(tenantId, userId, body);
+        return this.tenantMemberService.assumeAccess(tenantId, userId, body);
     }
 
     @Response('tenant.revokeAccess')
@@ -163,6 +167,6 @@ export class TenantAdminController {
         tenantId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.tenantService.revokeJitAccess(tenantId, userId);
+        return this.tenantMemberService.revokeJitAccess(tenantId, userId);
     }
 }

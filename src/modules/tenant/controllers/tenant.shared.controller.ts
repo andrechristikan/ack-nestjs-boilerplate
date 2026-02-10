@@ -36,6 +36,7 @@ import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.upda
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
+import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
 import { TenantService } from '@modules/tenant/services/tenant.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -56,7 +57,10 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/tenants',
 })
 export class TenantSharedController {
-    constructor(private readonly tenantService: TenantService) {}
+    constructor(
+        private readonly tenantService: TenantService,
+        private readonly tenantMemberService: TenantMemberService
+    ) {}
 
     @ResponsePaging('tenant.memberships')
     @TermPolicyAcceptanceProtected()
@@ -69,7 +73,7 @@ export class TenantSharedController {
         @PaginationCursorQuery()
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<TenantMemberResponseDto>> {
-        return this.tenantService.getMyTenantsCursor(userId, pagination);
+        return this.tenantMemberService.getMyTenantsCursor(userId, pagination);
     }
 
     @Response('tenant.current')
@@ -83,7 +87,7 @@ export class TenantSharedController {
         @AuthJwtPayload('userId') userId: string,
         @TenantCurrent() tenant: ITenant
     ): Promise<IResponseReturn<TenantMemberResponseDto>> {
-        return this.tenantService.getCurrentTenant(tenant.id, userId);
+        return this.tenantMemberService.getCurrentTenant(tenant.id, userId);
     }
 
     @Response('tenant.get')
@@ -135,7 +139,7 @@ export class TenantSharedController {
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<TenantMemberResponseDto>> {
-        return this.tenantService.getMembersOffset(tenant.id, pagination);
+        return this.tenantMemberService.getMembersOffset(tenant.id, pagination);
     }
 
     @Response('tenant.member.create')
@@ -153,7 +157,7 @@ export class TenantSharedController {
         @Body() body: TenantMemberCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.tenantService.addMember(tenant.id, body, createdBy);
+        return this.tenantMemberService.addMember(tenant.id, body, createdBy);
     }
 
     @Response('tenant.member.update')
@@ -173,7 +177,7 @@ export class TenantSharedController {
         @Body() body: TenantMemberUpdateRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.tenantService.updateMember(
+        return this.tenantMemberService.updateMember(
             tenant.id,
             memberId,
             body,
@@ -197,6 +201,10 @@ export class TenantSharedController {
         memberId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.tenantService.deleteMember(tenant.id, memberId, updatedBy);
+        return this.tenantMemberService.deleteMember(
+            tenant.id,
+            memberId,
+            updatedBy
+        );
     }
 }
