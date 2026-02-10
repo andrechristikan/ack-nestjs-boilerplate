@@ -53,6 +53,7 @@ The tenant system provides multi-tenancy support for SaaS applications where mul
     - [TenantPermissionGuard](#tenantpermissionguard)
 - [Tenant Roles](#tenant-roles)
   - [Built-in Roles](#built-in-roles)
+  - [Role Scopes](#role-scopes)
   - [Role Abilities](#role-abilities)
 - [REST API Endpoints](#rest-api-endpoints)
   - [Admin Endpoints](#admin-endpoints)
@@ -95,6 +96,7 @@ The tenant system uses three main models:
 - Users can be members of multiple tenants
 - Each membership has its own role and status
 - Tenant roles are stored in the main `Role` model alongside platform roles
+- Roles are differentiated by `scope` (`platform` or `tenant`)
 
 ### Request Flow
 
@@ -212,7 +214,7 @@ The tenant login process follows these steps:
    ↓
 3. CRITICAL: Validate tenant membership
    ├─ Query all active tenant memberships for user
-   ├─ If NO memberships → Reject with 403 Forbidden (statusCode: 5171)
+   ├─ If NO memberships → Reject with 403 Forbidden (statusCode: 5201)
    └─ If has memberships → Continue
    ↓
 4. Generate authentication tokens
@@ -332,7 +334,7 @@ The JWT tokens use the **standard** token structure (no tenant information in pa
 
 ```json
 {
-  "statusCode": 5171,
+  "statusCode": 5201,
   "message": "Your account does not have access to any tenants. Please contact your administrator.",
   "error": "Forbidden"
 }
@@ -429,7 +431,7 @@ The JWT tokens use the **standard** token structure (no tenant information in pa
 | **Access Control** | All active users | Only users with tenant memberships |
 | **Use Case** | Consumer applications | B2B/organizational applications |
 | **Token Structure** | Standard JWT | Standard JWT (same structure) |
-| **Error Code** | N/A | 5171 for no membership |
+| **Error Code** | N/A | 5201 for no membership |
 | **Tenant Context** | Optional (added via header if needed) | Required (via `x-tenant-id` header) |
 
 **When to Use Each:**
@@ -853,6 +855,15 @@ The tenant system includes two predefined roles stored in the main `Role` model:
 | `tenant-admin` | Full tenant management | Manage tenant settings, add/remove members, assign roles |
 | `tenant-user` | Basic tenant access | View tenant data, read-only member list |
 
+### Role Scopes
+
+Roles use an explicit scope:
+
+- `platform` scope: roles for global/system-level authorization (e.g., platform admins)
+- `tenant` scope: roles assignable to `TenantMember` records (e.g., `tenant-admin`, `tenant-user`)
+
+Tenant membership operations only accept roles in `tenant` scope.
+
 ### Role Abilities
 
 **Tenant Admin Abilities:**
@@ -945,7 +956,7 @@ Response: {
 
 // Error: No tenant membership (403 Forbidden)
 Response: {
-    statusCode: 5171,
+    statusCode: 5201,
     message: "Your account does not have access to any tenants. Please contact your administrator."
 }
 ```
@@ -953,7 +964,7 @@ Response: {
 **Key Differences from Standard Login:**
 - Validates user has at least one active tenant membership
 - Returns list of available tenants in response
-- Rejects users without tenant access (error 5171)
+- Rejects users without tenant access (error 5201)
 - Same JWT token structure as standard login
 - Requires `x-tenant-id` header for subsequent requests
 
@@ -990,36 +1001,16 @@ DELETE /api/v1/admin/tenants/:tenantId
 Authorization: Bearer <access_token>
 ```
 
-**Tenant-scoped member management** (requires tenant membership + permissions):
+**Platform bootstrap member management** (requires platform admin role):
 
 ```typescript
-// List current tenant members
-GET /api/v1/admin/tenants/current/members
+// Add member to any tenant by tenantId
+POST /api/v1/admin/tenants/:tenantId/members
 Authorization: Bearer <access_token>
-x-tenant-id: <tenant_id>
-
-// Add member to current tenant
-POST /api/v1/admin/tenants/current/members
-Authorization: Bearer <access_token>
-x-tenant-id: <tenant_id>
 Body: {
     userId: "507f1f77bcf86cd799439011",
     roleName: "tenant-user"
 }
-
-// Update member role/status
-PATCH /api/v1/admin/tenants/current/members/:memberId
-Authorization: Bearer <access_token>
-x-tenant-id: <tenant_id>
-Body: {
-    roleName: "tenant-admin",
-    status: "active"
-}
-
-// Soft delete member (status -> inactive)
-DELETE /api/v1/admin/tenants/current/members/:memberId
-Authorization: Bearer <access_token>
-x-tenant-id: <tenant_id>
 ```
 
 ### Shared Endpoints
@@ -1062,6 +1053,45 @@ Response: {
         tenant: { id: "...", name: "Acme Corp", status: "active" }
     }
 }
+
+// Get current tenant details
+GET /api/v1/shared/tenants/current/tenant
+Authorization: Bearer <access_token>
+x-tenant-id: <tenant_id>
+
+// Update current tenant details
+PATCH /api/v1/shared/tenants/current/tenant
+Authorization: Bearer <access_token>
+x-tenant-id: <tenant_id>
+Body: { name: "Acme Corporation", status: "active" }
+
+// List current tenant members
+GET /api/v1/shared/tenants/current/members
+Authorization: Bearer <access_token>
+x-tenant-id: <tenant_id>
+
+// Add member to current tenant
+POST /api/v1/shared/tenants/current/members
+Authorization: Bearer <access_token>
+x-tenant-id: <tenant_id>
+Body: {
+    userId: "507f1f77bcf86cd799439011",
+    roleName: "tenant-user"
+}
+
+// Update member role/status
+PATCH /api/v1/shared/tenants/current/members/:memberId
+Authorization: Bearer <access_token>
+x-tenant-id: <tenant_id>
+Body: {
+    roleName: "tenant-admin",
+    status: "active"
+}
+
+// Soft delete member (status -> inactive)
+DELETE /api/v1/shared/tenants/current/members/:memberId
+Authorization: Bearer <access_token>
+x-tenant-id: <tenant_id>
 ```
 
 ## Setup and Migration
@@ -1141,7 +1171,7 @@ import { Controller, Post, Patch, Delete, Body, Param } from '@nestjs/common';
 import { TenantRoleProtected, TenantMemberProtected } from '@modules/tenant/decorators/tenant.decorator';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
 
-@Controller('admin/tenants/current/members')
+@Controller('shared/tenants/current/members')
 export class TenantMemberController {
     constructor(private readonly tenantService: TenantService) {}
 
@@ -1411,7 +1441,8 @@ getProjects(@TenantCurrent() tenant: ITenant) {
             action: [EnumPolicyAction.read, EnumPolicyAction.create]
         }
     ],
-    type: EnumRoleType.user
+    type: EnumRoleType.user,
+    scope: EnumRoleScope.tenant
 }
 
 // 2. Run migration

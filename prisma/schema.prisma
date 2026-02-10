@@ -35,6 +35,7 @@ model Role {
   name        String
   description String?
   type        EnumRoleType  @default(user)
+  scope       EnumRoleScope @default(platform)
   abilities   RoleAbility[]
 
   // timestamps fields
@@ -46,8 +47,8 @@ model Role {
   users         User[]         @relation("UserRole")
   tenantMembers TenantMember[] @relation("TenantMemberRole")
 
-  @@unique(fields: [name])
-  @@index(fields: [name, type, createdAt])
+  @@unique(fields: [name, scope])
+  @@index(fields: [name, type, scope, createdAt])
   @@index(fields: [createdAt])
   @@map("Roles")
 }
@@ -508,6 +509,11 @@ enum EnumRoleType {
   superAdmin
   admin
   user
+}
+
+enum EnumRoleScope {
+  platform
+  tenant
 }
 
 enum EnumApiKeyType {

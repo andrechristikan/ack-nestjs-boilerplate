@@ -10,7 +10,7 @@ import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.req
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { IRole } from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { EnumRoleScope, Role } from '@prisma/client';
 
 @Injectable()
 export class RoleRepository {
@@ -56,7 +56,20 @@ export class RoleRepository {
             where: {
                 name: name,
             },
-            select: { id: true, type: true, name: true },
+            select: { id: true, type: true, scope: true, name: true },
+        });
+    }
+
+    async existByNameAndScope(
+        name: string,
+        scope: EnumRoleScope
+    ): Promise<IRole | null> {
+        return this.databaseService.role.findFirst({
+            where: {
+                name,
+                scope,
+            },
+            select: { id: true, type: true, scope: true, name: true },
         });
     }
 
@@ -65,7 +78,7 @@ export class RoleRepository {
             where: {
                 id,
             },
-            select: { id: true, type: true, name: true },
+            select: { id: true, type: true, scope: true, name: true },
         });
     }
 

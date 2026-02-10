@@ -20,17 +20,10 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
-import {
-    TenantCurrent,
-    TenantPermissionProtected,
-} from '@modules/tenant/decorators/tenant.decorator';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
-import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
-import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
-import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
 import { TenantService } from '@modules/tenant/services/tenant.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -68,22 +61,6 @@ export class TenantAdminController {
         return this.tenantService.getListOffset(pagination);
     }
 
-    @Response('tenant.get')
-    @PolicyAbilityProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.read],
-    })
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/:tenantId')
-    async get(
-        @Param('tenantId', RequestRequiredPipe)
-        tenantId: string
-    ): Promise<IResponseReturn<TenantResponseDto>> {
-        return this.tenantService.getOne(tenantId);
-    }
-
     @Response('tenant.create')
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.tenant,
@@ -98,6 +75,22 @@ export class TenantAdminController {
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
         return this.tenantService.create(body, createdBy);
+    }
+
+    @Response('tenant.get')
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.tenant,
+        action: [EnumPolicyAction.read],
+    })
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/:tenantId')
+    async get(
+        @Param('tenantId', RequestRequiredPipe)
+        tenantId: string
+    ): Promise<IResponseReturn<TenantResponseDto>> {
+        return this.tenantService.getOne(tenantId);
     }
 
     @Response('tenant.update')
@@ -135,79 +128,21 @@ export class TenantAdminController {
         return this.tenantService.delete(tenantId, updatedBy);
     }
 
-    @ResponsePaging('tenant.member.list')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.read],
-    })
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/current/members')
-    async listMembers(
-        @TenantCurrent() tenant: ITenant,
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams
-    ): Promise<IResponsePagingReturn<TenantMemberResponseDto>> {
-        return this.tenantService.getMembersOffset(tenant.id, pagination);
-    }
-
     @Response('tenant.member.create')
-    @TenantPermissionProtected({
+    @PolicyAbilityProtected({
         subject: EnumPolicySubject.tenantMember,
         action: [EnumPolicyAction.create],
     })
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Post('/current/members')
-    async createMember(
-        @TenantCurrent() tenant: ITenant,
+    @Post('/:tenantId/members')
+    async createMemberByPlatform(
+        @Param('tenantId', RequestRequiredPipe)
+        tenantId: string,
         @Body() body: TenantMemberCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.tenantService.addMember(tenant.id, body, createdBy);
-    }
-
-    @Response('tenant.member.update')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.update],
-    })
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Patch('/current/members/:memberId')
-    async updateMember(
-        @TenantCurrent() tenant: ITenant,
-        @Param('memberId', RequestRequiredPipe)
-        memberId: string,
-        @Body() body: TenantMemberUpdateRequestDto,
-        @AuthJwtPayload('userId') updatedBy: string
-    ): Promise<IResponseReturn<void>> {
-        return this.tenantService.updateMember(
-            tenant.id,
-            memberId,
-            body,
-            updatedBy
-        );
-    }
-
-    @Response('tenant.member.delete')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.delete],
-    })
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Delete('/current/members/:memberId')
-    async deleteMember(
-        @TenantCurrent() tenant: ITenant,
-        @Param('memberId', RequestRequiredPipe)
-        memberId: string,
-        @AuthJwtPayload('userId') updatedBy: string
-    ): Promise<IResponseReturn<void>> {
-        return this.tenantService.deleteMember(tenant.id, memberId, updatedBy);
+        return this.tenantService.addMember(tenantId, body, createdBy);
     }
 }

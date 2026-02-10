@@ -89,6 +89,7 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import {
+    EnumRoleScope,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserStatus,
@@ -997,8 +998,9 @@ export class UserService implements IUserService {
         let user = await this.userRepository.findOneWithRoleByEmail(email);
 
         if (!user && featureFlag.signUpAllowed) {
-            const role = await this.roleRepository.existByName(
-                this.userRoleName
+            const role = await this.roleRepository.existByNameAndScope(
+                this.userRoleName,
+                EnumRoleScope.platform
             );
             if (!role) {
                 throw new NotFoundException({
@@ -1116,7 +1118,10 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<void> {
         const [role, emailExist, checkCountry] = await Promise.all([
-            this.roleRepository.existByName(this.userRoleName),
+            this.roleRepository.existByNameAndScope(
+                this.userRoleName,
+                EnumRoleScope.platform
+            ),
             this.userRepository.existByEmail(email),
             this.countryRepository.existById(countryId),
         ]);
@@ -2017,7 +2022,10 @@ export class UserService implements IUserService {
 
         const emails = data.map(item => item.email);
         const [checkRole, checkCountry, existingUsers] = await Promise.all([
-            this.roleRepository.existByName(this.userRoleName),
+            this.roleRepository.existByNameAndScope(
+                this.userRoleName,
+                EnumRoleScope.platform
+            ),
             this.countryRepository.existByAlpha2Code(this.userCountryName),
             this.userRepository.findAllByEmails(emails),
         ]);

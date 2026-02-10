@@ -4,7 +4,7 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleScope, EnumRoleType } from '@prisma/client';
 
 const roleData: RoleCreateRequestDto[] = [
     {
@@ -12,6 +12,7 @@ const roleData: RoleCreateRequestDto[] = [
         description: 'Super Admin Role',
         abilities: [],
         type: EnumRoleType.superAdmin,
+        scope: EnumRoleScope.platform,
     },
     {
         name: 'admin',
@@ -21,12 +22,41 @@ const roleData: RoleCreateRequestDto[] = [
             action: Object.values(EnumPolicyAction),
         })),
         type: EnumRoleType.admin,
+        scope: EnumRoleScope.platform,
     },
     {
         name: 'user',
         description: 'User Role',
         abilities: [],
         type: EnumRoleType.user,
+        scope: EnumRoleScope.platform,
+    },
+    {
+        name: 'platform-admin',
+        description:
+            'Platform administrator. Can onboard new tenants and manage tenant memberships.',
+        abilities: [
+            {
+                subject: EnumPolicySubject.tenant,
+                action: [
+                    EnumPolicyAction.create,
+                    EnumPolicyAction.read,
+                    EnumPolicyAction.update,
+                    EnumPolicyAction.delete,
+                ],
+            },
+            {
+                subject: EnumPolicySubject.tenantMember,
+                action: [
+                    EnumPolicyAction.create,
+                    EnumPolicyAction.read,
+                    EnumPolicyAction.update,
+                    EnumPolicyAction.delete,
+                ],
+            },
+        ],
+        type: EnumRoleType.user,
+        scope: EnumRoleScope.platform,
     },
     {
         name: 'tenant-admin',
@@ -51,6 +81,7 @@ const roleData: RoleCreateRequestDto[] = [
             },
         ],
         type: EnumRoleType.user,
+        scope: EnumRoleScope.tenant,
     },
     {
         name: 'tenant-user',
@@ -67,6 +98,7 @@ const roleData: RoleCreateRequestDto[] = [
             },
         ],
         type: EnumRoleType.user,
+        scope: EnumRoleScope.tenant,
     },
 ];
 

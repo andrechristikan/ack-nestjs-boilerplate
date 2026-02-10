@@ -26,7 +26,7 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleScope, EnumRoleType } from '@prisma/client';
 
 @Injectable()
 export class RoleService implements IRoleService {
@@ -101,7 +101,11 @@ export class RoleService implements IRoleService {
         name,
         ...others
     }: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
-        const exist = await this.roleRepository.existByName(name);
+        const scope = others.scope ?? EnumRoleScope.platform;
+        const exist = await this.roleRepository.existByNameAndScope(
+            name,
+            scope
+        );
         if (exist) {
             throw new ConflictException({
                 statusCode: EnumRoleStatusCodeError.exist,

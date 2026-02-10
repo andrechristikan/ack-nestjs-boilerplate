@@ -37,6 +37,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import {
+    EnumRoleScope,
     EnumTenantMemberStatus,
     EnumTenantStatus,
     Tenant,
@@ -114,6 +115,8 @@ export class TenantService implements ITenantService {
                 message: 'tenantMember.error.forbidden',
             });
         }
+
+        this.assertTenantRoleScope(tenantMember.role.scope);
 
         request.__abilities = (tenantMember.role.abilities ?? []) as unknown as RoleAbilityDto[];
 
@@ -276,7 +279,7 @@ export class TenantService implements ITenantService {
 
         const [user, role, memberExist] = await Promise.all([
             this.userRepository.findOneById(dto.userId),
-            this.roleRepository.existByName(dto.roleName),
+            this.resolveTenantRoleByName(dto.roleName),
             this.tenantRepository.existMemberByTenantAndUser(
                 tenantId,
                 dto.userId
@@ -287,13 +290,6 @@ export class TenantService implements ITenantService {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.memberNotFound,
                 message: 'tenantMember.error.userNotFound',
-            });
-        }
-
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.roleNotFound,
-                message: 'tenantRole.error.notFound',
             });
         }
 
@@ -349,14 +345,7 @@ export class TenantService implements ITenantService {
 
         let roleId: string | undefined;
         if (dto.roleName) {
-            const role = await this.roleRepository.existByName(dto.roleName);
-
-            if (!role) {
-                throw new NotFoundException({
-                    statusCode: EnumTenantStatusCodeError.roleNotFound,
-                    message: 'tenantRole.error.notFound',
-                });
-            }
+            const role = await this.resolveTenantRoleByName(dto.roleName);
 
             roleId = role.id;
         }
@@ -536,5 +525,42 @@ export class TenantService implements ITenantService {
                   }
                 : undefined,
         };
+    }
+
+    private assertTenantRoleScope(scope: EnumRoleScope): void {
+        if (scope !== EnumRoleScope.tenant) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
+                message: 'tenantRole.error.scopeMismatch',
+            });
+        }
+    }
+
+    private async resolveTenantRoleByName(roleName: string) {
+        const roleInTenantScope = await this.roleRepository.existByNameAndScope(
+            roleName,
+            EnumRoleScope.tenant
+        );
+
+        if (roleInTenantScope) {
+            return roleInTenantScope;
+        }
+
+        const role = await this.roleRepository.existByName(roleName);
+        if (role && role.scope !== EnumRoleScope.tenant) {
+            throw new BadRequestException({
+                statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
+                message: 'tenantRole.error.scopeMismatch',
+            });
+        }
+
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.roleNotFound,
+                message: 'tenantRole.error.notFound',
+            });
+        }
+
+        return role;
     }
 }
