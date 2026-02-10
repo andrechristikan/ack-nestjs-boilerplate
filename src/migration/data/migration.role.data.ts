@@ -34,19 +34,10 @@ const roleData: RoleCreateRequestDto[] = [
     {
         name: 'platform-admin',
         description:
-            'Platform administrator. Can onboard new tenants and manage tenant memberships.',
+            'Platform administrator. Can onboard new tenants and manage tenant lifecycle.',
         abilities: [
             {
                 subject: EnumPolicySubject.tenant,
-                action: [
-                    EnumPolicyAction.create,
-                    EnumPolicyAction.read,
-                    EnumPolicyAction.update,
-                    EnumPolicyAction.delete,
-                ],
-            },
-            {
-                subject: EnumPolicySubject.tenantMember,
                 action: [
                     EnumPolicyAction.create,
                     EnumPolicyAction.read,
@@ -95,6 +86,27 @@ const roleData: RoleCreateRequestDto[] = [
             {
                 subject: EnumPolicySubject.tenantMember,
                 action: [EnumPolicyAction.read],
+            },
+        ],
+        type: EnumRoleType.user,
+        scope: EnumRoleScope.tenant,
+    },
+    {
+        name: 'tenant-platform-support',
+        description:
+            'Temporary support access for platform operators. Read-all tenant data + member management.',
+        abilities: [
+            {
+                subject: EnumPolicySubject.tenant,
+                action: [EnumPolicyAction.read],
+            },
+            {
+                subject: EnumPolicySubject.tenantMember,
+                action: [
+                    EnumPolicyAction.read,
+                    EnumPolicyAction.create,
+                    EnumPolicyAction.update,
+                ],
             },
         ],
         type: EnumRoleType.user,

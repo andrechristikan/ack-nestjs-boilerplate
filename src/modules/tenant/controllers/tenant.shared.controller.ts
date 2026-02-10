@@ -77,7 +77,7 @@ export class TenantSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
-    @ApiKeyProtected()
+    //@ApiKeyProtected()
     @Get('/current')
     async current(
         @AuthJwtPayload('userId') userId: string,

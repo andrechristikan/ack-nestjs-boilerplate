@@ -22,15 +22,19 @@ export class TenantRepository {
         private readonly paginationService: PaginationService
     ) {}
 
-    async findWithPaginationOffset(
-        { where, ...params }: IPaginationQueryOffsetParams
-    ): Promise<IResponsePagingReturn<Tenant>> {
-        return this.paginationService.offset<Tenant>(this.databaseService.tenant, {
-            ...params,
-            where: {
-                ...where,
-            },
-        });
+    async findWithPaginationOffset({
+        where,
+        ...params
+    }: IPaginationQueryOffsetParams): Promise<IResponsePagingReturn<Tenant>> {
+        return this.paginationService.offset<Tenant>(
+            this.databaseService.tenant,
+            {
+                ...params,
+                where: {
+                    ...where,
+                },
+            }
+        );
     }
 
     async findOneById(id: string): Promise<Tenant | null> {
@@ -48,9 +52,7 @@ export class TenantRepository {
         });
     }
 
-    async create(
-        data: Prisma.TenantUncheckedCreateInput
-    ): Promise<Tenant> {
+    async create(data: Prisma.TenantUncheckedCreateInput): Promise<Tenant> {
         return this.databaseService.tenant.create({
             data,
         });
@@ -68,12 +70,14 @@ export class TenantRepository {
 
     async existMemberByTenantAndUser(
         tenantId: string,
-        userId: string
+        userId: string,
+        status: EnumTenantMemberStatus = EnumTenantMemberStatus.active
     ): Promise<{ id: string } | null> {
         return this.databaseService.tenantMember.findFirst({
             where: {
                 tenantId,
                 userId,
+                status,
             },
             select: {
                 id: true,
@@ -152,6 +156,35 @@ export class TenantRepository {
                 },
             }
         );
+    }
+
+    async findActiveJitMemberByTenantAndUser(
+        tenantId: string,
+        userId: string
+    ): Promise<ITenantMember | null> {
+        return this.databaseService.tenantMember.findFirst({
+            where: {
+                tenantId,
+                userId,
+                isJit: true,
+                status: EnumTenantMemberStatus.active,
+            },
+            include: {
+                role: true,
+                tenant: true,
+            },
+        });
+    }
+
+    async revokeJitMember(memberId: string): Promise<TenantMember> {
+        return this.databaseService.tenantMember.update({
+            where: {
+                id: memberId,
+            },
+            data: {
+                status: EnumTenantMemberStatus.inactive,
+            },
+        });
     }
 
     async findMembershipsWithPaginationCursorByUser(

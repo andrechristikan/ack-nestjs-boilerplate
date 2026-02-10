@@ -18,8 +18,10 @@ import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenan
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
+import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.jit-access.request.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
+import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import {
     ITenant,
@@ -110,6 +112,19 @@ export class TenantService implements ITenantService {
             );
 
         if (!tenantMember?.role) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.memberForbidden,
+                message: 'tenantMember.error.forbidden',
+            });
+        }
+
+        if (
+            tenantMember.isJit &&
+            tenantMember.expiresAt &&
+            tenantMember.expiresAt < new Date()
+        ) {
+            await this.tenantRepository.revokeJitMember(tenantMember.id);
+
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
                 message: 'tenantMember.error.forbidden',
@@ -433,6 +448,79 @@ export class TenantService implements ITenantService {
             ...others,
             data: data.map(member => this.mapMember(member)),
         };
+    }
+
+    async assumeAccess(
+        tenantId: string,
+        userId: string,
+        dto: TenantJitAccessRequestDto
+    ): Promise<IResponseReturn<TenantJitAccessResponseDto>> {
+        const tenant = await this.assertTenantExistsAndActive(tenantId);
+
+        const existingMember =
+            await this.tenantRepository.existMemberByTenantAndUser(
+                tenantId,
+                userId
+            );
+
+        if (existingMember) {
+            throw new ConflictException({
+                statusCode: EnumTenantStatusCodeError.jitAccessAlreadyActive,
+                message: 'tenant.error.jitAccessAlreadyActive',
+            });
+        }
+
+        const role = await this.resolveTenantRoleByName('tenant-platform-support');
+
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + dto.durationInHours);
+
+        const member = await this.tenantRepository.addMember({
+            tenantId,
+            userId,
+            roleId: role.id,
+            status: EnumTenantMemberStatus.active,
+            isJit: true,
+            expiresAt,
+            reason: dto.reason,
+            createdBy: userId,
+            updatedBy: userId,
+        });
+
+        return {
+            data: {
+                memberId: member.id,
+                tenantId: tenant.id,
+                tenantName: tenant.name,
+                role: role.name,
+                expiresAt,
+                reason: dto.reason,
+            },
+        };
+    }
+
+    async revokeJitAccess(
+        tenantId: string,
+        userId: string
+    ): Promise<IResponseReturn<void>> {
+        await this.assertTenantExists(tenantId);
+
+        const jitMember =
+            await this.tenantRepository.findActiveJitMemberByTenantAndUser(
+                tenantId,
+                userId
+            );
+
+        if (!jitMember) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.jitAccessNotFound,
+                message: 'tenant.error.jitAccessNotFound',
+            });
+        }
+
+        await this.tenantRepository.revokeJitMember(jitMember.id);
+
+        return {};
     }
 
     async getCurrentTenant(

@@ -13,8 +13,10 @@ import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.crea
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
+import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.jit-access.request.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
+import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { ITenant, ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
 
 export interface ITenantService {
@@ -64,6 +66,16 @@ export interface ITenantService {
         tenantId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<TenantMemberResponseDto>>;
+
+    assumeAccess(
+        tenantId: string,
+        userId: string,
+        dto: TenantJitAccessRequestDto
+    ): Promise<IResponseReturn<TenantJitAccessResponseDto>>;
+    revokeJitAccess(
+        tenantId: string,
+        userId: string
+    ): Promise<IResponseReturn<void>>;
 
     getMyTenantsCursor(
         userId: string,

@@ -10,6 +10,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -21,8 +22,9 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
-import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
+import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.jit-access.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
+import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import { TenantService } from '@modules/tenant/services/tenant.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -36,6 +38,7 @@ import {
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { EnumActivityLogAction } from '@prisma/client';
 
 @ApiTags('modules.admin.tenant')
 @Controller({
@@ -52,7 +55,7 @@ export class TenantAdminController {
     })
     @UserProtected()
     @AuthJwtAccessProtected()
-    @ApiKeyProtected()
+    //@ApiKeyProtected()
     @Get('')
     async list(
         @PaginationOffsetQuery()
@@ -84,7 +87,7 @@ export class TenantAdminController {
     })
     @UserProtected()
     @AuthJwtAccessProtected()
-    @ApiKeyProtected()
+    //@ApiKeyProtected()
     @Get('/:tenantId')
     async get(
         @Param('tenantId', RequestRequiredPipe)
@@ -128,21 +131,38 @@ export class TenantAdminController {
         return this.tenantService.delete(tenantId, updatedBy);
     }
 
-    @Response('tenant.member.create')
+    @Response('tenant.assumeAccess')
+    @ActivityLog(EnumActivityLogAction.tenantJitAccessAssumed)
     @PolicyAbilityProtected({
-        subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.create],
+        subject: EnumPolicySubject.tenant,
+        action: [EnumPolicyAction.update],
     })
     @UserProtected()
     @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Post('/:tenantId/members')
-    async createMemberByPlatform(
+    @Post('/:tenantId/assume-access')
+    async assumeAccess(
         @Param('tenantId', RequestRequiredPipe)
         tenantId: string,
-        @Body() body: TenantMemberCreateRequestDto,
-        @AuthJwtPayload('userId') createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.tenantService.addMember(tenantId, body, createdBy);
+        @Body() body: TenantJitAccessRequestDto,
+        @AuthJwtPayload('userId') userId: string
+    ): Promise<IResponseReturn<TenantJitAccessResponseDto>> {
+        return this.tenantService.assumeAccess(tenantId, userId, body);
+    }
+
+    @Response('tenant.revokeAccess')
+    @ActivityLog(EnumActivityLogAction.tenantJitAccessRevoked)
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.tenant,
+        action: [EnumPolicyAction.update],
+    })
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @Delete('/:tenantId/revoke-access')
+    async revokeAccess(
+        @Param('tenantId', RequestRequiredPipe)
+        tenantId: string,
+        @AuthJwtPayload('userId') userId: string
+    ): Promise<IResponseReturn<void>> {
+        return this.tenantService.revokeJitAccess(tenantId, userId);
     }
 }

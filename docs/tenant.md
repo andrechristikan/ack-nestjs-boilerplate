@@ -848,12 +848,13 @@ export class TenantPermissionGuard implements CanActivate {
 
 ### Built-in Roles
 
-The tenant system includes two predefined roles stored in the main `Role` model:
+The tenant system includes predefined roles stored in the main `Role` model:
 
 | Role Name | Description | Use Case |
 |-----------|-------------|----------|
 | `tenant-admin` | Full tenant management | Manage tenant settings, add/remove members, assign roles |
 | `tenant-user` | Basic tenant access | View tenant data, read-only member list |
+| `tenant-platform-support` | Temporary JIT support access | Time-limited read + member management for platform operators |
 
 ### Role Scopes
 
@@ -884,6 +885,24 @@ Tenant membership operations only accept roles in `tenant` scope.
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete
             ]
+        }
+    ]
+}
+```
+
+**Tenant Platform Support Abilities (JIT):**
+
+```typescript
+{
+    name: 'tenant-platform-support',
+    abilities: [
+        {
+            subject: EnumPolicySubject.tenant,
+            action: [EnumPolicyAction.read]
+        },
+        {
+            subject: EnumPolicySubject.tenantMember,
+            action: [EnumPolicyAction.read, EnumPolicyAction.create, EnumPolicyAction.update]
         }
     ]
 }
@@ -1001,17 +1020,46 @@ DELETE /api/v1/admin/tenants/:tenantId
 Authorization: Bearer <access_token>
 ```
 
-**Platform bootstrap member management** (requires platform admin role):
+**JIT (Just-in-Time) tenant access** (requires platform admin role with `tenant:update` ability):
 
 ```typescript
-// Add member to any tenant by tenantId
-POST /api/v1/admin/tenants/:tenantId/members
+// Assume temporary access to a tenant (creates time-limited membership)
+POST /api/v1/admin/tenants/:tenantId/assume-access
 Authorization: Bearer <access_token>
 Body: {
-    userId: "507f1f77bcf86cd799439011",
-    roleName: "tenant-user"
+    durationInHours: 2,
+    reason: "Customer support ticket #123"
 }
+Response: {
+    data: {
+        memberId: "...",
+        tenantId: "...",
+        tenantName: "Acme Corp",
+        role: "tenant-platform-support",
+        expiresAt: "2025-01-15T14:00:00.000Z",
+        reason: "Customer support ticket #123"
+    }
+}
+
+// Revoke JIT access to a tenant
+DELETE /api/v1/admin/tenants/:tenantId/revoke-access
+Authorization: Bearer <access_token>
 ```
+
+**JIT Access Flow:**
+
+1. Platform admin calls `POST /assume-access` with duration and reason
+2. A temporary `TenantMember` is created with `isJit: true` and an `expiresAt` timestamp
+3. The admin can now use `x-tenant-id` header to access tenant-scoped endpoints
+4. Access is automatically denied after expiry (membership auto-deactivated on next guard check)
+5. Admin can also manually revoke via `DELETE /revoke-access`
+
+**Security properties:**
+- Access is time-limited (max 72 hours)
+- Reason is required for audit trail
+- Activity log records both assume and revoke actions
+- Expired JIT memberships are auto-deactivated by the tenant member guard
+- Uses `tenant-platform-support` role with limited abilities (read-all + member management)
 
 ### Shared Endpoints
 
