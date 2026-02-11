@@ -1,5 +1,4 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryCursorParams,
@@ -17,7 +16,7 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
     Notification,
-    User,
+    Prisma,
 } from '@prisma/client';
 
 @Injectable()
@@ -25,8 +24,7 @@ export class NotificationRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly helperService: HelperService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly helperService: HelperService
     ) {}
 
     async findWithPaginationOffset(
@@ -126,8 +124,8 @@ export class NotificationRepository {
         });
     }
 
-    async markAllAsRead(userId: string): Promise<number> {
-        const result = await this.databaseService.notification.updateMany({
+    async markAllAsRead(userId: string): Promise<Prisma.BatchPayload> {
+        return this.databaseService.notification.updateMany({
             where: {
                 userId,
                 isRead: false,
@@ -137,16 +135,14 @@ export class NotificationRepository {
                 readAt: this.helperService.dateCreate(),
             },
         });
-
-        return result.count;
     }
 
     async updateUserSetting(
         userId: string,
         { channel, type, isActive }: NotificationUserSettingRequestDto,
-        { ipAddress, userAgent }: IRequestLog
-    ): Promise<User> {
-        const [user] = await this.databaseService.$transaction([
+        { ipAddress, userAgent, geoLocation }: IRequestLog
+    ): Promise<void> {
+        await this.databaseService.$transaction([
             this.databaseService.user.update({
                 where: { id: userId, deletedAt: null },
                 data: {
@@ -155,8 +151,8 @@ export class NotificationRepository {
                         create: {
                             action: EnumActivityLogAction.userUpdateNotificationSetting,
                             ipAddress,
-                            userAgent:
-                                this.databaseUtil.toPlainObject(userAgent),
+                            userAgent,
+                            geoLocation,
                             createdBy: userId,
                         },
                     },
@@ -176,7 +172,5 @@ export class NotificationRepository {
                 },
             }),
         ]);
-
-        return user;
     }
 }

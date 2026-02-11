@@ -4,14 +4,15 @@ import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import {
+    RequestGeoLocation,
     RequestIPAddress,
     RequestTimeout,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { GeoLocation, UserAgent } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -100,12 +101,14 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @AuthJwtToken() refreshToken: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto,
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation,
         @Body() body: UserDeviceDto
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
-        return this.userService.refreshToken(user, refreshToken, body, {
+        return this.userService.refresh(user, refreshToken, body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -136,11 +139,13 @@ export class UserSharedController {
         @Body()
         body: UserUpdateProfileRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.userService.updateProfile(userId, body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -172,11 +177,13 @@ export class UserSharedController {
         userId: string,
         @Body() body: UserUpdateProfilePhotoRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.userService.updatePhotoProfile(userId, body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -203,11 +210,13 @@ export class UserSharedController {
         )
         file: IFile,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.userService.uploadPhotoProfile(userId, file, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -223,11 +232,13 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @Body() body: UserChangePasswordRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.userService.changePassword(user, body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -243,11 +254,13 @@ export class UserSharedController {
         @Body()
         body: UserAddMobileNumberRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
         return this.userService.addMobileNumber(userId, body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -264,7 +277,8 @@ export class UserSharedController {
         @Body()
         body: UserUpdateMobileNumberRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
         return this.userService.updateMobileNumber(
             userId,
@@ -273,6 +287,7 @@ export class UserSharedController {
             {
                 ipAddress,
                 userAgent,
+                geoLocation,
             }
         );
     }
@@ -288,11 +303,13 @@ export class UserSharedController {
         @AuthJwtPayload('userId') userId: string,
         @Param('mobileNumberId') mobileNumberId: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
         return this.userService.deleteMobileNumber(userId, mobileNumberId, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -309,11 +326,13 @@ export class UserSharedController {
         @Body()
         body: UserClaimUsernameRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.userService.claimUsername(userId, body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -341,11 +360,13 @@ export class UserSharedController {
     async setupTwoFactor(
         @UserCurrent() user: IUser,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>> {
         return this.userService.setupTwoFactor(user, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -361,11 +382,13 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @Body() body: UserTwoFactorEnableRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         return this.userService.enableTwoFactor(user, body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -381,11 +404,13 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @Body() body: UserTwoFactorDisableRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.userService.disableTwoFactor(user, body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -399,15 +424,18 @@ export class UserSharedController {
     async regenerateTwoFactorBackupCodes(
         @UserCurrent() user: IUser,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         return this.userService.regenerateTwoFactorBackupCodes(user, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
-    // TODO: Implement logout api
+    // TODO: NEXT - Implement device management api (list, revoke), and device fcm token refresh
+    // TODO: NEXT - Implement logout api
 
     // TODO: Verify number implementation, but which provider?
 }

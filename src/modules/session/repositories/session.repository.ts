@@ -1,5 +1,4 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryCursorParams,
@@ -17,8 +16,7 @@ export class SessionRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperService: HelperService,
-        private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly paginationService: PaginationService
     ) {}
 
     async findWithPaginationOffsetByAdmin(
@@ -96,7 +94,7 @@ export class SessionRepository {
     async revoke(
         userId: string,
         sessionId: string,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<Session> {
         return this.databaseService.session.update({
             where: {
@@ -113,8 +111,8 @@ export class SessionRepository {
                             create: {
                                 action: EnumActivityLogAction.userRevokeSession,
                                 ipAddress,
-                                userAgent:
-                                    this.databaseUtil.toPlainObject(userAgent),
+                                userAgent,
+                                geoLocation,
                                 createdBy: userId,
                             },
                         },
@@ -126,7 +124,7 @@ export class SessionRepository {
 
     async revokeByAdmin(
         sessionId: string,
-        { ipAddress, userAgent }: IRequestLog,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
         revokeBy: string
     ): Promise<ISession> {
         return this.databaseService.session.update({
@@ -143,8 +141,8 @@ export class SessionRepository {
                             create: {
                                 action: EnumActivityLogAction.userRevokeSessionByAdmin,
                                 ipAddress,
-                                userAgent:
-                                    this.databaseUtil.toPlainObject(userAgent),
+                                userAgent,
+                                geoLocation,
                                 createdBy: revokeBy,
                             },
                         },

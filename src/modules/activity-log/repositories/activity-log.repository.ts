@@ -1,5 +1,4 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     IPaginationCursorReturn,
     IPaginationQueryCursorParams,
@@ -19,7 +18,6 @@ import { ActivityLog, EnumActivityLogAction, Prisma } from '@prisma/client';
 export class ActivityLogRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService
     ) {}
 
@@ -64,7 +62,7 @@ export class ActivityLogRepository {
     async create(
         userId: string,
         action: EnumActivityLogAction,
-        { ipAddress, userAgent }: IRequestLog,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
         metadata?: IActivityLogMetadata
     ): Promise<ActivityLog> {
         return this.databaseService.activityLog.create({
@@ -72,7 +70,8 @@ export class ActivityLogRepository {
                 userId,
                 action,
                 ipAddress,
-                userAgent: this.databaseUtil.toPlainObject(userAgent),
+                userAgent,
+                geoLocation,
                 metadata:
                     metadata && Object.keys(metadata).length > 0
                         ? (metadata as Prisma.InputJsonValue)

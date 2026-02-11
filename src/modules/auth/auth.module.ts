@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { AuthJwtAccessStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.access.strategy';
 import { AuthJwtRefreshStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.refresh.strategy';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
@@ -6,23 +6,24 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthService } from '@modules/auth/services/auth.service';
 import { IsTwoFactorBackupCodeConstraint } from '@modules/auth/validations/auth.two-factor-backup-code.validation';
 import { IsTwoFactorCodeConstraint } from '@modules/auth/validations/auth.two-factor-code.validation';
-import { AuthSharedModule } from '@modules/auth/auth.shared.module';
-import { SessionSharedModule } from '@modules/session/session.shared.module';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 
+@Global()
 @Module({
     providers: [
-        AuthJwtAccessStrategy,
-        AuthJwtRefreshStrategy,
-        AuthService,
-
         IsTwoFactorCodeConstraint,
         IsTwoFactorBackupCodeConstraint,
+        AuthJwtAccessStrategy,
+        AuthJwtRefreshStrategy,
+
+        AuthService,
+        AuthUtil,
+        AuthTwoFactorUtil,
     ],
-    exports: [AuthService],
+    exports: [AuthService, AuthUtil, AuthTwoFactorUtil],
     controllers: [],
     imports: [
-        SessionSharedModule,
-        AuthSharedModule,
         JwtModule.registerAsync({
             inject: [ConfigService],
             imports: [ConfigModule],

@@ -1,10 +1,20 @@
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import {
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
+import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
+import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
 import { INotificationService } from '@modules/notification/interfaces/notification.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { Injectable } from '@nestjs/common';
+import {
+    BadRequestException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 
 @Injectable()
 export class NotificationService implements INotificationService {
@@ -32,45 +42,58 @@ export class NotificationService implements INotificationService {
         };
     }
 
-    // TODO:  see notification module
-    // async markAsRead(
-    //     userId: string,
-    //     notificationId: string
-    // ): Promise<IResponseReturn<void>> {
-    //     const checkExist = await this.notificationRepository.existById(
-    //         userId,
-    //         notificationId
-    //     );
-    //     if (!checkExist) {
-    //         throw new NotFoundException({
-    //             statusCode: EnumNotificationStatusCodeError.notFound,
-    //             message: 'notification.error.notFound',
-    //         });
-    //     } else if (checkExist.isRead) {
-    //         throw new BadRequestException({
-    //             statusCode: EnumNotificationStatusCodeError.alreadyRead,
-    //             message: 'notification.error.alreadyRead',
-    //         });
-    //     }
-    //     await this.notificationRepository.markAsRead(userId, notificationId);
-    //     return;
-    // }
-    // async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
-    //     await this.notificationRepository.markAllAsRead(userId);
-    //     return;
-    // }
-    // async updateUserSetting(
-    //     userId: string,
-    //     data: NotificationUserSettingRequestDto,
-    //     requestLog: IRequestLog
-    // ): Promise<IResponseReturn<void>> {
-    //     await this.notificationRepository.updateUserSetting(
-    //         userId,
-    //         data,
-    //         requestLog
-    //     );
-    //     return;
-    // }
+    async markAsRead(
+        userId: string,
+        notificationId: string
+    ): Promise<IResponseReturn<void>> {
+        const checkExist = await this.notificationRepository.existById(
+            userId,
+            notificationId
+        );
+        if (!checkExist) {
+            throw new NotFoundException({
+                statusCode: EnumNotificationStatusCodeError.notFound,
+                message: 'notification.error.notFound',
+            });
+        } else if (checkExist.isRead) {
+            throw new BadRequestException({
+                statusCode: EnumNotificationStatusCodeError.alreadyRead,
+                message: 'notification.error.alreadyRead',
+            });
+        }
+
+        await this.notificationRepository.markAsRead(userId, notificationId);
+
+        return;
+    }
+
+    async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
+        const batchUpdated =
+            await this.notificationRepository.markAllAsRead(userId);
+
+        return {
+            metadata: {
+                messageProperties: {
+                    count: batchUpdated.count,
+                },
+            },
+        };
+    }
+
+    async updateUserSetting(
+        userId: string,
+        data: NotificationUserSettingRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        await this.notificationRepository.updateUserSetting(
+            userId,
+            data,
+            requestLog
+        );
+
+        return;
+    }
+
     // async newLoginNotification(
     //     user: User,
     //     loginFrom: EnumUserLoginFrom,

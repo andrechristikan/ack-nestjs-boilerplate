@@ -1,11 +1,13 @@
-import { ActivityLogSharedModule } from '@modules/activity-log/activity-log.shared.module';
+import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { Module } from '@nestjs/common';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { Global, Module } from '@nestjs/common';
 
+@Global()
 @Module({
     controllers: [],
-    providers: [ActivityLogService],
-    exports: [ActivityLogService],
-    imports: [ActivityLogSharedModule],
+    providers: [ActivityLogService, ActivityLogRepository, ActivityLogUtil],
+    exports: [ActivityLogService, ActivityLogRepository, ActivityLogUtil],
+    imports: [],
 })
 export class ActivityLogModule {}

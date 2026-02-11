@@ -1,16 +1,17 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import {
+    RequestGeoLocation,
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { GeoLocation, UserAgent } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -64,11 +65,13 @@ export class SessionSharedController {
         @Param('sessionId', RequestRequiredPipe) sessionId: string,
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.sessionService.revoke(userId, sessionId, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 }

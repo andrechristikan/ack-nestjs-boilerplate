@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
-class RequestUserAgentBrowserDto {
+class RequestUserAgentBrowserResponseDto {
     @ApiProperty({
         required: false,
         example: 'Chrome',
@@ -27,7 +27,7 @@ class RequestUserAgentBrowserDto {
     type?: string;
 }
 
-class RequestUserAgentCpuDto {
+class RequestUserAgentCpuResponseDto {
     @ApiProperty({
         required: false,
         example: 'amd64',
@@ -35,7 +35,7 @@ class RequestUserAgentCpuDto {
     architecture?: string;
 }
 
-class RequestUserAgentDeviceDto {
+class RequestUserAgentDeviceResponseDto {
     @ApiProperty({
         required: false,
         example: 'mobile',
@@ -55,7 +55,7 @@ class RequestUserAgentDeviceDto {
     model?: string;
 }
 
-class RequestUserAgentEngineDto {
+class RequestUserAgentEngineResponseDto {
     @ApiProperty({
         required: false,
         example: 'WebKit',
@@ -69,7 +69,7 @@ class RequestUserAgentEngineDto {
     version?: string;
 }
 
-class RequestUserAgentOsDto {
+class RequestUserAgentOsResponseDto {
     @ApiProperty({
         required: false,
         example: 'iOS',
@@ -83,7 +83,7 @@ class RequestUserAgentOsDto {
     version?: string;
 }
 
-export class RequestUserAgentDto {
+export class RequestUserAgentResponseDto {
     @ApiProperty({
         required: false,
     })
@@ -91,36 +91,36 @@ export class RequestUserAgentDto {
 
     @ApiProperty({
         required: false,
-        type: RequestUserAgentBrowserDto,
+        type: RequestUserAgentBrowserResponseDto,
     })
-    @Type(() => RequestUserAgentBrowserDto)
-    browser?: RequestUserAgentBrowserDto;
+    @Type(() => RequestUserAgentBrowserResponseDto)
+    browser?: RequestUserAgentBrowserResponseDto;
 
     @ApiProperty({
         required: false,
-        type: RequestUserAgentCpuDto,
+        type: RequestUserAgentCpuResponseDto,
     })
-    @Type(() => RequestUserAgentCpuDto)
-    cpu?: RequestUserAgentCpuDto;
+    @Type(() => RequestUserAgentCpuResponseDto)
+    cpu?: RequestUserAgentCpuResponseDto;
 
     @ApiProperty({
         required: false,
-        type: RequestUserAgentDeviceDto,
+        type: RequestUserAgentDeviceResponseDto,
     })
-    @Type(() => RequestUserAgentDeviceDto)
-    device?: RequestUserAgentDeviceDto;
+    @Type(() => RequestUserAgentDeviceResponseDto)
+    device?: RequestUserAgentDeviceResponseDto;
 
     @ApiProperty({
         required: false,
-        type: RequestUserAgentEngineDto,
+        type: RequestUserAgentEngineResponseDto,
     })
-    @Type(() => RequestUserAgentEngineDto)
-    engine?: RequestUserAgentEngineDto;
+    @Type(() => RequestUserAgentEngineResponseDto)
+    engine?: RequestUserAgentEngineResponseDto;
 
     @ApiProperty({
         required: false,
-        type: RequestUserAgentOsDto,
+        type: RequestUserAgentOsResponseDto,
     })
-    @Type(() => RequestUserAgentOsDto)
-    os?: RequestUserAgentOsDto;
+    @Type(() => RequestUserAgentOsResponseDto)
+    os?: RequestUserAgentOsResponseDto;
 }

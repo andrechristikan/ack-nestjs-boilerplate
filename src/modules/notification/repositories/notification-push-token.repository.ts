@@ -1,4 +1,4 @@
-// TODO:  see notification module
+// TODO:
 
 // @Injectable()
 // export class NotificationPushTokenRepository {

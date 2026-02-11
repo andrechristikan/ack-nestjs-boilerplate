@@ -19,6 +19,7 @@ import { QueueRegisterModule } from 'src/queues/queue.register.module';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { SessionModule } from '@modules/session/session.module';
 import { FirebaseModule } from '@common/firebase/firebase.module';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 
 /**
  * Common module that provides shared functionality across the application.
@@ -49,11 +50,12 @@ import { FirebaseModule } from '@common/firebase/firebase.module';
         FileModule,
         FirebaseModule,
 
+        ActivityLogModule,
         ApiKeyModule,
         AuthModule,
-        PolicyModule,
-        RoleModule,
         FeatureFlagModule,
+        RoleModule,
+        PolicyModule,
         TermPolicyModule,
         SessionModule,
     ],

@@ -1,12 +1,7 @@
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { faker } from '@faker-js/faker';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import {
-    EnumNotificationChannel,
-    EnumNotificationPriority,
-    EnumNotificationType,
-} from '@prisma/client';
-import { Exclude } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
+import { EnumNotificationPriority, EnumNotificationType } from '@prisma/client';
 
 export class NotificationResponseDto extends DatabaseDto {
     @ApiProperty({
@@ -28,19 +23,6 @@ export class NotificationResponseDto extends DatabaseDto {
         enum: EnumNotificationPriority,
     })
     priority: EnumNotificationPriority;
-
-    @ApiProperty({
-        required: true,
-        example: EnumNotificationChannel.push,
-        enum: EnumNotificationChannel,
-    })
-    channel: EnumNotificationChannel;
-
-    @ApiProperty({
-        required: false,
-        example: faker.date.future(),
-    })
-    deliveryAt?: Date;
 
     @ApiProperty({
         required: true,
@@ -71,16 +53,4 @@ export class NotificationResponseDto extends DatabaseDto {
         example: faker.date.recent(),
     })
     readAt?: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    attemptCount: number;
-
-    @ApiHideProperty()
-    @Exclude()
-    lastAttemptAt?: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    failedReason?: string;
 }

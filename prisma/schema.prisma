@@ -199,12 +199,13 @@ model PasswordHistory {
 }
 
 model ActivityLog {
-  id        String                @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String                @db.ObjectId
-  action    EnumActivityLogAction
-  ipAddress String
-  userAgent UserAgent
-  metadata  Json?
+  id          String                @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String                @db.ObjectId
+  action      EnumActivityLogAction
+  ipAddress   String
+  userAgent   UserAgent
+  geoLocation GeoLocation?
+  metadata    Json?
 
   user User? @relation("UserActivityLogs", fields: [userId], references: [id])
 
@@ -218,15 +219,16 @@ model ActivityLog {
 }
 
 model Session {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String    @db.ObjectId
-  deviceId  String    @db.ObjectId
-  jti       String
-  ipAddress String
-  userAgent UserAgent
-  expiredAt DateTime
-  revokedAt DateTime?
-  isRevoked Boolean   @default(false)
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String       @db.ObjectId
+  deviceId    String       @db.ObjectId
+  jti         String
+  ipAddress   String
+  userAgent   UserAgent
+  geoLocation GeoLocation?
+  expiredAt   DateTime
+  revokedAt   DateTime?
+  isRevoked   Boolean      @default(false)
 
   user   User?   @relation("UserSessions", fields: [userId], references: [id])
   device Device? @relation("DeviceSessions", fields: [deviceId], references: [id])
@@ -399,11 +401,11 @@ model Notification {
 }
 
 model NotificationDelivery {
-  id             String                         @id @default(auto()) @map("_id") @db.ObjectId
-  notificationId String                         @db.ObjectId
+  id             String                  @id @default(auto()) @map("_id") @db.ObjectId
+  notificationId String                  @db.ObjectId
   channel        EnumNotificationChannel
-  sentAt    DateTime?
-  processedAt DateTime?
+  sentAt         DateTime?
+  processedAt    DateTime?
   externalId     String?
 
   notification Notification @relation("NotificationDeliveries", fields: [notificationId], references: [id])
@@ -439,12 +441,12 @@ model NotificationUserSetting {
 }
 
 model OutboxEvents {
-  id           String                @id @default(auto()) @map("_id") @db.ObjectId
+  id           String              @id @default(auto()) @map("_id") @db.ObjectId
   jobId        String
   jobToken     String
   type         EnumOutboxEventType
   payload      Json
-  attempts     Int                   @default(0)
+  attempts     Int                 @default(0)
   nextRunAt    DateTime?
   processedAt  DateTime?
   errorMessage String?
@@ -527,6 +529,14 @@ type UserAgent {
   device  UserAgentDevice?
   engine  UserAgentEngine?
   os      UserAgentOs?
+}
+
+type GeoLocation {
+  latitude  Float
+  longitude Float
+  country   String
+  region    String
+  city      String
 }
 
 enum EnumUserGender {

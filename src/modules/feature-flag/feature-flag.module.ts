@@ -1,10 +1,12 @@
-import { FeatureFlagSharedModule } from '@modules/feature-flag/feature-flag.shared.module';
+import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import { Module } from '@nestjs/common';
+import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
+import { Global, Module } from '@nestjs/common';
 
+@Global()
 @Module({
-    imports: [FeatureFlagSharedModule],
-    exports: [FeatureFlagService],
-    providers: [FeatureFlagService],
+    imports: [],
+    exports: [FeatureFlagService, FeatureFlagRepository, FeatureFlagUtil],
+    providers: [FeatureFlagService, FeatureFlagRepository, FeatureFlagUtil],
 })
 export class FeatureFlagModule {}

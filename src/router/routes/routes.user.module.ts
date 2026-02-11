@@ -1,6 +1,3 @@
-import { ApiKeyModule } from '@modules/api-key/api-key.module';
-import { RoleModule } from '@modules/role/role.module';
-import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { UserUserController } from '@modules/user/controllers/user.user.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
@@ -13,6 +10,6 @@ import { Module } from '@nestjs/common';
     controllers: [UserUserController],
     providers: [],
     exports: [],
-    imports: [ApiKeyModule, TermPolicyModule, RoleModule, UserModule],
+    imports: [UserModule],
 })
 export class RoutesUserModule {}

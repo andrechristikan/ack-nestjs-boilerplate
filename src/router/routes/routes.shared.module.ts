@@ -1,13 +1,8 @@
-import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { ActivityLogSharedController } from '@modules/activity-log/controllers/activity-log.shared.controller';
-import { ApiKeyModule } from '@modules/api-key/api-key.module';
-import { FeatureFlagModule } from '@modules/feature-flag/feature-flag.module';
 import { PasswordHistorySharedController } from '@modules/password-history/controllers/password-history.shared.controller';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { SessionSharedController } from '@modules/session/controllers/session.shared.controller';
-import { SessionModule } from '@modules/session/session.module';
 import { TermPolicySharedController } from '@modules/term-policy/controllers/term-policy.shared.controller';
-import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
@@ -26,14 +21,6 @@ import { Module } from '@nestjs/common';
     ],
     providers: [],
     exports: [],
-    imports: [
-        ApiKeyModule,
-        TermPolicyModule,
-        UserModule,
-        FeatureFlagModule,
-        PasswordHistoryModule,
-        ActivityLogModule,
-        SessionModule,
-    ],
+    imports: [UserModule, PasswordHistoryModule],
 })
 export class RoutesSharedModule {}

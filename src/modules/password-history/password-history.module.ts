@@ -1,11 +1,20 @@
 import { Module } from '@nestjs/common';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
-import { PasswordHistorySharedModule } from '@modules/password-history/password-history.shared.module';
+import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
+import { PasswordHistoryUtil } from '@modules/password-history/utils/password-history.util';
 
 @Module({
-    imports: [PasswordHistorySharedModule],
-    exports: [PasswordHistoryService],
-    providers: [PasswordHistoryService],
+    imports: [],
+    exports: [
+        PasswordHistoryService,
+        PasswordHistoryRepository,
+        PasswordHistoryUtil,
+    ],
+    providers: [
+        PasswordHistoryService,
+        PasswordHistoryRepository,
+        PasswordHistoryUtil,
+    ],
     controllers: [],
 })
 export class PasswordHistoryModule {}

@@ -16,7 +16,7 @@ import {
     ActivityLogActionMetaKey,
     ActivityLogMetadataMetaKey,
 } from '@modules/activity-log/constants/activity-log.constant';
-import { EnumActivityLogAction } from '@prisma/client';
+import { EnumActivityLogAction, UserAgent } from '@prisma/client';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Response } from 'express';
 import { IResponseActivityLogReturn } from '@common/response/interfaces/response.interface';
@@ -58,7 +58,9 @@ export class ActivityLogInterceptor implements NestInterceptor {
                         metadataActivityLog = metadataActivityLog ?? {};
 
                         const { userId } = user;
-                        const userAgent = UAParser(headers['user-agent']);
+                        const userAgent = UAParser(
+                            headers['user-agent']
+                        ) as UserAgent;
                         const ipAddress = getClientIp(request);
 
                         const action: EnumActivityLogAction =

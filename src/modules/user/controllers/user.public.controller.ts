@@ -1,8 +1,8 @@
 import {
+    RequestGeoLocation,
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -48,7 +48,7 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumUserLoginWith } from '@prisma/client';
+import { EnumUserLoginWith, GeoLocation, UserAgent } from '@prisma/client';
 
 @ApiTags('modules.public.user')
 @Controller({
@@ -67,11 +67,13 @@ export class UserPublicController {
     async loginWithCredential(
         @Body() body: UserLoginRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginCredential(body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -84,7 +86,8 @@ export class UserPublicController {
         @AuthJwtPayload<IAuthSocialPayload>('email')
         email: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto,
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation,
         @Body() body: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginWithSocial(
@@ -94,6 +97,7 @@ export class UserPublicController {
             {
                 ipAddress,
                 userAgent,
+                geoLocation,
             }
         );
     }
@@ -108,7 +112,8 @@ export class UserPublicController {
         email: string,
         @Body() body: UserCreateSocialRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginWithSocial(
             email,
@@ -117,6 +122,7 @@ export class UserPublicController {
             {
                 ipAddress,
                 userAgent,
+                geoLocation,
             }
         );
     }
@@ -130,11 +136,13 @@ export class UserPublicController {
         @Body()
         body: UserSignUpRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<void> {
         return this.userService.signUp(body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -145,11 +153,13 @@ export class UserPublicController {
     async verifyEmail(
         @Body() body: UserVerifyEmailRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.userService.verifyEmail(body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -161,11 +171,13 @@ export class UserPublicController {
     async sendEmailVerification(
         @Body() body: UserSendEmailVerificationRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.userService.sendEmail(body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -178,11 +190,13 @@ export class UserPublicController {
     async forgotPassword(
         @Body() body: UserForgotPasswordRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.userService.forgotPassword(body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -194,11 +208,13 @@ export class UserPublicController {
     async reset(
         @Body() body: UserForgotPasswordResetRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.userService.resetPassword(body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -210,11 +226,13 @@ export class UserPublicController {
     async loginVerifyTwoFactor(
         @Body() body: UserLoginVerifyTwoFactorRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
         return this.userService.loginVerifyTwoFactor(body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -226,11 +244,13 @@ export class UserPublicController {
     async verifyLoginTwoFactor(
         @Body() body: UserLoginSetupTwoFactorRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         return this.userService.loginSetupTwoFactor(body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 }

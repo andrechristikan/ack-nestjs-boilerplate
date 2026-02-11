@@ -28,9 +28,9 @@ import {
 export class TermPolicyRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async find(
@@ -143,7 +143,7 @@ export class TermPolicyRepository {
         user: IUser,
         termPolicyId: string,
         type: EnumTermPolicyType,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<ITermPolicyUserAcceptance> {
         const acceptedAt = this.helperService.dateCreate();
         const [userAcceptance] = await this.databaseService.$transaction([
@@ -173,8 +173,8 @@ export class TermPolicyRepository {
                         create: {
                             action: EnumActivityLogAction.userAcceptTermPolicy,
                             ipAddress,
-                            userAgent:
-                                this.databaseUtil.toPlainObject(userAgent),
+                            userAgent,
+                            geoLocation,
                             createdBy: user.id,
                             metadata: {
                                 termPolicyType: type,

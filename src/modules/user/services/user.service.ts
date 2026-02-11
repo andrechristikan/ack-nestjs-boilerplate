@@ -1045,7 +1045,7 @@ export class UserService implements IUserService {
         return this.handleLogin(user, from, loginWith, device, requestLog);
     }
 
-    async refreshToken(
+    async refresh(
         user: IUser,
         refreshToken: string,
         device: UserDeviceDto,

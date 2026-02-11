@@ -9,10 +9,7 @@ import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
 @Injectable()
 export class NotificationProcessorService {
-    constructor(
-        private readonly firebaseService: FirebaseService,
-        private readonly userRepository: UserRepository
-    ) {}
+    constructor(private readonly firebaseService: FirebaseService) {}
 
     async processNewLogin({
         send: { deviceFingerprint, userId, username },
@@ -25,9 +22,7 @@ export class NotificationProcessorService {
             };
         }
 
-        const devices = this.userRepository.findDeviceByUserId(userId);
-
-        // TODO: Implement new login notification logic here
+        // TODO: NEXT - Implement new login notification logic here
 
         return {
             message: 'New login notification processed',

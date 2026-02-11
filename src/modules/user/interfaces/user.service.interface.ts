@@ -163,7 +163,7 @@ export interface IUserService {
         { from, device, ...others }: UserCreateSocialRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserLoginResponseDto>>;
-    refreshToken(
+    refresh(
         user: IUser,
         refreshToken: string,
         device: UserDeviceDto,

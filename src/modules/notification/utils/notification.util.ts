@@ -38,6 +38,4 @@ export class NotificationUtil {
     mapList(notifications: Notification[]): NotificationResponseDto[] {
         return plainToInstance(NotificationResponseDto, notifications);
     }
-
-    // TODO:  see notification module
 }
