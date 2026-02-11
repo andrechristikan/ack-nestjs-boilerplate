@@ -116,7 +116,6 @@ model Project {
 
   tenant  Tenant?         @relation("TenantProjects", fields: [tenantId], references: [id])
   members ProjectMember[] @relation("ProjectMembers")
-  shares  ProjectShare[]  @relation("ProjectShares")
 
   @@index(fields: [tenantId, status, createdAt])
   @@index(fields: [createdAt])
@@ -146,28 +145,6 @@ model ProjectMember {
   @@index(fields: [roleId])
   @@index(fields: [createdAt])
   @@map("ProjectMembers")
-}
-
-model ProjectShare {
-  id        String                  @id @default(auto()) @map("_id") @db.ObjectId
-  projectId String                  @db.ObjectId
-  userId    String                  @db.ObjectId
-  access    EnumProjectShareAccess  @default(read)
-
-  // timestamps fields
-  createdAt DateTime @default(now())
-  createdBy String?  @db.ObjectId
-  updatedAt DateTime @updatedAt
-  updatedBy String?  @db.ObjectId
-
-  project Project? @relation("ProjectShares", fields: [projectId], references: [id])
-  user    User?    @relation("UserProjectShares", fields: [userId], references: [id])
-
-  @@unique(fields: [projectId, userId])
-  @@index(fields: [projectId, createdAt])
-  @@index(fields: [userId, createdAt])
-  @@index(fields: [createdAt])
-  @@map("ProjectShares")
 }
 
 model Country {
@@ -265,7 +242,6 @@ model User {
   forgotPasswords   ForgotPassword[]           @relation("UserForgotPassword")
   tenantMemberships TenantMember[]             @relation("UserTenantMembers")
   projectMemberships ProjectMember[]           @relation("UserProjectMembers")
-  projectShares      ProjectShare[]            @relation("UserProjectShares")
   twoFactor         TwoFactor?                 @relation("UserTwoFactor")
 
   @@unique(fields: [username])
@@ -616,10 +592,6 @@ enum EnumProjectStatus {
 enum EnumProjectMemberStatus {
   active
   inactive
-}
-
-enum EnumProjectShareAccess {
-  read
 }
 
 enum EnumTermPolicyType {
