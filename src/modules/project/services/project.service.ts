@@ -9,16 +9,16 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
+import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
-import { ProjectShareRequestDto } from '@modules/project/dtos/request/project.share.request.dto';
 import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project.access.response.dto';
+import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { ProjectShareResponseDto } from '@modules/project/dtos/response/project.share.response.dto';
 import { EnumProjectAccessType } from '@modules/project/enums/project.access-type.enum';
-import { ProjectRoleNameAdmin } from '@modules/project/constants/project.constant';
+import { ProjectRoleViewer } from '@modules/project/constants/project.constant';
 import {
     IProject,
-    IProjectShare,
+    IProjectMember,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
@@ -27,12 +27,12 @@ import {
     BadRequestException,
     ConflictException,
     ForbiddenException,
+    HttpStatus,
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
 import {
     EnumProjectMemberStatus,
-    EnumProjectShareAccess,
     EnumProjectStatus,
     EnumRoleScope,
     EnumTenantStatus,
@@ -62,16 +62,6 @@ export class ProjectService {
             tenantId,
             name: dto.name.trim(),
             status: EnumProjectStatus.active,
-            createdBy,
-            updatedBy: createdBy,
-        });
-
-        const role = await this.resolveProjectRoleByName(ProjectRoleNameAdmin);
-        await this.projectRepository.addMember({
-            projectId: project.id,
-            userId: createdBy,
-            roleId: role.id,
-            status: EnumProjectMemberStatus.active,
             createdBy,
             updatedBy: createdBy,
         });
@@ -158,24 +148,24 @@ export class ProjectService {
         return {};
     }
 
-    async shareProject(
+    async addProjectMember(
         tenantId: string,
         projectId: string,
-        dto: ProjectShareRequestDto,
-        sharedBy: string
+        dto: ProjectMemberCreateRequestDto,
+        createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
         await this.assertProjectExists(tenantId, projectId);
 
         if (!this.databaseUtil.checkIdIsValid(dto.userId)) {
             throw new BadRequestException({
-                statusCode: 400,
-                message: 'projectShare.error.userIdInvalid',
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'projectMember.error.userIdInvalid',
             });
         }
 
-        const [user, share] = await Promise.all([
+        const [user, member] = await Promise.all([
             this.userRepository.findOneById(dto.userId),
-            this.projectRepository.findShareByProjectAndUser(
+            this.projectRepository.findMemberByProjectAndUser(
                 projectId,
                 dto.userId
             ),
@@ -183,110 +173,114 @@ export class ProjectService {
 
         if (!user) {
             throw new NotFoundException({
-                statusCode: 404,
-                message: 'projectShare.error.userNotFound',
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'projectMember.error.userNotFound',
             });
         }
 
-        if (share) {
+        if (member) {
             throw new ConflictException({
-                statusCode: 409,
-                message: 'projectShare.error.exist',
+                statusCode: HttpStatus.CONFLICT,
+                message: 'projectMember.error.exist',
             });
         }
 
-        const projectShare = await this.projectRepository.addShare({
+        const role = await this.resolveProjectRoleByName(ProjectRoleViewer);
+
+        const projectMember = await this.projectRepository.addMember({
             projectId,
             userId: dto.userId,
-            access: EnumProjectShareAccess.read,
-            createdBy: sharedBy,
-            updatedBy: sharedBy,
+            roleId: role.id,
+            status: EnumProjectMemberStatus.active,
+            createdBy,
+            updatedBy: createdBy,
         });
 
         return {
             data: {
-                id: projectShare.id,
+                id: projectMember.id,
             },
         };
     }
 
-    async listProjectShares(
+    async listProjectMembers(
         tenantId: string,
         projectId: string,
         pagination: IPaginationQueryOffsetParams
-    ): Promise<IResponsePagingReturn<ProjectShareResponseDto>> {
+    ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
         await this.assertProjectExists(tenantId, projectId);
 
         const { data, ...others } =
-            await this.projectRepository.findSharesWithPaginationOffset(
+            await this.projectRepository.findMembersWithPaginationOffsetByProject(
                 projectId,
                 pagination
             );
 
         return {
             ...others,
-            data: data.map(share => this.mapShare(share)),
+            data: data.map(member => this.mapMember(member)),
         };
     }
 
-    async listSharedProjects(
+    async listMemberProjects(
         userId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ProjectAccessResponseDto>> {
         const { data, ...others } =
-            await this.projectRepository.findSharesWithPaginationOffsetByUser(
+            await this.projectRepository.findMembersWithPaginationOffsetByUser(
                 userId,
                 pagination
             );
 
         return {
             ...others,
-            data: data.map(share => ({
-                accessType: EnumProjectAccessType.shared,
-                project: this.mapProject(share.project as Project),
+            data: data.map(member => ({
+                accessType: EnumProjectAccessType.member,
+                project: this.mapProject(member.project as Project),
             })),
         };
     }
 
-    async getSharedProjectById(
+    async getMemberProjectById(
         projectId: string,
         userId: string
     ): Promise<IResponseReturn<ProjectResponseDto>> {
         if (!this.databaseUtil.checkIdIsValid(projectId)) {
             throw new BadRequestException({
-                statusCode: 400,
+                statusCode: HttpStatus.BAD_REQUEST,
                 message: 'project.error.projectIdInvalid',
             });
         }
 
-        const share = await this.projectRepository.findShareByProjectAndUser(
+        const member = await this.projectRepository.findMemberByProjectAndUser(
             projectId,
-            userId
+            userId,
+            EnumProjectMemberStatus.active
         );
 
-        if (!share?.project) {
+        if (!member?.project) {
             throw new ForbiddenException({
-                statusCode: 403,
-                message: 'projectShare.error.forbidden',
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'projectMember.error.forbidden',
             });
         }
 
-        if (share.project.status !== EnumProjectStatus.active) {
+        if (member.project.status !== EnumProjectStatus.active) {
             throw new NotFoundException({
-                statusCode: 404,
+                statusCode: HttpStatus.NOT_FOUND,
                 message: 'project.error.notFound',
             });
         }
 
         return {
-            data: this.mapProject(share.project as Project),
+            data: this.mapProject(member.project as Project),
         };
     }
 
     private async assertTenantExists(id: string) {
         if (!this.databaseUtil.checkIdIsValid(id)) {
             throw new BadRequestException({
-                statusCode: 400,
+                statusCode: HttpStatus.BAD_REQUEST,
                 message: 'tenant.error.xTenantIdInvalid',
             });
         }
@@ -294,7 +288,7 @@ export class ProjectService {
         const tenant = await this.tenantRepository.findOneById(id);
         if (!tenant) {
             throw new NotFoundException({
-                statusCode: 404,
+                statusCode: HttpStatus.NOT_FOUND,
                 message: 'tenant.error.notFound',
             });
         }
@@ -306,7 +300,7 @@ export class ProjectService {
         const tenant = await this.assertTenantExists(id);
         if (tenant.status !== EnumTenantStatus.active) {
             throw new ForbiddenException({
-                statusCode: 403,
+                statusCode: HttpStatus.FORBIDDEN,
                 message: 'tenant.error.inactive',
             });
         }
@@ -320,7 +314,7 @@ export class ProjectService {
     ): Promise<Project> {
         if (!this.databaseUtil.checkIdIsValid(projectId)) {
             throw new BadRequestException({
-                statusCode: 400,
+                statusCode: HttpStatus.BAD_REQUEST,
                 message: 'project.error.projectIdInvalid',
             });
         }
@@ -331,7 +325,7 @@ export class ProjectService {
         );
         if (!project) {
             throw new NotFoundException({
-                statusCode: 404,
+                statusCode: HttpStatus.NOT_FOUND,
                 message: 'project.error.notFound',
             });
         }
@@ -350,13 +344,14 @@ export class ProjectService {
         };
     }
 
-    private mapShare(share: IProjectShare): ProjectShareResponseDto {
+    private mapMember(member: IProjectMember): ProjectMemberResponseDto {
         return {
-            id: share.id,
-            projectId: share.projectId,
-            userId: share.userId,
-            access: share.access,
-            createdAt: share.createdAt,
+            id: member.id,
+            projectId: member.projectId,
+            userId: member.userId,
+            roleName: member.role?.name ?? ProjectRoleViewer,
+            status: member.status,
+            createdAt: member.createdAt,
         };
     }
 
@@ -373,14 +368,14 @@ export class ProjectService {
         const role = await this.roleRepository.existByName(roleName);
         if (role && role.scope !== EnumRoleScope.project) {
             throw new BadRequestException({
-                statusCode: 400,
+                statusCode: HttpStatus.BAD_REQUEST,
                 message: 'projectRole.error.scopeMismatch',
             });
         }
 
         if (!role) {
             throw new NotFoundException({
-                statusCode: 404,
+                statusCode: HttpStatus.NOT_FOUND,
                 message: 'projectRole.error.notFound',
             });
         }

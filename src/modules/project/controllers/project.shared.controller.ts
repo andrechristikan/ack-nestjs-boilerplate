@@ -25,11 +25,11 @@ export class ProjectSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('')
-    async listSharedProjects(
+    async list(
         @AuthJwtPayload('userId') userId: string,
         @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ProjectAccessResponseDto>> {
-        return this.projectService.listSharedProjects(userId, pagination);
+        return this.projectService.listMemberProjects(userId, pagination);
     }
 
     @Response('project.shared.get')
@@ -37,10 +37,10 @@ export class ProjectSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/:projectId')
-    async getSharedProject(
+    async get(
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<ProjectResponseDto>> {
-        return this.projectService.getSharedProjectById(projectId, userId);
+        return this.projectService.getMemberProjectById(projectId, userId);
     }
 }

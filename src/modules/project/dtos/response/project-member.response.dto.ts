@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumProjectShareAccess } from '@prisma/client';
+import { EnumProjectMemberStatus } from '@prisma/client';
 
-export class ProjectShareResponseDto {
+export class ProjectMemberResponseDto {
     @ApiProperty({
         required: true,
-        description: 'Share id',
+        description: 'Project member id',
     })
     id: string;
 
@@ -22,10 +22,16 @@ export class ProjectShareResponseDto {
 
     @ApiProperty({
         required: true,
-        description: 'Share access',
-        enum: EnumProjectShareAccess,
+        description: 'Role name',
     })
-    access: EnumProjectShareAccess;
+    roleName: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Project member status',
+        enum: EnumProjectMemberStatus,
+    })
+    status: EnumProjectMemberStatus;
 
     @ApiProperty({
         required: true,

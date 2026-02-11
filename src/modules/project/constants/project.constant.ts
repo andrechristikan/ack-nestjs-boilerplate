@@ -1,3 +1,3 @@
-export const ProjectRoleNameAdmin = 'project-admin';
-export const ProjectRoleNameEditor = 'project-editor';
-export const ProjectRoleNameViewer = 'project-viewer';
+export const ProjectRoleAdmin = 'project-admin';
+export const ProjectRoleEditor = 'project-editor';
+export const ProjectRoleViewer = 'project-viewer';

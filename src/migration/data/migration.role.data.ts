@@ -3,7 +3,17 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
+import {
+    ProjectRoleAdmin,
+    ProjectRoleEditor,
+    ProjectRoleViewer,
+} from '@modules/project/constants/project.constant';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import {
+    TenantRoleAdmin,
+    TenantRolePlatformSupport,
+    TenantRoleUser,
+} from '@modules/tenant/constants/tenant.constant';
 import { EnumRoleScope, EnumRoleType } from '@prisma/client';
 
 const roleData: RoleCreateRequestDto[] = [
@@ -50,7 +60,7 @@ const roleData: RoleCreateRequestDto[] = [
         scope: EnumRoleScope.platform,
     },
     {
-        name: 'tenant-admin',
+        name: TenantRoleAdmin,
         description:
             'Tenant administrator. Can manage tenant settings and members.',
         abilities: [
@@ -84,7 +94,7 @@ const roleData: RoleCreateRequestDto[] = [
         scope: EnumRoleScope.tenant,
     },
     {
-        name: 'tenant-user',
+        name: TenantRoleUser,
         description:
             'Tenant member. Can access and view tenant resources with limited permissions.',
         abilities: [
@@ -110,7 +120,7 @@ const roleData: RoleCreateRequestDto[] = [
         scope: EnumRoleScope.tenant,
     },
     {
-        name: 'tenant-platform-support',
+        name: TenantRolePlatformSupport,
         description:
             'Temporary support access for platform operators. Read-all tenant data + member management.',
         abilities: [
@@ -135,7 +145,7 @@ const roleData: RoleCreateRequestDto[] = [
         scope: EnumRoleScope.tenant,
     },
     {
-        name: 'project-admin',
+        name: ProjectRoleAdmin,
         description: 'Project administrator. Full project access.',
         abilities: [
             {
@@ -147,7 +157,7 @@ const roleData: RoleCreateRequestDto[] = [
         scope: EnumRoleScope.project,
     },
     {
-        name: 'project-editor',
+        name: ProjectRoleEditor,
         description: 'Project editor. Can read and update projects.',
         abilities: [
             {
@@ -162,7 +172,7 @@ const roleData: RoleCreateRequestDto[] = [
         scope: EnumRoleScope.project,
     },
     {
-        name: 'project-viewer',
+        name: ProjectRoleViewer,
         description: 'Project viewer. Read-only access to projects.',
         abilities: [
             {

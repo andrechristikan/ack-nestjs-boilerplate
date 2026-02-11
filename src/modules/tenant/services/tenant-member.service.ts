@@ -15,6 +15,7 @@ import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.j
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
+import { TenantRolePlatformSupport } from '@modules/tenant/constants/tenant.constant';
 import { ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -234,7 +235,9 @@ export class TenantMemberService {
             });
         }
 
-        const role = await this.resolveTenantRoleByName('tenant-platform-support');
+        const role = await this.resolveTenantRoleByName(
+            TenantRolePlatformSupport
+        );
 
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + dto.durationInHours);

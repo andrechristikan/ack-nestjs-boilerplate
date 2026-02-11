@@ -8,10 +8,10 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected, AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
 import { EnumPolicyAction, EnumPolicySubject } from '@modules/policy/enums/policy.enum';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import { ProjectShareRequestDto } from '@modules/project/dtos/request/project.share.request.dto';
+import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { ProjectShareResponseDto } from '@modules/project/dtos/response/project.share.response.dto';
 import { ProjectService } from '@modules/project/services/project.service';
 import { TenantCurrent, TenantPermissionProtected } from '@modules/tenant/decorators/tenant.decorator';
 import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
@@ -36,7 +36,7 @@ export class ProjectTenantSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('')
-    async listProjects(
+    async list(
         @TenantCurrent() tenant: ITenant,
         @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
@@ -52,7 +52,7 @@ export class ProjectTenantSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Post('')
-    async createProject(
+    async create(
         @TenantCurrent() tenant: ITenant,
         @Body() body: ProjectCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
@@ -69,7 +69,7 @@ export class ProjectTenantSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/:projectId')
-    async getProject(
+    async get(
         @TenantCurrent() tenant: ITenant,
         @Param('projectId', RequestRequiredPipe) projectId: string
     ): Promise<IResponseReturn<ProjectResponseDto>> {
@@ -85,7 +85,7 @@ export class ProjectTenantSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/:projectId')
-    async updateProject(
+    async update(
         @TenantCurrent() tenant: ITenant,
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @Body() body: ProjectUpdateRequestDto,
@@ -108,7 +108,7 @@ export class ProjectTenantSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/:projectId')
-    async deleteProject(
+    async delete(
         @TenantCurrent() tenant: ITenant,
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @AuthJwtPayload('userId') updatedBy: string
@@ -116,7 +116,7 @@ export class ProjectTenantSharedController {
         return this.projectService.deleteByTenant(tenant.id, projectId, updatedBy);
     }
 
-    @Response('project.share.create')
+    @Response('project.member.create')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.update],
@@ -124,22 +124,22 @@ export class ProjectTenantSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Post('/:projectId/shares')
-    async shareProject(
+    @Post('/:projectId/members')
+    async createMember(
         @TenantCurrent() tenant: ITenant,
         @Param('projectId', RequestRequiredPipe) projectId: string,
-        @Body() body: ProjectShareRequestDto,
-        @AuthJwtPayload('userId') sharedBy: string
+        @Body() body: ProjectMemberCreateRequestDto,
+        @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.projectService.shareProject(
+        return this.projectService.addProjectMember(
             tenant.id,
             projectId,
             body,
-            sharedBy
+            createdBy
         );
     }
 
-    @ResponsePaging('project.share.list')
+    @ResponsePaging('project.member.list')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.read],
@@ -147,13 +147,13 @@ export class ProjectTenantSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/:projectId/shares')
-    async listProjectShares(
+    @Get('/:projectId/members')
+    async listMembers(
         @TenantCurrent() tenant: ITenant,
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
-    ): Promise<IResponsePagingReturn<ProjectShareResponseDto>> {
-        return this.projectService.listProjectShares(
+    ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
+        return this.projectService.listProjectMembers(
             tenant.id,
             projectId,
             pagination

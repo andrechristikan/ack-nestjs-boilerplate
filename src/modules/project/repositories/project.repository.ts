@@ -7,18 +7,25 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     IProjectMember,
-    IProjectShare,
 } from '@modules/project/interfaces/project.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumProjectMemberStatus,
-    EnumProjectShareAccess,
     EnumProjectStatus,
-    Prisma,
     Project,
     ProjectMember,
-    ProjectShare,
 } from '@prisma/client';
+
+type ProjectCreateData = Pick<
+    Project,
+    'tenantId' | 'name' | 'status' | 'createdBy' | 'updatedBy'
+>;
+type ProjectUpdateData = Pick<Project, 'updatedBy'> &
+    Partial<Pick<Project, 'name' | 'status'>>;
+type ProjectMemberCreateData = Pick<
+    ProjectMember,
+    'projectId' | 'userId' | 'roleId' | 'status' | 'createdBy' | 'updatedBy'
+>;
 
 @Injectable()
 export class ProjectRepository {
@@ -68,36 +75,31 @@ export class ProjectRepository {
         });
     }
 
-    async create(data: Prisma.ProjectUncheckedCreateInput): Promise<Project> {
+    async create(data: ProjectCreateData): Promise<Project> {
         return this.databaseService.project.create({ data });
     }
 
-    async update(
-        projectId: string,
-        data: Prisma.ProjectUncheckedUpdateInput
-    ): Promise<Project> {
+    async update(projectId: string, data: ProjectUpdateData): Promise<Project> {
         return this.databaseService.project.update({
             where: { id: projectId },
             data,
         });
     }
 
-    async addMember(
-        data: Prisma.ProjectMemberUncheckedCreateInput
-    ): Promise<ProjectMember> {
+    async addMember(data: ProjectMemberCreateData): Promise<ProjectMember> {
         return this.databaseService.projectMember.create({ data });
     }
 
     async findMemberByProjectAndUser(
         projectId: string,
         userId: string,
-        status: EnumProjectMemberStatus = EnumProjectMemberStatus.active
+        status?: EnumProjectMemberStatus
     ): Promise<IProjectMember | null> {
         return this.databaseService.projectMember.findFirst({
             where: {
                 projectId,
                 userId,
-                status,
+                ...(status ? { status } : {}),
             },
             include: {
                 role: true,
@@ -106,65 +108,46 @@ export class ProjectRepository {
         });
     }
 
-    async addShare(
-        data: Prisma.ProjectShareUncheckedCreateInput
-    ): Promise<ProjectShare> {
-        return this.databaseService.projectShare.create({ data });
-    }
-
-    async findShareByProjectAndUser(
-        projectId: string,
-        userId: string,
-        access: EnumProjectShareAccess = EnumProjectShareAccess.read
-    ): Promise<IProjectShare | null> {
-        return this.databaseService.projectShare.findFirst({
-            where: {
-                projectId,
-                userId,
-                access,
-            },
-            include: {
-                project: true,
-            },
-        });
-    }
-
-    async findSharesWithPaginationOffset(
+    async findMembersWithPaginationOffsetByProject(
         projectId: string,
         { where, ...params }: IPaginationQueryOffsetParams
-    ): Promise<IResponsePagingReturn<IProjectShare>> {
-        return this.paginationService.offset<IProjectShare>(
-            this.databaseService.projectShare,
+    ): Promise<IResponsePagingReturn<IProjectMember>> {
+        return this.paginationService.offset<IProjectMember>(
+            this.databaseService.projectMember,
             {
                 ...params,
                 where: {
                     ...where,
                     projectId,
+                    status: EnumProjectMemberStatus.active,
                 },
                 include: {
                     project: true,
+                    role: true,
                 },
             }
         );
     }
 
-    async findSharesWithPaginationOffsetByUser(
+    async findMembersWithPaginationOffsetByUser(
         userId: string,
         { where, ...params }: IPaginationQueryOffsetParams
-    ): Promise<IResponsePagingReturn<IProjectShare>> {
-        return this.paginationService.offset<IProjectShare>(
-            this.databaseService.projectShare,
+    ): Promise<IResponsePagingReturn<IProjectMember>> {
+        return this.paginationService.offset<IProjectMember>(
+            this.databaseService.projectMember,
             {
                 ...params,
                 where: {
                     ...where,
                     userId,
+                    status: EnumProjectMemberStatus.active,
                     project: {
                         status: EnumProjectStatus.active,
                     },
                 },
                 include: {
                     project: true,
+                    role: true,
                 },
             }
         );
