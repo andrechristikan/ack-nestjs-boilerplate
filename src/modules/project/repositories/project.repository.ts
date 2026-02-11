@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -6,7 +7,10 @@ import {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
+    IProjectCreate,
     IProjectMember,
+    IProjectMemberCreate,
+    IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
 import { Injectable } from '@nestjs/common';
 import {
@@ -16,24 +20,12 @@ import {
     ProjectMember,
 } from '@prisma/client';
 
-type ProjectCreateData = Pick<
-    Project,
-    'tenantId' | 'name' | 'status' | 'createdBy' | 'updatedBy'
->;
-type ProjectUpdateData = Pick<Project, 'updatedBy'> &
-    Partial<Pick<Project, 'name' | 'status'>> & {
-        deletedAt?: Date | null;
-    };
-type ProjectMemberCreateData = Pick<
-    ProjectMember,
-    'projectId' | 'userId' | 'roleId' | 'status' | 'createdBy' | 'updatedBy'
->;
-
 @Injectable()
 export class ProjectRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly helperService: HelperService
     ) {}
 
     async findWithPaginationOffsetByTenant(
@@ -51,6 +43,15 @@ export class ProjectRepository {
                 },
             }
         );
+    }
+
+    async findOneById(projectId: string): Promise<Project | null> {
+        return this.databaseService.project.findFirst({
+            where: {
+                id: projectId,
+                deletedAt: null,
+            },
+        });
     }
 
     async findOneByIdAndTenant(
@@ -80,7 +81,7 @@ export class ProjectRepository {
         });
     }
 
-    async create(data: ProjectCreateData): Promise<Project> {
+    async create(data: IProjectCreate): Promise<Project> {
         return this.databaseService.project.create({
             data: {
                 ...data,
@@ -89,14 +90,31 @@ export class ProjectRepository {
         });
     }
 
-    async update(projectId: string, data: ProjectUpdateData): Promise<Project> {
+    async update(
+        projectId: string,
+        data: IProjectUpdate
+    ): Promise<Project> {
         return this.databaseService.project.update({
             where: { id: projectId },
             data,
         });
     }
 
-    async addMember(data: ProjectMemberCreateData): Promise<ProjectMember> {
+    async delete(projectId: string, deletedBy: string): Promise<Project> {
+        const deletedAt = this.helperService.dateCreate();
+
+        return this.databaseService.project.update({
+            where: { id: projectId, deletedAt: null },
+            data: {
+                status: EnumProjectStatus.inactive,
+                updatedBy: deletedBy,
+                deletedAt,
+                deletedBy,
+            },
+        });
+    }
+
+    async addMember(data: IProjectMemberCreate): Promise<ProjectMember> {
         return this.databaseService.projectMember.create({
             data: {
                 ...data,

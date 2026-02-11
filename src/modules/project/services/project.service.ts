@@ -1,6 +1,5 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -25,7 +24,6 @@ import {
     IProjectMember,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
-import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -42,7 +40,6 @@ import {
     EnumProjectMemberStatus,
     EnumProjectStatus,
     EnumRoleScope,
-    EnumTenantStatus,
     Project,
 } from '@prisma/client';
 
@@ -54,7 +51,6 @@ export class ProjectService {
         private readonly roleRepository: RoleRepository,
         private readonly userRepository: UserRepository,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperService: HelperService,
         private readonly policyAbilityFactory: PolicyAbilityFactory
     ) {}
 
@@ -98,9 +94,6 @@ export class ProjectService {
             });
         }
 
-        const abilities = (projectMember.role.abilities ?? []) as unknown as RoleAbilityDto[];
-        request.__abilities = abilities;
-
         return projectMember;
     }
 
@@ -116,8 +109,7 @@ export class ProjectService {
         }
 
         const abilities =
-            request.__abilities ??
-            ((request.__projectMember?.role?.abilities ?? []) as unknown as RoleAbilityRequestDto[]);
+            (request.__projectMember?.role?.abilities ?? []) as unknown as RoleAbilityRequestDto[];
         const userAbilities = this.policyAbilityFactory.createForUser(
             abilities as RoleAbilityRequestDto[]
         );
@@ -141,7 +133,13 @@ export class ProjectService {
         dto: ProjectCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        await this.assertTenantExistsAndActive(tenantId);
+        const tenant = await this.tenantRepository.findOneActiveById(tenantId);
+        if (!tenant) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'tenant.error.notFound',
+            });
+        }
 
         const project = await this.projectRepository.create({
             tenantId,
@@ -162,8 +160,6 @@ export class ProjectService {
         tenantId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
-        await this.assertTenantExists(tenantId);
-
         const { data, ...others } =
             await this.projectRepository.findWithPaginationOffsetByTenant(
                 tenantId,
@@ -176,24 +172,22 @@ export class ProjectService {
         };
     }
 
-    async getOneByTenant(
-        tenantId: string,
+    async getOne(
         projectId: string
     ): Promise<IResponseReturn<ProjectResponseDto>> {
-        const project = await this.assertProjectExists(tenantId, projectId);
-
+        const project = await this.projectRepository.findOneById(
+            projectId
+        );
         return {
             data: this.mapProject(project),
         };
     }
 
-    async updateByTenant(
-        tenantId: string,
+    async update(
         projectId: string,
         dto: ProjectUpdateRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.assertProjectExists(tenantId, projectId);
 
         const data: {
             name?: string;
@@ -218,38 +212,20 @@ export class ProjectService {
         return {};
     }
 
-    async deleteByTenant(
-        tenantId: string,
+    async delete(
         projectId: string,
-        updatedBy: string
+        deletedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.assertProjectExists(tenantId, projectId);
-
-        await this.projectRepository.update(projectId, {
-            status: EnumProjectStatus.inactive,
-            updatedBy,
-            deletedAt: this.helperService.dateCreate(),
-            deletedBy: updatedBy,
-        });
+        await this.projectRepository.delete(projectId, deletedBy);
 
         return {};
     }
 
     async addProjectMember(
-        tenantId: string,
         projectId: string,
         dto: ProjectMemberCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        await this.assertProjectExists(tenantId, projectId);
-
-        if (!this.databaseUtil.checkIdIsValid(dto.userId)) {
-            throw new BadRequestException({
-                statusCode: HttpStatus.BAD_REQUEST,
-                message: 'projectMember.error.userIdInvalid',
-            });
-        }
-
         const [user, member] = await Promise.all([
             this.userRepository.findOneById(dto.userId),
             this.projectRepository.findMemberByProjectAndUser(
@@ -272,7 +248,17 @@ export class ProjectService {
             });
         }
 
-        const role = await this.resolveProjectRoleByName(ProjectRoleViewer);
+        const role = await this.roleRepository.existByNameAndScope(
+            ProjectRoleViewer,
+            EnumRoleScope.project
+        );
+
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'projectRole.error.notFound',
+            });
+        }
 
         const projectMember = await this.projectRepository.addMember({
             projectId,
@@ -295,8 +281,6 @@ export class ProjectService {
         projectId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
-        await this.assertProjectExists(tenantId, projectId);
-
         const { data, ...others } =
             await this.projectRepository.findMembersWithPaginationOffsetByProject(
                 projectId,
@@ -364,62 +348,6 @@ export class ProjectService {
         };
     }
 
-    private async assertTenantExists(id: string) {
-        if (!this.databaseUtil.checkIdIsValid(id)) {
-            throw new BadRequestException({
-                statusCode: HttpStatus.BAD_REQUEST,
-                message: 'tenant.error.xTenantIdInvalid',
-            });
-        }
-
-        const tenant = await this.tenantRepository.findOneById(id);
-        if (!tenant) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'tenant.error.notFound',
-            });
-        }
-
-        return tenant;
-    }
-
-    private async assertTenantExistsAndActive(id: string) {
-        const tenant = await this.assertTenantExists(id);
-        if (tenant.status !== EnumTenantStatus.active) {
-            throw new ForbiddenException({
-                statusCode: HttpStatus.FORBIDDEN,
-                message: 'tenant.error.inactive',
-            });
-        }
-
-        return tenant;
-    }
-
-    private async assertProjectExists(
-        tenantId: string,
-        projectId: string
-    ): Promise<Project> {
-        if (!this.databaseUtil.checkIdIsValid(projectId)) {
-            throw new BadRequestException({
-                statusCode: HttpStatus.BAD_REQUEST,
-                message: 'project.error.projectIdInvalid',
-            });
-        }
-
-        const project = await this.projectRepository.findOneByIdAndTenant(
-            projectId,
-            tenantId
-        );
-        if (!project) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'project.error.notFound',
-            });
-        }
-
-        return project;
-    }
-
     private mapProject(project: IProject): ProjectResponseDto {
         return {
             id: project.id,
@@ -442,31 +370,4 @@ export class ProjectService {
         };
     }
 
-    private async resolveProjectRoleByName(roleName: string) {
-        const roleInProjectScope = await this.roleRepository.existByNameAndScope(
-            roleName,
-            EnumRoleScope.project
-        );
-
-        if (roleInProjectScope) {
-            return roleInProjectScope;
-        }
-
-        const role = await this.roleRepository.existByName(roleName);
-        if (role && role.scope !== EnumRoleScope.project) {
-            throw new BadRequestException({
-                statusCode: HttpStatus.BAD_REQUEST,
-                message: 'projectRole.error.scopeMismatch',
-            });
-        }
-
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'projectRole.error.notFound',
-            });
-        }
-
-        return role;
-    }
 }

@@ -71,10 +71,9 @@ export class ProjectTenantSharedController {
     @ApiKeyProtected()
     @Get('/:projectId')
     async get(
-        @TenantCurrent() tenant: ITenant,
         @Param('projectId', RequestRequiredPipe) projectId: string
     ): Promise<IResponseReturn<ProjectResponseDto>> {
-        return this.projectService.getOneByTenant(tenant.id, projectId);
+        return this.projectService.getOne(projectId);
     }
 
     @Response('project.update')
@@ -87,13 +86,11 @@ export class ProjectTenantSharedController {
     @ApiKeyProtected()
     @Patch('/:projectId')
     async update(
-        @TenantCurrent() tenant: ITenant,
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @Body() body: ProjectUpdateRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.projectService.updateByTenant(
-            tenant.id,
+        return this.projectService.update(
             projectId,
             body,
             updatedBy
@@ -110,11 +107,10 @@ export class ProjectTenantSharedController {
     @ApiKeyProtected()
     @Delete('/:projectId')
     async delete(
-        @TenantCurrent() tenant: ITenant,
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.projectService.deleteByTenant(tenant.id, projectId, updatedBy);
+        return this.projectService.delete(projectId, updatedBy);
     }
 
     @Response('project.member.create')
@@ -127,13 +123,11 @@ export class ProjectTenantSharedController {
     @ApiKeyProtected()
     @Post('/:projectId/members')
     async createMember(
-        @TenantCurrent() tenant: ITenant,
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @Body() body: ProjectMemberCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
         return this.projectService.addProjectMember(
-            tenant.id,
             projectId,
             body,
             createdBy
