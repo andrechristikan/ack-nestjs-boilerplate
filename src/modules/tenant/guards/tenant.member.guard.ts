@@ -7,7 +7,7 @@ import { TenantService } from '@modules/tenant/services/tenant.service';
  *
  * This guard ensures the user is authenticated and has an active membership
  * in the current tenant. It also verifies the tenant role scope and attaches
- * `request.__tenantMember` and `request.__abilities` for authorization checks.
+ * `request.__tenantMember` for authorization checks.
  */
 @Injectable()
 export class TenantMemberGuard implements CanActivate {

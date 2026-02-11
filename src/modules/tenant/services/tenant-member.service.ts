@@ -50,8 +50,6 @@ export class TenantMemberService {
         dto: TenantMemberCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        await this.assertTenantExistsAndActive(tenantId);
-
         if (!this.databaseUtil.checkIdIsValid(dto.userId)) {
             throw new BadRequestException({
                 statusCode: EnumTenantStatusCodeError.memberUserIdInvalid,
@@ -104,8 +102,6 @@ export class TenantMemberService {
         dto: TenantMemberUpdateRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.assertTenantExists(tenantId);
-
         if (!this.databaseUtil.checkIdIsValid(memberId)) {
             throw new BadRequestException({
                 statusCode: EnumTenantStatusCodeError.memberIdInvalid,
@@ -150,8 +146,6 @@ export class TenantMemberService {
         memberId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.assertTenantExists(tenantId);
-
         if (!this.databaseUtil.checkIdIsValid(memberId)) {
             throw new BadRequestException({
                 statusCode: EnumTenantStatusCodeError.memberIdInvalid,
@@ -189,8 +183,6 @@ export class TenantMemberService {
         tenantId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<TenantMemberResponseDto>> {
-        await this.assertTenantExists(tenantId);
-
         const { data, ...others } =
             await this.tenantRepository.findMembersWithPaginationOffset(
                 tenantId,

@@ -11,7 +11,6 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
-import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
@@ -28,6 +27,7 @@ import {
     ForbiddenException,
     Injectable,
     InternalServerErrorException,
+    Logger,
     NotFoundException,
 } from '@nestjs/common';
 import {
@@ -38,6 +38,8 @@ import {
 
 @Injectable()
 export class TenantService implements ITenantService {
+    private readonly logger = new Logger(TenantService.name);
+
     constructor(
         private readonly tenantRepository: TenantRepository,
         private readonly databaseUtil: DatabaseUtil,
@@ -128,8 +130,6 @@ export class TenantService implements ITenantService {
             });
         }
 
-        request.__abilities = (tenantMember.role.abilities ?? []) as unknown as RoleAbilityDto[];
-
         return tenantMember;
     }
 
@@ -174,8 +174,7 @@ export class TenantService implements ITenantService {
         }
 
         const abilities =
-            request.__abilities ??
-            ((request.__tenantMember?.role?.abilities ?? []) as unknown as RoleAbilityRequestDto[]);
+            (request.__tenantMember?.role?.abilities ?? []) as unknown as RoleAbilityRequestDto[];
 
         const abilityRule =
             this.policyAbilityFactory.createForUser(abilities);
@@ -207,7 +206,13 @@ export class TenantService implements ITenantService {
     }
 
     async getOne(id: string): Promise<IResponseReturn<TenantResponseDto>> {
-        const tenant = await this.assertTenantExists(id);
+        const tenant = await this.tenantRepository.findOneById(id);
+        if (!tenant) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.notFound,
+                message: 'tenant.error.notFound',
+            });
+        }
 
         return {
             data: this.mapTenant(tenant),
@@ -237,8 +242,6 @@ export class TenantService implements ITenantService {
         dto: TenantUpdateRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.assertTenantExists(id);
-
         const data: {
             name?: string;
             status?: EnumTenantStatus;
@@ -262,48 +265,16 @@ export class TenantService implements ITenantService {
         return {};
     }
 
-    async delete(id: string, updatedBy: string): Promise<IResponseReturn<void>> {
-        await this.assertTenantExists(id);
-
-        await this.tenantRepository.update(id, {
-            status: EnumTenantStatus.inactive,
-            updatedBy,
-            deletedAt: this.helperService.dateCreate(),
-            deletedBy: updatedBy,
-        });
+    async delete(id: string, deletedBy: string): Promise<IResponseReturn<void>> {
+        try {
+            await this.tenantRepository.delete(id, deletedBy);
+        } catch (error) {
+            this.logger.warn(
+                `Tenant soft-delete failed [id=${id}, deletedBy=${deletedBy}]: ${error?.message ?? error}`
+            );
+        }
 
         return {};
-    }
-
-    private async assertTenantExists(id: string): Promise<Tenant> {
-        if (!this.databaseUtil.checkIdIsValid(id)) {
-            throw new BadRequestException({
-                statusCode: EnumTenantStatusCodeError.xTenantIdInvalid,
-                message: 'tenant.error.xTenantIdInvalid',
-            });
-        }
-
-        const tenant = await this.tenantRepository.findOneById(id);
-        if (!tenant) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.notFound,
-                message: 'tenant.error.notFound',
-            });
-        }
-
-        return tenant;
-    }
-
-    private async assertTenantExistsAndActive(id: string): Promise<Tenant> {
-        const tenant = await this.assertTenantExists(id);
-        if (tenant.status !== EnumTenantStatus.active) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.inactive,
-                message: 'tenant.error.inactive',
-            });
-        }
-
-        return tenant;
     }
 
     private mapTenant(tenant: Tenant): TenantResponseDto {

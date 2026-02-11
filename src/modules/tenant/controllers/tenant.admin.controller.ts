@@ -130,9 +130,9 @@ export class TenantAdminController {
     async delete(
         @Param('tenantId', RequestRequiredPipe)
         tenantId: string,
-        @AuthJwtPayload('userId') updatedBy: string
+        @AuthJwtPayload('userId') deletedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.tenantService.delete(tenantId, updatedBy);
+        return this.tenantService.delete(tenantId, deletedBy);
     }
 
     @Response('tenant.assumeAccess')

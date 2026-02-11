@@ -6,12 +6,17 @@ import {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
+import {
+    ITenantCreate,
+    ITenantMember,
+    ITenantMemberCreate,
+    ITenantMemberUpdate,
+    ITenantUpdate,
+} from '@modules/tenant/interfaces/tenant.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumTenantMemberStatus,
     EnumTenantStatus,
-    Prisma,
     Tenant,
     TenantMember,
 } from '@prisma/client';
@@ -56,7 +61,7 @@ export class TenantRepository {
         });
     }
 
-    async create(data: Prisma.TenantUncheckedCreateInput): Promise<Tenant> {
+    async create(data: ITenantCreate): Promise<Tenant> {
         return this.databaseService.tenant.create({
             data: {
                 ...data,
@@ -67,11 +72,25 @@ export class TenantRepository {
 
     async update(
         id: string,
-        data: Prisma.TenantUncheckedUpdateInput
+        data: ITenantUpdate
     ): Promise<Tenant> {
         return this.databaseService.tenant.update({
             where: { id },
             data,
+        });
+    }
+
+    async delete(id: string, deletedBy: string): Promise<Tenant> {
+        const deletedAt = this.helperService.dateCreate();
+
+        return this.databaseService.tenant.update({
+            where: { id, deletedAt: null },
+            data: {
+                status: EnumTenantStatus.inactive,
+                updatedBy: deletedBy,
+                deletedAt,
+                deletedBy,
+            },
         });
     }
 
@@ -138,7 +157,7 @@ export class TenantRepository {
     }
 
     async addMember(
-        data: Prisma.TenantMemberUncheckedCreateInput
+        data: ITenantMemberCreate
     ): Promise<TenantMember> {
         return this.databaseService.tenantMember.create({
             data: {
@@ -150,7 +169,7 @@ export class TenantRepository {
 
     async updateMember(
         memberId: string,
-        data: Prisma.TenantMemberUncheckedUpdateInput
+        data: ITenantMemberUpdate
     ): Promise<TenantMember> {
         return this.databaseService.tenantMember.update({
             where: {
