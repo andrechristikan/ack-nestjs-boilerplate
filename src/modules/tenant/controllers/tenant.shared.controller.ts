@@ -60,31 +60,6 @@ export class TenantSharedController {
         private readonly tenantMemberService: TenantMemberService
     ) {}
 
-    @ResponsePaging('tenant.memberships')
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/memberships')
-    async memberships(
-        @AuthJwtPayload('userId') userId: string,
-        @PaginationCursorQuery()
-        pagination: IPaginationQueryCursorParams
-    ): Promise<IResponsePagingReturn<TenantMemberResponseDto>> {
-        return this.tenantMemberService.getMyTenantsCursor(userId, pagination);
-    }
-
-    @Response('tenant.current')
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    //@ApiKeyProtected()
-    @Get('/current')
-    async current(
-        @AuthJwtPayload('userId') userId: string,
-        @TenantCurrent() tenant: ITenant
-    ): Promise<IResponseReturn<TenantMemberResponseDto>> {
-        return this.tenantMemberService.getCurrentTenant(tenant.id, userId);
-    }
-
     @Response('tenant.get')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenant,
@@ -93,7 +68,7 @@ export class TenantSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/current/tenant')
+    @Get('/current')
     async getCurrentTenant(
         @TenantCurrent() tenant: ITenant
     ): Promise<IResponseReturn<TenantResponseDto>> {

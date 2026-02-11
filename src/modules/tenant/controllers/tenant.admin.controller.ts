@@ -157,7 +157,7 @@ export class TenantAdminController {
     @ActivityLog(EnumActivityLogAction.tenantJitAccessRevoked)
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.update],
+        action: [EnumPolicyAction.delete],
     })
     @UserProtected()
     @AuthJwtAccessProtected()

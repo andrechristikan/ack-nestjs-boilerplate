@@ -109,9 +109,9 @@ export class ProjectService {
         }
 
         const abilities =
-            (request.__projectMember?.role?.abilities ?? []) as unknown as RoleAbilityRequestDto[];
+            (request.__projectMember?.role?.abilities ?? []) as RoleAbilityRequestDto[];
         const userAbilities = this.policyAbilityFactory.createForUser(
-            abilities as RoleAbilityRequestDto[]
+            abilities
         );
         const isAllowed = this.policyAbilityFactory.handlerAbilities(
             userAbilities,

@@ -28,7 +28,7 @@ export function TenantProtected(): MethodDecorator {
  * Requires a valid tenant membership for the route.
  */
 export function TenantMemberProtected(): MethodDecorator {
-    return applyDecorators(UseGuards(TenantMemberGuard));
+    return applyDecorators(UseGuards(TenantGuard, TenantMemberGuard));
 }
 
 /**
@@ -38,7 +38,7 @@ export function TenantRoleProtected(
     ...requiredRoleNames: string[]
 ): MethodDecorator {
     return applyDecorators(
-        UseGuards(TenantMemberGuard, TenantRoleGuard),
+        UseGuards(TenantGuard, TenantMemberGuard, TenantRoleGuard),
         SetMetadata(TenantRoleRequiredMetaKey, requiredRoleNames)
     );
 }
@@ -50,7 +50,7 @@ export function TenantPermissionProtected(
     ...requiredAbilities: RoleAbilityRequestDto[]
 ): MethodDecorator {
     return applyDecorators(
-        UseGuards(TenantMemberGuard, TenantPermissionGuard),
+        UseGuards(TenantGuard, TenantMemberGuard, TenantPermissionGuard),
         SetMetadata(TenantPermissionRequiredMetaKey, requiredAbilities)
     );
 }

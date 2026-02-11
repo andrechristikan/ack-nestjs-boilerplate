@@ -4,7 +4,6 @@ import { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
 import { ProjectPermissionGuard } from '@modules/project/guards/project.permission.guard';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
-import { TenantMemberGuard } from '@modules/tenant/guards/tenant.member.guard';
 import {
     ExecutionContext,
     SetMetadata,
@@ -20,7 +19,7 @@ export function ProjectPermissionProtected(
     ...requiredAbilities: RoleAbilityRequestDto[]
 ): MethodDecorator {
     return applyDecorators(
-        UseGuards(TenantMemberGuard, ProjectMemberGuard, ProjectPermissionGuard),
+        UseGuards(ProjectMemberGuard, ProjectPermissionGuard),
         SetMetadata(ProjectPermissionRequiredMetaKey, requiredAbilities)
     );
 }

@@ -92,10 +92,13 @@ export class TenantService implements ITenantService {
             });
         }
 
-        const tenant = request.__tenant
-            ? request.__tenant
-            : await this.validateTenantGuard(request);
-        request.__tenant = tenant;
+        const tenant = request.__tenant;
+        if (!tenant) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.notFound,
+                message: 'tenant.error.notFound',
+            });
+        }
 
         const tenantMember =
             await this.tenantRepository.findOneActiveMemberByTenantAndUser(
@@ -174,7 +177,7 @@ export class TenantService implements ITenantService {
         }
 
         const abilities =
-            (request.__tenantMember?.role?.abilities ?? []) as unknown as RoleAbilityRequestDto[];
+            (request.__tenantMember?.role?.abilities ?? []) as RoleAbilityRequestDto[];
 
         const abilityRule =
             this.policyAbilityFactory.createForUser(abilities);

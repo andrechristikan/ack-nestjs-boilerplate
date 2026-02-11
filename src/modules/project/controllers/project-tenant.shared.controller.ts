@@ -14,7 +14,7 @@ import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectPermissionProtected } from '@modules/project/decorators/project.decorator';
 import { ProjectService } from '@modules/project/services/project.service';
-import { TenantCurrent, TenantPermissionProtected } from '@modules/tenant/decorators/tenant.decorator';
+import { TenantCurrent, TenantMemberProtected, TenantPermissionProtected } from '@modules/tenant/decorators/tenant.decorator';
 import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
@@ -62,6 +62,7 @@ export class ProjectTenantSharedController {
     }
 
     @Response('project.get')
+    @TenantMemberProtected()
     @ProjectPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.read],
@@ -77,6 +78,7 @@ export class ProjectTenantSharedController {
     }
 
     @Response('project.update')
+    @TenantMemberProtected()
     @ProjectPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.update],
@@ -98,6 +100,7 @@ export class ProjectTenantSharedController {
     }
 
     @Response('project.delete')
+    @TenantMemberProtected()
     @ProjectPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.delete],
@@ -114,6 +117,7 @@ export class ProjectTenantSharedController {
     }
 
     @Response('project.member.create')
+    @TenantMemberProtected()
     @ProjectPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.update],
@@ -135,6 +139,7 @@ export class ProjectTenantSharedController {
     }
 
     @ResponsePaging('project.member.list')
+    @TenantMemberProtected()
     @ProjectPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.read],
