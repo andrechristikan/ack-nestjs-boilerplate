@@ -21,7 +21,9 @@ type ProjectCreateData = Pick<
     'tenantId' | 'name' | 'status' | 'createdBy' | 'updatedBy'
 >;
 type ProjectUpdateData = Pick<Project, 'updatedBy'> &
-    Partial<Pick<Project, 'name' | 'status'>>;
+    Partial<Pick<Project, 'name' | 'status'>> & {
+        deletedAt?: Date | null;
+    };
 type ProjectMemberCreateData = Pick<
     ProjectMember,
     'projectId' | 'userId' | 'roleId' | 'status' | 'createdBy' | 'updatedBy'
@@ -45,6 +47,7 @@ export class ProjectRepository {
                 where: {
                     ...where,
                     tenantId,
+                    deletedAt: null,
                 },
             }
         );
@@ -58,6 +61,7 @@ export class ProjectRepository {
             where: {
                 id: projectId,
                 tenantId,
+                deletedAt: null,
             },
         });
     }
@@ -71,12 +75,18 @@ export class ProjectRepository {
                 id: projectId,
                 tenantId,
                 status: EnumProjectStatus.active,
+                deletedAt: null,
             },
         });
     }
 
     async create(data: ProjectCreateData): Promise<Project> {
-        return this.databaseService.project.create({ data });
+        return this.databaseService.project.create({
+            data: {
+                ...data,
+                deletedAt: null,
+            },
+        });
     }
 
     async update(projectId: string, data: ProjectUpdateData): Promise<Project> {
@@ -87,7 +97,12 @@ export class ProjectRepository {
     }
 
     async addMember(data: ProjectMemberCreateData): Promise<ProjectMember> {
-        return this.databaseService.projectMember.create({ data });
+        return this.databaseService.projectMember.create({
+            data: {
+                ...data,
+                deletedAt: null,
+            },
+        });
     }
 
     async findMemberByProjectAndUser(
@@ -99,6 +114,10 @@ export class ProjectRepository {
             where: {
                 projectId,
                 userId,
+                deletedAt: null,
+                project: {
+                    deletedAt: null,
+                },
                 ...(status ? { status } : {}),
             },
             include: {
@@ -120,6 +139,10 @@ export class ProjectRepository {
                     ...where,
                     projectId,
                     status: EnumProjectMemberStatus.active,
+                    deletedAt: null,
+                    project: {
+                        deletedAt: null,
+                    },
                 },
                 include: {
                     project: true,
@@ -141,8 +164,10 @@ export class ProjectRepository {
                     ...where,
                     userId,
                     status: EnumProjectMemberStatus.active,
+                    deletedAt: null,
                     project: {
                         status: EnumProjectStatus.active,
+                        deletedAt: null,
                     },
                 },
                 include: {
@@ -165,6 +190,10 @@ export class ProjectRepository {
                     ...where,
                     userId,
                     status: EnumProjectMemberStatus.active,
+                    deletedAt: null,
+                    project: {
+                        deletedAt: null,
+                    },
                 },
                 include: {
                     role: true,

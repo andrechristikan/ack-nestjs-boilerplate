@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -19,7 +20,8 @@ import {
 export class TenantRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly helperService: HelperService
     ) {}
 
     async findWithPaginationOffset({
@@ -32,14 +34,15 @@ export class TenantRepository {
                 ...params,
                 where: {
                     ...where,
+                    deletedAt: null,
                 },
             }
         );
     }
 
     async findOneById(id: string): Promise<Tenant | null> {
-        return this.databaseService.tenant.findUnique({
-            where: { id },
+        return this.databaseService.tenant.findFirst({
+            where: { id, deletedAt: null },
         });
     }
 
@@ -48,13 +51,17 @@ export class TenantRepository {
             where: {
                 id,
                 status: EnumTenantStatus.active,
+                deletedAt: null,
             },
         });
     }
 
     async create(data: Prisma.TenantUncheckedCreateInput): Promise<Tenant> {
         return this.databaseService.tenant.create({
-            data,
+            data: {
+                ...data,
+                deletedAt: null,
+            },
         });
     }
 
@@ -78,6 +85,10 @@ export class TenantRepository {
                 tenantId,
                 userId,
                 status,
+                deletedAt: null,
+                tenant: {
+                    deletedAt: null,
+                },
             },
             select: {
                 id: true,
@@ -94,6 +105,10 @@ export class TenantRepository {
                 tenantId,
                 userId,
                 status: EnumTenantMemberStatus.active,
+                deletedAt: null,
+                tenant: {
+                    deletedAt: null,
+                },
             },
             include: {
                 role: true,
@@ -110,6 +125,10 @@ export class TenantRepository {
             where: {
                 id: memberId,
                 tenantId,
+                deletedAt: null,
+                tenant: {
+                    deletedAt: null,
+                },
             },
             include: {
                 role: true,
@@ -122,7 +141,10 @@ export class TenantRepository {
         data: Prisma.TenantMemberUncheckedCreateInput
     ): Promise<TenantMember> {
         return this.databaseService.tenantMember.create({
-            data,
+            data: {
+                ...data,
+                deletedAt: null
+            },
         });
     }
 
@@ -149,6 +171,10 @@ export class TenantRepository {
                 where: {
                     ...where,
                     tenantId,
+                    deletedAt: null,
+                    tenant: {
+                        deletedAt: null,
+                    },
                 },
                 include: {
                     role: true,
@@ -168,6 +194,10 @@ export class TenantRepository {
                 userId,
                 isJit: true,
                 status: EnumTenantMemberStatus.active,
+                deletedAt: null,
+                tenant: {
+                    deletedAt: null,
+                },
             },
             include: {
                 role: true,
@@ -183,7 +213,7 @@ export class TenantRepository {
             },
             data: {
                 status: EnumTenantMemberStatus.inactive,
-                revokedAt: new Date(),
+                revokedAt: this.helperService.dateCreate(),
             },
         });
     }
@@ -200,8 +230,10 @@ export class TenantRepository {
                     ...where,
                     userId,
                     status: EnumTenantMemberStatus.active,
+                    deletedAt: null,
                     tenant: {
                         status: EnumTenantStatus.active,
+                        deletedAt: null,
                     },
                 },
                 include: {

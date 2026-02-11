@@ -64,6 +64,8 @@ model Tenant {
   createdBy String?
   updatedAt DateTime @updatedAt
   updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
 
   members  TenantMember[] @relation("TenantMembers")
   projects Project[]      @relation("TenantProjects")
@@ -89,6 +91,8 @@ model TenantMember {
   createdBy String?
   updatedAt DateTime @updatedAt
   updatedBy String?
+  deletedAt DateTime?
+  deletedBy String?
 
   tenant Tenant? @relation("TenantMembers", fields: [tenantId], references: [id])
   user   User?   @relation("UserTenantMembers", fields: [userId], references: [id])
@@ -113,6 +117,8 @@ model Project {
   createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
+  deletedAt DateTime?
+  deletedBy String?  @db.ObjectId
 
   tenant  Tenant?         @relation("TenantProjects", fields: [tenantId], references: [id])
   members ProjectMember[] @relation("ProjectMembers")
@@ -134,6 +140,8 @@ model ProjectMember {
   createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
+  deletedAt DateTime?
+  deletedBy String?  @db.ObjectId
 
   project Project? @relation("ProjectMembers", fields: [projectId], references: [id])
   user    User?    @relation("UserProjectMembers", fields: [userId], references: [id])

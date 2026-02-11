@@ -1,5 +1,6 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -40,6 +41,7 @@ export class TenantService implements ITenantService {
     constructor(
         private readonly tenantRepository: TenantRepository,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly helperService: HelperService,
         private readonly policyAbilityFactory: PolicyAbilityFactory
     ) {}
 
@@ -109,7 +111,7 @@ export class TenantService implements ITenantService {
         if (
             tenantMember.isJit &&
             tenantMember.expiresAt &&
-            tenantMember.expiresAt < new Date()
+            tenantMember.expiresAt < this.helperService.dateCreate()
         ) {
             await this.tenantRepository.revokeJitMember(tenantMember.id);
 
@@ -266,6 +268,8 @@ export class TenantService implements ITenantService {
         await this.tenantRepository.update(id, {
             status: EnumTenantStatus.inactive,
             updatedBy,
+            deletedAt: this.helperService.dateCreate(),
+            deletedBy: updatedBy,
         });
 
         return {};

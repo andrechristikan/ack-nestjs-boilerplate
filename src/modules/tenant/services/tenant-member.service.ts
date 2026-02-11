@@ -1,5 +1,6 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -40,7 +41,8 @@ export class TenantMemberService {
         private readonly tenantRepository: TenantRepository,
         private readonly roleRepository: RoleRepository,
         private readonly userRepository: UserRepository,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperService: HelperService
     ) {}
 
     async addMember(
@@ -176,6 +178,8 @@ export class TenantMemberService {
         await this.tenantRepository.updateMember(member.id, {
             status: EnumTenantMemberStatus.inactive,
             updatedBy,
+            deletedAt: this.helperService.dateCreate(),
+            deletedBy: updatedBy,
         });
 
         return {};
@@ -239,7 +243,7 @@ export class TenantMemberService {
             TenantRolePlatformSupport
         );
 
-        const expiresAt = new Date();
+        const expiresAt = this.helperService.dateCreate();
         expiresAt.setHours(expiresAt.getHours() + dto.durationInHours);
 
         const member = await this.tenantRepository.addMember({

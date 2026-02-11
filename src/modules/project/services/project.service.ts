@@ -1,5 +1,6 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -53,6 +54,7 @@ export class ProjectService {
         private readonly roleRepository: RoleRepository,
         private readonly userRepository: UserRepository,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly helperService: HelperService,
         private readonly policyAbilityFactory: PolicyAbilityFactory
     ) {}
 
@@ -226,6 +228,8 @@ export class ProjectService {
         await this.projectRepository.update(projectId, {
             status: EnumProjectStatus.inactive,
             updatedBy,
+            deletedAt: this.helperService.dateCreate(),
+            deletedBy: updatedBy,
         });
 
         return {};
