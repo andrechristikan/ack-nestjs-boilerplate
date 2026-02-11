@@ -470,21 +470,14 @@ Both endpoints:
 **Usage:**
 
 ```typescript
-import { TenantProtected, TenantCurrent } from '@modules/tenant/decorators/tenant.decorator';
-import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
-
-@Controller('tenants')
-export class TenantController {
-    // Requires x-tenant-id header
-    @TenantProtected()
-    @Get('info')
-    getTenantInfo(@TenantCurrent() tenant: ITenant) {
-        return {
-            id: tenant.id,
-            name: tenant.name,
-            status: tenant.status
-        };
-    }
+@TenantProtected()
+@Get('info')
+getTenantInfo(@TenantCurrent() tenant: ITenant) {
+    return {
+        id: tenant.id,
+        name: tenant.name,
+        status: tenant.status
+    };
 }
 ```
 
@@ -508,23 +501,16 @@ export class TenantController {
 **Usage:**
 
 ```typescript
-import { TenantMemberProtected, TenantMemberCurrent } from '@modules/tenant/decorators/tenant.decorator';
-import { ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
-
-@Controller('tenants/current')
-export class TenantMemberController {
-    // Requires authentication + x-tenant-id + active membership
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Get('dashboard')
-    getMemberDashboard(@TenantMemberCurrent() member: ITenantMember) {
-        return {
-            memberId: member.id,
-            userId: member.userId,
-            role: member.role.name,
-            tenant: member.tenant.name
-        };
-    }
+@TenantMemberProtected()
+@AuthJwtAccessProtected()
+@Get('dashboard')
+getMemberDashboard(@TenantMemberCurrent() member: ITenantMember) {
+    return {
+        memberId: member.id,
+        userId: member.userId,
+        role: member.role.name,
+        tenant: member.tenant.name
+    };
 }
 ```
 
@@ -548,30 +534,19 @@ export class TenantMemberController {
 
 **Usage:**
 
+Apply `@TenantRoleProtected('tenant-admin')` (or other tenant role name) on handlers that mutate tenant members after the `@TenantMemberProtected() / @AuthJwtAccessProtected()` stack. Example:
+
 ```typescript
-import { TenantRoleProtected } from '@modules/tenant/decorators/tenant.decorator';
-
-@Controller('tenants/current/members')
-export class TenantMemberManagementController {
-    // Only tenant-admin can add members
-    @TenantRoleProtected('tenant-admin')
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Post()
-    addMember(@Body() dto: TenantMemberCreateRequestDto) {
-        return this.tenantService.addMember(dto);
-    }
-
-    // Both tenant-admin and tenant-user can list members
-    @TenantRoleProtected('tenant-admin', 'tenant-user')
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Get()
-    listMembers() {
-        return this.tenantService.getMembers();
-    }
+@TenantRoleProtected('tenant-admin')
+@TenantMemberProtected()
+@AuthJwtAccessProtected()
+@Patch('members/:memberId')
+process(@TenantCurrent() tenant: ITenant) {
+    return tenantMemberService.updateMember(tenant.id, ...);
 }
 ```
+
+This mirrors the platform role-based decorators described in `docs/authorization.md` but evaluates tenant-specific role names and context.
 
 **Error Responses:**
 - All `TenantMemberProtected` errors
@@ -593,55 +568,22 @@ export class TenantMemberManagementController {
 
 **Usage:**
 
+Use `@TenantPermissionProtected({ subject: EnumPolicySubject.tenant, action: [EnumPolicyAction.read] })` after the usual `@TenantMemberProtected()` stack to gate tenant-level reads, updates, or tenant member operations. Example:
+
 ```typescript
-import { TenantPermissionProtected } from '@modules/tenant/decorators/tenant.decorator';
-import { EnumPolicyAction, EnumPolicySubject } from '@modules/policy/enums/policy.enum';
-
-@Controller('tenants/current')
-export class TenantController {
-    // Requires 'read' permission on 'tenant' subject
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.read]
-    })
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Get()
-    getTenant() {
-        return this.tenantService.getCurrent();
-    }
-
-    // Requires 'update' permission on 'tenant' subject
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.update]
-    })
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Patch()
-    updateTenant(@Body() dto: TenantUpdateRequestDto) {
-        return this.tenantService.updateCurrent(dto);
-    }
-
-    // Multiple permission checks
-    @TenantPermissionProtected(
-        {
-            subject: EnumPolicySubject.tenant,
-            action: [EnumPolicyAction.read]
-        },
-        {
-            subject: EnumPolicySubject.tenantMember,
-            action: [EnumPolicyAction.create]
-        }
-    )
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Post('members')
-    addMember(@Body() dto: TenantMemberCreateRequestDto) {
-        return this.tenantService.addMember(dto);
-    }
+@TenantPermissionProtected({
+    subject: EnumPolicySubject.tenantMember,
+    action: [EnumPolicyAction.create]
+})
+@TenantMemberProtected()
+@AuthJwtAccessProtected()
+@Post('members')
+invite(@TenantCurrent() tenant: ITenant) {
+    // Handler assumes the member has the tenantMember:create ability in this tenant
 }
 ```
+
+The permission metadata feeds the same CASL-based check as described in `docs/authorization.md` but scopes the abilities to the current tenant membership stored on `request.__tenantMember`.
 
 **Error Responses:**
 - All `TenantMemberProtected` errors
@@ -657,9 +599,6 @@ Extracts the current tenant from the request context.
 **Usage:**
 
 ```typescript
-import { TenantCurrent } from '@modules/tenant/decorators/tenant.decorator';
-import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
-
 @TenantProtected()
 @Get('info')
 getTenantInfo(@TenantCurrent() tenant: ITenant) {
@@ -680,9 +619,6 @@ Extracts the current tenant member (with user, tenant, and role) from the reques
 **Usage:**
 
 ```typescript
-import { TenantMemberCurrent } from '@modules/tenant/decorators/tenant.decorator';
-import { ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
-
 @TenantMemberProtected()
 @AuthJwtAccessProtected()
 @Get('profile')
@@ -1020,7 +956,7 @@ DELETE /api/v1/admin/tenants/:tenantId
 Authorization: Bearer <access_token>
 ```
 
-**JIT (Just-in-Time) tenant access** (requires platform admin role with `tenant:update` ability):
+**JIT (Just-in-Time) tenant access** (requires platform admin with `tenant:update` ability):
 
 ```typescript
 // Assume temporary access to a tenant (creates time-limited membership)
@@ -1030,6 +966,8 @@ Body: {
     durationInHours: 2,
     reason: "Customer support ticket #123"
 }
+
+`durationInHours` accepts a value between `1` and `12`.
 Response: {
     data: {
         memberId: "...",
@@ -1041,6 +979,8 @@ Response: {
     }
 }
 
+**Note:** Request fails with `409 Conflict` (`tenant.error.jitAccessAlreadyActive`) if the caller already has an active membership for the tenant.
+
 // Revoke JIT access to a tenant
 DELETE /api/v1/admin/tenants/:tenantId/revoke-access
 Authorization: Bearer <access_token>
@@ -1048,14 +988,13 @@ Authorization: Bearer <access_token>
 
 **JIT Access Flow:**
 
-1. Platform admin calls `POST /assume-access` with duration and reason
-2. A temporary `TenantMember` is created with `isJit: true` and an `expiresAt` timestamp
+1. Platform admin calls `POST /assume-access` with `durationInHours` (1-12) and a required `reason`
+2. A temporary `TenantMember` is created with `role: tenant-platform-support`, `isJit: true`, and an `expiresAt` timestamp
 3. The admin can now use `x-tenant-id` header to access tenant-scoped endpoints
 4. Access is automatically denied after expiry (membership auto-deactivated on next guard check)
 5. Admin can also manually revoke via `DELETE /revoke-access`
 
-**Security properties:**
-- Access is time-limited (max 72 hours)
+- Access is time-limited (1-12 hours controlled via `durationInHours`)
 - Reason is required for audit trail
 - Activity log records both assume and revoke actions
 - Expired JIT memberships are auto-deactivated by the tenant member guard
@@ -1171,222 +1110,30 @@ nest build migration --config nest-cli.json && node dist/migration.js role --typ
 **What gets seeded:**
 - `tenant-admin` role with full tenant management abilities
 - `tenant-user` role with read-only abilities
-- Legacy `TenantRole` → `Role` migration (if upgrading from older version)
 
-### 3. Legacy Migration
-
-If upgrading from a previous version with the separate `TenantRole` model, the migration automatically:
-
-1. Upserts new `tenant-admin` and `tenant-user` roles in the `Role` model
-2. Finds legacy `TenantRole` records with keys: `tenantOwner`, `tenantAdmin`, `tenantMember`
-3. Updates `TenantMember` records to point to the new `Role` IDs
-4. Removes the legacy `TenantRoles` collection
-
-This migration is idempotent and safe to run multiple times.
-
-## Usage Examples
-
-### Basic Tenant Protection
-
-Protect endpoints that operate within tenant context:
+### Usage Examples
+- **Tenant-scoped handler:** guard the `x-tenant-id` before service logic. Example:
 
 ```typescript
-import { Controller, Get, Param } from '@nestjs/common';
-import { TenantProtected, TenantCurrent } from '@modules/tenant/decorators/tenant.decorator';
-import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
-
-@Controller('analytics')
-export class AnalyticsController {
-    constructor(private readonly analyticsService: AnalyticsService) {}
-
-    // Requires x-tenant-id header
-    @TenantProtected()
-    @AuthJwtAccessProtected()
-    @Get('reports')
-    getTenantReports(@TenantCurrent() tenant: ITenant) {
-        // Only returns reports for the specified tenant
-        return this.analyticsService.getReports(tenant.id);
-    }
+@TenantProtected()
+@AuthJwtAccessProtected()
+@Get('reports')
+reports(@TenantCurrent() tenant: ITenant) {
+    return reportService.forTenant(tenant.id);
 }
 ```
 
-### Member Management
+- **Member and role gating:** stack `@TenantRoleProtected('tenant-admin')` or `@TenantPermissionProtected(...)` after `@TenantMemberProtected()` to mirror the platform authorization flow from `docs/authorization.md` while validating tenant membership and abilities stored on `request.__tenantMember`.
 
-Restrict member management to tenant admins:
-
-```typescript
-import { Controller, Post, Patch, Delete, Body, Param } from '@nestjs/common';
-import { TenantRoleProtected, TenantMemberProtected } from '@modules/tenant/decorators/tenant.decorator';
-import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
-
-@Controller('shared/tenants/current/members')
-export class TenantMemberController {
-    constructor(private readonly tenantService: TenantService) {}
-
-    // Only tenant-admin can add members
-    @TenantRoleProtected('tenant-admin')
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Post()
-    async addMember(
-        @TenantCurrent() tenant: ITenant,
-        @Body() dto: TenantMemberCreateRequestDto
-    ) {
-        return this.tenantService.addMember(tenant.id, dto);
-    }
-
-    // Only tenant-admin can update members
-    @TenantRoleProtected('tenant-admin')
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Patch(':memberId')
-    async updateMember(
-        @TenantCurrent() tenant: ITenant,
-        @Param('memberId') memberId: string,
-        @Body() dto: TenantMemberUpdateRequestDto
-    ) {
-        return this.tenantService.updateMember(tenant.id, memberId, dto);
-    }
-
-    // Both roles can view members
-    @TenantRoleProtected('tenant-admin', 'tenant-user')
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Get()
-    async listMembers(@TenantCurrent() tenant: ITenant) {
-        return this.tenantService.getMembers(tenant.id);
-    }
-}
-```
-
-### Role-Based Protection
-
-Use role names for simple authorization:
-
-```typescript
-@Controller('tenants/current/settings')
-export class TenantSettingsController {
-    // Only admins can access settings
-    @TenantRoleProtected('tenant-admin')
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Get()
-    getSettings(@TenantCurrent() tenant: ITenant) {
-        return this.settingsService.getSettings(tenant.id);
-    }
-
-    @TenantRoleProtected('tenant-admin')
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Patch()
-    updateSettings(
-        @TenantCurrent() tenant: ITenant,
-        @Body() dto: SettingsUpdateDto
-    ) {
-        return this.settingsService.updateSettings(tenant.id, dto);
-    }
-}
-```
-
-### Permission-Based Protection
-
-Use fine-grained abilities for complex authorization:
-
-```typescript
-import { EnumPolicyAction, EnumPolicySubject } from '@modules/policy/enums/policy.enum';
-import { TenantPermissionProtected } from '@modules/tenant/decorators/tenant.decorator';
-
-@Controller('tenants/current')
-export class TenantController {
-    // Requires read permission on tenant subject
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.read]
-    })
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Get()
-    getTenant(@TenantCurrent() tenant: ITenant) {
-        return { data: tenant };
-    }
-
-    // Requires update permission on tenant subject
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.update]
-    })
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Patch()
-    updateTenant(
-        @TenantCurrent() tenant: ITenant,
-        @Body() dto: TenantUpdateRequestDto
-    ) {
-        return this.tenantService.update(tenant.id, dto);
-    }
-
-    // Requires both tenant read AND member create permissions
-    @TenantPermissionProtected(
-        {
-            subject: EnumPolicySubject.tenant,
-            action: [EnumPolicyAction.read]
-        },
-        {
-            subject: EnumPolicySubject.tenantMember,
-            action: [EnumPolicyAction.create]
-        }
-    )
-    @TenantMemberProtected()
-    @AuthJwtAccessProtected()
-    @Post('members')
-    inviteMember(@Body() dto: InviteMemberDto) {
-        return this.tenantService.inviteMember(dto);
-    }
-}
-```
+- **JIT helper:** admin endpoints `POST /api/v1/admin/tenants/:tenantId/assume-access` and `DELETE …/revoke-access` issue temporary `tenant-platform-support` memberships; guard order remains the same (tenant → member → role/permission).
 
 ### Complete Flow Example
 
-Typical user flow for tenant-scoped operations:
-
-```typescript
-// 1. User logs in
-POST /api/v1/auth/login
-Response: { accessToken: "...", refreshToken: "..." }
-
-// 2. User lists their tenant memberships
-GET /api/v1/shared/tenants/memberships
-Authorization: Bearer <access_token>
-Response: {
-    data: [
-        { id: "...", tenant: { id: "tenant-123", name: "Acme Corp" } },
-        { id: "...", tenant: { id: "tenant-456", name: "Beta Inc" } }
-    ]
-}
-
-// 3. User selects "Acme Corp" and gets current membership details
-GET /api/v1/shared/tenants/current
-Authorization: Bearer <access_token>
-x-tenant-id: tenant-123
-Response: {
-    data: {
-        role: { name: "tenant-admin" },
-        tenant: { id: "tenant-123", name: "Acme Corp" }
-    }
-}
-
-// 4. User performs tenant-scoped operations
-GET /api/v1/projects
-Authorization: Bearer <access_token>
-x-tenant-id: tenant-123
-// Returns only projects for Acme Corp
-
-// 5. User switches to another tenant
-GET /api/v1/projects
-Authorization: Bearer <access_token>
-x-tenant-id: tenant-456
-// Returns only projects for Beta Inc
-```
+1. **Tenant login:** `POST /api/v1/public/tenant/login/credential` with `email`, `password`, `from` and `X-Api-Key`. Response includes the current tokens plus the list of tenant memberships.
+2. **List memberships:** `GET /api/v1/shared/tenants/memberships` using the access token.
+3. **Select tenant:** `GET /api/v1/shared/tenants/current` with `x-tenant-id` and access token to read the current membership.
+4. **Tenant-scoped data:** call tenant APIs (e.g., `GET /api/v1/projects`) with the access token and `x-tenant-id`; responses are scoped to that tenant.
+5. **Switch tenant:** repeat step 4 with a different `x-tenant-id` to change the tenant context.
 
 ## Important Notes
 
@@ -1468,74 +1215,6 @@ getProjects(@TenantCurrent() tenant: ITenant) {
     // Returns only projects for current tenant
     return this.projectService.findByTenant(tenant.id);
 }
-```
-
-### Extending the System
-
-**Adding Custom Tenant Roles:**
-
-```typescript
-// 1. Add role data to migration.role.data.ts
-{
-    name: 'tenant-moderator',
-    description: 'Tenant moderator with limited admin access',
-    abilities: [
-        {
-            subject: EnumPolicySubject.tenant,
-            action: [EnumPolicyAction.read]
-        },
-        {
-            subject: EnumPolicySubject.tenantMember,
-            action: [EnumPolicyAction.read, EnumPolicyAction.create]
-        }
-    ],
-    type: EnumRoleType.user,
-    scope: EnumRoleScope.tenant
-}
-
-// 2. Run migration
-pnpm migration:seed
-
-// 3. Use in decorators
-@TenantRoleProtected('tenant-admin', 'tenant-moderator')
-@Get('members')
-listMembers() { ... }
-```
-
-**Adding Custom Policy Subjects:**
-
-```typescript
-// 1. Add to policy.enum.ts
-export enum EnumPolicySubject {
-    tenant = 'tenant',
-    tenantMember = 'tenantMember',
-    tenantProject = 'tenantProject',  // New subject
-}
-
-// 2. Update role abilities in migration.role.data.ts
-{
-    name: 'tenant-admin',
-    abilities: [
-        ...,
-        {
-            subject: EnumPolicySubject.tenantProject,
-            action: [
-                EnumPolicyAction.read,
-                EnumPolicyAction.create,
-                EnumPolicyAction.update,
-                EnumPolicyAction.delete
-            ]
-        }
-    ]
-}
-
-// 3. Use in permission checks
-@TenantPermissionProtected({
-    subject: EnumPolicySubject.tenantProject,
-    action: [EnumPolicyAction.create]
-})
-@Post('projects')
-createProject() { ... }
 ```
 
 <!-- REFERENCES -->
