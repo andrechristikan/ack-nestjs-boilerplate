@@ -60,12 +60,12 @@ model Tenant {
   status EnumTenantStatus @default(active)
 
   // timestamps fields
-  createdAt DateTime @default(now())
-  createdBy String?
-  updatedAt DateTime @updatedAt
-  updatedBy String?
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
   deletedAt DateTime?
-  deletedBy String?
+  deletedBy String?   @db.ObjectId
 
   members  TenantMember[] @relation("TenantMembers")
   projects Project[]      @relation("TenantProjects")
@@ -87,12 +87,12 @@ model TenantMember {
   reason    String?
 
   // timestamps fields
-  createdAt DateTime @default(now())
-  createdBy String?
-  updatedAt DateTime @updatedAt
-  updatedBy String?
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
   deletedAt DateTime?
-  deletedBy String?
+  deletedBy String?   @db.ObjectId
 
   tenant Tenant? @relation("TenantMembers", fields: [tenantId], references: [id])
   user   User?   @relation("UserTenantMembers", fields: [userId], references: [id])
@@ -107,18 +107,18 @@ model TenantMember {
 }
 
 model Project {
-  id       String           @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId String           @db.ObjectId
+  id       String            @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String            @db.ObjectId
   name     String
   status   EnumProjectStatus @default(active)
 
   // timestamps fields
-  createdAt DateTime @default(now())
-  createdBy String?  @db.ObjectId
-  updatedAt DateTime @updatedAt
-  updatedBy String?  @db.ObjectId
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
   deletedAt DateTime?
-  deletedBy String?  @db.ObjectId
+  deletedBy String?   @db.ObjectId
 
   tenant  Tenant?         @relation("TenantProjects", fields: [tenantId], references: [id])
   members ProjectMember[] @relation("ProjectMembers")
@@ -136,12 +136,12 @@ model ProjectMember {
   status    EnumProjectMemberStatus @default(active)
 
   // timestamps fields
-  createdAt DateTime @default(now())
-  createdBy String?  @db.ObjectId
-  updatedAt DateTime @updatedAt
-  updatedBy String?  @db.ObjectId
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
   deletedAt DateTime?
-  deletedBy String?  @db.ObjectId
+  deletedBy String?   @db.ObjectId
 
   project Project? @relation("ProjectMembers", fields: [projectId], references: [id])
   user    User?    @relation("UserProjectMembers", fields: [userId], references: [id])
@@ -239,18 +239,18 @@ model User {
   deletedAt DateTime?
   deletedBy String?   @db.ObjectId
 
-  mobileNumbers     UserMobileNumber[]         @relation("UserMobileNumberUser")
-  verifications     Verification[]             @relation("UserVerifications")
-  passwordHistories PasswordHistory[]          @relation("UserPasswordHistories")
-  activityLogs      ActivityLog[]              @relation("UserActivityLogs")
-  role              Role?                      @relation("UserRole", fields: [roleId], references: [id])
-  country           Country?                   @relation("UserCountry", fields: [countryId], references: [id])
-  sessions          Session[]                  @relation("UserSessions")
-  acceptances       TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
-  forgotPasswords   ForgotPassword[]           @relation("UserForgotPassword")
-  tenantMemberships TenantMember[]             @relation("UserTenantMembers")
-  projectMemberships ProjectMember[]           @relation("UserProjectMembers")
-  twoFactor         TwoFactor?                 @relation("UserTwoFactor")
+  mobileNumbers      UserMobileNumber[]         @relation("UserMobileNumberUser")
+  verifications      Verification[]             @relation("UserVerifications")
+  passwordHistories  PasswordHistory[]          @relation("UserPasswordHistories")
+  activityLogs       ActivityLog[]              @relation("UserActivityLogs")
+  role               Role?                      @relation("UserRole", fields: [roleId], references: [id])
+  country            Country?                   @relation("UserCountry", fields: [countryId], references: [id])
+  sessions           Session[]                  @relation("UserSessions")
+  acceptances        TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
+  forgotPasswords    ForgotPassword[]           @relation("UserForgotPassword")
+  tenantMemberships  TenantMember[]             @relation("UserTenantMembers")
+  projectMemberships ProjectMember[]            @relation("UserProjectMembers")
+  twoFactor          TwoFactor?                 @relation("UserTwoFactor")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
