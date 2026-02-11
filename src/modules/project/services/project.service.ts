@@ -3,10 +3,13 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
@@ -21,6 +24,8 @@ import {
     IProjectMember,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
+import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
+import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
@@ -29,6 +34,7 @@ import {
     ForbiddenException,
     HttpStatus,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
 import {
@@ -46,10 +52,87 @@ export class ProjectService {
         private readonly tenantRepository: TenantRepository,
         private readonly roleRepository: RoleRepository,
         private readonly userRepository: UserRepository,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly policyAbilityFactory: PolicyAbilityFactory
     ) {}
 
-    // Project role validation is handled via tenant permissions for this module.
+    // Tenant-wide actions are authorized by tenant permissions,
+    // while project-resource actions are validated by project member permissions.
+
+    async validateProjectMemberGuard(request: IRequestApp): Promise<IProjectMember> {
+        const { user } = request;
+        if (!user) {
+            throw new ForbiddenException({
+                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        }
+
+        const projectId = request.params?.projectId;
+        if (!this.databaseUtil.checkIdIsValid(projectId)) {
+            throw new BadRequestException({
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'project.error.projectIdInvalid',
+            });
+        }
+
+        const projectMember = await this.projectRepository.findMemberByProjectAndUser(
+            projectId,
+            user.userId,
+            EnumProjectMemberStatus.active
+        );
+
+        if (!projectMember?.role) {
+            throw new ForbiddenException({
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'projectMember.error.forbidden',
+            });
+        }
+
+        if (projectMember.role.scope !== EnumRoleScope.project) {
+            throw new ForbiddenException({
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'projectMember.error.forbidden',
+            });
+        }
+
+        const abilities = (projectMember.role.abilities ?? []) as unknown as RoleAbilityDto[];
+        request.__abilities = abilities;
+
+        return projectMember;
+    }
+
+    async validateProjectPermissionGuard(
+        request: IRequestApp,
+        requiredAbilities: RoleAbilityRequestDto[]
+    ): Promise<boolean> {
+        if (requiredAbilities.length === 0) {
+            throw new InternalServerErrorException({
+                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                message: 'policy.error.predefinedNotFound',
+            });
+        }
+
+        const abilities =
+            request.__abilities ??
+            ((request.__projectMember?.role?.abilities ?? []) as unknown as RoleAbilityRequestDto[]);
+        const userAbilities = this.policyAbilityFactory.createForUser(
+            abilities as RoleAbilityRequestDto[]
+        );
+        const isAllowed = this.policyAbilityFactory.handlerAbilities(
+            userAbilities,
+            requiredAbilities
+        );
+
+        if (!isAllowed) {
+            throw new ForbiddenException({
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'projectMember.error.forbidden',
+            });
+        }
+
+        return true;
+    }
 
     async create(
         tenantId: string,

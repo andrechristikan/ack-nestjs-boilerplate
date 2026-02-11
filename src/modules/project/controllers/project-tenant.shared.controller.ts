@@ -12,6 +12,7 @@ import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/pro
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
+import { ProjectPermissionProtected } from '@modules/project/decorators/project.decorator';
 import { ProjectService } from '@modules/project/services/project.service';
 import { TenantCurrent, TenantPermissionProtected } from '@modules/tenant/decorators/tenant.decorator';
 import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
@@ -61,7 +62,7 @@ export class ProjectTenantSharedController {
     }
 
     @Response('project.get')
-    @TenantPermissionProtected({
+    @ProjectPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.read],
     })
@@ -77,7 +78,7 @@ export class ProjectTenantSharedController {
     }
 
     @Response('project.update')
-    @TenantPermissionProtected({
+    @ProjectPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.update],
     })
@@ -100,7 +101,7 @@ export class ProjectTenantSharedController {
     }
 
     @Response('project.delete')
-    @TenantPermissionProtected({
+    @ProjectPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.delete],
     })
@@ -117,7 +118,7 @@ export class ProjectTenantSharedController {
     }
 
     @Response('project.member.create')
-    @TenantPermissionProtected({
+    @ProjectPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.update],
     })
@@ -140,7 +141,7 @@ export class ProjectTenantSharedController {
     }
 
     @ResponsePaging('project.member.list')
-    @TenantPermissionProtected({
+    @ProjectPermissionProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.read],
     })

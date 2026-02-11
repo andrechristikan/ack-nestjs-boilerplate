@@ -9,6 +9,7 @@ import {
     ITenant,
     ITenantMember,
 } from '@modules/tenant/interfaces/tenant.interface';
+import { IProjectMember } from '@modules/project/interfaces/project.interface';
 
 export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
     correlationId: string;
@@ -22,6 +23,7 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
     __tenantId?: string;
     __tenant?: ITenant;
     __tenantMember?: ITenantMember;
+    __projectMember?: IProjectMember;
 
     __pagination?: IPaginationQuery;
 
