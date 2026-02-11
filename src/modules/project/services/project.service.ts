@@ -54,7 +54,7 @@ export class ProjectService {
         private readonly policyAbilityFactory: PolicyAbilityFactory
     ) {}
 
-    // Tenant-wide actions are authorized by tenant permissions,
+    // Tenant permissions authorize tenant-wide actions,
     // while project-resource actions are validated by project member permissions.
 
     async validateProjectMemberGuard(request: IRequestApp): Promise<IProjectMember> {
@@ -133,13 +133,6 @@ export class ProjectService {
         dto: ProjectCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        const tenant = await this.tenantRepository.findOneActiveById(tenantId);
-        if (!tenant) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'tenant.error.notFound',
-            });
-        }
 
         const project = await this.projectRepository.create({
             tenantId,
@@ -277,7 +270,6 @@ export class ProjectService {
     }
 
     async listProjectMembers(
-        tenantId: string,
         projectId: string,
         pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {

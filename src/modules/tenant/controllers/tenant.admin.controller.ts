@@ -26,6 +26,15 @@ import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.j
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
+import {
+    TenantAdminAssumeAccessDoc,
+    TenantAdminCreateDoc,
+    TenantAdminDeleteDoc,
+    TenantAdminGetDoc,
+    TenantAdminListDoc,
+    TenantAdminRevokeAccessDoc,
+    TenantAdminUpdateDoc,
+} from '@modules/tenant/docs/tenant.admin.doc';
 import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
 import { TenantService } from '@modules/tenant/services/tenant.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -52,6 +61,7 @@ export class TenantAdminController {
         private readonly tenantMemberService: TenantMemberService
     ) {}
 
+    @TenantAdminListDoc()
     @ResponsePaging('tenant.list')
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.tenant,
@@ -68,6 +78,7 @@ export class TenantAdminController {
         return this.tenantService.getListOffset(pagination);
     }
 
+    @TenantAdminCreateDoc()
     @Response('tenant.create')
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.tenant,
@@ -84,6 +95,7 @@ export class TenantAdminController {
         return this.tenantService.create(body, createdBy);
     }
 
+    @TenantAdminGetDoc()
     @Response('tenant.get')
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.tenant,
@@ -100,6 +112,7 @@ export class TenantAdminController {
         return this.tenantService.getOne(tenantId);
     }
 
+    @TenantAdminUpdateDoc()
     @Response('tenant.update')
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.tenant,
@@ -118,6 +131,7 @@ export class TenantAdminController {
         return this.tenantService.update(tenantId, body, updatedBy);
     }
 
+    @TenantAdminDeleteDoc()
     @Response('tenant.delete')
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.tenant,
@@ -135,6 +149,7 @@ export class TenantAdminController {
         return this.tenantService.delete(tenantId, deletedBy);
     }
 
+    @TenantAdminAssumeAccessDoc()
     @Response('tenant.assumeAccess')
     @ActivityLog(EnumActivityLogAction.tenantJitAccessAssumed)
     @PolicyAbilityProtected({
@@ -153,6 +168,7 @@ export class TenantAdminController {
         return this.tenantMemberService.assumeAccess(tenantId, userId, body);
     }
 
+    @TenantAdminRevokeAccessDoc()
     @Response('tenant.revokeAccess')
     @ActivityLog(EnumActivityLogAction.tenantJitAccessRevoked)
     @PolicyAbilityProtected({

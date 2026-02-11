@@ -131,7 +131,6 @@ The tenant context is established via the `x-tenant-id` header:
 request.__tenantId = "507f1f77bcf86cd799439011"
 request.__tenant = { id: "...", name: "Acme Corp", ... }
 request.__tenantMember = { id: "...", userId: "...", role: {...} }
-request.__abilities = [{ subject: "tenant", action: ["read", "update"] }]
 ```
 
 ## Tenant-Scoped Authentication
@@ -196,58 +195,15 @@ X-Api-Key: <your_api_key>
 
 ### Authentication Flow {#tenant-authentication-flow}
 
-The tenant login process follows these steps:
+Tenant login reuses the standard credential login flow from [Authentication Documentation][ref-doc-authentication], with one tenant-specific validation:
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Tenant Login Flow                             │
-└─────────────────────────────────────────────────────────────────┘
+1. Validate credentials using the same rules as `POST /api/v1/public/user/login/credential`.
+2. Check active tenant memberships for the authenticated user.
+3. Reject login with `403` + `statusCode: 5201` when no active memberships exist.
+4. Return standard auth payload plus `tenants[]` for tenant selection.
 
-1. User submits credentials (email, password)
-   ↓
-2. Validate user credentials
-   ├─ Check user exists
-   ├─ Validate user is active
-   ├─ Verify password correctness
-   ├─ Check password not expired
-   └─ Verify email is verified
-   ↓
-3. CRITICAL: Validate tenant membership
-   ├─ Query all active tenant memberships for user
-   ├─ If NO memberships → Reject with 403 Forbidden (statusCode: 5201)
-   └─ If has memberships → Continue
-   ↓
-4. Generate authentication tokens
-   ├─ Create JWT access token
-   ├─ Create JWT refresh token
-   └─ Store session in Redis
-   ↓
-5. Return tokens + tenant list
-   ├─ Standard JWT tokens
-   └─ Array of available tenants with roles
-   ↓
-6. Client receives response
-   ├─ Store access/refresh tokens
-   ├─ If single tenant → Auto-select
-   ├─ If multiple tenants → Show selector
-   └─ Store selected tenantId for subsequent requests
-```
-
-**Validation Steps:**
-
-1. **User Validation** (Standard)
-   - User must exist in database
-   - User status must be `active`
-   - Password must be set and match
-   - Password must not be expired
-   - Email must be verified
-   - Password attempt limits enforced
-
-2. **Tenant Membership Validation** (Additional)
-   - User must have at least one active tenant membership
-   - Only active memberships are considered
-   - Only memberships to active tenants are included
-   - Returns up to 100 most recent memberships
+Implementation reference:
+- `src/modules/tenant/services/tenant-auth.service.ts`
 
 ### Response Structure {#tenant-response-structure}
 
@@ -286,38 +242,17 @@ The tenant login process follows these steps:
 | Field | Type | Description |
 |-------|------|-------------|
 | `isTwoFactorEnable` | boolean | Whether 2FA verification is required |
-| `tokens` | object | JWT tokens (only if 2FA is disabled) |
-| `tokens.accessToken` | string | Short-lived JWT access token |
-| `tokens.refreshToken` | string | Long-lived JWT refresh token |
-| `twoFactor` | object | 2FA challenge data (only if 2FA is enabled) |
+| `tokens` | object | Standard auth tokens (same structure as user login) |
+| `twoFactor` | object | Standard 2FA challenge data |
 | `tenants` | array | List of user's active tenant memberships |
 | `tenants[].tenantId` | string | Unique tenant identifier |
 | `tenants[].tenantName` | string | Human-readable tenant name |
 | `tenants[].role` | string | User's role in this tenant |
 | `tenants[].status` | enum | Membership status: `active` or `inactive` |
 
-**Token Structure:**
+JWT payload, refresh flow, and 2FA behavior are the same as the standard auth flow. See [Authentication Documentation][ref-doc-authentication].
 
-The JWT tokens use the **standard** token structure (no tenant information in payload):
-
-```typescript
-{
-  userId: string;      // User ID
-  roleId: string;      // User's platform role ID
-  sessionId: string;   // Session ID in Redis
-  jti: string;         // Token unique identifier
-  loginAt: string;     // Login timestamp
-  loginFrom: string;   // Login source (website/mobile)
-  loginWith: string;   // Login method (credential/social)
-  iat: number;         // Issued at
-  exp: number;         // Expiration time
-  aud: string;         // Audience
-  iss: string;         // Issuer
-  sub: string;         // Subject (userId)
-}
-```
-
-**Important:** Tenant context is NOT stored in the JWT. Instead, clients must include the `x-tenant-id` header in subsequent requests.
+**Important:** Tenant context is not stored in JWT payloads. Clients must send `x-tenant-id` on tenant-scoped requests.
 
 **Client Implementation Notes:**
 1. After successful login, store tokens and tenant list
@@ -328,14 +263,14 @@ The JWT tokens use the **standard** token structure (no tenant information in pa
 
 ### Error Handling {#tenant-error-handling}
 
-**Error Responses:**
+Tenant login adds one tenant-specific error:
 
-#### 1. No Tenant Membership (403 Forbidden)
+#### No Tenant Membership (403 Forbidden)
 
 ```json
 {
   "statusCode": 5201,
-  "message": "Your account does not have access to any tenants. Please contact your administrator.",
+  "message": "tenant.error.loginNoMembership",
   "error": "Forbidden"
 }
 ```
@@ -343,83 +278,7 @@ The JWT tokens use the **standard** token structure (no tenant information in pa
 **Cause:** User has no active tenant memberships
 **Action:** Display message and direct user to contact administrator
 
-#### 2. User Not Found (404 Not Found)
-
-```json
-{
-  "statusCode": 5150,
-  "message": "user.error.notFound",
-  "error": "Not Found"
-}
-```
-
-**Cause:** Email address not registered
-**Action:** Display "Invalid email or password" message
-
-#### 3. Invalid Password (400 Bad Request)
-
-```json
-{
-  "statusCode": 5160,
-  "message": "auth.error.passwordNotMatch",
-  "error": "Bad Request"
-}
-```
-
-**Cause:** Incorrect password provided
-**Action:** Display "Invalid email or password" message
-
-#### 4. User Inactive (403 Forbidden)
-
-```json
-{
-  "statusCode": 5157,
-  "message": "user.error.inactive",
-  "error": "Forbidden"
-}
-```
-
-**Cause:** User account is deactivated
-**Action:** Display "Your account has been deactivated. Please contact support."
-
-#### 5. Email Not Verified (403 Forbidden)
-
-```json
-{
-  "statusCode": 5167,
-  "message": "user.error.emailNotVerified",
-  "error": "Forbidden"
-}
-```
-
-**Cause:** User hasn't verified their email
-**Action:** Display "Please verify your email address" and provide verification option
-
-#### 6. Password Expired (403 Forbidden)
-
-```json
-{
-  "statusCode": 5158,
-  "message": "auth.error.passwordExpired",
-  "error": "Forbidden"
-}
-```
-
-**Cause:** User's password has expired
-**Action:** Redirect to password reset flow
-
-#### 7. Too Many Failed Attempts (403 Forbidden)
-
-```json
-{
-  "statusCode": 5159,
-  "message": "auth.error.passwordAttemptMax",
-  "error": "Forbidden"
-}
-```
-
-**Cause:** Maximum password attempts reached
-**Action:** Display "Too many failed attempts. Please try again later."
+All other credential/2FA/auth errors are shared with standard login and documented in [Authentication Documentation][ref-doc-authentication].
 
 **Comparison with Standard User Login:**
 
@@ -482,7 +341,7 @@ getTenantInfo(@TenantCurrent() tenant: ITenant) {
 ```
 
 **Error Responses:**
-- `400 Bad Request` - Missing or invalid `x-tenant-id`
+- `400 Bad Request` - Missing `x-tenant-id`
 - `404 Not Found` - Tenant does not exist
 - `403 Forbidden` - Tenant is inactive
 
@@ -495,8 +354,8 @@ getTenantInfo(@TenantCurrent() tenant: ITenant) {
 - Verifies user authentication
 - Checks if user is a member of the tenant
 - Ensures membership status is `active`
-- Loads member's role and abilities
-- Sets `request.__tenantMember` and `request.__abilities`
+- Loads member's role
+- Sets `request.__tenantMember`
 
 **Usage:**
 
@@ -534,11 +393,11 @@ getMemberDashboard(@TenantMemberCurrent() member: ITenantMember) {
 
 **Usage:**
 
-Apply `@TenantRoleProtected('tenant-admin')` (or other tenant role name) on handlers that mutate tenant members after the `@TenantMemberProtected() / @AuthJwtAccessProtected()` stack. Example:
+Apply `@TenantRoleProtected('tenant-admin')` (or other tenant role name) on handlers that require specific tenant roles. Example:
 
 ```typescript
 @TenantRoleProtected('tenant-admin')
-@TenantMemberProtected()
+@UserProtected()
 @AuthJwtAccessProtected()
 @Patch('members/:memberId')
 process(@TenantCurrent() tenant: ITenant) {
@@ -562,20 +421,20 @@ This mirrors the platform role-based decorators described in `docs/authorization
 
 **What it does:**
 - Applies `TenantMemberProtected` first
-- Uses member's role abilities from `request.__abilities`
+- Uses member role abilities from `request.__tenantMember.role.abilities`
 - Checks each required ability against member's abilities
 - Uses CASL `PolicyAbilityFactory` for permission checks
 
 **Usage:**
 
-Use `@TenantPermissionProtected({ subject: EnumPolicySubject.tenant, action: [EnumPolicyAction.read] })` after the usual `@TenantMemberProtected()` stack to gate tenant-level reads, updates, or tenant member operations. Example:
+Use `@TenantPermissionProtected({ subject: EnumPolicySubject.tenant, action: [EnumPolicyAction.read] })` to gate tenant-level reads, updates, or tenant member operations. Example:
 
 ```typescript
 @TenantPermissionProtected({
     subject: EnumPolicySubject.tenantMember,
     action: [EnumPolicyAction.create]
 })
-@TenantMemberProtected()
+@UserProtected()
 @AuthJwtAccessProtected()
 @Post('members')
 invite(@TenantCurrent() tenant: ITenant) {
@@ -583,7 +442,7 @@ invite(@TenantCurrent() tenant: ITenant) {
 }
 ```
 
-The permission metadata feeds the same CASL-based check as described in `docs/authorization.md` but scopes the abilities to the current tenant membership stored on `request.__tenantMember`.
+The permission metadata feeds the same CASL-based check as described in `docs/authorization.md`, scoped to the current `request.__tenantMember`.
 
 **Error Responses:**
 - All `TenantMemberProtected` errors
@@ -650,7 +509,7 @@ Validates tenant context from `x-tenant-id` header.
 
 **Process:**
 1. Extract `request.__tenantId` (set by middleware)
-2. Validate tenant ID format
+2. Require `x-tenant-id`
 3. Query database for tenant
 4. Check if tenant exists and is active
 5. Set `request.__tenant` with tenant data
@@ -683,8 +542,8 @@ Validates that the authenticated user is an active member of the tenant.
 1. Validate user authentication
 2. Validate tenant context (uses `TenantGuard` logic)
 3. Query for active tenant membership
-4. Load member's role and abilities
-5. Set `request.__tenantMember` and `request.__abilities`
+4. Load member's role
+5. Set `request.__tenantMember`
 
 **Code:**
 
@@ -750,7 +609,7 @@ Checks if the member has required abilities using CASL.
 
 **Process:**
 1. Extract required abilities from decorator metadata
-2. Get member's abilities from `request.__abilities`
+2. Get member abilities from `request.__tenantMember.role.abilities`
 3. Use `PolicyAbilityFactory` to check permissions
 4. Throw error if not authorized
 
@@ -788,9 +647,9 @@ The tenant system includes predefined roles stored in the main `Role` model:
 
 | Role Name | Description | Use Case |
 |-----------|-------------|----------|
-| `tenant-admin` | Full tenant management | Manage tenant settings, add/remove members, assign roles |
-| `tenant-user` | Basic tenant access | View tenant data, read-only member list |
-| `tenant-platform-support` | Temporary JIT support access | Time-limited read + member management for platform operators |
+| `tenant-admin` | Full tenant management | Manage tenant settings, members, and tenant projects |
+| `tenant-user` | Standard tenant member | Read tenant/member data and manage tenant projects |
+| `tenant-platform-support` | Temporary JIT support access | Time-limited read access + limited member/project access for platform operators |
 
 ### Role Scopes
 
@@ -821,6 +680,15 @@ Tenant membership operations only accept roles in `tenant` scope.
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete
             ]
+        },
+        {
+            subject: EnumPolicySubject.project,
+            action: [
+                EnumPolicyAction.create,
+                EnumPolicyAction.read,
+                EnumPolicyAction.update,
+                EnumPolicyAction.delete
+            ]
         }
     ]
 }
@@ -839,6 +707,10 @@ Tenant membership operations only accept roles in `tenant` scope.
         {
             subject: EnumPolicySubject.tenantMember,
             action: [EnumPolicyAction.read, EnumPolicyAction.create, EnumPolicyAction.update]
+        },
+        {
+            subject: EnumPolicySubject.project,
+            action: [EnumPolicyAction.read]
         }
     ]
 }
@@ -857,6 +729,15 @@ Tenant membership operations only accept roles in `tenant` scope.
         {
             subject: EnumPolicySubject.tenantMember,
             action: [EnumPolicyAction.read]
+        },
+        {
+            subject: EnumPolicySubject.project,
+            action: [
+                EnumPolicyAction.create,
+                EnumPolicyAction.read,
+                EnumPolicyAction.update,
+                EnumPolicyAction.delete
+            ]
         }
     ]
 }
@@ -865,6 +746,7 @@ Tenant membership operations only accept roles in `tenant` scope.
 **Available Policy Subjects:**
 - `EnumPolicySubject.tenant` - Tenant resource operations
 - `EnumPolicySubject.tenantMember` - Member management operations
+- `EnumPolicySubject.project` - Project operations in tenant scope
 
 **Available Policy Actions:**
 - `EnumPolicyAction.read` - View/retrieve data
@@ -912,7 +794,7 @@ Response: {
 // Error: No tenant membership (403 Forbidden)
 Response: {
     statusCode: 5201,
-    message: "Your account does not have access to any tenants. Please contact your administrator."
+    message: "tenant.error.loginNoMembership"
 }
 ```
 
@@ -966,8 +848,6 @@ Body: {
     durationInHours: 2,
     reason: "Customer support ticket #123"
 }
-
-`durationInHours` accepts a value between `1` and `12`.
 Response: {
     data: {
         memberId: "...",
@@ -979,12 +859,13 @@ Response: {
     }
 }
 
-**Note:** Request fails with `409 Conflict` (`tenant.error.jitAccessAlreadyActive`) if the caller already has an active membership for the tenant.
-
 // Revoke JIT access to a tenant
 DELETE /api/v1/admin/tenants/:tenantId/revoke-access
 Authorization: Bearer <access_token>
 ```
+
+`durationInHours` accepts a value between `1` and `12`.
+Request fails with `409 Conflict` (`tenant.error.jitAccessAlreadyActive`) if the caller already has an active membership for the tenant.
 
 **JIT Access Flow:**
 
@@ -1007,44 +888,19 @@ Base path: `/api/v1/shared/tenants`
 **User's tenant access:**
 
 ```typescript
-// List my tenant memberships
-GET /api/v1/shared/tenants/memberships
-Authorization: Bearer <access_token>
-Response: {
-    data: [
-        {
-            id: "...",
-            tenant: { id: "...", name: "Acme Corp" },
-            role: { id: "...", name: "tenant-admin" },
-            status: "active"
-        },
-        {
-            id: "...",
-            tenant: { id: "...", name: "Beta Inc" },
-            role: { id: "...", name: "tenant-user" },
-            status: "active"
-        }
-    ]
-}
-
-// Get current tenant membership details
+// Get current tenant details
 GET /api/v1/shared/tenants/current
 Authorization: Bearer <access_token>
 x-tenant-id: <tenant_id>
 Response: {
     data: {
         id: "...",
-        tenantId: "...",
-        userId: "...",
-        role: { id: "...", name: "tenant-admin" },
-        tenant: { id: "...", name: "Acme Corp", status: "active" }
+        name: "Acme Corp",
+        status: "active",
+        createdAt: "...",
+        updatedAt: "..."
     }
 }
-
-// Get current tenant details
-GET /api/v1/shared/tenants/current/tenant
-Authorization: Bearer <access_token>
-x-tenant-id: <tenant_id>
 
 // Update current tenant details
 PATCH /api/v1/shared/tenants/current/tenant
@@ -1056,6 +912,7 @@ Body: { name: "Acme Corporation", status: "active" }
 GET /api/v1/shared/tenants/current/members
 Authorization: Bearer <access_token>
 x-tenant-id: <tenant_id>
+Query: page/perPage/orderBy/... (see docs/pagination.md)
 
 // Add member to current tenant
 POST /api/v1/shared/tenants/current/members
@@ -1109,7 +966,10 @@ nest build migration --config nest-cli.json && node dist/migration.js role --typ
 
 **What gets seeded:**
 - `tenant-admin` role with full tenant management abilities
-- `tenant-user` role with read-only abilities
+- `tenant-user` role with standard tenant member abilities
+- `tenant-platform-support` role for JIT support access
+
+See `src/migration/data/migration.role.data.ts` for the exact seeded abilities.
 
 ### Usage Examples
 - **Tenant-scoped handler:** guard the `x-tenant-id` before service logic. Example:
@@ -1123,30 +983,47 @@ reports(@TenantCurrent() tenant: ITenant) {
 }
 ```
 
-- **Member and role gating:** stack `@TenantRoleProtected('tenant-admin')` or `@TenantPermissionProtected(...)` after `@TenantMemberProtected()` to mirror the platform authorization flow from `docs/authorization.md` while validating tenant membership and abilities stored on `request.__tenantMember`.
+- **Member and role gating:** use `@TenantRoleProtected('tenant-admin')` or `@TenantPermissionProtected(...)` directly with `@AuthJwtAccessProtected()` and `@UserProtected()`. The tenant decorators already include tenant + membership guards.
 
-- **JIT helper:** admin endpoints `POST /api/v1/admin/tenants/:tenantId/assume-access` and `DELETE …/revoke-access` issue temporary `tenant-platform-support` memberships; guard order remains the same (tenant → member → role/permission).
+- **JIT helper:** admin endpoints `POST /api/v1/admin/tenants/:tenantId/assume-access` and `DELETE .../revoke-access` issue temporary `tenant-platform-support` memberships for support workflows.
 
 ### Complete Flow Example
 
-1. **Tenant login:** `POST /api/v1/public/tenant/login/credential` with `email`, `password`, `from` and `X-Api-Key`. Response includes the current tokens plus the list of tenant memberships.
-2. **List memberships:** `GET /api/v1/shared/tenants/memberships` using the access token.
-3. **Select tenant:** `GET /api/v1/shared/tenants/current` with `x-tenant-id` and access token to read the current membership.
-4. **Tenant-scoped data:** call tenant APIs (e.g., `GET /api/v1/projects`) with the access token and `x-tenant-id`; responses are scoped to that tenant.
-5. **Switch tenant:** repeat step 4 with a different `x-tenant-id` to change the tenant context.
+1. **Tenant login:** `POST /api/v1/public/tenant/login/credential` with `email`, `password`, `from`, and `X-Api-Key`. Response includes auth payload + `tenants[]`.
+2. **Select tenant:** client picks a tenant ID from `tenants[]` and stores it as the active tenant.
+3. **Resolve current tenant:** `GET /api/v1/shared/tenants/current` with access token + `x-tenant-id`.
+4. **Tenant-scoped data:** call tenant APIs (e.g., `/api/v1/shared/tenants/current/members`) with access token + `x-tenant-id`.
+5. **Switch tenant:** send a different `x-tenant-id` for the next tenant-scoped requests.
 
 ## Important Notes
 
 ### Guard Order
 
-**Always apply decorators in this order:**
+**Use one tenant guard decorator per endpoint based on access level:**
 
 ```typescript
-@TenantPermissionProtected(...)  // 4. Check permissions (if needed)
-@TenantRoleProtected(...)        // 3. Check role (if needed)
-@TenantMemberProtected()         // 2. Verify membership
-@TenantProtected()               // 1. Validate tenant (can be omitted if using TenantMemberProtected)
-@AuthJwtAccessProtected()        // 0. Authenticate user
+// Tenant exists + user is active tenant member + has required abilities
+@TenantPermissionProtected(...)
+@UserProtected()
+@AuthJwtAccessProtected()
+@Get()
+handler() {}
+```
+
+```typescript
+// Tenant exists + user is active tenant member + has one required tenant role
+@TenantRoleProtected('tenant-admin')
+@UserProtected()
+@AuthJwtAccessProtected()
+@Patch()
+handler() {}
+```
+
+```typescript
+// Tenant exists + user is active tenant member (no extra role/ability checks)
+@TenantMemberProtected()
+@UserProtected()
+@AuthJwtAccessProtected()
 @Get()
 handler() {}
 ```
@@ -1155,7 +1032,7 @@ handler() {}
 - `TenantMemberProtected` automatically applies `TenantProtected` logic
 - `TenantRoleProtected` automatically applies `TenantMemberProtected` logic
 - `TenantPermissionProtected` automatically applies `TenantMemberProtected` logic
-- Always add `@AuthJwtAccessProtected()` for tenant member operations
+- Add `@AuthJwtAccessProtected()` and `@UserProtected()` for tenant member operations
 
 ### Soft Delete Behavior
 
@@ -1176,7 +1053,7 @@ handler() {}
 2. **Filter queries by tenantId** - Never expose cross-tenant data
 3. **Validate member permissions** - Use `@TenantRoleProtected()` or `@TenantPermissionProtected()`
 4. **Audit tenant operations** - Use `@ActivityLog()` for tenant changes
-5. **Validate x-tenant-id** - Middleware ensures header presence
+5. **Validate `x-tenant-id` in guards** - middleware only copies header value to request context
 
 ### Common Pitfalls
 

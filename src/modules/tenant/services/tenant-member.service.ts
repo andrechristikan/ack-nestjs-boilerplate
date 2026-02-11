@@ -1,8 +1,6 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
-    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
@@ -23,7 +21,6 @@ import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     BadRequestException,
     ConflictException,
-    ForbiddenException,
     Injectable,
     InternalServerErrorException,
     NotFoundException,
@@ -31,8 +28,6 @@ import {
 import {
     EnumRoleScope,
     EnumTenantMemberStatus,
-    EnumTenantStatus,
-    Tenant,
 } from '@prisma/client';
 
 @Injectable()
@@ -41,7 +36,6 @@ export class TenantMemberService {
         private readonly tenantRepository: TenantRepository,
         private readonly roleRepository: RoleRepository,
         private readonly userRepository: UserRepository,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperService: HelperService
     ) {}
 
@@ -50,12 +44,6 @@ export class TenantMemberService {
         dto: TenantMemberCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        if (!this.databaseUtil.checkIdIsValid(dto.userId)) {
-            throw new BadRequestException({
-                statusCode: EnumTenantStatusCodeError.memberUserIdInvalid,
-                message: 'tenantMember.error.userIdInvalid',
-            });
-        }
 
         const [user, role, memberExist] = await Promise.all([
             this.userRepository.findOneById(dto.userId),
@@ -102,12 +90,6 @@ export class TenantMemberService {
         dto: TenantMemberUpdateRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        if (!this.databaseUtil.checkIdIsValid(memberId)) {
-            throw new BadRequestException({
-                statusCode: EnumTenantStatusCodeError.memberIdInvalid,
-                message: 'tenantMember.error.memberIdInvalid',
-            });
-        }
 
         const member = await this.tenantRepository.findOneMemberByIdAndTenant(
             memberId,
@@ -146,12 +128,6 @@ export class TenantMemberService {
         memberId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        if (!this.databaseUtil.checkIdIsValid(memberId)) {
-            throw new BadRequestException({
-                statusCode: EnumTenantStatusCodeError.memberIdInvalid,
-                message: 'tenantMember.error.memberIdInvalid',
-            });
-        }
 
         const member = await this.tenantRepository.findOneMemberByIdAndTenant(
             memberId,
@@ -195,28 +171,18 @@ export class TenantMemberService {
         };
     }
 
-    async getMyTenantsCursor(
-        userId: string,
-        pagination: IPaginationQueryCursorParams
-    ): Promise<IResponsePagingReturn<TenantMemberResponseDto>> {
-        const { data, ...others } =
-            await this.tenantRepository.findMembershipsWithPaginationCursorByUser(
-                userId,
-                pagination
-            );
-
-        return {
-            ...others,
-            data: data.map(member => this.mapMember(member)),
-        };
-    }
-
     async assumeAccess(
         tenantId: string,
         userId: string,
         dto: TenantJitAccessRequestDto
     ): Promise<IResponseReturn<TenantJitAccessResponseDto>> {
-        const tenant = await this.assertTenantExistsAndActive(tenantId);
+        const tenant = await this.tenantRepository.findOneActiveById(tenantId);
+        if (!tenant) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.notFound,
+                message: 'tenant.error.notFound',
+            });
+        }
 
         const existingMember =
             await this.tenantRepository.existMemberByTenantAndUser(
@@ -266,7 +232,6 @@ export class TenantMemberService {
         tenantId: string,
         userId: string
     ): Promise<IResponseReturn<void>> {
-        await this.assertTenantExists(tenantId);
 
         const jitMember =
             await this.tenantRepository.findActiveJitMemberByTenantAndUser(
@@ -284,59 +249,6 @@ export class TenantMemberService {
         await this.tenantRepository.revokeJitMember(jitMember.id);
 
         return {};
-    }
-
-    async getCurrentTenant(
-        tenantId: string,
-        userId: string
-    ): Promise<IResponseReturn<TenantMemberResponseDto>> {
-        const tenant = await this.assertTenantExistsAndActive(tenantId);
-
-        const member = await this.tenantRepository.findOneActiveMemberByTenantAndUser(
-            tenant.id,
-            userId
-        );
-        if (!member) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.memberForbidden,
-                message: 'tenantMember.error.forbidden',
-            });
-        }
-
-        return {
-            data: this.mapMember(member),
-        };
-    }
-
-    private async assertTenantExists(id: string): Promise<Tenant> {
-        if (!this.databaseUtil.checkIdIsValid(id)) {
-            throw new BadRequestException({
-                statusCode: EnumTenantStatusCodeError.xTenantIdInvalid,
-                message: 'tenant.error.xTenantIdInvalid',
-            });
-        }
-
-        const tenant = await this.tenantRepository.findOneById(id);
-        if (!tenant) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.notFound,
-                message: 'tenant.error.notFound',
-            });
-        }
-
-        return tenant;
-    }
-
-    private async assertTenantExistsAndActive(id: string): Promise<Tenant> {
-        const tenant = await this.assertTenantExists(id);
-        if (tenant.status !== EnumTenantStatus.active) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.inactive,
-                message: 'tenant.error.inactive',
-            });
-        }
-
-        return tenant;
     }
 
     private mapMember(member: ITenantMember): TenantMemberResponseDto {

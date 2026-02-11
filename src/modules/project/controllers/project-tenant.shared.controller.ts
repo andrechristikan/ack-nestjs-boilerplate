@@ -149,12 +149,10 @@ export class ProjectTenantSharedController {
     @ApiKeyProtected()
     @Get('/:projectId/members')
     async listMembers(
-        @TenantCurrent() tenant: ITenant,
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
         return this.projectService.listProjectMembers(
-            tenant.id,
             projectId,
             pagination
         );

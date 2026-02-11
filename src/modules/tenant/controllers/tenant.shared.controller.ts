@@ -34,6 +34,14 @@ import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenan
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
+import {
+    TenantSharedCreateMemberDoc,
+    TenantSharedDeleteMemberDoc,
+    TenantSharedGetCurrentTenantDoc,
+    TenantSharedListMembersDoc,
+    TenantSharedUpdateCurrentTenantDoc,
+    TenantSharedUpdateMemberDoc,
+} from '@modules/tenant/docs/tenant.shared.doc';
 import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
 import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
 import { TenantService } from '@modules/tenant/services/tenant.service';
@@ -60,6 +68,7 @@ export class TenantSharedController {
         private readonly tenantMemberService: TenantMemberService
     ) {}
 
+    @TenantSharedGetCurrentTenantDoc()
     @Response('tenant.get')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenant,
@@ -75,6 +84,7 @@ export class TenantSharedController {
         return this.tenantService.getOne(tenant.id);
     }
 
+    @TenantSharedUpdateCurrentTenantDoc()
     @Response('tenant.update')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenant,
@@ -92,6 +102,7 @@ export class TenantSharedController {
         return this.tenantService.update(tenant.id, body, updatedBy);
     }
 
+    @TenantSharedListMembersDoc()
     @ResponsePaging('tenant.member.list')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenantMember,
@@ -109,6 +120,7 @@ export class TenantSharedController {
         return this.tenantMemberService.getMembersOffset(tenant.id, pagination);
     }
 
+    @TenantSharedCreateMemberDoc()
     @Response('tenant.member.create')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenantMember,
@@ -126,6 +138,7 @@ export class TenantSharedController {
         return this.tenantMemberService.addMember(tenant.id, body, createdBy);
     }
 
+    @TenantSharedUpdateMemberDoc()
     @Response('tenant.member.update')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenantMember,
@@ -150,6 +163,7 @@ export class TenantSharedController {
         );
     }
 
+    @TenantSharedDeleteMemberDoc()
     @Response('tenant.member.delete')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenantMember,
