@@ -10,6 +10,7 @@ import {
     ITenantMember,
 } from '@modules/tenant/interfaces/tenant.interface';
 import { IProjectMember } from '@modules/project/interfaces/project.interface';
+import { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
 
 export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
     correlationId: string;
@@ -23,7 +24,10 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
     __tenantId?: string;
     __tenant?: ITenant;
     __tenantMember?: ITenantMember;
+    // Project
+    __projectId?: string;
     __projectMember?: IProjectMember;
+    __projectAbilities?: IPolicyAbilityRule;
 
     __pagination?: IPaginationQuery;
 

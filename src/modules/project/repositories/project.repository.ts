@@ -10,6 +10,7 @@ import {
     IProjectCreate,
     IProjectMember,
     IProjectMemberCreate,
+    IProjectMemberUpdate,
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
 import { Injectable } from '@nestjs/common';
@@ -142,6 +143,36 @@ export class ProjectRepository {
                 role: true,
                 project: true,
             },
+        });
+    }
+
+    async findOneMemberByIdAndProject(
+        memberId: string,
+        projectId: string
+    ): Promise<IProjectMember | null> {
+        return this.databaseService.projectMember.findFirst({
+            where: {
+                id: memberId,
+                projectId,
+                deletedAt: null,
+                project: {
+                    deletedAt: null,
+                },
+            },
+            include: {
+                role: true,
+                project: true,
+            },
+        });
+    }
+
+    async updateMember(
+        memberId: string,
+        data: IProjectMemberUpdate
+    ): Promise<ProjectMember> {
+        return this.databaseService.projectMember.update({
+            where: { id: memberId },
+            data,
         });
     }
 

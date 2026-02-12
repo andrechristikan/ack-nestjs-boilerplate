@@ -41,3 +41,9 @@ export interface IProjectMemberCreate {
     createdBy: string;
     updatedBy: string;
 }
+
+export interface IProjectMemberUpdate {
+    updatedBy: string;
+    roleId?: string;
+    status?: EnumProjectMemberStatus;
+}

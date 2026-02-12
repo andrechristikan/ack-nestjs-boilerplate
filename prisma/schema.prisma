@@ -123,7 +123,7 @@ model Project {
   tenant  Tenant?         @relation("TenantProjects", fields: [tenantId], references: [id])
   members ProjectMember[] @relation("ProjectMembers")
 
-  @@index(fields: [tenantId, status, createdAt])
+  @@index(fields: [tenantId, status, deletedAt, createdAt])
   @@index(fields: [createdAt])
   @@map("Projects")
 }
@@ -148,8 +148,8 @@ model ProjectMember {
   role    Role?    @relation("ProjectMemberRole", fields: [roleId], references: [id])
 
   @@unique(fields: [projectId, userId])
-  @@index(fields: [projectId, status, createdAt])
-  @@index(fields: [userId, status, createdAt])
+  @@index(fields: [projectId, status, deletedAt, createdAt])
+  @@index(fields: [userId, status, deletedAt, createdAt])
   @@index(fields: [roleId])
   @@index(fields: [createdAt])
   @@map("ProjectMembers")

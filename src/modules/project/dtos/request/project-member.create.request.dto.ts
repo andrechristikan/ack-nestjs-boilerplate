@@ -9,4 +9,13 @@ export class ProjectMemberCreateRequestDto {
     @IsString()
     @IsNotEmpty()
     userId: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Role name for project member',
+        example: 'project-viewer',
+    })
+    @IsString()
+    @IsNotEmpty()
+    roleName: string;
 }

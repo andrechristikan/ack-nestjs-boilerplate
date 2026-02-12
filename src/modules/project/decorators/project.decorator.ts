@@ -29,7 +29,9 @@ export function ProjectPermissionProtected(
  */
 export const ProjectMemberCurrent = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): IProjectMember | undefined => {
-        const { __projectMember } = ctx.switchToHttp().getRequest<IRequestApp>();
+        const { __projectMember } = ctx
+            .switchToHttp()
+            .getRequest<IRequestApp>();
         return __projectMember;
     }
 );

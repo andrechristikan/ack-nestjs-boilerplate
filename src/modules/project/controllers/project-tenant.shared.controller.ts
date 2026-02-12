@@ -6,13 +6,20 @@ import { Response, ResponsePaging } from '@common/response/decorators/response.d
 import { IResponsePagingReturn, IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected, AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
-import { EnumPolicyAction, EnumPolicySubject } from '@modules/policy/enums/policy.enum';
+import {
+    ProjectPolicyCreate,
+    ProjectPolicyDelete,
+    ProjectPolicyRead,
+    ProjectPolicyUpdate,
+} from '@modules/project/constants/project.policy.constant';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
+import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectPermissionProtected } from '@modules/project/decorators/project.decorator';
+import { ProjectMemberService } from '@modules/project/services/project-member.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { TenantCurrent, TenantMemberProtected, TenantPermissionProtected } from '@modules/tenant/decorators/tenant.decorator';
 import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
@@ -26,13 +33,13 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/tenants/projects',
 })
 export class ProjectTenantSharedController {
-    constructor(private readonly projectService: ProjectService) {}
+    constructor(
+        private readonly projectService: ProjectService,
+        private readonly projectMemberService: ProjectMemberService
+    ) {}
 
     @ResponsePaging('project.list')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.project,
-        action: [EnumPolicyAction.read],
-    })
+    @TenantPermissionProtected(ProjectPolicyRead)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -45,10 +52,7 @@ export class ProjectTenantSharedController {
     }
 
     @Response('project.create')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.project,
-        action: [EnumPolicyAction.create],
-    })
+    @TenantPermissionProtected(ProjectPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -63,10 +67,7 @@ export class ProjectTenantSharedController {
 
     @Response('project.get')
     @TenantMemberProtected()
-    @ProjectPermissionProtected({
-        subject: EnumPolicySubject.project,
-        action: [EnumPolicyAction.read],
-    })
+    @ProjectPermissionProtected(ProjectPolicyRead)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -79,10 +80,7 @@ export class ProjectTenantSharedController {
 
     @Response('project.update')
     @TenantMemberProtected()
-    @ProjectPermissionProtected({
-        subject: EnumPolicySubject.project,
-        action: [EnumPolicyAction.update],
-    })
+    @ProjectPermissionProtected(ProjectPolicyUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -101,10 +99,7 @@ export class ProjectTenantSharedController {
 
     @Response('project.delete')
     @TenantMemberProtected()
-    @ProjectPermissionProtected({
-        subject: EnumPolicySubject.project,
-        action: [EnumPolicyAction.delete],
-    })
+    @ProjectPermissionProtected(ProjectPolicyDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -118,10 +113,7 @@ export class ProjectTenantSharedController {
 
     @Response('project.member.create')
     @TenantMemberProtected()
-    @ProjectPermissionProtected({
-        subject: EnumPolicySubject.project,
-        action: [EnumPolicyAction.update],
-    })
+    @ProjectPermissionProtected(ProjectPolicyUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -131,19 +123,37 @@ export class ProjectTenantSharedController {
         @Body() body: ProjectMemberCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.projectService.addProjectMember(
+        return this.projectMemberService.create(
             projectId,
             body,
             createdBy
         );
     }
 
+    @Response('project.member.update')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectPolicyUpdate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/:projectId/members/:memberId')
+    async updateMember(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('memberId', RequestRequiredPipe) memberId: string,
+        @Body() body: ProjectMemberUpdateRequestDto,
+        @AuthJwtPayload('userId') updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.projectMemberService.update(
+            projectId,
+            memberId,
+            body,
+            updatedBy
+        );
+    }
+
     @ResponsePaging('project.member.list')
     @TenantMemberProtected()
-    @ProjectPermissionProtected({
-        subject: EnumPolicySubject.project,
-        action: [EnumPolicyAction.read],
-    })
+    @ProjectPermissionProtected(ProjectPolicyRead)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -152,7 +162,7 @@ export class ProjectTenantSharedController {
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
-        return this.projectService.listProjectMembers(
+        return this.projectMemberService.listMembers(
             projectId,
             pagination
         );

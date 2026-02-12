@@ -6,7 +6,7 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected, AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
 import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project.access.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { ProjectService } from '@modules/project/services/project.service';
+import { ProjectMemberService } from '@modules/project/services/project-member.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -18,7 +18,7 @@ import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe
     path: '/projects',
 })
 export class ProjectSharedController {
-    constructor(private readonly projectService: ProjectService) {}
+    constructor(private readonly projectMemberService: ProjectMemberService) {}
 
     @ResponsePaging('project.shared.list')
     @UserProtected()
@@ -29,7 +29,7 @@ export class ProjectSharedController {
         @AuthJwtPayload('userId') userId: string,
         @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ProjectAccessResponseDto>> {
-        return this.projectService.listMemberProjects(userId, pagination);
+        return this.projectMemberService.list(userId, pagination);
     }
 
     @Response('project.shared.get')
@@ -41,6 +41,6 @@ export class ProjectSharedController {
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<ProjectResponseDto>> {
-        return this.projectService.getMemberProjectById(projectId, userId);
+        return this.projectMemberService.getOne(projectId, userId);
     }
 }
