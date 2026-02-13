@@ -28,8 +28,14 @@ The tenant system provides multi-tenancy support for SaaS applications where mul
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [When to Use Multi-Tenancy](#when-to-use-multi-tenancy)
+- [Optional Enablement (Disabled by Default)](#optional-enablement-disabled-by-default)
+  - [How It Works](#how-it-works)
+  - [Enable Multi-Tenancy](#enable-multi-tenancy)
+  - [Disable Multi-Tenancy](#disable-multi-tenancy)
 - [Architecture](#architecture)
   - [Data Model](#data-model)
+  - [Module Split](#module-split)
+  - [Request Typing Composition](#request-typing-composition)
   - [Request Flow](#request-flow)
   - [Tenant Context](#tenant-context)
 - [Tenant-Scoped Authentication](#tenant-scoped-authentication)
@@ -81,6 +87,36 @@ Multi-tenancy is ideal for:
 - Single-organization internal tools
 - Applications where users don't belong to organizations
 
+## Optional Enablement (Disabled by Default)
+
+Multi-tenancy is optional and can be disabled by default in platform deployments.
+
+### How It Works
+
+- The toggle is controlled by `TENANCY_ENABLED`.
+- Default value is `false`.
+- When disabled:
+  - Tenant middleware is not applied.
+  - Tenant public/shared/admin routes are not registered.
+  - Tenant endpoints return `404` because routes are not mounted.
+- When enabled:
+  - Tenant middleware and routes are mounted as normal.
+  - Existing tenant guards/decorators behavior remains unchanged.
+
+### Enable Multi-Tenancy
+
+1. Set `TENANCY_ENABLED=true` in environment configuration.
+2. Ensure tenant-related data is seeded/migrated (tenants, tenant roles, memberships as needed).
+3. Use tenant login and tenant-scoped APIs.
+4. Include `x-tenant-id` header for tenant-scoped requests.
+
+### Disable Multi-Tenancy
+
+1. Set `TENANCY_ENABLED=false`.
+2. Restart the service.
+3. Tenant routes are removed from the active routing table.
+4. Non-tenant modules continue to run normally.
+
 ## Architecture
 
 ### Data Model
@@ -97,6 +133,39 @@ The tenant system uses three main models:
 - Each membership has its own role and status
 - Tenant roles are stored in the main `Role` model alongside platform roles
 - Roles are differentiated by `scope` (`platform` or `tenant`)
+
+### Module Split
+
+Tenant code is split for clearer optional wiring:
+
+- **Tenant Core Module**: `src/modules/tenant/tenant.module.ts`
+  - Providers/guards/services/repository (no route controllers)
+- **Tenant Public Routes Module**: `src/modules/tenant/tenant.routes.public.module.ts`
+  - Registers tenant public endpoints when tenancy is enabled
+- **Tenant Shared Routes Module**: `src/modules/tenant/tenant.routes.shared.module.ts`
+  - Registers tenant shared endpoints and tenant-scoped project endpoints
+- **Tenant Admin Routes Module**: `src/modules/tenant/tenant.routes.admin.module.ts`
+  - Registers tenant admin endpoints
+
+Toggle utility location:
+- `src/modules/tenant/util/tenancy.toggle.ts`
+
+### Request Typing Composition
+
+Request typing is split by module ownership while preserving the same base import:
+
+- Base request interface remains in:
+  - `src/common/request/interfaces/request.interface.ts` (`IRequestApp`)
+- Tenant-specific request properties are defined in:
+  - `src/modules/tenant/interfaces/request.tenant.interface.ts`
+- Project-specific request properties are defined in:
+  - `src/modules/project/interfaces/request.project.interface.ts`
+
+Tenant and project internals use composed local types (intersection types), for example:
+- `IRequestAppWithTenant = IRequestApp & IRequestAppTenant`
+- `IRequestAppWithProjectTenant = IRequestApp & IRequestAppProject & IRequestAppTenant`
+
+This keeps common request types domain-agnostic while still supporting strongly typed module-specific request context.
 
 ### Request Flow
 
