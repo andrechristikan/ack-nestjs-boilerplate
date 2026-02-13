@@ -265,7 +265,7 @@ export class MigrationUserSeed
                 this.databaseService.passwordHistory.deleteMany({}),
                 this.databaseService.forgotPassword.deleteMany({}),
                 this.databaseService.activityLog.deleteMany({}),
-                this.databaseService.termPolicyUserAcceptance.deleteMany({}),
+                this.databaseService.twoFactor.deleteMany({}),
                 this.databaseService.user.deleteMany({}),
             ]);
         } catch (error: unknown) {
