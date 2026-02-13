@@ -6,6 +6,8 @@ import { TermPolicyPublicController } from '@modules/term-policy/controllers/ter
 import { UserPublicController } from '@modules/user/controllers/user.public.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
+import { whenTenancyEnabled } from '@modules/tenant/util/tenant.toggle';
+import { TenantRoutesPublicModule } from '@modules/tenant/tenant.routes.public.module';
 
 /**
  * Public routes module that provides publicly accessible endpoints.
@@ -20,6 +22,11 @@ import { Module } from '@nestjs/common';
     ],
     providers: [],
     exports: [],
-    imports: [CountryModule, HelloModule, UserModule],
+    imports: [
+        CountryModule,
+        HelloModule,
+        UserModule,
+        ...whenTenancyEnabled([TenantRoutesPublicModule]),
+    ],
 })
 export class RoutesPublicModule {}

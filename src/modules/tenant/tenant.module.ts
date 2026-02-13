@@ -7,7 +7,6 @@ import { TenantMemberGuard } from '@modules/tenant/guards/tenant.member.guard';
 import { TenantRoleGuard } from '@modules/tenant/guards/tenant.role.guard';
 import { TenantPermissionGuard } from '@modules/tenant/guards/tenant.permission.guard';
 import { TenantAuthService } from '@modules/tenant/services/tenant-auth.service';
-import { TenantPublicController } from '@modules/tenant/controllers/tenant.public.controller';
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
 import { AuthModule } from '@modules/auth/auth.module';
@@ -24,8 +23,8 @@ import { AuthModule } from '@modules/auth/auth.module';
         TenantRoleGuard,
         TenantPermissionGuard,
     ],
-    exports: [TenantService, TenantMemberService, TenantRepository],
+    exports: [TenantService, TenantMemberService,TenantAuthService, TenantRepository],
     imports: [UserModule, RoleModule, AuthModule],
-    controllers: [TenantPublicController],
+    controllers: [],
 })
 export class TenantModule {}

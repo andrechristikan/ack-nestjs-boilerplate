@@ -19,6 +19,7 @@ import { QueueRegisterModule } from 'src/queues/queue.register.module';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { SessionModule } from '@modules/session/session.module';
 import { TenantModule } from '@modules/tenant/tenant.module';
+import { whenTenancyEnabled } from '@modules/tenant/util/tenant.toggle';
 
 /**
  * Common module that provides shared functionality across the application.
@@ -55,7 +56,7 @@ import { TenantModule } from '@modules/tenant/tenant.module';
         FeatureFlagModule,
         TermPolicyModule,
         SessionModule,
-        TenantModule,
+        ...whenTenancyEnabled([TenantModule]),
     ],
 })
 export class CommonModule {}

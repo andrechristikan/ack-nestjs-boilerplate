@@ -8,11 +8,10 @@ import { TermPolicySharedController } from '@modules/term-policy/controllers/ter
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
-import { TenantModule } from '@modules/tenant/tenant.module';
-import { TenantSharedController } from '@modules/tenant/controllers/tenant.shared.controller';
 import { ProjectModule } from '@modules/project/project.module';
 import { ProjectSharedController } from '@modules/project/controllers/project.shared.controller';
-import { ProjectTenantSharedController } from '@modules/project/controllers/project-tenant.shared.controller';
+import { whenTenancyEnabled } from '@modules/tenant/util/tenant.toggle';
+import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.module';
 
 /**
  * Shared routes module that provides endpoints accessible by multiple user types.
@@ -25,9 +24,7 @@ import { ProjectTenantSharedController } from '@modules/project/controllers/proj
         ActivityLogSharedController,
         SessionSharedController,
         TermPolicySharedController,
-        TenantSharedController,
         ProjectSharedController,
-        ProjectTenantSharedController,
     ],
     providers: [],
     exports: [],
@@ -36,8 +33,8 @@ import { ProjectTenantSharedController } from '@modules/project/controllers/proj
         PasswordHistoryModule,
         ActivityLogModule,
         SessionModule,
-        TenantModule,
         ProjectModule,
+        ...whenTenancyEnabled([TenantRoutesSharedModule]),
     ],
 })
 export class RoutesSharedModule {}
