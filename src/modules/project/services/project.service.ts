@@ -3,7 +3,6 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -14,6 +13,10 @@ import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.c
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { IProjectMember } from '@modules/project/interfaces/project.interface';
+import {
+    IRequestAppWithProject,
+    IRequestAppWithProjectTenant,
+} from '@modules/project/interfaces/request.project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
@@ -43,7 +46,7 @@ export class ProjectService {
     // while project-resource actions are validated by project member permissions.
 
     async validateProjectMemberGuard(
-        request: IRequestApp
+        request: IRequestAppWithProjectTenant
     ): Promise<IProjectMember> {
         const { user } = request;
         if (!user) {
@@ -87,7 +90,7 @@ export class ProjectService {
     }
 
     async validateProjectPermissionGuard(
-        request: IRequestApp,
+        request: IRequestAppWithProject,
         requiredAbilities: RoleAbilityRequestDto[]
     ): Promise<boolean> {
         if (requiredAbilities.length === 0) {
@@ -207,7 +210,7 @@ export class ProjectService {
     }
 
     private resolveProjectIdFromRequest(
-        request: IRequestApp
+        request: IRequestAppWithProject
     ): string {
         const key = 'projectId';
         const value = request.params?.[key];

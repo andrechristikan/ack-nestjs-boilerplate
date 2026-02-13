@@ -1,5 +1,5 @@
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ProjectPermissionRequiredMetaKey } from '@modules/project/constants/project.constant';
+import { IRequestAppWithProject } from '@modules/project/interfaces/request.project.interface';
 import { ProjectService } from '@modules/project/services/project.service';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
@@ -22,7 +22,8 @@ export class ProjectPermissionGuard implements CanActivate {
                 context.getHandler()
             ) ?? [];
 
-        const request = context.switchToHttp().getRequest<IRequestApp>();
+        const request =
+            context.switchToHttp().getRequest<IRequestAppWithProject>();
 
         return this.projectService.validateProjectPermissionGuard(
             request,

@@ -1,5 +1,5 @@
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ProjectPermissionRequiredMetaKey } from '@modules/project/constants/project.constant';
+import { IRequestAppWithProject } from '@modules/project/interfaces/request.project.interface';
 import { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
 import { ProjectPermissionGuard } from '@modules/project/guards/project.permission.guard';
@@ -31,7 +31,7 @@ export const ProjectMemberCurrent = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): IProjectMember | undefined => {
         const { __projectMember } = ctx
             .switchToHttp()
-            .getRequest<IRequestApp>();
+            .getRequest<IRequestAppWithProject>();
         return __projectMember;
     }
 );

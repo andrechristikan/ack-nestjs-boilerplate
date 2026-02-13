@@ -7,10 +7,9 @@ import { ProjectPermissionGuard } from '@modules/project/guards/project.permissi
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
-import { TenantModule } from '@modules/tenant/tenant.module';
 
 @Module({
-    imports: [UserModule, RoleModule, TenantModule],
+    imports: [UserModule, RoleModule],
     providers: [
         ProjectService,
         ProjectMemberService,
