@@ -18,7 +18,8 @@ export interface IProjectMember extends ProjectMember {
 }
 
 export interface IProjectCreate {
-    tenantId: string;
+    tenantId?: string;
+    ownerUserId?: string;
     name: string;
     status: EnumProjectStatus;
     createdBy: string;

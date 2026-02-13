@@ -1,5 +1,4 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -12,6 +11,7 @@ import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
+import { ProjectRoleAdmin } from '@modules/project/constants/project.constant';
 import { IProjectMember } from '@modules/project/interfaces/project.interface';
 import {
     IRequestAppWithProject,
@@ -20,12 +20,15 @@ import {
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
+import { RoleRepository } from '@modules/role/repositories/role.repository';
+import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
-    BadRequestException,
+    ConflictException,
     ForbiddenException,
     HttpStatus,
     Injectable,
     InternalServerErrorException,
+    NotFoundException,
 } from '@nestjs/common';
 import {
     EnumProjectMemberStatus,
@@ -37,9 +40,10 @@ import {
 export class ProjectService {
     constructor(
         private readonly projectRepository: ProjectRepository,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly policyAbilityFactory: PolicyAbilityFactory,
-        private readonly projectUtil: ProjectUtil
+        private readonly projectUtil: ProjectUtil,
+        private readonly roleRepository: RoleRepository,
+        private readonly userRepository: UserRepository
     ) {}
 
     // Tenant permissions authorize tenant-wide actions,
@@ -79,7 +83,7 @@ export class ProjectService {
         }
 
         const tenantId = request.__tenant?.id;
-        if (!tenantId || projectMember.project?.tenantId !== tenantId) {
+        if (tenantId && projectMember.project?.tenantId !== tenantId) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'projectMember.error.forbidden',
@@ -123,25 +127,33 @@ export class ProjectService {
         return true;
     }
 
-    async create(
+    async createForUser(
+        dto: ProjectCreateRequestDto,
+        createdBy: string
+    ): Promise<IResponseReturn<DatabaseIdDto>> {
+        return this.createWithMembers(
+            {
+                ownerUserId: createdBy,
+                tenantId: undefined,
+            },
+            dto,
+            createdBy
+        );
+    }
+
+    async createForTenant(
         tenantId: string,
         dto: ProjectCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-
-        const project = await this.projectRepository.create({
-            tenantId,
-            name: dto.name.trim(),
-            status: EnumProjectStatus.active,
-            createdBy,
-            updatedBy: createdBy,
-        });
-
-        return {
-            data: {
-                id: project.id,
+        return this.createWithMembers(
+            {
+                tenantId,
+                ownerUserId: undefined,
             },
-        };
+            dto,
+            createdBy
+        );
     }
 
     async getListByTenant(
@@ -220,4 +232,101 @@ export class ProjectService {
         return projectId;
     }
 
+    private async createWithMembers(
+        ownership: {
+            tenantId?: string;
+            ownerUserId?: string;
+        },
+        dto: ProjectCreateRequestDto,
+        createdBy: string
+    ): Promise<IResponseReturn<DatabaseIdDto>> {
+        const members = dto.members ?? [];
+        const uniqueUserIds = new Set<string>();
+        const resolvedMembers: Array<{ userId: string; roleId: string }> = [];
+
+        for (const member of members) {
+            if (member.userId === createdBy) {
+                throw new ConflictException({
+                    statusCode: HttpStatus.CONFLICT,
+                    message: 'projectMember.error.exist',
+                });
+            }
+
+            if (uniqueUserIds.has(member.userId)) {
+                throw new ConflictException({
+                    statusCode: HttpStatus.CONFLICT,
+                    message: 'projectMember.error.exist',
+                });
+            }
+            uniqueUserIds.add(member.userId);
+
+            const [user, role] = await Promise.all([
+                this.userRepository.findOneById(member.userId),
+                this.resolveProjectRoleByName(member.roleName),
+            ]);
+
+            if (!user) {
+                throw new NotFoundException({
+                    statusCode: HttpStatus.NOT_FOUND,
+                    message: 'projectMember.error.userNotFound',
+                });
+            }
+
+            resolvedMembers.push({
+                userId: member.userId,
+                roleId: role.id,
+            });
+        }
+
+        const adminRole = await this.resolveProjectRoleByName(ProjectRoleAdmin);
+
+        const project = await this.projectRepository.create({
+            ...ownership,
+            name: dto.name.trim(),
+            status: EnumProjectStatus.active,
+            createdBy,
+            updatedBy: createdBy,
+        });
+
+        await this.projectRepository.addMember({
+            projectId: project.id,
+            userId: createdBy,
+            roleId: adminRole.id,
+            status: EnumProjectMemberStatus.active,
+            createdBy,
+            updatedBy: createdBy,
+        });
+
+        for (const member of resolvedMembers) {
+            await this.projectRepository.addMember({
+                projectId: project.id,
+                userId: member.userId,
+                roleId: member.roleId,
+                status: EnumProjectMemberStatus.active,
+                createdBy,
+                updatedBy: createdBy,
+            });
+        }
+
+        return {
+            data: {
+                id: project.id,
+            },
+        };
+    }
+
+    private async resolveProjectRoleByName(roleName: string): Promise<{ id: string }> {
+        const role = await this.roleRepository.existByNameAndScope(
+            roleName.trim(),
+            EnumRoleScope.project
+        );
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'projectRole.error.notFound',
+            });
+        }
+
+        return { id: role.id };
+    }
 }

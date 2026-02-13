@@ -9,10 +9,11 @@ export class ProjectResponseDto {
     id: string;
 
     @ApiProperty({
-        required: true,
+        required: false,
         description: 'Tenant id',
+        nullable: true,
     })
-    tenantId: string;
+    tenantId?: string;
 
     @ApiProperty({
         required: true,

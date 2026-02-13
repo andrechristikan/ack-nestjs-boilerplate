@@ -7,9 +7,12 @@ This documentation explains the features and usage of the **Project Module**:
 
 ## Overview
 
-The Project module provides tenant-scoped project management with project-level membership and permission checks.
+The Project module provides project management with project-level membership and permission checks for both:
+- User-owned projects (`/shared/projects`)
+- Tenant-owned projects (`/shared/tenants/projects`)
 
 It supports:
+- Project create/list/get in user context
 - Project CRUD within tenant context
 - Project member management
 - Shared user project listing
@@ -109,6 +112,7 @@ Controller: `ProjectSharedController` (`/projects`)
 
 | Method | Path | Description | Protection |
 |-------|------|-------------|------------|
+| `POST` | `/projects` | Create user-owned project (optionally share with members) | `ApiKey` + JWT + User |
 | `GET` | `/projects` | List projects accessible by current user | `ApiKey` + JWT + User |
 | `GET` | `/projects/:projectId` | Get one project if current user is active member | `ApiKey` + JWT + User |
 
@@ -121,7 +125,7 @@ Controller: `ProjectTenantSharedController` (`/tenants/projects`)
 | Method | Path | Description | Protection |
 |-------|------|-------------|------------|
 | `GET` | `/tenants/projects` | List tenant projects | `TenantPermission(project:read)` |
-| `POST` | `/tenants/projects` | Create project in current tenant | `TenantPermission(project:create)` |
+| `POST` | `/tenants/projects` | Create tenant-owned project (optionally share with members) | `TenantPermission(project:create)` |
 | `GET` | `/tenants/projects/:projectId` | Get project detail | `TenantMember` + `ProjectPermission(project:read)` |
 | `PATCH` | `/tenants/projects/:projectId` | Update name/status | `TenantMember` + `ProjectPermission(project:update)` |
 | `DELETE` | `/tenants/projects/:projectId` | Soft-delete project | `TenantMember` + `ProjectPermission(project:delete)` |
@@ -130,6 +134,8 @@ Controller: `ProjectTenantSharedController` (`/tenants/projects`)
 | `GET` | `/tenants/projects/:projectId/members` | List active members | `TenantMember` + `ProjectPermission(project:read)` |
 
 All endpoints also include `ApiKey`, `@AuthJwtAccessProtected`, and `@UserProtected`.
+
+`/tenants/projects` routes are only available when tenancy is enabled.
 
 ## Decorators and Guards
 
@@ -208,6 +214,7 @@ Used by:
 
 - `ProjectCreateRequestDto`
   - `name: string` (required, max 100)
+  - `members?: { userId: string; roleName: string }[]` (optional)
 - `ProjectUpdateRequestDto`
   - `name?: string` (max 100)
   - `status?: EnumProjectStatus`
@@ -223,7 +230,7 @@ For validation mechanics and error shape, see [Request Validation Documentation]
 ### Response DTOs
 
 - `ProjectResponseDto`
-  - `id`, `tenantId`, `name`, `status`, `createdAt`, `updatedAt`
+  - `id`, `tenantId?`, `name`, `status`, `createdAt`, `updatedAt`
 - `ProjectMemberResponseDto`
   - `id`, `projectId`, `userId`, `roleName`, `status`, `createdAt`
 - `ProjectAccessResponseDto`
@@ -242,6 +249,10 @@ Current implementation returns `'member'` from shared listing APIs.
 ## Business Rules
 
 - New projects are created as `active`.
+- On project creation, creator is automatically added as active `project-admin` member.
+- `POST /shared/projects` creates a user-owned project (`ownerUserId = creator`, `tenantId = null`).
+- `POST /shared/tenants/projects` creates a tenant-owned project (`tenantId = current tenant`, `ownerUserId = null`).
+- Project creation can include optional initial members (`members[]`) with project roles.
 - Updating with no effective fields (`name` and `status` both omitted) is a no-op success.
 - Deleting a project is soft-delete (`status: inactive`, sets `deletedAt`, `deletedBy`).
 - Adding a project member:
@@ -300,8 +311,10 @@ async membership(
 ## Important Notes
 
 - Project member guard currently expects `projectId` in route params.
-- Project operations rely on tenant and project authorization decorators together for correct scope handling.
 - The module is wired via `RoutesSharedModule` and exposed as shared API routes.
+- User-scoped project endpoints (`/shared/projects`) do not require tenant context.
+- Tenant-scoped project endpoints (`/shared/tenants/projects`) are mounted via `TenantRoutesSharedModule` only when `TENANCY_ENABLED=true`.
+- For tenant-scoped project resource routes, both tenant membership and project permission guards are applied.
 - Role abilities are evaluated via policy ability factory; role scope must be `project`.
 
 ## Future Improvements

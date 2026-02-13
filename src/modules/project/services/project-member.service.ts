@@ -1,5 +1,4 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import {
     IResponsePagingReturn,
@@ -15,7 +14,6 @@ import { ProjectRepository } from '@modules/project/repositories/project.reposit
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
-    BadRequestException,
     ConflictException,
     ForbiddenException,
     HttpStatus,
@@ -34,7 +32,6 @@ export class ProjectMemberService {
         private readonly projectRepository: ProjectRepository,
         private readonly roleRepository: RoleRepository,
         private readonly userRepository: UserRepository,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly projectUtil: ProjectUtil
     ) {}
 

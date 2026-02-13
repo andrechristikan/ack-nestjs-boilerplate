@@ -62,7 +62,7 @@ export class ProjectTenantSharedController {
         @Body() body: ProjectCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.projectService.create(tenant.id, body, createdBy);
+        return this.projectService.createForTenant(tenant.id, body, createdBy);
     }
 
     @Response('project.get')

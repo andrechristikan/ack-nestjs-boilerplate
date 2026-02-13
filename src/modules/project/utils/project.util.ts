@@ -10,7 +10,7 @@ export class ProjectUtil {
     mapProject(project: IProject): ProjectResponseDto {
         return {
             id: project.id,
-            tenantId: project.tenantId,
+            tenantId: project.tenantId ?? undefined,
             name: project.name,
             status: project.status,
             createdAt: project.createdAt,
