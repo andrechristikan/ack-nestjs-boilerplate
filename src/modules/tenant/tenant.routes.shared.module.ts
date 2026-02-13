@@ -6,7 +6,7 @@ import { ProjectTenantSharedController } from '@modules/project/controllers/proj
 import { UserModule } from '@modules/user/user.module';
 
 @Module({
-    imports: [UserModule,TenantModule, ProjectModule],
+    imports: [UserModule, TenantModule, ProjectModule],
     controllers: [TenantSharedController, ProjectTenantSharedController],
 })
 export class TenantRoutesSharedModule {}

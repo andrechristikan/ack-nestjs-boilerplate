@@ -148,7 +148,7 @@ Tenant code is split for clearer optional wiring:
   - Registers tenant admin endpoints
 
 Toggle utility location:
-- `src/modules/tenant/util/tenancy.toggle.ts`
+- `src/modules/tenant/util/tenant.toggle.ts`
 
 ### Request Typing Composition
 

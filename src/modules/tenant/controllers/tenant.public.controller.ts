@@ -23,7 +23,7 @@ import { ApiTags } from '@nestjs/swagger';
 @ApiTags('modules.public.tenant')
 @Controller({
     version: '1',
-    path: '/tenant',
+    path: '/tenants',
 })
 export class TenantPublicController {
     constructor(private readonly tenantAuthService: TenantAuthService) {}

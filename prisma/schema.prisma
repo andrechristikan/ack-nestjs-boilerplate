@@ -108,7 +108,8 @@ model TenantMember {
 
 model Project {
   id       String            @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId String            @db.ObjectId
+  tenantId String?           @db.ObjectId
+  ownerUserId String?        @db.ObjectId
   name     String
   status   EnumProjectStatus @default(active)
 
@@ -124,6 +125,7 @@ model Project {
   members ProjectMember[] @relation("ProjectMembers")
 
   @@index(fields: [tenantId, status, deletedAt, createdAt])
+  @@index(fields: [ownerUserId, status, deletedAt, createdAt])
   @@index(fields: [createdAt])
   @@map("Projects")
 }

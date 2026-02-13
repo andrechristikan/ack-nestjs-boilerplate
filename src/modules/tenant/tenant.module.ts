@@ -23,7 +23,7 @@ import { AuthModule } from '@modules/auth/auth.module';
         TenantRoleGuard,
         TenantPermissionGuard,
     ],
-    exports: [TenantService, TenantMemberService,TenantAuthService, TenantRepository],
+    exports: [TenantService, TenantMemberService, TenantAuthService, TenantRepository],
     imports: [UserModule, RoleModule, AuthModule],
     controllers: [],
 })
