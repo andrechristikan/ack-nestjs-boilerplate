@@ -10,7 +10,7 @@ import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 import { ProjectModule } from '@modules/project/project.module';
 import { ProjectSharedController } from '@modules/project/controllers/project.shared.controller';
-import { whenTenancyEnabled } from '@modules/tenant/util/tenant.toggle';
+import { withTenancyRoute } from '@modules/tenant/util/tenant.toggle';
 import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.module';
 
 /**
@@ -34,7 +34,7 @@ import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.m
         ActivityLogModule,
         SessionModule,
         ProjectModule,
-        ...whenTenancyEnabled([TenantRoutesSharedModule]),
+        ...withTenancyRoute('/shared', TenantRoutesSharedModule),
     ],
 })
 export class RoutesSharedModule {}

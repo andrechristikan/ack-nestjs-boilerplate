@@ -6,7 +6,7 @@ import { TermPolicyPublicController } from '@modules/term-policy/controllers/ter
 import { UserPublicController } from '@modules/user/controllers/user.public.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
-import { whenTenancyEnabled } from '@modules/tenant/util/tenant.toggle';
+import { withTenancyRoute } from '@modules/tenant/util/tenant.toggle';
 import { TenantRoutesPublicModule } from '@modules/tenant/tenant.routes.public.module';
 
 /**
@@ -26,7 +26,7 @@ import { TenantRoutesPublicModule } from '@modules/tenant/tenant.routes.public.m
         CountryModule,
         HelloModule,
         UserModule,
-        ...whenTenancyEnabled([TenantRoutesPublicModule]),
+        ...withTenancyRoute('/public', TenantRoutesPublicModule),
     ],
 })
 export class RoutesPublicModule {}
