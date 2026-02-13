@@ -1,15 +1,30 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
+import {
+    TenantRoleAdmin,
+    TenantRoleUser,
+} from '@modules/tenant/constants/tenant.constant';
 
-const tenantData: TenantCreateRequestDto[] = [
+export interface IMigrationTenantData {
+    name: string;
+    members: {
+        userEmail: string;
+        tenantRole: string;
+    }[];
+}
+
+const tenantData: IMigrationTenantData[] = [
     {
         name: 'Default Organization',
+        members: [
+            { userEmail: 'admin@mail.com', tenantRole: TenantRoleAdmin },
+            { userEmail: 'user@mail.com', tenantRole: TenantRoleUser },
+        ],
     },
 ];
 
 export const migrationTenantData: Record<
     EnumAppEnvironment,
-    TenantCreateRequestDto[]
+    IMigrationTenantData[]
 > = {
     [EnumAppEnvironment.local]: tenantData,
     [EnumAppEnvironment.development]: tenantData,

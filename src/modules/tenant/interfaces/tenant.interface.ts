@@ -46,6 +46,4 @@ export interface ITenantMemberUpdate {
     updatedBy: string;
     roleId?: string;
     status?: EnumTenantMemberStatus;
-    deletedAt?: Date | null;
-    deletedBy?: string;
 }

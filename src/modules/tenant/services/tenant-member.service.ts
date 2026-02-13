@@ -126,7 +126,7 @@ export class TenantMemberService {
     async deleteMember(
         tenantId: string,
         memberId: string,
-        updatedBy: string
+        _updatedBy: string
     ): Promise<IResponseReturn<void>> {
 
         const member = await this.tenantRepository.findOneMemberByIdAndTenant(
@@ -141,16 +141,7 @@ export class TenantMemberService {
             });
         }
 
-        if (member.status === EnumTenantMemberStatus.inactive) {
-            return {};
-        }
-
-        await this.tenantRepository.updateMember(member.id, {
-            status: EnumTenantMemberStatus.inactive,
-            updatedBy,
-            deletedAt: this.helperService.dateCreate(),
-            deletedBy: updatedBy,
-        });
+        await this.tenantRepository.deleteMember(member.id);
 
         return {};
     }

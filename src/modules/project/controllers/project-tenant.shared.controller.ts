@@ -21,7 +21,7 @@ import { ProjectResponseDto } from '@modules/project/dtos/response/project.respo
 import { ProjectPermissionProtected } from '@modules/project/decorators/project.decorator';
 import { ProjectMemberService } from '@modules/project/services/project-member.service';
 import { ProjectService } from '@modules/project/services/project.service';
-import { TenantCurrent, TenantMemberProtected, TenantPermissionProtected } from '@modules/tenant/decorators/tenant.decorator';
+import { TenantCurrent, TenantMemberProtected, TenantPermissionProtected, TenantProtected } from '@modules/tenant/decorators/tenant.decorator';
 import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
@@ -40,6 +40,7 @@ export class ProjectTenantSharedController {
 
     @ResponsePaging('project.list')
     @TenantPermissionProtected(ProjectPolicyRead)
+    @TenantProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -90,11 +91,7 @@ export class ProjectTenantSharedController {
         @Body() body: ProjectUpdateRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.projectService.update(
-            projectId,
-            body,
-            updatedBy
-        );
+        return this.projectService.update(projectId, body, updatedBy);
     }
 
     @Response('project.delete')
@@ -123,11 +120,7 @@ export class ProjectTenantSharedController {
         @Body() body: ProjectMemberCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.projectMemberService.create(
-            projectId,
-            body,
-            createdBy
-        );
+        return this.projectMemberService.create(projectId, body, createdBy);
     }
 
     @Response('project.member.update')
@@ -162,9 +155,6 @@ export class ProjectTenantSharedController {
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
-        return this.projectMemberService.listMembers(
-            projectId,
-            pagination
-        );
+        return this.projectMemberService.listMembers(projectId, pagination);
     }
 }

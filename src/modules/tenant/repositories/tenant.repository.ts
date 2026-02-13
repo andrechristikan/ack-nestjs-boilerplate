@@ -104,7 +104,6 @@ export class TenantRepository {
                 tenantId,
                 userId,
                 status,
-                deletedAt: null,
                 tenant: {
                     deletedAt: null,
                 },
@@ -124,7 +123,6 @@ export class TenantRepository {
                 tenantId,
                 userId,
                 status: EnumTenantMemberStatus.active,
-                deletedAt: null,
                 tenant: {
                     deletedAt: null,
                 },
@@ -144,7 +142,6 @@ export class TenantRepository {
             where: {
                 id: memberId,
                 tenantId,
-                deletedAt: null,
                 tenant: {
                     deletedAt: null,
                 },
@@ -160,10 +157,7 @@ export class TenantRepository {
         data: ITenantMemberCreate
     ): Promise<TenantMember> {
         return this.databaseService.tenantMember.create({
-            data: {
-                ...data,
-                deletedAt: null
-            },
+            data,
         });
     }
 
@@ -179,6 +173,12 @@ export class TenantRepository {
         });
     }
 
+    async deleteMember(memberId: string): Promise<TenantMember> {
+        return this.databaseService.tenantMember.delete({
+            where: { id: memberId },
+        });
+    }
+
     async findMembersWithPaginationOffset(
         tenantId: string,
         { where, ...params }: IPaginationQueryOffsetParams
@@ -190,7 +190,6 @@ export class TenantRepository {
                 where: {
                     ...where,
                     tenantId,
-                    deletedAt: null,
                     tenant: {
                         deletedAt: null,
                     },
@@ -213,7 +212,6 @@ export class TenantRepository {
                 userId,
                 isJit: true,
                 status: EnumTenantMemberStatus.active,
-                deletedAt: null,
                 tenant: {
                     deletedAt: null,
                 },
@@ -237,6 +235,23 @@ export class TenantRepository {
         });
     }
 
+    async findAllMembershipsByUser(userId: string): Promise<ITenantMember[]> {
+        return this.databaseService.tenantMember.findMany({
+            where: {
+                userId,
+                status: EnumTenantMemberStatus.active,
+                tenant: {
+                    status: EnumTenantStatus.active,
+                    deletedAt: null,
+                },
+            },
+            include: {
+                role: true,
+                tenant: true,
+            },
+        });
+    }
+
     async findMembershipsWithPaginationCursorByUser(
         userId: string,
         { where, ...params }: IPaginationQueryCursorParams
@@ -249,7 +264,6 @@ export class TenantRepository {
                     ...where,
                     userId,
                     status: EnumTenantMemberStatus.active,
-                    deletedAt: null,
                     tenant: {
                         status: EnumTenantStatus.active,
                         deletedAt: null,
