@@ -4,7 +4,6 @@ import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -20,6 +19,7 @@ import {
     ITenant,
     ITenantMember,
 } from '@modules/tenant/interfaces/tenant.interface';
+import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant.interface';
 import { ITenantService } from '@modules/tenant/interfaces/tenant.service.interface';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import {
@@ -47,7 +47,9 @@ export class TenantService implements ITenantService {
         private readonly policyAbilityFactory: PolicyAbilityFactory
     ) {}
 
-    async validateTenantGuard(request: IRequestApp): Promise<ITenant> {
+    async validateTenantGuard(
+        request: IRequestAppWithTenant
+    ): Promise<ITenant> {
         const tenantId = request.__tenantId;
 
         if (!tenantId) {
@@ -75,7 +77,9 @@ export class TenantService implements ITenantService {
         return tenant;
     }
 
-    async validateTenantMemberGuard(request: IRequestApp): Promise<ITenantMember> {
+    async validateTenantMemberGuard(
+        request: IRequestAppWithTenant
+    ): Promise<ITenantMember> {
         const { user } = request;
 
         if (!user) {
@@ -130,7 +134,7 @@ export class TenantService implements ITenantService {
     }
 
     async validateTenantRoleGuard(
-        request: IRequestApp,
+        request: IRequestAppWithTenant,
         requiredRoleNames: string[]
     ): Promise<boolean> {
         const tenantMember = request.__tenantMember;
@@ -159,7 +163,7 @@ export class TenantService implements ITenantService {
     }
 
     async validateTenantPermissionGuard(
-        request: IRequestApp,
+        request: IRequestAppWithTenant,
         requiredAbilities: RoleAbilityRequestDto[]
     ): Promise<boolean> {
         if (requiredAbilities.length === 0) {

@@ -1,4 +1,4 @@
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant.interface';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { TenantService } from '@modules/tenant/services/tenant.service';
 
@@ -21,7 +21,8 @@ export class TenantGuard implements CanActivate {
      * @throws ForbiddenException if the tenant is inactive
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const request = context.switchToHttp().getRequest<IRequestApp>();
+        const request =
+            context.switchToHttp().getRequest<IRequestAppWithTenant>();
         const tenant = await this.tenantService.validateTenantGuard(request);
 
         request.__tenant = tenant;

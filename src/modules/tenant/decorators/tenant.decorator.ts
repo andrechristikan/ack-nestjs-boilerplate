@@ -1,9 +1,9 @@
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     TenantPermissionRequiredMetaKey,
     TenantRoleRequiredMetaKey,
 } from '@modules/tenant/constants/tenant.constant';
 import { ITenant, ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
+import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant.interface';
 import { TenantGuard } from '@modules/tenant/guards/tenant.guard';
 import { TenantMemberGuard } from '@modules/tenant/guards/tenant.member.guard';
 import { TenantPermissionGuard } from '@modules/tenant/guards/tenant.permission.guard';
@@ -60,7 +60,8 @@ export function TenantPermissionProtected(
  */
 export const TenantCurrent = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): ITenant | undefined => {
-        const { __tenant } = ctx.switchToHttp().getRequest<IRequestApp>();
+        const { __tenant } =
+            ctx.switchToHttp().getRequest<IRequestAppWithTenant>();
         return __tenant;
     }
 );
@@ -71,7 +72,7 @@ export const TenantCurrent = createParamDecorator(
 export const TenantMemberCurrent = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): ITenantMember | undefined => {
         const { __tenantMember } =
-            ctx.switchToHttp().getRequest<IRequestApp>();
+            ctx.switchToHttp().getRequest<IRequestAppWithTenant>();
         return __tenantMember;
     }
 );

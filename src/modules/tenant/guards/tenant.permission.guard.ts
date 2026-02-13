@@ -1,6 +1,6 @@
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { TenantPermissionRequiredMetaKey } from '@modules/tenant/constants/tenant.constant';
 import { TenantService } from '@modules/tenant/services/tenant.service';
+import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant.interface';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
@@ -31,7 +31,8 @@ export class TenantPermissionGuard implements CanActivate {
                 context.getHandler()
             ) ?? [];
 
-        const request = context.switchToHttp().getRequest<IRequestApp>();
+        const request =
+            context.switchToHttp().getRequest<IRequestAppWithTenant>();
 
         return this.tenantService.validateTenantPermissionGuard(
             request,
