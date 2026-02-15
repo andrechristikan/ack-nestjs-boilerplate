@@ -19,4 +19,5 @@ export enum EnumPolicySubject {
     tenant = 'tenant',
     tenantMember = 'tenantMember',
     project = 'project',
+    projectMember = 'projectMember',
 }

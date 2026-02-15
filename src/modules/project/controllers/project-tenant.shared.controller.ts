@@ -7,6 +7,9 @@ import { IResponsePagingReturn, IResponseReturn } from '@common/response/interfa
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected, AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
+    ProjectMemberPolicyCreate,
+    ProjectMemberPolicyRead,
+    ProjectMemberPolicyUpdate,
     ProjectPolicyCreate,
     ProjectPolicyDelete,
     ProjectPolicyRead,
@@ -110,7 +113,7 @@ export class ProjectTenantSharedController {
 
     @Response('project.member.create')
     @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectPolicyUpdate)
+    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -125,7 +128,7 @@ export class ProjectTenantSharedController {
 
     @Response('project.member.update')
     @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectPolicyUpdate)
+    @ProjectPermissionProtected(ProjectMemberPolicyUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -146,7 +149,7 @@ export class ProjectTenantSharedController {
 
     @ResponsePaging('project.member.list')
     @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectPolicyRead)
+    @ProjectPermissionProtected(ProjectMemberPolicyRead)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

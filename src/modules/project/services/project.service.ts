@@ -262,7 +262,10 @@ export class ProjectService {
 
             const [user, role] = await Promise.all([
                 this.userRepository.findOneById(member.userId),
-                this.resolveProjectRoleByName(member.roleName),
+                this.roleRepository.existByNameAndScope(
+                    member.roleName.trim(),
+                    EnumRoleScope.project
+                ),
             ]);
 
             if (!user) {
@@ -272,13 +275,29 @@ export class ProjectService {
                 });
             }
 
+            if (!role) {
+                throw new NotFoundException({
+                    statusCode: HttpStatus.NOT_FOUND,
+                    message: 'projectRole.error.notFound',
+                });
+            }
+
             resolvedMembers.push({
                 userId: member.userId,
                 roleId: role.id,
             });
         }
 
-        const adminRole = await this.resolveProjectRoleByName(ProjectRoleAdmin);
+        const adminRole = await this.roleRepository.existByNameAndScope(
+            ProjectRoleAdmin.trim(),
+            EnumRoleScope.project
+        );
+        if (!adminRole) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'projectRole.error.notFound',
+            });
+        }
 
         const project = await this.projectRepository.create({
             ...ownership,
@@ -313,20 +332,5 @@ export class ProjectService {
                 id: project.id,
             },
         };
-    }
-
-    private async resolveProjectRoleByName(roleName: string): Promise<{ id: string }> {
-        const role = await this.roleRepository.existByNameAndScope(
-            roleName.trim(),
-            EnumRoleScope.project
-        );
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'projectRole.error.notFound',
-            });
-        }
-
-        return { id: role.id };
     }
 }

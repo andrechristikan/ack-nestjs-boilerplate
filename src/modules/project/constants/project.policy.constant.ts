@@ -23,3 +23,23 @@ export const ProjectPolicyDelete: RoleAbilityRequestDto = {
     subject: EnumPolicySubject.project,
     action: [EnumPolicyAction.delete],
 };
+
+export const ProjectMemberPolicyRead: RoleAbilityRequestDto = {
+    subject: EnumPolicySubject.projectMember,
+    action: [EnumPolicyAction.read],
+};
+
+export const ProjectMemberPolicyCreate: RoleAbilityRequestDto = {
+    subject: EnumPolicySubject.projectMember,
+    action: [EnumPolicyAction.create],
+};
+
+export const ProjectMemberPolicyUpdate: RoleAbilityRequestDto = {
+    subject: EnumPolicySubject.projectMember,
+    action: [EnumPolicyAction.update],
+};
+
+export const ProjectMemberPolicyDelete: RoleAbilityRequestDto = {
+    subject: EnumPolicySubject.projectMember,
+    action: [EnumPolicyAction.delete],
+};

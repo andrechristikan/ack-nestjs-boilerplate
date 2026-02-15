@@ -62,7 +62,16 @@ export class ProjectMemberService {
             });
         }
 
-        const role = await this.resolveProjectRoleByName(dto.roleName);
+        const role = await this.roleRepository.existByNameAndScope(
+            dto.roleName.trim(),
+            EnumRoleScope.project
+        );
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'projectRole.error.notFound',
+            });
+        }
 
         const projectMember = await this.projectRepository.addMember({
             projectId,
@@ -100,7 +109,16 @@ export class ProjectMemberService {
 
         let roleId: string | undefined;
         if (dto.roleName !== undefined) {
-            const role = await this.resolveProjectRoleByName(dto.roleName);
+            const role = await this.roleRepository.existByNameAndScope(
+                dto.roleName.trim(),
+                EnumRoleScope.project
+            );
+            if (!role) {
+                throw new NotFoundException({
+                    statusCode: HttpStatus.NOT_FOUND,
+                    message: 'projectRole.error.notFound',
+                });
+            }
             roleId = role.id;
         }
 
@@ -179,20 +197,5 @@ export class ProjectMemberService {
         return {
             data: this.projectUtil.mapProject(member.project),
         };
-    }
-
-    private async resolveProjectRoleByName(roleName: string): Promise<{ id: string }> {
-        const role = await this.roleRepository.existByNameAndScope(
-            roleName.trim(),
-            EnumRoleScope.project
-        );
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'projectRole.error.notFound',
-            });
-        }
-
-        return { id: role.id };
     }
 }

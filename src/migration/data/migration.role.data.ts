@@ -152,6 +152,10 @@ const roleData: RoleCreateRequestDto[] = [
                 subject: EnumPolicySubject.project,
                 action: Object.values(EnumPolicyAction),
             },
+            {
+                subject: EnumPolicySubject.projectMember,
+                action: Object.values(EnumPolicyAction),
+            },
         ],
         type: EnumRoleType.user,
         scope: EnumRoleScope.project,
@@ -167,6 +171,14 @@ const roleData: RoleCreateRequestDto[] = [
                     EnumPolicyAction.update,
                 ],
             },
+            {
+                subject: EnumPolicySubject.projectMember,
+                action: [
+                    EnumPolicyAction.read,
+                    EnumPolicyAction.create,
+                    EnumPolicyAction.update,
+                ],
+            },
         ],
         type: EnumRoleType.user,
         scope: EnumRoleScope.project,
@@ -177,6 +189,10 @@ const roleData: RoleCreateRequestDto[] = [
         abilities: [
             {
                 subject: EnumPolicySubject.project,
+                action: [EnumPolicyAction.read],
+            },
+            {
+                subject: EnumPolicySubject.projectMember,
                 action: [EnumPolicyAction.read],
             },
         ],
