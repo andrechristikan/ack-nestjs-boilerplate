@@ -62,7 +62,6 @@ import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import { UserDeviceDto } from '@modules/user/dtos/user.device.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { UserService } from '@modules/user/services/user.service';
@@ -102,10 +101,9 @@ export class UserSharedController {
         @AuthJwtToken() refreshToken: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation,
-        @Body() body: UserDeviceDto
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
-        return this.userService.refresh(user, refreshToken, body, {
+        return this.userService.refresh(user, refreshToken, {
             ipAddress,
             userAgent,
             geoLocation,
@@ -434,7 +432,6 @@ export class UserSharedController {
         });
     }
 
-    // TODO: NEXT - Implement device management api (list, revoke), and device fcm token refresh
     // TODO: NEXT - Implement logout api
 
     // TODO: Verify number implementation, but which provider?

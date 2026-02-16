@@ -1,6 +1,6 @@
 import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
 import { faker } from '@faker-js/faker';
-import { UserDeviceDto } from '@modules/user/dtos/user.device.dto';
+import { DeviceDto } from '@modules/device/dtos/device.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { EnumUserLoginFrom } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
@@ -46,12 +46,12 @@ export class UserLoginRequestDto {
     @ApiProperty({
         description: 'Device information',
         required: true,
-        type: UserDeviceDto,
+        type: DeviceDto,
     })
-    @Type(() => UserDeviceDto)
+    @Type(() => DeviceDto)
     @IsNotEmpty()
     @IsObject()
     @IsNotEmptyObject()
     @ValidateNested()
-    device: UserDeviceDto;
+    device: DeviceDto;
 }

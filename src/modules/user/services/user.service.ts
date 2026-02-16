@@ -71,7 +71,7 @@ import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.res
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
-import { EnumUserStatus_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { IUserService } from '@modules/user/interfaces/user.service.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -104,10 +104,11 @@ import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.req
 import { ConfigService } from '@nestjs/config';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
-import { UserDeviceDto } from '@modules/user/dtos/user.device.dto';
 import { EmailUtil } from '@modules/email/utils/email.util';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { DeviceDto } from '@modules/device/dtos/device.dto';
+import { DeviceRepository } from '@modules/device/repositories/device.repository';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -120,6 +121,7 @@ export class UserService implements IUserService {
         private readonly countryRepository: CountryRepository,
         private readonly roleRepository: RoleRepository,
         private readonly passwordHistoryRepository: PasswordHistoryRepository,
+        private readonly deviceRepository: DeviceRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly helperService: HelperService,
         private readonly fileService: FileService,
@@ -153,12 +155,12 @@ export class UserService implements IUserService {
         const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         } else if (user.status !== EnumUserStatus.active) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.inactiveForbidden,
+                statusCode: EnumUserStatusCodeError.inactiveForbidden,
                 message: 'user.error.inactive',
             });
         }
@@ -167,12 +169,12 @@ export class UserService implements IUserService {
             this.authUtil.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.passwordExpired,
+                statusCode: EnumUserStatusCodeError.passwordExpired,
                 message: 'auth.error.passwordExpired',
             });
         } else if (requiredVerified === true && user.isVerified !== true) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.emailNotVerified,
+                statusCode: EnumUserStatusCodeError.emailNotVerified,
                 message: 'user.error.emailNotVerified',
             });
         }
@@ -226,7 +228,7 @@ export class UserService implements IUserService {
         const user = await this.userRepository.findOneProfileById(id);
         if (!user) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         }
@@ -257,7 +259,7 @@ export class UserService implements IUserService {
             });
         } else if (emailExist) {
             throw new ConflictException({
-                statusCode: EnumUserStatus_CODE_ERROR.emailExist,
+                statusCode: EnumUserStatusCodeError.emailExist,
                 message: 'user.error.emailExist',
             });
         }
@@ -322,12 +324,12 @@ export class UserService implements IUserService {
         const user = await this.userRepository.findOneById(userId);
         if (!user) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         } else if (user.status === EnumUserStatus.blocked) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.statusInvalid,
+                statusCode: EnumUserStatusCodeError.statusInvalid,
                 message: 'user.error.statusInvalid',
                 messageProperties: {
                     status: user.status.toLowerCase(),
@@ -534,12 +536,12 @@ export class UserService implements IUserService {
         ]);
         if (!checkValidMobileNumber) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.mobileNumberInvalid,
+                statusCode: EnumUserStatusCodeError.mobileNumberInvalid,
                 message: 'user.error.mobileNumberInvalid',
             });
         } else if (checkExist) {
             throw new ConflictException({
-                statusCode: EnumUserStatus_CODE_ERROR.mobileNumberExist,
+                statusCode: EnumUserStatusCodeError.mobileNumberExist,
                 message: 'user.error.mobileNumberExist',
             });
         }
@@ -581,7 +583,7 @@ export class UserService implements IUserService {
         ]);
         if (!checkMobileNumberExist) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.mobileNumberNotFound,
+                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
                 message: 'user.error.mobileNumberNotFound',
             });
         } else if (!checkCountry) {
@@ -598,7 +600,7 @@ export class UserService implements IUserService {
         );
         if (checkExist) {
             throw new ConflictException({
-                statusCode: EnumUserStatus_CODE_ERROR.mobileNumberExist,
+                statusCode: EnumUserStatusCodeError.mobileNumberExist,
                 message: 'user.error.mobileNumberExist',
             });
         }
@@ -609,7 +611,7 @@ export class UserService implements IUserService {
         );
         if (!checkValidMobileNumber) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.mobileNumberInvalid,
+                statusCode: EnumUserStatusCodeError.mobileNumberInvalid,
                 message: 'user.error.mobileNumberInvalid',
             });
         }
@@ -651,7 +653,7 @@ export class UserService implements IUserService {
         );
         if (!checkExist) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.mobileNumberNotFound,
+                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
                 message: 'user.error.mobileNumberNotFound',
             });
         }
@@ -689,17 +691,17 @@ export class UserService implements IUserService {
         ]);
         if (checkUsername) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.usernameNotAllowed,
+                statusCode: EnumUserStatusCodeError.usernameNotAllowed,
                 message: 'user.error.usernameNotAllowed',
             });
         } else if (checkBadWord) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.usernameContainBadWord,
+                statusCode: EnumUserStatusCodeError.usernameContainBadWord,
                 message: 'user.error.usernameContainBadWord',
             });
         } else if (exist) {
             throw new ConflictException({
-                statusCode: EnumUserStatus_CODE_ERROR.usernameExist,
+                statusCode: EnumUserStatusCodeError.usernameExist,
                 message: 'user.error.usernameExist',
             });
         }
@@ -767,12 +769,12 @@ export class UserService implements IUserService {
         const user = await this.userRepository.findOneById(userId);
         if (!user) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         } else if (user.status === EnumUserStatus.blocked) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.statusInvalid,
+                statusCode: EnumUserStatusCodeError.statusInvalid,
                 message: 'user.error.statusInvalid',
                 messageProperties: {
                     status: user.status.toLowerCase(),
@@ -837,7 +839,7 @@ export class UserService implements IUserService {
     ): Promise<IResponseReturn<void>> {
         if (this.authUtil.checkPasswordAttempt(user)) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.passwordAttemptMax,
+                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
                 message: 'auth.error.passwordAttemptMax',
             });
         } else if (
@@ -846,7 +848,7 @@ export class UserService implements IUserService {
             await this.userRepository.increasePasswordAttempt(user.id);
 
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.passwordNotMatch,
+                statusCode: EnumUserStatusCodeError.passwordNotMatch,
                 message: 'auth.error.passwordNotMatch',
             });
         }
@@ -861,7 +863,7 @@ export class UserService implements IUserService {
         );
         if (passwordCheck) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.passwordMustNew,
+                statusCode: EnumUserStatusCodeError.passwordMustNew,
                 message: 'auth.error.passwordMustNew',
                 messageProperties: {
                     period: this.helperService.dateFormatToRFC2822(
@@ -923,17 +925,17 @@ export class UserService implements IUserService {
         const user = await this.userRepository.findOneWithRoleByEmail(email);
         if (!user) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         } else if (user.status !== EnumUserStatus.active) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.inactiveForbidden,
+                statusCode: EnumUserStatusCodeError.inactiveForbidden,
                 message: 'user.error.inactive',
             });
         } else if (!user.password) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.passwordNotSet,
+                statusCode: EnumUserStatusCodeError.passwordNotSet,
                 message: 'auth.error.passwordNotSet',
             });
         }
@@ -945,14 +947,14 @@ export class UserService implements IUserService {
             );
 
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.passwordAttemptMax,
+                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
                 message: 'auth.error.passwordAttemptMax',
             });
         } else if (!this.authUtil.validatePassword(password, user.password)) {
             await this.userRepository.increasePasswordAttempt(user.id);
 
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.passwordNotMatch,
+                statusCode: EnumUserStatusCodeError.passwordNotMatch,
                 message: 'auth.error.passwordNotMatch',
             });
         }
@@ -963,12 +965,12 @@ export class UserService implements IUserService {
             this.authUtil.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.passwordExpired,
+                statusCode: EnumUserStatusCodeError.passwordExpired,
                 message: 'auth.error.passwordExpired',
             });
         } else if (!user.isVerified) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.emailNotVerified,
+                statusCode: EnumUserStatusCodeError.emailNotVerified,
                 message: 'user.error.emailNotVerified',
             });
         }
@@ -1028,7 +1030,7 @@ export class UserService implements IUserService {
 
         if (user.status !== EnumUserStatus.active) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.inactiveForbidden,
+                statusCode: EnumUserStatusCodeError.inactiveForbidden,
                 message: 'user.error.inactive',
             });
         }
@@ -1048,7 +1050,6 @@ export class UserService implements IUserService {
     async refresh(
         user: IUser,
         refreshToken: string,
-        device: UserDeviceDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
         const {
@@ -1093,7 +1094,6 @@ export class UserService implements IUserService {
                         loginFrom: loginFrom,
                         loginWith: loginWith,
                     },
-                    device,
                     requestLog
                 ),
             ]);
@@ -1136,7 +1136,7 @@ export class UserService implements IUserService {
             });
         } else if (emailExist) {
             throw new ConflictException({
-                statusCode: EnumUserStatus_CODE_ERROR.emailExist,
+                statusCode: EnumUserStatusCodeError.emailExist,
                 message: 'user.error.emailExist',
             });
         }
@@ -1204,7 +1204,7 @@ export class UserService implements IUserService {
             );
         if (!verification) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.tokenInvalid,
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
                 message: 'user.error.verificationTokenInvalid',
             });
         }
@@ -1245,12 +1245,12 @@ export class UserService implements IUserService {
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         } else if (user.isVerified) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.emailAlreadyVerified,
+                statusCode: EnumUserStatusCodeError.emailAlreadyVerified,
                 message: 'user.error.emailAlreadyVerified',
             });
         }
@@ -1269,7 +1269,7 @@ export class UserService implements IUserService {
             if (today < canResendAt) {
                 throw new BadRequestException({
                     statusCode:
-                        EnumUserStatus_CODE_ERROR.verificationEmailResendLimitExceeded,
+                        EnumUserStatusCodeError.verificationEmailResendLimitExceeded,
                     message: 'user.error.verificationEmailResendLimitExceeded',
                     messageProperties: {
                         resendIn: this.helperService.dateDiff(
@@ -1325,7 +1325,7 @@ export class UserService implements IUserService {
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         }
@@ -1344,7 +1344,7 @@ export class UserService implements IUserService {
             if (today < canResendAt) {
                 throw new BadRequestException({
                     statusCode:
-                        EnumUserStatus_CODE_ERROR.forgotPasswordRequestLimitExceeded,
+                        EnumUserStatusCodeError.forgotPasswordRequestLimitExceeded,
                     message: 'user.error.forgotPasswordRequestLimitExceeded',
                     messageProperties: {
                         resendIn: this.helperService.dateDiff(
@@ -1406,7 +1406,7 @@ export class UserService implements IUserService {
             await this.userRepository.findOneActiveByForgotPasswordToken(token);
         if (!resetPassword) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         }
@@ -1421,7 +1421,7 @@ export class UserService implements IUserService {
         );
         if (passwordCheck) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.passwordMustNew,
+                statusCode: EnumUserStatusCodeError.passwordMustNew,
                 message: 'auth.error.passwordMustNew',
                 messageProperties: {
                     period: this.helperService.dateFormatToRFC2822(
@@ -1489,12 +1489,12 @@ export class UserService implements IUserService {
         user: IUser,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        device: UserDeviceDto,
+        device: DeviceDto,
         requestLog: IRequestLog
     ): Promise<AuthTokenResponseDto> {
         const [{ tokens, sessionId, jti }, existDevice] = await Promise.all([
             this.authUtil.createTokens(user, loginFrom, loginWith),
-            this.userRepository.existDevice(user.id, device.fingerprint),
+            this.deviceRepository.exist(user.id, device.fingerprint),
         ]);
         const loginAt = this.helperService.dateCreate();
         const expiredAt = this.helperService.dateForward(
@@ -1560,7 +1560,7 @@ export class UserService implements IUserService {
         user: IUser,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        device: UserDeviceDto,
+        device: DeviceDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         if (!user.twoFactor.enabled) {
@@ -1693,17 +1693,17 @@ export class UserService implements IUserService {
         );
         if (!user) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         } else if (user.status !== EnumUserStatus.active) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.inactiveForbidden,
+                statusCode: EnumUserStatusCodeError.inactiveForbidden,
                 message: 'user.error.inactive',
             });
         } else if (!user.isVerified) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.emailNotVerified,
+                statusCode: EnumUserStatusCodeError.emailNotVerified,
                 message: 'user.error.emailNotVerified',
             });
         } else if (!user.twoFactor.enabled) {
@@ -1771,17 +1771,17 @@ export class UserService implements IUserService {
         );
         if (!user) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         } else if (user.status !== EnumUserStatus.active) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.inactiveForbidden,
+                statusCode: EnumUserStatusCodeError.inactiveForbidden,
                 message: 'user.error.inactive',
             });
         } else if (!user.isVerified) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.emailNotVerified,
+                statusCode: EnumUserStatusCodeError.emailNotVerified,
                 message: 'user.error.emailNotVerified',
             });
         } else if (!user.twoFactor.enabled) {
@@ -2001,12 +2001,12 @@ export class UserService implements IUserService {
         const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         } else if (user.status === EnumUserStatus.blocked) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.statusInvalid,
+                statusCode: EnumUserStatusCodeError.statusInvalid,
                 message: 'user.error.statusInvalid',
                 messageProperties: {
                     status: user.status.toLowerCase(),
@@ -2067,7 +2067,7 @@ export class UserService implements IUserService {
 
         if (existingUsers.length > 0) {
             throw new ConflictException({
-                statusCode: EnumUserStatus_CODE_ERROR.emailExist,
+                statusCode: EnumUserStatusCodeError.emailExist,
                 message: 'user.error.importEmailExist',
                 messageProperties: {
                     emails: existingUsers.map(user => user.email).join(', '),

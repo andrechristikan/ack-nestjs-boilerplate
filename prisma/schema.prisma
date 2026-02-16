@@ -643,6 +643,7 @@ enum EnumActivityLogAction {
   userDisableTwoFactor
   userVerifyTwoFactor
   userRegenerateTwoFactorBackupCodes
+  userDeviceRefresh
 
   adminSessionRevoke
   adminApiKeyCreate

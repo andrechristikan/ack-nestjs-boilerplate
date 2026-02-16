@@ -418,11 +418,11 @@ Documents endpoint that returns **one of** several possible response types using
 DocOneOf(
     HttpStatus.BAD_REQUEST,
     {
-        statusCode: EnumUserStatus_CODE_ERROR.emailExist,
+        statusCode: EnumUserStatusCodeError.emailExist,
         messagePath: 'user.error.emailExist',
     },
     {
-        statusCode: EnumUserStatus_CODE_ERROR.usernameExist,
+        statusCode: EnumUserStatusCodeError.usernameExist,
         messagePath: 'user.error.usernameExist',
     }
 )

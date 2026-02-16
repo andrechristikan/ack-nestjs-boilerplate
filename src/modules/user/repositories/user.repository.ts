@@ -18,6 +18,7 @@ import {
     IAuthPassword,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
+import { DeviceDto } from '@modules/device/dtos/device.dto';
 import { IRole } from '@modules/role/interfaces/role.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
@@ -27,7 +28,6 @@ import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.m
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { UserDeviceDto } from '@modules/user/dtos/user.device.dto';
 import {
     IUser,
     IUserForgotPasswordCreate,
@@ -141,21 +141,6 @@ export class UserRepository {
             include: {
                 role: true,
                 twoFactor: true,
-            },
-        });
-    }
-
-    async findDeviceByUserId(
-        userId: string,
-        excludeFingerprint?: string[]
-    ): Promise<Device[]> {
-        return this.databaseService.device.findMany({
-            where: {
-                userId,
-                ...(excludeFingerprint &&
-                    excludeFingerprint.length > 0 && {
-                        fingerprint: { notIn: excludeFingerprint },
-                    }),
             },
         });
     }
@@ -352,21 +337,6 @@ export class UserRepository {
     async existByUsername(username: string): Promise<{ id: string } | null> {
         return this.databaseService.user.findUnique({
             where: { username },
-            select: { id: true },
-        });
-    }
-
-    async existDevice(
-        userId: string,
-        fingerprint: string
-    ): Promise<{ id: string } | null> {
-        return this.databaseService.device.findUnique({
-            where: {
-                userId_fingerprint: {
-                    userId,
-                    fingerprint,
-                },
-            },
             select: { id: true },
         });
     }
@@ -923,7 +893,7 @@ export class UserRepository {
     async login(
         userId: string,
         { loginFrom, loginWith, sessionId, expiredAt, jti }: IUserLogin,
-        { fingerprint, name, notificationToken, platform }: UserDeviceDto,
+        { fingerprint, name, notificationToken, platform }: DeviceDto,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         const today = this.helperService.dateCreate();
@@ -1506,23 +1476,9 @@ export class UserRepository {
     async refresh(
         userId: string,
         { loginFrom, loginWith, sessionId, jti }: IUserLogin,
-        { fingerprint, name, notificationToken, platform }: UserDeviceDto,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         const today = this.helperService.dateCreate();
-
-        let notificationProvider: EnumDeviceNotificationProvider | null = null;
-        switch (platform) {
-            case EnumDevicePlatform.android:
-                notificationProvider = EnumDeviceNotificationProvider.fcm;
-                break;
-            case EnumDevicePlatform.ios:
-                notificationProvider = EnumDeviceNotificationProvider.apns;
-                break;
-            default:
-                notificationProvider = null;
-                break;
-        }
 
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -1539,23 +1495,6 @@ export class UserRepository {
                         },
                         data: {
                             jti,
-                        },
-                    },
-                },
-                devices: {
-                    update: {
-                        where: {
-                            userId_fingerprint: {
-                                userId,
-                                fingerprint,
-                            },
-                        },
-                        data: {
-                            name,
-                            platform,
-                            notificationProvider,
-                            notificationToken,
-                            lastActiveAt: today,
                         },
                     },
                 },

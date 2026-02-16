@@ -1,0 +1,6 @@
+{
+    "refesh": "Refresh device information",
+    "error": {
+        "notFound": "Device information not found"
+    }
+}

@@ -7,6 +7,7 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { CountryModule } from '@modules/country/country.module';
 import { EmailModule } from '@modules/email/email.module';
 import { NotificationModule } from '@modules/notification/notification.module';
+import { DeviceModule } from '@modules/device/device.module';
 
 @Module({
     imports: [
@@ -15,6 +16,7 @@ import { NotificationModule } from '@modules/notification/notification.module';
         CountryModule,
         EmailModule,
         NotificationModule,
+        DeviceModule,
     ],
     exports: [UserService, UserRepository, UserUtil],
     providers: [UserService, UserRepository, UserUtil],
