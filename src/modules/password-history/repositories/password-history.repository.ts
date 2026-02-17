@@ -20,40 +20,54 @@ export class PasswordHistoryRepository {
 
     async findWithPaginationOffsetByAdmin(
         userId: string,
-        { where, ...others }: IPaginationQueryOffsetParams
+        {
+            where,
+            ...others
+        }: IPaginationQueryOffsetParams<
+            Prisma.PasswordHistorySelect,
+            Prisma.PasswordHistoryWhereInput
+        >
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
-        return this.paginationService.offset<IPasswordHistory>(
-            this.databaseService.passwordHistory,
-            {
-                ...others,
-                where: {
-                    ...where,
-                    userId,
-                },
-                include: {
-                    user: true,
-                },
-            }
-        );
+        return this.paginationService.offset<
+            IPasswordHistory,
+            Prisma.PasswordHistorySelect,
+            Prisma.PasswordHistoryWhereInput
+        >(this.databaseService.passwordHistory, {
+            ...others,
+            where: {
+                ...where,
+                userId,
+            },
+            include: {
+                user: true,
+            },
+        });
     }
 
     async findWithPaginationCursor(
         userId: string,
-        { where, ...others }: IPaginationQueryCursorParams
+        {
+            where,
+            ...others
+        }: IPaginationQueryCursorParams<
+            Prisma.PasswordHistorySelect,
+            Prisma.PasswordHistoryWhereInput
+        >
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
-        return this.paginationService.cursor<IPasswordHistory>(
-            this.databaseService.passwordHistory,
-            {
-                ...others,
-                where: {
-                    ...where,
-                    userId,
-                },
-                include: {
-                    user: true,
-                },
-            }
-        );
+        return this.paginationService.cursor<
+            IPasswordHistory,
+            Prisma.PasswordHistorySelect,
+            Prisma.PasswordHistoryWhereInput
+        >(this.databaseService.passwordHistory, {
+            ...others,
+            where: {
+                ...where,
+                userId,
+            },
+            include: {
+                user: true,
+            },
+        });
     }
 
     async findActiveUser(userId: string): Promise<PasswordHistory[]> {

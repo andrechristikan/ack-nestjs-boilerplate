@@ -39,6 +39,7 @@ import {
     EnumActivityLogAction,
     EnumRoleType,
     GeoLocation,
+    Prisma,
     UserAgent,
 } from '@prisma/client';
 
@@ -72,7 +73,10 @@ export class SessionAdminController {
         @PaginationOffsetQuery({
             availableOrderBy: SessionDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.SessionSelect,
+            Prisma.SessionWhereInput
+        >,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
@@ -102,7 +106,7 @@ export class SessionAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @Param('sessionId', RequestRequiredPipe) sessionId: string,
-        @AuthJwtPayload('userId') revokeBy: string,
+        @AuthJwtPayload('userId') revokedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation
@@ -115,7 +119,7 @@ export class SessionAdminController {
                 userAgent,
                 geoLocation,
             },
-            revokeBy
+            revokedBy
         );
     }
 }

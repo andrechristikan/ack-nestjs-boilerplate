@@ -7,6 +7,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { ISessionService } from '@modules/session/interfaces/session.service.interface';
@@ -42,7 +43,10 @@ export class SessionService implements ISessionService {
      */
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.SessionSelect,
+            Prisma.SessionWhereInput
+        >
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         const { data, ...others } =
             await this.sessionRepository.findWithPaginationOffsetByAdmin(
@@ -71,7 +75,10 @@ export class SessionService implements ISessionService {
      */
     async getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams<
+            Prisma.SessionSelect,
+            Prisma.SessionWhereInput
+        >
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         const { data, ...others } =
             await this.sessionRepository.findWithPaginationCursor(
@@ -139,7 +146,7 @@ export class SessionService implements ISessionService {
      * @param userId - The unique identifier of the user
      * @param sessionId - The unique identifier of the session to revoke
      * @param requestLog - Request log information for audit trail
-     * @param revokeBy - The identifier (admin/user) who initiated the revocation
+     * @param revokedBy - The identifier (admin/user) who initiated the revocation
      * @returns Promise resolving to a response containing activity log metadata for audit trail
      *
      */
@@ -147,7 +154,7 @@ export class SessionService implements ISessionService {
         userId: string,
         sessionId: string,
         requestLog: IRequestLog,
-        revokeBy: string
+        revokedBy: string
     ): Promise<IResponseReturn<void>> {
         const checkActive = await this.sessionRepository.findOneActive(
             userId,
@@ -160,11 +167,11 @@ export class SessionService implements ISessionService {
             });
         }
 
-        const [updated] = await Promise.all([
+        const [removed] = await Promise.all([
             this.sessionRepository.revokeByAdmin(
                 sessionId,
                 requestLog,
-                revokeBy
+                revokedBy
             ),
             this.sessionUtil.deleteOneLogin(userId, sessionId),
             // TODO: NEXT
@@ -176,7 +183,7 @@ export class SessionService implements ISessionService {
 
         return {
             metadataActivityLog:
-                this.sessionUtil.mapActivityLogMetadata(updated),
+                this.sessionUtil.mapActivityLogMetadata(removed),
         };
     }
 }

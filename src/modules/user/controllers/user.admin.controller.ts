@@ -28,6 +28,7 @@ import {
     EnumRoleType,
     EnumUserStatus,
     GeoLocation,
+    Prisma,
     UserAgent,
 } from '@prisma/client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -111,7 +112,10 @@ export class UserAdminController {
         @PaginationOffsetQuery({
             availableSearch: UserDefaultAvailableSearch,
         })
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >,
         @PaginationQueryFilterInEnum<EnumUserStatus>(
             'status',
             UserDefaultStatus

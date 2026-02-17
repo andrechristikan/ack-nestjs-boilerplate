@@ -90,6 +90,7 @@ import {
     EnumUserLoginWith,
     EnumUserStatus,
     EnumVerificationType,
+    Prisma,
 } from '@prisma/client';
 import { Duration } from 'luxon';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
@@ -183,7 +184,10 @@ export class UserService implements IUserService {
     }
 
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
@@ -204,7 +208,10 @@ export class UserService implements IUserService {
     }
 
     async getListCursor(
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>

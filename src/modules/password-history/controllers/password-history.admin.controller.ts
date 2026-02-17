@@ -19,7 +19,7 @@ import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/t
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType, Prisma } from '@prisma/client';
 
 @ApiTags('modules.admin.user.passwordHistory')
 @Controller({
@@ -51,7 +51,10 @@ export class PasswordHistoryAdminController {
     @Get('/list')
     async list(
         @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.PasswordHistorySelect,
+            Prisma.PasswordHistoryWhereInput
+        >,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {

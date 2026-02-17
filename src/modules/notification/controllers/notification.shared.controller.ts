@@ -14,7 +14,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { UserAgent } from '@generated/prisma-client';
+import { Prisma, UserAgent } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -61,7 +61,10 @@ export class NotificationSharedController {
     @Get('/list')
     async list(
         @PaginationCursorQuery()
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.NotificationSelect,
+            Prisma.NotificationWhereInput
+        >,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
         return this.notificationService.getListCursor(userId, pagination);

@@ -29,34 +29,48 @@ export class NotificationRepository {
 
     async findWithPaginationOffset(
         userId: string,
-        { where, ...params }: IPaginationQueryOffsetParams
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.NotificationSelect,
+            Prisma.NotificationWhereInput
+        >
     ): Promise<IResponsePagingReturn<Notification>> {
-        return this.paginationService.offset<Notification>(
-            this.databaseService.notification,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    userId,
-                },
-            }
-        );
+        return this.paginationService.offset<
+            Notification,
+            Prisma.NotificationSelect,
+            Prisma.NotificationWhereInput
+        >(this.databaseService.notification, {
+            ...params,
+            where: {
+                ...where,
+                userId,
+            },
+        });
     }
 
     async findWithPaginationCursor(
         userId: string,
-        { where, ...params }: IPaginationQueryCursorParams
+        {
+            where,
+            ...params
+        }: IPaginationQueryCursorParams<
+            Prisma.NotificationSelect,
+            Prisma.NotificationWhereInput
+        >
     ): Promise<IResponsePagingReturn<Notification>> {
-        return this.paginationService.cursor<Notification>(
-            this.databaseService.notification,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    userId,
-                },
-            }
-        );
+        return this.paginationService.cursor<
+            Notification,
+            Prisma.NotificationSelect,
+            Prisma.NotificationWhereInput
+        >(this.databaseService.notification, {
+            ...params,
+            where: {
+                ...where,
+                userId,
+            },
+        });
     }
 
     async existById(

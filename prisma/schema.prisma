@@ -635,6 +635,7 @@ enum EnumActivityLogAction {
   userRevokeSessionByAdmin
   userRevokeAllSessions
   userRevokeAllSessionsByAdmin
+  userRemoveDevice
   userAcceptTermPolicy
   userForgotPassword
   userReachMaxPasswordAttempt

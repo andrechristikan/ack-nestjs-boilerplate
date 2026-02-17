@@ -7,6 +7,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client';
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
@@ -91,7 +92,10 @@ export class FeatureFlagService implements IFeatureFlagService {
     }
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.FeatureFlagSelect,
+            Prisma.FeatureFlagWhereInput
+        >
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
         const { data, ...others } =
             await this.featureFlagRepository.findWithPaginationOffsetByAdmin(
@@ -107,7 +111,10 @@ export class FeatureFlagService implements IFeatureFlagService {
     }
 
     async getListCursor(
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams<
+            Prisma.FeatureFlagSelect,
+            Prisma.FeatureFlagWhereInput
+        >
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
         const { data, ...others } =
             await this.featureFlagRepository.findWithPaginationCursor(

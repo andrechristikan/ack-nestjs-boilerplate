@@ -1,5 +1,11 @@
-import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    PaginationCursorQuery,
+    PaginationOffsetQuery,
+} from '@common/pagination/decorators/pagination.decorator';
+import {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import {
     RequestGeoLocation,
     RequestIPAddress,
@@ -16,20 +22,30 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
+import {
+    EnumRoleType,
+    GeoLocation,
+    Prisma,
+    UserAgent,
+} from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
-    DeviceSharedListDoc,
-    DeviceSharedRefreshDoc,
-    DeviceSharedRemoveDoc,
-} from '@modules/device/docs/device.shared.doc';
+    DeviceAdminListDoc,
+    DeviceAdminRemoveDoc,
+} from '@modules/device/docs/device.admin.doc';
 import { DeviceDto } from '@modules/device/dtos/device.dto';
 import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
 import { DeviceService } from '@modules/device/services/device.service';
+import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@modules/policy/enums/policy.enum';
+import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -44,75 +60,82 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
-@ApiTags('modules.shared.user.device')
+@ApiTags('modules.admin.user.device')
 @Controller({
     version: '1',
-    path: '/user/device',
+    path: '/user/:userId/password-history',
 })
-export class DeviceSharedController {
+export class DeviceAdminController {
     constructor(private readonly deviceService: DeviceService) {}
 
-    @DeviceSharedListDoc()
+    @DeviceAdminListDoc()
     @ResponsePaging('device.list')
     @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected(
+        {
+            subject: EnumPolicySubject.user,
+            action: [EnumPolicyAction.read],
+        },
+        {
+            subject: EnumPolicySubject.device,
+            action: [EnumPolicyAction.read],
+        }
+    )
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationCursorQuery()
-        pagination: IPaginationQueryCursorParams<
+        @PaginationOffsetQuery()
+        pagination: IPaginationQueryOffsetParams<
             Prisma.DeviceSelect,
             Prisma.DeviceWhereInput
         >,
-        @AuthJwtPayload('userId') userId: string,
-        @AuthJwtPayload('sessionId') sessionId: string
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string
     ): Promise<IResponsePagingReturn<DeviceResponseDto>> {
-        return this.deviceService.getListCursor(userId, sessionId, pagination);
+        return this.deviceService.getListOffsetByAdmin(userId, pagination);
     }
 
-    @DeviceSharedRefreshDoc()
-    @Response('device.refresh')
-    @TermPolicyAcceptanceProtected()
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/refresh')
-    async device(
-        @AuthJwtPayload('userId') userId: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation,
-        @Body() body: DeviceDto
-    ): Promise<IResponseReturn<void>> {
-        return this.deviceService.refresh(userId, body, {
-            ipAddress,
-            userAgent,
-            geoLocation,
-        });
-    }
-
-    @DeviceSharedRemoveDoc()
+    @DeviceAdminRemoveDoc()
     @Response('device.remove')
     @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected(
+        {
+            subject: EnumPolicySubject.user,
+            action: [EnumPolicyAction.read],
+        },
+        {
+            subject: EnumPolicySubject.device,
+            action: [EnumPolicyAction.read, EnumPolicyAction.delete],
+        }
+    )
+    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Delete('/remove/:deviceId')
     async remove(
-        @AuthJwtPayload('userId') userId: string,
+        @AuthJwtPayload('userId') removedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation,
+        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        userId: string,
         @Param('deviceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         deviceId: string
     ): Promise<IResponseReturn<void>> {
-        return this.deviceService.remove(userId, deviceId, {
-            ipAddress,
-            userAgent,
-            geoLocation,
-        });
+        return this.deviceService.removeByAdmin(
+            userId,
+            deviceId,
+            {
+                ipAddress,
+                userAgent,
+                geoLocation,
+            },
+            removedBy
+        );
     }
 }

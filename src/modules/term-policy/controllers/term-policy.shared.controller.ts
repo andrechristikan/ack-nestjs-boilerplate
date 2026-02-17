@@ -40,7 +40,7 @@ import {
 } from '@common/request/decorators/request.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import { GeoLocation, UserAgent } from '@generated/prisma-client';
+import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
 
 @ApiTags('modules.shared.user.termPolicy')
 @Controller({
@@ -59,7 +59,10 @@ export class TermPolicySharedController {
     @Get('/list/accepted')
     async listAccepted(
         @PaginationCursorQuery()
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.TermPolicyUserAcceptanceSelect,
+            Prisma.TermPolicyUserAcceptanceWhereInput
+        >,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>> {
         return this.termPolicyService.getListUserAccepted(userId, pagination);

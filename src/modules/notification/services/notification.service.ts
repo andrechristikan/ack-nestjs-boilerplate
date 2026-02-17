@@ -4,6 +4,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client';
 import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
@@ -25,7 +26,10 @@ export class NotificationService implements INotificationService {
 
     async getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams<
+            Prisma.NotificationSelect,
+            Prisma.NotificationWhereInput
+        >
     ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
         const { data, ...others } =
             await this.notificationRepository.findWithPaginationCursor(

@@ -1,5 +1,6 @@
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client';
 import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
 import { ICountryService } from '@modules/country/interfaces/country.service.interface';
 import { CountryRepository } from '@modules/country/repositories/country.repository';
@@ -14,7 +15,10 @@ export class CountryService implements ICountryService {
     ) {}
 
     async getList(
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.CountrySelect,
+            Prisma.CountryWhereInput
+        >
     ): Promise<IResponsePagingReturn<CountryResponseDto>> {
         const { data, ...others } =
             await this.countryRepository.findWithPagination(pagination);

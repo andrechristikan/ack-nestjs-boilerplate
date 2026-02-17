@@ -23,40 +23,54 @@ export class ActivityLogRepository {
 
     async findWithPaginationOffset(
         userId: string,
-        { where, ...params }: IPaginationQueryOffsetParams
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >
     ): Promise<IResponsePagingReturn<IActivityLog>> {
-        return this.paginationService.offset<IActivityLog>(
-            this.databaseService.activityLog,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    userId,
-                },
-                include: {
-                    user: true,
-                },
-            }
-        );
+        return this.paginationService.offset<
+            IActivityLog,
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >(this.databaseService.activityLog, {
+            ...params,
+            where: {
+                ...where,
+                userId,
+            },
+            include: {
+                user: true,
+            },
+        });
     }
 
     async findWithPaginationCursor(
         userId: string,
-        { where, ...params }: IPaginationQueryCursorParams
+        {
+            where,
+            ...params
+        }: IPaginationQueryCursorParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
-        return this.paginationService.cursor<IActivityLog>(
-            this.databaseService.activityLog,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    userId,
-                },
-                include: {
-                    user: true,
-                },
-            }
-        );
+        return this.paginationService.cursor<
+            IActivityLog,
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >(this.databaseService.activityLog, {
+            ...params,
+            where: {
+                ...where,
+                userId,
+            },
+            include: {
+                user: true,
+            },
+        });
     }
 
     async create(

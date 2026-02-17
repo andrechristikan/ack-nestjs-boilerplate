@@ -9,7 +9,7 @@ import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ISession } from '@modules/session/interfaces/session.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumActivityLogAction, Session } from '@prisma/client';
+import { EnumActivityLogAction, Prisma, Session } from '@prisma/client';
 
 @Injectable()
 export class SessionRepository {
@@ -21,40 +21,54 @@ export class SessionRepository {
 
     async findWithPaginationOffsetByAdmin(
         userId: string,
-        { where, ...others }: IPaginationQueryOffsetParams
+        {
+            where,
+            ...others
+        }: IPaginationQueryOffsetParams<
+            Prisma.SessionSelect,
+            Prisma.SessionWhereInput
+        >
     ): Promise<IResponsePagingReturn<ISession>> {
-        return this.paginationService.offset<ISession>(
-            this.databaseService.session,
-            {
-                ...others,
-                where: {
-                    ...where,
-                    userId,
-                },
-                include: {
-                    user: true,
-                },
-            }
-        );
+        return this.paginationService.offset<
+            ISession,
+            Prisma.SessionSelect,
+            Prisma.SessionWhereInput
+        >(this.databaseService.session, {
+            ...others,
+            where: {
+                ...where,
+                userId,
+            },
+            include: {
+                user: true,
+            },
+        });
     }
 
     async findWithPaginationCursor(
         userId: string,
-        { where, ...others }: IPaginationQueryCursorParams
+        {
+            where,
+            ...others
+        }: IPaginationQueryCursorParams<
+            Prisma.SessionSelect,
+            Prisma.SessionWhereInput
+        >
     ): Promise<IResponsePagingReturn<ISession>> {
-        return this.paginationService.cursor<ISession>(
-            this.databaseService.session,
-            {
-                ...others,
-                where: {
-                    ...where,
-                    userId,
-                },
-                include: {
-                    user: true,
-                },
-            }
-        );
+        return this.paginationService.cursor<
+            ISession,
+            Prisma.SessionSelect,
+            Prisma.SessionWhereInput
+        >(this.databaseService.session, {
+            ...others,
+            where: {
+                ...where,
+                userId,
+            },
+            include: {
+                user: true,
+            },
+        });
     }
 
     async findActive(userId: string): Promise<
@@ -69,6 +83,29 @@ export class SessionRepository {
                 expiredAt: {
                     gte: this.helperService.dateCreate(),
                 },
+            },
+            select: {
+                id: true,
+            },
+        });
+    }
+
+    async findActiveByDevice(
+        userId: string,
+        deviceId: string
+    ): Promise<
+        {
+            id: string;
+        }[]
+    > {
+        return this.databaseService.session.findMany({
+            where: {
+                userId,
+                isRevoked: false,
+                expiredAt: {
+                    gte: this.helperService.dateCreate(),
+                },
+                deviceId,
             },
             select: {
                 id: true,
@@ -125,7 +162,7 @@ export class SessionRepository {
     async revokeByAdmin(
         sessionId: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog,
-        revokeBy: string
+        revokedBy: string
     ): Promise<ISession> {
         return this.databaseService.session.update({
             where: {
@@ -134,7 +171,7 @@ export class SessionRepository {
             data: {
                 isRevoked: true,
                 revokedAt: this.helperService.dateCreate(),
-                updatedBy: revokeBy,
+                updatedBy: revokedBy,
                 user: {
                     update: {
                         activityLogs: {
@@ -143,7 +180,7 @@ export class SessionRepository {
                                 ipAddress,
                                 userAgent,
                                 geoLocation,
-                                createdBy: revokeBy,
+                                createdBy: revokedBy,
                             },
                         },
                     },

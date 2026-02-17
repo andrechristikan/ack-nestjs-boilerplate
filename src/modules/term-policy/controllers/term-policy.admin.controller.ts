@@ -71,6 +71,7 @@ import {
     EnumRoleType,
     EnumTermPolicyStatus,
     EnumTermPolicyType,
+    Prisma,
 } from '@prisma/client';
 
 @ApiTags('modules.admin.termPolicy')
@@ -97,7 +98,10 @@ export class TermPolicyAdminController {
         @PaginationOffsetQuery({
             availableSearch: TermPolicyDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TermPolicySelect,
+            Prisma.TermPolicyWhereInput
+        >,
         @PaginationQueryFilterInEnum<EnumTermPolicyType>(
             'type',
             TermPolicyDefaultType

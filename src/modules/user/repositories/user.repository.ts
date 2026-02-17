@@ -71,12 +71,22 @@ export class UserRepository {
     ) {}
 
     async findWithPaginationOffset(
-        { where, ...params }: IPaginationQueryOffsetParams,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IUser>> {
-        return this.paginationService.offset<IUser>(this.databaseService.user, {
+        return this.paginationService.offset<
+            IUser,
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >(this.databaseService.user, {
             ...params,
             where: {
                 ...where,
@@ -93,12 +103,22 @@ export class UserRepository {
     }
 
     async findWithPaginationCursor(
-        { where, ...params }: IPaginationQueryCursorParams,
+        {
+            where,
+            ...params
+        }: IPaginationQueryCursorParams<
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IPaginationCursorReturn<IUser>> {
-        return this.paginationService.cursor<IUser>(this.databaseService.user, {
+        return this.paginationService.cursor<
+            IUser,
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >(this.databaseService.user, {
             ...params,
             where: {
                 ...where,

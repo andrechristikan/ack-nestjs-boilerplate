@@ -11,7 +11,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { GeoLocation, UserAgent } from '@generated/prisma-client';
+import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -48,7 +48,10 @@ export class SessionSharedController {
         @PaginationCursorQuery({
             availableOrderBy: SessionDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.SessionSelect,
+            Prisma.SessionWhereInput
+        >,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         return this.sessionService.getListCursor(userId, pagination);

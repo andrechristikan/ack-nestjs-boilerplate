@@ -11,7 +11,7 @@ import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.cr
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { Injectable } from '@nestjs/common';
-import { ApiKey } from '@prisma/client';
+import { ApiKey, Prisma } from '@prisma/client';
 
 @Injectable()
 export class ApiKeyRepository {
@@ -21,24 +21,31 @@ export class ApiKeyRepository {
     ) {}
 
     async findWithPagination(
-        { where, ...params }: IPaginationQueryOffsetParams,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKey>> {
-        return this.paginationService.offset<ApiKey>(
-            this.databaseService.apiKey,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    ...isActive,
-                    ...type,
-                },
-                orderBy: {
-                    createdAt: EnumPaginationOrderDirectionType.desc,
-                },
-            }
-        );
+        return this.paginationService.offset<
+            ApiKey,
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >(this.databaseService.apiKey, {
+            ...params,
+            where: {
+                ...where,
+                ...isActive,
+                ...type,
+            },
+            orderBy: {
+                createdAt: EnumPaginationOrderDirectionType.desc,
+            },
+        });
     }
 
     async create(

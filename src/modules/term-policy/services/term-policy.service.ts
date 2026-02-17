@@ -42,6 +42,7 @@ import {
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
+    Prisma,
     TermPolicy,
 } from '@prisma/client';
 
@@ -86,7 +87,10 @@ export class TermPolicyService implements ITermPolicyService {
     }
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TermPolicySelect,
+            Prisma.TermPolicyWhereInput
+        >,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
@@ -106,7 +110,10 @@ export class TermPolicyService implements ITermPolicyService {
     }
 
     async getListPublished(
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.TermPolicySelect,
+            Prisma.TermPolicyWhereInput
+        >,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
         const { data, ...others } =
@@ -123,7 +130,10 @@ export class TermPolicyService implements ITermPolicyService {
 
     async getListUserAccepted(
         userId: string,
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams<
+            Prisma.TermPolicyUserAcceptanceSelect,
+            Prisma.TermPolicyUserAcceptanceWhereInput
+        >
     ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>> {
         const { data, ...others } =
             await this.termPolicyRepository.findUserAccepted(

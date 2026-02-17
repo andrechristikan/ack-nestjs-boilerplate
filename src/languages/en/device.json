@@ -1,5 +1,7 @@
 {
+    "list": "List of devices",
     "refesh": "Refresh device information",
+    "remove": "Successfully removed device information and revoke all sessions",
     "error": {
         "notFound": "Device information not found"
     }

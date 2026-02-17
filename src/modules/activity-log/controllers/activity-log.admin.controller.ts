@@ -19,7 +19,7 @@ import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/t
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType, Prisma } from '@prisma/client';
 
 @ApiTags('modules.admin.user.activityLog')
 @Controller({
@@ -49,7 +49,10 @@ export class ActivityLogAdminController {
     @Get('/list')
     async list(
         @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
