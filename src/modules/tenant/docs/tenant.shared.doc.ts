@@ -5,6 +5,7 @@ import {
     DocRequest,
     DocResponse,
     DocResponsePaging,
+    DocTenantPermissionProtected,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { InvitationCreateRequestDto } from '@modules/invitation/dtos/request/invitation.create.request.dto';
@@ -29,6 +30,7 @@ export function TenantSharedGetCurrentTenantDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocTenantPermissionProtected(),
         DocResponse<TenantResponseDto>('tenant.get', {
             dto: TenantResponseDto,
         })
@@ -44,6 +46,7 @@ export function TenantSharedUpdateCurrentTenantDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocTenantPermissionProtected(),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
             dto: TenantUpdateRequestDto,
@@ -61,6 +64,7 @@ export function TenantSharedListMembersDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocTenantPermissionProtected(),
         DocResponsePaging<TenantMemberResponseDto>('tenant.member.list', {
             dto: TenantMemberResponseDto,
         })
@@ -76,6 +80,7 @@ export function TenantSharedCreateMemberDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocTenantPermissionProtected(),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
             dto: TenantMemberCreateRequestDto,
@@ -96,6 +101,7 @@ export function TenantSharedCreateMemberInvitationDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocTenantPermissionProtected(),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
             dto: InvitationCreateRequestDto,
@@ -119,6 +125,7 @@ export function TenantSharedSendMemberInvitationDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocTenantPermissionProtected(),
         DocRequest({
             params: TenantDocParamsMemberId,
         }),
@@ -140,6 +147,7 @@ export function TenantSharedListMemberRolesDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocTenantPermissionProtected(),
         DocResponse('tenant.member.roles')
     );
 }
@@ -153,6 +161,7 @@ export function TenantSharedUpdateMemberDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocTenantPermissionProtected(),
         DocRequest({
             params: TenantDocParamsMemberId,
             bodyType: EnumDocRequestBodyType.json,
@@ -171,6 +180,7 @@ export function TenantSharedDeleteMemberDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
+        DocTenantPermissionProtected(),
         DocRequest({
             params: TenantDocParamsMemberId,
         }),

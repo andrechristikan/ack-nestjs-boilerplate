@@ -14,6 +14,7 @@ import {
 
 /**
  * Requires project-scoped permissions for routes that target a specific project resource.
+ * Swagger counterpart: `DocProjectPermissionProtected`.
  */
 export function ProjectPermissionProtected(
     ...requiredAbilities: RoleAbilityRequestDto[]

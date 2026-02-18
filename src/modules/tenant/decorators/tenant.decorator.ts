@@ -19,6 +19,7 @@ import {
 
 /**
  * Requires a valid tenant context for the route.
+ * Swagger counterpart: `DocTenantProtected`.
  */
 export function TenantProtected(): MethodDecorator {
     return applyDecorators(UseGuards(TenantGuard));
@@ -26,6 +27,7 @@ export function TenantProtected(): MethodDecorator {
 
 /**
  * Requires a valid tenant membership for the route.
+ * Swagger counterpart: `DocTenantMemberProtected`.
  */
 export function TenantMemberProtected(): MethodDecorator {
     return applyDecorators(UseGuards(TenantGuard, TenantMemberGuard));
@@ -33,6 +35,7 @@ export function TenantMemberProtected(): MethodDecorator {
 
 /**
  * Requires the caller to have one of the specified tenant roles.
+ * Swagger counterpart: `DocTenantRoleProtected`.
  */
 export function TenantRoleProtected(
     ...requiredRoleNames: string[]
@@ -45,6 +48,7 @@ export function TenantRoleProtected(
 
 /**
  * Requires the caller to have the specified tenant abilities.
+ * Swagger counterpart: `DocTenantPermissionProtected`.
  */
 export function TenantPermissionProtected(
     ...requiredAbilities: RoleAbilityRequestDto[]
