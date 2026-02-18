@@ -9,10 +9,19 @@ import {
 
 export type ITenant = Tenant;
 
+// Base — role always loaded (needed for auth/RBAC on every tenant-scoped request)
 export interface ITenantMember extends TenantMember {
-    tenant?: Tenant;
-    role?: Role;
-    user?: User;
+    role: Role;
+}
+
+// For member listings scoped to a tenant (need to know who the user is)
+export interface ITenantMemberWithUser extends ITenantMember {
+    user: User;
+}
+
+// For membership listings scoped to a user (need to know which tenant)
+export interface ITenantMemberWithTenant extends ITenantMember {
+    tenant: Tenant;
 }
 
 export interface ITenantCreate {

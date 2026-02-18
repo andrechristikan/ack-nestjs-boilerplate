@@ -30,7 +30,6 @@ import {
     BadRequestException,
     ConflictException,
     Injectable,
-    InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
 import {
@@ -300,13 +299,6 @@ export class TenantMemberService {
     }
 
     private mapMember(member: ITenantMember): TenantMemberResponseDto {
-        if (!member.role) {
-            throw new InternalServerErrorException({
-                statusCode: EnumTenantStatusCodeError.roleNotFound,
-                message: 'tenantRole.error.notFound',
-            });
-        }
-
         return {
             id: member.id,
             tenantId: member.tenantId,

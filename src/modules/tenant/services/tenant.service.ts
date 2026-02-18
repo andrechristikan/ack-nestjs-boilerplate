@@ -103,7 +103,7 @@ export class TenantService implements ITenantService {
                 user.userId
             );
 
-        if (!tenantMember?.role) {
+        if (!tenantMember) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
                 message: 'tenantMember.error.forbidden',

@@ -42,8 +42,8 @@ export class TenantAuthService {
 
             tenants = memberships.map(m => ({
                 tenantId: m.tenantId,
-                tenantName: m.tenant!.name,
-                role: m.role!.name,
+                tenantName: m.tenant.name,
+                role: m.role.name,
                 status: m.status,
             }));
         }

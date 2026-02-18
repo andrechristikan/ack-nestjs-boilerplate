@@ -11,6 +11,8 @@ import {
     ITenantMember,
     ITenantMemberCreate,
     ITenantMemberUpdate,
+    ITenantMemberWithTenant,
+    ITenantMemberWithUser,
     ITenantUpdate,
 } from '@modules/tenant/interfaces/tenant.interface';
 import { Injectable } from '@nestjs/common';
@@ -180,8 +182,8 @@ export class TenantRepository {
     async findMembersWithPaginationOffset(
         tenantId: string,
         { where, ...params }: IPaginationQueryOffsetParams
-    ): Promise<IResponsePagingReturn<ITenantMember>> {
-        return this.paginationService.offset<ITenantMember>(
+    ): Promise<IResponsePagingReturn<ITenantMemberWithUser>> {
+        return this.paginationService.offset<ITenantMemberWithUser>(
             this.databaseService.tenantMember,
             {
                 ...params,
@@ -232,7 +234,7 @@ export class TenantRepository {
         });
     }
 
-    async findAllMembershipsByUser(userId: string): Promise<ITenantMember[]> {
+    async findAllMembershipsByUser(userId: string): Promise<ITenantMemberWithTenant[]> {
         return this.databaseService.tenantMember.findMany({
             where: {
                 userId,
@@ -252,8 +254,8 @@ export class TenantRepository {
     async findMembershipsWithPaginationCursorByUser(
         userId: string,
         { where, ...params }: IPaginationQueryCursorParams
-    ): Promise<IResponsePagingReturn<ITenantMember>> {
-        return this.paginationService.cursor<ITenantMember>(
+    ): Promise<IResponsePagingReturn<ITenantMemberWithTenant>> {
+        return this.paginationService.cursor<ITenantMemberWithTenant>(
             this.databaseService.tenantMember,
             {
                 ...params,
