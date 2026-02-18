@@ -18,6 +18,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -163,6 +164,7 @@ export class TenantSharedController {
     }
 
     @TenantSharedCreateMemberInvitationDoc()
+    @FeatureFlagProtected('tenantInvitations')
     @Response('tenant.member.invitation.create')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenantMember,
@@ -188,6 +190,7 @@ export class TenantSharedController {
     }
 
     @TenantSharedSendMemberInvitationDoc()
+    @FeatureFlagProtected('tenantInvitations')
     @Response('tenant.member.invitation.send')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenantMember,

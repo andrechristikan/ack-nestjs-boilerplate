@@ -12,6 +12,7 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -150,6 +151,7 @@ export class TenantAdminController {
     }
 
     @TenantAdminAssumeAccessDoc()
+    @FeatureFlagProtected('tenantJitAccess')
     @Response('tenant.assumeAccess')
     @ActivityLog(EnumActivityLogAction.tenantJitAccessAssumed)
     @PolicyAbilityProtected({
@@ -169,6 +171,7 @@ export class TenantAdminController {
     }
 
     @TenantAdminRevokeAccessDoc()
+    @FeatureFlagProtected('tenantJitAccess')
     @Response('tenant.revokeAccess')
     @ActivityLog(EnumActivityLogAction.tenantJitAccessRevoked)
     @PolicyAbilityProtected({

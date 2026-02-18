@@ -10,6 +10,7 @@ import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe
 import { Response, ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn, IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { AuthJwtAccessProtected, AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     ProjectMemberPolicyCreate,
@@ -155,6 +156,7 @@ export class ProjectTenantSharedController {
     }
 
     @ProjectTenantSharedCreateMemberInvitationDoc()
+    @FeatureFlagProtected('projectInvitations')
     @Response('project.member.invitation.create')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
@@ -178,6 +180,7 @@ export class ProjectTenantSharedController {
     }
 
     @ProjectTenantSharedSendMemberInvitationDoc()
+    @FeatureFlagProtected('projectInvitations')
     @Response('project.member.invitation.send')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)

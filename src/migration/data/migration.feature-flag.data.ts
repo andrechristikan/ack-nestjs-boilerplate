@@ -41,6 +41,24 @@ const featureFlagData: Prisma.FeatureFlagCreateInput[] = [
             forgotAllowed: true,
         },
     },
+    {
+        key: 'tenantInvitations',
+        description: 'Enable tenant member invitations',
+        rolloutPercent: 100,
+        isEnable: true,
+    },
+    {
+        key: 'tenantJitAccess',
+        description: 'Enable JIT (Just-In-Time) admin access to tenants',
+        rolloutPercent: 100,
+        isEnable: true,
+    },
+    {
+        key: 'projectInvitations',
+        description: 'Enable project member invitations',
+        rolloutPercent: 100,
+        isEnable: true,
+    },
 ];
 
 export const migrationFeatureFlagData: Record<
