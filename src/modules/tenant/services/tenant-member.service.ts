@@ -22,9 +22,9 @@ import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.me
 import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import { TenantRolePlatformSupport } from '@modules/tenant/constants/tenant.constant';
-import { ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { TenantInvitationProvider } from '@modules/tenant/services/tenant-invitation.provider';
+import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     BadRequestException,
@@ -47,7 +47,8 @@ export class TenantMemberService {
         private readonly userRepository: UserRepository,
         private readonly helperService: HelperService,
         private readonly invitationService: InvitationService,
-        private readonly tenantInvitationProvider: TenantInvitationProvider
+        private readonly tenantInvitationProvider: TenantInvitationProvider,
+        private readonly tenantUtil: TenantUtil
     ) {}
 
     async addMember(
@@ -207,7 +208,7 @@ export class TenantMemberService {
 
         return {
             ...others,
-            data: data.map(member => this.mapMember(member)),
+            data: data.map(member => this.tenantUtil.mapMember(member)),
         };
     }
 
@@ -264,14 +265,7 @@ export class TenantMemberService {
         });
 
         return {
-            data: {
-                memberId: member.id,
-                tenantId: tenant.id,
-                tenantName: tenant.name,
-                role: role.name,
-                expiresAt,
-                reason: dto.reason,
-            },
+            data: this.tenantUtil.mapJitAccess(member, tenant, role.name, expiresAt, dto.reason),
         };
     }
 
@@ -296,20 +290,6 @@ export class TenantMemberService {
         await this.tenantRepository.revokeJitMember(jitMember.id);
 
         return {};
-    }
-
-    private mapMember(member: ITenantMember): TenantMemberResponseDto {
-        return {
-            id: member.id,
-            tenantId: member.tenantId,
-            userId: member.userId,
-            status: member.status,
-            role: {
-                id: member.role.id,
-                name: member.role.name,
-                description: member.role.description
-            },
-        };
     }
 
     private async resolveTenantRoleById(

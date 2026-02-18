@@ -22,6 +22,7 @@ import {
 import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant.interface';
 import { ITenantService } from '@modules/tenant/interfaces/tenant.service.interface';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
+import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 import {
     BadRequestException,
     ForbiddenException,
@@ -33,7 +34,6 @@ import {
 import {
     EnumRoleScope,
     EnumTenantStatus,
-    Tenant,
 } from '@prisma/client';
 
 @Injectable()
@@ -44,7 +44,8 @@ export class TenantService implements ITenantService {
         private readonly tenantRepository: TenantRepository,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperService: HelperService,
-        private readonly policyAbilityFactory: PolicyAbilityFactory
+        private readonly policyAbilityFactory: PolicyAbilityFactory,
+        private readonly tenantUtil: TenantUtil
     ) {}
 
     async validateTenantGuard(
@@ -201,7 +202,7 @@ export class TenantService implements ITenantService {
 
         return {
             ...others,
-            data: data.map(tenant => this.mapTenant(tenant)),
+            data: data.map(tenant => this.tenantUtil.mapTenant(tenant)),
         };
     }
 
@@ -215,7 +216,7 @@ export class TenantService implements ITenantService {
         }
 
         return {
-            data: this.mapTenant(tenant),
+            data: this.tenantUtil.mapTenant(tenant),
         };
     }
 
@@ -277,13 +278,4 @@ export class TenantService implements ITenantService {
         return {};
     }
 
-    private mapTenant(tenant: Tenant): TenantResponseDto {
-        return {
-            id: tenant.id,
-            name: tenant.name,
-            status: tenant.status,
-            createdAt: tenant.createdAt,
-            updatedAt: tenant.updatedAt,
-        };
-    }
 }

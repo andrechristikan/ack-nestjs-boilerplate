@@ -7,6 +7,7 @@ import {
 } from '@modules/tenant/dtos/response/tenant.login.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
+import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
 import { ForbiddenException, Injectable } from '@nestjs/common';
@@ -16,7 +17,8 @@ export class TenantAuthService {
     constructor(
         private readonly userService: UserService,
         private readonly userRepository: UserRepository,
-        private readonly tenantRepository: TenantRepository
+        private readonly tenantRepository: TenantRepository,
+        private readonly tenantUtil: TenantUtil
     ) {}
 
     async loginCredential(
@@ -40,12 +42,7 @@ export class TenantAuthService {
                 });
             }
 
-            tenants = memberships.map(m => ({
-                tenantId: m.tenantId,
-                tenantName: m.tenant.name,
-                role: m.role.name,
-                status: m.status,
-            }));
+            tenants = memberships.map(m => this.tenantUtil.mapMembership(m));
         }
 
         // 3. Delegate all credential validation and token creation to UserService.
