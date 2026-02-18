@@ -58,7 +58,7 @@ export class TenantMemberService {
     ): Promise<IResponseReturn<DatabaseIdDto>> {
         const [user, role, memberExist] = await Promise.all([
             this.userRepository.findOneById(dto.userId),
-            this.resolveTenantRoleByName(dto.roleName),
+            this.resolveTenantRoleById(dto.roleId),
             this.tenantRepository.existMemberByTenantAndUser(
                 tenantId,
                 dto.userId
@@ -238,9 +238,16 @@ export class TenantMemberService {
             });
         }
 
-        const role = await this.resolveTenantRoleByName(
-            TenantRolePlatformSupport
+        const role = await this.roleRepository.existByNameAndScope(
+            TenantRolePlatformSupport,
+            EnumRoleScope.tenant
         );
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.roleNotFound,
+                message: 'tenantRole.error.notFound',
+            });
+        }
 
         const expiresAt = this.helperService.dateCreate();
         expiresAt.setHours(expiresAt.getHours() + dto.durationInHours);
@@ -311,36 +318,6 @@ export class TenantMemberService {
                 description: member.role.description
             },
         };
-    }
-
-    private async resolveTenantRoleByName(
-        roleName: string
-    ): Promise<{ id: string; name: string; scope: EnumRoleScope }> {
-        const roleInTenantScope = await this.roleRepository.existByNameAndScope(
-            roleName,
-            EnumRoleScope.tenant
-        );
-
-        if (roleInTenantScope) {
-            return roleInTenantScope;
-        }
-
-        const role = await this.roleRepository.existByName(roleName);
-        if (role && role.scope !== EnumRoleScope.tenant) {
-            throw new BadRequestException({
-                statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
-                message: 'tenantRole.error.scopeMismatch',
-            });
-        }
-
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.roleNotFound,
-                message: 'tenantRole.error.notFound',
-            });
-        }
-
-        return role;
     }
 
     private async resolveTenantRoleById(

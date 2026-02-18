@@ -194,6 +194,7 @@ export class TenantRepository {
                 },
                 include: {
                     role: true,
+                    user: true,
                 },
             }
         );

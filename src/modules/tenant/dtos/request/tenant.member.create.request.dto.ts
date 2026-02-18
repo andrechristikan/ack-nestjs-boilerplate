@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsMongoId, IsNotEmpty, IsString } from 'class-validator';
 
 export class TenantMemberCreateRequestDto {
     @ApiProperty({
@@ -12,10 +12,11 @@ export class TenantMemberCreateRequestDto {
 
     @ApiProperty({
         required: true,
-        description: 'Role name',
-        example: 'tenant-user',
+        description: 'Role id',
+        example: '65f3d2e44b9a7e1bd2c9a8f1',
     })
     @IsString()
     @IsNotEmpty()
-    roleName: string;
+    @IsMongoId()
+    roleId: string;
 }
