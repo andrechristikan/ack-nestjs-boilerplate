@@ -128,8 +128,7 @@ export class TenantRepository {
                 },
             },
             include: {
-                role: true,
-                tenant: true,
+                role: true
             },
         });
     }
@@ -148,7 +147,6 @@ export class TenantRepository {
             },
             include: {
                 role: true,
-                tenant: true,
             },
         });
     }
@@ -196,7 +194,6 @@ export class TenantRepository {
                 },
                 include: {
                     role: true,
-                    tenant: true,
                 },
             }
         );
@@ -218,7 +215,6 @@ export class TenantRepository {
             },
             include: {
                 role: true,
-                tenant: true,
             },
         });
     }

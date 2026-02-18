@@ -1,15 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { PickType } from '@nestjs/swagger';
+import { RoleDto } from '@modules/role/dtos/role.dto';
 
-export class TenantRoleResponseDto {
-    @ApiProperty({
-        required: true,
-        description: 'Role id',
-    })
-    id: string;
-
-    @ApiProperty({
-        required: true,
-        description: 'Role name',
-    })
-    name: string;
-}
+export class TenantRoleResponseDto extends PickType(RoleDto, [
+    'id',
+    'name',
+    'description',
+] as const) {}

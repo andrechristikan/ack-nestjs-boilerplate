@@ -258,16 +258,8 @@ export class TenantMemberService {
             role: {
                 id: member.role.id,
                 name: member.role.name,
+                description: member.role.description
             },
-            tenant: member.tenant
-                ? {
-                      id: member.tenant.id,
-                      name: member.tenant.name,
-                      status: member.tenant.status,
-                      createdAt: member.tenant.createdAt,
-                      updatedAt: member.tenant.updatedAt,
-                  }
-                : undefined,
         };
     }
 

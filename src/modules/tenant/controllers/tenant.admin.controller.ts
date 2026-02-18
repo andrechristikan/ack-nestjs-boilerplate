@@ -69,7 +69,7 @@ export class TenantAdminController {
     })
     @UserProtected()
     @AuthJwtAccessProtected()
-    //@ApiKeyProtected()
+    @ApiKeyProtected()
     @Get('')
     async list(
         @PaginationOffsetQuery()
@@ -103,7 +103,7 @@ export class TenantAdminController {
     })
     @UserProtected()
     @AuthJwtAccessProtected()
-    //@ApiKeyProtected()
+    @ApiKeyProtected()
     @Get('/:tenantId')
     async get(
         @Param('tenantId', RequestRequiredPipe)
