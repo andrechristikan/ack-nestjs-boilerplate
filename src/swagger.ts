@@ -32,13 +32,6 @@ export default async function (app: NestApplication): Promise<void> {
             .setDescription(docDesc)
             .setVersion(appVersion)
             .setOpenAPIVersion(docVersion)
-            .setDescription(
-                messageService.setMessage('app.description.swagger', {
-                    properties: {
-                        appName,
-                    },
-                })
-            )
             .setContact(appAuthorName, appUrl, appAuthorEmail)
             .addServer('/')
             .addBearerAuth(
