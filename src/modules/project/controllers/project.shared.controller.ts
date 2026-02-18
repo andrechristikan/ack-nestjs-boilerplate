@@ -8,6 +8,11 @@ import { AuthJwtAccessProtected, AuthJwtPayload } from '@modules/auth/decorators
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project.access.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
+import {
+    ProjectSharedCreateDoc,
+    ProjectSharedGetDoc,
+    ProjectSharedListDoc,
+} from '@modules/project/docs/project.shared.doc';
 import { ProjectMemberService } from '@modules/project/services/project-member.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -26,6 +31,7 @@ export class ProjectSharedController {
         private readonly projectMemberService: ProjectMemberService
     ) {}
 
+    @ProjectSharedCreateDoc()
     @Response('project.create')
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -38,6 +44,7 @@ export class ProjectSharedController {
         return this.projectService.createForUser(body, createdBy);
     }
 
+    @ProjectSharedListDoc()
     @ResponsePaging('project.shared.list')
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -50,6 +57,7 @@ export class ProjectSharedController {
         return this.projectMemberService.list(userId, pagination);
     }
 
+    @ProjectSharedGetDoc()
     @Response('project.shared.get')
     @UserProtected()
     @AuthJwtAccessProtected()

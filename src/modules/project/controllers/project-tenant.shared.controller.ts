@@ -29,6 +29,19 @@ import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/pro
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
+import {
+    ProjectTenantSharedCreateDoc,
+    ProjectTenantSharedCreateMemberDoc,
+    ProjectTenantSharedCreateMemberInvitationDoc,
+    ProjectTenantSharedDeleteDoc,
+    ProjectTenantSharedGetDoc,
+    ProjectTenantSharedListDoc,
+    ProjectTenantSharedListMemberRolesDoc,
+    ProjectTenantSharedListMembersDoc,
+    ProjectTenantSharedSendMemberInvitationDoc,
+    ProjectTenantSharedUpdateDoc,
+    ProjectTenantSharedUpdateMemberDoc,
+} from '@modules/project/docs/project.tenant.shared.doc';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { ProjectPermissionProtected } from '@modules/project/decorators/project.decorator';
 import { ProjectMemberService } from '@modules/project/services/project-member.service';
@@ -50,6 +63,7 @@ export class ProjectTenantSharedController {
         private readonly projectMemberService: ProjectMemberService
     ) {}
 
+    @ProjectTenantSharedListDoc()
     @ResponsePaging('project.list')
     @TenantPermissionProtected(ProjectPolicyRead)
     @TenantProtected()
@@ -64,6 +78,7 @@ export class ProjectTenantSharedController {
         return this.projectService.getListByTenant(tenant.id, pagination);
     }
 
+    @ProjectTenantSharedCreateDoc()
     @Response('project.create')
     @TenantPermissionProtected(ProjectPolicyCreate)
     @UserProtected()
@@ -78,6 +93,7 @@ export class ProjectTenantSharedController {
         return this.projectService.createForTenant(tenant.id, body, createdBy);
     }
 
+    @ProjectTenantSharedGetDoc()
     @Response('project.get')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectPolicyRead)
@@ -91,6 +107,7 @@ export class ProjectTenantSharedController {
         return this.projectService.getOne(projectId);
     }
 
+    @ProjectTenantSharedUpdateDoc()
     @Response('project.update')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectPolicyUpdate)
@@ -106,6 +123,7 @@ export class ProjectTenantSharedController {
         return this.projectService.update(projectId, body, updatedBy);
     }
 
+    @ProjectTenantSharedDeleteDoc()
     @Response('project.delete')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectPolicyDelete)
@@ -120,6 +138,7 @@ export class ProjectTenantSharedController {
         return this.projectService.delete(projectId, updatedBy);
     }
 
+    @ProjectTenantSharedCreateMemberDoc()
     @Response('project.member.create')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
@@ -135,6 +154,7 @@ export class ProjectTenantSharedController {
         return this.projectMemberService.create(projectId, body, createdBy);
     }
 
+    @ProjectTenantSharedCreateMemberInvitationDoc()
     @Response('project.member.invitation.create')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
@@ -157,6 +177,7 @@ export class ProjectTenantSharedController {
         );
     }
 
+    @ProjectTenantSharedSendMemberInvitationDoc()
     @Response('project.member.invitation.send')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
@@ -182,6 +203,7 @@ export class ProjectTenantSharedController {
         );
     }
 
+    @ProjectTenantSharedUpdateMemberDoc()
     @Response('project.member.update')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyUpdate)
@@ -203,6 +225,7 @@ export class ProjectTenantSharedController {
         );
     }
 
+    @ProjectTenantSharedListMembersDoc()
     @ResponsePaging('project.member.list')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyRead)
@@ -217,6 +240,7 @@ export class ProjectTenantSharedController {
         return this.projectMemberService.listMembers(projectId, pagination);
     }
 
+    @ProjectTenantSharedListMemberRolesDoc()
     @Response('project.member.roles')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)

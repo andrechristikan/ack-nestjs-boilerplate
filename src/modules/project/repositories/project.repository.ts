@@ -255,28 +255,4 @@ export class ProjectRepository {
         );
     }
 
-    async findMembershipsWithPaginationCursorByUser(
-        userId: string,
-        { where, ...params }: IPaginationQueryCursorParams
-    ): Promise<IResponsePagingReturn<IProjectMember>> {
-        return this.paginationService.cursor<IProjectMember>(
-            this.databaseService.projectMember,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    userId,
-                    status: EnumProjectMemberStatus.active,
-                    deletedAt: null,
-                    project: {
-                        deletedAt: null,
-                    },
-                },
-                include: {
-                    role: true,
-                    project: true,
-                },
-            }
-        );
-    }
 }
