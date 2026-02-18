@@ -65,14 +65,14 @@ export class ProjectMemberService {
         if (!user) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
-                message: 'projectMember.error.userNotFound',
+                message: 'project.member.error.userNotFound',
             });
         }
 
         if (member) {
             throw new ConflictException({
                 statusCode: HttpStatus.CONFLICT,
-                message: 'projectMember.error.exist',
+                message: 'project.member.error.exist',
             });
         }
 
@@ -83,7 +83,7 @@ export class ProjectMemberService {
         if (!role) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
-                message: 'projectRole.error.notFound',
+                message: 'project.role.error.notFound',
             });
         }
 
@@ -125,7 +125,7 @@ export class ProjectMemberService {
         if (!member) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
-                message: 'projectMember.error.forbidden',
+                message: 'project.member.error.forbidden',
             });
         }
 
@@ -135,14 +135,14 @@ export class ProjectMemberService {
             if (!role) {
                 throw new NotFoundException({
                     statusCode: HttpStatus.NOT_FOUND,
-                    message: 'projectRole.error.notFound',
+                    message: 'project.role.error.notFound',
                 });
             }
 
             if (role.scope !== this.projectInvitationProvider.roleScope) {
                 throw new NotFoundException({
                     statusCode: HttpStatus.NOT_FOUND,
-                    message: 'projectRole.error.notFound',
+                    message: 'project.role.error.notFound',
                 });
             }
 
@@ -268,7 +268,7 @@ export class ProjectMemberService {
         if (!member) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
-                message: 'projectMember.error.forbidden',
+                message: 'project.member.error.forbidden',
             });
         }
 

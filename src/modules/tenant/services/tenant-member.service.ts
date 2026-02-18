@@ -68,14 +68,14 @@ export class TenantMemberService {
         if (!user) {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.memberNotFound,
-                message: 'tenantMember.error.userNotFound',
+                message: 'tenant.member.error.userNotFound',
             });
         }
 
         if (memberExist) {
             throw new ConflictException({
                 statusCode: EnumTenantStatusCodeError.memberExist,
-                message: 'tenantMember.error.exist',
+                message: 'tenant.member.error.exist',
             });
         }
 
@@ -110,7 +110,7 @@ export class TenantMemberService {
         if (!member) {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.memberNotFound,
-                message: 'tenantMember.error.notFound',
+                message: 'tenant.member.error.notFound',
             });
         }
 
@@ -148,7 +148,7 @@ export class TenantMemberService {
         if (!member) {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.memberNotFound,
-                message: 'tenantMember.error.notFound',
+                message: 'tenant.member.error.notFound',
             });
         }
 
@@ -245,7 +245,7 @@ export class TenantMemberService {
         if (!role) {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.roleNotFound,
-                message: 'tenantRole.error.notFound',
+                message: 'tenant.role.error.notFound',
             });
         }
 
@@ -299,14 +299,14 @@ export class TenantMemberService {
         if (role && role.scope !== EnumRoleScope.tenant) {
             throw new BadRequestException({
                 statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
-                message: 'tenantRole.error.scopeMismatch',
+                message: 'tenant.role.error.scopeMismatch',
             });
         }
 
         if (!role) {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.roleNotFound,
-                message: 'tenantRole.error.notFound',
+                message: 'tenant.role.error.notFound',
             });
         }
 

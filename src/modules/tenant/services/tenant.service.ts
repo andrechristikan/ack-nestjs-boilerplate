@@ -107,7 +107,7 @@ export class TenantService implements ITenantService {
         if (!tenantMember) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
-                message: 'tenantMember.error.forbidden',
+                message: 'tenant.member.error.forbidden',
             });
         }
 
@@ -120,14 +120,14 @@ export class TenantService implements ITenantService {
 
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
-                message: 'tenantMember.error.forbidden',
+                message: 'tenant.member.error.forbidden',
             });
         }
 
         if (tenantMember.role.scope !== EnumRoleScope.tenant) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
-                message: 'tenantRole.error.scopeMismatch',
+                message: 'tenant.role.error.scopeMismatch',
             });
         }
 
@@ -142,21 +142,21 @@ export class TenantService implements ITenantService {
         if (!tenantMember?.role) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
-                message: 'tenantMember.error.forbidden',
+                message: 'tenant.member.error.forbidden',
             });
         }
 
         if (requiredRoleNames.length === 0) {
             throw new InternalServerErrorException({
                 statusCode: EnumTenantStatusCodeError.predefinedRoleNotFound,
-                message: 'tenantRole.error.predefinedNotFound',
+                message: 'tenant.role.error.predefinedNotFound',
             });
         }
 
         if (!requiredRoleNames.includes(tenantMember.role.name)) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
-                message: 'tenantRole.error.forbidden',
+                message: 'tenant.role.error.forbidden',
             });
         }
 
@@ -170,7 +170,7 @@ export class TenantService implements ITenantService {
         if (requiredAbilities.length === 0) {
             throw new InternalServerErrorException({
                 statusCode: EnumTenantStatusCodeError.predefinedRoleNotFound,
-                message: 'tenantRole.error.predefinedNotFound',
+                message: 'tenant.role.error.predefinedNotFound',
             });
         }
 
@@ -187,7 +187,7 @@ export class TenantService implements ITenantService {
         if (!isAllowed) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
-                message: 'tenantRole.error.forbidden',
+                message: 'tenant.role.error.forbidden',
             });
         }
 

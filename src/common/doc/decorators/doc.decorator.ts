@@ -419,11 +419,11 @@ const DocTenantForbiddenByDecorator = {
         },
         {
             statusCode: EnumTenantStatusCodeError.memberForbidden,
-            messagePath: 'tenantMember.error.forbidden',
+            messagePath: 'tenant.member.error.forbidden',
         },
         {
             statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
-            messagePath: 'tenantRole.error.scopeMismatch',
+            messagePath: 'tenant.role.error.scopeMismatch',
         }
     ),
     permissionOrRole: DocOneOf(
@@ -434,15 +434,15 @@ const DocTenantForbiddenByDecorator = {
         },
         {
             statusCode: EnumTenantStatusCodeError.memberForbidden,
-            messagePath: 'tenantMember.error.forbidden',
+            messagePath: 'tenant.member.error.forbidden',
         },
         {
             statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
-            messagePath: 'tenantRole.error.scopeMismatch',
+            messagePath: 'tenant.role.error.scopeMismatch',
         },
         {
             statusCode: EnumTenantStatusCodeError.memberForbidden,
-            messagePath: 'tenantRole.error.forbidden',
+            messagePath: 'tenant.role.error.forbidden',
         }
     ),
 } as const;
@@ -450,12 +450,12 @@ const DocTenantForbiddenByDecorator = {
 const DocTenantPredefinedRoleNotFound = DocDefault({
     httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
     statusCode: EnumTenantStatusCodeError.predefinedRoleNotFound,
-    messagePath: 'tenantRole.error.predefinedNotFound',
+    messagePath: 'tenant.role.error.predefinedNotFound',
 });
 
 const DocProjectMemberForbidden = DocOneOf(HttpStatus.FORBIDDEN, {
     statusCode: HttpStatus.FORBIDDEN,
-    messagePath: 'projectMember.error.forbidden',
+    messagePath: 'project.member.error.forbidden',
 });
 
 /**

@@ -1397,7 +1397,7 @@ export class UserService implements IUserService {
         } else if (user.isVerified) {
             throw new BadRequestException({
                 statusCode: EnumUserStatus_CODE_ERROR.emailAlreadyVerified,
-                message: 'projectMember.error.invitationAlreadyCompleted',
+                message: 'project.member.error.invitationAlreadyCompleted',
             });
         }
 
@@ -1417,7 +1417,7 @@ export class UserService implements IUserService {
                     statusCode:
                         EnumUserStatus_CODE_ERROR.verificationEmailResendLimitExceeded,
                     message:
-                        'projectMember.error.invitationResendLimitExceeded',
+                        'project.member.error.invitationResendLimitExceeded',
                     messageProperties: {
                         resendIn: this.helperService.dateDiff(
                             today,
@@ -1541,7 +1541,7 @@ export class UserService implements IUserService {
         if (invitation.user.isVerified) {
             throw new BadRequestException({
                 statusCode: EnumUserStatus_CODE_ERROR.emailAlreadyVerified,
-                message: 'projectMember.error.invitationAlreadyCompleted',
+                message: 'project.member.error.invitationAlreadyCompleted',
             });
         }
 

@@ -71,14 +71,14 @@ export class ProjectService {
         if (!projectMember) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
-                message: 'projectMember.error.forbidden',
+                message: 'project.member.error.forbidden',
             });
         }
 
         if (projectMember.role.scope !== EnumRoleScope.project) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
-                message: 'projectMember.error.forbidden',
+                message: 'project.member.error.forbidden',
             });
         }
 
@@ -86,7 +86,7 @@ export class ProjectService {
         if (tenantId && projectMember.project.tenantId !== tenantId) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
-                message: 'projectMember.error.forbidden',
+                message: 'project.member.error.forbidden',
             });
         }
 
@@ -120,7 +120,7 @@ export class ProjectService {
         if (!isAllowed) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
-                message: 'projectMember.error.forbidden',
+                message: 'project.member.error.forbidden',
             });
         }
 
@@ -175,9 +175,14 @@ export class ProjectService {
     async getOne(
         projectId: string
     ): Promise<IResponseReturn<ProjectResponseDto>> {
-        const project = await this.projectRepository.findOneById(
-            projectId
-        );
+        const project = await this.projectRepository.findOneById(projectId);
+        if (!project) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'project.error.notFound',
+            });
+        }
+
         return {
             data: this.projectUtil.mapProject(project),
         };
@@ -248,14 +253,14 @@ export class ProjectService {
             if (member.userId === createdBy) {
                 throw new ConflictException({
                     statusCode: HttpStatus.CONFLICT,
-                    message: 'projectMember.error.exist',
+                    message: 'project.member.error.exist',
                 });
             }
 
             if (uniqueUserIds.has(member.userId)) {
                 throw new ConflictException({
                     statusCode: HttpStatus.CONFLICT,
-                    message: 'projectMember.error.exist',
+                    message: 'project.member.error.exist',
                 });
             }
             uniqueUserIds.add(member.userId);
@@ -271,14 +276,14 @@ export class ProjectService {
             if (!user) {
                 throw new NotFoundException({
                     statusCode: HttpStatus.NOT_FOUND,
-                    message: 'projectMember.error.userNotFound',
+                    message: 'project.member.error.userNotFound',
                 });
             }
 
             if (!role) {
                 throw new NotFoundException({
                     statusCode: HttpStatus.NOT_FOUND,
-                    message: 'projectRole.error.notFound',
+                    message: 'project.role.error.notFound',
                 });
             }
 
@@ -295,7 +300,7 @@ export class ProjectService {
         if (!adminRole) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
-                message: 'projectRole.error.notFound',
+                message: 'project.role.error.notFound',
             });
         }
 
