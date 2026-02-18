@@ -1,0 +1,7 @@
+{
+    "error": {
+        "memberExist": "Member already exists in this context.",
+        "memberNotFound": "Member was not found in this context.",
+        "contextNotFound": "Invitation context was not found."
+    }
+}

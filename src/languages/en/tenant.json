@@ -11,7 +11,11 @@
         "list": "Tenant members retrieved successfully.",
         "create": "Tenant member created successfully.",
         "update": "Tenant member updated successfully.",
-        "delete": "Tenant member deleted successfully."
+        "delete": "Tenant member deleted successfully.",
+        "invitation": {
+            "create": "Invitation member created successfully.",
+            "send": "Invitation sent successfully."
+        }
     },
     "error": {
         "xTenantIdRequired": "Tenant header is required.",

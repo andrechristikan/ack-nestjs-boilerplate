@@ -1,17 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { EnumProjectMemberStatus } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+    IsEnum,
+    IsMongoId,
+    IsNotEmpty,
+    IsOptional,
+    IsString,
+} from 'class-validator';
 
 export class ProjectMemberUpdateRequestDto {
     @ApiProperty({
         required: false,
-        description: 'Role name',
-        example: 'project-editor',
+        description: 'Role id',
+        example: '65f3d2e44b9a7e1bd2c9a8f1',
     })
     @IsString()
     @IsOptional()
     @IsNotEmpty()
-    roleName?: string;
+    @IsMongoId()
+    roleId?: string;
 
     @ApiProperty({
         required: false,

@@ -1,16 +1,25 @@
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { InvitationService } from '@modules/invitation/services/invitation.service';
+import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleService } from '@modules/role/services/role.service';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
+import { InvitationCreateRequestDto } from '@modules/invitation/dtos/request/invitation.create.request.dto';
+import { InvitationCreateResponseDto } from '@modules/invitation/dtos/response/invitation-create.response.dto';
+import { InvitationSendResponseDto } from '@modules/invitation/dtos/response/invitation-send.response.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project.access.response.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
+import { ProjectInvitationProvider } from '@modules/project/services/project-invitation.provider';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
@@ -18,12 +27,14 @@ import {
     ForbiddenException,
     HttpStatus,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
 import {
     EnumProjectMemberStatus,
     EnumProjectStatus,
     EnumRoleScope,
+    EnumRoleType,
 } from '@prisma/client';
 
 @Injectable()
@@ -31,8 +42,11 @@ export class ProjectMemberService {
     constructor(
         private readonly projectRepository: ProjectRepository,
         private readonly roleRepository: RoleRepository,
+        private readonly roleService: RoleService,
         private readonly userRepository: UserRepository,
-        private readonly projectUtil: ProjectUtil
+        private readonly invitationService: InvitationService,
+        private readonly projectUtil: ProjectUtil,
+        private readonly projectInvitationProvider: ProjectInvitationProvider
     ) {}
 
     async create(
@@ -64,7 +78,7 @@ export class ProjectMemberService {
 
         const role = await this.roleRepository.existByNameAndScope(
             dto.roleName.trim(),
-            EnumRoleScope.project
+            this.projectInvitationProvider.roleScope
         );
         if (!role) {
             throw new NotFoundException({
@@ -73,20 +87,28 @@ export class ProjectMemberService {
             });
         }
 
-        const projectMember = await this.projectRepository.addMember({
-            projectId,
-            userId: dto.userId,
-            roleId: role.id,
-            status: EnumProjectMemberStatus.active,
-            createdBy,
-            updatedBy: createdBy,
-        });
+        try {
+            const projectMember = await this.projectRepository.addMember({
+                projectId,
+                userId: dto.userId,
+                roleId: role.id,
+                status: EnumProjectMemberStatus.active,
+                createdBy,
+                updatedBy: createdBy,
+            });
 
-        return {
-            data: {
-                id: projectMember.id,
-            },
-        };
+            return {
+                data: {
+                    id: projectMember.id,
+                },
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
     async update(
@@ -108,17 +130,22 @@ export class ProjectMemberService {
         }
 
         let roleId: string | undefined;
-        if (dto.roleName !== undefined) {
-            const role = await this.roleRepository.existByNameAndScope(
-                dto.roleName.trim(),
-                EnumRoleScope.project
-            );
+        if (dto.roleId) {
+            const role = await this.roleRepository.existById(dto.roleId);
             if (!role) {
                 throw new NotFoundException({
                     statusCode: HttpStatus.NOT_FOUND,
                     message: 'projectRole.error.notFound',
                 });
             }
+
+            if (role.scope !== this.projectInvitationProvider.roleScope) {
+                throw new NotFoundException({
+                    statusCode: HttpStatus.NOT_FOUND,
+                    message: 'projectRole.error.notFound',
+                });
+            }
+
             roleId = role.id;
         }
 
@@ -126,13 +153,62 @@ export class ProjectMemberService {
             return {};
         }
 
-        await this.projectRepository.updateMember(member.id, {
-            roleId,
-            status: dto.status,
-            updatedBy,
-        });
+        try {
+            await this.projectRepository.updateMember(member.id, {
+                roleId,
+                status: dto.status,
+                updatedBy,
+            });
 
-        return {};
+            return {};
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async createInvitation(
+        projectId: string,
+        dto: InvitationCreateRequestDto,
+        createdBy: string,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<InvitationCreateResponseDto>> {
+        return this.invitationService.createInvitation(
+            projectId,
+            dto,
+            this.projectInvitationProvider,
+            requestLog,
+            createdBy
+        );
+    }
+
+    async sendInvitation(
+        projectId: string,
+        memberId: string,
+        requestedBy: string,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<InvitationSendResponseDto>> {
+        return this.invitationService.sendInvitation(
+            projectId,
+            memberId,
+            this.projectInvitationProvider,
+            requestLog,
+            requestedBy
+        );
+    }
+
+    async getMemberRoles(projectId: string): Promise<
+        IResponseReturn<RoleListResponseDto[]>
+    > {
+        void projectId;
+
+        return this.roleService.getListRolesByScopeAndType(
+            EnumRoleScope.project,
+            EnumRoleType.user
+        );
     }
 
     async listMembers(
@@ -147,7 +223,16 @@ export class ProjectMemberService {
 
         return {
             ...others,
-            data: data.map(member => this.projectUtil.mapMember(member)),
+            data: data.map(member =>
+                this.projectUtil.mapMember(
+                    member,
+                    this.invitationService.mapInvitationStatus(
+                        member.user.isVerified,
+                        member.user.verifiedAt,
+                        member.user.verifications[0]
+                    )
+                )
+            ),
         };
     }
 
@@ -180,7 +265,7 @@ export class ProjectMemberService {
             EnumProjectMemberStatus.active
         );
 
-        if (!member?.project) {
+        if (!member) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'projectMember.error.forbidden',

@@ -36,6 +36,7 @@ import { AuthService } from '@modules/auth/services/auth.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { CountryRepository } from '@modules/country/repositories/country.repository';
+import { InvitationContext } from '@modules/invitation/interfaces/invitation.interface';
 import { EmailService } from '@modules/email/services/email.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
@@ -83,6 +84,7 @@ import {
     BadRequestException,
     ConflictException,
     ForbiddenException,
+    HttpException,
     Injectable,
     InternalServerErrorException,
     NotFoundException,
@@ -92,8 +94,10 @@ import {
     EnumRoleScope,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumUserSignUpFrom,
     EnumUserStatus,
     EnumVerificationType,
+    User,
 } from '@prisma/client';
 import { Duration } from 'luxon';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
@@ -106,8 +110,10 @@ import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { RequestTooManyException } from '@common/request/exceptions/request.too-many.exception';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { UserInvitationCompleteRequestDto } from '@modules/user/dtos/request/user.invitation-complete.request.dto';
 import { ConfigService } from '@nestjs/config';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
+import { UserInvitationResponseDto } from '@modules/user/dtos/response/user.invitation.response.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -1310,6 +1316,259 @@ export class UserService implements IUserService {
             );
 
             return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async createForInvitation(
+        email: string,
+        signUpFrom: EnumUserSignUpFrom,
+        requestLog: IRequestLog,
+        createdBy: string
+    ): Promise<User> {
+        const [role, country] = await Promise.all([
+            this.roleRepository.existByNameAndScope(
+                this.userRoleName,
+                EnumRoleScope.platform
+            ),
+            this.countryRepository.existByAlpha2Code(this.userCountryName),
+        ]);
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: EnumRoleStatusCodeError.notFound,
+                message: 'role.error.notFound',
+            });
+        } else if (!country) {
+            throw new NotFoundException({
+                statusCode: EnumCountryStatusCodeError.notFound,
+                message: 'country.error.notFound',
+            });
+        }
+        try {
+            const randomUsername = this.userUtil.createRandomUsername();
+            return this.userRepository.createByInvitation(
+                randomUsername,
+                email,
+                role.id,
+                country.id,
+                createdBy,
+                signUpFrom,
+                requestLog
+            );
+        } catch (err: unknown) {
+            if (err instanceof HttpException) {
+                throw err;
+            }
+
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async sendInvitationByUserId(
+        userId: string,
+        invitationContext: InvitationContext,
+        requestLog: IRequestLog,
+        requestedBy: string
+    ): Promise<{
+        expiresAt: Date;
+        expiresInMinutes: number;
+        resendAvailableAt: Date;
+    }> {
+        const user = await this.userRepository.findOneById(userId);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                message: 'user.error.notFound',
+            });
+        } else if (user.status !== EnumUserStatus.active) {
+            throw new ForbiddenException({
+                statusCode: EnumUserStatus_CODE_ERROR.inactiveForbidden,
+                message: 'user.error.inactive',
+            });
+        } else if (user.isVerified) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatus_CODE_ERROR.emailAlreadyVerified,
+                message: 'projectMember.error.invitationAlreadyCompleted',
+            });
+        }
+
+        const lastInvitation =
+            await this.userRepository.findOneLatestByInvitation(user.id);
+        const today = this.helperService.dateCreate();
+        if (lastInvitation) {
+            const canResendAt = this.helperService.dateForward(
+                lastInvitation.createdAt,
+                Duration.fromObject({
+                    minutes: this.userUtil.invitationResendInMinutes,
+                })
+            );
+
+            if (today < canResendAt) {
+                throw new BadRequestException({
+                    statusCode:
+                        EnumUserStatus_CODE_ERROR.verificationEmailResendLimitExceeded,
+                    message:
+                        'projectMember.error.invitationResendLimitExceeded',
+                    messageProperties: {
+                        resendIn: this.helperService.dateDiff(
+                            today,
+                            canResendAt
+                        ).minutes,
+                    },
+                });
+            }
+        }
+
+        try {
+            const invitation = this.userUtil.invitationCreateVerification();
+
+            await this.userRepository.requestInvitationEmail(
+                user.id,
+                user.email,
+                invitation,
+                {
+                    invitationType: invitationContext.invitationType,
+                    roleScope: invitationContext.roleScope,
+                    contextId: invitationContext.contextId,
+                    contextName: invitationContext.contextName,
+                },
+                requestedBy,
+                requestLog
+            );
+
+            await this.emailService.sendInvitation(
+                user.id,
+                {
+                    email: user.email,
+                    username: user.username,
+                },
+                {
+                    expiredAt: invitation.expiredAt.toISOString(),
+                    reference: invitation.reference,
+                    link: invitation.link,
+                    expiredInMinutes: invitation.expiredInMinutes,
+                    invitationType: invitationContext.invitationType,
+                    roleScope: invitationContext.roleScope,
+                    contextName: invitationContext.contextName,
+                }
+            );
+
+            return {
+                expiresAt: invitation.expiredAt,
+                expiresInMinutes: invitation.expiredInMinutes,
+                resendAvailableAt: this.helperService.dateForward(
+                    today,
+                    Duration.fromObject({
+                        minutes: invitation.resendInMinutes,
+                    })
+                ),
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async getInvitation(
+        token: string
+    ): Promise<IResponseReturn<UserInvitationResponseDto>> {
+        const invitation =
+            await this.userRepository.findOneByInvitationToken(token);
+        if (!invitation) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatus_CODE_ERROR.tokenInvalid,
+                message: 'user.error.invitationTokenInvalid',
+            });
+        }
+
+        const today = this.helperService.dateCreate();
+        let status: 'pending' | 'expired' | 'completed' = 'pending';
+        if (invitation.user.isVerified || invitation.isUsed) {
+            status = 'completed';
+        } else if (invitation.expiredAt <= today) {
+            status = 'expired';
+        }
+
+        return {
+            data: {
+                email: invitation.user.email,
+                status,
+                expiresAt: invitation.expiredAt,
+                remainingSeconds:
+                    status === 'pending'
+                        ? Math.max(
+                              0,
+                              Math.floor(
+                                  (invitation.expiredAt.getTime() -
+                                      today.getTime()) /
+                                      1000
+                              )
+                          )
+                        : undefined,
+            },
+        };
+    }
+
+    async completeInvitation(
+        {
+            token,
+            firstName,
+            lastName,
+            password,
+        }: UserInvitationCompleteRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const invitation =
+            await this.userRepository.findOneActiveByInvitationToken(token);
+        if (!invitation) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatus_CODE_ERROR.tokenInvalid,
+                message: 'user.error.invitationTokenInvalid',
+            });
+        }
+        if (invitation.user.isVerified) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatus_CODE_ERROR.emailAlreadyVerified,
+                message: 'projectMember.error.invitationAlreadyCompleted',
+            });
+        }
+
+        try {
+            const name = `${firstName.trim()} ${lastName.trim()}`.trim();
+            const passwordPayload = this.authUtil.createPassword(password);
+
+            await this.userRepository.completeInvitation(
+                invitation.id,
+                invitation.userId,
+                name,
+                passwordPayload,
+                requestLog
+            );
+
+            await this.emailService.sendVerified(
+                invitation.user.id,
+                {
+                    email: invitation.user.email,
+                    username: invitation.user.username,
+                },
+                {
+                    reference: invitation.reference,
+                }
+            );
+
+            return {};
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: EnumAppStatusCodeError.unknown,

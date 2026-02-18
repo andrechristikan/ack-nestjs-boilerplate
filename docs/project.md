@@ -17,7 +17,7 @@ It supports:
 - Project member management
 - Shared user project listing
 - Project-scoped permission validation using role abilities
-- Soft delete behavior for projects and memberships
+- Soft delete behavior for projects
 
 This module builds on top of existing tenant, authentication, authorization, response, and pagination infrastructure.
 
@@ -26,6 +26,7 @@ This module builds on top of existing tenant, authentication, authorization, res
 - [Tenant Documentation][ref-doc-tenant] - Tenant context, `x-tenant-id`, tenant membership and tenant permissions
 - [Authorization Documentation][ref-doc-authorization] - Guard/decorator authorization patterns
 - [Authentication Documentation][ref-doc-authentication] - JWT and user context requirements
+- [Invitation Documentation][ref-doc-invitation] - Invitation lifecycle, context-aware invite emails, and completion flow
 - [Pagination Documentation][ref-doc-pagination] - Query and response pagination behavior
 - [Response Documentation][ref-doc-response] - Standard response envelope and status/message handling
 - [Request Validation Documentation][ref-doc-request-validation] - DTO validation details
@@ -129,13 +130,16 @@ Controller: `ProjectTenantSharedController` (`/tenants/projects`)
 | `GET` | `/tenants/projects/:projectId` | Get project detail | `TenantMember` + `ProjectPermission(project:read)` |
 | `PATCH` | `/tenants/projects/:projectId` | Update name/status | `TenantMember` + `ProjectPermission(project:update)` |
 | `DELETE` | `/tenants/projects/:projectId` | Soft-delete project | `TenantMember` + `ProjectPermission(project:delete)` |
-| `POST` | `/tenants/projects/:projectId/members` | Add member (role provided in request) | `TenantMember` + `ProjectPermission(project:update)` |
-| `PATCH` | `/tenants/projects/:projectId/members/:memberId` | Update member role and/or status | `TenantMember` + `ProjectPermission(project:update)` |
-| `GET` | `/tenants/projects/:projectId/members` | List active members | `TenantMember` + `ProjectPermission(project:read)` |
+| `POST` | `/tenants/projects/:projectId/members` | Add member by existing `userId` | `TenantMember` + `ProjectPermission(projectMember:create)` |
+| `PATCH` | `/tenants/projects/:projectId/members/:memberId` | Update member role and/or status | `TenantMember` + `ProjectPermission(projectMember:update)` |
+| `GET` | `/tenants/projects/:projectId/members` | List active members | `TenantMember` + `ProjectPermission(projectMember:read)` |
+| `GET` | `/tenants/projects/:projectId/members/roles` | List assignable member roles (used by update/invitation flows) | `TenantMember` + `ProjectPermission(projectMember:create)` |
 
 All endpoints also include `ApiKey`, `@AuthJwtAccessProtected`, and `@UserProtected`.
 
 `/tenants/projects` routes are only available when tenancy is enabled.
+Invitation routes under `/tenants/projects/:projectId/members/invitations` are documented in [Invitation Documentation][ref-doc-invitation].
+Use `/tenants/projects/:projectId/members/roles` to resolve `roleId` values for member updates and invitation requests.
 
 ## Decorators and Guards
 
@@ -180,9 +184,8 @@ getMembership(
 Primary validations (implemented in `ProjectService.validateProjectMemberGuard`):
 
 1. `request.user` must exist.
-2. `request.params.projectId` must be a valid database id.
-3. User must have active membership in that project.
-4. Membership role must exist and have scope `project`.
+2. User must have active membership in that project.
+3. Membership role must exist and have scope `project`.
 
 On success, stores member context in `request.__projectMember`.
 
@@ -222,21 +225,23 @@ Used by:
   - `userId: string` (required)
   - `roleName: string` (required)
 - `ProjectMemberUpdateRequestDto`
-  - `roleName?: string`
+  - `roleId?: string`
   - `status?: EnumProjectMemberStatus`
 
 For validation mechanics and error shape, see [Request Validation Documentation][ref-doc-request-validation].
+For invitation request contracts, see [Invitation Documentation][ref-doc-invitation].
 
 ### Response DTOs
 
 - `ProjectResponseDto`
   - `id`, `tenantId?`, `name`, `status`, `createdAt`, `updatedAt`
 - `ProjectMemberResponseDto`
-  - `id`, `projectId`, `userId`, `roleName`, `status`, `createdAt`
+  - `id`, `projectId`, `userId`, `email`, `roleName`, `status`, `createdAt`
 - `ProjectAccessResponseDto`
   - `accessType`, `project`
 
 For response envelope format (`statusCode`, `message`, `data`), see [Response Documentation][ref-doc-response].
+For invitation response contracts, see [Invitation Documentation][ref-doc-invitation].
 
 ### Access Type
 
@@ -261,9 +266,10 @@ Current implementation returns `'member'` from shared listing APIs.
   - Role is required in request (`roleName`) and must exist in `project` scope
 - Updating a project member:
   - Member must belong to the project
-  - Update can include `roleName`, `status`, or both
+  - Update can include `roleId`, `status`, or both
   - Empty patch payload is treated as no-op success
 - Listing project members only returns active memberships.
+- Listing project member roles (`GET /tenants/projects/:projectId/members/roles`) only returns roles in `project` scope with `user` type.
 - User project listing only returns active memberships and active projects.
 
 ## Usage Examples
@@ -315,7 +321,8 @@ async membership(
 - User-scoped project endpoints (`/shared/projects`) do not require tenant context.
 - Tenant-scoped project endpoints (`/shared/tenants/projects`) are mounted via `TenantRoutesSharedModule` only when `TENANCY_ENABLED=true`.
 - For tenant-scoped project resource routes, both tenant membership and project permission guards are applied.
-- Role abilities are evaluated via policy ability factory; role scope must be `project`.
+- Role abilities are evaluated via policy ability factory; project routes use `project` subject, while member routes use `projectMember` subject.
+- Invitation-related endpoints and lifecycle are documented in [Invitation Documentation][ref-doc-invitation].
 
 ## Future Improvements
 
@@ -346,6 +353,7 @@ async membership(
 
 [ref-doc-authentication]: authentication.md
 [ref-doc-authorization]: authorization.md
+[ref-doc-invitation]: invitation.md
 [ref-doc-pagination]: pagination.md
 [ref-doc-request-validation]: request-validation.md
 [ref-doc-response]: response.md

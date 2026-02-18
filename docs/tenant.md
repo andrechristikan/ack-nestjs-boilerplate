@@ -22,6 +22,7 @@ The tenant system provides multi-tenancy support for SaaS applications where mul
 - [Authorization Documentation][ref-doc-authorization] - For understanding the permission system
 - [Authentication Documentation][ref-doc-authentication] - For understanding the authentication system
 - [Database Documentation][ref-doc-database] - For understanding the data model
+- [Invitation Documentation][ref-doc-invitation] - For tenant/project member invitation lifecycle and activation flow
 
 ## Table of Contents
 
@@ -506,7 +507,7 @@ Use `@TenantPermissionProtected({ subject: EnumPolicySubject.tenant, action: [En
 @UserProtected()
 @AuthJwtAccessProtected()
 @Post('members')
-invite(@TenantCurrent() tenant: ITenant) {
+createMember(@TenantCurrent() tenant: ITenant) {
     // Handler assumes the member has the tenantMember:create ability in this tenant
 }
 ```
@@ -728,6 +729,8 @@ Roles use an explicit scope:
 - `tenant` scope: roles assignable to `TenantMember` records (e.g., `tenant-admin`, `tenant-user`)
 
 Tenant membership operations only accept roles in `tenant` scope.
+To fetch assignable tenant member roles (for member updates and invitations), use:
+`GET /api/v1/shared/tenants/current/members/roles`.
 
 ### Role Abilities
 
@@ -983,6 +986,17 @@ Authorization: Bearer <access_token>
 x-tenant-id: <tenant_id>
 Query: page/perPage/orderBy/... (see docs/pagination.md)
 
+// List assignable tenant member roles (scope=tenant, type=user)
+GET /api/v1/shared/tenants/current/members/roles
+Authorization: Bearer <access_token>
+x-tenant-id: <tenant_id>
+Response: {
+    data: [
+        { id: "65f3d2e44b9a7e1bd2c9a8f1", name: "tenant-admin", abilities: 3 },
+        { id: "65f3d2e44b9a7e1bd2c9a8f2", name: "tenant-user", abilities: 3 }
+    ]
+}
+
 // Add member to current tenant
 POST /api/v1/shared/tenants/current/members
 Authorization: Bearer <access_token>
@@ -997,7 +1011,7 @@ PATCH /api/v1/shared/tenants/current/members/:memberId
 Authorization: Bearer <access_token>
 x-tenant-id: <tenant_id>
 Body: {
-    roleName: "tenant-admin",
+    roleId: "65f3d2e44b9a7e1bd2c9a8f1",
     status: "active"
 }
 
@@ -1006,6 +1020,11 @@ DELETE /api/v1/shared/tenants/current/members/:memberId
 Authorization: Bearer <access_token>
 x-tenant-id: <tenant_id>
 ```
+
+Invitation routes under `/shared/tenants/current/members/invitations` are documented in [Invitation Documentation][ref-doc-invitation].
+Use `/shared/tenants/current/members/roles` to resolve `roleId` values for:
+- `PATCH /shared/tenants/current/members/:memberId`
+- invitation requests documented in [Invitation Documentation][ref-doc-invitation]
 
 ## Setup and Migration
 
@@ -1168,3 +1187,4 @@ getProjects(@TenantCurrent() tenant: ITenant) {
 [ref-doc-authorization]: authorization.md
 [ref-doc-authentication]: authentication.md
 [ref-doc-database]: database.md
+[ref-doc-invitation]: invitation.md

@@ -1,6 +1,11 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    RequestIPAddress,
+    RequestUserAgent,
+} from '@common/request/decorators/request.decorator';
+import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response, ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn, IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -17,10 +22,14 @@ import {
 } from '@modules/project/constants/project.policy.constant';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
+import { InvitationCreateRequestDto } from '@modules/invitation/dtos/request/invitation.create.request.dto';
+import { InvitationCreateResponseDto } from '@modules/invitation/dtos/response/invitation-create.response.dto';
+import { InvitationSendResponseDto } from '@modules/invitation/dtos/response/invitation-send.response.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
+import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { ProjectPermissionProtected } from '@modules/project/decorators/project.decorator';
 import { ProjectMemberService } from '@modules/project/services/project-member.service';
 import { ProjectService } from '@modules/project/services/project.service';
@@ -126,6 +135,53 @@ export class ProjectTenantSharedController {
         return this.projectMemberService.create(projectId, body, createdBy);
     }
 
+    @Response('project.member.invitation.create')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/:projectId/members/invitations')
+    async createMemberInvitation(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Body() body: InvitationCreateRequestDto,
+        @AuthJwtPayload('userId') createdBy: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<InvitationCreateResponseDto>> {
+        return this.projectMemberService.createInvitation(
+            projectId,
+            body,
+            createdBy,
+            { ipAddress, userAgent }
+        );
+    }
+
+    @Response('project.member.invitation.send')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/:projectId/members/:memberId/invitations/send')
+    async sendMemberInvitation(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('memberId', RequestRequiredPipe) memberId: string,
+        @AuthJwtPayload('userId') requestedBy: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<InvitationSendResponseDto>> {
+        return this.projectMemberService.sendInvitation(
+            projectId,
+            memberId,
+            requestedBy,
+            {
+                ipAddress,
+                userAgent,
+            }
+        );
+    }
+
     @Response('project.member.update')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyUpdate)
@@ -159,5 +215,18 @@ export class ProjectTenantSharedController {
         @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
         return this.projectMemberService.listMembers(projectId, pagination);
+    }
+
+    @Response('project.member.roles')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/:projectId/members/roles')
+    async listMemberRoles(
+        @Param('projectId', RequestRequiredPipe) projectId: string
+    ): Promise<IResponseReturn<RoleListResponseDto[]>> {
+        return this.projectMemberService.getMemberRoles(projectId);
     }
 }

@@ -68,7 +68,7 @@ export class ProjectService {
             EnumProjectMemberStatus.active
         );
 
-        if (!projectMember?.role) {
+        if (!projectMember) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'projectMember.error.forbidden',
@@ -83,7 +83,7 @@ export class ProjectService {
         }
 
         const tenantId = request.__tenant?.id;
-        if (tenantId && projectMember.project?.tenantId !== tenantId) {
+        if (tenantId && projectMember.project.tenantId !== tenantId) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'projectMember.error.forbidden',
@@ -263,7 +263,7 @@ export class ProjectService {
             const [user, role] = await Promise.all([
                 this.userRepository.findOneById(member.userId),
                 this.roleRepository.existByNameAndScope(
-                    member.roleName.trim(),
+                    member.roleName,
                     EnumRoleScope.project
                 ),
             ]);

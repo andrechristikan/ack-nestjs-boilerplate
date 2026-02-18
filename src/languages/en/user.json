@@ -26,6 +26,8 @@
     "refresh": "Token refreshed successfully.",
     "sendEmailVerification": "Verification email has been sent.",
     "verifyEmail": "Email has been successfully verified.",
+    "getInvitation": "Invitation information fetched successfully.",
+    "completeInvitation": "Invitation completed successfully.",
     "twoFactor": {
         "setup": "Two-factor setup initialized. Use the provided secret to configure your authenticator.",
         "status": "Two-factor authentication status retrieved successfully.",
@@ -50,6 +52,7 @@
         "usernameNotAllowed": "This username is not allowed.",
         "usernameContainBadWord": "Username contains inappropriate words.",
         "verificationTokenInvalid": "Verification token is invalid or expired.",
+        "invitationTokenInvalid": "Invitation token is invalid or expired.",
         "verificationEmailResendLimitExceeded": "You have exceeded the limit for resending verification emails.",
         "forgotPasswordRequestLimitExceeded": "You have exceeded the limit for password reset requests.",
         "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}"

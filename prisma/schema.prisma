@@ -272,6 +272,7 @@ model Verification {
   verifiedAt     DateTime?
   isUsed         Boolean              @default(false)
   reference      String
+  metadata       Json?
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -546,6 +547,8 @@ enum EnumUserSignUpFrom {
   admin
   website
   mobile
+  tenant
+  project
 }
 
 enum EnumUserSignUpWith {
@@ -617,6 +620,7 @@ enum EnumTermPolicyStatus {
 enum EnumVerificationType {
   mobileNumber
   email
+  invitation
 }
 
 enum EnumPasswordHistoryType {
@@ -645,7 +649,9 @@ enum EnumActivityLogAction {
   userRefreshToken
   userVerifiedEmail
   userSendVerificationEmail
+  userSendInvitationEmail
   userSignedUp
+  userCompleteInvitation
   userResetPassword
   userRevokeSession
   userRevokeSessionByAdmin

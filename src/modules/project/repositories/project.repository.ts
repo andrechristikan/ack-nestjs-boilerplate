@@ -11,12 +11,15 @@ import {
     IProjectMember,
     IProjectMemberCreate,
     IProjectMemberUpdate,
+    IProjectMemberWithUser,
+    IProjectMemberWithVerification,
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumProjectMemberStatus,
     EnumProjectStatus,
+    EnumVerificationType,
     Project,
     ProjectMember,
 } from '@prisma/client';
@@ -149,7 +152,7 @@ export class ProjectRepository {
     async findOneMemberByIdAndProject(
         memberId: string,
         projectId: string
-    ): Promise<IProjectMember | null> {
+    ): Promise<IProjectMemberWithUser | null> {
         return this.databaseService.projectMember.findFirst({
             where: {
                 id: memberId,
@@ -162,6 +165,7 @@ export class ProjectRepository {
             include: {
                 role: true,
                 project: true,
+                user: true,
             },
         });
     }
@@ -179,8 +183,8 @@ export class ProjectRepository {
     async findMembersWithPaginationOffsetByProject(
         projectId: string,
         { where, ...params }: IPaginationQueryOffsetParams
-    ): Promise<IResponsePagingReturn<IProjectMember>> {
-        return this.paginationService.offset<IProjectMember>(
+    ): Promise<IResponsePagingReturn<IProjectMemberWithVerification>> {
+        return this.paginationService.offset<IProjectMemberWithVerification>(
             this.databaseService.projectMember,
             {
                 ...params,
@@ -196,6 +200,30 @@ export class ProjectRepository {
                 include: {
                     project: true,
                     role: true,
+                    user: {
+                        select: {
+                            id: true,
+                            email: true,
+                            isVerified: true,
+                            verifiedAt: true,
+                            verifications: {
+                                where: {
+                                    type: EnumVerificationType.invitation,
+                                },
+                                orderBy: {
+                                    createdAt: 'desc',
+                                },
+                                take: 1,
+                                select: {
+                                    id: true,
+                                    createdAt: true,
+                                    expiredAt: true,
+                                    isUsed: true,
+                                    verifiedAt: true,
+                                },
+                            },
+                        },
+                    },
                 },
             }
         );

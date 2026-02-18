@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EnumSendEmailProcess } from '@modules/email/enums/email.enum';
 import { title } from 'case';
 import { ConfigService } from '@nestjs/config';
+import { EmailInvitationDto } from '@modules/email/dtos/email.invitation.dto';
 import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
@@ -240,6 +241,54 @@ export class EmailUtil {
                     username,
                     link,
                     reference,
+                    expiredAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(expiredAt)
+                    ),
+                    expiredInMinutes,
+                },
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    /**
+     * Send invitation email message
+     * @param {EmailSendDto} emailData - Email and username data
+     * @param {EmailInvitationDto} invitationData - Invitation token, context and expiration data
+     * @returns {Promise<boolean>} True if email sent successfully, false otherwise
+     */
+    async sendInvitation(
+        { username, email }: EmailSendDto,
+        {
+            expiredAt,
+            reference,
+            link,
+            expiredInMinutes,
+            invitationType,
+            roleScope,
+            contextName,
+        }: EmailInvitationDto
+    ): Promise<boolean> {
+        try {
+            await this.awsSESService.send({
+                templateName: EnumSendEmailProcess.invitation,
+                recipients: [email],
+                sender: this.noreplyEmail,
+                templateData: {
+                    homeName: this.homeName,
+                    supportEmail: title(this.supportEmail),
+                    homeUrl: this.homeUrl,
+                    username,
+                    link,
+                    reference,
+                    invitationType,
+                    roleScope,
+                    contextName,
                     expiredAt: this.helperService.dateFormatToRFC2822(
                         this.helperService.dateCreateFromIso(expiredAt)
                     ),

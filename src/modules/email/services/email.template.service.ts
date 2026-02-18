@@ -381,6 +381,66 @@ export class EmailTemplateService implements IEmailTemplateService {
     }
 
     /**
+     * Import invitation email template to AWS SES
+     * @returns {Promise<boolean>} True if template imported successfully, false otherwise
+     */
+    async importInvitation(): Promise<boolean> {
+        try {
+            const templatePath = join(
+                this.templatesDir,
+                'email.invitation.template.hbs'
+            );
+
+            await this.awsSESService.createTemplate({
+                name: EnumSendEmailProcess.invitation,
+                subject: `Invitation`,
+                htmlBody: readFileSync(templatePath, 'utf8'),
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    /**
+     * Get invitation email template from AWS SES
+     * @returns {Promise<GetTemplateCommandOutput | null>} Template data from AWS SES
+     */
+    async getInvitation(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            const template = await this.awsSESService.getTemplate({
+                name: EnumSendEmailProcess.invitation,
+            });
+            return template;
+        } catch (err: unknown) {
+            this.logger.warn(err);
+
+            return null;
+        }
+    }
+
+    /**
+     * Delete invitation email template from AWS SES
+     * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
+     */
+    async deleteInvitation(): Promise<boolean> {
+        try {
+            await this.awsSESService.deleteTemplate({
+                name: EnumSendEmailProcess.invitation,
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    /**
      * Import email verified confirmation template to AWS SES
      * @returns {Promise<boolean>} True if template imported successfully, false otherwise
      */

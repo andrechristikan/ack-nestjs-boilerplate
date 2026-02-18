@@ -7,6 +7,9 @@ import {
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { InvitationCreateRequestDto } from '@modules/invitation/dtos/request/invitation.create.request.dto';
+import { InvitationCreateResponseDto } from '@modules/invitation/dtos/response/invitation-create.response.dto';
+import { InvitationSendResponseDto } from '@modules/invitation/dtos/response/invitation-send.response.dto';
 import {
     TenantDocParamsMemberId,
 } from '@modules/tenant/constants/tenant.doc.constant';
@@ -81,6 +84,63 @@ export function TenantSharedCreateMemberDoc(): MethodDecorator {
             httpStatus: HttpStatus.CREATED,
             dto: DatabaseIdDto,
         })
+    );
+}
+
+export function TenantSharedCreateMemberInvitationDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'create tenant member invitation',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocRequest({
+            bodyType: EnumDocRequestBodyType.json,
+            dto: InvitationCreateRequestDto,
+        }),
+        DocResponse<InvitationCreateResponseDto>(
+            'tenant.member.invitation.create',
+            {
+                httpStatus: HttpStatus.CREATED,
+                dto: InvitationCreateResponseDto,
+            }
+        )
+    );
+}
+
+export function TenantSharedSendMemberInvitationDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'send tenant member invitation',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocRequest({
+            params: TenantDocParamsMemberId,
+        }),
+        DocResponse<InvitationSendResponseDto>(
+            'tenant.member.invitation.send',
+            {
+                dto: InvitationSendResponseDto,
+            }
+        )
+    );
+}
+
+export function TenantSharedListMemberRolesDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'list tenant member roles',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocResponse('tenant.member.roles')
     );
 }
 

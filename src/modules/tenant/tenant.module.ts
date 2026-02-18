@@ -7,9 +7,11 @@ import { TenantMemberGuard } from '@modules/tenant/guards/tenant.member.guard';
 import { TenantRoleGuard } from '@modules/tenant/guards/tenant.role.guard';
 import { TenantPermissionGuard } from '@modules/tenant/guards/tenant.permission.guard';
 import { TenantAuthService } from '@modules/tenant/services/tenant-auth.service';
+import { InvitationModule } from '@modules/invitation/invitation.module';
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
 import { AuthModule } from '@modules/auth/auth.module';
+import { TenantInvitationProvider } from '@modules/tenant/services/tenant-invitation.provider';
 
 @Global()
 @Module({
@@ -17,6 +19,7 @@ import { AuthModule } from '@modules/auth/auth.module';
         TenantService,
         TenantMemberService,
         TenantRepository,
+        TenantInvitationProvider,
         TenantAuthService,
         TenantGuard,
         TenantMemberGuard,
@@ -24,7 +27,7 @@ import { AuthModule } from '@modules/auth/auth.module';
         TenantPermissionGuard,
     ],
     exports: [TenantService, TenantMemberService, TenantAuthService, TenantRepository],
-    imports: [UserModule, RoleModule, AuthModule],
+    imports: [UserModule, RoleModule, AuthModule, InvitationModule],
     controllers: [],
 })
 export class TenantModule {}

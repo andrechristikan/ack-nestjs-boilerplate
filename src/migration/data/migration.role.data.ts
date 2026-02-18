@@ -90,7 +90,7 @@ const roleData: RoleCreateRequestDto[] = [
                 ],
             },
         ],
-        type: EnumRoleType.user,
+        type: EnumRoleType.admin,
         scope: EnumRoleScope.tenant,
     },
     {
@@ -141,7 +141,7 @@ const roleData: RoleCreateRequestDto[] = [
                 action: [EnumPolicyAction.read],
             },
         ],
-        type: EnumRoleType.user,
+        type: EnumRoleType.admin,
         scope: EnumRoleScope.tenant,
     },
     {
@@ -157,7 +157,7 @@ const roleData: RoleCreateRequestDto[] = [
                 action: Object.values(EnumPolicyAction),
             },
         ],
-        type: EnumRoleType.user,
+        type: EnumRoleType.admin,
         scope: EnumRoleScope.project,
     },
     {

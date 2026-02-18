@@ -34,15 +34,19 @@ import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/u
 import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
+import { UserInvitationCompleteRequestDto } from '@modules/user/dtos/request/user.invitation-complete.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
+import { UserInvitationResponseDto } from '@modules/user/dtos/response/user.invitation.response.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserService } from '@modules/user/services/user.service';
 import {
     Body,
     Controller,
+    Get,
     HttpCode,
     HttpStatus,
+    Param,
     Patch,
     Post,
     Put,
@@ -148,6 +152,29 @@ export class UserPublicController {
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.verifyEmail(body, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @Response('user.getInvitation')
+    @ApiKeyProtected()
+    @Get('/invitation/:token')
+    async getInvitation(
+        @Param('token') token: string
+    ): Promise<IResponseReturn<UserInvitationResponseDto>> {
+        return this.userService.getInvitation(token);
+    }
+
+    @Response('user.completeInvitation')
+    @ApiKeyProtected()
+    @Put('/invitation/complete')
+    async completeInvitation(
+        @Body() body: UserInvitationCompleteRequestDto,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: RequestUserAgentDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.completeInvitation(body, {
             ipAddress,
             userAgent,
         });
