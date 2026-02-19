@@ -10,7 +10,12 @@ const roleData: RoleCreateRequestDto[] = [
     {
         name: 'superadmin',
         description: 'Super Admin Role',
-        abilities: [],
+        abilities: [
+            {
+                subject: EnumPolicySubject.all,
+                action: [EnumPolicyAction.manage],
+            },
+        ],
         type: EnumRoleType.superAdmin,
     },
     {

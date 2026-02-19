@@ -362,8 +362,13 @@ type UserTermPolicy {
 }
 
 type RoleAbility {
-  action  String[]
-  subject String
+  action     String[]
+  subject    String
+  effect     String?
+  fields     Json?
+  conditions Json?
+  reason     String?
+  priority   Int?
 }
 
 type UserPhoto {

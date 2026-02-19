@@ -174,14 +174,15 @@ export class RoleService implements IRoleService {
 
         const { role } = __user;
 
-        if (role.type === EnumRoleType.superAdmin) {
-            return [];
-        } else if (requiredRoles.length === 0) {
+        if (requiredRoles.length === 0) {
             throw new InternalServerErrorException({
                 statusCode: EnumRoleStatusCodeError.predefinedNotFound,
                 message: 'role.error.predefinedNotFound',
             });
-        } else if (!requiredRoles.includes(role.type)) {
+        } else if (
+            role.type !== EnumRoleType.superAdmin &&
+            !requiredRoles.includes(role.type)
+        ) {
             throw new ForbiddenException({
                 statusCode: EnumRoleStatusCodeError.forbidden,
                 message: 'role.error.forbidden',

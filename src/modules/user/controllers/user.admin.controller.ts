@@ -17,7 +17,7 @@ import {
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
 import { UserService } from '@modules/user/services/user.service';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
+import { Authorize } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -96,7 +96,7 @@ export class UserAdminController {
     @UserAdminListDoc()
     @ResponsePaging('user.list')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read],
     })
@@ -131,7 +131,7 @@ export class UserAdminController {
     @UserAdminGetDoc()
     @Response('user.get')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read],
     })
@@ -151,7 +151,7 @@ export class UserAdminController {
     @Response('user.create')
     @ActivityLog(EnumActivityLogAction.adminUserCreate)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
@@ -180,7 +180,7 @@ export class UserAdminController {
     @Response('user.updateStatus')
     @ActivityLog(EnumActivityLogAction.adminUserUpdateStatus)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -212,7 +212,7 @@ export class UserAdminController {
     @Response('user.updatePassword')
     @ActivityLog(EnumActivityLogAction.adminUserUpdatePassword)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -242,7 +242,7 @@ export class UserAdminController {
     @Response('user.twoFactor.resetByAdmin')
     @ActivityLog(EnumActivityLogAction.adminUserResetTwoFactor)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -267,7 +267,7 @@ export class UserAdminController {
     @UserAdminImportDoc()
     @Response('user.import')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
@@ -301,7 +301,7 @@ export class UserAdminController {
     @UserAdminExportDoc()
     @ResponseFile()
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read],
     })

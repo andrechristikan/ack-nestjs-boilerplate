@@ -9,7 +9,7 @@ import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/acti
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
+import { Authorize } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -32,7 +32,7 @@ export class ActivityLogAdminController {
     @ActivityLogAdminListDoc()
     @ResponsePaging('activityLog.list')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @Authorize(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],

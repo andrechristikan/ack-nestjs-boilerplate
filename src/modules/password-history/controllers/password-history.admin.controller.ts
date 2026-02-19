@@ -9,7 +9,7 @@ import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decora
 import { PasswordHistoryAdminListDoc } from '@modules/password-history/docs/password-history.admin.doc';
 import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
+import { Authorize } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -34,7 +34,7 @@ export class PasswordHistoryAdminController {
     @PasswordHistoryAdminListDoc()
     @ResponsePaging('passwordHistory.list')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @Authorize(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],

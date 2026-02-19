@@ -23,7 +23,7 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
+import { Authorize } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -84,7 +84,7 @@ export class TermPolicyAdminController {
     @TermPolicyAdminListDoc()
     @ResponsePaging('termPolicy.list')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read],
     })
@@ -116,7 +116,7 @@ export class TermPolicyAdminController {
     @Response('termPolicy.create')
     @ActivityLog(EnumActivityLogAction.adminTermPolicyCreate)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
@@ -137,7 +137,7 @@ export class TermPolicyAdminController {
     @Response('termPolicy.delete')
     @ActivityLog(EnumActivityLogAction.adminTermPolicyDelete)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
@@ -156,7 +156,7 @@ export class TermPolicyAdminController {
     @TermPolicyAdminGenerateContentPresignDoc()
     @Response('termPolicy.generateContentPresign')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.termPolicy,
         action: [
             EnumPolicyAction.read,
@@ -180,7 +180,7 @@ export class TermPolicyAdminController {
     @Response('termPolicy.updateContent')
     @ActivityLog(EnumActivityLogAction.adminTermPolicyUpdateContent)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -207,7 +207,7 @@ export class TermPolicyAdminController {
     @Response('termPolicy.addContent')
     @ActivityLog(EnumActivityLogAction.adminTermPolicyAddContent)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -234,7 +234,7 @@ export class TermPolicyAdminController {
     @Response('termPolicy.removeContent')
     @ActivityLog(EnumActivityLogAction.adminTermPolicyRemoveContent)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -260,7 +260,7 @@ export class TermPolicyAdminController {
     @TermPolicyAdminGetContentDoc()
     @Response('termPolicy.getContent')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read],
     })
@@ -282,7 +282,7 @@ export class TermPolicyAdminController {
     @Response('termPolicy.publish')
     @ActivityLog(EnumActivityLogAction.adminTermPolicyPublish)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })

@@ -7,10 +7,12 @@ import {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { IRole } from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { EnumPolicyEffect } from '@modules/policy/enums/policy.enum';
+import { Prisma, Role } from '@prisma/client';
 
 @Injectable()
 export class RoleRepository {
@@ -18,6 +20,20 @@ export class RoleRepository {
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService
     ) {}
+
+    private mapAbility(
+        ability: RoleAbilityRequestDto
+    ): Prisma.RoleAbilityCreateInput {
+        return {
+            subject: ability.subject,
+            action: ability.action,
+            effect: ability.effect ?? EnumPolicyEffect.can,
+            fields: ability.fields as unknown as Prisma.InputJsonValue,
+            conditions: ability.conditions as unknown as Prisma.InputJsonValue,
+            reason: ability.reason,
+            priority: ability.priority,
+        };
+    }
 
     async findWithPaginationOffsetByAdmin(
         { where, ...params }: IPaginationQueryOffsetParams,
@@ -90,9 +106,7 @@ export class RoleRepository {
         return this.databaseService.role.create({
             data: {
                 name: name,
-                abilities: abilities.map(ability => ({
-                    ...ability,
-                })),
+                abilities: abilities.map(ability => this.mapAbility(ability)),
                 ...others,
             },
         });
@@ -105,9 +119,7 @@ export class RoleRepository {
         return this.databaseService.role.update({
             where: { id },
             data: {
-                abilities: abilities.map(ability => ({
-                    ...ability,
-                })),
+                abilities: abilities.map(ability => this.mapAbility(ability)),
                 ...others,
             },
         });

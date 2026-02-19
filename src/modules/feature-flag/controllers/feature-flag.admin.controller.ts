@@ -21,7 +21,7 @@ import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
+import { Authorize } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -44,7 +44,7 @@ export class FeatureFlagAdminController {
     @FeatureFlagAdminListDoc()
     @ResponsePaging('featureFlag.list')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.featureFlag,
         action: [EnumPolicyAction.read],
     })
@@ -65,7 +65,7 @@ export class FeatureFlagAdminController {
     @FeatureFlagAdminUpdateStatusDoc()
     @Response('featureFlag.updateStatus')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.featureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -85,7 +85,7 @@ export class FeatureFlagAdminController {
     @FeatureFlagAdminUpdateMetadataDoc()
     @Response('featureFlag.updateMetadata')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.featureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })

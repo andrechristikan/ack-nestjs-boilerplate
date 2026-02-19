@@ -6,6 +6,16 @@ export enum EnumPolicyAction {
     delete = 'delete',
 }
 
+export enum EnumPolicyEffect {
+    can = 'can',
+    cannot = 'cannot',
+}
+
+export enum EnumPolicyMatch {
+    all = 'all',
+    any = 'any',
+}
+
 export enum EnumPolicySubject {
     all = 'all',
     apiKey = 'apiKey',

@@ -16,7 +16,7 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
+import { Authorize } from '@modules/policy/decorators/policy.decorator';
 import { RoleService } from '@modules/role/services/role.service';
 import {
     RoleAdminCreateDoc,
@@ -63,7 +63,7 @@ export class RoleAdminController {
     @RoleAdminListDoc()
     @Response('role.list')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read],
     })
@@ -86,7 +86,7 @@ export class RoleAdminController {
     @RoleAdminGetDoc()
     @Response('role.get')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read],
     })
@@ -106,7 +106,7 @@ export class RoleAdminController {
     @Response('role.create')
     @ActivityLog(EnumActivityLogAction.adminRoleCreate)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
@@ -126,7 +126,7 @@ export class RoleAdminController {
     @Response('role.update')
     @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -148,7 +148,7 @@ export class RoleAdminController {
     @Response('role.delete')
     @ActivityLog(EnumActivityLogAction.adminRoleDelete)
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @Authorize({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
