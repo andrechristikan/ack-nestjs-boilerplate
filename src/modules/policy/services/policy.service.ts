@@ -35,7 +35,7 @@ export class PolicyService implements IPolicyService {
 
         const resolvedResource =
             typeof resource === 'function'
-                ? (resource as PolicySubjectResolver)(request)
+                ? resource(request)
                 : resource;
         if (!resolvedResource) {
             return undefined;

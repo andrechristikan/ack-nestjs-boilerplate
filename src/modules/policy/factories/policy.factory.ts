@@ -128,8 +128,10 @@ export class PolicyAbilityFactory {
     ): boolean {
         const fields = rule.fields?.filter(Boolean);
         const subject: unknown = resource
-            ? caslSubject(rule.subject, resource)
-            : rule.subject;
+            ? caslSubject(rule.subject, resource)            // dynamic entity — takes priority
+            : rule.conditions
+              ? caslSubject(rule.subject, rule.conditions)   // static compile-time description
+              : rule.subject;                                 // no instance — loose check
 
         const canForAction = (action: EnumPolicyAction): boolean => {
             if (!fields || fields.length === 0) {

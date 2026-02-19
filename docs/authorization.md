@@ -58,6 +58,7 @@ The system is implemented with NestJS decorators + guards and CASL ability evalu
 - [Complete Examples](#complete-examples)
   - [Example 1 — Field-Level Permissions](#example-1--field-level-permissions)
   - [Example 2 — Condition-Based Permissions](#example-2--condition-based-permissions)
+  - [Example 3 — Static `rule.conditions` (Known Resource Shape)](#example-3--static-ruleconditions-known-resource-shape)
 - [Role Ability Storage and Management](#role-ability-storage-and-management)
   - [API Payload Shape](#api-payload-shape)
   - [Prisma Storage Shape](#prisma-storage-shape)
@@ -219,7 +220,7 @@ The decorator accepts `IPolicyRule` objects (`src/modules/policy/interfaces/poli
 | `subject` | `EnumPolicySubject` | Yes | The resource type to check against |
 | `action` | `EnumPolicyAction[]` | Yes | One or more actions required (all must pass) |
 | `fields` | `string[]` | No | Restrict check to specific fields (see [Field-Level Permissions](#field-level-permissions)) |
-| `conditions` | `Record<string, unknown>` | No | Mongo-like condition filter for instance-level checks (see [Condition-Based Permissions](#condition-based-permissions)) |
+| `conditions` | `Record<string, unknown>` | No | Static compile-time description of the resource shape this endpoint targets. CASL checks stored ability conditions against this object. Ignored when `resource` is also provided on the requirement (see [Condition-Based Permissions](#condition-based-permissions)) |
 
 > Note: `effect`, `description`, and `priority` are storage-level fields used when defining role abilities in the database. They are not part of route requirements — routes only declare what capability is needed, not how it was granted.
 
@@ -264,18 +265,83 @@ CASL evaluates the check per field — the user must have `read` permission on e
 
 ### Condition-Based Permissions
 
-`conditions` on a stored ability creates instance-level constraints using Mongo-like query syntax. For example, an ability with `{ "id": "user-1" }` only allows access to the specific resource where `id === "user-1"`.
+There are three distinct concepts related to conditions. Understanding the difference is important for correct usage.
 
-To evaluate conditions at the route level, pass a `resource` to the requirement:
+#### 1. `IPolicyAbilityInput.conditions` (stored ability — DB side)
+
+Defines **when the grant applies**. Registered into the CASL ability object via `buildRule()`.
+
+```json
+{ "subject": "user", "action": ["update"], "conditions": { "departmentId": "dept-eng" } }
+```
+
+→ "user can update users **where** `departmentId` is `dept-eng`"
+
+#### 2. `IPolicyRequirement.resource` (requirement — route side, dynamic)
+
+Provides the **runtime entity** to evaluate stored conditions against. Resolved at guard time from the live request via a function or a plain object.
+
+```typescript
+resource: (request) => request.__targetUser   // entity loaded earlier in request lifecycle
+```
+
+→ CASL checks stored ability conditions against this specific object at check time
+
+#### 3. `IPolicyRule.conditions` (rule — route side, static)
+
+A **compile-time description** of the resource shape this route targets. Used when the developer knows the resource's relevant fields statically without needing to load an entity at runtime.
+
+```typescript
+{ subject: EnumPolicySubject.subscription, action: [EnumPolicyAction.create], conditions: { type: 'basic' } }
+```
+
+→ "this endpoint creates basic-type subscriptions — check if the caller can create subscriptions of that type"
+
+**Priority**: when `resource` (dynamic) is provided on the requirement, it takes precedence over `rule.conditions` (static), since the runtime entity is more authoritative.
+
+#### Choosing the right mechanism
+
+| Need | Use |
+|------|-----|
+| Check permissions against a real entity loaded at request time | `resource` on `IPolicyRequirement` |
+| Assert a known static resource shape at route definition time | `conditions` on `IPolicyRule` |
+| No instance-level check needed | omit both |
+
+#### Dynamic resource example
+
+To evaluate conditions against a runtime entity, pass a `resource` resolver to the requirement:
 
 ```typescript
 @PolicyAbilityProtected({
     rules: [{ subject: EnumPolicySubject.user, action: [EnumPolicyAction.update] }],
-    resource: (request) => request.__user,  // resolved at runtime
+    resource: (request) => request.__user,  // resolved at guard time
 })
 ```
 
-Without a `resource`, CASL performs a loose check that ignores conditions — this is intentional for list/create endpoints where no specific instance exists.
+#### Static conditions example
+
+When the resource shape is known at route definition time (no DB load required):
+
+```typescript
+// Endpoint that only creates 'basic' subscriptions
+@PolicyAbilityProtected({
+    rules: [{
+        subject: EnumPolicySubject.subscription,
+        action: [EnumPolicyAction.create],
+        conditions: { type: 'basic' },   // static: route targets basic-type resources
+    }],
+})
+```
+
+Paired with the stored ability:
+
+```json
+{ "subject": "subscription", "action": ["create"], "conditions": { "type": "basic" } }
+```
+
+CASL evaluates: `can(create, subject('subscription', { type: 'basic' }))` — the static object is used as the tagged subject instance.
+
+Without either `resource` or `conditions`, CASL performs a **loose check** that ignores stored conditions — this is intentional for list endpoints where no specific instance is relevant.
 
 **Supported operators** (validated at API level):
 `$eq`, `$ne`, `$in`, `$nin`, `$lt`, `$lte`, `$gt`, `$gte`, `$exists`, `$regex`, `$all`, `$size`, `$elemMatch`, `$or`, `$and`, `$not`, `$nor`
@@ -701,6 +767,66 @@ CASL checks: can(update, <resource>) → "dept-sales" === "dept-engineering"? �
 
 ---
 
+### Example 3 — Static `rule.conditions` (Known Resource Shape)
+
+**Scenario**: A subscription platform exposes separate endpoints for creating "basic" vs "premium" subscriptions. Each endpoint should only be accessible to roles whose stored ability explicitly permits that subscription type — no entity needs to be loaded from the DB.
+
+#### Step 1 — Configure the role ability via API
+
+`PUT /v1/role/update/:roleId`
+
+```json
+{
+  "abilities": [
+    {
+      "subject": "subscription",
+      "action": ["create"],
+      "effect": "can",
+      "conditions": { "type": "basic" },
+      "reason": "Role may only create basic subscriptions"
+    }
+  ]
+}
+```
+
+#### Step 2 — Controller: declare the static conditions on the rule
+
+```typescript
+// src/modules/subscription/controllers/subscription.admin.controller.ts
+@Response('subscription.create')
+@PolicyAbilityProtected({
+    rules: [{
+        subject: EnumPolicySubject.subscription,
+        action: [EnumPolicyAction.create],
+        conditions: { type: 'basic' },   // static shape — no runtime entity needed
+    }],
+})
+@RoleProtected(EnumRoleType.admin)
+@UserProtected()
+@AuthJwtAccessProtected()
+@ApiKeyProtected()
+@Post('/create/basic')
+async createBasic(
+    @Body() body: SubscriptionCreateBasicRequestDto
+): Promise<IResponseReturn<void>> {
+    return this.subscriptionService.createBasic(body);
+}
+```
+
+#### How CASL evaluates the check
+
+```
+stored ability conditions: { "type": "basic" }
+rule.conditions:           { "type": "basic" }   ← used as synthetic subject
+
+CASL checks: can(create, subject('subscription', { type: 'basic' }))
+             "basic" === "basic" → ✓ → request allowed
+```
+
+A role whose stored ability has `{ "type": "premium" }` would fail this check and receive `403`.
+
+---
+
 ## Role Ability Storage and Management
 
 ### API Payload Shape
@@ -817,7 +943,7 @@ Common failure classes:
 2. Use `cannot` stored abilities for explicit deny constraints; do not rely only on missing allow rules.
 3. Add `priority` when rule overlap is expected.
 4. Use `fields` on stored abilities for partial read/update permissions; mirror the same `fields` on the route rule when you want the guard to validate field access.
-5. Use `conditions` for instance-level rules (e.g. "user can only update their own record"). Always pair with a `resource` resolver in the requirement.
+5. Use `conditions` on stored abilities for instance-level rules (e.g. "user can only update their own record"). Pair with a `resource` resolver on the requirement when you need runtime entity evaluation, or with `conditions` on the `IPolicyRule` when the resource shape is known statically at route definition time.
 6. Keep `conditions` simple and testable; avoid deeply nested dynamic structures.
 7. Always combine `PolicyAbilityProtected` with `UserProtected` and `AuthJwtAccessProtected`.
 8. For admin endpoints, keep `RoleProtected` as a coarse gate and `PolicyAbilityProtected` as a fine gate.
