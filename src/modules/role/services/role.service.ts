@@ -190,8 +190,8 @@ export class RoleService implements IRoleService {
             });
         }
 
-        return (__user.role.abilities ?? []).map((raw: unknown) =>
-            mapPrismaAbilityToPolicy(raw as RoleAbility)
+        return (__user.role.abilities ?? []).map((raw: RoleAbility) =>
+            mapPrismaAbilityToPolicy(raw)
         );
     }
 }

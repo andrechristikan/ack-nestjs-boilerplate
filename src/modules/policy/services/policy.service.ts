@@ -87,7 +87,7 @@ export class PolicyService implements IPolicyService {
     }
 
     getAccessibleWhere(
-        request: IRequestApp,
+        ability: IPolicyAbilityRule,
         subject: EnumPolicySubject,
         action: EnumPolicyAction
     ): Record<string, unknown> {
@@ -97,8 +97,6 @@ export class PolicyService implements IPolicyService {
                 message: 'policy.error.predefinedNotFound',
             });
         }
-
-        const ability = this.getOrCreateRequestAbility(request);
 
         try {
             const whereBySubject = accessibleBy(ability, action) as Record<

@@ -24,17 +24,13 @@ export class ActivityLogRepository {
     ) {}
 
     async findWithPaginationOffset(
-        userId: string,
         { where, ...params }: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<IActivityLog>> {
         return this.paginationService.offset<IActivityLog>(
             this.databaseService.activityLog,
             {
                 ...params,
-                where: {
-                    ...where,
-                    userId,
-                },
+                where,
                 include: {
                     user: true,
                 },

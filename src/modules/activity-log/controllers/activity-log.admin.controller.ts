@@ -9,11 +9,16 @@ import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/acti
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
+import {
+    PolicyAbilityCurrent,
+    PolicyAbilityProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
+import { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
+import { PolicyService } from '@modules/policy/services/policy.service';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -27,7 +32,10 @@ import { EnumRoleType } from '@prisma/client';
     path: '/user/:userId/activity-log',
 })
 export class ActivityLogAdminController {
-    constructor(private readonly activityLogService: ActivityLogService) {}
+    constructor(
+        private readonly activityLogService: ActivityLogService,
+        private readonly policyService: PolicyService
+    ) {}
 
     @ActivityLogAdminListDoc()
     @ResponsePaging('activityLog.list')
@@ -48,11 +56,22 @@ export class ActivityLogAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @PolicyAbilityCurrent() ability: IPolicyAbilityRule,
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListOffsetByAdmin(userId, pagination);
+        const allowedWhere = this.policyService.getAccessibleWhere(
+            ability,
+            EnumPolicySubject.activityLog,
+            EnumPolicyAction.read
+        );
+
+        return this.activityLogService.getListOffsetByAdmin(
+            userId,
+            pagination,
+            allowedWhere
+        );
     }
 }

@@ -18,12 +18,23 @@ export class ActivityLogService implements IActivityLogService {
 
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams,
+        allowedWhere?: Record<string, unknown>
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
+        const where = {
+            AND: [
+                ...(allowedWhere ? [allowedWhere] : []),
+                ...(pagination.where ? [pagination.where] : []),
+                { userId },
+            ],
+        } as unknown as IPaginationQueryOffsetParams['where'];
+
         const { data, ...others } =
             await this.activityRepository.findWithPaginationOffset(
-                userId,
-                pagination
+                {
+                    ...pagination,
+                    where,
+                }
             );
 
         const activityLogs: ActivityLogResponseDto[] =

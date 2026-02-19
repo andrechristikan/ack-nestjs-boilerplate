@@ -436,11 +436,11 @@ Behavior summary:
 
 #### Query-level authorization (`@casl/prisma`)
 
-For list/update/delete endpoints, use `PolicyService.getAccessibleWhere(...)` so authorization is enforced inside Prisma queries:
+For list/update/delete endpoints, use `PolicyService.getAccessibleWhere(...)` with the resolved request ability (`@PolicyAbilityCurrent`) so authorization is enforced inside Prisma queries:
 
 ```typescript
 const allowedWhere = this.policyService.getAccessibleWhere(
-    request,
+    ability,
     EnumPolicySubject.user,
     EnumPolicyAction.update
 );

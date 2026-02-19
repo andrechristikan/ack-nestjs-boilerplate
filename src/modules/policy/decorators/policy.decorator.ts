@@ -1,7 +1,16 @@
-import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
+import {
+    ExecutionContext,
+    InternalServerErrorException,
+    SetMetadata,
+    UseGuards,
+    applyDecorators,
+    createParamDecorator,
+} from '@nestjs/common';
 import { PolicyAuthorizeMetaKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard';
 import {
+    IPolicyAbilityRule,
     IPolicyRequirement,
     IPolicyRule,
 } from '@modules/policy/interfaces/policy.interface';
@@ -50,3 +59,16 @@ export function PolicyAbilityProtected(
         SetMetadata(PolicyAuthorizeMetaKey, requirements)
     );
 }
+
+export const PolicyAbilityCurrent = createParamDecorator(
+    (_: unknown, ctx: ExecutionContext): IPolicyAbilityRule => {
+        const { __policyAbilities } = ctx.switchToHttp().getRequest<IRequestApp>();
+        if (!__policyAbilities) {
+            throw new InternalServerErrorException({
+                message: 'policy.error.predefinedNotFound',
+            });
+        }
+
+        return __policyAbilities;
+    }
+);

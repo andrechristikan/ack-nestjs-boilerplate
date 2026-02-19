@@ -13,7 +13,7 @@ export interface IPolicyService {
     ): Promise<boolean>;
     getOrCreateRequestAbility(request: IRequestApp): IPolicyAbilityRule;
     getAccessibleWhere(
-        request: IRequestApp,
+        ability: IPolicyAbilityRule,
         subject: EnumPolicySubject,
         action: EnumPolicyAction
     ): Record<string, unknown>;

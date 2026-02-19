@@ -8,7 +8,8 @@ import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/acti
 export interface IActivityLogService {
     getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams,
+        allowedWhere?: Record<string, unknown>
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
     getListCursor(
         userId: string,
