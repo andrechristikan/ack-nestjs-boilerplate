@@ -5,41 +5,24 @@ import {
     registerDecorator,
 } from 'class-validator';
 
-const ALLOWED_CASL_OPERATORS = new Set([
-    '$eq',
-    '$ne',
-    '$in',
-    '$nin',
-    '$lt',
-    '$lte',
-    '$gt',
-    '$gte',
-    '$exists',
-    '$regex',
-    '$all',
-    '$size',
-    '$elemMatch',
-    '$or',
-    '$and',
-    '$not',
-    '$nor',
-]);
-
-function validateOperators(
+function validateConditionShape(
     obj: Record<string, unknown>,
     path: string
 ): string[] {
     const errors: string[] = [];
 
     for (const key of Object.keys(obj)) {
-        if (key.startsWith('$') && !ALLOWED_CASL_OPERATORS.has(key)) {
-            errors.push(`Invalid CASL operator "${key}" at path "${path}"`);
+        if (key.startsWith('$')) {
+            errors.push(
+                `Mongo-style operator "${key}" is not supported at path "${path}". Use Prisma filter syntax (e.g. equals, in, AND, OR, NOT).`
+            );
+            continue;
         }
 
         const value = obj[key];
         if (value && typeof value === 'object' && !Array.isArray(value)) {
             errors.push(
-                ...validateOperators(
+                ...validateConditionShape(
                     value as Record<string, unknown>,
                     `${path}.${key}`
                 )
@@ -51,7 +34,7 @@ function validateOperators(
                 const item = value[i];
                 if (item && typeof item === 'object' && !Array.isArray(item)) {
                     errors.push(
-                        ...validateOperators(
+                        ...validateConditionShape(
                             item as Record<string, unknown>,
                             `${path}.${key}[${i}]`
                         )
@@ -80,7 +63,7 @@ export class IsValidCaslConditionsConstraint
             return false;
         }
 
-        this.lastErrors = validateOperators(
+        this.lastErrors = validateConditionShape(
             value as Record<string, unknown>,
             'conditions'
         );

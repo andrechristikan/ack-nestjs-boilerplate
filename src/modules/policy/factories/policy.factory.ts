@@ -1,8 +1,8 @@
 import {
     AbilityBuilder,
     subject as caslSubject,
-    createMongoAbility,
 } from '@casl/ability';
+import { createPrismaAbility } from '@casl/prisma';
 import { Injectable } from '@nestjs/common';
 import {
     EnumPolicyAction,
@@ -85,7 +85,7 @@ export class PolicyAbilityFactory {
      */
     createForUser(abilities: IPolicyAbilityInput[]): IPolicyAbilityRule {
         const builder = new AbilityBuilder<IPolicyAbilityRule>(
-            createMongoAbility
+            createPrismaAbility
         );
         const defineCan = builder.can.bind(builder);
         const defineCannot = builder.cannot.bind(builder);

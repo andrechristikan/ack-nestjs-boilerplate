@@ -1,4 +1,4 @@
-import { InferSubjects, MongoAbility } from '@casl/ability';
+import { PrismaAbility, PrismaQuery } from '@casl/prisma';
 import {
     EnumPolicyAction,
     EnumPolicyEffect,
@@ -7,10 +7,11 @@ import {
 } from '@modules/policy/enums/policy.enum';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 
-export type IPolicyAbilitySubject = InferSubjects<EnumPolicySubject> | 'all';
+export type IPolicyAbilitySubject = EnumPolicySubject | 'all';
 
-export type IPolicyAbilityRule = MongoAbility<
-    [EnumPolicyAction, IPolicyAbilitySubject]
+export type IPolicyAbilityRule = PrismaAbility<
+    [EnumPolicyAction, EnumPolicySubject],
+    PrismaQuery
 >;
 
 /**

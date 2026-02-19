@@ -17,13 +17,15 @@ The authorization model is layered and fail-closed:
 4. **Policy layer (CASL)** validates fine-grained permissions with support for allow/deny, conditions, field-level permissions, and rule priority.
 5. **Term policy layer** optionally enforces required legal-consent acceptance.
 
-The system is implemented with NestJS decorators + guards and CASL ability evaluation.
+The system is implemented with NestJS decorators + guards, using `@casl/ability` for runtime permission checks and `@casl/prisma` for query-level authorization via `accessibleBy`.
 
 ## Related Documents
 
 - [Authentication Documentation][ref-doc-authentication] - JWT, API key, and request identity population
 - [Term Policy Document][ref-doc-term-policy] - Legal-consent model and acceptance enforcement
 - [Tenant + Project Authorization Composition Documentation][ref-doc-tenant-project-authorization] - Tenant/project authorization composition patterns
+- [CASL Documentation][ref-casl-docs] - Core concepts, ability rules, conditions, and field-level checks
+- [@casl/prisma Package][ref-casl-prisma-docs] - Prisma integration and `accessibleBy` query filtering
 
 ## Table of Contents
 
@@ -343,10 +345,10 @@ CASL evaluates: `can(create, subject('subscription', { type: 'basic' }))` — th
 
 Without either `resource` or `conditions`, CASL performs a **loose check** that ignores stored conditions — this is intentional for list endpoints where no specific instance is relevant.
 
-**Supported operators** (validated at API level):
-`$eq`, `$ne`, `$in`, `$nin`, `$lt`, `$lte`, `$gt`, `$gte`, `$exists`, `$regex`, `$all`, `$size`, `$elemMatch`, `$or`, `$and`, `$not`, `$nor`
+**Supported condition syntax** (validated at API level):
+Use Prisma filter keys such as `equals`, `in`, `lt`, `lte`, `gt`, `gte`, `contains`, and logical combinators like `AND`, `OR`, and `NOT`.
 
-Submitting an invalid operator (e.g. `$invalidOp`) returns a `400 Bad Request` from the role ability API.
+Mongo-style operators (keys starting with `$`, e.g. `$eq`) return a `400 Bad Request` from the role ability API.
 
 ### Rule Ordering and Conflict Resolution
 
@@ -379,6 +381,7 @@ Behavior summary:
 5. Caches compiled ability in `request.__policyAbilities` for request reuse.
 6. Evaluates each requirement using `all` or `any` semantics.
 7. Throws `ForbiddenException` with failed subject/action details when any required check fails.
+8. Exposes `PolicyService.getAccessibleWhere(...)` for Prisma query-level authorization via `@casl/prisma` `accessibleBy`.
 
 ### Usage
 
@@ -430,6 +433,30 @@ Behavior summary:
     resource: (request) => request.__user,
 })
 ```
+
+#### Query-level authorization (`@casl/prisma`)
+
+For list/update/delete endpoints, use `PolicyService.getAccessibleWhere(...)` so authorization is enforced inside Prisma queries:
+
+```typescript
+const allowedWhere = this.policyService.getAccessibleWhere(
+    request,
+    EnumPolicySubject.user,
+    EnumPolicyAction.update
+);
+
+const where = {
+    ...allowedWhere,
+    id: userId,
+};
+
+await this.databaseService.user.updateMany({
+    where,
+    data: payload,
+});
+```
+
+This pattern prevents controller-level authorization drift and ensures DB operations are scoped to records allowed by CASL.
 
 ## TermPolicyAcceptanceProtected
 
@@ -624,7 +651,7 @@ If the auditor role's ability only included `["name", "email"]`, the check for `
 
 **Scenario**: A "department-manager" admin role may update users, but only users who belong to the manager's department. The restriction is expressed as a condition on the stored role ability and is evaluated at request time against the target user entity.
 
-Conditions use **Mongo-like query syntax** and are checked by CASL against the `resource` object you supply on the requirement. The resource is resolved at guard time from the incoming request.
+Conditions use **Prisma filter syntax** and are checked by CASL against the `resource` object you supply on the requirement. The resource is resolved at guard time from the incoming request.
 
 #### Step 1 — Configure the role ability via API
 
@@ -637,7 +664,7 @@ Conditions use **Mongo-like query syntax** and are checked by CASL against the `
       "subject": "user",
       "action": ["read", "update"],
       "effect": "can",
-      "conditions": { "departmentId": { "$eq": "dept-engineering" } },
+      "conditions": { "departmentId": { "equals": "dept-engineering" } },
       "reason": "Managers can only manage users in their own department"
     }
   ]
@@ -744,10 +771,10 @@ async updateByDepartmentManager(
 #### How CASL evaluates the condition
 
 ```
-stored ability conditions: { "departmentId": { "$eq": "dept-engineering" } }
+stored ability conditions: { "departmentId": { "equals": "dept-engineering" } }
 resource at check time:    { id: "user-42", departmentId: "dept-engineering", ... }
 
-CASL checks: can(update, <resource>) → departmentId "$eq" "dept-engineering"?
+CASL checks: can(update, <resource>) → departmentId "equals" "dept-engineering"?
              "dept-engineering" === "dept-engineering" → ✓ → request allowed
 
 resource at check time:    { id: "user-99", departmentId: "dept-sales", ... }
@@ -839,7 +866,7 @@ Role create/update endpoints accept ability arrays using `RoleAbilityRequestDto`
 | `action` | `EnumPolicyAction[]` | Yes | Allowed/denied actions |
 | `effect` | `EnumPolicyEffect` | No | `can` (default) or `cannot` |
 | `fields` | `string[]` | No | Restrict to specific fields |
-| `conditions` | `Record<string, unknown>` | No | Mongo-like condition filter |
+| `conditions` | `Record<string, unknown>` | No | Prisma-style condition filter |
 | `description` | `string` | No | Human-readable note for the rule |
 | `priority` | `number` | No | Evaluation order (lower first, default: `0`) |
 
@@ -873,7 +900,7 @@ Example payload:
     {
       "subject": "user",
       "action": ["update"],
-      "conditions": { "id": { "$eq": "{{currentUserId}}" } },
+      "conditions": { "id": { "equals": "{{currentUserId}}" } },
       "description": "Users can only update their own profile"
     }
   ]
@@ -947,6 +974,7 @@ Common failure classes:
 6. Keep `conditions` simple and testable; avoid deeply nested dynamic structures.
 7. Always combine `PolicyAbilityProtected` with `UserProtected` and `AuthJwtAccessProtected`.
 8. For admin endpoints, keep `RoleProtected` as a coarse gate and `PolicyAbilityProtected` as a fine gate.
+9. For read/update/delete data access, apply `PolicyService.getAccessibleWhere(...)` in repository queries so authorization is enforced by Prisma `where` constraints, not only by controller guards.
 
 ## Troubleshooting
 
@@ -985,10 +1013,10 @@ Fix:
 ### 5) Role ability API returns 400 on `conditions`
 
 Cause:
-- `conditions` object contains an unknown operator (e.g. `$invalidOp`).
+- `conditions` object uses Mongo-style operators (e.g. `$eq`, `$or`) or an invalid shape.
 
 Fix:
-- Use only supported CASL operators: `$eq`, `$ne`, `$in`, `$nin`, `$lt`, `$lte`, `$gt`, `$gte`, `$exists`, `$regex`, `$all`, `$size`, `$elemMatch`, `$or`, `$and`, `$not`, `$nor`.
+- Use Prisma filter syntax (e.g. `equals`, `in`, `lt`, `AND`, `OR`, `NOT`) and avoid keys prefixed with `$`.
 
 
 <!-- REFERENCES -->
@@ -997,3 +1025,5 @@ Fix:
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-authorization]: authorization.md
 [ref-doc-tenant-project-authorization]: tenant-project-authorization.md
+[ref-casl-docs]: https://casl.js.org/
+[ref-casl-prisma-docs]: https://www.npmjs.com/package/@casl/prisma

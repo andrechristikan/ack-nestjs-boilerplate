@@ -1,12 +1,15 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ForbiddenError } from '@casl/ability';
+import { accessibleBy } from '@casl/prisma';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { EnumPolicyAction, EnumPolicySubject } from '@modules/policy/enums/policy.enum';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import {
     IPolicyAbilityInput,
+    IPolicyAbilityRule,
     IPolicyRequirement,
     IPolicyRule,
-    PolicySubjectResolver,
 } from '@modules/policy/interfaces/policy.interface';
 import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
 import { mapPrismaAbilityToPolicy } from '@modules/policy/mappers/policy-ability.mapper';
@@ -23,6 +26,30 @@ export class PolicyService implements IPolicyService {
     constructor(
         private readonly policyAbilityFactory: PolicyAbilityFactory
     ) {}
+
+    private validateAuthenticatedContext(request: IRequestApp): void {
+        const { __user, user } = request;
+        if (!__user || !user) {
+            throw new ForbiddenException({
+                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        }
+    }
+
+    private resolveRequestAbilities(
+        request: IRequestApp
+    ): IPolicyAbilityInput[] {
+        const { __user, __abilities } = request;
+
+        if (__abilities) {
+            return __abilities;
+        }
+
+        return (__user?.role.abilities ?? []).map((raw: unknown) =>
+            mapPrismaAbilityToPolicy(raw as RoleAbility)
+        );
+    }
 
     private resolveRequirementResource(
         requirement: IPolicyRequirement,
@@ -44,18 +71,81 @@ export class PolicyService implements IPolicyService {
         return resolvedResource;
     }
 
+    getOrCreateRequestAbility(request: IRequestApp): IPolicyAbilityRule {
+        this.validateAuthenticatedContext(request);
+
+        const existingAbility = request.__policyAbilities;
+        if (existingAbility) {
+            return existingAbility;
+        }
+
+        const abilities = this.resolveRequestAbilities(request);
+        const userAbilities = this.policyAbilityFactory.createForUser(abilities);
+        request.__policyAbilities = userAbilities;
+
+        return userAbilities;
+    }
+
+    getAccessibleWhere(
+        request: IRequestApp,
+        subject: EnumPolicySubject,
+        action: EnumPolicyAction
+    ): Record<string, unknown> {
+        if (subject === EnumPolicySubject.all) {
+            throw new InternalServerErrorException({
+                statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
+                message: 'policy.error.predefinedNotFound',
+            });
+        }
+
+        const ability = this.getOrCreateRequestAbility(request);
+
+        try {
+            const whereBySubject = accessibleBy(ability, action) as Record<
+                string,
+                unknown
+            >;
+            const where = whereBySubject[subject];
+
+            if (!where || typeof where !== 'object') {
+                throw new ForbiddenException({
+                    statusCode: EnumPolicyStatusCodeError.forbidden,
+                    message: 'policy.error.forbidden',
+                    errors: [
+                        {
+                            requirement: `${subject}:[${action}]`,
+                        },
+                    ],
+                });
+            }
+
+            return where as Record<string, unknown>;
+        } catch (error: unknown) {
+            if (error instanceof ForbiddenException) {
+                throw error;
+            }
+
+            if (error instanceof ForbiddenError) {
+                throw new ForbiddenException({
+                    statusCode: EnumPolicyStatusCodeError.forbidden,
+                    message: 'policy.error.forbidden',
+                    errors: [
+                        {
+                            requirement: `${subject}:[${action}]`,
+                        },
+                    ],
+                });
+            }
+
+            throw error;
+        }
+    }
+
     async authorize(
         request: IRequestApp,
         requirements: IPolicyRequirement[]
     ): Promise<boolean> {
-        const { __user, user, __abilities } = request;
-
-        if (!__user || !user) {
-            throw new ForbiddenException({
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
-        }
+        this.validateAuthenticatedContext(request);
 
         if (requirements.length === 0) {
             throw new InternalServerErrorException({
@@ -71,16 +161,7 @@ export class PolicyService implements IPolicyService {
             });
         }
 
-        const abilities: IPolicyAbilityInput[] =
-            __abilities ??
-            (__user.role.abilities ?? []).map((raw: unknown) =>
-                mapPrismaAbilityToPolicy(raw as RoleAbility)
-            );
-
-        const userAbilities =
-            request.__policyAbilities ??
-            this.policyAbilityFactory.createForUser(abilities);
-        request.__policyAbilities = userAbilities;
+        const userAbilities = this.getOrCreateRequestAbility(request);
 
         const failedSubjects: string[] = [];
 

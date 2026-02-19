@@ -68,7 +68,7 @@ export class RoleAbilityRequestDto {
 
     @ApiProperty({
         required: false,
-        description: 'Optional CASL conditions object (Mongo-like query syntax)',
+        description: 'Optional CASL conditions object (Prisma filter syntax)',
         type: Object,
         additionalProperties: true,
     })

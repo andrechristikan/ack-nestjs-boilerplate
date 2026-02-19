@@ -40,7 +40,7 @@ export class RoleAbilityDto {
 
     @ApiProperty({
         required: false,
-        description: 'Optional CASL conditions object',
+        description: 'Optional CASL conditions object (Prisma filter syntax)',
         type: Object,
         additionalProperties: true,
     })
