@@ -18,7 +18,7 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { Authorize } from '@modules/policy/decorators/policy.decorator';
+import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';;
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -48,7 +48,7 @@ export class SessionAdminController {
     @SessionAdminListDoc()
     @ResponsePaging('session.list')
     @TermPolicyAcceptanceProtected()
-    @Authorize(
+    @PolicyAbilityProtected(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],
@@ -78,7 +78,7 @@ export class SessionAdminController {
     @ResponsePaging('session.revoke')
     @ActivityLog(EnumActivityLogAction.adminSessionRevoke)
     @TermPolicyAcceptanceProtected()
-    @Authorize(
+    @PolicyAbilityProtected(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],

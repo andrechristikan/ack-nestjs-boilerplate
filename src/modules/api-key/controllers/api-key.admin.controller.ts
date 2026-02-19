@@ -51,7 +51,7 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
-import { Authorize } from '@modules/policy/decorators/policy.decorator';
+import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     EnumActivityLogAction,
@@ -77,7 +77,7 @@ export class ApiKeyAdminController {
     @ApiKeyAdminListDoc()
     @ResponsePaging('apiKey.list')
     @TermPolicyAcceptanceProtected()
-    @Authorize({
+    @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read],
     })
@@ -103,7 +103,7 @@ export class ApiKeyAdminController {
     @Response('apiKey.create')
     @ActivityLog(EnumActivityLogAction.adminApiKeyCreate)
     @TermPolicyAcceptanceProtected()
-    @Authorize({
+    @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
@@ -122,7 +122,7 @@ export class ApiKeyAdminController {
     @Response('apiKey.reset')
     @ActivityLog(EnumActivityLogAction.adminApiKeyReset)
     @TermPolicyAcceptanceProtected()
-    @Authorize({
+    @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -142,7 +142,7 @@ export class ApiKeyAdminController {
     @Response('apiKey.update')
     @ActivityLog(EnumActivityLogAction.adminApiKeyUpdate)
     @TermPolicyAcceptanceProtected()
-    @Authorize({
+    @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -163,7 +163,7 @@ export class ApiKeyAdminController {
     @Response('apiKey.updateDate')
     @ActivityLog(EnumActivityLogAction.adminApiKeyUpdateDate)
     @TermPolicyAcceptanceProtected()
-    @Authorize({
+    @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -184,7 +184,7 @@ export class ApiKeyAdminController {
     @Response('apiKey.updateStatus')
     @ActivityLog(EnumActivityLogAction.adminApiKeyUpdateStatus)
     @TermPolicyAcceptanceProtected()
-    @Authorize({
+    @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -205,7 +205,7 @@ export class ApiKeyAdminController {
     @Response('apiKey.delete')
     @ActivityLog(EnumActivityLogAction.adminApiKeyDelete)
     @TermPolicyAcceptanceProtected()
-    @Authorize({
+    @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })

@@ -3,26 +3,30 @@ import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.en
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import {
+    IPolicyAbilityInput,
     IPolicyRequirement,
+    IPolicyRule,
     PolicySubjectResolver,
 } from '@modules/policy/interfaces/policy.interface';
 import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
-import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
+import { mapPrismaAbilityToPolicy } from '@modules/policy/mappers/policy-ability.mapper';
 import {
     ForbiddenException,
     Injectable,
     InternalServerErrorException,
 } from '@nestjs/common';
 import { EnumPolicyMatch } from '@modules/policy/enums/policy.enum';
+import { RoleAbility } from '@prisma/client';
 
 @Injectable()
 export class PolicyService implements IPolicyService {
-    constructor(private readonly policyAbilityFactory: PolicyAbilityFactory) {}
+    constructor(
+        private readonly policyAbilityFactory: PolicyAbilityFactory
+    ) {}
 
     private resolveRequirementResource(
         requirement: IPolicyRequirement,
-        request: IRequestApp,
-        fallbackRule: RoleAbilityRequestDto
+        request: IRequestApp
     ): Record<string, unknown> | undefined {
         const { resource } = requirement;
         if (!resource) {
@@ -37,10 +41,7 @@ export class PolicyService implements IPolicyService {
             return undefined;
         }
 
-        return {
-            ...resolvedResource,
-            __caslSubjectType__: fallbackRule.subject,
-        };
+        return resolvedResource;
     }
 
     async authorize(
@@ -70,34 +71,60 @@ export class PolicyService implements IPolicyService {
             });
         }
 
-        const abilities =
+        const abilities: IPolicyAbilityInput[] =
             __abilities ??
-            ((__user.role.abilities ?? []) as unknown as RoleAbilityRequestDto[]);
+            (__user.role.abilities ?? []).map((raw: unknown) =>
+                mapPrismaAbilityToPolicy(raw as RoleAbility)
+            );
+
         const userAbilities =
             request.__policyAbilities ??
             this.policyAbilityFactory.createForUser(abilities);
         request.__policyAbilities = userAbilities;
 
+        const failedSubjects: string[] = [];
+
         const isAllowed = requirements.every(requirement => {
             const mode = requirement.match ?? EnumPolicyMatch.all;
-            const evaluator = (rule: RoleAbilityRequestDto): boolean =>
-                this.policyAbilityFactory.handlerAbilities(
+            const resource = this.resolveRequirementResource(
+                requirement,
+                request
+            );
+
+            const evaluator = (rule: IPolicyRule): boolean =>
+                this.policyAbilityFactory.evaluateRule(
                     userAbilities,
-                    [rule],
-                    this.resolveRequirementResource(requirement, request, rule)
+                    rule,
+                    resource
                 );
 
-            if (mode === EnumPolicyMatch.any) {
-                return requirement.rules.some(evaluator);
+            const passed =
+                mode === EnumPolicyMatch.any
+                    ? requirement.rules.some(evaluator)
+                    : requirement.rules.every(evaluator);
+
+            if (!passed) {
+                const subjects = [
+                    ...new Set(requirement.rules.map(r => r.subject)),
+                ];
+                const actions = [
+                    ...new Set(requirement.rules.flatMap(r => r.action)),
+                ];
+                failedSubjects.push(
+                    `${subjects.join(',')}:[${actions.join(',')}]`
+                );
             }
 
-            return requirement.rules.every(evaluator);
+            return passed;
         });
 
         if (!isAllowed) {
             throw new ForbiddenException({
                 statusCode: EnumPolicyStatusCodeError.forbidden,
                 message: 'policy.error.forbidden',
+                errors: failedSubjects.map(detail => ({
+                    requirement: detail,
+                })),
             });
         }
 

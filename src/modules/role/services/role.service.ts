@@ -9,11 +9,12 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { IPolicyAbilityInput } from '@modules/policy/interfaces/policy.interface';
+import { mapPrismaAbilityToPolicy } from '@modules/policy/mappers/policy-ability.mapper';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { IRoleService } from '@modules/role/interfaces/role.service.interface';
@@ -26,7 +27,7 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType, RoleAbility } from '@prisma/client';
 
 @Injectable()
 export class RoleService implements IRoleService {
@@ -163,7 +164,7 @@ export class RoleService implements IRoleService {
     async validateRoleGuard(
         request: IRequestApp,
         requiredRoles: EnumRoleType[]
-    ): Promise<RoleAbilityDto[]> {
+    ): Promise<IPolicyAbilityInput[]> {
         const { __user, user } = request;
         if (!__user || !user) {
             throw new ForbiddenException({
@@ -189,6 +190,8 @@ export class RoleService implements IRoleService {
             });
         }
 
-        return this.roleUtil.mapOne(__user.role).abilities;
+        return (__user.role.abilities ?? []).map((raw: unknown) =>
+            mapPrismaAbilityToPolicy(raw as RoleAbility)
+        );
     }
 }

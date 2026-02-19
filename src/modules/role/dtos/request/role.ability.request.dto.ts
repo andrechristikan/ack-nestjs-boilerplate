@@ -16,6 +16,7 @@ import {
     EnumPolicyEffect,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
+import { IsValidCaslConditions } from '@modules/role/validators/is-valid-casl-conditions.validator';
 import { Transform } from 'class-transformer';
 
 export class RoleAbilityRequestDto {
@@ -71,13 +72,14 @@ export class RoleAbilityRequestDto {
         type: Object,
         additionalProperties: true,
     })
+    @IsValidCaslConditions()
     @IsObject()
     @IsOptional()
     conditions?: Record<string, unknown>;
 
     @ApiProperty({
         required: false,
-        description: 'Optional human-readable reason for rule',
+        description: 'Optional human-readable description of the rule',
         maxLength: 255,
     })
     @IsString()

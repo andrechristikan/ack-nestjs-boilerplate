@@ -1,6 +1,5 @@
 import {
     AbilityBuilder,
-    ExtractSubjectType,
     subject as caslSubject,
     createMongoAbility,
 } from '@casl/ability';
@@ -10,21 +9,24 @@ import {
     EnumPolicyEffect,
 } from '@modules/policy/enums/policy.enum';
 import {
+    IPolicyAbilityInput,
     IPolicyAbilityRule,
     IPolicyAbilitySubject,
+    IPolicyRule,
 } from '@modules/policy/interfaces/policy.interface';
-import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 
 /**
  * Factory class for creating and handling policy abilities using CASL library
  */
 @Injectable()
 export class PolicyAbilityFactory {
-    private normalizePriority(ability: RoleAbilityRequestDto): number {
+    private normalizePriority(ability: IPolicyAbilityInput): number {
         return typeof ability.priority === 'number' ? ability.priority : 0;
     }
 
-    private sortRules(abilities: RoleAbilityRequestDto[]): RoleAbilityRequestDto[] {
+    private sortRules(
+        abilities: IPolicyAbilityInput[]
+    ): IPolicyAbilityInput[] {
         return [...abilities].sort((left, right) => {
             const byPriority =
                 this.normalizePriority(left) - this.normalizePriority(right);
@@ -50,7 +52,7 @@ export class PolicyAbilityFactory {
             fieldsOrConditions?: string[] | Record<string, unknown>,
             conditions?: Record<string, unknown>
         ) => { because: (reason: string) => void } | void,
-        ability: RoleAbilityRequestDto
+        ability: IPolicyAbilityInput
     ): void {
         const fields = ability.fields?.filter(Boolean);
         const hasFields = !!fields && fields.length > 0;
@@ -71,23 +73,28 @@ export class PolicyAbilityFactory {
                 )
               : applyRule(ability.action, ability.subject);
 
-        if (rule && ability.reason) {
-            rule.because(ability.reason);
+        if (rule && ability.description) {
+            rule.because(ability.description);
         }
     }
 
     /**
      * Creates policy ability rules for a specific user based on their permissions
-     * @param {IPolicyAbility[]} abilities - Array of policy abilities assigned to the user
+     * @param {IPolicyAbilityInput[]} abilities - Array of policy abilities assigned to the user
      * @returns {IPolicyAbilityRule} CASL ability rule object for the user
      */
-    createForUser(abilities: RoleAbilityRequestDto[]): IPolicyAbilityRule {
-        const builder = new AbilityBuilder<IPolicyAbilityRule>(createMongoAbility);
+    createForUser(abilities: IPolicyAbilityInput[]): IPolicyAbilityRule {
+        const builder = new AbilityBuilder<IPolicyAbilityRule>(
+            createMongoAbility
+        );
         const defineCan = builder.can.bind(builder);
         const defineCannot = builder.cannot.bind(builder);
 
         for (const ability of this.sortRules(abilities)) {
-            if ((ability.effect ?? EnumPolicyEffect.can) === EnumPolicyEffect.cannot) {
+            if (
+                (ability.effect ?? EnumPolicyEffect.can) ===
+                EnumPolicyEffect.cannot
+            ) {
                 this.buildRule(defineCannot, ability);
                 continue;
             }
@@ -96,20 +103,29 @@ export class PolicyAbilityFactory {
         }
 
         return builder.build({
-            // Read https://casl.js.org/v6/en/guide/subject-type-detection#use-classes-as-subject-types for details
             detectSubjectType: (item: {
                 __caslSubjectType__?: IPolicyAbilitySubject;
-                constructor: ExtractSubjectType<IPolicyAbilitySubject>;
-            }) => item.__caslSubjectType__ ?? item.constructor,
+            }) => {
+                if (item.__caslSubjectType__) {
+                    return item.__caslSubjectType__;
+                }
+
+                throw new Error(
+                    'Cannot detect CASL subject type: missing __caslSubjectType__ on plain object. Use caslSubject() to tag resources.'
+                );
+            },
         });
     }
 
-    private checkOneRule(
+    /**
+     * Evaluates a single rule against user abilities.
+     * Always checks with `can()` - routes only declare what capability is required.
+     */
+    evaluateRule(
         userAbilities: IPolicyAbilityRule,
-        rule: RoleAbilityRequestDto,
+        rule: IPolicyRule,
         resource?: Record<string, unknown>
     ): boolean {
-        const effect = rule.effect ?? EnumPolicyEffect.can;
         const fields = rule.fields?.filter(Boolean);
         const subject: unknown = resource
             ? caslSubject(rule.subject, resource)
@@ -117,43 +133,38 @@ export class PolicyAbilityFactory {
 
         const canForAction = (action: EnumPolicyAction): boolean => {
             if (!fields || fields.length === 0) {
-                return effect === EnumPolicyEffect.cannot
-                    ? !userAbilities.can(action, subject as IPolicyAbilitySubject)
-                    : userAbilities.can(action, subject as IPolicyAbilitySubject);
+                return userAbilities.can(
+                    action,
+                    subject as IPolicyAbilitySubject
+                );
             }
 
-            const fieldsAllowed = fields.every((field: string) =>
-                effect === EnumPolicyEffect.cannot
-                    ? !userAbilities.can(
-                          action,
-                          subject as IPolicyAbilitySubject,
-                          field
-                      )
-                    : userAbilities.can(
-                          action,
-                          subject as IPolicyAbilitySubject,
-                          field
-                      )
+            return fields.every((field: string) =>
+                userAbilities.can(
+                    action,
+                    subject as IPolicyAbilitySubject,
+                    field
+                )
             );
-            return fieldsAllowed;
         };
 
         return rule.action.every(canForAction);
     }
 
     /**
-     * Validates if user abilities match the required abilities for access control
+     * Validates if user abilities match all required rules for access control
      * @param {IPolicyAbilityRule} userAbilities - User's current ability rules
-     * @param {RoleAbilityRequestDto[]} abilities - Required abilities to check against
+     * @param {IPolicyRule[]} rules - Required rules to check against
+     * @param {Record<string, unknown>} resource - Optional resource for condition matching
      * @returns {boolean} True if user has all required abilities, false otherwise
      */
-    handlerAbilities(
+    checkAllRules(
         userAbilities: IPolicyAbilityRule,
-        abilities: RoleAbilityRequestDto[],
+        rules: IPolicyRule[],
         resource?: Record<string, unknown>
     ): boolean {
-        return abilities.every((ability: RoleAbilityRequestDto) =>
-            this.checkOneRule(userAbilities, ability, resource)
+        return rules.every((rule: IPolicyRule) =>
+            this.evaluateRule(userAbilities, rule, resource)
         );
     }
 }
