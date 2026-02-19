@@ -4,15 +4,16 @@ import {
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
+import { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
 
 export interface IActivityLogService {
     getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams,
-        allowedWhere?: Record<string, unknown>
+        ability: IPolicyAbilityRule
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
     getListCursor(
-        userId: string,
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams,
+        ability: IPolicyAbilityRule
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
 }

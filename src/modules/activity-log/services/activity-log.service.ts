@@ -7,6 +7,9 @@ import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/acti
 import { IActivityLogService } from '@modules/activity-log/interfaces/activity-log.service.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { accessibleBy } from '@casl/prisma';
+import { EnumPolicyAction } from '@modules/policy/enums/policy.enum';
+import { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -19,46 +22,43 @@ export class ActivityLogService implements IActivityLogService {
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams,
-        allowedWhere?: Record<string, unknown>
+        ability: IPolicyAbilityRule
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        const where = {
-            AND: [
-                ...(allowedWhere ? [allowedWhere] : []),
-                ...(pagination.where ? [pagination.where] : []),
-                { userId },
-            ],
-        } as unknown as IPaginationQueryOffsetParams['where'];
-
         const { data, ...others } =
-            await this.activityRepository.findWithPaginationOffset(
-                {
-                    ...pagination,
-                    where,
-                }
-            );
+            await this.activityRepository.findWithPaginationOffset({
+                ...pagination,
+                where: {
+                    AND: [
+                        pagination.where,
+                        accessibleBy(ability, EnumPolicyAction.read).ActivityLog,
+                        { userId },
+                    ].filter(Boolean),
+                },
+            });
 
-        const activityLogs: ActivityLogResponseDto[] =
-            this.activityUtil.mapList(data);
         return {
-            data: activityLogs,
+            data: this.activityUtil.mapList(data),
             ...others,
         };
     }
 
     async getListCursor(
-        userId: string,
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams,
+        ability: IPolicyAbilityRule
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
         const { data, ...others } =
-            await this.activityRepository.findWithPaginationCursor(
-                userId,
-                pagination
-            );
+            await this.activityRepository.findWithPaginationCursor({
+                ...pagination,
+                where: {
+                    AND: [
+                        accessibleBy(ability).ActivityLog,
+                        pagination.where,
+                    ].filter(Boolean),
+                },
+            });
 
-        const activityLogs: ActivityLogResponseDto[] =
-            this.activityUtil.mapList(data);
         return {
-            data: activityLogs,
+            data: this.activityUtil.mapList(data),
             ...others,
         };
     }

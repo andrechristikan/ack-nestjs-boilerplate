@@ -42,7 +42,7 @@ export type IPaginationOrderBy = Record<
 
 export interface IPaginationQueryReturn {
     where?: {
-        or: Record<string, { contains: string }>[];
+        or?: Record<string, { contains: string }>[];
         [key: string]: unknown;
     };
     orderBy?: IPaginationOrderBy;

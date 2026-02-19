@@ -2,7 +2,7 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ForbiddenError } from '@casl/ability';
 import { accessibleBy } from '@casl/prisma';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { EnumPolicyAction, EnumPolicySubject } from '@modules/policy/enums/policy.enum';
+import { EnumPolicyAction, EnumPolicyMatch } from '@modules/policy/enums/policy.enum';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import {
@@ -10,16 +10,15 @@ import {
     IPolicyAbilityRule,
     IPolicyRequirement,
     IPolicyRule,
+    PolicySubject,
+    PolicyWhereInput,
 } from '@modules/policy/interfaces/policy.interface';
 import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
-import { mapPrismaAbilityToPolicy } from '@modules/policy/mappers/policy-ability.mapper';
 import {
     ForbiddenException,
     Injectable,
     InternalServerErrorException,
 } from '@nestjs/common';
-import { EnumPolicyMatch } from '@modules/policy/enums/policy.enum';
-import { RoleAbility } from '@prisma/client';
 
 @Injectable()
 export class PolicyService implements IPolicyService {
@@ -46,29 +45,7 @@ export class PolicyService implements IPolicyService {
             return __abilities;
         }
 
-        return (__user?.role.abilities ?? []).map((raw: unknown) =>
-            mapPrismaAbilityToPolicy(raw as RoleAbility)
-        );
-    }
-
-    private resolveRequirementResource(
-        requirement: IPolicyRequirement,
-        request: IRequestApp
-    ): Record<string, unknown> | undefined {
-        const { resource } = requirement;
-        if (!resource) {
-            return undefined;
-        }
-
-        const resolvedResource =
-            typeof resource === 'function'
-                ? resource(request)
-                : resource;
-        if (!resolvedResource) {
-            return undefined;
-        }
-
-        return resolvedResource;
+        return (__user?.role.abilities ?? []) as IPolicyAbilityInput[];
     }
 
     getOrCreateRequestAbility(request: IRequestApp): IPolicyAbilityRule {
@@ -80,63 +57,12 @@ export class PolicyService implements IPolicyService {
         }
 
         const abilities = this.resolveRequestAbilities(request);
-        const userAbilities = this.policyAbilityFactory.createForUser(abilities);
+        const userAbilities = this.policyAbilityFactory.createForUser(abilities, {
+            userId: request.__user!.id,
+        });
         request.__policyAbilities = userAbilities;
 
         return userAbilities;
-    }
-
-    getAccessibleWhere(
-        ability: IPolicyAbilityRule,
-        subject: EnumPolicySubject,
-        action: EnumPolicyAction
-    ): Record<string, unknown> {
-        if (subject === EnumPolicySubject.all) {
-            throw new InternalServerErrorException({
-                statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
-                message: 'policy.error.predefinedNotFound',
-            });
-        }
-
-        try {
-            const whereBySubject = accessibleBy(ability, action) as Record<
-                string,
-                unknown
-            >;
-            const where = whereBySubject[subject];
-
-            if (!where || typeof where !== 'object') {
-                throw new ForbiddenException({
-                    statusCode: EnumPolicyStatusCodeError.forbidden,
-                    message: 'policy.error.forbidden',
-                    errors: [
-                        {
-                            requirement: `${subject}:[${action}]`,
-                        },
-                    ],
-                });
-            }
-
-            return where as Record<string, unknown>;
-        } catch (error: unknown) {
-            if (error instanceof ForbiddenException) {
-                throw error;
-            }
-
-            if (error instanceof ForbiddenError) {
-                throw new ForbiddenException({
-                    statusCode: EnumPolicyStatusCodeError.forbidden,
-                    message: 'policy.error.forbidden',
-                    errors: [
-                        {
-                            requirement: `${subject}:[${action}]`,
-                        },
-                    ],
-                });
-            }
-
-            throw error;
-        }
     }
 
     async authorize(
@@ -165,17 +91,9 @@ export class PolicyService implements IPolicyService {
 
         const isAllowed = requirements.every(requirement => {
             const mode = requirement.match ?? EnumPolicyMatch.all;
-            const resource = this.resolveRequirementResource(
-                requirement,
-                request
-            );
 
             const evaluator = (rule: IPolicyRule): boolean =>
-                this.policyAbilityFactory.evaluateRule(
-                    userAbilities,
-                    rule,
-                    resource
-                );
+                this.policyAbilityFactory.evaluateRule(userAbilities, rule);
 
             const passed =
                 mode === EnumPolicyMatch.any

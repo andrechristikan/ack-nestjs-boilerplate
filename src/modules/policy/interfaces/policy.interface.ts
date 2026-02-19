@@ -1,16 +1,31 @@
-import { PrismaAbility, PrismaQuery } from '@casl/prisma';
+import { PureAbility } from '@casl/ability';
+import { PrismaQuery, WhereInput } from '@casl/prisma';
 import {
     EnumPolicyAction,
     EnumPolicyEffect,
     EnumPolicyMatch,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { Prisma } from '@prisma/client';
 
 export type IPolicyAbilitySubject = EnumPolicySubject | 'all';
 
-export type IPolicyAbilityRule = PrismaAbility<
-    [EnumPolicyAction, EnumPolicySubject],
+/**
+ * All policy subjects except `all`, which has no corresponding Prisma model.
+ * Used to constrain `getAccessibleWhere` at compile time.
+ */
+export type PolicySubject = Exclude<EnumPolicySubject, EnumPolicySubject.all>;
+
+/**
+ * Maps a policy subject to its Prisma `WhereInput` type.
+ * Relies on the convention that `EnumPolicySubject` values are the camelCase
+ * form of their Prisma model name (e.g. `activityLog` → `ActivityLog`).
+ */
+export type PolicyWhereInput<S extends PolicySubject> =
+    Capitalize<S> extends Prisma.ModelName ? WhereInput<Capitalize<S>> : never;
+
+export type IPolicyAbilityRule = PureAbility<
+    [EnumPolicyAction, IPolicyAbilitySubject],
     PrismaQuery
 >;
 
@@ -24,7 +39,7 @@ export interface IPolicyAbilityInput {
     effect?: EnumPolicyEffect;
     fields?: string[];
     conditions?: Record<string, unknown>;
-    description?: string;
+    reason?: string;
     priority?: number;
 }
 
@@ -39,12 +54,11 @@ export interface IPolicyRule {
     conditions?: Record<string, unknown>;
 }
 
-export type PolicySubjectResolver = (
-    request: IRequestApp
-) => Record<string, unknown> | undefined | null;
-
 export interface IPolicyRequirement {
     rules: IPolicyRule[];
     match?: EnumPolicyMatch;
-    resource?: Record<string, unknown> | PolicySubjectResolver;
+}
+
+export interface PolicyConditionContext {
+    userId: string;
 }

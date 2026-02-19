@@ -10,7 +10,6 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { IPolicyAbilityInput } from '@modules/policy/interfaces/policy.interface';
-import { mapPrismaAbilityToPolicy } from '@modules/policy/mappers/policy-ability.mapper';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
@@ -27,7 +26,7 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumRoleType, RoleAbility } from '@prisma/client';
+import { EnumRoleType } from '@prisma/client';
 
 @Injectable()
 export class RoleService implements IRoleService {
@@ -190,8 +189,6 @@ export class RoleService implements IRoleService {
             });
         }
 
-        return (__user.role.abilities ?? []).map((raw: RoleAbility) =>
-            mapPrismaAbilityToPolicy(raw)
-        );
+        return (__user.role.abilities ?? []) as IPolicyAbilityInput[];
     }
 }

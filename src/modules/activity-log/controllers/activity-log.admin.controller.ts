@@ -18,7 +18,6 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
-import { PolicyService } from '@modules/policy/services/policy.service';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -32,10 +31,7 @@ import { EnumRoleType } from '@prisma/client';
     path: '/user/:userId/activity-log',
 })
 export class ActivityLogAdminController {
-    constructor(
-        private readonly activityLogService: ActivityLogService,
-        private readonly policyService: PolicyService
-    ) {}
+    constructor(private readonly activityLogService: ActivityLogService) {}
 
     @ActivityLogAdminListDoc()
     @ResponsePaging('activityLog.list')
@@ -62,16 +58,6 @@ export class ActivityLogAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        const allowedWhere = this.policyService.getAccessibleWhere(
-            ability,
-            EnumPolicySubject.activityLog,
-            EnumPolicyAction.read
-        );
-
-        return this.activityLogService.getListOffsetByAdmin(
-            userId,
-            pagination,
-            allowedWhere
-        );
+        return this.activityLogService.getListOffsetByAdmin(userId, pagination, ability);
     }
 }

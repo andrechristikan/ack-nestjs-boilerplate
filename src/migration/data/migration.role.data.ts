@@ -1,6 +1,7 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import {
     EnumPolicyAction,
+    EnumPolicyPlaceholder,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
@@ -30,7 +31,13 @@ const roleData: RoleCreateRequestDto[] = [
     {
         name: 'user',
         description: 'User Role',
-        abilities: [],
+        abilities: [
+            {
+                subject: EnumPolicySubject.activityLog,
+                action: [EnumPolicyAction.read],
+                conditions: { userId: EnumPolicyPlaceholder.userId },
+            },
+        ],
         type: EnumRoleType.user,
     },
 ];

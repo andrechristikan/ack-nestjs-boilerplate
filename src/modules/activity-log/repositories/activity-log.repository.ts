@@ -39,17 +39,13 @@ export class ActivityLogRepository {
     }
 
     async findWithPaginationCursor(
-        userId: string,
         { where, ...params }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
         return this.paginationService.cursor<IActivityLog>(
             this.databaseService.activityLog,
             {
                 ...params,
-                where: {
-                    ...where,
-                    userId,
-                },
+                where,
                 include: {
                     user: true,
                 },

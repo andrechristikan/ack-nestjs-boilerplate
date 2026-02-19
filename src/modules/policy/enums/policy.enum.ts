@@ -27,3 +27,7 @@ export enum EnumPolicySubject {
     termPolicy = 'termPolicy',
     featureFlag = 'featureFlag',
 }
+
+export enum EnumPolicyPlaceholder {
+    userId = '$userId',
+}
