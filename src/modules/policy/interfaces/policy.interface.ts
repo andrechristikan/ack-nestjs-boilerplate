@@ -32,13 +32,17 @@ export type IPolicyAbilityRule = PureAbility<
 /**
  * Internal type for building CASL abilities from stored data.
  * Used by the factory's `createForUser` to build the ability instance.
+ *
+ * `conditions` is typed as `PrismaQuery` (not `Record<string, unknown>`) because
+ * abilities are always compiled with `createPrismaAbility`, which constrains
+ * conditions to valid Prisma `where` clauses.
  */
 export interface IPolicyAbilityInput {
     subject: EnumPolicySubject;
     action: EnumPolicyAction[];
     effect?: EnumPolicyEffect;
     fields?: string[];
-    conditions?: Record<string, unknown>;
+    conditions?: PrismaQuery;
     reason?: string;
     priority?: number;
 }

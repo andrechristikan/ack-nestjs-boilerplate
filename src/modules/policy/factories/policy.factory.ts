@@ -2,7 +2,7 @@ import {
     AbilityBuilder,
     subject as caslSubject,
 } from '@casl/ability';
-import { createPrismaAbility } from '@casl/prisma';
+import { PrismaQuery, createPrismaAbility } from '@casl/prisma';
 import { Injectable } from '@nestjs/common';
 import {
     EnumPolicyAction,
@@ -16,22 +16,43 @@ import {
     PolicyConditionContext,
 } from '@modules/policy/interfaces/policy.interface';
 
+/**
+ * Typed adapter for CASL's `AbilityBuilder.can` / `cannot` methods.
+ *
+ * CASL's TypeScript typings mark the `conditions` parameter as `never` when the
+ * ability subject type is composed of string literals (as opposed to classes with
+ * `__caslSubjectType__`).  This local type broadens the accepted signature to
+ * `PrismaQuery` so the factory can pass resolved Prisma query conditions without
+ * losing the real return type (`RuleBuilder<IPolicyAbilityRule>`).
+ */
 type AbilityApplyFn = (
-    action: EnumPolicyAction[],
+    action: EnumPolicyAction | EnumPolicyAction[],
     subject: IPolicyAbilitySubject,
-    fieldsOrConditions?: string[] | Record<string, unknown>,
-    conditions?: Record<string, unknown>
-) => { because: (reason: string) => void } | void;
+    fieldsOrConditions?: string | string[] | PrismaQuery,
+    conditions?: PrismaQuery
+) => { because(reason: string): unknown };
 
 /**
  * Factory class for creating and handling policy abilities using CASL library
  */
 @Injectable()
 export class PolicyAbilityFactory {
+    /**
+     * Returns the numeric priority of an ability, defaulting to 0 when absent.
+     * Lower numbers sort first, so low-priority rules are applied before high-priority
+     * deny overrides.
+     */
     private normalizePriority(ability: IPolicyAbilityInput): number {
         return typeof ability.priority === 'number' ? ability.priority : 0;
     }
 
+    /**
+     * Sorts abilities so that lower-priority rules come first and, within the same
+     * priority level, `can` (allow) rules precede `cannot` (deny) rules.
+     *
+     * CASL evaluates rules in order and the last matching rule wins, so placing deny
+     * rules after allow rules at the same priority gives denies precedence.
+     */
     private sortRules(
         abilities: IPolicyAbilityInput[]
     ): IPolicyAbilityInput[] {
@@ -53,32 +74,63 @@ export class PolicyAbilityFactory {
         });
     }
 
-    private buildRule(applyFn: AbilityApplyFn, ability: IPolicyAbilityInput): void {
+    /**
+     * Registers a single ability definition with the CASL builder.
+     *
+     * Selects `builder.can` or `builder.cannot` based on `ability.effect`, then
+     * applies field-level restrictions when `ability.fields` is non-empty, or
+     * condition-only restrictions when `ability.conditions` is set, or a plain
+     * subject-level rule otherwise.  If `ability.reason` is provided it is
+     * attached to the rule via `RuleBuilder.because()`.
+     *
+     * The cast to `AbilityApplyFn` is intentional: CASL's own typings mark the
+     * `conditions` parameter as `never` for string-literal subjects, but the
+     * runtime correctly supports Prisma query conditions.  The cast is isolated
+     * here so {@link createForUser} remains free of type assertions.
+     *
+     * @param builder - The `AbilityBuilder` instance for the current user.
+     * @param ability - The resolved ability definition to register.
+     */
+    private buildRule(
+        builder: AbilityBuilder<IPolicyAbilityRule>,
+        ability: IPolicyAbilityInput
+    ): void {
+        const isDeny = (ability.effect ?? EnumPolicyEffect.can) === EnumPolicyEffect.cannot;
+        const applyFn = (isDeny ? builder.cannot : builder.can) as unknown as AbilityApplyFn;
+
         const fields = ability.fields?.filter(Boolean);
         const hasFields = !!fields && fields.length > 0;
 
-        let rule: ReturnType<AbilityApplyFn>;
+        const rule = hasFields
+            ? applyFn(ability.action, ability.subject, fields, ability.conditions)
+            : ability.conditions
+              ? applyFn(ability.action, ability.subject, ability.conditions)
+              : applyFn(ability.action, ability.subject);
 
-        if (hasFields) {
-            // Field-level restriction with optional conditions
-            rule = applyFn(ability.action, ability.subject, fields, ability.conditions);
-        } else if (ability.conditions) {
-            // Condition-only rule (e.g. { userId: '…' })
-            rule = applyFn(ability.action, ability.subject, ability.conditions);
-        } else {
-            // Unrestricted subject-level rule
-            rule = applyFn(ability.action, ability.subject);
-        }
-
-        if (rule && ability.reason) {
+        if (ability.reason) {
             rule.because(ability.reason);
         }
     }
 
+    /**
+     * Resolves dynamic placeholders in a condition map against the current request
+     * context.
+     *
+     * String values that start with `$` are treated as context references.  For
+     * example, `{ userId: '$userId' }` is expanded to `{ userId: context.userId }`.
+     * If the referenced key is absent from `context` the original placeholder string
+     * is kept unchanged.
+     *
+     * @param conditions - Raw condition map from the ability definition, or
+     *   `undefined` when no conditions are set.
+     * @param context - Request-scoped values available for interpolation.
+     * @returns A new condition map with all placeholders resolved, or `undefined`
+     *   when `conditions` is `undefined`.
+     */
     private resolveConditions(
-        conditions: Record<string, unknown> | undefined,
+        conditions: PrismaQuery | undefined,
         context: PolicyConditionContext
-    ): Record<string, unknown> | undefined {
+    ): PrismaQuery | undefined {
         if (!conditions) {
             return undefined;
         }
@@ -94,53 +146,55 @@ export class PolicyAbilityFactory {
             }
         }
 
-        return resolved;
+        // The resolved map has the same structure as the input PrismaQuery —
+        // only `$`-prefixed string placeholders have been substituted with their
+        // context values.  The cast is necessary because dynamic key-value
+        // construction produces `Record<string, unknown>` at the type level.
+        return resolved as PrismaQuery;
     }
 
     /**
-     * Creates policy ability rules for a specific user based on their permissions
-     * @param {IPolicyAbilityInput[]} abilities - Array of policy abilities assigned to the user
-     * @param {PolicyConditionContext} context - Context for resolving dynamic condition placeholders
-     * @returns {IPolicyAbilityRule} CASL ability rule object for the user
+     * Creates a CASL `PrismaAbility` instance for a specific user.
+     *
+     * Rules are sorted by priority (ascending) and effect (`can` before `cannot` at
+     * the same priority) before being registered with the builder, so higher-priority
+     * deny rules always override lower-priority allow rules.  Dynamic condition
+     * placeholders are resolved against `context` before registration.
+     *
+     * @param abilities - All ability definitions assigned to the user (e.g. from their
+     *   role).
+     * @param context - Request-scoped values used to interpolate `$`-prefixed
+     *   condition placeholders (e.g. `{ userId }` for ownership checks).
+     * @returns A frozen `PrismaAbility` that can be queried with `ability.can()` or
+     *   passed to `accessibleBy()`.
      */
     createForUser(
         abilities: IPolicyAbilityInput[],
         context: PolicyConditionContext
     ): IPolicyAbilityRule {
-        const builder = new AbilityBuilder<IPolicyAbilityRule>(
-            createPrismaAbility
-        );
-        const defineCan = builder.can.bind(builder);
-        const defineCannot = builder.cannot.bind(builder);
+        const builder = new AbilityBuilder<IPolicyAbilityRule>(createPrismaAbility);
 
         for (const ability of this.sortRules(abilities)) {
-            const withContext: IPolicyAbilityInput = {
+            this.buildRule(builder, {
                 ...ability,
                 conditions: this.resolveConditions(ability.conditions, context),
-            };
-
-            const isDeny = (withContext.effect ?? EnumPolicyEffect.can) === EnumPolicyEffect.cannot;
-            this.buildRule(isDeny ? defineCannot : defineCan, withContext);
+            });
         }
 
-        return builder.build({
-            detectSubjectType: (item: {
-                __caslSubjectType__?: IPolicyAbilitySubject;
-            }) => {
-                if (item.__caslSubjectType__) {
-                    return item.__caslSubjectType__;
-                }
-
-                throw new Error(
-                    'Cannot detect CASL subject type: missing __caslSubjectType__ on plain object. Use caslSubject() to tag resources.'
-                );
-            },
-        });
+        return builder.build();
     }
 
     /**
-     * Evaluates a single rule against user abilities.
-     * Always checks with `can()` - routes only declare what capability is required.
+     * Evaluates a single policy rule against the user's compiled ability.
+     *
+     * When `rule.conditions` is set the subject object is tagged with
+     * `__caslSubjectType__` via `caslSubject()` so that `PrismaAbility`'s default
+     * subject-type detector can identify it without a custom override.
+     *
+     * @param userAbilities - The compiled `PrismaAbility` for the current user.
+     * @param rule - The requirement rule declared on the route handler.
+     * @returns `true` when the user's ability permits every action (and every field,
+     *   if specified) described by the rule; `false` otherwise.
      */
     evaluateRule(userAbilities: IPolicyAbilityRule, rule: IPolicyRule): boolean {
         const fields = rule.fields?.filter(Boolean);
@@ -166,17 +220,5 @@ export class PolicyAbilityFactory {
         };
 
         return rule.action.every(canForAction);
-    }
-
-    /**
-     * Validates if user abilities match all required rules for access control
-     * @param {IPolicyAbilityRule} userAbilities - User's current ability rules
-     * @param {IPolicyRule[]} rules - Required rules to check against
-     * @returns {boolean} True if user has all required abilities, false otherwise
-     */
-    checkAllRules(userAbilities: IPolicyAbilityRule, rules: IPolicyRule[]): boolean {
-        return rules.every((rule: IPolicyRule) =>
-            this.evaluateRule(userAbilities, rule)
-        );
     }
 }

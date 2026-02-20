@@ -23,19 +23,37 @@ function isRequirement(input: AuthorizeInput): input is IPolicyRequirement {
 }
 
 /**
- * Decorator that applies CASL authorization requirements to route handlers.
+ * Route-level decorator that attaches CASL authorization requirements and
+ * activates `PolicyAbilityGuard` for the decorated handler or controller.
  *
- * Basic usage:
- * @PolicyAbilityProtected({ subject: EnumPolicySubject.user, action: [EnumPolicyAction.read] })
+ * **Shorthand usage** — pass plain `IPolicyRule` objects.  All rules are
+ * combined into a single requirement evaluated with `match: all` (the user
+ * must satisfy every rule):
  *
- * Advanced usage:
- * @PolicyAbilityProtected({
- *   match: EnumPolicyMatch.any,
- *   rules: [
- *     { subject: EnumPolicySubject.user, action: [EnumPolicyAction.read] },
- *     { subject: EnumPolicySubject.role, action: [EnumPolicyAction.read] }
- *   ],
- * })
+ * ```ts
+ * @PolicyAbilityProtected(
+ *   { subject: EnumPolicySubject.User, action: [EnumPolicyAction.read] },
+ * )
+ * ```
+ *
+ * **Full requirement usage** — pass `IPolicyRequirement` objects to control
+ * the match mode per requirement group:
+ *
+ * ```ts
+ * @PolicyAbilityProtected(
+ *   {
+ *     match: EnumPolicyMatch.any,
+ *     rules: [
+ *       { subject: EnumPolicySubject.User, action: [EnumPolicyAction.read] },
+ *       { subject: EnumPolicySubject.Role, action: [EnumPolicyAction.read] },
+ *     ],
+ *   },
+ * )
+ * ```
+ *
+ * When inputs are mixed (some are rules, some are requirements) the shorthand
+ * path is taken and all inputs are treated as plain rules with `match: all`.
+ * Avoid mixing input shapes.
  */
 export function PolicyAbilityProtected(
     ...inputs: [AuthorizeInput, ...AuthorizeInput[]]
@@ -60,6 +78,27 @@ export function PolicyAbilityProtected(
     );
 }
 
+/**
+ * Parameter decorator that injects the user's compiled `PrismaAbility` from
+ * the current request into a controller method parameter.
+ *
+ * The ability is built once per request by `PolicyAbilityGuard` (via
+ * `PolicyService.getOrCreateRequestAbility`) and stored on
+ * `request.__policyAbilities`.  This decorator simply reads that cached value
+ * — it does **not** rebuild the ability.
+ *
+ * **Requires** `@PolicyAbilityProtected` (or any decorator that activates
+ * `PolicyAbilityGuard`) to have run first.  Throws
+ * `InternalServerErrorException` when the guard has not populated the cache.
+ *
+ * ```ts
+ * @Get()
+ * @PolicyAbilityProtected({ subject: EnumPolicySubject.ActivityLog, action: [EnumPolicyAction.read] })
+ * async list(@PolicyAbilityCurrent() ability: IPolicyAbilityRule) {
+ *   return this.service.findAll(accessibleBy(ability).ActivityLog);
+ * }
+ * ```
+ */
 export const PolicyAbilityCurrent = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): IPolicyAbilityRule => {
         const { __policyAbilities } = ctx.switchToHttp().getRequest<IRequestApp>();

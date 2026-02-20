@@ -22,6 +22,16 @@ export class PolicyService implements IPolicyService {
         private readonly policyAbilityFactory: PolicyAbilityFactory
     ) {}
 
+    /**
+     * Asserts that the request carries a fully authenticated user.
+     *
+     * Throws a 403 `ForbiddenException` with the `jwtAccessTokenInvalid` status
+     * code when either `request.__user` or `request.user` is absent, indicating
+     * the JWT guard did not populate the request correctly.
+     *
+     * @param request - The current HTTP request enriched by the auth middleware.
+     * @throws {ForbiddenException} When the request lacks a resolved user.
+     */
     private validateAuthenticatedContext(request: IRequestApp): void {
         const { __user, user } = request;
         if (!__user || !user) {
@@ -32,6 +42,21 @@ export class PolicyService implements IPolicyService {
         }
     }
 
+    /**
+     * Returns the user's compiled `PrismaAbility` for the current request, building
+     * and caching it on first access.
+     *
+     * On the first call the ability is constructed from `request.__abilities` (when
+     * present) or from the role abilities stored on `request.__user.role.abilities`,
+     * with condition placeholders resolved against `{ userId }`.  The result is
+     * stored on `request.__policyAbilities` so subsequent calls within the same
+     * request lifecycle are free.
+     *
+     * @param request - The current authenticated HTTP request.
+     * @returns The user's compiled ability object.
+     * @throws {ForbiddenException} When the request is not authenticated (delegated
+     *   to {@link validateAuthenticatedContext}).
+     */
     getOrCreateRequestAbility(request: IRequestApp): IPolicyAbilityRule {
         this.validateAuthenticatedContext(request);
 
@@ -51,11 +76,31 @@ export class PolicyService implements IPolicyService {
         return userAbilities;
     }
 
+    /**
+     * Validates that the authenticated user satisfies all policy requirements
+     * declared on the current route.
+     *
+     * Auth validation and ability resolution are delegated to
+     * {@link getOrCreateRequestAbility}, which ensures the user is authenticated
+     * and that the ability is built (or retrieved from cache) exactly once per
+     * request.
+     *
+     * @param request - The current authenticated HTTP request.
+     * @param requirements - The policy requirements attached to the route via
+     *   `@PolicyAbilityProtected`.  Must be non-empty and each requirement must
+     *   contain at least one rule.
+     * @returns `true` when the user satisfies every requirement.
+     * @throws {InternalServerErrorException} When `requirements` is empty or any
+     *   requirement has no rules (misconfigured decorator).
+     * @throws {ForbiddenException} When the user's ability does not satisfy one or
+     *   more requirements.
+     */
     async validatePolicyGuard(
         request: IRequestApp,
         requirements: IPolicyRequirement[]
     ): Promise<boolean> {
-        this.validateAuthenticatedContext(request);
+        // Auth validation and ability construction are handled by the delegate.
+        const userAbilities = this.getOrCreateRequestAbility(request);
 
         if (requirements.length === 0) {
             throw new InternalServerErrorException({
@@ -70,8 +115,6 @@ export class PolicyService implements IPolicyService {
                 message: 'policy.error.predefinedNotFound',
             });
         }
-
-        const userAbilities = this.getOrCreateRequestAbility(request);
 
         const failedSubjects: string[] = [];
 
