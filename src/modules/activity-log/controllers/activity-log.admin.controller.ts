@@ -58,6 +58,6 @@ export class ActivityLogAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListOffsetByAdmin(userId, pagination, ability);
+        return this.activityLogService.getListOffset(userId, pagination, ability);
     }
 }

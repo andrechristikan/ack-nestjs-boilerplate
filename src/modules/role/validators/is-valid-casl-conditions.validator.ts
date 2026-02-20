@@ -4,6 +4,11 @@ import {
     ValidatorConstraintInterface,
     registerDecorator,
 } from 'class-validator';
+import { EnumPolicyPlaceholder } from '@modules/policy/enums/policy.enum';
+
+const allowedPlaceholders = new Set<string>(
+    Object.values(EnumPolicyPlaceholder)
+);
 
 function validateConditionShape(
     obj: Record<string, unknown>,
@@ -20,6 +25,18 @@ function validateConditionShape(
         }
 
         const value = obj[key];
+        if (
+            typeof value === 'string' &&
+            value.startsWith('$') &&
+            !allowedPlaceholders.has(value)
+        ) {
+            errors.push(
+                `Unknown placeholder "${value}" at path "${path}.${key}". Allowed placeholders: ${Array.from(
+                    allowedPlaceholders
+                ).join(', ')}.`
+            );
+        }
+
         if (value && typeof value === 'object' && !Array.isArray(value)) {
             errors.push(
                 ...validateConditionShape(
@@ -32,6 +49,18 @@ function validateConditionShape(
         if (Array.isArray(value)) {
             for (let i = 0; i < value.length; i++) {
                 const item = value[i];
+                if (
+                    typeof item === 'string' &&
+                    item.startsWith('$') &&
+                    !allowedPlaceholders.has(item)
+                ) {
+                    errors.push(
+                        `Unknown placeholder "${item}" at path "${path}.${key}[${i}]". Allowed placeholders: ${Array.from(
+                            allowedPlaceholders
+                        ).join(', ')}.`
+                    );
+                }
+
                 if (item && typeof item === 'object' && !Array.isArray(item)) {
                     errors.push(
                         ...validateConditionShape(

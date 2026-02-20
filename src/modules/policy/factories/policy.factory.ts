@@ -3,7 +3,11 @@ import {
     subject as caslSubject,
 } from '@casl/ability';
 import { PrismaQuery, createPrismaAbility } from '@casl/prisma';
-import { Injectable } from '@nestjs/common';
+import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
+import {
+    Injectable,
+    InternalServerErrorException,
+} from '@nestjs/common';
 import {
     EnumPolicyAction,
     EnumPolicyEffect,
@@ -33,19 +37,14 @@ type AbilityApplyFn = (
 ) => { because(reason: string): unknown };
 
 /**
- * Factory class for creating and handling policy abilities using CASL library
+ * Builds and evaluates CASL `PrismaAbility` instances.
+ *
+ * Centralises rule sorting, condition placeholder resolution, and rule
+ * registration so the rest of the policy system works with a single compiled
+ * ability object per request.
  */
 @Injectable()
 export class PolicyAbilityFactory {
-    /**
-     * Returns the numeric priority of an ability, defaulting to 0 when absent.
-     * Lower numbers sort first, so low-priority rules are applied before high-priority
-     * deny overrides.
-     */
-    private normalizePriority(ability: IPolicyAbilityInput): number {
-        return typeof ability.priority === 'number' ? ability.priority : 0;
-    }
-
     /**
      * Sorts abilities so that lower-priority rules come first and, within the same
      * priority level, `can` (allow) rules precede `cannot` (deny) rules.
@@ -56,9 +55,10 @@ export class PolicyAbilityFactory {
     private sortRules(
         abilities: IPolicyAbilityInput[]
     ): IPolicyAbilityInput[] {
+        const priority = (a: IPolicyAbilityInput): number => a.priority ?? 0;
+
         return [...abilities].sort((left, right) => {
-            const byPriority =
-                this.normalizePriority(left) - this.normalizePriority(right);
+            const byPriority = priority(left) - priority(right);
             if (byPriority !== 0) {
                 return byPriority;
             }
@@ -99,13 +99,16 @@ export class PolicyAbilityFactory {
         const applyFn = (isDeny ? builder.cannot : builder.can) as unknown as AbilityApplyFn;
 
         const fields = ability.fields?.filter(Boolean);
-        const hasFields = !!fields && fields.length > 0;
+        const hasFields = fields != null && fields.length > 0;
 
-        const rule = hasFields
-            ? applyFn(ability.action, ability.subject, fields, ability.conditions)
-            : ability.conditions
-              ? applyFn(ability.action, ability.subject, ability.conditions)
-              : applyFn(ability.action, ability.subject);
+        let rule;
+        if (hasFields) {
+            rule = applyFn(ability.action, ability.subject, fields, ability.conditions);
+        } else if (ability.conditions) {
+            rule = applyFn(ability.action, ability.subject, ability.conditions);
+        } else {
+            rule = applyFn(ability.action, ability.subject);
+        }
 
         if (ability.reason) {
             rule.because(ability.reason);
@@ -118,8 +121,8 @@ export class PolicyAbilityFactory {
      *
      * String values that start with `$` are treated as context references.  For
      * example, `{ userId: '$userId' }` is expanded to `{ userId: context.userId }`.
-     * If the referenced key is absent from `context` the original placeholder string
-     * is kept unchanged.
+     * Placeholder resolution is recursive for nested objects and arrays.
+     * Unknown placeholders are treated as configuration errors.
      *
      * @param conditions - Raw condition map from the ability definition, or
      *   `undefined` when no conditions are set.
@@ -131,25 +134,53 @@ export class PolicyAbilityFactory {
         conditions: PrismaQuery | undefined,
         context: PolicyConditionContext
     ): PrismaQuery | undefined {
-        if (!conditions) {
+        if (conditions == null) {
             return undefined;
         }
 
-        const resolved: Record<string, unknown> = {};
-
-        for (const [key, value] of Object.entries(conditions)) {
+        const resolveValue = (value: unknown, path: string): unknown => {
             if (typeof value === 'string' && value.startsWith('$')) {
                 const token = value.slice(1) as keyof PolicyConditionContext;
-                resolved[key] = context[token] ?? value;
-            } else {
-                resolved[key] = value;
+                if (token in context) {
+                    return context[token];
+                }
+
+                throw new InternalServerErrorException({
+                    statusCode:
+                        EnumPolicyStatusCodeError.invalidConditionPlaceholder,
+                    message: 'policy.error.invalidConditionPlaceholder',
+                    errors: [{ path, placeholder: value }],
+                });
             }
+
+            if (Array.isArray(value)) {
+                return value.map((item, index) =>
+                    resolveValue(item, `${path}[${index}]`)
+                );
+            }
+
+            if (value && typeof value === 'object') {
+                return Object.fromEntries(
+                    Object.entries(value as Record<string, unknown>).map(
+                        ([key, nested]) => [
+                            key,
+                            resolveValue(nested, `${path}.${key}`),
+                        ]
+                    )
+                );
+            }
+
+            return value;
+        };
+
+        const resolved = resolveValue(conditions, 'conditions');
+        if (resolved == null || typeof resolved !== 'object' || Array.isArray(resolved)) {
+            throw new InternalServerErrorException({
+                statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
+                message: 'policy.error.invalidConfiguration',
+            });
         }
 
-        // The resolved map has the same structure as the input PrismaQuery —
-        // only `$`-prefixed string placeholders have been substituted with their
-        // context values.  The cast is necessary because dynamic key-value
-        // construction produces `Record<string, unknown>` at the type level.
         return resolved as PrismaQuery;
     }
 
@@ -203,7 +234,7 @@ export class PolicyAbilityFactory {
             : rule.subject;
 
         const canForAction = (action: EnumPolicyAction): boolean => {
-            if (!fields || fields.length === 0) {
+            if (fields == null || fields.length === 0) {
                 return userAbilities.can(
                     action,
                     subject as IPolicyAbilitySubject

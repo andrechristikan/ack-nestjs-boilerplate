@@ -224,6 +224,7 @@ Location: `src/modules/policy/decorators/policy.decorator.ts`
 ```
 
 At least one argument is required. Passing zero arguments is a compile-time error.
+Do not mix rule-style and requirement-style arguments in the same decorator call; mixed input is rejected as invalid configuration.
 
 ### Rule Model
 
@@ -234,7 +235,7 @@ The decorator accepts `IPolicyRule` objects (`src/modules/policy/interfaces/poli
 | `subject` | `EnumPolicySubject` | Yes | The resource type to check against |
 | `action` | `EnumPolicyAction[]` | Yes | One or more actions required (all must pass) |
 | `fields` | `string[]` | No | Restrict check to specific fields (see [Field-Level Permissions](#field-level-permissions)) |
-| `conditions` | `Record<string, unknown>` | No | Static route-side subject shape. When provided, the guard evaluates `can(action, subject(subjectName, conditions))` |
+| `conditions` | `PrismaQuery` | No | Static route-side Prisma filter shape. When provided, the guard evaluates `can(action, subject(subjectName, conditions))` |
 
 > Note: `effect`, `reason`, and `priority` are storage-level fields used when defining role abilities in the database. They are not part of route requirements — routes only declare what capability is needed, not how it was granted.
 >
@@ -247,6 +248,46 @@ Requirement interface: `IPolicyRequirement` (`src/modules/policy/interfaces/poli
 Fields:
 - `rules: IPolicyRule[]`
 - `match?: EnumPolicyMatch` (`all` | `any`, default: `all`)
+
+### Ownership Clamping for Shared Endpoints
+
+For shared/self-service endpoints (for example, "my activity logs"), do not rely only on role ability conditions to enforce ownership.
+Use both:
+- `accessibleBy(ability)` for policy semantics
+- explicit owner clamp in query (`{ userId: currentUserId }`) for endpoint intent clarity
+
+Why this is better:
+- Readability: ownership intent is visible directly in the service query.
+- Safety: accidental policy/seed misconfiguration is less likely to expose cross-user data.
+- Defense-in-depth: data scope is enforced by both authorization and query ownership.
+
+Example (recommended):
+
+```typescript
+where: {
+  AND: [
+    accessibleBy(ability).ActivityLog,
+    pagination.where,
+    { userId: currentUserId },
+  ].filter(Boolean),
+}
+```
+
+When to apply this pattern:
+- Shared endpoints returning user-owned rows ("my data").
+- Owner ID is deterministic from auth context (e.g. JWT `userId`).
+- Endpoint semantics are explicitly self-scoped.
+
+When not to apply this pattern:
+- Admin/system endpoints intentionally reading other users' data.
+- Endpoints where scope is intentionally broader and not single-owner.
+- Flows where ownership is not a direct FK clamp and must be expressed via richer policy conditions.
+
+Decision checklist:
+1. Is this endpoint serving "my own data"?
+2. Can ownership be expressed as a direct `where` condition?
+3. Will explicit owner clamp preserve intended behavior?
+4. If yes, keep `accessibleBy` and add explicit owner clamp.
 
 ### Field-Level Permissions
 
@@ -304,9 +345,11 @@ A **compile-time description** of the resource shape this route targets. Used wh
 
 #### 3. Context token substitution in stored conditions
 
-`PolicyAbilityFactory` resolves top-level string tokens in stored conditions using request context. Currently supported context:
+`PolicyAbilityFactory` resolves `$` string tokens in stored conditions recursively (nested objects/arrays) using request context. Currently supported context:
 
 - `$userId` → authenticated user id
+
+Unknown placeholders are treated as invalid configuration errors.
 
 Example stored ability:
 

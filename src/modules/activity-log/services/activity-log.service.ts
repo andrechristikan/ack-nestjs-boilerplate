@@ -8,7 +8,6 @@ import { IActivityLogService } from '@modules/activity-log/interfaces/activity-l
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { accessibleBy } from '@casl/prisma';
-import { EnumPolicyAction } from '@modules/policy/enums/policy.enum';
 import { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -19,7 +18,7 @@ export class ActivityLogService implements IActivityLogService {
         private readonly activityUtil: ActivityLogUtil
     ) {}
 
-    async getListOffsetByAdmin(
+    async getListOffset(
         userId: string,
         pagination: IPaginationQueryOffsetParams,
         ability: IPolicyAbilityRule
@@ -30,7 +29,7 @@ export class ActivityLogService implements IActivityLogService {
                 where: {
                     AND: [
                         pagination.where,
-                        accessibleBy(ability, EnumPolicyAction.read).ActivityLog,
+                        accessibleBy(ability).ActivityLog,
                         { userId },
                     ].filter(Boolean),
                 },
@@ -43,9 +42,11 @@ export class ActivityLogService implements IActivityLogService {
     }
 
     async getListCursor(
+        userId: string,
         pagination: IPaginationQueryCursorParams,
         ability: IPolicyAbilityRule
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
+
         const { data, ...others } =
             await this.activityRepository.findWithPaginationCursor({
                 ...pagination,
@@ -53,6 +54,7 @@ export class ActivityLogService implements IActivityLogService {
                     AND: [
                         accessibleBy(ability).ActivityLog,
                         pagination.where,
+                        { userId },
                     ].filter(Boolean),
                 },
             });

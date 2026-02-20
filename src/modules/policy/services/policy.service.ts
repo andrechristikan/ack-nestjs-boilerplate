@@ -7,7 +7,6 @@ import {
     IPolicyAbilityInput,
     IPolicyAbilityRule,
     IPolicyRequirement,
-    IPolicyRule,
 } from '@modules/policy/interfaces/policy.interface';
 import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
 import {
@@ -23,53 +22,27 @@ export class PolicyService implements IPolicyService {
     ) {}
 
     /**
-     * Asserts that the request carries a fully authenticated user.
+     * Returns the compiled ability for the request user, building and caching it on first call.
      *
-     * Throws a 403 `ForbiddenException` with the `jwtAccessTokenInvalid` status
-     * code when either `request.__user` or `request.user` is absent, indicating
-     * the JWT guard did not populate the request correctly.
-     *
-     * @param request - The current HTTP request enriched by the auth middleware.
-     * @throws {ForbiddenException} When the request lacks a resolved user.
+     * @throws {ForbiddenException} When the request is not authenticated.
      */
-    private validateAuthenticatedContext(request: IRequestApp): void {
+    getOrCreateRequestAbility(request: IRequestApp): IPolicyAbilityRule {
         const { __user, user } = request;
-        if (!__user || !user) {
+        if (__user == null || user == null) {
             throw new ForbiddenException({
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }
-    }
 
-    /**
-     * Returns the user's compiled `PrismaAbility` for the current request, building
-     * and caching it on first access.
-     *
-     * On the first call the ability is constructed from `request.__abilities` (when
-     * present) or from the role abilities stored on `request.__user.role.abilities`,
-     * with condition placeholders resolved against `{ userId }`.  The result is
-     * stored on `request.__policyAbilities` so subsequent calls within the same
-     * request lifecycle are free.
-     *
-     * @param request - The current authenticated HTTP request.
-     * @returns The user's compiled ability object.
-     * @throws {ForbiddenException} When the request is not authenticated (delegated
-     *   to {@link validateAuthenticatedContext}).
-     */
-    getOrCreateRequestAbility(request: IRequestApp): IPolicyAbilityRule {
-        this.validateAuthenticatedContext(request);
-
-        const existingAbility = request.__policyAbilities;
-        if (existingAbility) {
-            return existingAbility;
+        if (request.__policyAbilities) {
+            return request.__policyAbilities;
         }
 
-        const abilities = request.__abilities
-            ? request.__abilities
-            : ((request.__user?.role.abilities ?? []) as IPolicyAbilityInput[]);
+        const abilities = (request.__abilities ??
+            request.__user.role.abilities) as IPolicyAbilityInput[];
         const userAbilities = this.policyAbilityFactory.createForUser(abilities, {
-            userId: request.__user.id,
+            userId: __user.id,
         });
         request.__policyAbilities = userAbilities;
 
@@ -77,74 +50,51 @@ export class PolicyService implements IPolicyService {
     }
 
     /**
-     * Validates that the authenticated user satisfies all policy requirements
-     * declared on the current route.
+     * Validates that the authenticated user satisfies all policy requirements for the route.
      *
-     * Auth validation and ability resolution are delegated to
-     * {@link getOrCreateRequestAbility}, which ensures the user is authenticated
-     * and that the ability is built (or retrieved from cache) exactly once per
-     * request.
-     *
-     * @param request - The current authenticated HTTP request.
-     * @param requirements - The policy requirements attached to the route via
-     *   `@PolicyAbilityProtected`.  Must be non-empty and each requirement must
-     *   contain at least one rule.
-     * @returns `true` when the user satisfies every requirement.
-     * @throws {InternalServerErrorException} When `requirements` is empty or any
-     *   requirement has no rules (misconfigured decorator).
-     * @throws {ForbiddenException} When the user's ability does not satisfy one or
-     *   more requirements.
+     * @throws {InternalServerErrorException} When `requirements` is empty or any requirement has no rules.
+     * @throws {ForbiddenException} When the user's ability does not satisfy one or more requirements.
      */
-    async validatePolicyGuard(
+    validatePolicyGuard(
         request: IRequestApp,
         requirements: IPolicyRequirement[]
-    ): Promise<boolean> {
-        // Auth validation and ability construction are handled by the delegate.
+    ): boolean {
+        if (
+            requirements.length === 0 ||
+            requirements.some(r => r.rules == null || r.rules.length === 0)
+        ) {
+            throw new InternalServerErrorException({
+                statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
+                message: 'policy.error.predefinedNotFound',
+            });
+        }
+
         const userAbilities = this.getOrCreateRequestAbility(request);
-
-        if (requirements.length === 0) {
-            throw new InternalServerErrorException({
-                statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
-                message: 'policy.error.predefinedNotFound',
-            });
-        }
-
-        if (requirements.some(requirement => !requirement.rules?.length)) {
-            throw new InternalServerErrorException({
-                statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
-                message: 'policy.error.predefinedNotFound',
-            });
-        }
 
         const failedSubjects: string[] = [];
 
         const isAllowed = requirements.every(requirement => {
             const mode = requirement.match ?? EnumPolicyMatch.all;
 
-            const evaluator = (rule: IPolicyRule): boolean =>
-                this.policyAbilityFactory.evaluateRule(userAbilities, rule);
-
             const passed =
                 mode === EnumPolicyMatch.any
-                    ? requirement.rules.some(evaluator)
-                    : requirement.rules.every(evaluator);
+                    ? requirement.rules.some(r =>
+                          this.policyAbilityFactory.evaluateRule(userAbilities, r)
+                      )
+                    : requirement.rules.every(r =>
+                          this.policyAbilityFactory.evaluateRule(userAbilities, r)
+                      );
 
-            if (!passed) {
-                const subjects = [
-                    ...new Set(requirement.rules.map(r => r.subject)),
-                ];
-                const actions = [
-                    ...new Set(requirement.rules.flatMap(r => r.action)),
-                ];
-                failedSubjects.push(
-                    `${subjects.join(',')}:[${actions.join(',')}]`
-                );
+            if (passed === false) {
+                const subjects = [...new Set(requirement.rules.map(r => r.subject))];
+                const actions = [...new Set(requirement.rules.flatMap(r => r.action))];
+                failedSubjects.push(`${subjects.join(',')}:[${actions.join(',')}]`);
             }
 
             return passed;
         });
 
-        if (!isAllowed) {
+        if (isAllowed === false) {
             throw new ForbiddenException({
                 statusCode: EnumPolicyStatusCodeError.forbidden,
                 message: 'policy.error.forbidden',

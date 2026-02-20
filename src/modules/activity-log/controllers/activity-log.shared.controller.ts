@@ -7,6 +7,7 @@ import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/acti
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     PolicyAbilityCurrent,
     PolicyAbilityProtected,
@@ -41,10 +42,11 @@ export class ActivityLogSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @AuthJwtPayload('userId') userId: string,
         @PolicyAbilityCurrent() ability: IPolicyAbilityRule,
         @PaginationCursorQuery()
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListCursor(pagination, ability);
+        return this.activityLogService.getListCursor(userId, pagination, ability);
     }
 }

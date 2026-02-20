@@ -8,6 +8,6 @@ export interface IPolicyService {
     validatePolicyGuard(
         request: IRequestApp,
         requirements: IPolicyRequirement[]
-    ): Promise<boolean>;
+    ): boolean;
     getOrCreateRequestAbility(request: IRequestApp): IPolicyAbilityRule;
 }

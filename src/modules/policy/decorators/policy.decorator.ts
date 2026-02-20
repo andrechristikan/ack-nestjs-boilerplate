@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { PolicyAuthorizeMetaKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard';
+import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import {
     IPolicyAbilityRule,
     IPolicyRequirement,
@@ -17,6 +18,8 @@ import {
 import { EnumPolicyMatch } from '@modules/policy/enums/policy.enum';
 
 type AuthorizeInput = IPolicyRule | IPolicyRequirement;
+type PolicyRuleArgs = [IPolicyRule, ...IPolicyRule[]];
+type PolicyRequirementArgs = [IPolicyRequirement, ...IPolicyRequirement[]];
 
 function isRequirement(input: AuthorizeInput): input is IPolicyRequirement {
     return 'rules' in input && Array.isArray((input as IPolicyRequirement).rules);
@@ -32,7 +35,7 @@ function isRequirement(input: AuthorizeInput): input is IPolicyRequirement {
  *
  * ```ts
  * @PolicyAbilityProtected(
- *   { subject: EnumPolicySubject.User, action: [EnumPolicyAction.read] },
+ *   { subject: EnumPolicySubject.user, action: [EnumPolicyAction.read] },
  * )
  * ```
  *
@@ -44,33 +47,52 @@ function isRequirement(input: AuthorizeInput): input is IPolicyRequirement {
  *   {
  *     match: EnumPolicyMatch.any,
  *     rules: [
- *       { subject: EnumPolicySubject.User, action: [EnumPolicyAction.read] },
- *       { subject: EnumPolicySubject.Role, action: [EnumPolicyAction.read] },
+ *       { subject: EnumPolicySubject.user, action: [EnumPolicyAction.read] },
+ *       { subject: EnumPolicySubject.role, action: [EnumPolicyAction.read] },
  *     ],
  *   },
  * )
  * ```
  *
  * When inputs are mixed (some are rules, some are requirements) the shorthand
- * path is taken and all inputs are treated as plain rules with `match: all`.
- * Avoid mixing input shapes.
+ * is considered invalid and this decorator throws immediately.
  */
+export function PolicyAbilityProtected(
+    ...inputs: PolicyRuleArgs
+): MethodDecorator & ClassDecorator;
+export function PolicyAbilityProtected(
+    ...inputs: PolicyRequirementArgs
+): MethodDecorator & ClassDecorator;
 export function PolicyAbilityProtected(
     ...inputs: [AuthorizeInput, ...AuthorizeInput[]]
 ): MethodDecorator & ClassDecorator {
-    const useRequirementShape = inputs.every(input => isRequirement(input));
-    const requirements: IPolicyRequirement[] = useRequirementShape
-        ? (inputs as IPolicyRequirement[]).map(requirement => ({
-              ...requirement,
-              rules: requirement.rules ?? [],
-              match: requirement.match ?? EnumPolicyMatch.all,
-          }))
-        : [
-              {
-                  rules: inputs as IPolicyRule[],
-                  match: EnumPolicyMatch.all,
-              },
-          ];
+    const requirementCount = inputs.filter(isRequirement).length;
+
+    if (requirementCount > 0 && requirementCount < inputs.length) {
+        throw new InternalServerErrorException({
+            statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
+            message: 'policy.error.invalidConfiguration',
+            errors: [
+                {
+                    detail: 'Do not mix IPolicyRule and IPolicyRequirement in PolicyAbilityProtected.',
+                },
+            ],
+        });
+    }
+
+    const requirements: IPolicyRequirement[] =
+        requirementCount > 0
+            ? (inputs as PolicyRequirementArgs).map(requirement => ({
+                  ...requirement,
+                  rules: requirement.rules ?? [],
+                  match: requirement.match ?? EnumPolicyMatch.all,
+              }))
+            : [
+                  {
+                      rules: inputs as PolicyRuleArgs,
+                      match: EnumPolicyMatch.all,
+                  },
+              ];
 
     return applyDecorators(
         UseGuards(PolicyAbilityGuard),
@@ -79,21 +101,16 @@ export function PolicyAbilityProtected(
 }
 
 /**
- * Parameter decorator that injects the user's compiled `PrismaAbility` from
- * the current request into a controller method parameter.
+ * Parameter decorator that injects the user's compiled `PrismaAbility` into a controller method.
  *
- * The ability is built once per request by `PolicyAbilityGuard` (via
- * `PolicyService.getOrCreateRequestAbility`) and stored on
- * `request.__policyAbilities`.  This decorator simply reads that cached value
- * — it does **not** rebuild the ability.
+ * Requires `@PolicyAbilityProtected` (or any decorator that activates `PolicyAbilityGuard`)
+ * to have run first.
  *
- * **Requires** `@PolicyAbilityProtected` (or any decorator that activates
- * `PolicyAbilityGuard`) to have run first.  Throws
- * `InternalServerErrorException` when the guard has not populated the cache.
+ * @throws {InternalServerErrorException} When the ability guard has not run for the route.
  *
  * ```ts
  * @Get()
- * @PolicyAbilityProtected({ subject: EnumPolicySubject.ActivityLog, action: [EnumPolicyAction.read] })
+ * @PolicyAbilityProtected({ subject: EnumPolicySubject.activityLog, action: [EnumPolicyAction.read] })
  * async list(@PolicyAbilityCurrent() ability: IPolicyAbilityRule) {
  *   return this.service.findAll(accessibleBy(ability).ActivityLog);
  * }
@@ -102,9 +119,10 @@ export function PolicyAbilityProtected(
 export const PolicyAbilityCurrent = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): IPolicyAbilityRule => {
         const { __policyAbilities } = ctx.switchToHttp().getRequest<IRequestApp>();
-        if (!__policyAbilities) {
+        if (__policyAbilities == null) {
             throw new InternalServerErrorException({
-                message: 'policy.error.predefinedNotFound',
+                statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
+                message: 'policy.error.invalidConfiguration',
             });
         }
 

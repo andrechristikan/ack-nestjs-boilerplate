@@ -7,12 +7,13 @@ import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/acti
 import { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
 
 export interface IActivityLogService {
-    getListOffsetByAdmin(
+    getListOffset(
         userId: string,
         pagination: IPaginationQueryOffsetParams,
         ability: IPolicyAbilityRule
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
     getListCursor(
+        userId: string,
         pagination: IPaginationQueryCursorParams,
         ability: IPolicyAbilityRule
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
