@@ -5,7 +5,7 @@ import {
 } from '@modules/policy/interfaces/policy.interface';
 
 export interface IPolicyService {
-    authorize(
+    validatePolicyGuard(
         request: IRequestApp,
         requirements: IPolicyRequirement[]
     ): Promise<boolean>;

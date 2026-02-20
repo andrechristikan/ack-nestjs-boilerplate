@@ -19,6 +19,17 @@ The authorization model is layered and fail-closed:
 
 The system is implemented with NestJS decorators + guards, using `@casl/ability` for runtime permission checks and `@casl/prisma` for query-level authorization via `accessibleBy`.
 
+## Implementation Status (Current Branch)
+
+This branch introduces the CASL authorization infrastructure, but the first concrete module rollout is intentionally limited.
+
+Current first implementation scope:
+- `src/modules/activity-log/controllers/activity-log.shared.controller.ts`
+- `src/modules/activity-log/docs/activity-log.admin.doc.ts`
+- `src/modules/activity-log/services/activity-log.service.ts`
+
+In this scope, the controller declares policy requirements, receives compiled ability via `@PolicyAbilityCurrent()`, and the service applies `accessibleBy(...)` filters in Prisma queries.
+
 ## Related Documents
 
 - [Authentication Documentation][ref-doc-authentication] - JWT, API key, and request identity population
@@ -30,6 +41,7 @@ The system is implemented with NestJS decorators + guards, using `@casl/ability`
 ## Table of Contents
 
 - [Overview](#overview)
+- [Implementation Status (Current Branch)](#implementation-status-current-branch)
 - [Related Documents](#related-documents)
 - [Authorization Layers](#authorization-layers)
   - [Layer Order](#layer-order)
@@ -222,9 +234,11 @@ The decorator accepts `IPolicyRule` objects (`src/modules/policy/interfaces/poli
 | `subject` | `EnumPolicySubject` | Yes | The resource type to check against |
 | `action` | `EnumPolicyAction[]` | Yes | One or more actions required (all must pass) |
 | `fields` | `string[]` | No | Restrict check to specific fields (see [Field-Level Permissions](#field-level-permissions)) |
-| `conditions` | `Record<string, unknown>` | No | Static compile-time description of the resource shape this endpoint targets. CASL checks stored ability conditions against this object. Ignored when `resource` is also provided on the requirement (see [Condition-Based Permissions](#condition-based-permissions)) |
+| `conditions` | `Record<string, unknown>` | No | Static route-side subject shape. When provided, the guard evaluates `can(action, subject(subjectName, conditions))` |
 
-> Note: `effect`, `description`, and `priority` are storage-level fields used when defining role abilities in the database. They are not part of route requirements — routes only declare what capability is needed, not how it was granted.
+> Note: `effect`, `reason`, and `priority` are storage-level fields used when defining role abilities in the database. They are not part of route requirements — routes only declare what capability is needed, not how it was granted.
+>
+> Subject values follow `EnumPolicySubject` and use Prisma model casing (for example: `User`, `Role`, `ActivityLog`).
 
 ### Requirement Model
 
@@ -233,7 +247,6 @@ Requirement interface: `IPolicyRequirement` (`src/modules/policy/interfaces/poli
 Fields:
 - `rules: IPolicyRule[]`
 - `match?: EnumPolicyMatch` (`all` | `any`, default: `all`)
-- `resource?: object | (request) => object` (optional subject instance for condition/field-aware checks)
 
 ### Field-Level Permissions
 
@@ -255,7 +268,7 @@ Stored ability that grants this:
 
 ```json
 {
-    "subject": "user",
+    "subject": "User",
     "action": ["read"],
     "fields": ["name", "email", "photo"]
 }
@@ -267,29 +280,19 @@ CASL evaluates the check per field — the user must have `read` permission on e
 
 ### Condition-Based Permissions
 
-There are three distinct concepts related to conditions. Understanding the difference is important for correct usage.
+There are two route-level condition mechanisms plus one storage-level mechanism.
 
 #### 1. `IPolicyAbilityInput.conditions` (stored ability — DB side)
 
 Defines **when the grant applies**. Registered into the CASL ability object via `buildRule()`.
 
 ```json
-{ "subject": "user", "action": ["update"], "conditions": { "departmentId": "dept-eng" } }
+{ "subject": "User", "action": ["update"], "conditions": { "departmentId": "dept-eng" } }
 ```
 
-→ "user can update users **where** `departmentId` is `dept-eng`"
+→ "User can update users **where** `departmentId` is `dept-eng`"
 
-#### 2. `IPolicyRequirement.resource` (requirement — route side, dynamic)
-
-Provides the **runtime entity** to evaluate stored conditions against. Resolved at guard time from the live request via a function or a plain object.
-
-```typescript
-resource: (request) => request.__targetUser   // entity loaded earlier in request lifecycle
-```
-
-→ CASL checks stored ability conditions against this specific object at check time
-
-#### 3. `IPolicyRule.conditions` (rule — route side, static)
+#### 2. `IPolicyRule.conditions` (rule — route side, static)
 
 A **compile-time description** of the resource shape this route targets. Used when the developer knows the resource's relevant fields statically without needing to load an entity at runtime.
 
@@ -299,26 +302,31 @@ A **compile-time description** of the resource shape this route targets. Used wh
 
 → "this endpoint creates basic-type subscriptions — check if the caller can create subscriptions of that type"
 
-**Priority**: when `resource` (dynamic) is provided on the requirement, it takes precedence over `rule.conditions` (static), since the runtime entity is more authoritative.
+#### 3. Context token substitution in stored conditions
+
+`PolicyAbilityFactory` resolves top-level string tokens in stored conditions using request context. Currently supported context:
+
+- `$userId` → authenticated user id
+
+Example stored ability:
+
+```json
+{ "subject": "ActivityLog", "action": ["read"], "conditions": { "userId": "$userId" } }
+```
+
+At request time, this becomes:
+
+```json
+{ "subject": "ActivityLog", "action": ["read"], "conditions": { "userId": "<authenticated-user-id>" } }
+```
 
 #### Choosing the right mechanism
 
 | Need | Use |
 |------|-----|
-| Check permissions against a real entity loaded at request time | `resource` on `IPolicyRequirement` |
 | Assert a known static resource shape at route definition time | `conditions` on `IPolicyRule` |
-| No instance-level check needed | omit both |
-
-#### Dynamic resource example
-
-To evaluate conditions against a runtime entity, pass a `resource` resolver to the requirement:
-
-```typescript
-@PolicyAbilityProtected({
-    rules: [{ subject: EnumPolicySubject.user, action: [EnumPolicyAction.update] }],
-    resource: (request) => request.__user,  // resolved at guard time
-})
-```
+| Scope data access by authenticated user context | stored ability `conditions` with `$userId` + `accessibleBy(...)` in service/repository |
+| No instance-level check needed | omit route `conditions` |
 
 #### Static conditions example
 
@@ -338,12 +346,12 @@ When the resource shape is known at route definition time (no DB load required):
 Paired with the stored ability:
 
 ```json
-{ "subject": "subscription", "action": ["create"], "conditions": { "type": "basic" } }
+{ "subject": "Subscription", "action": ["create"], "conditions": { "type": "basic" } }
 ```
 
-CASL evaluates: `can(create, subject('subscription', { type: 'basic' }))` — the static object is used as the tagged subject instance.
+CASL evaluates: `can(create, subject('Subscription', { type: 'basic' }))` — the static object is used as the tagged subject instance.
 
-Without either `resource` or `conditions`, CASL performs a **loose check** that ignores stored conditions — this is intentional for list endpoints where no specific instance is relevant.
+Without route `conditions`, CASL performs a capability check only. For list/update/delete data access, enforce record-level constraints in Prisma queries with `accessibleBy(...)`.
 
 **Supported condition syntax** (validated at API level):
 Use Prisma filter keys such as `equals`, `in`, `lt`, `lte`, `gt`, `gte`, `contains`, and logical combinators like `AND`, `OR`, and `NOT`.
@@ -360,8 +368,8 @@ This ensures deterministic behavior when allow and deny overlap. Example:
 
 ```json
 [
-    { "subject": "user", "action": ["manage"], "effect": "can", "priority": 0 },
-    { "subject": "user", "action": ["delete"], "effect": "cannot", "priority": 10 }
+    { "subject": "User", "action": ["manage"], "effect": "can", "priority": 0 },
+    { "subject": "User", "action": ["delete"], "effect": "cannot", "priority": 10 }
 ]
 ```
 
@@ -371,7 +379,7 @@ The `can manage` is applied first; then `cannot delete` overrides it at higher p
 
 Guard: `PolicyAbilityGuard` (`src/modules/policy/guards/policy.ability.guard.ts`)
 
-Service: `PolicyService.authorize(...)` (`src/modules/policy/services/policy.service.ts`)
+Service: `PolicyService.validatePolicyGuard(...)` (`src/modules/policy/services/policy.service.ts`)
 
 Behavior summary:
 1. Reads authorization metadata with `getAllAndOverride`.
@@ -381,7 +389,7 @@ Behavior summary:
 5. Caches compiled ability in `request.__policyAbilities` for request reuse.
 6. Evaluates each requirement using `all` or `any` semantics.
 7. Throws `ForbiddenException` with failed subject/action details when any required check fails.
-8. Exposes `PolicyService.getAccessibleWhere(...)` for Prisma query-level authorization via `@casl/prisma` `accessibleBy`.
+8. Query-level filtering is applied by consumers (service/repository) using `@casl/prisma` `accessibleBy(...)` with the resolved ability.
 
 ### Usage
 
@@ -425,34 +433,32 @@ Behavior summary:
 })
 ```
 
-#### Instance-level condition check
+#### Query-level authorization (`@casl/prisma`)
+
+For list/update/delete endpoints, inject the compiled request ability with `@PolicyAbilityCurrent()` and apply `accessibleBy(...)` in Prisma filters:
 
 ```typescript
 @PolicyAbilityProtected({
-    rules: [{ subject: EnumPolicySubject.user, action: [EnumPolicyAction.update] }],
-    resource: (request) => request.__user,
+    subject: EnumPolicySubject.activityLog,
+    action: [EnumPolicyAction.read],
 })
-```
+@Get('/list')
+async list(
+    @PolicyAbilityCurrent() ability: IPolicyAbilityRule,
+    @PaginationCursorQuery() pagination: IPaginationQueryCursorParams
+) {
+    return this.activityLogService.getListCursor(pagination, ability);
+}
 
-#### Query-level authorization (`@casl/prisma`)
-
-For list/update/delete endpoints, use `PolicyService.getAccessibleWhere(...)` with the resolved request ability (`@PolicyAbilityCurrent`) so authorization is enforced inside Prisma queries:
-
-```typescript
-const allowedWhere = this.policyService.getAccessibleWhere(
-    ability,
-    EnumPolicySubject.user,
-    EnumPolicyAction.update
-);
-
-const where = {
-    ...allowedWhere,
-    id: userId,
-};
-
-await this.databaseService.user.updateMany({
-    where,
-    data: payload,
+// service
+const { data, ...others } = await this.activityRepository.findWithPaginationCursor({
+    ...pagination,
+    where: {
+        AND: [
+            accessibleBy(ability).ActivityLog,
+            pagination.where,
+        ].filter(Boolean),
+    },
 });
 ```
 
@@ -537,7 +543,7 @@ These two end-to-end walkthroughs show how to wire `fields` and `conditions` thr
 {
   "abilities": [
     {
-      "subject": "user",
+      "subject": "User",
       "action": ["read"],
       "effect": "can",
       "fields": ["name", "email", "status"],
@@ -547,7 +553,7 @@ These two end-to-end walkthroughs show how to wire `fields` and `conditions` thr
 }
 ```
 
-CASL will allow `read` on `user` only for the listed fields. Any attempt to check a field not in this list (e.g. `passwordHash`) is denied by CASL automatically.
+CASL will allow `read` on `User` only for the listed fields. Any attempt to check a field not in this list (e.g. `passwordHash`) is denied by CASL automatically.
 
 #### Step 2 — Define a scoped response DTO
 
@@ -632,12 +638,12 @@ async auditorList(
 #### How CASL evaluates the check
 
 ```
-stored ability: can read user [name, email, status]
-route rule:     read user [name, email, status]
+stored ability: can read User [name, email, status]
+route rule:     read User [name, email, status]
 
-CASL checks: can(read, user, "name")   → ✓
-             can(read, user, "email")  → ✓
-             can(read, user, "status") → ✓
+CASL checks: can(read, User, "name")   → ✓
+             can(read, User, "email")  → ✓
+             can(read, User, "status") → ✓
              all pass → request allowed
 ```
 
@@ -649,9 +655,7 @@ If the auditor role's ability only included `["name", "email"]`, the check for `
 
 ### Example 2 — Condition-Based Permissions
 
-**Scenario**: A "department-manager" admin role may update users, but only users who belong to the manager's department. The restriction is expressed as a condition on the stored role ability and is evaluated at request time against the target user entity.
-
-Conditions use **Prisma filter syntax** and are checked by CASL against the `resource` object you supply on the requirement. The resource is resolved at guard time from the incoming request.
+**Scenario**: users can read only their own activity logs. The role ability uses a context token (`$userId`) and the service enforces data-level scope with `accessibleBy(...)`.
 
 #### Step 1 — Configure the role ability via API
 
@@ -661,136 +665,66 @@ Conditions use **Prisma filter syntax** and are checked by CASL against the `res
 {
   "abilities": [
     {
-      "subject": "user",
-      "action": ["read", "update"],
+      "subject": "ActivityLog",
+      "action": ["read"],
       "effect": "can",
-      "conditions": { "departmentId": { "equals": "dept-engineering" } },
-      "reason": "Managers can only manage users in their own department"
+      "conditions": { "userId": "$userId" },
+      "reason": "Users can only read their own activity logs"
     }
   ]
 }
 ```
 
-CASL will allow `read`/`update` on `user` only when the resource object passed at check time has `departmentId === "dept-engineering"`.
+`PolicyAbilityFactory.createForUser(...)` resolves `$userId` from the authenticated request context before evaluating permissions.
 
-> In a real multi-tenant setup, one ability row is created per department, scoped to the department's actual ID. The role has multiple ability rows if the manager oversees multiple departments.
-
-#### Step 2 — Repository: fetch the target entity
-
-The target entity must be loaded before the guard can evaluate the condition. Load it in the service and return it, or use a pipe to attach it to the request. The simplest pattern is to load it in the service before calling any guarded action:
+#### Step 2 — Controller: declare requirement and inject compiled ability
 
 ```typescript
-// src/modules/user/repositories/user.repository.ts
-async findOneById(id: string): Promise<User | null> {
-    return this.databaseService.user.findUnique({ where: { id } });
-}
-```
-
-#### Step 3 — Service: load and return the entity for guard resolution
-
-The service needs to expose the entity so the `resource` resolver in the requirement can reference it. The cleanest approach is to attach it to the request before the condition is evaluated. Since guards run before controller methods, the resource resolver must be able to derive the resource purely from what is already on the request object.
-
-Two practical patterns:
-
-**Pattern A — resolve from `request.params`** (no DB call in the resolver; works when the condition only needs an ID):
-
-```typescript
-// resource: (request) => ({ id: request.params.userId, departmentId: ... })
-// Use when you can derive the condition fields from URL params alone.
-// Note: you'll need to ensure the params match what CASL's condition expects.
-```
-
-**Pattern B — preload the entity via a custom param decorator or request property** (more flexible; works for any condition field):
-
-Create a param decorator that loads the entity and attaches it to the request before the guard runs:
-
-```typescript
-// src/modules/user/decorators/user-target.decorator.ts
-export const UserTarget = createParamDecorator(
-    async (_: unknown, ctx: ExecutionContext): Promise<IUser> => {
-        const request = ctx.switchToHttp().getRequest<IRequestApp>();
-        // The entity is attached by a custom pipe on the userId param (see step 4)
-        return request.__targetUser;
-    }
-);
-```
-
-#### Step 4 — Pipe: attach the target user to the request
-
-```typescript
-// src/modules/user/pipes/user-resolve.pipe.ts
-@Injectable()
-export class UserResolvePipe implements PipeTransform {
-    constructor(private readonly userRepository: UserRepository) {}
-
-    async transform(userId: string, _metadata: ArgumentMetadata): Promise<string> {
-        const request = ...; // inject REQUEST token or use a different approach
-        const user = await this.userRepository.findOneById(userId);
-        if (!user) throw new NotFoundException({ message: 'user.error.notFound' });
-        (request as IRequestApp).__targetUser = user;
-        return userId;
-    }
-}
-```
-
-> **Simpler alternative**: resolve from params directly when the condition field is the resource ID itself.
-
-#### Step 5 — Controller: pass the resource resolver to the requirement
-
-The `resource` field on `IPolicyRequirement` is a function that receives the live `IRequestApp` at guard evaluation time and returns the resource object CASL will evaluate conditions against:
-
-```typescript
-// src/modules/user/controllers/user.admin.controller.ts
-@Response('user.update')
-@TermPolicyAcceptanceProtected()
+// src/modules/activity-log/controllers/activity-log.shared.controller.ts
 @PolicyAbilityProtected({
-    rules: [
-        {
-            subject: EnumPolicySubject.user,
-            action: [EnumPolicyAction.read, EnumPolicyAction.update],
-        },
-    ],
-    // The resource resolver runs inside PolicyService at guard time.
-    // It must return an object whose shape matches what the stored condition checks.
-    resource: (request: IRequestApp) => (request as any).__targetUser,
+    subject: EnumPolicySubject.activityLog,
+    action: [EnumPolicyAction.read],
 })
-@RoleProtected(EnumRoleType.admin)
-@UserProtected()
-@AuthJwtAccessProtected()
-@ApiKeyProtected()
-@Patch('/update/:userId/department-info')
-async updateByDepartmentManager(
-    @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-    userId: string,
-    @Body() body: UserUpdateDepartmentInfoRequestDto
-): Promise<IResponseReturn<void>> {
-    return this.userService.updateDepartmentInfo(userId, body);
+@Get('/list')
+async list(
+    @PolicyAbilityCurrent() ability: IPolicyAbilityRule,
+    @PaginationCursorQuery() pagination: IPaginationQueryCursorParams
+) {
+    return this.activityLogService.getListCursor(pagination, ability);
 }
+```
+
+#### Step 3 — Service: enforce Prisma-level scope with `accessibleBy(...)`
+
+```typescript
+// src/modules/activity-log/services/activity-log.service.ts
+const { data, ...others } = await this.activityRepository.findWithPaginationCursor({
+    ...pagination,
+    where: {
+        AND: [
+            accessibleBy(ability).ActivityLog,
+            pagination.where,
+        ].filter(Boolean),
+    },
+});
+```
+
+#### Step 4 — Admin doc guard alignment
+
+```typescript
+// src/modules/activity-log/docs/activity-log.admin.doc.ts
+DocGuard({ role: true, policy: true, termPolicy: true })
 ```
 
 #### How CASL evaluates the condition
 
 ```
-stored ability conditions: { "departmentId": { "equals": "dept-engineering" } }
-resource at check time:    { id: "user-42", departmentId: "dept-engineering", ... }
+stored ability condition:  { "userId": "$userId" }
+resolved at runtime:       { "userId": "<authenticated-user-id>" }
 
-CASL checks: can(update, <resource>) → departmentId "equals" "dept-engineering"?
-             "dept-engineering" === "dept-engineering" → ✓ → request allowed
-
-resource at check time:    { id: "user-99", departmentId: "dept-sales", ... }
-CASL checks: can(update, <resource>) → "dept-sales" === "dept-engineering"? → ✗ → 403
+Prisma filter applied:     accessibleBy(ability).ActivityLog
+result:                    only rows matching the resolved `userId` can be returned
 ```
-
-#### What the `resource` resolver can and cannot do
-
-| Can | Cannot |
-|-----|--------|
-| Read `request.params`, `request.query`, `request.body` | Make async calls (resolver is synchronous) |
-| Read `request.__user` (authenticated user, already loaded by `UserGuard`) | Load entities from a database at check time |
-| Return any plain object whose fields CASL should match against | Return a class instance with methods (CASL uses plain property access) |
-| Return `undefined` to skip condition evaluation | — |
-
-> If you need to check conditions against a DB-loaded entity, attach it to the request in a pipe or middleware that runs **before** the guard stack (e.g. attach it to `request.__targetUser` in a route-level pipe).
 
 ---
 
@@ -806,7 +740,7 @@ CASL checks: can(update, <resource>) → "dept-sales" === "dept-engineering"? �
 {
   "abilities": [
     {
-      "subject": "subscription",
+      "subject": "Subscription",
       "action": ["create"],
       "effect": "can",
       "conditions": { "type": "basic" },
@@ -846,7 +780,7 @@ async createBasic(
 stored ability conditions: { "type": "basic" }
 rule.conditions:           { "type": "basic" }   ← used as synthetic subject
 
-CASL checks: can(create, subject('subscription', { type: 'basic' }))
+CASL checks: can(create, subject('Subscription', { type: 'basic' }))
              "basic" === "basic" → ✓ → request allowed
 ```
 
@@ -867,7 +801,7 @@ Role create/update endpoints accept ability arrays using `RoleAbilityRequestDto`
 | `effect` | `EnumPolicyEffect` | No | `can` (default) or `cannot` |
 | `fields` | `string[]` | No | Restrict to specific fields |
 | `conditions` | `Record<string, unknown>` | No | Prisma-style condition filter |
-| `description` | `string` | No | Human-readable note for the rule |
+| `reason` | `string` | No | Human-readable note for the rule |
 | `priority` | `number` | No | Evaluation order (lower first, default: `0`) |
 
 Example payload:
@@ -879,29 +813,29 @@ Example payload:
   "type": "admin",
   "abilities": [
     {
-      "subject": "activityLog",
+      "subject": "ActivityLog",
       "action": ["read"],
       "effect": "can",
       "priority": 0
     },
     {
-      "subject": "user",
+      "subject": "User",
       "action": ["delete"],
       "effect": "cannot",
-      "description": "Auditors cannot delete users",
+      "reason": "Auditors cannot delete users",
       "priority": 10
     },
     {
-      "subject": "user",
+      "subject": "User",
       "action": ["read"],
       "fields": ["name", "email"],
-      "description": "Read-only access to non-sensitive user fields"
+      "reason": "Read-only access to non-sensitive user fields"
     },
     {
-      "subject": "user",
-      "action": ["update"],
-      "conditions": { "id": { "equals": "{{currentUserId}}" } },
-      "description": "Users can only update their own profile"
+      "subject": "ActivityLog",
+      "action": ["read"],
+      "conditions": { "userId": "$userId" },
+      "reason": "Users can only read their own activity logs"
     }
   ]
 }
@@ -915,10 +849,8 @@ Example payload:
 - `effect String?`
 - `fields Json?`
 - `conditions Json?`
-- `reason String?` ← maps to the `description` DTO field
+- `reason String?`
 - `priority Int?`
-
-> Note: the Prisma column is named `reason` for historical reasons. The TypeScript DTO and interface expose this as `description`.
 
 ### Super Admin Seed Requirement
 
@@ -970,11 +902,11 @@ Common failure classes:
 2. Use `cannot` stored abilities for explicit deny constraints; do not rely only on missing allow rules.
 3. Add `priority` when rule overlap is expected.
 4. Use `fields` on stored abilities for partial read/update permissions; mirror the same `fields` on the route rule when you want the guard to validate field access.
-5. Use `conditions` on stored abilities for instance-level rules (e.g. "user can only update their own record"). Pair with a `resource` resolver on the requirement when you need runtime entity evaluation, or with `conditions` on the `IPolicyRule` when the resource shape is known statically at route definition time.
-6. Keep `conditions` simple and testable; avoid deeply nested dynamic structures.
+5. Use `conditions` on stored abilities for scoped access (for example, `{ "userId": "$userId" }` for owner-scoped resources).
+6. Keep `conditions` simple and testable; token substitution currently supports top-level string values only.
 7. Always combine `PolicyAbilityProtected` with `UserProtected` and `AuthJwtAccessProtected`.
 8. For admin endpoints, keep `RoleProtected` as a coarse gate and `PolicyAbilityProtected` as a fine gate.
-9. For read/update/delete data access, apply `PolicyService.getAccessibleWhere(...)` in repository queries so authorization is enforced by Prisma `where` constraints, not only by controller guards.
+9. For read/update/delete data access, pass `@PolicyAbilityCurrent()` ability to the service layer and apply `accessibleBy(ability)` in repository queries.
 
 ## Troubleshooting
 
@@ -1002,13 +934,13 @@ Cause:
 Fix:
 - Reseed/update role abilities for super-admin.
 
-### 4) Condition rule does not match expected resource
+### 4) Condition rule appears ignored in data listing
 
 Cause:
-- Policy evaluated without the expected subject instance data.
+- Route-level capability check passed, but data query did not apply `accessibleBy(...)`.
 
 Fix:
-- Use structured `IPolicyRequirement` with `resource` resolver when endpoint needs instance-level checks.
+- Inject `@PolicyAbilityCurrent()` into the controller method and enforce Prisma `where` constraints with `accessibleBy(ability)` in service/repository.
 
 ### 5) Role ability API returns 400 on `conditions`
 
@@ -1023,7 +955,5 @@ Fix:
 
 [ref-doc-authentication]: authentication.md
 [ref-doc-term-policy]: term-policy.md
-[ref-doc-authorization]: authorization.md
-[ref-doc-tenant-project-authorization]: tenant-project-authorization.md
 [ref-casl-docs]: https://casl.js.org/
 [ref-casl-prisma-docs]: https://www.npmjs.com/package/@casl/prisma

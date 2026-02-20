@@ -1,8 +1,6 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ForbiddenError } from '@casl/ability';
-import { accessibleBy } from '@casl/prisma';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { EnumPolicyAction, EnumPolicyMatch } from '@modules/policy/enums/policy.enum';
+import { EnumPolicyMatch } from '@modules/policy/enums/policy.enum';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import {
@@ -10,8 +8,6 @@ import {
     IPolicyAbilityRule,
     IPolicyRequirement,
     IPolicyRule,
-    PolicySubject,
-    PolicyWhereInput,
 } from '@modules/policy/interfaces/policy.interface';
 import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
 import {
@@ -36,18 +32,6 @@ export class PolicyService implements IPolicyService {
         }
     }
 
-    private resolveRequestAbilities(
-        request: IRequestApp
-    ): IPolicyAbilityInput[] {
-        const { __user, __abilities } = request;
-
-        if (__abilities) {
-            return __abilities;
-        }
-
-        return (__user?.role.abilities ?? []) as IPolicyAbilityInput[];
-    }
-
     getOrCreateRequestAbility(request: IRequestApp): IPolicyAbilityRule {
         this.validateAuthenticatedContext(request);
 
@@ -56,16 +40,18 @@ export class PolicyService implements IPolicyService {
             return existingAbility;
         }
 
-        const abilities = this.resolveRequestAbilities(request);
+        const abilities = request.__abilities
+            ? request.__abilities
+            : ((request.__user?.role.abilities ?? []) as IPolicyAbilityInput[]);
         const userAbilities = this.policyAbilityFactory.createForUser(abilities, {
-            userId: request.__user!.id,
+            userId: request.__user.id,
         });
         request.__policyAbilities = userAbilities;
 
         return userAbilities;
     }
 
-    async authorize(
+    async validatePolicyGuard(
         request: IRequestApp,
         requirements: IPolicyRequirement[]
     ): Promise<boolean> {

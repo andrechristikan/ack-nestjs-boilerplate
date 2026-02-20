@@ -18,14 +18,14 @@ export enum EnumPolicyMatch {
 
 export enum EnumPolicySubject {
     all = 'all',
-    apiKey = 'apiKey',
-    role = 'role',
-    user = 'user',
-    session = 'session',
-    activityLog = 'activityLog',
-    passwordHistory = 'passwordHistory',
-    termPolicy = 'termPolicy',
-    featureFlag = 'featureFlag',
+    apiKey = 'ApiKey',
+    role = 'Role',
+    user = 'User',
+    session = 'Session',
+    activityLog = 'ActivityLog',
+    passwordHistory = 'PasswordHistory',
+    termPolicy = 'TermPolicy',
+    featureFlag = 'FeatureFlag'
 }
 
 export enum EnumPolicyPlaceholder {

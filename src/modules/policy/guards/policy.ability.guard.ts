@@ -28,6 +28,9 @@ export class PolicyAbilityGuard implements CanActivate {
             ) ?? [];
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
-        return this.policyService.authorize(request, requiredAbilities);
+        return this.policyService.validatePolicyGuard(
+            request,
+            requiredAbilities
+        );
     }
 }
