@@ -12,6 +12,8 @@ export const LoggerAutoContext = 'LoggerAutoContext';
  * Supports wildcard patterns for flexible matching.
  */
 export const LoggerExcludedRoutes: string[] = [
+    '/api/hello',
+    '/api/hello/*',
     '/api/health',
     '/api/health/*',
     '/metrics',
