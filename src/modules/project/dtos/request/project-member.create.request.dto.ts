@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsMongoId, IsNotEmpty, IsString } from 'class-validator';
 
 export class ProjectMemberCreateRequestDto {
     @ApiProperty({
@@ -12,10 +12,11 @@ export class ProjectMemberCreateRequestDto {
 
     @ApiProperty({
         required: true,
-        description: 'Role name for project member',
-        example: 'project-viewer',
+        description: 'Role id for project member',
+        example: '65f3d2e44b9a7e1bd2c9a8f1',
     })
     @IsString()
     @IsNotEmpty()
-    roleName: string;
+    @IsMongoId()
+    roleId: string;
 }

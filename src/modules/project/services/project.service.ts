@@ -267,10 +267,7 @@ export class ProjectService {
 
             const [user, role] = await Promise.all([
                 this.userRepository.findOneById(member.userId),
-                this.roleRepository.existByNameAndScope(
-                    member.roleName,
-                    EnumRoleScope.project
-                ),
+                this.roleRepository.existById(member.roleId),
             ]);
 
             if (!user) {
@@ -281,6 +278,13 @@ export class ProjectService {
             }
 
             if (!role) {
+                throw new NotFoundException({
+                    statusCode: HttpStatus.NOT_FOUND,
+                    message: 'project.role.error.notFound',
+                });
+            }
+
+            if (role.scope !== EnumRoleScope.project) {
                 throw new NotFoundException({
                     statusCode: HttpStatus.NOT_FOUND,
                     message: 'project.role.error.notFound',

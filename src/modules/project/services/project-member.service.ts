@@ -76,11 +76,15 @@ export class ProjectMemberService {
             });
         }
 
-        const role = await this.roleRepository.existByNameAndScope(
-            dto.roleName.trim(),
-            this.projectInvitationProvider.roleScope
-        );
+        const role = await this.roleRepository.existById(dto.roleId);
         if (!role) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'project.role.error.notFound',
+            });
+        }
+
+        if (role.scope !== this.projectInvitationProvider.roleScope) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
                 message: 'project.role.error.notFound',

@@ -162,8 +162,7 @@ export class TenantAdminController {
     @AuthJwtAccessProtected()
     @Post('/:tenantId/assume-access')
     async assumeAccess(
-        @Param('tenantId', RequestRequiredPipe)
-        tenantId: string,
+        @Param('tenantId', RequestRequiredPipe) tenantId: string,
         @Body() body: TenantJitAccessRequestDto,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<TenantJitAccessResponseDto>> {
@@ -182,8 +181,7 @@ export class TenantAdminController {
     @AuthJwtAccessProtected()
     @Delete('/:tenantId/revoke-access')
     async revokeAccess(
-        @Param('tenantId', RequestRequiredPipe)
-        tenantId: string,
+        @Param('tenantId', RequestRequiredPipe) tenantId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
         return this.tenantMemberService.revokeJitAccess(tenantId, userId);
