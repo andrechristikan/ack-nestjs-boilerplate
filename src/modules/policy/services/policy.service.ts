@@ -5,8 +5,8 @@ import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-c
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import {
     IPolicyAbilityInput,
-    IPolicyAbilityRule,
     IPolicyRequirement,
+    PolicyAbility,
 } from '@modules/policy/interfaces/policy.interface';
 import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
 import {
@@ -26,7 +26,7 @@ export class PolicyService implements IPolicyService {
      *
      * @throws {ForbiddenException} When the request is not authenticated.
      */
-    getOrCreateRequestAbility(request: IRequestApp): IPolicyAbilityRule {
+    getOrCreateRequestAbility(request: IRequestApp): PolicyAbility {
         const { __user, user } = request;
         if (__user == null || user == null) {
             throw new ForbiddenException({
@@ -94,7 +94,7 @@ export class PolicyService implements IPolicyService {
             return passed;
         });
 
-        if (isAllowed === false) {
+        if (!isAllowed) {
             throw new ForbiddenException({
                 statusCode: EnumPolicyStatusCodeError.forbidden,
                 message: 'policy.error.forbidden',

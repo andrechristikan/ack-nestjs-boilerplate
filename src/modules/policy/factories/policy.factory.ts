@@ -14,9 +14,9 @@ import {
 } from '@modules/policy/enums/policy.enum';
 import {
     IPolicyAbilityInput,
-    IPolicyAbilityRule,
     IPolicyAbilitySubject,
     IPolicyRule,
+    PolicyAbility,
     PolicyConditionContext,
 } from '@modules/policy/interfaces/policy.interface';
 
@@ -27,7 +27,7 @@ import {
  * ability subject type is composed of string literals (as opposed to classes with
  * `__caslSubjectType__`).  This local type broadens the accepted signature to
  * `PrismaQuery` so the factory can pass resolved Prisma query conditions without
- * losing the real return type (`RuleBuilder<IPolicyAbilityRule>`).
+ * losing the real return type (`RuleBuilder<PolicyAbility>`).
  */
 type AbilityApplyFn = (
     action: EnumPolicyAction | EnumPolicyAction[],
@@ -92,7 +92,7 @@ export class PolicyAbilityFactory {
      * @param ability - The resolved ability definition to register.
      */
     private buildRule(
-        builder: AbilityBuilder<IPolicyAbilityRule>,
+        builder: AbilityBuilder<PolicyAbility>,
         ability: IPolicyAbilityInput
     ): void {
         const isDeny = (ability.effect ?? EnumPolicyEffect.can) === EnumPolicyEffect.cannot;
@@ -173,15 +173,7 @@ export class PolicyAbilityFactory {
             return value;
         };
 
-        const resolved = resolveValue(conditions, 'conditions');
-        if (resolved == null || typeof resolved !== 'object' || Array.isArray(resolved)) {
-            throw new InternalServerErrorException({
-                statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
-                message: 'policy.error.invalidConfiguration',
-            });
-        }
-
-        return resolved as PrismaQuery;
+        return resolveValue(conditions, 'conditions') as PrismaQuery;
     }
 
     /**
@@ -202,8 +194,8 @@ export class PolicyAbilityFactory {
     createForUser(
         abilities: IPolicyAbilityInput[],
         context: PolicyConditionContext
-    ): IPolicyAbilityRule {
-        const builder = new AbilityBuilder<IPolicyAbilityRule>(createPrismaAbility);
+    ): PolicyAbility {
+        const builder = new AbilityBuilder<PolicyAbility>(createPrismaAbility);
 
         for (const ability of this.sortRules(abilities)) {
             this.buildRule(builder, {
@@ -227,7 +219,7 @@ export class PolicyAbilityFactory {
      * @returns `true` when the user's ability permits every action (and every field,
      *   if specified) described by the rule; `false` otherwise.
      */
-    evaluateRule(userAbilities: IPolicyAbilityRule, rule: IPolicyRule): boolean {
+    evaluateRule(userAbilities: PolicyAbility, rule: IPolicyRule): boolean {
         const fields = rule.fields?.filter(Boolean);
         const subject = rule.conditions
             ? caslSubject(rule.subject, rule.conditions)

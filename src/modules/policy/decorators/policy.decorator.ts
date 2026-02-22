@@ -11,7 +11,7 @@ import { PolicyAuthorizeMetaKey } from '@modules/policy/constants/policy.constan
 import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import {
-    IPolicyAbilityRule,
+    PolicyAbility,
     IPolicyRequirement,
     IPolicyRule,
 } from '@modules/policy/interfaces/policy.interface';
@@ -69,15 +69,9 @@ export function PolicyAbilityProtected(
     const requirementCount = inputs.filter(isRequirement).length;
 
     if (requirementCount > 0 && requirementCount < inputs.length) {
-        throw new InternalServerErrorException({
-            statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
-            message: 'policy.error.invalidConfiguration',
-            errors: [
-                {
-                    detail: 'Do not mix IPolicyRule and IPolicyRequirement in PolicyAbilityProtected.',
-                },
-            ],
-        });
+        throw new Error(
+            'PolicyAbilityProtected: Do not mix IPolicyRule and IPolicyRequirement arguments.'
+        );
     }
 
     const requirements: IPolicyRequirement[] =
@@ -111,13 +105,13 @@ export function PolicyAbilityProtected(
  * ```ts
  * @Get()
  * @PolicyAbilityProtected({ subject: EnumPolicySubject.activityLog, action: [EnumPolicyAction.read] })
- * async list(@PolicyAbilityCurrent() ability: IPolicyAbilityRule) {
+ * async list(@PolicyAbilityCurrent() ability: PolicyAbility) {
  *   return this.service.findAll(accessibleBy(ability).ActivityLog);
  * }
  * ```
  */
 export const PolicyAbilityCurrent = createParamDecorator(
-    (_: unknown, ctx: ExecutionContext): IPolicyAbilityRule => {
+    (_: unknown, ctx: ExecutionContext): PolicyAbility => {
         const { __policyAbilities } = ctx.switchToHttp().getRequest<IRequestApp>();
         if (__policyAbilities == null) {
             throw new InternalServerErrorException({

@@ -9,7 +9,7 @@ import {
 
 export type IPolicyAbilitySubject = EnumPolicySubject | 'all';
 
-export type IPolicyAbilityRule = PureAbility<
+export type PolicyAbility = PureAbility<
     [EnumPolicyAction, IPolicyAbilitySubject],
     PrismaQuery
 >;

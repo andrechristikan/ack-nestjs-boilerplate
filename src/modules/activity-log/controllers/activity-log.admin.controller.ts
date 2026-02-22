@@ -17,7 +17,7 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
-import { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -52,7 +52,7 @@ export class ActivityLogAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PolicyAbilityCurrent() ability: IPolicyAbilityRule,
+        @PolicyAbilityCurrent() ability: PolicyAbility,
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)

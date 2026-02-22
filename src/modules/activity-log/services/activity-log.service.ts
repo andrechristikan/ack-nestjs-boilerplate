@@ -8,7 +8,7 @@ import { IActivityLogService } from '@modules/activity-log/interfaces/activity-l
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { accessibleBy } from '@casl/prisma';
-import { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class ActivityLogService implements IActivityLogService {
     async getListOffset(
         userId: string,
         pagination: IPaginationQueryOffsetParams,
-        ability: IPolicyAbilityRule
+        ability: PolicyAbility
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
         const { data, ...others } =
             await this.activityRepository.findWithPaginationOffset({
@@ -44,7 +44,7 @@ export class ActivityLogService implements IActivityLogService {
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams,
-        ability: IPolicyAbilityRule
+        ability: PolicyAbility
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
 
         const { data, ...others } =

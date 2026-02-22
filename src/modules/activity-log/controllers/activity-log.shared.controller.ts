@@ -16,7 +16,7 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
-import { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get } from '@nestjs/common';
@@ -43,7 +43,7 @@ export class ActivityLogSharedController {
     @Get('/list')
     async list(
         @AuthJwtPayload('userId') userId: string,
-        @PolicyAbilityCurrent() ability: IPolicyAbilityRule,
+        @PolicyAbilityCurrent() ability: PolicyAbility,
         @PaginationCursorQuery()
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {

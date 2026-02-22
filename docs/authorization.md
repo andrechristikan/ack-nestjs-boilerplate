@@ -487,7 +487,7 @@ For list/update/delete endpoints, inject the compiled request ability with `@Pol
 })
 @Get('/list')
 async list(
-    @PolicyAbilityCurrent() ability: IPolicyAbilityRule,
+    @PolicyAbilityCurrent() ability: PolicyAbility,
     @PaginationCursorQuery() pagination: IPaginationQueryCursorParams
 ) {
     return this.activityLogService.getListCursor(pagination, ability);
@@ -730,7 +730,7 @@ If the auditor role's ability only included `["name", "email"]`, the check for `
 })
 @Get('/list')
 async list(
-    @PolicyAbilityCurrent() ability: IPolicyAbilityRule,
+    @PolicyAbilityCurrent() ability: PolicyAbility,
     @PaginationCursorQuery() pagination: IPaginationQueryCursorParams
 ) {
     return this.activityLogService.getListCursor(pagination, ability);

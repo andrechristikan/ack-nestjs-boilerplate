@@ -1,6 +1,6 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
-    IPolicyAbilityRule,
+    PolicyAbility,
     IPolicyRequirement,
 } from '@modules/policy/interfaces/policy.interface';
 
@@ -9,5 +9,5 @@ export interface IPolicyService {
         request: IRequestApp,
         requirements: IPolicyRequirement[]
     ): boolean;
-    getOrCreateRequestAbility(request: IRequestApp): IPolicyAbilityRule;
+    getOrCreateRequestAbility(request: IRequestApp): PolicyAbility;
 }
