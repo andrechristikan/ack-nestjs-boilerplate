@@ -3,9 +3,9 @@ import { ApiProperty } from '@nestjs/swagger';
 export class InvitationStatusResponseDto {
     @ApiProperty({
         required: true,
-        enum: ['not_sent', 'pending', 'expired', 'completed'],
+        enum: ['not_sent', 'pending', 'expired', 'completed', 'deleted'],
     })
-    status: 'not_sent' | 'pending' | 'expired' | 'completed';
+    status: 'not_sent' | 'pending' | 'expired' | 'completed' | 'deleted';
 
     @ApiProperty({
         required: false,
@@ -27,4 +27,10 @@ export class InvitationStatusResponseDto {
         required: false,
     })
     completedAt?: Date;
+
+    @ApiProperty({
+        required: false,
+        description: 'Timestamp when the invitation was deleted',
+    })
+    deletedAt?: Date;
 }

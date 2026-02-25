@@ -316,7 +316,7 @@ export class ProjectService {
             updatedBy: createdBy,
         });
 
-        await this.projectRepository.addMember({
+        await this.projectRepository.createMember({
             projectId: project.id,
             userId: createdBy,
             roleId: adminRole.id,
@@ -326,7 +326,7 @@ export class ProjectService {
         });
 
         for (const member of resolvedMembers) {
-            await this.projectRepository.addMember({
+            await this.projectRepository.createMember({
                 projectId: project.id,
                 userId: member.userId,
                 roleId: member.roleId,

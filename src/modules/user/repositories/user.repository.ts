@@ -303,64 +303,6 @@ export class UserRepository {
         });
     }
 
-    async findOneByInvitationToken(
-        token: string
-    ): Promise<(Verification & { user: User }) | null> {
-        return this.databaseService.verification.findFirst({
-            where: {
-                token,
-                type: 'invitation' as EnumVerificationType,
-                user: {
-                    deletedAt: null,
-                },
-            },
-            include: {
-                user: true,
-            },
-        });
-    }
-
-    async findOneActiveByInvitationToken(
-        token: string
-    ): Promise<(Verification & { user: User }) | null> {
-        const today = this.helperService.dateCreate();
-
-        return this.databaseService.verification.findFirst({
-            where: {
-                token,
-                isUsed: false,
-                type: 'invitation' as EnumVerificationType,
-                expiredAt: {
-                    gt: today,
-                },
-                user: {
-                    deletedAt: null,
-                    status: EnumUserStatus.active,
-                },
-            },
-            include: {
-                user: true,
-            },
-        });
-    }
-
-    async findOneLatestByInvitation(
-        userId: string
-    ): Promise<Verification | null> {
-        return this.databaseService.verification.findFirst({
-            where: {
-                userId,
-                type: EnumVerificationType.invitation,
-                user: {
-                    deletedAt: null,
-                },
-            },
-            orderBy: {
-                createdAt: EnumPaginationOrderDirectionType.desc,
-            },
-        });
-    }
-
     async findOneMobileNumber(
         userId: string,
         mobileNumberId: string
@@ -549,6 +491,8 @@ export class UserRepository {
                     status: EnumUserStatus.active,
                     passwordAttempt: 0,
                     termPolicy: {
+                        //TODO: the user should accept-explicitly these when "accepting the invitation"
+                        // Those are just dummy-values to make the insert work
                         [EnumTermPolicyType.cookies]: false,
                         [EnumTermPolicyType.marketing]: false,
                         [EnumTermPolicyType.privacy]: true,
@@ -1500,150 +1444,6 @@ export class UserRepository {
                 ]);
 
                 return newVerification;
-            }
-        );
-    }
-
-    async requestInvitationEmail(
-        userId: string,
-        userEmail: string,
-        { expiredAt, reference, token, type }: IUserVerificationCreate,
-        metadata: InputJsonValue,
-        requestedBy: string,
-        requestLog: IRequestLog
-    ): Promise<User> {
-        const today = this.helperService.dateCreate();
-
-        return this.databaseService.$transaction(
-            async (tx: Prisma.TransactionClient) => {
-                const [_, newVerification] = await Promise.all([
-                    tx.verification.updateMany({
-                        where: {
-                            userId,
-                            type,
-                            isUsed: false,
-                            expiredAt: {
-                                gt: today,
-                            },
-                        },
-                        data: {
-                            expiredAt: today,
-                        },
-                    }),
-                    tx.user.update({
-                        where: {
-                            id: userId,
-                        },
-                        data: {
-                            verifications: {
-                                create: {
-                                    expiredAt,
-                                    reference,
-                                    token,
-                                    type,
-                                    to: userEmail,
-                                    metadata,
-                                    createdBy: requestedBy,
-                                    createdAt: today,
-                                },
-                            },
-                            activityLogs: {
-                                create: {
-                                    action:
-                                    EnumActivityLogAction.userSendInvitationEmail,
-                                    ipAddress: requestLog.ipAddress,
-                                    userAgent: this.databaseUtil.toPlainObject(
-                                        requestLog.userAgent
-                                    ),
-                                    createdBy: requestedBy,
-                                },
-                            },
-                        },
-                    }),
-                ]);
-
-                return newVerification;
-            }
-        );
-    }
-
-    async completeInvitation(
-        verificationId: string,
-        userId: string,
-        name: string,
-        {
-            passwordCreated,
-            passwordExpired,
-            passwordHash,
-            passwordPeriodExpired,
-        }: IAuthPassword,
-        { ipAddress, userAgent }: IRequestLog
-    ): Promise<User> {
-        const today = this.helperService.dateCreate();
-
-        return this.databaseService.$transaction(
-            async (tx: Prisma.TransactionClient) => {
-                await tx.verification.update({
-                    where: {
-                        id: verificationId,
-                    },
-                    data: {
-                        isUsed: true,
-                        verifiedAt: today,
-                        updatedBy: userId,
-                    },
-                });
-
-                await tx.verification.updateMany({
-                    where: {
-                        userId,
-                        type: EnumVerificationType.invitation,
-                        isUsed: false,
-                        expiredAt: {
-                            gt: today,
-                        },
-                    },
-                    data: {
-                        expiredAt: today,
-                        updatedBy: userId,
-                    },
-                });
-
-                const user = await tx.user.update({
-                    where: { id: userId, deletedAt: null },
-                    data: {
-                        name,
-                        password: passwordHash,
-                        passwordCreated,
-                        passwordExpired,
-                        passwordAttempt: 0,
-                        isVerified: true,
-                        verifiedAt: today,
-                        updatedBy: userId,
-                        passwordHistories: {
-                            create: {
-                                password: passwordHash,
-                                type: EnumPasswordHistoryType.signUp,
-                                expiredAt: passwordPeriodExpired,
-                                createdAt: passwordCreated,
-                                createdBy: userId,
-                            },
-                        },
-                        activityLogs: {
-                            create: {
-                                action:
-                                    'userCompleteInvitation' as EnumActivityLogAction,
-                                ipAddress,
-                                userAgent: this.databaseUtil.toPlainObject(
-                                    userAgent
-                                ),
-                                createdBy: userId,
-                            },
-                        },
-                    },
-                });
-
-                return user;
             }
         );
     }

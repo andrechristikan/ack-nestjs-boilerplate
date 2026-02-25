@@ -54,9 +54,6 @@ import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
-import { UserInvitationCompleteRequestDto } from '@modules/user/dtos/request/user.invitation-complete.request.dto';
-import { UserInvitationResponseDto } from '@modules/user/dtos/response/user.invitation.response.dto';
-
 export interface IUserService {
     validateUserGuard(
         request: IRequestApp,
@@ -174,13 +171,6 @@ export interface IUserService {
     ): Promise<void>;
     verifyEmail(
         { token }: UserVerifyEmailRequestDto,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
-    getInvitation(
-        token: string
-    ): Promise<IResponseReturn<UserInvitationResponseDto>>;
-    completeInvitation(
-        dto: UserInvitationCompleteRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
     sendEmail(

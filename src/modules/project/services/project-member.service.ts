@@ -7,6 +7,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { InvitationService } from '@modules/invitation/services/invitation.service';
+import { InvitationUtil } from '@modules/invitation/utils/invitation.util';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
@@ -45,6 +46,7 @@ export class ProjectMemberService {
         private readonly roleService: RoleService,
         private readonly userRepository: UserRepository,
         private readonly invitationService: InvitationService,
+        private readonly invitationUtil: InvitationUtil,
         private readonly projectUtil: ProjectUtil,
         private readonly projectInvitationProvider: ProjectInvitationProvider
     ) {}
@@ -92,7 +94,7 @@ export class ProjectMemberService {
         }
 
         try {
-            const projectMember = await this.projectRepository.addMember({
+            const projectMember = await this.projectRepository.createMember({
                 projectId,
                 userId: dto.userId,
                 roleId: role.id,
@@ -230,10 +232,8 @@ export class ProjectMemberService {
             data: data.map(member =>
                 this.projectUtil.mapMember(
                     member,
-                    this.invitationService.mapInvitationStatus(
-                        member.user.isVerified,
-                        member.user.verifiedAt,
-                        member.user.verifications[0]
+                    this.invitationUtil.mapInvitationStatus(
+                        member.user.invitations[0]
                     )
                 )
             ),

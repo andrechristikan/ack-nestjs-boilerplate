@@ -50,13 +50,6 @@ export class UserUtil {
     private readonly verificationResendInMinutes: number;
     private readonly verificationLinkBaseUrl: string;
 
-    private readonly invitationReferencePrefix: string;
-    private readonly invitationReferenceLength: number;
-    readonly invitationExpiredInMinutes: number;
-    private readonly invitationTokenLength: number;
-    readonly invitationResendInMinutes: number;
-    private readonly invitationLinkBaseUrl: string;
-
     private readonly profanity: Profanity;
 
     constructor(
@@ -115,25 +108,6 @@ export class UserUtil {
         );
         this.verificationLinkBaseUrl = this.configService.get(
             'verification.linkBaseUrl'
-        );
-
-        this.invitationReferencePrefix = this.configService.get(
-            'invitation.reference.prefix'
-        );
-        this.invitationReferenceLength = this.configService.get(
-            'invitation.reference.length'
-        );
-        this.invitationExpiredInMinutes = this.configService.get(
-            'invitation.expiredInMinutes'
-        );
-        this.invitationTokenLength = this.configService.get(
-            'invitation.tokenLength'
-        );
-        this.invitationResendInMinutes = this.configService.get(
-            'invitation.resendInMinutes'
-        );
-        this.invitationLinkBaseUrl = this.configService.get(
-            'invitation.linkBaseUrl'
         );
 
         const availableLanguages = this.configService.get<string[]>(
@@ -288,7 +262,7 @@ export class UserUtil {
     }
 
     verificationSetExpiredDate(): Date {
-        const now = new Date();
+        const now = this.helperService.dateCreate();
 
         return this.helperService.dateForward(
             now,
@@ -319,38 +293,4 @@ export class UserUtil {
         };
     }
 
-    invitationCreateReference(): string {
-        const random = this.helperService.randomString(
-            this.invitationReferenceLength
-        );
-
-        return `${this.invitationReferencePrefix}-${random}`;
-    }
-
-    invitationCreateToken(): string {
-        return this.helperService.randomString(this.invitationTokenLength);
-    }
-
-    invitationSetExpiredDate(): Date {
-        const now = new Date();
-
-        return this.helperService.dateForward(
-            now,
-            Duration.fromObject({ minutes: this.invitationExpiredInMinutes })
-        );
-    }
-
-    invitationCreateVerification(): IUserVerificationCreate {
-        const token = this.invitationCreateToken();
-
-        return {
-            reference: this.invitationCreateReference(),
-            expiredAt: this.invitationSetExpiredDate(),
-            type: EnumVerificationType.invitation,
-            token,
-            expiredInMinutes: this.invitationExpiredInMinutes,
-            link: `${this.homeUrl}/${this.invitationLinkBaseUrl}/${token}`,
-            resendInMinutes: this.invitationResendInMinutes,
-        };
-    }
 }

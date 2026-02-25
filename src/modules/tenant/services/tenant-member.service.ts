@@ -51,7 +51,7 @@ export class TenantMemberService {
         private readonly tenantUtil: TenantUtil
     ) {}
 
-    async addMember(
+    async createMember(
         tenantId: string,
         dto: TenantMemberCreateRequestDto,
         createdBy: string
@@ -79,7 +79,7 @@ export class TenantMemberService {
             });
         }
 
-        const member = await this.tenantRepository.addMember({
+        const member = await this.tenantRepository.createMember({
             tenantId,
             userId: dto.userId,
             roleId: role.id,
@@ -252,7 +252,7 @@ export class TenantMemberService {
         const expiresAt = this.helperService.dateCreate();
         expiresAt.setHours(expiresAt.getHours() + dto.durationInHours);
 
-        const member = await this.tenantRepository.addMember({
+        const member = await this.tenantRepository.createMember({
             tenantId,
             userId,
             roleId: role.id,

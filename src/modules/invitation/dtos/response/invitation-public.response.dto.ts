@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class UserInvitationResponseDto {
+export class InvitationPublicResponseDto {
     @ApiProperty({
         required: true,
     })
@@ -8,9 +8,14 @@ export class UserInvitationResponseDto {
 
     @ApiProperty({
         required: true,
-        enum: ['pending', 'expired', 'completed'],
     })
-    status: 'pending' | 'expired' | 'completed';
+    isVerified: boolean;
+
+    @ApiProperty({
+        required: true,
+        enum: ['pending', 'expired', 'completed', 'deleted'],
+    })
+    status: 'pending' | 'expired' | 'completed' | 'deleted';
 
     @ApiProperty({
         required: false,

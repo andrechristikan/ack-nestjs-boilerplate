@@ -87,10 +87,10 @@ model TenantMember {
   reason    String?
 
   // timestamps fields
-  createdAt DateTime  @default(now())
-  createdBy String?   @db.ObjectId
-  updatedAt DateTime  @updatedAt
-  updatedBy String?   @db.ObjectId
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
 
   tenant Tenant? @relation("TenantMembers", fields: [tenantId], references: [id])
   user   User?   @relation("UserTenantMembers", fields: [userId], references: [id])
@@ -105,11 +105,11 @@ model TenantMember {
 }
 
 model Project {
-  id       String            @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId String?           @db.ObjectId
-  ownerUserId String?        @db.ObjectId
-  name     String
-  status   EnumProjectStatus @default(active)
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String?           @db.ObjectId
+  ownerUserId String?           @db.ObjectId
+  name        String
+  status      EnumProjectStatus @default(active)
 
   // timestamps fields
   createdAt DateTime  @default(now())
@@ -241,6 +241,7 @@ model User {
 
   mobileNumbers      UserMobileNumber[]         @relation("UserMobileNumberUser")
   verifications      Verification[]             @relation("UserVerifications")
+  invitations        Invitation[]               @relation("UserInvitations")
   passwordHistories  PasswordHistory[]          @relation("UserPasswordHistories")
   activityLogs       ActivityLog[]              @relation("UserActivityLogs")
   role               Role?                      @relation("UserRole", fields: [roleId], references: [id])
@@ -287,6 +288,43 @@ model Verification {
   @@index(fields: [token, expiredAt, isUsed, type])
   @@index(fields: [token])
   @@map("Verifications")
+}
+
+model Invitation {
+  id             String             @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String             @db.ObjectId
+  to             String
+  token          String
+  reference      String
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  sentAt         DateTime?
+  invitationType EnumInvitationType
+  roleScope      EnumRoleScope
+  contextId      String             @db.ObjectId
+  contextName    String
+  memberId       String?            @db.ObjectId
+  metadata       Json?
+
+  // timestamps fields
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
+  deletedAt DateTime?
+  deletedBy String?   @db.ObjectId
+
+  user User? @relation("UserInvitations", fields: [userId], references: [id])
+
+  @@unique(fields: [reference])
+  @@unique(fields: [token])
+  @@index(fields: [token, expiresAt, acceptedAt, deletedAt])
+  @@index(fields: [userId, createdAt])
+  @@index(fields: [userId, invitationType, contextId, createdAt])
+  @@index(fields: [memberId, createdAt])
+  @@index(fields: [invitationType, contextId, createdAt])
+  @@index(fields: [createdAt])
+  @@map("Invitations")
 }
 
 model PasswordHistory {
@@ -591,6 +629,7 @@ enum EnumTenantStatus {
 }
 
 enum EnumTenantMemberStatus {
+  pending
   active
   inactive
 }
@@ -601,6 +640,7 @@ enum EnumProjectStatus {
 }
 
 enum EnumProjectMemberStatus {
+  pending
   active
   inactive
 }
@@ -620,7 +660,11 @@ enum EnumTermPolicyStatus {
 enum EnumVerificationType {
   mobileNumber
   email
-  invitation
+}
+
+enum EnumInvitationType {
+  tenantMember
+  projectMember
 }
 
 enum EnumPasswordHistoryType {

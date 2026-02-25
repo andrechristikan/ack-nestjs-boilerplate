@@ -12,14 +12,14 @@ import {
     IProjectMemberCreate,
     IProjectMemberUpdate,
     IProjectMemberWithUser,
-    IProjectMemberWithVerification,
+    IProjectMemberWithInvitation,
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumInvitationType,
     EnumProjectMemberStatus,
     EnumProjectStatus,
-    EnumVerificationType,
     Project,
     ProjectMember,
 } from '@prisma/client';
@@ -118,7 +118,7 @@ export class ProjectRepository {
         });
     }
 
-    async addMember(data: IProjectMemberCreate): Promise<ProjectMember> {
+    async createMember(data: IProjectMemberCreate): Promise<ProjectMember> {
         return this.databaseService.projectMember.create({
             data: {
                 ...data,
@@ -183,15 +183,21 @@ export class ProjectRepository {
     async findMembersWithPaginationOffsetByProject(
         projectId: string,
         { where, ...params }: IPaginationQueryOffsetParams
-    ): Promise<IResponsePagingReturn<IProjectMemberWithVerification>> {
-        return this.paginationService.offset<IProjectMemberWithVerification>(
+    ): Promise<IResponsePagingReturn<IProjectMemberWithInvitation>> {
+        return this.paginationService.offset<IProjectMemberWithInvitation>(
             this.databaseService.projectMember,
             {
                 ...params,
                 where: {
                     ...where,
                     projectId,
-                    status: EnumProjectMemberStatus.active,
+                    status:
+                        where?.status ?? {
+                            in: [
+                                EnumProjectMemberStatus.active,
+                                EnumProjectMemberStatus.pending,
+                            ],
+                        },
                     deletedAt: null,
                     project: {
                         deletedAt: null,
@@ -206,9 +212,11 @@ export class ProjectRepository {
                             email: true,
                             isVerified: true,
                             verifiedAt: true,
-                            verifications: {
+                            invitations: {
                                 where: {
-                                    type: EnumVerificationType.invitation,
+                                    invitationType:
+                                        EnumInvitationType.projectMember,
+                                    contextId: projectId,
                                 },
                                 orderBy: {
                                     createdAt: 'desc',
@@ -217,9 +225,9 @@ export class ProjectRepository {
                                 select: {
                                     id: true,
                                     createdAt: true,
-                                    expiredAt: true,
-                                    isUsed: true,
-                                    verifiedAt: true,
+                                    expiresAt: true,
+                                    acceptedAt: true,
+                                    deletedAt: true,
                                 },
                             },
                         },

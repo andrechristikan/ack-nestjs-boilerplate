@@ -1,10 +1,11 @@
 import {
     InvitationProvider,
-    InvitationType,
+    InvitationProviderMember,
 } from '@modules/invitation/interfaces/invitation.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumInvitationType,
     EnumProjectMemberStatus,
     EnumRoleScope,
     EnumUserSignUpFrom,
@@ -13,31 +14,41 @@ import {
 @Injectable()
 export class ProjectInvitationProvider implements InvitationProvider {
     readonly roleScope: EnumRoleScope = EnumRoleScope.project;
-    readonly invitationType: InvitationType = 'project_member';
+    readonly invitationType = EnumInvitationType.projectMember;
     readonly signUpFrom: EnumUserSignUpFrom = EnumUserSignUpFrom.project;
 
     constructor(private readonly projectRepository: ProjectRepository) {}
 
-    async existsMember(contextId: string, userId: string): Promise<boolean> {
+    async findMemberByUserId(
+        contextId: string,
+        userId: string
+    ): Promise<InvitationProviderMember | null> {
         const member = await this.projectRepository.findMemberByProjectAndUser(
             contextId,
             userId
         );
 
-        return !!member;
+        if (!member) {
+            return null;
+        }
+
+        return {
+            id: member.id,
+            status: member.status,
+        };
     }
 
-    async addMember(
+    async createMember(
         contextId: string,
         userId: string,
         roleId: string,
         createdBy: string
     ): Promise<string> {
-        const member = await this.projectRepository.addMember({
+        const member = await this.projectRepository.createMember({
             projectId: contextId,
             userId,
             roleId,
-            status: EnumProjectMemberStatus.active,
+            status: EnumProjectMemberStatus.pending,
             createdBy,
             updatedBy: createdBy,
         });

@@ -2,6 +2,8 @@ import { CountryPublicController } from '@modules/country/controllers/country.pu
 import { CountryModule } from '@modules/country/country.module';
 import { HelloPublicController } from '@modules/hello/controllers/hello.public.controller';
 import { HelloModule } from '@modules/hello/hello.module';
+import { InvitationPublicController } from '@modules/invitation/controllers/invitation.public.controller';
+import { InvitationModule } from '@modules/invitation/invitation.module';
 import { TermPolicyPublicController } from '@modules/term-policy/controllers/term-policy.public.controller';
 import { UserPublicController } from '@modules/user/controllers/user.public.controller';
 import { UserModule } from '@modules/user/user.module';
@@ -17,6 +19,7 @@ import { TenantRoutesPublicModule } from '@modules/tenant/tenant.routes.public.m
     controllers: [
         CountryPublicController,
         HelloPublicController,
+        InvitationPublicController,
         UserPublicController,
         TermPolicyPublicController,
     ],
@@ -25,6 +28,7 @@ import { TenantRoutesPublicModule } from '@modules/tenant/tenant.routes.public.m
     imports: [
         CountryModule,
         HelloModule,
+        InvitationModule,
         UserModule,
         ...withTenancyRoute('/public', TenantRoutesPublicModule),
     ],

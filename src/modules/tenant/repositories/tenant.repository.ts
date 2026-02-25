@@ -116,6 +116,25 @@ export class TenantRepository {
         });
     }
 
+    async findMemberByTenantAndUser(
+        tenantId: string,
+        userId: string
+    ): Promise<Pick<TenantMember, 'id' | 'status'> | null> {
+        return this.databaseService.tenantMember.findFirst({
+            where: {
+                tenantId,
+                userId,
+                tenant: {
+                    deletedAt: null,
+                },
+            },
+            select: {
+                id: true,
+                status: true,
+            },
+        });
+    }
+
     async findOneActiveMemberByTenantAndUser(
         tenantId: string,
         userId: string
@@ -153,7 +172,7 @@ export class TenantRepository {
         });
     }
 
-    async addMember(
+    async createMember(
         data: ITenantMemberCreate
     ): Promise<TenantMember> {
         return this.databaseService.tenantMember.create({

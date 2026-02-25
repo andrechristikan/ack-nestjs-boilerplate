@@ -9,12 +9,12 @@ import {
 
 export type IProject = Project;
 
-export interface IProjectMemberVerification {
+export interface IProjectMemberInvitation {
     id: string;
     createdAt: Date;
-    expiredAt: Date;
-    isUsed: boolean;
-    verifiedAt: Date | null;
+    expiresAt: Date;
+    acceptedAt: Date | null;
+    deletedAt: Date | null;
 }
 
 export interface IProjectMember extends ProjectMember {
@@ -26,13 +26,13 @@ export interface IProjectMemberWithUser extends IProjectMember {
     user: User;
 }
 
-export interface IProjectMemberWithVerification extends IProjectMember {
+export interface IProjectMemberWithInvitation extends IProjectMember {
     user: {
         id: string;
         email: string;
         isVerified: boolean;
         verifiedAt: Date | null;
-        verifications: IProjectMemberVerification[];
+        invitations: IProjectMemberInvitation[];
     };
 };
 

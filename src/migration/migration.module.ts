@@ -14,6 +14,7 @@ import { EmailModule } from '@modules/email/email.module';
 import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
 import { AwsModule } from '@common/aws/aws.module';
 import { MigrationTenantSeed } from '@migration/seeds/migration.tenant.seed';
+import { MigrationProjectSeed } from '@migration/seeds/migration.project.seed';
 
 /**
  * Migration module that provides database seeding functionality.
@@ -27,6 +28,7 @@ import { MigrationTenantSeed } from '@migration/seeds/migration.tenant.seed';
         MigrationFeatureFlagSeed,
         MigrationRoleSeed,
         MigrationTenantSeed,
+        MigrationProjectSeed,
         MigrationTermPolicySeed,
         MigrationUserSeed,
         MigrationTemplateEmailSeed,

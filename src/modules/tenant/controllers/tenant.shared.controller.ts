@@ -160,7 +160,7 @@ export class TenantSharedController {
         @Body() body: TenantMemberCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.tenantMemberService.addMember(tenant.id, body, createdBy);
+        return this.tenantMemberService.createMember(tenant.id, body, createdBy);
     }
 
     @TenantSharedCreateMemberInvitationDoc()

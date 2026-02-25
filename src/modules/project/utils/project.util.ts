@@ -4,7 +4,7 @@ import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project
 import { InvitationStatusResponseDto } from '@modules/invitation/dtos/response/invitation-status.response.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { IProject, IProjectMemberWithVerification } from '@modules/project/interfaces/project.interface';
+import { IProject, IProjectMemberWithInvitation } from '@modules/project/interfaces/project.interface';
 
 @Injectable()
 export class ProjectUtil {
@@ -16,7 +16,7 @@ export class ProjectUtil {
     }
 
     mapMember(
-        member: IProjectMemberWithVerification,
+        member: IProjectMemberWithInvitation,
         invitation: InvitationStatusResponseDto
     ): ProjectMemberResponseDto {
         return plainToInstance(ProjectMemberResponseDto, {

@@ -1,14 +1,10 @@
-import { EnumRoleScope, EnumUserSignUpFrom } from '@prisma/client';
+import {
+    EnumInvitationType,
+    EnumRoleScope,
+    EnumUserSignUpFrom,
+} from '@prisma/client';
 
-/**
- * Discriminator for invitation origins handled by the generic invitation flow.
- *
- * This value is:
- * - persisted in verification metadata for traceability,
- * - propagated to email payloads for context-aware copy,
- * - used by providers/services to keep behavior explicit per origin.
- */
-export type InvitationType = 'project_member' | 'tenant_member';
+export type InvitationMemberStatus = 'pending' | 'active' | 'inactive';
 
 /**
  * Canonical invitation context payload assembled by `InvitationService`
@@ -20,14 +16,9 @@ export type InvitationType = 'project_member' | 'tenant_member';
  */
 export interface InvitationContext {
     /**
-     * Origin of the invitation flow (project member vs tenant member).
-     *
-     * Used to:
-     * - identify which business flow generated the invitation,
-     * - drive invitation-specific email content decisions,
-     * - make invitation metadata self-describing for future analysis.
+     * Origin of the invitation flow.
      */
-    invitationType: InvitationType;
+    invitationType: EnumInvitationType;
 
     /**
      * Authorization scope associated with the invited role.
@@ -43,7 +34,6 @@ export interface InvitationContext {
      * Examples:
      * - project id when inviting a project member
      * - tenant id when inviting a tenant member
-     *
      * Stored in metadata to keep a strong link between token and source context.
      */
     contextId: string;
@@ -57,27 +47,42 @@ export interface InvitationContext {
     contextName: string;
 }
 
+export interface InvitationAcceptanceTarget {
+    invitationType: EnumInvitationType;
+    contextId: string;
+    memberId?: string;
+}
+
+export interface InvitationTokenPayload {
+    expiresAt: Date;
+    expiredInMinutes: number;
+    resendInMinutes: number;
+    reference: string;
+    token: string;
+    link: string;
+}
+
+export interface InvitationProviderMember {
+    id: string;
+    status: InvitationMemberStatus;
+}
+
 /**
- * Provider contract consumed by `InvitationService`.
+ * Provider contract consumed by `InvitationService` for current
+ * tenant/project invitation flows.
  *
- * A provider adapts one domain (project, tenant, future domains) to the
- * generic invitation workflow by exposing:
- * - static context metadata (`invitationType`, `roleScope`, `signUpFrom`),
- * - membership operations (`existsMember`, `addMember`, `findMemberUserId`),
- * - context lookup (`getContextName`).
- *
- * This keeps invitation orchestration centralized while preserving domain
- * isolation inside each provider implementation.
+ * Membership and context operations are required to preserve strong
+ * compile-time guarantees for context-bound invitations.
  */
 export interface InvitationProvider {
     /**
      * Fixed invitation flow discriminator for the implementing provider.
      *
      * Example:
-     * - `project_member` in `ProjectInvitationProvider`
-     * - `tenant_member` in `TenantInvitationProvider`
+     * - `EnumInvitationType.projectMember` in `ProjectInvitationProvider`
+     * - `EnumInvitationType.tenantMember` in `TenantInvitationProvider`
      */
-    invitationType: InvitationType;
+    invitationType: EnumInvitationType;
 
     /**
      * Fixed role scope used when validating role names for this invitation flow.
@@ -107,18 +112,13 @@ export interface InvitationProvider {
     getContextName(contextId: string): Promise<string | null>;
 
     /**
-     * Checks whether the target user is already a member of the context.
-     *
-     * @param contextId - Identifier of the context entity.
-     * @param userId - User identifier to check.
-     * @returns `true` when membership already exists, otherwise `false`.
-     *
-     * This guard prevents duplicate memberships before attempting `addMember`.
+     * Finds an existing membership for the user in the target context,
+     * regardless of status, to support invitation idempotency and status-aware flows.
      */
-    existsMember(
+    findMemberByUserId(
         contextId: string,
         userId: string
-    ): Promise<boolean>;
+    ): Promise<InvitationProviderMember | null>;
 
     /**
      * Creates a membership record for the given user inside the context.
@@ -129,10 +129,10 @@ export interface InvitationProvider {
      * @param createdBy - Actor id that initiated the operation.
      * @returns Newly created membership id.
      *
-     * Implementations should create an active membership compatible with their
-     * domain model so invitation sending can target this member afterwards.
+     * Implementations should create a membership record compatible with their
+     * domain model (typically `pending` for invitation acceptance flows).
      */
-    addMember(
+    createMember(
         contextId: string,
         userId: string,
         roleId: string,

@@ -8,7 +8,7 @@ import {
 } from 'class-validator';
 import { IsPassword } from '@common/request/validations/request.is-password.validation';
 
-export class UserInvitationCompleteRequestDto {
+export class InvitationCompleteRequestDto {
     @ApiProperty({
         description: 'Invitation token',
         example: faker.string.alphanumeric(20),
@@ -50,8 +50,8 @@ export class UserInvitationCompleteRequestDto {
         maxLength: 50,
         minLength: 8,
     })
-    @IsNotEmpty()
     @IsPassword()
+    @IsNotEmpty()
     @MinLength(8)
     @MaxLength(50)
     password: string;
