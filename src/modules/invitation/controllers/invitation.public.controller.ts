@@ -6,7 +6,6 @@ import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { InvitationAcceptRequestDto } from '@modules/invitation/dtos/request/invitation-accept.request.dto';
 import { InvitationCompleteRequestDto } from '@modules/invitation/dtos/request/invitation-complete.request.dto';
 import { InvitationPublicResponseDto } from '@modules/invitation/dtos/response/invitation-public.response.dto';
 import { InvitationService } from '@modules/invitation/services/invitation.service';
@@ -28,20 +27,6 @@ export class InvitationPublicController {
         @Param('token') token: string
     ): Promise<IResponseReturn<InvitationPublicResponseDto>> {
         return this.invitationService.getInvitation(token);
-    }
-
-    @Response('invitation.acceptInvitation')
-    @ApiKeyProtected()
-    @Put('/accept')
-    async acceptInvitation(
-        @Body() body: InvitationAcceptRequestDto,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<void>> {
-        return this.invitationService.acceptInvitation(body, {
-            ipAddress,
-            userAgent,
-        });
     }
 
     @Response('invitation.completeInvitation')

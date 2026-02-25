@@ -2,6 +2,7 @@ import {
     EnumInvitationType,
     EnumRoleScope,
     EnumUserSignUpFrom,
+    Prisma,
 } from '@prisma/client';
 
 export type InvitationMemberStatus = 'pending' | 'active' | 'inactive';
@@ -153,4 +154,23 @@ export interface InvitationProvider {
         contextId: string,
         memberId: string
     ): Promise<string | null>;
+}
+
+export type InvitationWithUser = Prisma.InvitationGetPayload<{
+    include: { user: true };
+}>;
+
+export interface IInvitationCreate {
+    userId: string;
+    userEmail: string;
+    token: string;
+    reference: string;
+    expiresAt: Date;
+    invitationType: EnumInvitationType;
+    roleScope: EnumRoleScope;
+    contextId: string;
+    contextName: string;
+    memberId?: string;
+    metadata?: Prisma.InputJsonValue;
+    requestedBy: string;
 }

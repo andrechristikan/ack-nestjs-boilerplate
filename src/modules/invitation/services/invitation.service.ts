@@ -22,7 +22,7 @@ import { InvitationUtil } from '@modules/invitation/utils/invitation.util';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { UserService } from '@modules/user/services/user.service';
-import { EnumUserStatus_CODE_ERROR } from '@modules/user/enums/user.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     BadRequestException,
@@ -121,17 +121,19 @@ export class InvitationService {
                     this.invitationUtil.createInvitationTokenPayload();
 
                 invitationRecord = await this.invitationRepository.createInvitation(
-                    user.id,
-                    user.email,
-                    invitationToken,
                     {
+                        userId: user.id,
+                        userEmail: user.email,
+                        token: invitationToken.token,
+                        reference: invitationToken.reference,
+                        expiresAt: invitationToken.expiresAt,
                         invitationType: provider.invitationType,
                         roleScope: provider.roleScope,
                         contextId,
                         contextName,
-                        memberId
+                        memberId,
+                        requestedBy: createdBy,
                     },
-                    createdBy
                 );
             }
 
@@ -185,12 +187,12 @@ export class InvitationService {
         const user = await this.userRepository.findOneById(userId);
         if (!user) {
             throw new NotFoundException({
-                statusCode: EnumUserStatus_CODE_ERROR.notFound,
+                statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
             });
         } else if (user.status !== EnumUserStatus.active) {
             throw new ForbiddenException({
-                statusCode: EnumUserStatus_CODE_ERROR.inactiveForbidden,
+                statusCode: EnumUserStatusCodeError.inactiveForbidden,
                 message: 'user.error.inactive',
             });
         }
@@ -215,17 +217,19 @@ export class InvitationService {
                     this.invitationUtil.createInvitationTokenPayload();
 
                 invitation = await this.invitationRepository.createInvitation(
-                    user.id,
-                    user.email,
-                    invitationPayload,
                     {
+                        userId: user.id,
+                        userEmail: user.email,
+                        token: invitationPayload.token,
+                        reference: invitationPayload.reference,
+                        expiresAt: invitationPayload.expiresAt,
                         invitationType: invitationContext.invitationType,
                         roleScope: invitationContext.roleScope,
                         contextId: invitationContext.contextId,
                         contextName: invitationContext.contextName,
-                        memberId
+                        memberId,
+                        requestedBy,
                     },
-                    requestedBy
                 );
             }
 
@@ -241,7 +245,7 @@ export class InvitationService {
                 if (today < canResendAt) {
                     throw new BadRequestException({
                         statusCode:
-                            EnumUserStatus_CODE_ERROR.verificationEmailResendLimitExceeded,
+                            EnumUserStatusCodeError.verificationEmailResendLimitExceeded,
                         message:
                             'project.member.error.invitationResendLimitExceeded',
                         messageProperties: {
@@ -355,17 +359,9 @@ export class InvitationService {
         contextId?: string;
         userId?: string;
         includeDeleted?: boolean;
+        pendingOnly?: boolean;
     }): Promise<IResponseReturn<InvitationListResponseDto[]>> {
         const invitations = await this.invitationRepository.findMany(options);
-
-        return { data: this.invitationUtil.mapList(invitations) };
-    }
-
-    async listInvitationsForUser(
-        userId: string
-    ): Promise<IResponseReturn<InvitationListResponseDto[]>> {
-        const invitations =
-            await this.invitationRepository.findManyPendingByUserId(userId);
 
         return { data: this.invitationUtil.mapList(invitations) };
     }
@@ -402,7 +398,7 @@ export class InvitationService {
             }
             if (member.status !== 'active') {
                 throw new BadRequestException({
-                    statusCode: EnumUserStatus_CODE_ERROR.tokenInvalid,
+                    statusCode: EnumUserStatusCodeError.tokenInvalid,
                     message: 'user.error.invitationTokenInvalid',
                 });
             }
@@ -433,7 +429,7 @@ export class InvitationService {
         }
         if (member.status !== 'active') {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.tokenInvalid,
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
                 message: 'user.error.invitationTokenInvalid',
             });
         }
@@ -446,15 +442,15 @@ export class InvitationService {
             await this.invitationRepository.findOneByToken(token);
         if (!invitation) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.tokenInvalid,
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
                 message: 'user.error.invitationTokenInvalid',
             });
         }
 
         const today = this.helperService.dateCreate();
-        let status: 'pending' | 'expired' | 'completed' | 'deleted' =
-            'pending';
+        let status: 'pending' | 'expired' | 'completed' | 'deleted' = 'pending';
 
+        //TODO: invitation with deletedAt will never be returned by `findOneByToken` since it excludes deletedAt:null
         if (invitation.deletedAt) {
             status = 'deleted';
         } else if (invitation.acceptedAt) {
@@ -486,13 +482,21 @@ export class InvitationService {
 
     async acceptInvitation(
         { token }: InvitationAcceptRequestDto,
+        userId: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         const invitation = await this.invitationRepository.findOneActiveByToken(token);
         if (!invitation) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.tokenInvalid,
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
                 message: 'user.error.invitationTokenInvalid',
+            });
+        }
+
+        if (invitation.userId !== userId) {
+            throw new ForbiddenException({
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'http.clientError.forbidden',
             });
         }
 
@@ -552,7 +556,7 @@ export class InvitationService {
         const invitation = await this.invitationRepository.findOneActiveByToken(token);
         if (!invitation) {
             throw new BadRequestException({
-                statusCode: EnumUserStatus_CODE_ERROR.tokenInvalid,
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
                 message: 'user.error.invitationTokenInvalid',
             });
         }

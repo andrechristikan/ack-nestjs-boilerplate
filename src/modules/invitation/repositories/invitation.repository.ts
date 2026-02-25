@@ -10,17 +10,16 @@ import {
     EnumInvitationType,
     EnumPasswordHistoryType,
     EnumProjectMemberStatus,
-    EnumRoleScope,
     EnumTenantMemberStatus,
     EnumUserStatus,
     Invitation,
     Prisma,
     User,
 } from '@prisma/client';
-
-type InvitationWithUser = Prisma.InvitationGetPayload<{
-    include: { user: true };
-}>;
+import {
+    IInvitationCreate,
+    InvitationWithUser,
+} from '@modules/invitation/interfaces/invitation.interface';
 
 @Injectable()
 export class InvitationRepository {
@@ -62,50 +61,6 @@ export class InvitationRepository {
             },
             include: {
                 user: true,
-            },
-        });
-    }
-
-    async findOneLatestByUserId(
-        userId: string,
-        options?: {
-            includeDeleted?: boolean;
-        }
-    ): Promise<Invitation | null> {
-        return this.databaseService.invitation.findFirst({
-            where: {
-                userId,
-                ...(options?.includeDeleted ? {} : { deletedAt: null }),
-                user: {
-                    deletedAt: null,
-                },
-            },
-            orderBy: {
-                createdAt: EnumPaginationOrderDirectionType.desc,
-            },
-        });
-    }
-
-    async findOneLatestByUserAndContext(
-        userId: string,
-        invitationType: EnumInvitationType,
-        contextId: string,
-        options?: {
-            includeDeleted?: boolean;
-        }
-    ): Promise<Invitation | null> {
-        return this.databaseService.invitation.findFirst({
-            where: {
-                userId,
-                invitationType,
-                contextId,
-                ...(options?.includeDeleted ? {} : { deletedAt: null }),
-                user: {
-                    deletedAt: null,
-                },
-            },
-            orderBy: {
-                createdAt: EnumPaginationOrderDirectionType.desc,
             },
         });
     }
@@ -163,10 +118,20 @@ export class InvitationRepository {
         contextId?: string;
         userId?: string;
         includeDeleted?: boolean;
+        pendingOnly?: boolean;
     }): Promise<InvitationWithUser[]> {
+        const today = this.helperService.dateCreate();
         const where: Prisma.InvitationWhereInput = {
             ...(options?.includeDeleted ? {} : { deletedAt: null }),
             user: { deletedAt: null },
+            ...(options?.pendingOnly
+                ? {
+                      acceptedAt: null,
+                      expiresAt: {
+                          gt: today,
+                      },
+                  }
+                : {}),
         };
 
         if (options?.userId) {
@@ -183,26 +148,6 @@ export class InvitationRepository {
 
         return this.databaseService.invitation.findMany({
             where,
-            include: { user: true },
-            orderBy: { createdAt: 'desc' },
-        });
-    }
-
-    async findManyPendingByUserId(userId: string): Promise<InvitationWithUser[]> {
-        const today = this.helperService.dateCreate();
-
-        return this.databaseService.invitation.findMany({
-            where: {
-                userId,
-                deletedAt: null,
-                acceptedAt: null,
-                expiresAt: {
-                    gt: today,
-                },
-                user: {
-                    deletedAt: null,
-                },
-            },
             include: { user: true },
             orderBy: { createdAt: 'desc' },
         });
@@ -434,22 +379,20 @@ export class InvitationRepository {
     }
 
     async createInvitation(
-        userId: string,
-        userEmail: string,
-        invitationToken: {
-            expiresAt: Date;
-            reference: string;
-            token: string;
-        },
-        context: {
-            invitationType: EnumInvitationType;
-            roleScope: EnumRoleScope;
-            contextId: string;
-            contextName: string;
-            memberId: string;
-            metadata?: Prisma.InputJsonValue;
-        },
-        requestedBy: string
+        {
+            userId,
+            userEmail,
+            token,
+            reference,
+            expiresAt,
+            invitationType,
+            roleScope,
+            contextId,
+            contextName,
+            memberId,
+            metadata,
+            requestedBy,
+        }: IInvitationCreate
     ): Promise<Invitation> {
         const today = this.helperService.dateCreate();
 
@@ -474,17 +417,17 @@ export class InvitationRepository {
                     data: {
                         userId,
                         to: userEmail,
-                        token: invitationToken.token,
-                        reference: invitationToken.reference,
-                        expiresAt: invitationToken.expiresAt,
+                        token,
+                        reference,
+                        expiresAt,
                         acceptedAt: null,
                         sentAt: null,
-                        invitationType: context.invitationType,
-                        roleScope: context.roleScope,
-                        contextId: context.contextId,
-                        contextName: context.contextName,
-                        memberId: context.memberId,
-                        metadata: context.metadata,
+                        invitationType,
+                        roleScope,
+                        contextId,
+                        contextName,
+                        memberId,
+                        metadata,
                         deletedAt: null,
                         deletedBy: null,
                         createdBy: requestedBy,
