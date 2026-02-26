@@ -171,40 +171,45 @@ export class InviteRepository {
     ): Promise<void> {
         const today = this.helperService.dateCreate();
 
-        await this.databaseService.invite.update({
-            where: { id: inviteId },
-            data: {
-                acceptedAt: today,
-                updatedBy: userId,
-            },
-        });
-
-        await this.databaseService.invite.updateMany({
-            where: {
-                userId,
-                deletedAt: null,
-                acceptedAt: null,
-                expiresAt: { gt: today },
-            },
-            data: {
-                expiresAt: today,
-                updatedBy: userId,
-            },
-        });
-
-        await this.databaseService.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                activityLogs: {
-                    create: {
-                        action: EnumActivityLogAction.userCompleteInvite,
-                        ipAddress,
-                        userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        createdBy: userId,
+        await this.databaseService.$transaction(
+            async (client: Prisma.TransactionClient) => {
+                await client.invite.update({
+                    where: { id: inviteId },
+                    data: {
+                        acceptedAt: today,
+                        updatedBy: userId,
                     },
-                },
-            },
-        });
+                });
+
+                await client.invite.updateMany({
+                    where: {
+                        userId,
+                        deletedAt: null,
+                        acceptedAt: null,
+                        expiresAt: { gt: today },
+                    },
+                    data: {
+                        expiresAt: today,
+                        updatedBy: userId,
+                    },
+                });
+
+                await client.user.update({
+                    where: { id: userId, deletedAt: null },
+                    data: {
+                        activityLogs: {
+                            create: {
+                                action: EnumActivityLogAction.userCompleteInvite,
+                                ipAddress,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                createdBy: userId,
+                            },
+                        },
+                    },
+                });
+            }
+        );
     }
 
     async signupByInvite(
@@ -221,61 +226,66 @@ export class InviteRepository {
     ): Promise<User> {
         const today = this.helperService.dateCreate();
 
-        await this.databaseService.invite.update({
-            where: {
-                id: inviteId,
-            },
-            data: {
-                acceptedAt: today,
-                updatedBy: userId,
-            },
-        });
+        return this.databaseService.$transaction(
+            async (client: Prisma.TransactionClient) => {
+                await client.invite.update({
+                    where: {
+                        id: inviteId,
+                    },
+                    data: {
+                        acceptedAt: today,
+                        updatedBy: userId,
+                    },
+                });
 
-        await this.databaseService.invite.updateMany({
-            where: {
-                userId,
-                deletedAt: null,
-                acceptedAt: null,
-                expiresAt: {
-                    gt: today,
-                },
-            },
-            data: {
-                expiresAt: today,
-                updatedBy: userId,
-            },
-        });
+                await client.invite.updateMany({
+                    where: {
+                        userId,
+                        deletedAt: null,
+                        acceptedAt: null,
+                        expiresAt: {
+                            gt: today,
+                        },
+                    },
+                    data: {
+                        expiresAt: today,
+                        updatedBy: userId,
+                    },
+                });
 
-        return this.databaseService.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                name,
-                password: passwordHash,
-                passwordCreated,
-                passwordExpired,
-                passwordAttempt: 0,
-                isVerified: true,
-                verifiedAt: today,
-                updatedBy: userId,
-                passwordHistories: {
-                    create: {
+                return client.user.update({
+                    where: { id: userId, deletedAt: null },
+                    data: {
+                        name,
                         password: passwordHash,
-                        type: EnumPasswordHistoryType.signUp,
-                        expiredAt: passwordPeriodExpired,
-                        createdAt: passwordCreated,
-                        createdBy: userId,
+                        passwordCreated,
+                        passwordExpired,
+                        passwordAttempt: 0,
+                        isVerified: true,
+                        verifiedAt: today,
+                        updatedBy: userId,
+                        passwordHistories: {
+                            create: {
+                                password: passwordHash,
+                                type: EnumPasswordHistoryType.signUp,
+                                expiredAt: passwordPeriodExpired,
+                                createdAt: passwordCreated,
+                                createdBy: userId,
+                            },
+                        },
+                        activityLogs: {
+                            create: {
+                                action: EnumActivityLogAction.userCompleteInvite,
+                                ipAddress,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                createdBy: userId,
+                            },
+                        },
                     },
-                },
-                activityLogs: {
-                    create: {
-                        action: EnumActivityLogAction.userCompleteInvite,
-                        ipAddress,
-                        userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        createdBy: userId,
-                    },
-                },
-            },
-        });
+                });
+            }
+        );
     }
 
     async createInvite({

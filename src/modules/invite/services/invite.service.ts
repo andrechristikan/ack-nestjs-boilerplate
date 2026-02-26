@@ -418,9 +418,10 @@ export class InviteService {
         }
 
         if (!invite.user.isVerified) {
+            // The user need to use the `invite/signup` endpoint to complete the signup process.
             throw new BadRequestException({
                 statusCode: HttpStatus.BAD_REQUEST,
-                message: 'invite.error.useComplete',
+                message: 'invite.error.useSignup',
             });
         }
 
@@ -442,7 +443,7 @@ export class InviteService {
                 requestLog
             );
 
-            return {};
+            return;
         } catch (err: unknown) {
             if (err instanceof HttpException) {
                 throw err;
@@ -468,6 +469,8 @@ export class InviteService {
             });
         }
         if (invite.user.isVerified) {
+            // The user associated to this invite-token is already signed up, and verified,
+            //  needs to use the `/invite/accept` endpoint.
             throw new BadRequestException({
                 statusCode: HttpStatus.BAD_REQUEST,
                 message: 'invite.error.useAccept',
@@ -508,7 +511,7 @@ export class InviteService {
                 }
             );
 
-            return {};
+            return;
         } catch (err: unknown) {
             if (err instanceof HttpException) {
                 throw err;
