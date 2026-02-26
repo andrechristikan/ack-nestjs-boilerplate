@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { InvitationStatusResponseDto } from '@modules/invitation/dtos/response/invitation-status.response.dto';
+import { InviteStatusResponseDto } from '@modules/invite/dtos/response/invite-status.response.dto';
 
-export class InvitationListResponseDto {
+export class InviteListResponseDto {
     @ApiProperty({ required: true })
     id: string;
 
@@ -11,8 +11,8 @@ export class InvitationListResponseDto {
     @ApiProperty({ required: true })
     email: string;
 
-    @ApiProperty({ required: true, type: InvitationStatusResponseDto })
-    status: InvitationStatusResponseDto;
+    @ApiProperty({ required: true, type: InviteStatusResponseDto })
+    status: InviteStatusResponseDto;
 
     @ApiProperty({ required: false, type: Object, nullable: true })
     metadata: Record<string, unknown> | null;

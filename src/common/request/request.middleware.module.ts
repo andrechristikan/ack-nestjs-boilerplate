@@ -16,7 +16,7 @@ import { RequestCustomLanguageMiddleware } from '@common/request/middlewares/req
 import { RequestCompressionMiddleware } from '@common/request/middlewares/request.compression.middleware';
 import { SentryModule } from '@sentry/nestjs/setup';
 import { RequestTenantMiddleware } from '@common/request/middlewares/request.tenant.middleware';
-import { TENANCY_ENABLED } from '@modules/tenant/util/tenant.toggle';
+import { TENANCY_ENABLED } from '@modules/tenant/utils/tenant.toggle';
 
 /**
  * Central middleware configuration module for HTTP request/response processing.

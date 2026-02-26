@@ -12,10 +12,6 @@
         "create": "Tenant member created successfully.",
         "update": "Tenant member updated successfully.",
         "delete": "Tenant member deleted successfully.",
-        "invitation": {
-            "create": "Invitation member created successfully.",
-            "send": "Invitation sent successfully."
-        },
         "error": {
             "forbidden": "You are not allowed to access this tenant.",
             "notFound": "Tenant member was not found.",
@@ -23,6 +19,10 @@
             "userIdInvalid": "Tenant member userId is invalid.",
             "memberIdInvalid": "Tenant member id is invalid.",
             "exist": "User is already assigned to this tenant."
+        },
+        "invite": {
+            "create": "Invitation member created successfully.",
+            "send": "Invitation sent successfully."
         }
     },
     "role": {

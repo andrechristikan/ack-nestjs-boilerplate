@@ -5,7 +5,7 @@ export enum EnumSendEmailProcess {
     createByAdmin = 'createByAdmin',
     forgotPassword = 'forgotPassword',
     verification = 'verification',
-    invitation = 'invitation',
+    invite = 'invite',
     emailVerified = 'emailVerified',
     mobileNumberVerified = 'mobileNumberVerified',
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',

@@ -42,8 +42,8 @@ const featureFlagData: Prisma.FeatureFlagCreateInput[] = [
         },
     },
     {
-        key: 'tenantInvitations',
-        description: 'Enable tenant member invitations',
+        key: 'tenantInvites',
+        description: 'Enable tenant member invites',
         rolloutPercent: 100,
         isEnable: true,
     },
@@ -54,8 +54,8 @@ const featureFlagData: Prisma.FeatureFlagCreateInput[] = [
         isEnable: true,
     },
     {
-        key: 'projectInvitations',
-        description: 'Enable project member invitations',
+        key: 'projectInvites',
+        description: 'Enable project member invites',
         rolloutPercent: 100,
         isEnable: true,
     },

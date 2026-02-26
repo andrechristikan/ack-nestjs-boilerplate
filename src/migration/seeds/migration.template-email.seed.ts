@@ -30,7 +30,7 @@ export class MigrationTemplateEmailSeed
             mobileNumberVerifiedEmail,
             tempPasswordEmail,
             verificationEmail,
-            invitationEmail,
+            inviteEmail,
             welcomeEmail,
             resetTwoFactorByAdminEmail,
         ] = await Promise.all([
@@ -41,7 +41,7 @@ export class MigrationTemplateEmailSeed
             this.emailTemplateService.getMobileNumberVerified(),
             this.emailTemplateService.getTempPassword(),
             this.emailTemplateService.getVerification(),
-            this.emailTemplateService.getInvitation(),
+            this.emailTemplateService.getInvite(),
             this.emailTemplateService.getWelcome(),
             this.emailTemplateService.getResetTwoFactorByAdmin(),
         ]);
@@ -98,9 +98,9 @@ export class MigrationTemplateEmailSeed
             promises.push(this.emailTemplateService.importVerification());
         }
 
-        if (!invitationEmail) {
-            this.logger.log('Invitation Email template missing, importing...');
-            promises.push(this.emailTemplateService.importInvitation());
+        if (!inviteEmail) {
+            this.logger.log('Invite Email template missing, importing...');
+            promises.push(this.emailTemplateService.importInvite());
         }
 
         if (!welcomeEmail) {
@@ -143,7 +143,7 @@ export class MigrationTemplateEmailSeed
                 this.emailTemplateService.deleteMobileNumberVerified(),
                 this.emailTemplateService.deleteTempPassword(),
                 this.emailTemplateService.deleteVerification(),
-                this.emailTemplateService.deleteInvitation(),
+                this.emailTemplateService.deleteInvite(),
                 this.emailTemplateService.deleteWelcome(),
                 this.emailTemplateService.deleteResetTwoFactorByAdmin(),
             ]);

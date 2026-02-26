@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-export interface IConfigInvitation {
+export interface IConfigInvite {
     expiredInMinutes: number;
     tokenLength: number;
     linkBaseUrl: string;
@@ -12,11 +12,11 @@ export interface IConfigInvitation {
 }
 
 export default registerAs(
-    'invitation',
-    (): IConfigInvitation => ({
+    'invite',
+    (): IConfigInvite => ({
         expiredInMinutes: 5,
         tokenLength: 100,
-        linkBaseUrl: 'invitation',
+        linkBaseUrl: 'invite',
         resendInMinutes: 2,
         reference: {
             prefix: 'INV',

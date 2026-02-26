@@ -23,9 +23,9 @@ import {
 } from '@modules/project/constants/project.policy.constant';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
-import { InvitationCreateRequestDto } from '@modules/invitation/dtos/request/invitation.create.request.dto';
-import { InvitationCreateResponseDto } from '@modules/invitation/dtos/response/invitation-create.response.dto';
-import { InvitationSendResponseDto } from '@modules/invitation/dtos/response/invitation-send.response.dto';
+import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
+import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
+import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
@@ -33,13 +33,13 @@ import { ProjectResponseDto } from '@modules/project/dtos/response/project.respo
 import {
     ProjectTenantSharedCreateDoc,
     ProjectTenantSharedCreateMemberDoc,
-    ProjectTenantSharedCreateMemberInvitationDoc,
+    ProjectTenantSharedCreateMemberInviteDoc,
     ProjectTenantSharedDeleteDoc,
     ProjectTenantSharedGetDoc,
     ProjectTenantSharedListDoc,
     ProjectTenantSharedListMemberRolesDoc,
     ProjectTenantSharedListMembersDoc,
-    ProjectTenantSharedSendMemberInvitationDoc,
+    ProjectTenantSharedSendMemberInviteDoc,
     ProjectTenantSharedUpdateDoc,
     ProjectTenantSharedUpdateMemberDoc,
 } from '@modules/project/docs/project.tenant.shared.doc';
@@ -155,23 +155,23 @@ export class ProjectTenantSharedController {
         return this.projectMemberService.create(projectId, body, createdBy);
     }
 
-    @ProjectTenantSharedCreateMemberInvitationDoc()
-    @FeatureFlagProtected('projectInvitations')
-    @Response('project.member.invitation.create')
+    @ProjectTenantSharedCreateMemberInviteDoc()
+    @FeatureFlagProtected('projectInvites')
+    @Response('project.member.invite.create')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Post('/:projectId/members/invitations')
-    async createMemberInvitation(
+    @Post('/:projectId/members/invites')
+    async createMemberInvite(
         @Param('projectId', RequestRequiredPipe) projectId: string,
-        @Body() body: InvitationCreateRequestDto,
+        @Body() body: InviteCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<InvitationCreateResponseDto>> {
-        return this.projectMemberService.createInvitation(
+    ): Promise<IResponseReturn<InviteCreateResponseDto>> {
+        return this.projectMemberService.createInvite(
             projectId,
             body,
             createdBy,
@@ -179,23 +179,23 @@ export class ProjectTenantSharedController {
         );
     }
 
-    @ProjectTenantSharedSendMemberInvitationDoc()
-    @FeatureFlagProtected('projectInvitations')
-    @Response('project.member.invitation.send')
+    @ProjectTenantSharedSendMemberInviteDoc()
+    @FeatureFlagProtected('projectInvites')
+    @Response('project.member.invite.send')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Post('/:projectId/members/:memberId/invitations/send')
-    async sendMemberInvitation(
+    @Post('/:projectId/members/:memberId/invites/send')
+    async sendMemberInvite(
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @Param('memberId', RequestRequiredPipe) memberId: string,
         @AuthJwtPayload('userId') requestedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
-    ): Promise<IResponseReturn<InvitationSendResponseDto>> {
-        return this.projectMemberService.sendInvitation(
+    ): Promise<IResponseReturn<InviteSendResponseDto>> {
+        return this.projectMemberService.sendInvite(
             projectId,
             memberId,
             requestedBy,

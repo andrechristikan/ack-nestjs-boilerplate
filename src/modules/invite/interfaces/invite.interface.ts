@@ -1,25 +1,25 @@
 import {
-    EnumInvitationType,
+    EnumInviteType,
     EnumRoleScope,
     EnumUserSignUpFrom,
     Prisma,
 } from '@prisma/client';
 
-export type InvitationMemberStatus = 'pending' | 'active' | 'inactive';
+export type InviteMemberStatus = 'pending' | 'active' | 'inactive';
 
 /**
- * Canonical invitation context payload assembled by `InvitationService`
+ * Canonical invitation context payload assembled by `InviteService`
  * and forwarded to user/email layers when sending an invitation.
  *
  * The object is intentionally compact and serializable because it is also
  * stored inside verification metadata for auditability and deterministic
  * invitation rendering.
  */
-export interface InvitationContext {
+export interface InviteContext {
     /**
      * Origin of the invitation flow.
      */
-    invitationType: EnumInvitationType;
+    invitationType: EnumInviteType;
 
     /**
      * Authorization scope associated with the invited role.
@@ -48,13 +48,13 @@ export interface InvitationContext {
     contextName: string;
 }
 
-export interface InvitationAcceptanceTarget {
-    invitationType: EnumInvitationType;
+export interface InviteAcceptanceTarget {
+    invitationType: EnumInviteType;
     contextId: string;
     memberId?: string;
 }
 
-export interface InvitationTokenPayload {
+export interface InviteTokenPayload {
     expiresAt: Date;
     expiredInMinutes: number;
     resendInMinutes: number;
@@ -63,32 +63,32 @@ export interface InvitationTokenPayload {
     link: string;
 }
 
-export interface InvitationProviderMember {
+export interface InviteProviderMember {
     id: string;
-    status: InvitationMemberStatus;
+    status: InviteMemberStatus;
 }
 
 /**
- * Provider contract consumed by `InvitationService` for current
+ * Provider contract consumed by `InviteService` for current
  * tenant/project invitation flows.
  *
  * Membership and context operations are required to preserve strong
  * compile-time guarantees for context-bound invitations.
  */
-export interface InvitationProvider {
+export interface InviteProvider {
     /**
      * Fixed invitation flow discriminator for the implementing provider.
      *
      * Example:
-     * - `EnumInvitationType.projectMember` in `ProjectInvitationProvider`
-     * - `EnumInvitationType.tenantMember` in `TenantInvitationProvider`
+     * - `EnumInviteType.projectMember` in `ProjectInviteProvider`
+     * - `EnumInviteType.tenantMember` in `TenantInviteProvider`
      */
-    invitationType: EnumInvitationType;
+    invitationType: EnumInviteType;
 
     /**
      * Fixed role scope used when validating role names for this invitation flow.
      *
-     * `InvitationService.createInvitation` uses this scope to ensure role lookup
+     * `InviteService.createInvitation` uses this scope to ensure role lookup
      * is performed in the correct namespace.
      */
     roleScope: EnumRoleScope;
@@ -119,7 +119,7 @@ export interface InvitationProvider {
     findMemberByUserId(
         contextId: string,
         userId: string
-    ): Promise<InvitationProviderMember | null>;
+    ): Promise<InviteProviderMember | null>;
 
     /**
      * Creates a membership record for the given user inside the context.
@@ -148,7 +148,7 @@ export interface InvitationProvider {
      * @returns Member user id when found, otherwise `null`.
      *
      * Used by invitation resend/send endpoints where the API receives a member id
-     * and `InvitationService` needs the corresponding user id.
+     * and `InviteService` needs the corresponding user id.
      */
     findMemberUserId(
         contextId: string,
@@ -156,17 +156,17 @@ export interface InvitationProvider {
     ): Promise<string | null>;
 }
 
-export type InvitationWithUser = Prisma.InvitationGetPayload<{
+export type InviteWithUser = Prisma.InviteGetPayload<{
     include: { user: true };
 }>;
 
-export interface IInvitationCreate {
+export interface IInviteCreate {
     userId: string;
     userEmail: string;
     token: string;
     reference: string;
     expiresAt: Date;
-    invitationType: EnumInvitationType;
+    invitationType: EnumInviteType;
     roleScope: EnumRoleScope;
     contextId: string;
     contextName: string;

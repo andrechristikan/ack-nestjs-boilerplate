@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project.access.response.dto';
-import { InvitationStatusResponseDto } from '@modules/invitation/dtos/response/invitation-status.response.dto';
+import { InviteStatusResponseDto } from '@modules/invite/dtos/response/invite-status.response.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { IProject, IProjectMemberWithInvitation } from '@modules/project/interfaces/project.interface';
+import { IProject, IProjectMemberWithInvite } from '@modules/project/interfaces/project.interface';
 
 @Injectable()
 export class ProjectUtil {
@@ -16,8 +16,8 @@ export class ProjectUtil {
     }
 
     mapMember(
-        member: IProjectMemberWithInvitation,
-        invitation: InvitationStatusResponseDto
+        member: IProjectMemberWithInvite,
+        invite: InviteStatusResponseDto
     ): ProjectMemberResponseDto {
         return plainToInstance(ProjectMemberResponseDto, {
             id: member.id,
@@ -27,7 +27,7 @@ export class ProjectUtil {
             roleName: member.role.name,
             status: member.status,
             createdAt: member.createdAt,
-            invitation,
+            invite,
         });
     }
 

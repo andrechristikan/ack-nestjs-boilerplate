@@ -26,7 +26,7 @@ This module builds on top of existing tenant, authentication, authorization, res
 - [Tenant Documentation][ref-doc-tenant] - Tenant context, `x-tenant-id`, tenant membership and tenant permissions
 - [Authorization Documentation][ref-doc-authorization] - Guard/decorator authorization patterns
 - [Authentication Documentation][ref-doc-authentication] - JWT and user context requirements
-- [Invitation Documentation][ref-doc-invitation] - Invitation lifecycle, context-aware invite emails, and completion flow
+- [Invite Documentation][ref-doc-invitation] - Invitation lifecycle, context-aware invite emails, and completion flow
 - [Pagination Documentation][ref-doc-pagination] - Query and response pagination behavior
 - [Response Documentation][ref-doc-response] - Standard response envelope and status/message handling
 - [Request Validation Documentation][ref-doc-request-validation] - DTO validation details
@@ -138,7 +138,7 @@ Controller: `ProjectTenantSharedController` (`/tenants/projects`)
 All endpoints also include `ApiKey`, `@AuthJwtAccessProtected`, and `@UserProtected`.
 
 `/tenants/projects` routes are only available when tenancy is enabled.
-Invitation routes under `/tenants/projects/:projectId/members/invitations` are documented in [Invitation Documentation][ref-doc-invitation].
+Invitation routes under `/tenants/projects/:projectId/members/invites` are documented in [Invite Documentation][ref-doc-invitation].
 Use `/tenants/projects/:projectId/members/roles` to resolve `roleId` values for member updates and invitation requests.
 
 ## Decorators and Guards
@@ -229,7 +229,7 @@ Used by:
   - `status?: EnumProjectMemberStatus`
 
 For validation mechanics and error shape, see [Request Validation Documentation][ref-doc-request-validation].
-For invitation request contracts, see [Invitation Documentation][ref-doc-invitation].
+For invitation request contracts, see [Invite Documentation][ref-doc-invitation].
 
 ### Response DTOs
 
@@ -241,7 +241,7 @@ For invitation request contracts, see [Invitation Documentation][ref-doc-invitat
   - `accessType`, `project`
 
 For response envelope format (`statusCode`, `message`, `data`), see [Response Documentation][ref-doc-response].
-For invitation response contracts, see [Invitation Documentation][ref-doc-invitation].
+For invitation response contracts, see [Invite Documentation][ref-doc-invitation].
 
 ### Access Type
 
@@ -322,7 +322,7 @@ async membership(
 - Tenant-scoped project endpoints (`/shared/tenants/projects`) are mounted via `TenantRoutesSharedModule` only when `TENANCY_ENABLED=true`.
 - For tenant-scoped project resource routes, both tenant membership and project permission guards are applied.
 - Role abilities are evaluated via policy ability factory; project routes use `project` subject, while member routes use `projectMember` subject.
-- Invitation-related endpoints and lifecycle are documented in [Invitation Documentation][ref-doc-invitation].
+- Invitation-related endpoints and lifecycle are documented in [Invite Documentation][ref-doc-invitation].
 
 ## Future Improvements
 
@@ -353,7 +353,7 @@ async membership(
 
 [ref-doc-authentication]: authentication.md
 [ref-doc-authorization]: authorization.md
-[ref-doc-invitation]: invitation.md
+[ref-doc-invitation]: invite.md
 [ref-doc-pagination]: pagination.md
 [ref-doc-request-validation]: request-validation.md
 [ref-doc-response]: response.md

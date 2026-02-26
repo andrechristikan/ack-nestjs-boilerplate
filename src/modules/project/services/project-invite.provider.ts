@@ -1,20 +1,20 @@
 import {
-    InvitationProvider,
-    InvitationProviderMember,
-} from '@modules/invitation/interfaces/invitation.interface';
+    InviteProvider,
+    InviteProviderMember,
+} from '@modules/invite/interfaces/invite.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { Injectable } from '@nestjs/common';
 import {
-    EnumInvitationType,
+    EnumInviteType,
     EnumProjectMemberStatus,
     EnumRoleScope,
     EnumUserSignUpFrom,
 } from '@prisma/client';
 
 @Injectable()
-export class ProjectInvitationProvider implements InvitationProvider {
+export class ProjectInviteProvider implements InviteProvider {
     readonly roleScope: EnumRoleScope = EnumRoleScope.project;
-    readonly invitationType = EnumInvitationType.projectMember;
+    readonly invitationType = EnumInviteType.projectMember;
     readonly signUpFrom: EnumUserSignUpFrom = EnumUserSignUpFrom.project;
 
     constructor(private readonly projectRepository: ProjectRepository) {}
@@ -22,7 +22,7 @@ export class ProjectInvitationProvider implements InvitationProvider {
     async findMemberByUserId(
         contextId: string,
         userId: string
-    ): Promise<InvitationProviderMember | null> {
+    ): Promise<InviteProviderMember | null> {
         const member = await this.projectRepository.findMemberByProjectAndUser(
             contextId,
             userId

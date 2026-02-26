@@ -1,20 +1,20 @@
 import {
-    InvitationProvider,
-    InvitationProviderMember,
-} from '@modules/invitation/interfaces/invitation.interface';
+    InviteProvider,
+    InviteProviderMember,
+} from '@modules/invite/interfaces/invite.interface';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { Injectable } from '@nestjs/common';
 import {
-    EnumInvitationType,
+    EnumInviteType,
     EnumRoleScope,
     EnumTenantMemberStatus,
     EnumUserSignUpFrom,
 } from '@prisma/client';
 
 @Injectable()
-export class TenantInvitationProvider implements InvitationProvider {
+export class TenantInviteProvider implements InviteProvider {
     readonly roleScope = EnumRoleScope.tenant;
-    readonly invitationType = EnumInvitationType.tenantMember;
+    readonly invitationType = EnumInviteType.tenantMember;
     readonly signUpFrom = EnumUserSignUpFrom.tenant;
 
     constructor(private readonly tenantRepository: TenantRepository) {}
@@ -22,7 +22,7 @@ export class TenantInvitationProvider implements InvitationProvider {
     async findMemberByUserId(
         contextId: string,
         userId: string
-    ): Promise<InvitationProviderMember | null> {
+    ): Promise<InviteProviderMember | null> {
         const member = await this.tenantRepository.findMemberByTenantAndUser(
             contextId,
             userId

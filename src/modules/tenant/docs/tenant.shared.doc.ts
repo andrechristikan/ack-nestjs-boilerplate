@@ -8,9 +8,9 @@ import {
     DocTenantPermissionProtected,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
-import { InvitationCreateRequestDto } from '@modules/invitation/dtos/request/invitation.create.request.dto';
-import { InvitationCreateResponseDto } from '@modules/invitation/dtos/response/invitation-create.response.dto';
-import { InvitationSendResponseDto } from '@modules/invitation/dtos/response/invitation-send.response.dto';
+import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
+import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
+import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import {
     TenantDocParamsMemberId,
 } from '@modules/tenant/constants/tenant.doc.constant';
@@ -92,10 +92,10 @@ export function TenantSharedCreateMemberDoc(): MethodDecorator {
     );
 }
 
-export function TenantSharedCreateMemberInvitationDoc(): MethodDecorator {
+export function TenantSharedCreateMemberInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'create tenant member invitation',
+            summary: 'create tenant member invite',
         }),
         DocAuth({
             xApiKey: true,
@@ -104,22 +104,22 @@ export function TenantSharedCreateMemberInvitationDoc(): MethodDecorator {
         DocTenantPermissionProtected(),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: InvitationCreateRequestDto,
+            dto: InviteCreateRequestDto,
         }),
-        DocResponse<InvitationCreateResponseDto>(
-            'tenant.member.invitation.create',
+        DocResponse<InviteCreateResponseDto>(
+            'tenant.member.invite.create',
             {
                 httpStatus: HttpStatus.CREATED,
-                dto: InvitationCreateResponseDto,
+                dto: InviteCreateResponseDto,
             }
         )
     );
 }
 
-export function TenantSharedSendMemberInvitationDoc(): MethodDecorator {
+export function TenantSharedSendMemberInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'send tenant member invitation',
+            summary: 'send tenant member invite',
         }),
         DocAuth({
             xApiKey: true,
@@ -129,10 +129,10 @@ export function TenantSharedSendMemberInvitationDoc(): MethodDecorator {
         DocRequest({
             params: TenantDocParamsMemberId,
         }),
-        DocResponse<InvitationSendResponseDto>(
-            'tenant.member.invitation.send',
+        DocResponse<InviteSendResponseDto>(
+            'tenant.member.invite.send',
             {
-                dto: InvitationSendResponseDto,
+                dto: InviteSendResponseDto,
             }
         )
     );

@@ -384,16 +384,16 @@ export class EmailTemplateService implements IEmailTemplateService {
      * Import invitation email template to AWS SES
      * @returns {Promise<boolean>} True if template imported successfully, false otherwise
      */
-    async importInvitation(): Promise<boolean> {
+    async importInvite(): Promise<boolean> {
         try {
             const templatePath = join(
                 this.templatesDir,
-                'email.invitation.template.hbs'
+                'email.invite.template.hbs'
             );
 
             await this.awsSESService.createTemplate({
-                name: EnumSendEmailProcess.invitation,
-                subject: `Invitation`,
+                name: EnumSendEmailProcess.invite,
+                subject: `Invite`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
 
@@ -409,10 +409,10 @@ export class EmailTemplateService implements IEmailTemplateService {
      * Get invitation email template from AWS SES
      * @returns {Promise<GetTemplateCommandOutput | null>} Template data from AWS SES
      */
-    async getInvitation(): Promise<GetTemplateCommandOutput | null> {
+    async getInvite(): Promise<GetTemplateCommandOutput | null> {
         try {
             const template = await this.awsSESService.getTemplate({
-                name: EnumSendEmailProcess.invitation,
+                name: EnumSendEmailProcess.invite,
             });
             return template;
         } catch (err: unknown) {
@@ -426,10 +426,10 @@ export class EmailTemplateService implements IEmailTemplateService {
      * Delete invitation email template from AWS SES
      * @returns {Promise<boolean>} True if template deleted successfully, false otherwise
      */
-    async deleteInvitation(): Promise<boolean> {
+    async deleteInvite(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: EnumSendEmailProcess.invitation,
+                name: EnumSendEmailProcess.invite,
             });
 
             return true;

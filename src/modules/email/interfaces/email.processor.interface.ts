@@ -1,6 +1,6 @@
 import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
 import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
-import { EmailInvitationDto } from '@modules/email/dtos/email.invitation.dto';
+import { EmailInviteDto } from '@modules/email/dtos/email.invite.dto';
 import { EmailMobileNumberVerifiedDto } from '@modules/email/dtos/email.mobile-number-verified.dto';
 import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
@@ -26,9 +26,9 @@ export interface IEmailProcessor {
         data: EmailSendDto,
         verification: EmailVerificationDto
     ): Promise<boolean>;
-    processInvitation(
+    processInvite(
         data: EmailSendDto,
-        invitation: EmailInvitationDto
+        invite: EmailInviteDto
     ): Promise<boolean>;
     processEmailVerified(
         data: EmailSendDto,

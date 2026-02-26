@@ -1,6 +1,6 @@
 import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
 import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
-import { EmailInvitationDto } from '@modules/email/dtos/email.invitation.dto';
+import { EmailInviteDto } from '@modules/email/dtos/email.invite.dto';
 import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
@@ -87,7 +87,7 @@ export class EmailService implements IEmailService {
         );
     }
 
-    async sendInvitation(
+    async sendInvite(
         userId: string,
         { email, username }: EmailSendDto,
         {
@@ -98,10 +98,10 @@ export class EmailService implements IEmailService {
             invitationType,
             roleScope,
             contextName,
-        }: EmailInvitationDto
+        }: EmailInviteDto
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumSendEmailProcess.invitation,
+            EnumSendEmailProcess.invite,
             {
                 send: {
                     email,
@@ -118,7 +118,7 @@ export class EmailService implements IEmailService {
                 },
             },
             {
-                jobId: `${EnumSendEmailProcess.invitation}-${userId}`,
+                jobId: `${EnumSendEmailProcess.invite}-${userId}`,
                 priority: EnumQueuePriority.HIGH,
             }
         );

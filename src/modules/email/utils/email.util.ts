@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EnumSendEmailProcess } from '@modules/email/enums/email.enum';
 import { title } from 'case';
 import { ConfigService } from '@nestjs/config';
-import { EmailInvitationDto } from '@modules/email/dtos/email.invitation.dto';
+import { EmailInviteDto } from '@modules/email/dtos/email.invite.dto';
 import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
@@ -259,10 +259,10 @@ export class EmailUtil {
     /**
      * Send invitation email message
      * @param {EmailSendDto} emailData - Email and username data
-     * @param {EmailInvitationDto} invitationData - Invitation token, context and expiration data
+     * @param {EmailInviteDto} invitationData - Invitation token, context and expiration data
      * @returns {Promise<boolean>} True if email sent successfully, false otherwise
      */
-    async sendInvitation(
+    async sendInvite(
         { username, email }: EmailSendDto,
         {
             expiredAt,
@@ -272,11 +272,11 @@ export class EmailUtil {
             invitationType,
             roleScope,
             contextName,
-        }: EmailInvitationDto
+        }: EmailInviteDto
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: EnumSendEmailProcess.invitation,
+                templateName: EnumSendEmailProcess.invite,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {

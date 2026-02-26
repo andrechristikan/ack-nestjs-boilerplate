@@ -15,9 +15,9 @@ import {
     ProjectDocParamsId,
     ProjectDocParamsProjectMemberId,
 } from '@modules/project/constants/project.doc.constant';
-import { InvitationCreateRequestDto } from '@modules/invitation/dtos/request/invitation.create.request.dto';
-import { InvitationCreateResponseDto } from '@modules/invitation/dtos/response/invitation-create.response.dto';
-import { InvitationSendResponseDto } from '@modules/invitation/dtos/response/invitation-send.response.dto';
+import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
+import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
+import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
@@ -146,10 +146,10 @@ export function ProjectTenantSharedCreateMemberDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedCreateMemberInvitationDoc(): MethodDecorator {
+export function ProjectTenantSharedCreateMemberInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'create project member invitation',
+            summary: 'create project member invite',
         }),
         DocAuth({
             xApiKey: true,
@@ -160,22 +160,22 @@ export function ProjectTenantSharedCreateMemberInvitationDoc(): MethodDecorator 
         DocRequest({
             params: ProjectDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: InvitationCreateRequestDto,
+            dto: InviteCreateRequestDto,
         }),
-        DocResponse<InvitationCreateResponseDto>(
-            'project.member.invitation.create',
+        DocResponse<InviteCreateResponseDto>(
+            'project.member.invite.create',
             {
                 httpStatus: HttpStatus.CREATED,
-                dto: InvitationCreateResponseDto,
+                dto: InviteCreateResponseDto,
             }
         )
     );
 }
 
-export function ProjectTenantSharedSendMemberInvitationDoc(): MethodDecorator {
+export function ProjectTenantSharedSendMemberInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'send project member invitation',
+            summary: 'send project member invite',
         }),
         DocAuth({
             xApiKey: true,
@@ -186,9 +186,9 @@ export function ProjectTenantSharedSendMemberInvitationDoc(): MethodDecorator {
         DocRequest({
             params: ProjectDocParamsProjectMemberId,
         }),
-        DocResponse<InvitationSendResponseDto>('project.member.invitation.send', {
+        DocResponse<InviteSendResponseDto>('project.member.invite.send', {
             httpStatus: HttpStatus.CREATED,
-            dto: InvitationSendResponseDto,
+            dto: InviteSendResponseDto,
         })
     );
 }

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class InvitationPublicResponseDto {
+export class InvitePublicResponseDto {
     @ApiProperty({
         required: true,
     })

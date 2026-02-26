@@ -11,7 +11,7 @@ import { TermPolicyAdminController } from '@modules/term-policy/controllers/term
 import { UserAdminController } from '@modules/user/controllers/user.admin.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
-import { withTenancyRoute } from '@modules/tenant/util/tenant.toggle';
+import { withTenancyRoute } from '@modules/tenant/utils/tenant.toggle';
 import { TenantRoutesAdminModule } from '@modules/tenant/tenant.routes.admin.module';
 
 /**

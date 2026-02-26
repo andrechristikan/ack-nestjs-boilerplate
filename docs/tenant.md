@@ -22,7 +22,7 @@ The tenant system provides multi-tenancy support for SaaS applications where mul
 - [Authorization Documentation][ref-doc-authorization] - For understanding the permission system
 - [Authentication Documentation][ref-doc-authentication] - For understanding the authentication system
 - [Database Documentation][ref-doc-database] - For understanding the data model
-- [Invitation Documentation][ref-doc-invitation] - For tenant/project member invitation lifecycle and activation flow
+- [Invite Documentation][ref-doc-invitation] - For tenant/project member invitation lifecycle and activation flow
 
 ## Table of Contents
 
@@ -1021,10 +1021,10 @@ Authorization: Bearer <access_token>
 x-tenant-id: <tenant_id>
 ```
 
-Invitation routes under `/shared/tenants/current/members/invitations` are documented in [Invitation Documentation][ref-doc-invitation].
+Invitation routes under `/shared/tenants/current/members/invites` are documented in [Invite Documentation][ref-doc-invitation].
 Use `/shared/tenants/current/members/roles` to resolve `roleId` values for:
 - `PATCH /shared/tenants/current/members/:memberId`
-- invitation requests documented in [Invitation Documentation][ref-doc-invitation]
+- invitation requests documented in [Invite Documentation][ref-doc-invitation]
 
 ## Setup and Migration
 
@@ -1187,4 +1187,4 @@ getProjects(@TenantCurrent() tenant: ITenant) {
 [ref-doc-authorization]: authorization.md
 [ref-doc-authentication]: authentication.md
 [ref-doc-database]: database.md
-[ref-doc-invitation]: invitation.md
+[ref-doc-invitation]: invite.md

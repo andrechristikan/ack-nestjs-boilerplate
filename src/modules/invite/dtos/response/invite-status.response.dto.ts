@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class InvitationStatusResponseDto {
+export class InviteStatusResponseDto {
     @ApiProperty({
         required: true,
         enum: ['not_sent', 'pending', 'expired', 'completed', 'deleted'],

@@ -1,6 +1,6 @@
 import { EmailCreateByAdminDto } from '@modules/email/dtos/email.create-by-admin.dto';
 import { EmailForgotPasswordDto } from '@modules/email/dtos/email.forgot-password.dto';
-import { EmailInvitationDto } from '@modules/email/dtos/email.invitation.dto';
+import { EmailInviteDto } from '@modules/email/dtos/email.invite.dto';
 import { EmailSendDto } from '@modules/email/dtos/email.send.dto';
 import { EmailTempPasswordDto } from '@modules/email/dtos/email.temp-password.dto';
 import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
@@ -25,7 +25,7 @@ export interface IEmailService {
         { email, username }: EmailSendDto,
         { expiredAt, expiredInMinutes, link, reference }: EmailVerificationDto
     ): Promise<void>;
-    sendInvitation(
+    sendInvite(
         userId: string,
         { email, username }: EmailSendDto,
         {
@@ -36,7 +36,7 @@ export interface IEmailService {
             invitationType,
             roleScope,
             contextName,
-        }: EmailInvitationDto
+        }: EmailInviteDto
     ): Promise<void>;
     sendTemporaryPassword(
         userId: string,

@@ -6,21 +6,21 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { InvitationService } from '@modules/invitation/services/invitation.service';
-import { InvitationUtil } from '@modules/invitation/utils/invitation.util';
+import { InviteService } from '@modules/invite/services/invite.service';
+import { InviteUtil } from '@modules/invite/utils/invite.util';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
-import { InvitationCreateRequestDto } from '@modules/invitation/dtos/request/invitation.create.request.dto';
-import { InvitationCreateResponseDto } from '@modules/invitation/dtos/response/invitation-create.response.dto';
-import { InvitationSendResponseDto } from '@modules/invitation/dtos/response/invitation-send.response.dto';
+import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
+import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
+import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project.access.response.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
-import { ProjectInvitationProvider } from '@modules/project/services/project-invitation.provider';
+import { ProjectInviteProvider } from '@modules/project/services/project-invite.provider';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
@@ -45,10 +45,10 @@ export class ProjectMemberService {
         private readonly roleRepository: RoleRepository,
         private readonly roleService: RoleService,
         private readonly userRepository: UserRepository,
-        private readonly invitationService: InvitationService,
-        private readonly invitationUtil: InvitationUtil,
+        private readonly inviteService: InviteService,
+        private readonly inviteUtil: InviteUtil,
         private readonly projectUtil: ProjectUtil,
-        private readonly projectInvitationProvider: ProjectInvitationProvider
+        private readonly projectInviteProvider: ProjectInviteProvider
     ) {}
 
     async create(
@@ -86,7 +86,7 @@ export class ProjectMemberService {
             });
         }
 
-        if (role.scope !== this.projectInvitationProvider.roleScope) {
+        if (role.scope !== this.projectInviteProvider.roleScope) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
                 message: 'project.role.error.notFound',
@@ -145,7 +145,7 @@ export class ProjectMemberService {
                 });
             }
 
-            if (role.scope !== this.projectInvitationProvider.roleScope) {
+            if (role.scope !== this.projectInviteProvider.roleScope) {
                 throw new NotFoundException({
                     statusCode: HttpStatus.NOT_FOUND,
                     message: 'project.role.error.notFound',
@@ -176,31 +176,31 @@ export class ProjectMemberService {
         }
     }
 
-    async createInvitation(
+    async createInvite(
         projectId: string,
-        dto: InvitationCreateRequestDto,
+        dto: InviteCreateRequestDto,
         createdBy: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<InvitationCreateResponseDto>> {
-        return this.invitationService.createInvitation(
+    ): Promise<IResponseReturn<InviteCreateResponseDto>> {
+        return this.inviteService.createInvite(
             projectId,
             dto,
-            this.projectInvitationProvider,
+            this.projectInviteProvider,
             requestLog,
             createdBy
         );
     }
 
-    async sendInvitation(
+    async sendInvite(
         projectId: string,
         memberId: string,
         requestedBy: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<InvitationSendResponseDto>> {
-        return this.invitationService.sendInvitation(
+    ): Promise<IResponseReturn<InviteSendResponseDto>> {
+        return this.inviteService.sendInvite(
             projectId,
             memberId,
-            this.projectInvitationProvider,
+            this.projectInviteProvider,
             requestLog,
             requestedBy
         );
@@ -232,8 +232,8 @@ export class ProjectMemberService {
             data: data.map(member =>
                 this.projectUtil.mapMember(
                     member,
-                    this.invitationUtil.mapInvitationStatus(
-                        member.user.invitations[0]
+                    this.inviteUtil.mapInviteStatus(
+                        member.user.invites[0]
                     )
                 )
             ),

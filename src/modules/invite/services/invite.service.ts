@@ -6,19 +6,19 @@ import { IResponseReturn } from '@common/response/interfaces/response.interface'
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { EmailService } from '@modules/email/services/email.service';
 import {
-    InvitationAcceptanceTarget,
-    InvitationContext,
-    InvitationProvider,
-} from '@modules/invitation/interfaces/invitation.interface';
-import { InvitationCreateRequestDto } from '@modules/invitation/dtos/request/invitation.create.request.dto';
-import { InvitationCreateResponseDto } from '@modules/invitation/dtos/response/invitation-create.response.dto';
-import { InvitationListResponseDto } from '@modules/invitation/dtos/response/invitation-list.response.dto';
-import { InvitationPublicResponseDto } from '@modules/invitation/dtos/response/invitation-public.response.dto';
-import { InvitationSendResponseDto } from '@modules/invitation/dtos/response/invitation-send.response.dto';
-import { InvitationAcceptRequestDto } from '@modules/invitation/dtos/request/invitation-accept.request.dto';
-import { InvitationCompleteRequestDto } from '@modules/invitation/dtos/request/invitation-complete.request.dto';
-import { InvitationRepository } from '@modules/invitation/repositories/invitation.repository';
-import { InvitationUtil } from '@modules/invitation/utils/invitation.util';
+    InviteAcceptanceTarget,
+    InviteContext,
+    InviteProvider,
+} from '@modules/invite/interfaces/invite.interface';
+import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
+import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
+import { InviteListResponseDto } from '@modules/invite/dtos/response/invite-list.response.dto';
+import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
+import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
+import { InviteAcceptRequestDto } from '@modules/invite/dtos/request/invite-accept.request.dto';
+import { InviteCompleteRequestDto } from '@modules/invite/dtos/request/invite-complete.request.dto';
+import { InviteRepository } from '@modules/invite/repositories/invite.repository';
+import { InviteUtil } from '@modules/invite/utils/invite.util';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { UserService } from '@modules/user/services/user.service';
@@ -34,31 +34,31 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumInvitationType, EnumUserStatus } from '@prisma/client';
+import { EnumInviteType, EnumUserStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { Duration } from 'luxon';
 
 @Injectable()
-export class InvitationService {
+export class InviteService {
     constructor(
         private readonly roleRepository: RoleRepository,
         private readonly userService: UserService,
         private readonly databaseService: DatabaseService,
         private readonly userRepository: UserRepository,
-        private readonly invitationRepository: InvitationRepository,
+        private readonly inviteRepository: InviteRepository,
         private readonly helperService: HelperService,
         private readonly authUtil: AuthUtil,
         private readonly emailService: EmailService,
-        private readonly invitationUtil: InvitationUtil
+        private readonly inviteUtil: InviteUtil
     ) {}
 
-    async createInvitation(
+    async createInvite(
         contextId: string,
-        dto: InvitationCreateRequestDto,
-        provider: InvitationProvider,
+        dto: InviteCreateRequestDto,
+        provider: InviteProvider,
         requestLog: IRequestLog,
         createdBy: string
-    ): Promise<IResponseReturn<InvitationCreateResponseDto>> {
+    ): Promise<IResponseReturn<InviteCreateResponseDto>> {
         try {
             const role = await this.roleRepository.existById(dto.roleId);
             if (!role || role.scope !== provider.roleScope) {
@@ -87,7 +87,7 @@ export class InvitationService {
             if (existingMember && existingMember.status !== 'pending') {
                 throw new ConflictException({
                     statusCode: HttpStatus.CONFLICT,
-                    message: 'invitation.error.memberExist',
+                    message: 'invite.error.memberExist',
                 });
             }
 
@@ -105,28 +105,28 @@ export class InvitationService {
             if (!contextName) {
                 throw new NotFoundException({
                     statusCode: HttpStatus.NOT_FOUND,
-                    message: 'invitation.error.contextNotFound',
+                    message: 'invite.error.contextNotFound',
                 });
             }
 
-            let invitationRecord =
-                await this.invitationRepository.findOneLatestActiveByUserAndContext(
+            let inviteRecord =
+                await this.inviteRepository.findOneLatestActiveByUserAndContext(
                     user.id,
                     provider.invitationType,
                     contextId
                 );
 
-            if (!invitationRecord) {
-                const invitationToken =
-                    this.invitationUtil.createInvitationTokenPayload();
+            if (!inviteRecord) {
+                const inviteToken =
+                    this.inviteUtil.createInviteTokenPayload();
 
-                invitationRecord = await this.invitationRepository.createInvitation(
+                inviteRecord = await this.inviteRepository.createInvite(
                     {
                         userId: user.id,
                         userEmail: user.email,
-                        token: invitationToken.token,
-                        reference: invitationToken.reference,
-                        expiresAt: invitationToken.expiresAt,
+                        token: inviteToken.token,
+                        reference: inviteToken.reference,
+                        expiresAt: inviteToken.expiresAt,
                         invitationType: provider.invitationType,
                         roleScope: provider.roleScope,
                         contextId,
@@ -142,8 +142,8 @@ export class InvitationService {
                     memberId,
                     userId: user.id,
                     email: user.email,
-                    invitation: this.invitationUtil.mapInvitationStatus(
-                        invitationRecord
+                    invite: this.inviteUtil.mapInviteStatus(
+                        inviteRecord
                     ),
                 },
             };
@@ -160,19 +160,19 @@ export class InvitationService {
         }
     }
 
-    async sendInvitation(
+    async sendInvite(
         contextId: string,
         memberId: string,
-        provider: InvitationProvider,
+        provider: InviteProvider,
         requestLog: IRequestLog,
         requestedBy: string
-    ): Promise<IResponseReturn<InvitationSendResponseDto>> {
+    ): Promise<IResponseReturn<InviteSendResponseDto>> {
         const userId = await provider.findMemberUserId(contextId, memberId);
 
         if (!userId) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
-                message: 'invitation.error.memberNotFound',
+                message: 'invite.error.memberNotFound',
             });
         }
 
@@ -180,7 +180,7 @@ export class InvitationService {
         if (!contextName) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
-                message: 'invitation.error.contextNotFound',
+                message: 'invite.error.contextNotFound',
             });
         }
 
@@ -199,46 +199,46 @@ export class InvitationService {
 
         try {
             const today = this.helperService.dateCreate();
-            let invitation =
-                await this.invitationRepository.findOneLatestActiveByUserAndContext(
+            let invite =
+                await this.inviteRepository.findOneLatestActiveByUserAndContext(
                     user.id,
                     provider.invitationType,
                     contextId
                 );
 
-            if (!invitation) {
-                const invitationContext: InvitationContext = {
+            if (!invite) {
+                const inviteContext: InviteContext = {
                     invitationType: provider.invitationType,
                     roleScope: provider.roleScope,
                     contextId,
                     contextName,
                 };
-                const invitationPayload =
-                    this.invitationUtil.createInvitationTokenPayload();
+                const invitePayload =
+                    this.inviteUtil.createInviteTokenPayload();
 
-                invitation = await this.invitationRepository.createInvitation(
+                invite = await this.inviteRepository.createInvite(
                     {
                         userId: user.id,
                         userEmail: user.email,
-                        token: invitationPayload.token,
-                        reference: invitationPayload.reference,
-                        expiresAt: invitationPayload.expiresAt,
-                        invitationType: invitationContext.invitationType,
-                        roleScope: invitationContext.roleScope,
-                        contextId: invitationContext.contextId,
-                        contextName: invitationContext.contextName,
+                        token: invitePayload.token,
+                        reference: invitePayload.reference,
+                        expiresAt: invitePayload.expiresAt,
+                        invitationType: inviteContext.invitationType,
+                        roleScope: inviteContext.roleScope,
+                        contextId: inviteContext.contextId,
+                        contextName: inviteContext.contextName,
                         memberId,
                         requestedBy,
                     },
                 );
             }
 
-            const lastSentAt = invitation.sentAt;
+            const lastSentAt = invite.sentAt;
             if (lastSentAt) {
                 const canResendAt = this.helperService.dateForward(
                     lastSentAt,
                     Duration.fromObject({
-                        minutes: this.invitationUtil.invitationResendInMinutes,
+                        minutes: this.inviteUtil.inviteResendInMinutes,
                     })
                 );
 
@@ -247,7 +247,7 @@ export class InvitationService {
                         statusCode:
                             EnumUserStatusCodeError.verificationEmailResendLimitExceeded,
                         message:
-                            'project.member.error.invitationResendLimitExceeded',
+                            'project.member.error.inviteResendLimitExceeded',
                         messageProperties: {
                             resendIn: this.helperService.dateDiff(
                                 today,
@@ -258,21 +258,21 @@ export class InvitationService {
                 }
             }
 
-            await this.emailService.sendInvitation(
+            await this.emailService.sendInvite(
                 user.id,
                 {
                     email: user.email,
                     username: user.username,
                 },
                 {
-                    expiredAt: invitation.expiresAt.toISOString(),
-                    reference: invitation.reference,
-                    link: this.invitationUtil.createInvitationLink(
-                        invitation.token
+                    expiredAt: invite.expiresAt.toISOString(),
+                    reference: invite.reference,
+                    link: this.inviteUtil.createInviteLink(
+                        invite.token
                     ),
-                    expiredInMinutes: this.invitationUtil.invitationExpiredInMinutes,
+                    expiredInMinutes: this.inviteUtil.inviteExpiredInMinutes,
                     invitationType:
-                        provider.invitationType === EnumInvitationType.tenantMember
+                        provider.invitationType === EnumInviteType.tenantMember
                             ? 'tenant_member'
                             : 'project_member',
                     roleScope: provider.roleScope,
@@ -280,8 +280,8 @@ export class InvitationService {
                 }
             );
 
-            await this.invitationRepository.markInvitationAsSent(
-                invitation.id,
+            await this.inviteRepository.markInviteSent(
+                invite.id,
                 user.id,
                 requestedBy,
                 requestLog
@@ -290,23 +290,24 @@ export class InvitationService {
             const resendAvailableAt = this.helperService.dateForward(
                 today,
                 Duration.fromObject({
-                    minutes: this.invitationUtil.invitationResendInMinutes,
+                    minutes: this.inviteUtil.inviteResendInMinutes,
                 })
             );
 
-            const now = Date.now();
+            const now = this.helperService.dateCreate()
             return {
                 data: {
-                    invitation: {
+                    invite: {
                         status: 'pending',
-                        expiresAt: invitation.expiresAt,
+                        expiresAt: invite.expiresAt,
                         remainingSeconds: Math.max(
                             0,
                             Math.floor(
-                                (invitation.expiresAt.getTime() - now) / 1000
+                                (invite.expiresAt.getTime() - now.getTime()) /
+                                    1000
                             )
                         ),
-                        sentAt: new Date(),
+                        sentAt: now,
                     },
                     resendAvailableAt,
                 },
@@ -331,20 +332,20 @@ export class InvitationService {
      * The token itself is NOT marked as used so it remains distinguishable
      * from a completed invitation in `mapInvitationStatus()`.
      */
-    async deleteInvitation(
+    async deleteInvite(
         userId: string,
         deletedBy: string
     ): Promise<IResponseReturn<void>> {
-        const invitation =
-            await this.invitationRepository.findOneLatestActiveByUserId(userId);
-        if (!invitation) {
+        const invite =
+            await this.inviteRepository.findOneLatestActiveByUserId(userId);
+        if (!invite) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
-                message: 'invitation.error.notFound',
+                message: 'invite.error.notFound',
             });
         }
 
-        await this.invitationRepository.softDelete(invitation.id, deletedBy);
+        await this.inviteRepository.softDelete(invite.id, deletedBy);
 
         return {};
     }
@@ -354,26 +355,26 @@ export class InvitationService {
      *
      * Queries `Invitation` records and filters by scalar invitation fields.
      */
-    async listInvitations(options?: {
-        invitationType?: EnumInvitationType;
+    async listInvites(options?: {
+        invitationType?: EnumInviteType;
         contextId?: string;
         userId?: string;
         includeDeleted?: boolean;
         pendingOnly?: boolean;
-    }): Promise<IResponseReturn<InvitationListResponseDto[]>> {
-        const invitations = await this.invitationRepository.findMany(options);
+    }): Promise<IResponseReturn<InviteListResponseDto[]>> {
+        const invites = await this.inviteRepository.findMany(options);
 
-        return { data: this.invitationUtil.mapList(invitations) };
+        return { data: this.inviteUtil.mapList(invites) };
     }
 
     private async activatePendingMembership(
         client: Prisma.TransactionClient,
         userId: string,
-        target: InvitationAcceptanceTarget
+        target: InviteAcceptanceTarget
     ): Promise<void> {
-        if (target.invitationType === EnumInvitationType.tenantMember) {
+        if (target.invitationType === EnumInviteType.tenantMember) {
             const count =
-                await this.invitationRepository.activatePendingTenantMember(
+                await this.inviteRepository.activatePendingTenantMember(
                     client,
                     userId,
                     target.contextId,
@@ -384,7 +385,7 @@ export class InvitationService {
             }
 
             const member =
-                await this.invitationRepository.findTenantMemberForInvitation(
+                await this.inviteRepository.findTenantMemberForInvite(
                     client,
                     userId,
                     target.contextId,
@@ -393,7 +394,7 @@ export class InvitationService {
             if (!member) {
                 throw new NotFoundException({
                     statusCode: HttpStatus.NOT_FOUND,
-                    message: 'invitation.error.memberNotFound',
+                    message: 'invite.error.memberNotFound',
                 });
             }
             if (member.status !== 'active') {
@@ -405,7 +406,7 @@ export class InvitationService {
             return;
         }
 
-        const count = await this.invitationRepository.activatePendingProjectMember(
+        const count = await this.inviteRepository.activatePendingProjectMember(
             client,
             userId,
             target.contextId,
@@ -415,7 +416,7 @@ export class InvitationService {
             return;
         }
 
-        const member = await this.invitationRepository.findProjectMemberForInvitation(
+        const member = await this.inviteRepository.findProjectMemberForInvite(
             client,
             userId,
             target.contextId,
@@ -424,7 +425,7 @@ export class InvitationService {
         if (!member) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
-                message: 'invitation.error.memberNotFound',
+                message: 'invite.error.memberNotFound',
             });
         }
         if (member.status !== 'active') {
@@ -435,12 +436,12 @@ export class InvitationService {
         }
     }
 
-    async getInvitation(
+    async getInvite(
         token: string
-    ): Promise<IResponseReturn<InvitationPublicResponseDto>> {
-        const invitation =
-            await this.invitationRepository.findOneByToken(token);
-        if (!invitation) {
+    ): Promise<IResponseReturn<InvitePublicResponseDto>> {
+        const invite =
+            await this.inviteRepository.findOneByToken(token);
+        if (!invite) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
                 message: 'user.error.invitationTokenInvalid',
@@ -451,26 +452,26 @@ export class InvitationService {
         let status: 'pending' | 'expired' | 'completed' | 'deleted' = 'pending';
 
         //TODO: invitation with deletedAt will never be returned by `findOneByToken` since it excludes deletedAt:null
-        if (invitation.deletedAt) {
+        if (invite.deletedAt) {
             status = 'deleted';
-        } else if (invitation.acceptedAt) {
+        } else if (invite.acceptedAt) {
             status = 'completed';
-        } else if (invitation.expiresAt <= today) {
+        } else if (invite.expiresAt <= today) {
             status = 'expired';
         }
 
         return {
             data: {
-                email: invitation.user.email,
-                isVerified: invitation.user.isVerified,
+                email: invite.user.email,
+                isVerified: invite.user.isVerified,
                 status,
-                expiresAt: invitation.expiresAt,
+                expiresAt: invite.expiresAt,
                 remainingSeconds:
                     status === 'pending'
                         ? Math.max(
                               0,
                               Math.floor(
-                                  (invitation.expiresAt.getTime() -
+                                  (invite.expiresAt.getTime() -
                                       today.getTime()) /
                                       1000
                               )
@@ -480,51 +481,51 @@ export class InvitationService {
         };
     }
 
-    async acceptInvitation(
-        { token }: InvitationAcceptRequestDto,
+    async acceptInvite(
+        { token }: InviteAcceptRequestDto,
         userId: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        const invitation = await this.invitationRepository.findOneActiveByToken(token);
-        if (!invitation) {
+        const invite = await this.inviteRepository.findOneActiveByToken(token);
+        if (!invite) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
                 message: 'user.error.invitationTokenInvalid',
             });
         }
 
-        if (invitation.userId !== userId) {
+        if (invite.userId !== userId) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'http.clientError.forbidden',
             });
         }
 
-        if (!invitation.user.isVerified) {
+        if (!invite.user.isVerified) {
             throw new BadRequestException({
                 statusCode: HttpStatus.BAD_REQUEST,
-                message: 'invitation.error.useCompleteInvitation',
+                message: 'invite.error.useComplete',
             });
         }
 
         try {
-            const acceptanceTarget: InvitationAcceptanceTarget = {
-                invitationType: invitation.invitationType,
-                contextId: invitation.contextId,
-                ...(invitation.memberId ? { memberId: invitation.memberId } : {}),
+            const acceptanceTarget: InviteAcceptanceTarget = {
+                invitationType: invite.invitationType,
+                contextId: invite.contextId,
+                ...(invite.memberId ? { memberId: invite.memberId } : {}),
             };
 
             await this.databaseService.$transaction(
                 async (client: Prisma.TransactionClient) => {
                     await this.activatePendingMembership(
                         client,
-                        invitation.userId,
+                        invite.userId,
                         acceptanceTarget
                     );
-                    await this.invitationRepository.acceptInvitation(
+                    await this.inviteRepository.acceptInvite(
                         client,
-                        invitation.id,
-                        invitation.userId,
+                        invite.id,
+                        invite.userId,
                         requestLog
                     );
                 }
@@ -544,34 +545,34 @@ export class InvitationService {
         }
     }
 
-    async completeInvitation(
+    async completeInvite(
         {
             token,
             firstName,
             lastName,
             password,
-        }: InvitationCompleteRequestDto,
+        }: InviteCompleteRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        const invitation = await this.invitationRepository.findOneActiveByToken(token);
-        if (!invitation) {
+        const invite = await this.inviteRepository.findOneActiveByToken(token);
+        if (!invite) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
                 message: 'user.error.invitationTokenInvalid',
             });
         }
-        if (invitation.user.isVerified) {
+        if (invite.user.isVerified) {
             throw new BadRequestException({
                 statusCode: HttpStatus.BAD_REQUEST,
-                message: 'invitation.error.useAcceptInvitation',
+                message: 'invite.error.useAccept',
             });
         }
 
         try {
-            const acceptanceTarget: InvitationAcceptanceTarget = {
-                invitationType: invitation.invitationType,
-                contextId: invitation.contextId,
-                ...(invitation.memberId ? { memberId: invitation.memberId } : {}),
+            const acceptanceTarget: InviteAcceptanceTarget = {
+                invitationType: invite.invitationType,
+                contextId: invite.contextId,
+                ...(invite.memberId ? { memberId: invite.memberId } : {}),
             };
 
             const name = `${firstName.trim()} ${lastName.trim()}`.trim();
@@ -581,13 +582,13 @@ export class InvitationService {
                 async (client: Prisma.TransactionClient) => {
                     await this.activatePendingMembership(
                         client,
-                        invitation.userId,
+                        invite.userId,
                         acceptanceTarget
                     );
-                    await this.invitationRepository.completeInvitation(
+                    await this.inviteRepository.completeInvite(
                         client,
-                        invitation.id,
-                        invitation.userId,
+                        invite.id,
+                        invite.userId,
                         name,
                         passwordPayload,
                         requestLog
@@ -596,13 +597,13 @@ export class InvitationService {
             );
 
             await this.emailService.sendVerified(
-                invitation.user.id,
+                invite.user.id,
                 {
-                    email: invitation.user.email,
-                    username: invitation.user.username,
+                    email: invite.user.email,
+                    username: invite.user.username,
                 },
                 {
-                    reference: invitation.reference,
+                    reference: invite.reference,
                 }
             );
 

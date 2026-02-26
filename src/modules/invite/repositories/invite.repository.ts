@@ -7,30 +7,30 @@ import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
-    EnumInvitationType,
+    EnumInviteType,
     EnumPasswordHistoryType,
     EnumProjectMemberStatus,
     EnumTenantMemberStatus,
     EnumUserStatus,
-    Invitation,
+    Invite,
     Prisma,
     User,
 } from '@prisma/client';
 import {
-    IInvitationCreate,
-    InvitationWithUser,
-} from '@modules/invitation/interfaces/invitation.interface';
+    IInviteCreate,
+    InviteWithUser,
+} from '@modules/invite/interfaces/invite.interface';
 
 @Injectable()
-export class InvitationRepository {
+export class InviteRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperService: HelperService
     ) {}
 
-    async findOneByToken(token: string): Promise<InvitationWithUser | null> {
-        return this.databaseService.invitation.findFirst({
+    async findOneByToken(token: string): Promise<InviteWithUser | null> {
+        return this.databaseService.invite.findFirst({
             where: {
                 token,
                 user: {
@@ -43,10 +43,10 @@ export class InvitationRepository {
         });
     }
 
-    async findOneActiveByToken(token: string): Promise<InvitationWithUser | null> {
+    async findOneActiveByToken(token: string): Promise<InviteWithUser | null> {
         const today = this.helperService.dateCreate();
 
-        return this.databaseService.invitation.findFirst({
+        return this.databaseService.invite.findFirst({
             where: {
                 token,
                 acceptedAt: null,
@@ -65,10 +65,10 @@ export class InvitationRepository {
         });
     }
 
-    async findOneLatestActiveByUserId(userId: string): Promise<Invitation | null> {
+    async findOneLatestActiveByUserId(userId: string): Promise<Invite | null> {
         const today = this.helperService.dateCreate();
 
-        return this.databaseService.invitation.findFirst({
+        return this.databaseService.invite.findFirst({
             where: {
                 userId,
                 deletedAt: null,
@@ -88,12 +88,12 @@ export class InvitationRepository {
 
     async findOneLatestActiveByUserAndContext(
         userId: string,
-        invitationType: EnumInvitationType,
+        invitationType: EnumInviteType,
         contextId: string
-    ): Promise<Invitation | null> {
+    ): Promise<Invite | null> {
         const today = this.helperService.dateCreate();
 
-        return this.databaseService.invitation.findFirst({
+        return this.databaseService.invite.findFirst({
             where: {
                 userId,
                 invitationType,
@@ -114,14 +114,14 @@ export class InvitationRepository {
     }
 
     async findMany(options?: {
-        invitationType?: EnumInvitationType;
+        invitationType?: EnumInviteType;
         contextId?: string;
         userId?: string;
         includeDeleted?: boolean;
         pendingOnly?: boolean;
-    }): Promise<InvitationWithUser[]> {
+    }): Promise<InviteWithUser[]> {
         const today = this.helperService.dateCreate();
-        const where: Prisma.InvitationWhereInput = {
+        const where: Prisma.InviteWhereInput = {
             ...(options?.includeDeleted ? {} : { deletedAt: null }),
             user: { deletedAt: null },
             ...(options?.pendingOnly
@@ -146,17 +146,17 @@ export class InvitationRepository {
             where.contextId = options.contextId;
         }
 
-        return this.databaseService.invitation.findMany({
+        return this.databaseService.invite.findMany({
             where,
             include: { user: true },
             orderBy: { createdAt: 'desc' },
         });
     }
 
-    async softDelete(id: string, deletedBy: string): Promise<Invitation> {
+    async softDelete(id: string, deletedBy: string): Promise<Invite> {
         const now = this.helperService.dateCreate();
 
-        return this.databaseService.invitation.update({
+        return this.databaseService.invite.update({
             where: { id },
             data: {
                 deletedAt: now,
@@ -166,7 +166,7 @@ export class InvitationRepository {
         });
     }
 
-    async findTenantMemberForInvitation(
+    async findTenantMemberForInvite(
         client: Prisma.TransactionClient,
         userId: string,
         contextId: string,
@@ -188,7 +188,7 @@ export class InvitationRepository {
         });
     }
 
-    async findProjectMemberForInvitation(
+    async findProjectMemberForInvite(
         client: Prisma.TransactionClient,
         userId: string,
         contextId: string,
@@ -262,9 +262,9 @@ export class InvitationRepository {
         return result.count;
     }
 
-    async completeInvitation(
+    async completeInvite(
         client: Prisma.TransactionClient,
-        invitationId: string,
+        inviteId: string,
         userId: string,
         name: string,
         {
@@ -277,9 +277,9 @@ export class InvitationRepository {
     ): Promise<User> {
         const today = this.helperService.dateCreate();
 
-        await client.invitation.update({
+        await client.invite.update({
             where: {
-                id: invitationId,
+                id: inviteId,
             },
             data: {
                 acceptedAt: today,
@@ -287,7 +287,7 @@ export class InvitationRepository {
             },
         });
 
-        await client.invitation.updateMany({
+        await client.invite.updateMany({
             where: {
                 userId,
                 deletedAt: null,
@@ -324,7 +324,7 @@ export class InvitationRepository {
                 },
                 activityLogs: {
                     create: {
-                        action: EnumActivityLogAction.userCompleteInvitation,
+                        action: EnumActivityLogAction.userCompleteInvite,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
@@ -334,23 +334,23 @@ export class InvitationRepository {
         });
     }
 
-    async acceptInvitation(
+    async acceptInvite(
         client: Prisma.TransactionClient,
-        invitationId: string,
+        inviteId: string,
         userId: string,
         { ipAddress, userAgent }: IRequestLog
     ): Promise<void> {
         const today = this.helperService.dateCreate();
 
-        await client.invitation.update({
-            where: { id: invitationId },
+        await client.invite.update({
+            where: { id: inviteId },
             data: {
                 acceptedAt: today,
                 updatedBy: userId,
             },
         });
 
-        await client.invitation.updateMany({
+        await client.invite.updateMany({
             where: {
                 userId,
                 deletedAt: null,
@@ -368,7 +368,7 @@ export class InvitationRepository {
             data: {
                 activityLogs: {
                     create: {
-                        action: EnumActivityLogAction.userCompleteInvitation,
+                        action: EnumActivityLogAction.userCompleteInvite,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         createdBy: userId,
@@ -378,7 +378,7 @@ export class InvitationRepository {
         });
     }
 
-    async createInvitation(
+    async createInvite(
         {
             userId,
             userEmail,
@@ -392,13 +392,13 @@ export class InvitationRepository {
             memberId,
             metadata,
             requestedBy,
-        }: IInvitationCreate
-    ): Promise<Invitation> {
+        }: IInviteCreate
+    ): Promise<Invite> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.$transaction(
             async (client: Prisma.TransactionClient) => {
-                await client.invitation.updateMany({
+                await client.invite.updateMany({
                     where: {
                         userId,
                         deletedAt: null,
@@ -413,7 +413,7 @@ export class InvitationRepository {
                     },
                 });
 
-                return client.invitation.create({
+                return client.invite.create({
                     data: {
                         userId,
                         to: userEmail,
@@ -439,8 +439,8 @@ export class InvitationRepository {
         );
     }
 
-    async markInvitationAsSent(
-        invitationId: string,
+    async markInviteSent(
+        inviteId: string,
         userId: string,
         requestedBy: string,
         requestLog: IRequestLog
@@ -450,8 +450,8 @@ export class InvitationRepository {
         await this.databaseService.$transaction(
             async (client: Prisma.TransactionClient) => {
                 await Promise.all([
-                    client.invitation.update({
-                        where: { id: invitationId },
+                    client.invite.update({
+                        where: { id: inviteId },
                         data: {
                             sentAt,
                             updatedBy: requestedBy,
@@ -463,7 +463,7 @@ export class InvitationRepository {
                             activityLogs: {
                                 create: {
                                     action:
-                                        EnumActivityLogAction.userSendInvitationEmail,
+                                        EnumActivityLogAction.userSendInviteEmail,
                                     ipAddress: requestLog.ipAddress,
                                     userAgent: this.databaseUtil.toPlainObject(
                                         requestLog.userAgent

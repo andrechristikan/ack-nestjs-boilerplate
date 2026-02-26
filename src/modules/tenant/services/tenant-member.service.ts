@@ -8,10 +8,10 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { InvitationCreateRequestDto } from '@modules/invitation/dtos/request/invitation.create.request.dto';
-import { InvitationCreateResponseDto } from '@modules/invitation/dtos/response/invitation-create.response.dto';
-import { InvitationSendResponseDto } from '@modules/invitation/dtos/response/invitation-send.response.dto';
-import { InvitationService } from '@modules/invitation/services/invitation.service';
+import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
+import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
+import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
+import { InviteService } from '@modules/invite/services/invite.service';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleService } from '@modules/role/services/role.service';
@@ -23,7 +23,7 @@ import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import { TenantRolePlatformSupport } from '@modules/tenant/constants/tenant.constant';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
-import { TenantInvitationProvider } from '@modules/tenant/services/tenant-invitation.provider';
+import { TenantInviteProvider } from '@modules/tenant/services/tenant-invite.provider';
 import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
@@ -46,8 +46,8 @@ export class TenantMemberService {
         private readonly roleService: RoleService,
         private readonly userRepository: UserRepository,
         private readonly helperService: HelperService,
-        private readonly invitationService: InvitationService,
-        private readonly tenantInvitationProvider: TenantInvitationProvider,
+        private readonly inviteService: InviteService,
+        private readonly tenantInviteProvider: TenantInviteProvider,
         private readonly tenantUtil: TenantUtil
     ) {}
 
@@ -157,31 +157,31 @@ export class TenantMemberService {
         return {};
     }
 
-    async createInvitation(
+    async createInvite(
         tenantId: string,
-        dto: InvitationCreateRequestDto,
+        dto: InviteCreateRequestDto,
         createdBy: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<InvitationCreateResponseDto>> {
-        return this.invitationService.createInvitation(
+    ): Promise<IResponseReturn<InviteCreateResponseDto>> {
+        return this.inviteService.createInvite(
             tenantId,
             dto,
-            this.tenantInvitationProvider,
+            this.tenantInviteProvider,
             requestLog,
             createdBy
         );
     }
 
-    async sendInvitation(
+    async sendInvite(
         tenantId: string,
         memberId: string,
         requestedBy: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<InvitationSendResponseDto>> {
-        return this.invitationService.sendInvitation(
+    ): Promise<IResponseReturn<InviteSendResponseDto>> {
+        return this.inviteService.sendInvite(
             tenantId,
             memberId,
-            this.tenantInvitationProvider,
+            this.tenantInviteProvider,
             requestLog,
             requestedBy
         );

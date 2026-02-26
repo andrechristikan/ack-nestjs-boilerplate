@@ -9,7 +9,7 @@ import {
 
 export type IProject = Project;
 
-export interface IProjectMemberInvitation {
+export interface IProjectMemberInvite {
     id: string;
     createdAt: Date;
     expiresAt: Date;
@@ -26,13 +26,13 @@ export interface IProjectMemberWithUser extends IProjectMember {
     user: User;
 }
 
-export interface IProjectMemberWithInvitation extends IProjectMember {
+export interface IProjectMemberWithInvite extends IProjectMember {
     user: {
         id: string;
         email: string;
         isVerified: boolean;
         verifiedAt: Date | null;
-        invitations: IProjectMemberInvitation[];
+        invites: IProjectMemberInvite[];
     };
 };
 

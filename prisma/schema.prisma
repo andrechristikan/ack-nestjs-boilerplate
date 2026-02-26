@@ -241,7 +241,7 @@ model User {
 
   mobileNumbers      UserMobileNumber[]         @relation("UserMobileNumberUser")
   verifications      Verification[]             @relation("UserVerifications")
-  invitations        Invitation[]               @relation("UserInvitations")
+  invites            Invite[]                   @relation("UserInvites")
   passwordHistories  PasswordHistory[]          @relation("UserPasswordHistories")
   activityLogs       ActivityLog[]              @relation("UserActivityLogs")
   role               Role?                      @relation("UserRole", fields: [roleId], references: [id])
@@ -290,20 +290,20 @@ model Verification {
   @@map("Verifications")
 }
 
-model Invitation {
-  id             String             @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String             @db.ObjectId
+model Invite {
+  id             String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String         @db.ObjectId
   to             String
   token          String
   reference      String
   expiresAt      DateTime
   acceptedAt     DateTime?
   sentAt         DateTime?
-  invitationType EnumInvitationType
+  invitationType EnumInviteType
   roleScope      EnumRoleScope
-  contextId      String             @db.ObjectId
+  contextId      String         @db.ObjectId
   contextName    String
-  memberId       String?            @db.ObjectId
+  memberId       String?        @db.ObjectId
   metadata       Json?
 
   // timestamps fields
@@ -314,7 +314,7 @@ model Invitation {
   deletedAt DateTime?
   deletedBy String?   @db.ObjectId
 
-  user User? @relation("UserInvitations", fields: [userId], references: [id])
+  user User? @relation("UserInvites", fields: [userId], references: [id])
 
   @@unique(fields: [reference])
   @@unique(fields: [token])
@@ -324,7 +324,7 @@ model Invitation {
   @@index(fields: [memberId, createdAt])
   @@index(fields: [invitationType, contextId, createdAt])
   @@index(fields: [createdAt])
-  @@map("Invitations")
+  @@map("Invites")
 }
 
 model PasswordHistory {
@@ -662,7 +662,7 @@ enum EnumVerificationType {
   email
 }
 
-enum EnumInvitationType {
+enum EnumInviteType {
   tenantMember
   projectMember
 }
@@ -693,9 +693,9 @@ enum EnumActivityLogAction {
   userRefreshToken
   userVerifiedEmail
   userSendVerificationEmail
-  userSendInvitationEmail
+  userSendInviteEmail
   userSignedUp
-  userCompleteInvitation
+  userCompleteInvite
   userResetPassword
   userRevokeSession
   userRevokeSessionByAdmin

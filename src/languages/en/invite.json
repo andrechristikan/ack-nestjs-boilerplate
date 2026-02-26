@@ -1,0 +1,14 @@
+{
+    "get": "Invite information fetched successfully.",
+    "listPending": "Pending invites fetched successfully.",
+    "accept": "Invite accepted successfully.",
+    "complete": "Invite completed successfully.",
+    "error": {
+        "memberExist": "Member already exists in this context.",
+        "memberNotFound": "Member was not found in this context.",
+        "contextNotFound": "Invite context was not found.",
+        "notFound": "Invite was not found.",
+        "useAccept": "This invite should be accepted with the accept invite endpoint.",
+        "useComplete": "This invite requires the complete invite endpoint."
+    }
+}

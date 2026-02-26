@@ -13,16 +13,16 @@
         "update": "Project member updated successfully.",
         "list": "Project members retrieved successfully.",
         "roles": "Project member roles retrieved successfully.",
-        "invitation": {
-            "create": "Invitation member created successfully.",
-            "send": "Invitation sent successfully."
-        },
         "error": {
             "exist": "Project member already exists.",
             "forbidden": "You do not have access to this project member resource.",
             "userNotFound": "User not found.",
-            "invitationAlreadyCompleted": "This user account is already activated.",
-            "invitationResendLimitExceeded": "Invitation resend limit exceeded. Please wait before retrying."
+            "inviteResendLimitExceeded": "Invitation resend limit exceeded. Please wait before retrying.",
+            "inviteAlreadyCompleted": "This user account is already activated."
+        },
+        "invite": {
+            "create": "Invitation member created successfully.",
+            "send": "Invitation sent successfully."
         }
     },
     "role": {

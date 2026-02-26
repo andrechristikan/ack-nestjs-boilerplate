@@ -1,21 +1,21 @@
 # Invitation Documentation
 
-This documentation explains the invitation feature used by tenant and project membership flows:
-- **Invitation Module**: `src/modules/invitation`
-- **Invitation Service**: `src/modules/invitation/services/invitation.service.ts`
-- **Invitation Repository**: `src/modules/invitation/repositories/invitation.repository.ts`
-- **Invitation Provider Contracts**: `src/modules/invitation/interfaces/invitation.interface.ts`
+This documentation explains the invite feature used by tenant and project membership flows:
+- **Invite Module**: `src/modules/invite`
+- **Invite Service**: `src/modules/invite/services/invite.service.ts`
+- **Invite Repository**: `src/modules/invite/repositories/invite.repository.ts`
+- **Invite Provider Contracts**: `src/modules/invite/interfaces/invite.interface.ts`
 
 ## Overview
 
-The invitation feature allows membership creation by email and account activation through invitation tokens.
+The invite feature allows membership creation by email and account activation through invite tokens.
 
 It supports:
 - Creating pending memberships for tenant or project scope.
-- Sending context-aware invitation emails (for example tenant/project name).
+- Sending context-aware invite emails (for example tenant/project name).
 - Invitation resend cooldown and expiration handling.
-- Soft-deleting pending invitations.
-- Public invitation accept/complete flows (`/invitation/...`) for verified and unverified users.
+- Soft-deleting pending invites.
+- Public invitation accept/complete flows (`/invite/...`) for verified and unverified users.
 
 ## Related Documents
 
@@ -32,7 +32,7 @@ It supports:
 - [Architecture](#architecture)
   - [Core Components](#core-components)
   - [Provider Pattern](#provider-pattern)
-  - [Invitation Data Model](#invitation-data-model)
+  - [Invite Data Model](#invitation-data-model)
 - [REST API Endpoints](#rest-api-endpoints)
   - [Tenant Member Invitation Endpoints](#tenant-member-invitation-endpoints)
   - [Project Member Invitation Endpoints](#project-member-invitation-endpoints)
@@ -52,8 +52,8 @@ It supports:
 
 ### Core Components
 
-- `InvitationService` orchestrates all invitation operations (create, send, delete, complete, list, get) in a scope-agnostic way, including the full send logic previously split across `UserService`.
-- `InvitationRepository` owns all `Invitation` record operations for invitation flows (`src/modules/invitation/repositories/invitation.repository.ts`).
+- `InviteService` orchestrates all invitation operations (create, send, delete, complete, list, get) in a scope-agnostic way, including the full send logic previously split across `UserService`.
+- `InvitationRepository` owns all `Invitation` record operations for invitation flows (`src/modules/invite/repositories/invite.repository.ts`).
 - `UserService` creates placeholder users for invitation flows (`createForInvitation`). It no longer owns any invitation verification logic.
 - `UserRepository` handles user record creation for invitations (`createByInvitation`).
 - `InvitationUtil` provides invitation token/reference/expiry generation, resend window configuration, link creation, and invitation status mapping.
@@ -70,11 +70,11 @@ Each provider supplies:
 - Membership operations (`findMemberByUserId`, `createMember`, `findMemberUserId`)
 - Invitation context (`invitationType`, `roleScope`, `signUpFrom`, `getContextName`)
 
-This keeps `InvitationService` reusable across multiple invitation origins.
+This keeps `InviteService` reusable across multiple invitation origins.
 
 Invitation-created memberships are created as `pending` and do not grant access until the invitation is accepted.
 
-### Invitation Data Model
+### Invite Data Model
 
 Invitations are persisted in the dedicated Prisma `Invitation` model (not `Verification`).
 
@@ -91,7 +91,7 @@ Core scalar fields used by the module:
 - `acceptedAt`
 - `deletedAt`, `deletedBy`
 
-`InvitationContext` is assembled by `InvitationService` at send time and includes:
+`InvitationContext` is assembled by `InviteService` at send time and includes:
 - `invitationType` (`EnumInvitationType.tenantMember` or `EnumInvitationType.projectMember`)
 - `roleScope`
 - `contextId`
@@ -139,9 +139,9 @@ Controller: `InvitationPublicController` (`/invitation`)
 
 | Method | Path | Description | Protection |
 |-------|------|-------------|------------|
-| `GET` | `/invitation/:token` | Resolve invitation token status and invited email | `ApiKey` |
-| `PUT` | `/invitation/accept` | Accept invitation for an already-verified user | `ApiKey` |
-| `PUT` | `/invitation/complete` | Complete onboarding and accept invitation for an unverified user | `ApiKey` |
+| `GET` | `/invite/:token` | Resolve invitation token status and invited email | `ApiKey` |
+| `PUT` | `/invite/accept` | Accept invitation for an already-verified user | `ApiKey` |
+| `PUT` | `/invite/complete` | Complete onboarding and accept invitation for an unverified user | `ApiKey` |
 
 ## Data Contracts
 
@@ -210,8 +210,8 @@ For envelope format (`statusCode`, `message`, `data`), see [Response Documentati
 
 - Token must resolve to an active (non-expired, non-accepted) invitation record.
 - Soft-deleted invitations are not active and cannot be completed.
-- `PUT /invitation/accept` is for already-verified users and accepts the invitation (`acceptedAt` is set).
-- `PUT /invitation/complete` is for unverified users and requires `firstName`, `lastName`, and `password`, then sets name/password, marks the user verified, accepts the invitation (`acceptedAt`), and expires all remaining active invitations for that user.
+- `PUT /invite/accept` is for already-verified users and accepts the invitation (`acceptedAt` is set).
+- `PUT /invite/complete` is for unverified users and requires `firstName`, `lastName`, and `password`, then sets name/password, marks the user verified, accepts the invitation (`acceptedAt`), and expires all remaining active invitations for that user.
 - Both endpoints activate the related tenant/project membership (`pending -> active`) before access is granted.
 - A post-verification email is sent via `EmailService.sendVerified` only when the user is newly verified in this flow.
 

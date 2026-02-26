@@ -19,7 +19,7 @@ import { QueueRegisterModule } from 'src/queues/queue.register.module';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { SessionModule } from '@modules/session/session.module';
 import { TenantModule } from '@modules/tenant/tenant.module';
-import { whenTenancyEnabled } from '@modules/tenant/util/tenant.toggle';
+import { whenTenancyEnabled } from '@modules/tenant/utils/tenant.toggle';
 
 /**
  * Common module that provides shared functionality across the application.

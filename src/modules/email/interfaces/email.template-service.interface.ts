@@ -19,9 +19,9 @@ export interface IEmailTemplateService {
     importVerification(): Promise<boolean>;
     getVerification(): Promise<GetTemplateCommandOutput | null>;
     deleteVerification(): Promise<boolean>;
-    importInvitation(): Promise<boolean>;
-    getInvitation(): Promise<GetTemplateCommandOutput | null>;
-    deleteInvitation(): Promise<boolean>;
+    importInvite(): Promise<boolean>;
+    getInvite(): Promise<GetTemplateCommandOutput | null>;
+    deleteInvite(): Promise<boolean>;
     importEmailVerified(): Promise<boolean>;
     getEmailVerified(): Promise<GetTemplateCommandOutput | null>;
     deleteEmailVerified(): Promise<boolean>;

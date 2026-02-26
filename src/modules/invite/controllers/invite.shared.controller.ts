@@ -10,47 +10,47 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { InvitationAcceptRequestDto } from '@modules/invitation/dtos/request/invitation-accept.request.dto';
-import { InvitationListResponseDto } from '@modules/invitation/dtos/response/invitation-list.response.dto';
-import { InvitationService } from '@modules/invitation/services/invitation.service';
+import { InviteAcceptRequestDto } from '@modules/invite/dtos/request/invite-accept.request.dto';
+import { InviteListResponseDto } from '@modules/invite/dtos/response/invite-list.response.dto';
+import { InviteService } from '@modules/invite/services/invite.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Body, Controller, Get, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
-@ApiTags('modules.shared.invitation')
+@ApiTags('modules.shared.invite')
 @Controller({
     version: '1',
-    path: '/invitations',
+    path: '/invites',
 })
-export class InvitationSharedController {
-    constructor(private readonly invitationService: InvitationService) {}
+export class InviteSharedController {
+    constructor(private readonly inviteService: InviteService) {}
 
-    @Response('invitation.listPending')
+    @Response('invite.listPending')
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/')
     async list(
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponseReturn<InvitationListResponseDto[]>> {
-        return this.invitationService.listInvitations({
+    ): Promise<IResponseReturn<InviteListResponseDto[]>> {
+        return this.inviteService.listInvites({
             userId,
             pendingOnly: true,
         });
     }
 
-    @Response('invitation.acceptInvitation')
+    @Response('invite.accept')
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/accept')
-    async acceptInvitation(
-        @Body() body: InvitationAcceptRequestDto,
+    async accept(
+        @Body() body: InviteAcceptRequestDto,
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.invitationService.acceptInvitation(body, userId, {
+        return this.inviteService.acceptInvite(body, userId, {
             ipAddress,
             userAgent,
         });
