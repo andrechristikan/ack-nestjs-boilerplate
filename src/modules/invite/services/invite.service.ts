@@ -47,6 +47,12 @@ export class InviteService {
         private readonly inviteUtil: InviteUtil
     ) {}
 
+    private resolveProviderByInviteType(
+        invitationType: EnumInviteType
+    ): InviteProvider {
+        return this.inviteProviderRegistry.getOrThrow(invitationType);
+    }
+
     async createInvite(
         contextId: string,
         dto: InviteCreateRequestDto,
@@ -64,7 +70,8 @@ export class InviteService {
             }
 
             const normalizedEmail = dto.email.toLowerCase().trim();
-            let user = await this.userRepository.findOneByEmail(normalizedEmail);
+            let user =
+                await this.userRepository.findOneByEmail(normalizedEmail);
             if (!user) {
                 user = await this.userService.createForInvitation(
                     normalizedEmail,
@@ -112,24 +119,21 @@ export class InviteService {
                 );
 
             if (!inviteRecord) {
-                const inviteToken =
-                    this.inviteUtil.createInviteTokenPayload();
+                const inviteToken = this.inviteUtil.createInviteTokenPayload();
 
-                inviteRecord = await this.inviteRepository.createInvite(
-                    {
-                        userId: user.id,
-                        userEmail: user.email,
-                        token: inviteToken.token,
-                        reference: inviteToken.reference,
-                        expiresAt: inviteToken.expiresAt,
-                        invitationType: provider.invitationType,
-                        roleScope: provider.roleScope,
-                        contextId,
-                        contextName,
-                        memberId,
-                        requestedBy: createdBy,
-                    },
-                );
+                inviteRecord = await this.inviteRepository.createInvite({
+                    userId: user.id,
+                    userEmail: user.email,
+                    token: inviteToken.token,
+                    reference: inviteToken.reference,
+                    expiresAt: inviteToken.expiresAt,
+                    invitationType: provider.invitationType,
+                    roleScope: provider.roleScope,
+                    contextId,
+                    contextName,
+                    memberId,
+                    requestedBy: createdBy,
+                });
             }
 
             return {
@@ -137,9 +141,7 @@ export class InviteService {
                     memberId,
                     userId: user.id,
                     email: user.email,
-                    invite: this.inviteUtil.mapInviteStatus(
-                        inviteRecord
-                    ),
+                    invite: this.inviteUtil.mapInviteStatus(inviteRecord),
                 },
             };
         } catch (err: unknown) {
@@ -205,21 +207,19 @@ export class InviteService {
                 const invitePayload =
                     this.inviteUtil.createInviteTokenPayload();
 
-                invite = await this.inviteRepository.createInvite(
-                    {
-                        userId: user.id,
-                        userEmail: user.email,
-                        token: invitePayload.token,
-                        reference: invitePayload.reference,
-                        expiresAt: invitePayload.expiresAt,
-                        invitationType: provider.invitationType,
-                        roleScope: provider.roleScope,
-                        contextId,
-                        contextName,
-                        memberId,
-                        requestedBy,
-                    },
-                );
+                invite = await this.inviteRepository.createInvite({
+                    userId: user.id,
+                    userEmail: user.email,
+                    token: invitePayload.token,
+                    reference: invitePayload.reference,
+                    expiresAt: invitePayload.expiresAt,
+                    invitationType: provider.invitationType,
+                    roleScope: provider.roleScope,
+                    contextId,
+                    contextName,
+                    memberId,
+                    requestedBy,
+                });
             }
 
             const lastSentAt = invite.sentAt;
@@ -256,9 +256,7 @@ export class InviteService {
                 {
                     expiredAt: invite.expiresAt.toISOString(),
                     reference: invite.reference,
-                    link: this.inviteUtil.createInviteLink(
-                        invite.token
-                    ),
+                    link: this.inviteUtil.createInviteLink(invite.token),
                     expiredInMinutes: this.inviteUtil.inviteExpiredInMinutes,
                     invitationType:
                         provider.invitationType === EnumInviteType.tenantMember
@@ -283,7 +281,7 @@ export class InviteService {
                 })
             );
 
-            const now = this.helperService.dateCreate()
+            const now = this.helperService.dateCreate();
             return {
                 data: {
                     invite: {
@@ -356,33 +354,10 @@ export class InviteService {
         return { data: this.inviteUtil.mapList(invites) };
     }
 
-    private resolveProviderByInviteType(
-        invitationType: EnumInviteType
-    ): InviteProvider {
-        return this.inviteProviderRegistry.getOrThrow(invitationType);
-    }
-
-    private async activateMembershipForInvite(
-        invitationType: EnumInviteType,
-        contextId: string,
-        userId: string,
-        memberId?: string
-    ): Promise<void> {
-        const provider = this.resolveProviderByInviteType(invitationType);
-
-        // TODO: Use a shared transaction when coordinating invite + membership updates across repositories from different modules.
-        await provider.activateMemberForInvite(
-            contextId,
-            userId,
-            memberId
-        );
-    }
-
     async getInvite(
         token: string
     ): Promise<IResponseReturn<InvitePublicResponseDto>> {
-        const invite =
-            await this.inviteRepository.findOneByToken(token);
+        const invite = await this.inviteRepository.findOneByToken(token);
         if (!invite) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
@@ -450,11 +425,15 @@ export class InviteService {
         }
 
         try {
-            await this.activateMembershipForInvite(
-                invite.invitationType,
+            const provider = this.resolveProviderByInviteType(
+                invite.invitationType
+            );
+
+            // TODO: Use a shared transaction when coordinating invite + membership updates across repositories from different modules.
+            await provider.activateMemberForInvite(
                 invite.contextId,
                 invite.userId,
-                invite.memberId ?? undefined
+                invite.memberId
             );
 
             await this.inviteRepository.acceptInvite(
@@ -478,12 +457,7 @@ export class InviteService {
     }
 
     async signupByInvite(
-        {
-            token,
-            firstName,
-            lastName,
-            password,
-        }: InviteSignupRequestDto,
+        { token, firstName, lastName, password }: InviteSignupRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         const invite = await this.inviteRepository.findOneActiveByToken(token);
@@ -504,11 +478,15 @@ export class InviteService {
             const name = `${firstName.trim()} ${lastName.trim()}`.trim();
             const passwordPayload = this.authUtil.createPassword(password);
 
-            await this.activateMembershipForInvite(
-                invite.invitationType,
+            const provider = this.resolveProviderByInviteType(
+                invite.invitationType
+            );
+
+            // TODO: Use a shared transaction when coordinating invite + membership updates across repositories from different modules.
+            await provider.activateMemberForInvite(
                 invite.contextId,
                 invite.userId,
-                invite.memberId ?? undefined
+                invite.memberId
             );
 
             await this.inviteRepository.signupByInvite(

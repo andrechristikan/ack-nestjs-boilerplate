@@ -90,46 +90,14 @@ export class ProjectInviteProvider implements InviteProvider, OnModuleInit {
     async activateMemberForInvite(
         contextId: string,
         userId: string,
-        memberId?: string
+        memberId: string
     ): Promise<void> {
-        if (memberId) {
-            const member =
-                await this.projectRepository.findOneMemberByIdAndProject(
-                    memberId,
-                    contextId
-                );
-
-            if (!member || member.user?.id !== userId) {
-                throw new ForbiddenException({
-                    statusCode: HttpStatus.FORBIDDEN,
-                    message: 'project.member.error.forbidden',
-                });
-            }
-
-            if (member.status === EnumProjectMemberStatus.active) {
-                return;
-            }
-
-            if (member.status !== EnumProjectMemberStatus.pending) {
-                throw new ForbiddenException({
-                    statusCode: HttpStatus.FORBIDDEN,
-                    message: 'project.member.error.forbidden',
-                });
-            }
-
-            await this.projectRepository.updateMember(member.id, {
-                status: EnumProjectMemberStatus.active,
-                updatedBy: userId,
-            });
-
-            return;
-        }
-
-        const member = await this.projectRepository.findMemberByProjectAndUser(
-            contextId,
-            userId
+        const member = await this.projectRepository.findOneMemberByIdAndProject(
+            memberId,
+            contextId
         );
-        if (!member) {
+
+        if (!member || member.user?.id !== userId) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'project.member.error.forbidden',

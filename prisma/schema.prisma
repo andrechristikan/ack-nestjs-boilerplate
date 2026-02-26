@@ -303,7 +303,7 @@ model Invite {
   roleScope      EnumRoleScope
   contextId      String         @db.ObjectId
   contextName    String
-  memberId       String?        @db.ObjectId
+  memberId       String         @db.ObjectId
   metadata       Json?
 
   // timestamps fields

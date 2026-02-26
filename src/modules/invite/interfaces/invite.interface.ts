@@ -111,7 +111,7 @@ export interface InviteProvider {
     activateMemberForInvite(
         contextId: string,
         userId: string,
-        memberId?: string
+        memberId: string
     ): Promise<void>;
 }
 
@@ -129,7 +129,7 @@ export interface IInviteCreate {
     roleScope: EnumRoleScope;
     contextId: string;
     contextName: string;
-    memberId?: string;
+    memberId: string;
     metadata?: Prisma.InputJsonValue;
     requestedBy: string;
 }

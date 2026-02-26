@@ -91,45 +91,14 @@ export class TenantInviteProvider implements InviteProvider, OnModuleInit {
     async activateMemberForInvite(
         contextId: string,
         userId: string,
-        memberId?: string
+        memberId: string
     ): Promise<void> {
-        if (memberId) {
-            const member = await this.tenantRepository.findOneMemberByIdAndTenant(
-                memberId,
-                contextId
-            );
-
-            if (!member || member.userId !== userId) {
-                throw new NotFoundException({
-                    statusCode: EnumTenantStatusCodeError.memberNotFound,
-                    message: 'tenant.member.error.notFound',
-                });
-            }
-
-            if (member.status === EnumTenantMemberStatus.active) {
-                return;
-            }
-
-            if (member.status !== EnumTenantMemberStatus.pending) {
-                throw new ForbiddenException({
-                    statusCode: EnumTenantStatusCodeError.memberForbidden,
-                    message: 'tenant.member.error.forbidden',
-                });
-            }
-
-            await this.tenantRepository.updateMember(member.id, {
-                status: EnumTenantMemberStatus.active,
-                updatedBy: userId,
-            });
-
-            return;
-        }
-
-        const member = await this.tenantRepository.findMemberByTenantAndUser(
-            contextId,
-            userId
+        const member = await this.tenantRepository.findOneMemberByIdAndTenant(
+            memberId,
+            contextId
         );
-        if (!member) {
+
+        if (!member || member.userId !== userId) {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.memberNotFound,
                 message: 'tenant.member.error.notFound',

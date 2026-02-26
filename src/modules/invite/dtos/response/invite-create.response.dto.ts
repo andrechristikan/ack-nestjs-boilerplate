@@ -3,11 +3,10 @@ import { InviteStatusResponseDto } from '@modules/invite/dtos/response/invite-st
 
 export class InviteCreateResponseDto {
     @ApiProperty({
-        required: false,
-        description:
-            'Membership id created by context-bound providers. Absent for context-free invitations.',
+        required: true,
+        description: 'Membership id created by the context-bound invite provider.',
     })
-    memberId?: string;
+    memberId: string;
 
     @ApiProperty({
         required: true,
