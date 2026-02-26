@@ -11,9 +11,9 @@ import { PolicyAuthorizeMetaKey } from '@modules/policy/constants/policy.constan
 import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import {
-    PolicyAbility,
     IPolicyRequirement,
     IPolicyRule,
+    PolicyAbility,
 } from '@modules/policy/interfaces/policy.interface';
 import { EnumPolicyMatch } from '@modules/policy/enums/policy.enum';
 
@@ -22,7 +22,9 @@ type PolicyRuleArgs = [IPolicyRule, ...IPolicyRule[]];
 type PolicyRequirementArgs = [IPolicyRequirement, ...IPolicyRequirement[]];
 
 function isRequirement(input: AuthorizeInput): input is IPolicyRequirement {
-    return 'rules' in input && Array.isArray((input as IPolicyRequirement).rules);
+    return (
+        'rules' in input && Array.isArray((input as IPolicyRequirement).rules)
+    );
 }
 
 /**
@@ -112,7 +114,9 @@ export function PolicyAbilityProtected(
  */
 export const PolicyAbilityCurrent = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): PolicyAbility => {
-        const { __policyAbilities } = ctx.switchToHttp().getRequest<IRequestApp>();
+        const { __policyAbilities } = ctx
+            .switchToHttp()
+            .getRequest<IRequestApp>();
         if (__policyAbilities == null) {
             throw new InternalServerErrorException({
                 statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
