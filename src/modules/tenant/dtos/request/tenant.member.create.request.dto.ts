@@ -8,6 +8,7 @@ export class TenantMemberCreateRequestDto {
     })
     @IsString()
     @IsNotEmpty()
+    @IsMongoId()
     userId: string;
 
     @ApiProperty({

@@ -1,9 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperService } from '@common/helper/services/helper.service';
-import {
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -11,8 +8,8 @@ import {
     IProjectMember,
     IProjectMemberCreate,
     IProjectMemberUpdate,
-    IProjectMemberWithUser,
     IProjectMemberWithInvite,
+    IProjectMemberWithUser,
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
 import { Injectable } from '@nestjs/common';
@@ -94,10 +91,7 @@ export class ProjectRepository {
         });
     }
 
-    async update(
-        projectId: string,
-        data: IProjectUpdate
-    ): Promise<Project> {
+    async update(projectId: string, data: IProjectUpdate): Promise<Project> {
         return this.databaseService.project.update({
             where: { id: projectId },
             data,
@@ -191,13 +185,12 @@ export class ProjectRepository {
                 where: {
                     ...where,
                     projectId,
-                    status:
-                        where?.status ?? {
-                            in: [
-                                EnumProjectMemberStatus.active,
-                                EnumProjectMemberStatus.pending,
-                            ],
-                        },
+                    status: where?.status ?? {
+                        in: [
+                            EnumProjectMemberStatus.active,
+                            EnumProjectMemberStatus.pending,
+                        ],
+                    },
                     deletedAt: null,
                     project: {
                         deletedAt: null,
@@ -262,5 +255,4 @@ export class ProjectRepository {
             }
         );
     }
-
 }

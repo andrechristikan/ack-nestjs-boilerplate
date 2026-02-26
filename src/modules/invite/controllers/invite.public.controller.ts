@@ -6,7 +6,7 @@ import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { InviteCompleteRequestDto } from '@modules/invite/dtos/request/invite-complete.request.dto';
+import { InviteSignupRequestDto } from '@modules/invite/dtos/request/invite-signup.request.dto';
 import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
 import { InviteService } from '@modules/invite/services/invite.service';
 import { Body, Controller, Get, Param, Put } from '@nestjs/common';
@@ -29,15 +29,15 @@ export class InvitePublicController {
         return this.inviteService.getInvite(token);
     }
 
-    @Response('invite.complete')
+    @Response('invite.signup')
     @ApiKeyProtected()
-    @Put('/complete')
-    async complete(
-        @Body() body: InviteCompleteRequestDto,
+    @Put('/signup')
+    async signup(
+        @Body() body: InviteSignupRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto
     ): Promise<IResponseReturn<void>> {
-        return this.inviteService.completeInvite(body, {
+        return this.inviteService.signupByInvite(body, {
             ipAddress,
             userAgent,
         });

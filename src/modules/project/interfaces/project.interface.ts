@@ -34,7 +34,7 @@ export interface IProjectMemberWithInvite extends IProjectMember {
         verifiedAt: Date | null;
         invites: IProjectMemberInvite[];
     };
-};
+}
 
 export interface IProjectCreate {
     tenantId?: string;

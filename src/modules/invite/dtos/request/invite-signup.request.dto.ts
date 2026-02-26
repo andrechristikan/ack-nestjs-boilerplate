@@ -8,7 +8,7 @@ import {
 } from 'class-validator';
 import { IsPassword } from '@common/request/validations/request.is-password.validation';
 
-export class InviteCompleteRequestDto {
+export class InviteSignupRequestDto {
     @ApiProperty({
         description: 'Invitation token',
         example: faker.string.alphanumeric(20),

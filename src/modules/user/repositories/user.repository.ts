@@ -54,7 +54,6 @@ import {
     UserMobileNumber,
     Verification,
 } from '@prisma/client';
-import InputJsonValue = Prisma.InputJsonValue;
 
 @Injectable()
 export class UserRepository {
@@ -504,7 +503,8 @@ export class UserRepository {
                         create: {
                             action: EnumActivityLogAction.userCreated,
                             ipAddress,
-                            userAgent: this.databaseUtil.toPlainObject(userAgent),
+                            userAgent:
+                                this.databaseUtil.toPlainObject(userAgent),
                             createdBy,
                         },
                     },

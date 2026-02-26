@@ -20,6 +20,12 @@ const tenantData: IMigrationTenantData[] = [
             { userEmail: 'user@mail.com', tenantRole: TenantRoleUser },
         ],
     },
+    {
+        name: 'Another Organization',
+        members: [
+            { userEmail: 'admin@mail.com', tenantRole: TenantRoleAdmin }
+        ],
+    },
 ];
 
 export const migrationTenantData: Record<

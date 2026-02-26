@@ -28,7 +28,14 @@ import { TenantInviteProvider } from '@modules/tenant/services/tenant-invite.pro
         TenantRoleGuard,
         TenantPermissionGuard,
     ],
-    exports: [TenantService, TenantMemberService, TenantAuthService, TenantRepository, TenantUtil],
+    exports: [
+        TenantService,
+        TenantMemberService,
+        TenantAuthService,
+        TenantRepository,
+        TenantUtil,
+        TenantInviteProvider,
+    ],
     imports: [UserModule, RoleModule, AuthModule, InviteModule],
     controllers: [],
 })

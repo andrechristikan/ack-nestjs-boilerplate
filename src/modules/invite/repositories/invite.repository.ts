@@ -9,8 +9,6 @@ import {
     EnumActivityLogAction,
     EnumInviteType,
     EnumPasswordHistoryType,
-    EnumProjectMemberStatus,
-    EnumTenantMemberStatus,
     EnumUserStatus,
     Invite,
     Prisma,
@@ -166,104 +164,50 @@ export class InviteRepository {
         });
     }
 
-    async findTenantMemberForInvite(
-        client: Prisma.TransactionClient,
+    async acceptInvite(
+        inviteId: string,
         userId: string,
-        contextId: string,
-        memberId?: string
-    ): Promise<{ id: string; status: EnumTenantMemberStatus } | null> {
-        return client.tenantMember.findFirst({
-            where: {
-                tenantId: contextId,
-                userId,
-                ...(memberId ? { id: memberId } : {}),
-                tenant: {
-                    deletedAt: null,
-                },
-            },
-            select: {
-                id: true,
-                status: true,
-            },
-        });
-    }
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<void> {
+        const today = this.helperService.dateCreate();
 
-    async findProjectMemberForInvite(
-        client: Prisma.TransactionClient,
-        userId: string,
-        contextId: string,
-        memberId?: string
-    ): Promise<{ id: string; status: EnumProjectMemberStatus } | null> {
-        return client.projectMember.findFirst({
-            where: {
-                projectId: contextId,
-                userId,
-                deletedAt: null,
-                ...(memberId ? { id: memberId } : {}),
-                project: {
-                    deletedAt: null,
-                },
-            },
-            select: {
-                id: true,
-                status: true,
-            },
-        });
-    }
-
-    async activatePendingTenantMember(
-        client: Prisma.TransactionClient,
-        userId: string,
-        contextId: string,
-        memberId?: string
-    ): Promise<number> {
-        const result = await client.tenantMember.updateMany({
-            where: {
-                tenantId: contextId,
-                userId,
-                ...(memberId ? { id: memberId } : {}),
-                status: EnumTenantMemberStatus.pending,
-                tenant: {
-                    deletedAt: null,
-                },
-            },
+        await this.databaseService.invite.update({
+            where: { id: inviteId },
             data: {
-                status: EnumTenantMemberStatus.active,
+                acceptedAt: today,
                 updatedBy: userId,
             },
         });
 
-        return result.count;
-    }
-
-    async activatePendingProjectMember(
-        client: Prisma.TransactionClient,
-        userId: string,
-        contextId: string,
-        memberId?: string
-    ): Promise<number> {
-        const result = await client.projectMember.updateMany({
+        await this.databaseService.invite.updateMany({
             where: {
-                projectId: contextId,
                 userId,
                 deletedAt: null,
-                ...(memberId ? { id: memberId } : {}),
-                status: EnumProjectMemberStatus.pending,
-                project: {
-                    deletedAt: null,
-                },
+                acceptedAt: null,
+                expiresAt: { gt: today },
             },
             data: {
-                status: EnumProjectMemberStatus.active,
+                expiresAt: today,
                 updatedBy: userId,
             },
         });
 
-        return result.count;
+        await this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                activityLogs: {
+                    create: {
+                        action: EnumActivityLogAction.userCompleteInvite,
+                        ipAddress,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        createdBy: userId,
+                    },
+                },
+            },
+        });
     }
 
-    async completeInvite(
-        client: Prisma.TransactionClient,
+    async signupByInvite(
         inviteId: string,
         userId: string,
         name: string,
@@ -277,7 +221,7 @@ export class InviteRepository {
     ): Promise<User> {
         const today = this.helperService.dateCreate();
 
-        await client.invite.update({
+        await this.databaseService.invite.update({
             where: {
                 id: inviteId,
             },
@@ -287,7 +231,7 @@ export class InviteRepository {
             },
         });
 
-        await client.invite.updateMany({
+        await this.databaseService.invite.updateMany({
             where: {
                 userId,
                 deletedAt: null,
@@ -302,7 +246,7 @@ export class InviteRepository {
             },
         });
 
-        return client.user.update({
+        return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 name,
@@ -334,66 +278,20 @@ export class InviteRepository {
         });
     }
 
-    async acceptInvite(
-        client: Prisma.TransactionClient,
-        inviteId: string,
-        userId: string,
-        { ipAddress, userAgent }: IRequestLog
-    ): Promise<void> {
-        const today = this.helperService.dateCreate();
-
-        await client.invite.update({
-            where: { id: inviteId },
-            data: {
-                acceptedAt: today,
-                updatedBy: userId,
-            },
-        });
-
-        await client.invite.updateMany({
-            where: {
-                userId,
-                deletedAt: null,
-                acceptedAt: null,
-                expiresAt: { gt: today },
-            },
-            data: {
-                expiresAt: today,
-                updatedBy: userId,
-            },
-        });
-
-        await client.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                activityLogs: {
-                    create: {
-                        action: EnumActivityLogAction.userCompleteInvite,
-                        ipAddress,
-                        userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        createdBy: userId,
-                    },
-                },
-            },
-        });
-    }
-
-    async createInvite(
-        {
-            userId,
-            userEmail,
-            token,
-            reference,
-            expiresAt,
-            invitationType,
-            roleScope,
-            contextId,
-            contextName,
-            memberId,
-            metadata,
-            requestedBy,
-        }: IInviteCreate
-    ): Promise<Invite> {
+    async createInvite({
+        userId,
+        userEmail,
+        token,
+        reference,
+        expiresAt,
+        invitationType,
+        roleScope,
+        contextId,
+        contextName,
+        memberId,
+        metadata,
+        requestedBy,
+    }: IInviteCreate): Promise<Invite> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.$transaction(
@@ -462,8 +360,7 @@ export class InviteRepository {
                         data: {
                             activityLogs: {
                                 create: {
-                                    action:
-                                        EnumActivityLogAction.userSendInviteEmail,
+                                    action: EnumActivityLogAction.userSendInviteEmail,
                                     ipAddress: requestLog.ipAddress,
                                     userAgent: this.databaseUtil.toPlainObject(
                                         requestLog.userAgent

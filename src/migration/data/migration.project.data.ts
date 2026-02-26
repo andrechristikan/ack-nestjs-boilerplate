@@ -16,12 +16,20 @@ export interface IMigrationProjectData {
 
 const projectData: IMigrationProjectData[] = [
     {
-        name: 'Default Project',
+        name: 'First Project',
         tenantName: 'Default Organization',
         ownerUserEmail: 'admin@mail.com',
         members: [
             { userEmail: 'admin@mail.com', projectRole: ProjectRoleAdmin },
             { userEmail: 'user@mail.com', projectRole: ProjectRoleViewer },
+        ],
+    },
+    {
+        name: 'First Project',
+        tenantName: 'Another Organization',
+        ownerUserEmail: 'admin@mail.com',
+        members: [
+            { userEmail: 'admin@mail.com', projectRole: ProjectRoleAdmin },
         ],
     },
 ];

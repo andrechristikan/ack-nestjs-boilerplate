@@ -1,23 +1,19 @@
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { DatabaseService } from '@common/database/services/database.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { EmailService } from '@modules/email/services/email.service';
-import {
-    InviteAcceptanceTarget,
-    InviteContext,
-    InviteProvider,
-} from '@modules/invite/interfaces/invite.interface';
+import { InviteProvider } from '@modules/invite/interfaces/invite.interface';
 import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteListResponseDto } from '@modules/invite/dtos/response/invite-list.response.dto';
 import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { InviteAcceptRequestDto } from '@modules/invite/dtos/request/invite-accept.request.dto';
-import { InviteCompleteRequestDto } from '@modules/invite/dtos/request/invite-complete.request.dto';
+import { InviteSignupRequestDto } from '@modules/invite/dtos/request/invite-signup.request.dto';
 import { InviteRepository } from '@modules/invite/repositories/invite.repository';
+import { InviteProviderRegistry } from '@modules/invite/services/invite-provider.registry';
 import { InviteUtil } from '@modules/invite/utils/invite.util';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
@@ -35,7 +31,6 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { EnumInviteType, EnumUserStatus } from '@prisma/client';
-import { Prisma } from '@prisma/client';
 import { Duration } from 'luxon';
 
 @Injectable()
@@ -43,9 +38,9 @@ export class InviteService {
     constructor(
         private readonly roleRepository: RoleRepository,
         private readonly userService: UserService,
-        private readonly databaseService: DatabaseService,
         private readonly userRepository: UserRepository,
         private readonly inviteRepository: InviteRepository,
+        private readonly inviteProviderRegistry: InviteProviderRegistry,
         private readonly helperService: HelperService,
         private readonly authUtil: AuthUtil,
         private readonly emailService: EmailService,
@@ -207,12 +202,6 @@ export class InviteService {
                 );
 
             if (!invite) {
-                const inviteContext: InviteContext = {
-                    invitationType: provider.invitationType,
-                    roleScope: provider.roleScope,
-                    contextId,
-                    contextName,
-                };
                 const invitePayload =
                     this.inviteUtil.createInviteTokenPayload();
 
@@ -223,10 +212,10 @@ export class InviteService {
                         token: invitePayload.token,
                         reference: invitePayload.reference,
                         expiresAt: invitePayload.expiresAt,
-                        invitationType: inviteContext.invitationType,
-                        roleScope: inviteContext.roleScope,
-                        contextId: inviteContext.contextId,
-                        contextName: inviteContext.contextName,
+                        invitationType: provider.invitationType,
+                        roleScope: provider.roleScope,
+                        contextId,
+                        contextName,
                         memberId,
                         requestedBy,
                     },
@@ -330,7 +319,7 @@ export class InviteService {
      * on the invitation record.
      *
      * The token itself is NOT marked as used so it remains distinguishable
-     * from a completed invitation in `mapInvitationStatus()`.
+     * from a completed invitation in `mapInviteStatus()`.
      */
     async deleteInvite(
         userId: string,
@@ -367,73 +356,26 @@ export class InviteService {
         return { data: this.inviteUtil.mapList(invites) };
     }
 
-    private async activatePendingMembership(
-        client: Prisma.TransactionClient,
+    private resolveProviderByInviteType(
+        invitationType: EnumInviteType
+    ): InviteProvider {
+        return this.inviteProviderRegistry.getOrThrow(invitationType);
+    }
+
+    private async activateMembershipForInvite(
+        invitationType: EnumInviteType,
+        contextId: string,
         userId: string,
-        target: InviteAcceptanceTarget
+        memberId?: string
     ): Promise<void> {
-        if (target.invitationType === EnumInviteType.tenantMember) {
-            const count =
-                await this.inviteRepository.activatePendingTenantMember(
-                    client,
-                    userId,
-                    target.contextId,
-                    target.memberId
-                );
-            if (count > 0) {
-                return;
-            }
+        const provider = this.resolveProviderByInviteType(invitationType);
 
-            const member =
-                await this.inviteRepository.findTenantMemberForInvite(
-                    client,
-                    userId,
-                    target.contextId,
-                    target.memberId
-                );
-            if (!member) {
-                throw new NotFoundException({
-                    statusCode: HttpStatus.NOT_FOUND,
-                    message: 'invite.error.memberNotFound',
-                });
-            }
-            if (member.status !== 'active') {
-                throw new BadRequestException({
-                    statusCode: EnumUserStatusCodeError.tokenInvalid,
-                    message: 'user.error.invitationTokenInvalid',
-                });
-            }
-            return;
-        }
-
-        const count = await this.inviteRepository.activatePendingProjectMember(
-            client,
+        // TODO: Use a shared transaction when coordinating invite + membership updates across repositories from different modules.
+        await provider.activateMemberForInvite(
+            contextId,
             userId,
-            target.contextId,
-            target.memberId
+            memberId
         );
-        if (count > 0) {
-            return;
-        }
-
-        const member = await this.inviteRepository.findProjectMemberForInvite(
-            client,
-            userId,
-            target.contextId,
-            target.memberId
-        );
-        if (!member) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'invite.error.memberNotFound',
-            });
-        }
-        if (member.status !== 'active') {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.tokenInvalid,
-                message: 'user.error.invitationTokenInvalid',
-            });
-        }
     }
 
     async getInvite(
@@ -451,7 +393,6 @@ export class InviteService {
         const today = this.helperService.dateCreate();
         let status: 'pending' | 'expired' | 'completed' | 'deleted' = 'pending';
 
-        //TODO: invitation with deletedAt will never be returned by `findOneByToken` since it excludes deletedAt:null
         if (invite.deletedAt) {
             status = 'deleted';
         } else if (invite.acceptedAt) {
@@ -509,26 +450,17 @@ export class InviteService {
         }
 
         try {
-            const acceptanceTarget: InviteAcceptanceTarget = {
-                invitationType: invite.invitationType,
-                contextId: invite.contextId,
-                ...(invite.memberId ? { memberId: invite.memberId } : {}),
-            };
+            await this.activateMembershipForInvite(
+                invite.invitationType,
+                invite.contextId,
+                invite.userId,
+                invite.memberId ?? undefined
+            );
 
-            await this.databaseService.$transaction(
-                async (client: Prisma.TransactionClient) => {
-                    await this.activatePendingMembership(
-                        client,
-                        invite.userId,
-                        acceptanceTarget
-                    );
-                    await this.inviteRepository.acceptInvite(
-                        client,
-                        invite.id,
-                        invite.userId,
-                        requestLog
-                    );
-                }
+            await this.inviteRepository.acceptInvite(
+                invite.id,
+                invite.userId,
+                requestLog
             );
 
             return {};
@@ -545,13 +477,13 @@ export class InviteService {
         }
     }
 
-    async completeInvite(
+    async signupByInvite(
         {
             token,
             firstName,
             lastName,
             password,
-        }: InviteCompleteRequestDto,
+        }: InviteSignupRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         const invite = await this.inviteRepository.findOneActiveByToken(token);
@@ -569,31 +501,22 @@ export class InviteService {
         }
 
         try {
-            const acceptanceTarget: InviteAcceptanceTarget = {
-                invitationType: invite.invitationType,
-                contextId: invite.contextId,
-                ...(invite.memberId ? { memberId: invite.memberId } : {}),
-            };
-
             const name = `${firstName.trim()} ${lastName.trim()}`.trim();
             const passwordPayload = this.authUtil.createPassword(password);
 
-            await this.databaseService.$transaction(
-                async (client: Prisma.TransactionClient) => {
-                    await this.activatePendingMembership(
-                        client,
-                        invite.userId,
-                        acceptanceTarget
-                    );
-                    await this.inviteRepository.completeInvite(
-                        client,
-                        invite.id,
-                        invite.userId,
-                        name,
-                        passwordPayload,
-                        requestLog
-                    );
-                }
+            await this.activateMembershipForInvite(
+                invite.invitationType,
+                invite.contextId,
+                invite.userId,
+                invite.memberId ?? undefined
+            );
+
+            await this.inviteRepository.signupByInvite(
+                invite.id,
+                invite.userId,
+                name,
+                passwordPayload,
+                requestLog
             );
 
             await this.emailService.sendVerified(

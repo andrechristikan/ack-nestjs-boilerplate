@@ -39,56 +39,44 @@ export class MigrationProjectSeed
         this.logger.log('Seeding Projects...');
         this.logger.log(`Found ${this.projects.length} Projects to seed.`);
 
-        const allMemberEmails = [
-            ...new Set(
-                this.projects.flatMap(project =>
-                    project.members.map(member => member.userEmail)
-                )
-            ),
-        ];
-        const allOwnerEmails = [
-            ...new Set(
-                this.projects
-                    .map(project => project.ownerUserEmail)
-                    .filter((email): email is string => typeof email === 'string')
-            ),
-        ];
-        const allUserEmails = [...new Set([...allMemberEmails, ...allOwnerEmails])];
-        const allProjectRoleNames = [
-            ...new Set(
-                this.projects.flatMap(project =>
-                    project.members.map(member => member.projectRole)
-                )
-            ),
-        ];
-        const allTenantNames = [
-            ...new Set(this.projects.map(project => project.tenantName)),
-        ];
+        // Collect unique lookup keys in one pass
+        const emails = new Set<string>();
+        const roleNames = new Set<string>();
+        const tenantNames = new Set<string>();
 
-        const [users, projectRoles, tenants] = await Promise.all([
-            allUserEmails.length > 0
-                ? this.databaseService.user.findMany({
-                      where: { email: { in: allUserEmails } },
-                      select: { id: true, email: true },
-                  })
-                : Promise.resolve([]),
-            allProjectRoleNames.length > 0
-                ? this.databaseService.role.findMany({
-                      where: { name: { in: allProjectRoleNames } },
-                      select: { id: true, name: true },
-                  })
-                : Promise.resolve([]),
-            allTenantNames.length > 0
-                ? this.databaseService.tenant.findMany({
-                      where: { name: { in: allTenantNames } },
-                      select: { id: true, name: true },
-                  })
-                : Promise.resolve([]),
+        for (const p of this.projects) {
+            tenantNames.add(p.tenantName);
+            if (p.ownerUserEmail) {emails.add(p.ownerUserEmail);}
+            for (const m of p.members) {
+                emails.add(m.userEmail);
+                roleNames.add(m.projectRole);
+            }
+        }
+
+        // Fetch dependencies
+        const [userRows, roleRows, tenantRows] = await Promise.all([
+            this.databaseService.user.findMany({
+                where: { email: { in: [...emails] } },
+                select: { id: true, email: true },
+            }),
+            this.databaseService.role.findMany({
+                where: { name: { in: [...roleNames] } },
+                select: { id: true, name: true },
+            }),
+            this.databaseService.tenant.findMany({
+                where: { name: { in: [...tenantNames] } },
+                select: { id: true, name: true },
+            }),
         ]);
+
+        // Build lookup Maps for O(1) access
+        const userByEmail = new Map(userRows.map(u => [u.email, u]));
+        const roleByName = new Map(roleRows.map(r => [r.name, r]));
+        const tenantByName = new Map(tenantRows.map(t => [t.name, t]));
 
         try {
             for (const project of this.projects) {
-                const tenant = tenants.find(t => t.name === project.tenantName);
+                const tenant = tenantByName.get(project.tenantName);
 
                 if (!tenant) {
                     this.logger.warn(
@@ -98,7 +86,7 @@ export class MigrationProjectSeed
                 }
 
                 const ownerUser = project.ownerUserEmail
-                    ? users.find(user => user.email === project.ownerUserEmail)
+                    ? userByEmail.get(project.ownerUserEmail)
                     : undefined;
 
                 if (project.ownerUserEmail && !ownerUser) {
@@ -107,12 +95,13 @@ export class MigrationProjectSeed
                     );
                 }
 
-                let projectRecord = await this.databaseService.project.findFirst({
-                    where: {
-                        tenantId: tenant.id,
-                        name: project.name,
-                    },
-                });
+                let projectRecord =
+                    await this.databaseService.project.findFirst({
+                        where: {
+                            tenantId: tenant.id,
+                            name: project.name,
+                        },
+                    });
 
                 if (!projectRecord) {
                     projectRecord = await this.databaseService.project.create({
@@ -134,10 +123,8 @@ export class MigrationProjectSeed
                 }
 
                 for (const member of project.members) {
-                    const user = users.find(u => u.email === member.userEmail);
-                    const role = projectRoles.find(
-                        r => r.name === member.projectRole
-                    );
+                    const user = userByEmail.get(member.userEmail);
+                    const role = roleByName.get(member.projectRole);
 
                     if (!user) {
                         this.logger.warn(
@@ -186,8 +173,6 @@ export class MigrationProjectSeed
         }
 
         this.logger.log('Projects seeded successfully.');
-
-        return;
     }
 
     async remove(): Promise<void> {

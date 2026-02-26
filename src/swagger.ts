@@ -4,11 +4,9 @@ import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { writeFileSync } from 'fs';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { MessageService } from '@common/message/services/message.service';
 
 export default async function (app: NestApplication): Promise<void> {
     const configService = app.get(ConfigService);
-    const messageService = app.get(MessageService);
 
     const env: string = configService.get<string>('app.env')!;
     const appName: string = configService.get<string>('app.name');

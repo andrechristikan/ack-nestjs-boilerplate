@@ -7,53 +7,6 @@ import {
 
 export type InviteMemberStatus = 'pending' | 'active' | 'inactive';
 
-/**
- * Canonical invitation context payload assembled by `InviteService`
- * and forwarded to user/email layers when sending an invitation.
- *
- * The object is intentionally compact and serializable because it is also
- * stored inside verification metadata for auditability and deterministic
- * invitation rendering.
- */
-export interface InviteContext {
-    /**
-     * Origin of the invitation flow.
-     */
-    invitationType: EnumInviteType;
-
-    /**
-     * Authorization scope associated with the invited role.
-     *
-     * The scope is used by role resolution and by email copy
-     * (for example: "join the project" / "join the tenant").
-     */
-    roleScope: EnumRoleScope;
-
-    /**
-     * Identifier of the concrete context instance where membership is created.
-     *
-     * Examples:
-     * - project id when inviting a project member
-     * - tenant id when inviting a tenant member
-     * Stored in metadata to keep a strong link between token and source context.
-     */
-    contextId: string;
-
-    /**
-     * Human-readable name of the target context.
-     *
-     * This is resolved by the provider at send time and included in email data
-     * so recipients understand exactly which entity they are joining.
-     */
-    contextName: string;
-}
-
-export interface InviteAcceptanceTarget {
-    invitationType: EnumInviteType;
-    contextId: string;
-    memberId?: string;
-}
-
 export interface InviteTokenPayload {
     expiresAt: Date;
     expiredInMinutes: number;
@@ -88,7 +41,7 @@ export interface InviteProvider {
     /**
      * Fixed role scope used when validating role names for this invitation flow.
      *
-     * `InviteService.createInvitation` uses this scope to ensure role lookup
+     * `InviteService.createInvite` uses this scope to ensure role lookup
      * is performed in the correct namespace.
      */
     roleScope: EnumRoleScope;
@@ -154,6 +107,12 @@ export interface InviteProvider {
         contextId: string,
         memberId: string
     ): Promise<string | null>;
+
+    activateMemberForInvite(
+        contextId: string,
+        userId: string,
+        memberId?: string
+    ): Promise<void>;
 }
 
 export type InviteWithUser = Prisma.InviteGetPayload<{

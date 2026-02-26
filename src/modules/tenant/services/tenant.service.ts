@@ -60,6 +60,13 @@ export class TenantService implements ITenantService {
             });
         }
 
+        if (!this.databaseUtil.checkIdIsValid(tenantId)) {
+            throw new BadRequestException({
+                statusCode: EnumTenantStatusCodeError.xTenantIdInvalid,
+                message: 'tenant.error.xTenantIdInvalid',
+            });
+        }
+
         const tenant = await this.tenantRepository.findOneById(tenantId);
         if (!tenant) {
             throw new NotFoundException({

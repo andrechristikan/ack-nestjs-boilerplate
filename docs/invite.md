@@ -15,7 +15,7 @@ It supports:
 - Sending context-aware invite emails (for example tenant/project name).
 - Invitation resend cooldown and expiration handling.
 - Soft-deleting pending invites.
-- Public invitation accept/complete flows (`/invite/...`) for verified and unverified users.
+- Public invitation accept/signup flows (`/invite/...`) for verified and unverified users.
 
 ## Related Documents
 
@@ -45,38 +45,42 @@ It supports:
   - [Create Invitation](#create-invitation)
   - [Send Invitation](#send-invitation)
   - [Delete Invitation](#delete-invitation)
-  - [Complete Invitation](#complete-invitation)
+  - [Invite Signup (Unverified User)](#invite-signup-unverified-user)
 - [Important Notes](#important-notes)
 
 ## Architecture
 
 ### Core Components
 
-- `InviteService` orchestrates all invitation operations (create, send, delete, complete, list, get) in a scope-agnostic way, including the full send logic previously split across `UserService`.
-- `InvitationRepository` owns all `Invitation` record operations for invitation flows (`src/modules/invite/repositories/invite.repository.ts`).
+- `InviteService` orchestrates all invitation operations (create, send, delete, signup, accept, list, get) in a scope-agnostic way, including the full send logic previously split across `UserService`.
+- `InviteRepository` owns `Invite` persistence and invite-related user updates (accept/signup activity and verification writes) for invitation flows (`src/modules/invite/repositories/invite.repository.ts`).
+- `InviteProviderRegistry` stores runtime-registered invite providers by `EnumInviteType`, allowing `InviteService` to resolve the correct feature adapter during accept/signup without importing tenant/project modules directly.
 - `UserService` creates placeholder users for invitation flows (`createForInvitation`). It no longer owns any invitation verification logic.
 - `UserRepository` handles user record creation for invitations (`createByInvitation`).
-- `InvitationUtil` provides invitation token/reference/expiry generation, resend window configuration, link creation, and invitation status mapping.
+- `InviteUtil` provides invitation token/reference/expiry generation, resend window configuration, link creation, and invitation status mapping.
 - `EmailService` sends invitation and post-completion emails.
 
 ### Provider Pattern
 
-Invitation context is injected via providers implementing `InvitationProvider`:
+Feature modules provide invite adapters implementing `InviteProvider`:
 
-- `ProjectInvitationProvider` (`src/modules/project/services/project-invitation.provider.ts`)
-- `TenantInvitationProvider` (`src/modules/tenant/services/tenant-invitation.provider.ts`)
+- `ProjectInviteProvider` (`src/modules/project/services/project-invite.provider.ts`)
+- `TenantInviteProvider` (`src/modules/tenant/services/tenant-invite.provider.ts`)
 
 Each provider supplies:
 - Membership operations (`findMemberByUserId`, `createMember`, `findMemberUserId`)
+- Membership activation for invite acceptance/signup (`activateMemberForInvite`)
 - Invitation context (`invitationType`, `roleScope`, `signUpFrom`, `getContextName`)
 
-This keeps `InviteService` reusable across multiple invitation origins.
+Providers self-register into `InviteProviderRegistry` during module initialization (`OnModuleInit`).
+
+This keeps `InviteService` reusable across multiple invitation origins and avoids direct module-to-module coupling (for example `InviteService` importing tenant/project providers).
 
 Invitation-created memberships are created as `pending` and do not grant access until the invitation is accepted.
 
 ### Invite Data Model
 
-Invitations are persisted in the dedicated Prisma `Invitation` model (not `Verification`).
+Invitations are persisted in the dedicated Prisma `Invite` model (not `Verification`).
 
 Core scalar fields used by the module:
 - `invitationType`
@@ -91,17 +95,17 @@ Core scalar fields used by the module:
 - `acceptedAt`
 - `deletedAt`, `deletedBy`
 
-`InvitationContext` is assembled by `InviteService` at send time and includes:
-- `invitationType` (`EnumInvitationType.tenantMember` or `EnumInvitationType.projectMember`)
+A context payload is assembled by `InviteService` at send time and includes:
+- `invitationType` (`EnumInviteType.tenantMember` or `EnumInviteType.projectMember`)
 - `roleScope`
 - `contextId`
 - `contextName`
 
-These fields are stored directly on `Invitation` for queryability.
+These fields are stored directly on `Invite` for queryability.
 
-`Invitation.metadata` remains available as optional JSON for audit/extensions, but core filtering does not depend on JSON-path queries.
+`Invite.metadata` remains available as optional JSON for audit/extensions, but core filtering does not depend on JSON-path queries.
 
-Soft-deletion is tracked via `Invitation.deletedAt` and `Invitation.deletedBy`.
+Soft-deletion is tracked via `Invite.deletedAt` and `Invite.deletedBy`.
 
 ## REST API Endpoints
 
@@ -127,32 +131,32 @@ Controller: `ProjectTenantSharedController` (`/shared/tenants/projects`)
 
 ### Shared Invitation Endpoints
 
-Controller: `InvitationSharedController` (`/invitations`)
+Controller: `InviteSharedController` (`/invites`)
 
 | Method | Path | Description | Protection |
 |-------|------|-------------|------------|
-| `GET` | `/shared/invitations` | List the logged-in user’s pending, valid (actionable) invitations | `UserProtected` + `AuthJwtAccessProtected` + `ApiKeyProtected` |
+| `GET` | `/shared/invites` | List the logged-in user’s pending, valid (actionable) invitations | `UserProtected` + `AuthJwtAccessProtected` + `ApiKeyProtected` |
 
 ### Public Invitation Endpoints
 
-Controller: `InvitationPublicController` (`/invitation`)
+Controller: `InvitePublicController` (`/invite`)
 
 | Method | Path | Description | Protection |
 |-------|------|-------------|------------|
 | `GET` | `/invite/:token` | Resolve invitation token status and invited email | `ApiKey` |
 | `PUT` | `/invite/accept` | Accept invitation for an already-verified user | `ApiKey` |
-| `PUT` | `/invite/complete` | Complete onboarding and accept invitation for an unverified user | `ApiKey` |
+| `PUT` | `/invite/signup` | Sign up by invite (set profile/password) and accept invitation for an unverified user | `ApiKey` |
 
 ## Data Contracts
 
 ### Request DTOs
 
-- `InvitationCreateRequestDto`
+- `InviteCreateRequestDto`
   - `email: string` (required, normalized lowercase)
   - `roleId: string` (required)
-- `InvitationAcceptRequestDto`
+- `InviteAcceptRequestDto`
   - `token: string` (required)
-- `InvitationCompleteRequestDto`
+- `InviteSignupRequestDto`
   - `token: string` (required)
   - `firstName: string` (required)
   - `lastName: string` (required)
@@ -162,14 +166,14 @@ For validation behavior and error formatting, see [Request Validation Documentat
 
 ### Response DTOs
 
-- `InvitationCreateResponseDto`
+- `InviteCreateResponseDto`
   - `memberId`, `userId`, `email`, `invitation`
-- `InvitationSendResponseDto`
+- `InviteSendResponseDto`
   - `invitation`, `resendAvailableAt`
-- `InvitationStatusResponseDto`
+- `InviteStatusResponseDto`
   - `status: not_sent | pending | expired | completed | deleted`
   - optional `expiresAt`, `remainingSeconds`, `sentAt`, `completedAt`, `deletedAt`
-- `InvitationPublicResponseDto`
+- `InvitePublicResponseDto`
   - `email`, `isVerified`, `status`, optional expiration fields
 
 For envelope format (`statusCode`, `message`, `data`), see [Response Documentation][ref-doc-response].
@@ -183,7 +187,7 @@ For envelope format (`statusCode`, `message`, `data`), see [Response Documentati
 - If user does not exist, a placeholder user is created via `UserService.createForInvitation`.
 - Membership conflict returns `409`.
 - If a pending membership already exists for the same user+context, creation is idempotent and returns the existing member.
-- A pending `Invitation` row is created during this endpoint if no active invitation already exists for the same user+context.
+- A pending `Invite` row is created during this endpoint if no active invitation already exists for the same user+context.
 - The create endpoint prepares the invitation and membership target, but does not send email.
 - Returned payload includes current invitation lifecycle status.
 
@@ -192,38 +196,42 @@ For envelope format (`statusCode`, `message`, `data`), see [Response Documentati
 - Member must exist in the given context (resolved by the provider).
 - Context name is resolved by the provider; missing context returns `404`.
 - User must be active. Already-verified users are allowed and can still receive invitation links.
-- Resend is rate-limited by the configured invitation resend window (`InvitationUtil.invitationResendInMinutes`) using `Invitation.sentAt`.
-- The send endpoint normally reuses the active invitation created by the create endpoint and updates `Invitation.sentAt`.
+- Resend is rate-limited by the configured invitation resend window (`InviteUtil.inviteResendInMinutes`) using `Invite.sentAt`.
+- The send endpoint normally reuses the active invitation created by the create endpoint and updates `Invite.sentAt`.
 - If no active invitation exists (fallback path), the send endpoint creates one before sending.
 - The invitation stores the target membership id (`memberId`) and context fields as scalar columns so acceptance can activate the correct pending member.
-- `Invitation.metadata` is optional extension/audit payload and is not used for resend cooldown or core filtering.
-- Email is sent through `EmailService.sendInvitation`.
+- `Invite.metadata` is optional extension/audit payload and is not used for resend cooldown or core filtering.
+- Email is sent through `EmailService.sendInvite`.
 
 ### Delete Invitation
 
 - Only the latest active (non-expired, non-accepted) non-deleted invitation can be deleted.
-- Soft-delete is recorded via `Invitation.deletedAt` and `Invitation.deletedBy` — the invitation is not marked as accepted.
+- Soft-delete is recorded via `Invite.deletedAt` and `Invite.deletedBy` — the invitation is not marked as accepted.
 - Deleted invitations are excluded from default lookups; a repeated delete returns `404` (`not found`).
 - Pending tenant/project memberships are retained (not auto-deleted) after invitation deletion.
 
-### Complete Invitation
+### Invite Signup (Unverified User)
 
 - Token must resolve to an active (non-expired, non-accepted) invitation record.
 - Soft-deleted invitations are not active and cannot be completed.
 - `PUT /invite/accept` is for already-verified users and accepts the invitation (`acceptedAt` is set).
-- `PUT /invite/complete` is for unverified users and requires `firstName`, `lastName`, and `password`, then sets name/password, marks the user verified, accepts the invitation (`acceptedAt`), and expires all remaining active invitations for that user.
+- `PUT /invite/signup` is for unverified users and requires `firstName`, `lastName`, and `password`, then sets name/password, marks the user verified, accepts the invitation (`acceptedAt`), and expires all remaining active invitations for that user.
 - Both endpoints activate the related tenant/project membership (`pending -> active`) before access is granted.
 - A post-verification email is sent via `EmailService.sendVerified` only when the user is newly verified in this flow.
+- Membership activation is delegated to the feature-specific `InviteProvider` implementation (tenant/project), not `InviteRepository`.
+- Current implementation coordinates provider activation + invite/user updates sequentially (no cross-module shared transaction yet). A `TODO` in `InviteService` tracks adopting a shared transaction strategy for multi-repository operations.
 
 ## Important Notes
 
 - Invitation lifecycle is shared across tenant/project entry points through provider contracts.
-- `InvitationRepository` is the single owner of all `Invitation` record operations for invitation flows. `UserRepository` is only used for user lookup/creation, not invitation persistence.
-- Invitation soft-deletion uses `Invitation.deletedAt` / `Invitation.deletedBy`.
-- Queryable invitation context fields (`invitationType`, `roleScope`, `contextId`, `contextName`, `memberId`) are stored as scalar columns on `Invitation`.
-- `Invitation.metadata` is optional and intended for audit/extension payloads, not required for core filtering.
-- Logged-in users can list their actionable pending invitations via `GET /shared/invitations`.
-- Public invitation completion is intentionally separate from tenant/project protected routes.
+- `InviteRepository` does not update `TenantMember` or `ProjectMember`; membership activation belongs to the respective feature provider/module.
+- `InviteProviderRegistry` allows feature modules to register invite providers dynamically by `EnumInviteType`.
+- `InviteRepository` is the single owner of all `Invite` record operations for invitation flows. `UserRepository` is only used for user lookup/creation, not invitation persistence.
+- Invitation soft-deletion uses `Invite.deletedAt` / `Invite.deletedBy`.
+- Queryable invitation context fields (`invitationType`, `roleScope`, `contextId`, `contextName`, `memberId`) are stored as scalar columns on `Invite`.
+- `Invite.metadata` is optional and intended for audit/extension payloads, not required for core filtering.
+- Logged-in users can list their actionable pending invitations via `GET /shared/invites`.
+- Public invite signup/accept flows are intentionally separate from tenant/project protected routes.
 
 <!-- REFERENCES -->
 

@@ -21,7 +21,12 @@ import { ProjectInviteProvider } from '@modules/project/services/project-invite.
         ProjectMemberGuard,
         ProjectPermissionGuard,
     ],
-    exports: [ProjectService, ProjectMemberService, ProjectRepository],
+    exports: [
+        ProjectService,
+        ProjectMemberService,
+        ProjectRepository,
+        ProjectInviteProvider,
+    ],
     controllers: [],
 })
 export class ProjectModule {}
