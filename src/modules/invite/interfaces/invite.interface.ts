@@ -1,11 +1,10 @@
 import {
-    EnumInviteType,
     EnumRoleScope,
-    EnumUserSignUpFrom,
     Prisma,
 } from '@prisma/client';
-
-export type InviteMemberStatus = 'pending' | 'active' | 'inactive';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { ModuleMetadata } from '@nestjs/common';
+import { FactoryProvider } from '@nestjs/common/interfaces/modules/provider.interface';
 
 export interface InviteTokenPayload {
     expiresAt: Date;
@@ -16,103 +15,47 @@ export interface InviteTokenPayload {
     link: string;
 }
 
-export interface InviteProviderMember {
-    id: string;
-    status: InviteMemberStatus;
+export interface InviteConfigReference {
+    prefix: string;
+    length: number;
 }
 
-/**
- * Provider contract consumed by `InviteService` for current
- * tenant/project invitation flows.
- *
- * Membership and context operations are required to preserve strong
- * compile-time guarantees for context-bound invitations.
- */
-export interface InviteProvider {
-    /**
-     * Fixed invitation flow discriminator for the implementing provider.
-     *
-     * Example:
-     * - `EnumInviteType.projectMember` in `ProjectInviteProvider`
-     * - `EnumInviteType.tenantMember` in `TenantInviteProvider`
-     */
-    invitationType: EnumInviteType;
+export interface InviteConfig {
+    expiredInMinutes: number;
+    tokenLength: number;
+    linkBaseUrl: string;
+    resendInMinutes: number;
+    reference: InviteConfigReference;
+}
 
-    /**
-     * Fixed role scope used when validating role names for this invitation flow.
-     *
-     * `InviteService.createInvite` uses this scope to ensure role lookup
-     * is performed in the correct namespace.
-     */
-    roleScope: EnumRoleScope;
+export interface InviteConfigReferenceOverride {
+    prefix?: string;
+    length?: number;
+}
 
-    /**
-     * Signup origin to assign when creating a new user from invitation.
-     *
-     * This provides analytics/audit value and removes invitation-type-to-signup
-     * mapping logic from the central service.
-     */
-    signUpFrom: EnumUserSignUpFrom;
+export interface InviteConfigOverride {
+    expiredInMinutes?: number;
+    tokenLength?: number;
+    linkBaseUrl?: string;
+    resendInMinutes?: number;
+    reference?: InviteConfigReferenceOverride;
+}
 
-    /**
-     * Resolves the human-readable context name for email and metadata.
-     *
-     * @param contextId - Identifier of the context entity (project/tenant id).
-     * @returns Context name when found, otherwise `null`.
-     *
-     * Returning `null` indicates the context does not exist or is not readable,
-     * and causes invitation sending to fail with a not-found error.
-     */
-    getContextName(contextId: string): Promise<string | null>;
+export interface InviteFeatureConfigRegistration {
+    invitationType: string;
+    config: InviteConfig;
+}
 
-    /**
-     * Finds an existing membership for the user in the target context,
-     * regardless of status, to support invitation idempotency and status-aware flows.
-     */
-    findMemberByUserId(
-        contextId: string,
-        userId: string
-    ): Promise<InviteProviderMember | null>;
+export interface InviteModuleForFeatureOptions {
+    invitationType: string;
+    config?: InviteConfigOverride;
+}
 
-    /**
-     * Creates a membership record for the given user inside the context.
-     *
-     * @param contextId - Identifier of the context entity.
-     * @param userId - User identifier being invited/added.
-     * @param roleId - Role id resolved in `roleScope`.
-     * @param createdBy - Actor id that initiated the operation.
-     * @returns Newly created membership id.
-     *
-     * Implementations should create a membership record compatible with their
-     * domain model (typically `pending` for invitation acceptance flows).
-     */
-    createMember(
-        contextId: string,
-        userId: string,
-        roleId: string,
-        createdBy: string
-    ): Promise<string>;
-
-    /**
-     * Resolves the user id from a context-specific membership id.
-     *
-     * @param contextId - Identifier of the context entity.
-     * @param memberId - Membership id within that context.
-     * @returns Member user id when found, otherwise `null`.
-     *
-     * Used by invitation resend/send endpoints where the API receives a member id
-     * and `InviteService` needs the corresponding user id.
-     */
-    findMemberUserId(
-        contextId: string,
-        memberId: string
-    ): Promise<string | null>;
-
-    activateMemberForInvite(
-        contextId: string,
-        userId: string,
-        memberId: string
-    ): Promise<void>;
+export interface InviteModuleForFeatureAsyncOptions
+    extends Pick<ModuleMetadata, 'imports'> {
+    invitationType: string;
+    inject?: FactoryProvider<InviteConfigOverride>['inject'];
+    useFactory: FactoryProvider<InviteConfigOverride>['useFactory'];
 }
 
 export type InviteWithUser = Prisma.InviteGetPayload<{
@@ -125,11 +68,69 @@ export interface IInviteCreate {
     token: string;
     reference: string;
     expiresAt: Date;
-    invitationType: EnumInviteType;
+    invitationType: string;
     roleScope: EnumRoleScope;
     contextId: string;
     contextName: string;
     memberId: string;
     metadata?: Prisma.InputJsonValue;
     requestedBy: string;
+}
+
+export interface InviteIssueInput {
+    invitationType: string;
+    roleScope: EnumRoleScope;
+    contextId: string;
+    contextName: string;
+    memberId: string;
+    userId: string;
+    requestedBy: string;
+}
+
+export interface InviteDispatchInput {
+    roleScope: EnumRoleScope;
+    emailTypeLabel: string;
+    invitationType: string;
+    contextId: string;
+    contextName: string;
+    memberId: string;
+    userId: string;
+    requestLog: IRequestLog;
+    requestedBy: string;
+}
+
+export interface InviteDeleteInput {
+    userId: string;
+    deletedBy: string;
+}
+
+export interface InviteListInput {
+    invitationType?: string;
+    contextId?: string;
+    userId?: string;
+    includeDeleted?: boolean;
+    pendingOnly?: boolean;
+}
+
+export interface InviteGetInput {
+    token: string;
+}
+
+export interface InviteGetActiveInput {
+    token: string;
+}
+
+export interface InviteFinalizeAcceptInput {
+    inviteId: string;
+    userId: string;
+    requestLog: IRequestLog;
+}
+
+export interface InviteFinalizeSignupInput {
+    inviteId: string;
+    userId: string;
+    firstName: string;
+    lastName: string;
+    password: string;
+    requestLog: IRequestLog;
 }

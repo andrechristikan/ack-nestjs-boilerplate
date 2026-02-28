@@ -1,28 +1,31 @@
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { HelperService } from '@common/helper/services/helper.service';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { EmailService } from '@modules/email/services/email.service';
-import { InviteProvider } from '@modules/invite/interfaces/invite.interface';
-import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteListResponseDto } from '@modules/invite/dtos/response/invite-list.response.dto';
 import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
-import { InviteAcceptRequestDto } from '@modules/invite/dtos/request/invite-accept.request.dto';
-import { InviteSignupRequestDto } from '@modules/invite/dtos/request/invite-signup.request.dto';
 import { InviteRepository } from '@modules/invite/repositories/invite.repository';
-import { InviteProviderRegistry } from '@modules/invite/services/invite-provider.registry';
+import {
+    InviteConfig,
+    InviteDeleteInput,
+    InviteDispatchInput,
+    InviteFinalizeAcceptInput,
+    InviteFinalizeSignupInput,
+    InviteGetActiveInput,
+    InviteGetInput,
+    InviteIssueInput,
+    InviteListInput,
+    InviteWithUser,
+} from '@modules/invite/interfaces/invite.interface';
+import { IInviteService } from '@modules/invite/interfaces/invite.service.interface';
+import { InviteConfigRegistry } from '@modules/invite/services/invite-config.registry';
 import { InviteUtil } from '@modules/invite/utils/invite.util';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
-import { RoleRepository } from '@modules/role/repositories/role.repository';
-import { UserService } from '@modules/user/services/user.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     BadRequestException,
-    ConflictException,
     ForbiddenException,
     HttpException,
     HttpStatus,
@@ -30,96 +33,61 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumInviteType, EnumUserStatus } from '@prisma/client';
+import { EnumUserStatus } from '@prisma/client';
 import { Duration } from 'luxon';
 
 @Injectable()
-export class InviteService {
+export class InviteService implements IInviteService {
     constructor(
-        private readonly roleRepository: RoleRepository,
-        private readonly userService: UserService,
         private readonly userRepository: UserRepository,
         private readonly inviteRepository: InviteRepository,
-        private readonly inviteProviderRegistry: InviteProviderRegistry,
+        private readonly inviteConfigRegistry: InviteConfigRegistry,
         private readonly helperService: HelperService,
         private readonly authUtil: AuthUtil,
         private readonly emailService: EmailService,
         private readonly inviteUtil: InviteUtil
     ) {}
 
-    private resolveProviderByInviteType(
-        invitationType: EnumInviteType
-    ): InviteProvider {
-        return this.inviteProviderRegistry.getOrThrow(invitationType);
+    private getInviteConfigOrThrow(invitationType: string): InviteConfig {
+        return this.inviteConfigRegistry.getOrThrow(invitationType);
     }
 
-    async createInvite(
-        contextId: string,
-        dto: InviteCreateRequestDto,
-        provider: InviteProvider,
-        requestLog: IRequestLog,
-        createdBy: string
-    ): Promise<IResponseReturn<InviteCreateResponseDto>> {
+    async issueInvite(input: InviteIssueInput): Promise<InviteCreateResponseDto> {
+        const {
+            invitationType,
+            roleScope,
+            contextId,
+            contextName,
+            memberId,
+            userId,
+            requestedBy,
+        } = input;
+
         try {
-            const role = await this.roleRepository.existById(dto.roleId);
-            if (!role || role.scope !== provider.roleScope) {
-                throw new NotFoundException({
-                    statusCode: EnumRoleStatusCodeError.notFound,
-                    message: 'role.error.notFound',
-                });
-            }
-
-            const normalizedEmail = dto.email.toLowerCase().trim();
-            let user =
-                await this.userRepository.findOneByEmail(normalizedEmail);
+            const config = this.getInviteConfigOrThrow(invitationType);
+            const user = await this.userRepository.findOneById(userId);
             if (!user) {
-                user = await this.userService.createForInvitation(
-                    normalizedEmail,
-                    provider.signUpFrom,
-                    requestLog,
-                    createdBy
-                );
-            }
-
-            const existingMember = await provider.findMemberByUserId(
-                contextId,
-                user.id
-            );
-
-            if (existingMember && existingMember.status !== 'pending') {
-                throw new ConflictException({
-                    statusCode: HttpStatus.CONFLICT,
-                    message: 'invite.error.memberExist',
-                });
-            }
-
-            const memberId =
-                existingMember?.status === 'pending'
-                    ? existingMember.id
-                    : await provider.createMember(
-                          contextId,
-                          user.id,
-                          role.id,
-                          createdBy
-                      );
-
-            const contextName = await provider.getContextName(contextId);
-            if (!contextName) {
                 throw new NotFoundException({
-                    statusCode: HttpStatus.NOT_FOUND,
-                    message: 'invite.error.contextNotFound',
+                    statusCode: EnumUserStatusCodeError.notFound,
+                    message: 'user.error.notFound',
+                });
+            } else if (user.status !== EnumUserStatus.active) {
+                throw new ForbiddenException({
+                    statusCode: EnumUserStatusCodeError.inactiveForbidden,
+                    message: 'user.error.inactive',
                 });
             }
 
             let inviteRecord =
                 await this.inviteRepository.findOneLatestActiveByUserAndContext(
                     user.id,
-                    provider.invitationType,
+                    invitationType,
                     contextId
                 );
 
             if (!inviteRecord) {
-                const inviteToken = this.inviteUtil.createInviteTokenPayload();
+                const inviteToken =
+                    this.inviteUtil.createInviteTokenPayload(config);
 
                 inviteRecord = await this.inviteRepository.createInvite({
                     userId: user.id,
@@ -127,22 +95,20 @@ export class InviteService {
                     token: inviteToken.token,
                     reference: inviteToken.reference,
                     expiresAt: inviteToken.expiresAt,
-                    invitationType: provider.invitationType,
-                    roleScope: provider.roleScope,
+                    invitationType,
+                    roleScope,
                     contextId,
                     contextName,
                     memberId,
-                    requestedBy: createdBy,
+                    requestedBy,
                 });
             }
 
             return {
-                data: {
-                    memberId,
-                    userId: user.id,
-                    email: user.email,
-                    invite: this.inviteUtil.mapInviteStatus(inviteRecord),
-                },
+                memberId,
+                userId: user.id,
+                email: user.email,
+                invite: this.inviteUtil.mapInviteStatus(inviteRecord),
             };
         } catch (err: unknown) {
             if (err instanceof HttpException) {
@@ -157,55 +123,45 @@ export class InviteService {
         }
     }
 
-    async sendInvite(
-        contextId: string,
-        memberId: string,
-        provider: InviteProvider,
-        requestLog: IRequestLog,
-        requestedBy: string
-    ): Promise<IResponseReturn<InviteSendResponseDto>> {
-        const userId = await provider.findMemberUserId(contextId, memberId);
-
-        if (!userId) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'invite.error.memberNotFound',
-            });
-        }
-
-        const contextName = await provider.getContextName(contextId);
-        if (!contextName) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'invite.error.contextNotFound',
-            });
-        }
-
-        const user = await this.userRepository.findOneById(userId);
-        if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
-        } else if (user.status !== EnumUserStatus.active) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                message: 'user.error.inactive',
-            });
-        }
+    async dispatchInvite(input: InviteDispatchInput): Promise<InviteSendResponseDto> {
+        const {
+            invitationType,
+            roleScope,
+            emailTypeLabel,
+            contextId,
+            contextName,
+            memberId,
+            userId,
+            requestLog,
+            requestedBy,
+        } = input;
 
         try {
+            const config = this.getInviteConfigOrThrow(invitationType);
+            const user = await this.userRepository.findOneById(userId);
+            if (!user) {
+                throw new NotFoundException({
+                    statusCode: EnumUserStatusCodeError.notFound,
+                    message: 'user.error.notFound',
+                });
+            } else if (user.status !== EnumUserStatus.active) {
+                throw new ForbiddenException({
+                    statusCode: EnumUserStatusCodeError.inactiveForbidden,
+                    message: 'user.error.inactive',
+                });
+            }
+
             const today = this.helperService.dateCreate();
             let invite =
                 await this.inviteRepository.findOneLatestActiveByUserAndContext(
                     user.id,
-                    provider.invitationType,
+                    invitationType,
                     contextId
                 );
 
             if (!invite) {
                 const invitePayload =
-                    this.inviteUtil.createInviteTokenPayload();
+                    this.inviteUtil.createInviteTokenPayload(config);
 
                 invite = await this.inviteRepository.createInvite({
                     userId: user.id,
@@ -213,8 +169,8 @@ export class InviteService {
                     token: invitePayload.token,
                     reference: invitePayload.reference,
                     expiresAt: invitePayload.expiresAt,
-                    invitationType: provider.invitationType,
-                    roleScope: provider.roleScope,
+                    invitationType,
+                    roleScope,
                     contextId,
                     contextName,
                     memberId,
@@ -227,7 +183,7 @@ export class InviteService {
                 const canResendAt = this.helperService.dateForward(
                     lastSentAt,
                     Duration.fromObject({
-                        minutes: this.inviteUtil.inviteResendInMinutes,
+                        minutes: config.resendInMinutes,
                     })
                 );
 
@@ -256,13 +212,10 @@ export class InviteService {
                 {
                     expiredAt: invite.expiresAt.toISOString(),
                     reference: invite.reference,
-                    link: this.inviteUtil.createInviteLink(invite.token),
-                    expiredInMinutes: this.inviteUtil.inviteExpiredInMinutes,
-                    invitationType:
-                        provider.invitationType === EnumInviteType.tenantMember
-                            ? 'tenant_member'
-                            : 'project_member',
-                    roleScope: provider.roleScope,
+                    link: this.inviteUtil.createInviteLink(invite.token, config),
+                    expiredInMinutes: config.expiredInMinutes,
+                    invitationType: emailTypeLabel,
+                    roleScope,
                     contextName,
                 }
             );
@@ -277,27 +230,25 @@ export class InviteService {
             const resendAvailableAt = this.helperService.dateForward(
                 today,
                 Duration.fromObject({
-                    minutes: this.inviteUtil.inviteResendInMinutes,
+                    minutes: config.resendInMinutes,
                 })
             );
 
             const now = this.helperService.dateCreate();
             return {
-                data: {
-                    invite: {
-                        status: 'pending',
-                        expiresAt: invite.expiresAt,
-                        remainingSeconds: Math.max(
-                            0,
-                            Math.floor(
-                                (invite.expiresAt.getTime() - now.getTime()) /
-                                    1000
-                            )
-                        ),
-                        sentAt: now,
-                    },
-                    resendAvailableAt,
+                invite: {
+                    status: 'pending',
+                    expiresAt: invite.expiresAt,
+                    remainingSeconds: Math.max(
+                        0,
+                        Math.floor(
+                            (invite.expiresAt.getTime() - now.getTime()) /
+                                1000
+                        )
+                    ),
+                    sentAt: now,
                 },
+                resendAvailableAt,
             };
         } catch (err: unknown) {
             if (err instanceof HttpException) {
@@ -319,10 +270,7 @@ export class InviteService {
      * The token itself is NOT marked as used so it remains distinguishable
      * from a completed invitation in `mapInviteStatus()`.
      */
-    async deleteInvite(
-        userId: string,
-        deletedBy: string
-    ): Promise<IResponseReturn<void>> {
+    async deleteInvite({ userId, deletedBy }: InviteDeleteInput): Promise<void> {
         const invite =
             await this.inviteRepository.findOneLatestActiveByUserId(userId);
         if (!invite) {
@@ -334,7 +282,7 @@ export class InviteService {
 
         await this.inviteRepository.softDelete(invite.id, deletedBy);
 
-        return {};
+        return;
     }
 
     /**
@@ -342,21 +290,13 @@ export class InviteService {
      *
      * Queries `Invitation` records and filters by scalar invitation fields.
      */
-    async listInvites(options?: {
-        invitationType?: EnumInviteType;
-        contextId?: string;
-        userId?: string;
-        includeDeleted?: boolean;
-        pendingOnly?: boolean;
-    }): Promise<IResponseReturn<InviteListResponseDto[]>> {
+    async listInvites(options?: InviteListInput): Promise<InviteListResponseDto[]> {
         const invites = await this.inviteRepository.findMany(options);
 
-        return { data: this.inviteUtil.mapList(invites) };
+        return this.inviteUtil.mapList(invites);
     }
 
-    async getInvite(
-        token: string
-    ): Promise<IResponseReturn<InvitePublicResponseDto>> {
+    async getInvite({ token }: InviteGetInput): Promise<InvitePublicResponseDto> {
         const invite = await this.inviteRepository.findOneByToken(token);
         if (!invite) {
             throw new BadRequestException({
@@ -377,31 +317,26 @@ export class InviteService {
         }
 
         return {
-            data: {
-                email: invite.user.email,
-                isVerified: invite.user.isVerified,
-                status,
-                expiresAt: invite.expiresAt,
-                remainingSeconds:
-                    status === 'pending'
-                        ? Math.max(
-                              0,
-                              Math.floor(
-                                  (invite.expiresAt.getTime() -
-                                      today.getTime()) /
-                                      1000
-                              )
+            email: invite.user.email,
+            isVerified: invite.user.isVerified,
+            status,
+            expiresAt: invite.expiresAt,
+            remainingSeconds:
+                status === 'pending'
+                    ? Math.max(
+                          0,
+                          Math.floor(
+                              (invite.expiresAt.getTime() - today.getTime()) /
+                                  1000
                           )
-                        : undefined,
-            },
+                      )
+                    : undefined,
         };
     }
 
-    async acceptInvite(
-        { token }: InviteAcceptRequestDto,
-        userId: string,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>> {
+    async getActiveInviteForProcessing({
+        token,
+    }: InviteGetActiveInput): Promise<InviteWithUser> {
         const invite = await this.inviteRepository.findOneActiveByToken(token);
         if (!invite) {
             throw new BadRequestException({
@@ -410,10 +345,19 @@ export class InviteService {
             });
         }
 
-        if (invite.userId !== userId) {
-            throw new ForbiddenException({
-                statusCode: HttpStatus.FORBIDDEN,
-                message: 'http.clientError.forbidden',
+        return invite;
+    }
+
+    async finalizeInviteAccept({
+        inviteId,
+        userId,
+        requestLog,
+    }: InviteFinalizeAcceptInput): Promise<void> {
+        const invite = await this.inviteRepository.findOneActiveById(inviteId);
+        if (!invite) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+                message: 'user.error.invitationTokenInvalid',
             });
         }
 
@@ -425,18 +369,14 @@ export class InviteService {
             });
         }
 
+        if (invite.userId !== userId) {
+            throw new ForbiddenException({
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'http.clientError.forbidden',
+            });
+        }
+
         try {
-            const provider = this.resolveProviderByInviteType(
-                invite.invitationType
-            );
-
-            // TODO: Use a shared transaction when coordinating invite + membership updates across repositories from different modules.
-            await provider.activateMemberForInvite(
-                invite.contextId,
-                invite.userId,
-                invite.memberId
-            );
-
             await this.inviteRepository.acceptInvite(
                 invite.id,
                 invite.userId,
@@ -457,17 +397,29 @@ export class InviteService {
         }
     }
 
-    async signupByInvite(
-        { token, firstName, lastName, password }: InviteSignupRequestDto,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>> {
-        const invite = await this.inviteRepository.findOneActiveByToken(token);
+    async finalizeInviteSignup({
+        inviteId,
+        userId,
+        firstName,
+        lastName,
+        password,
+        requestLog,
+    }: InviteFinalizeSignupInput): Promise<void> {
+        const invite = await this.inviteRepository.findOneActiveById(inviteId);
         if (!invite) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
                 message: 'user.error.invitationTokenInvalid',
             });
         }
+
+        if (invite.userId !== userId) {
+            throw new ForbiddenException({
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'http.clientError.forbidden',
+            });
+        }
+
         if (invite.user.isVerified) {
             // The user associated to this invite-token is already signed up, and verified,
             //  needs to use the `/invite/accept` endpoint.
@@ -480,17 +432,6 @@ export class InviteService {
         try {
             const name = `${firstName.trim()} ${lastName.trim()}`.trim();
             const passwordPayload = this.authUtil.createPassword(password);
-
-            const provider = this.resolveProviderByInviteType(
-                invite.invitationType
-            );
-
-            // TODO: Use a shared transaction when coordinating invite + membership updates across repositories from different modules.
-            await provider.activateMemberForInvite(
-                invite.contextId,
-                invite.userId,
-                invite.memberId
-            );
 
             await this.inviteRepository.signupByInvite(
                 invite.id,

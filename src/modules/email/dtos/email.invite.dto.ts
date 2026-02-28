@@ -5,9 +5,10 @@ import { EnumRoleScope } from '@prisma/client';
 export class EmailInviteDto extends EmailVerificationDto {
     @ApiProperty({
         required: true,
-        enum: ['project_member', 'tenant_member'],
+        type: String,
+        example: 'tenant_member',
     })
-    invitationType: 'project_member' | 'tenant_member';
+    invitationType: string;
 
     @ApiProperty({
         required: true,

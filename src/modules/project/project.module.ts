@@ -8,16 +8,31 @@ import { ProjectUtil } from '@modules/project/utils/project.util';
 import { InviteModule } from '@modules/invite/invite.module';
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
-import { ProjectInviteProvider } from '@modules/project/services/project-invite.provider';
+import { ProjectInvitationType } from '@modules/project/constants/project.constant';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
-    imports: [UserModule, RoleModule, InviteModule],
+    imports: [
+        UserModule,
+        RoleModule,
+        InviteModule.forFeatureAsync({
+            invitationType: ProjectInvitationType,
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                expiredInMinutes: configService.getOrThrow<number>(
+                    'invite.expiredInMinutes'
+                ),
+                linkBaseUrl: configService.getOrThrow<string>(
+                    'invite.linkBaseUrl'
+                ),
+            }),
+        }),
+    ],
     providers: [
         ProjectService,
         ProjectMemberService,
         ProjectUtil,
         ProjectRepository,
-        ProjectInviteProvider,
         ProjectMemberGuard,
         ProjectPermissionGuard,
     ],
@@ -25,7 +40,6 @@ import { ProjectInviteProvider } from '@modules/project/services/project-invite.
         ProjectService,
         ProjectMemberService,
         ProjectRepository,
-        ProjectInviteProvider,
     ],
     controllers: [],
 })

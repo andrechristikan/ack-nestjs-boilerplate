@@ -155,6 +155,35 @@ model ProjectMember {
   @@map("ProjectMembers")
 }
 
+model Asset {
+  id               String          @id @default(auto()) @map("_id") @db.ObjectId
+  storageKey       String
+  bucket           String
+  access           EnumAssetAccess @default(private)
+  filename         String
+  completedUrl     String
+  cdnUrl           String?
+  mime             String
+  extension        String
+  size             Int
+  checksum         String?
+  status           EnumAssetStatus @default(active)
+
+  // timestamps fields
+  createdAt DateTime  @default(now())
+  createdBy String    @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
+  deletedAt DateTime?
+  deletedBy String?   @db.ObjectId
+
+  @@unique(fields: [storageKey])
+  @@index(fields: [createdBy, status, createdAt])
+  @@index(fields: [status, deletedAt, createdAt])
+  @@index(fields: [createdAt])
+  @@map("Assets")
+}
+
 model Country {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   name       String
@@ -299,7 +328,7 @@ model Invite {
   expiresAt      DateTime
   acceptedAt     DateTime?
   sentAt         DateTime?
-  invitationType EnumInviteType
+  invitationType String
   roleScope      EnumRoleScope
   contextId      String         @db.ObjectId
   contextName    String
@@ -645,6 +674,16 @@ enum EnumProjectMemberStatus {
   inactive
 }
 
+enum EnumAssetStatus {
+  active
+  deleted
+}
+
+enum EnumAssetAccess {
+  public
+  private
+}
+
 enum EnumTermPolicyType {
   termsOfService
   privacy
@@ -660,11 +699,6 @@ enum EnumTermPolicyStatus {
 enum EnumVerificationType {
   mobileNumber
   email
-}
-
-enum EnumInviteType {
-  tenantMember
-  projectMember
 }
 
 enum EnumPasswordHistoryType {

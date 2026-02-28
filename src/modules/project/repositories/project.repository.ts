@@ -12,9 +12,9 @@ import {
     IProjectMemberWithUser,
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
+import { ProjectInvitationType } from '@modules/project/constants/project.constant';
 import { Injectable } from '@nestjs/common';
 import {
-    EnumInviteType,
     EnumProjectMemberStatus,
     EnumProjectStatus,
     Project,
@@ -207,8 +207,7 @@ export class ProjectRepository {
                             verifiedAt: true,
                             invites: {
                                 where: {
-                                    invitationType:
-                                        EnumInviteType.projectMember,
+                                    invitationType: ProjectInvitationType,
                                     contextId: projectId,
                                 },
                                 orderBy: {

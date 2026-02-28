@@ -8,7 +8,6 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { InviteService } from '@modules/invite/services/invite.service';
@@ -16,15 +15,20 @@ import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.respo
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleService } from '@modules/role/services/role.service';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
+import { TenantMemberInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member-invite.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
 import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.jit-access.request.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
-import { TenantRolePlatformSupport } from '@modules/tenant/constants/tenant.constant';
+import {
+    TenantInvitationType,
+    TenantInviteEmailTypeLabel,
+    TenantRolePlatformSupport,
+} from '@modules/tenant/constants/tenant.constant';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
-import { TenantInviteProvider } from '@modules/tenant/services/tenant-invite.provider';
 import { TenantUtil } from '@modules/tenant/utils/tenant.util';
+import { UserService } from '@modules/user/services/user.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     BadRequestException,
@@ -36,6 +40,7 @@ import {
     EnumRoleScope,
     EnumRoleType,
     EnumTenantMemberStatus,
+    EnumUserSignUpFrom,
 } from '@prisma/client';
 
 @Injectable()
@@ -45,9 +50,9 @@ export class TenantMemberService {
         private readonly roleRepository: RoleRepository,
         private readonly roleService: RoleService,
         private readonly userRepository: UserRepository,
+        private readonly userService: UserService,
         private readonly helperService: HelperService,
         private readonly inviteService: InviteService,
-        private readonly tenantInviteProvider: TenantInviteProvider,
         private readonly tenantUtil: TenantUtil
     ) {}
 
@@ -159,17 +164,68 @@ export class TenantMemberService {
 
     async createInvite(
         tenantId: string,
-        dto: InviteCreateRequestDto,
+        dto: TenantMemberInviteCreateRequestDto,
         createdBy: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<InviteCreateResponseDto>> {
-        return this.inviteService.createInvite(
+        const [tenant, role] = await Promise.all([
+            this.tenantRepository.findOneById(tenantId),
+            this.resolveTenantRoleById(dto.roleId),
+        ]);
+        if (!tenant) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.notFound,
+                message: 'invite.error.contextNotFound',
+            });
+        }
+
+        const normalizedEmail = dto.email.toLowerCase().trim();
+        let user = await this.userRepository.findOneByEmail(normalizedEmail);
+        if (!user) {
+            user = await this.userService.createForInvitation(
+                normalizedEmail,
+                EnumUserSignUpFrom.tenant,
+                requestLog,
+                createdBy
+            );
+        }
+
+        const existingMember = await this.tenantRepository.findMemberByTenantAndUser(
             tenantId,
-            dto,
-            this.tenantInviteProvider,
-            requestLog,
-            createdBy
+            user.id
         );
+        if (existingMember && existingMember.status !== EnumTenantMemberStatus.pending) {
+            throw new ConflictException({
+                statusCode: EnumTenantStatusCodeError.memberExist,
+                message: 'invite.error.memberExist',
+            });
+        }
+
+        const memberId =
+            existingMember?.status === EnumTenantMemberStatus.pending
+                ? existingMember.id
+                : (
+                      await this.tenantRepository.createMember({
+                          tenantId,
+                          userId: user.id,
+                          roleId: role.id,
+                          status: EnumTenantMemberStatus.pending,
+                          createdBy,
+                          updatedBy: createdBy,
+                      })
+                  ).id;
+
+        const data = await this.inviteService.issueInvite({
+            invitationType: TenantInvitationType,
+            roleScope: EnumRoleScope.tenant,
+            contextId: tenantId,
+            contextName: tenant.name,
+            memberId,
+            userId: user.id,
+            requestedBy: createdBy,
+        });
+
+        return { data };
     }
 
     async sendInvite(
@@ -178,13 +234,38 @@ export class TenantMemberService {
         requestedBy: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<InviteSendResponseDto>> {
-        return this.inviteService.sendInvite(
-            tenantId,
-            memberId,
-            this.tenantInviteProvider,
+        const [tenant, member] = await Promise.all([
+            this.tenantRepository.findOneById(tenantId),
+            this.tenantRepository.findOneMemberByIdAndTenant(memberId, tenantId),
+        ]);
+
+        if (!tenant) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.notFound,
+                message: 'invite.error.contextNotFound',
+            });
+        }
+
+        if (!member) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.memberNotFound,
+                message: 'invite.error.memberNotFound',
+            });
+        }
+
+        const data = await this.inviteService.dispatchInvite({
+            invitationType: TenantInvitationType,
+            roleScope: EnumRoleScope.tenant,
+            emailTypeLabel: TenantInviteEmailTypeLabel,
+            contextId: tenantId,
+            contextName: tenant.name,
+            memberId: member.id,
+            userId: member.userId,
             requestLog,
-            requestedBy
-        );
+            requestedBy,
+        });
+
+        return { data };
     }
 
     async getMemberRoles(): Promise<

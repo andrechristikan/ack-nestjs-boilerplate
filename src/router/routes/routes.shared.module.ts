@@ -10,8 +10,6 @@ import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 import { ProjectModule } from '@modules/project/project.module';
 import { ProjectSharedController } from '@modules/project/controllers/project.shared.controller';
-import { InviteModule } from '@modules/invite/invite.module';
-import { InviteSharedController } from '@modules/invite/controllers/invite.shared.controller';
 import { withTenancyRoute } from '@modules/tenant/utils/tenant.toggle';
 import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.module';
 
@@ -27,7 +25,6 @@ import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.m
         SessionSharedController,
         TermPolicySharedController,
         ProjectSharedController,
-        InviteSharedController,
     ],
     providers: [],
     exports: [],
@@ -37,7 +34,6 @@ import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.m
         ActivityLogModule,
         SessionModule,
         ProjectModule,
-        InviteModule,
         ...withTenancyRoute('/shared', TenantRoutesSharedModule),
     ],
 })

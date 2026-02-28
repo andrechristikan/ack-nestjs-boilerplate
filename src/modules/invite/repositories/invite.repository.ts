@@ -7,7 +7,6 @@ import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
-    EnumInviteType,
     EnumPasswordHistoryType,
     EnumUserStatus,
     Invite,
@@ -63,6 +62,28 @@ export class InviteRepository {
         });
     }
 
+    async findOneActiveById(id: string): Promise<InviteWithUser | null> {
+        const today = this.helperService.dateCreate();
+
+        return this.databaseService.invite.findFirst({
+            where: {
+                id,
+                acceptedAt: null,
+                expiresAt: {
+                    gt: today,
+                },
+                deletedAt: null,
+                user: {
+                    deletedAt: null,
+                    status: EnumUserStatus.active,
+                },
+            },
+            include: {
+                user: true,
+            },
+        });
+    }
+
     async findOneLatestActiveByUserId(userId: string): Promise<Invite | null> {
         const today = this.helperService.dateCreate();
 
@@ -86,7 +107,7 @@ export class InviteRepository {
 
     async findOneLatestActiveByUserAndContext(
         userId: string,
-        invitationType: EnumInviteType,
+        invitationType: string,
         contextId: string
     ): Promise<Invite | null> {
         const today = this.helperService.dateCreate();
@@ -112,7 +133,7 @@ export class InviteRepository {
     }
 
     async findMany(options?: {
-        invitationType?: EnumInviteType;
+        invitationType?: string;
         contextId?: string;
         userId?: string;
         includeDeleted?: boolean;

@@ -23,7 +23,6 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import {
@@ -35,6 +34,7 @@ import {
     TenantPermissionProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
+import { TenantMemberInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member-invite.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
@@ -176,7 +176,7 @@ export class TenantSharedController {
     @Post('/current/members/invites')
     async createMemberInvite(
         @TenantCurrent() tenant: ITenant,
-        @Body() body: InviteCreateRequestDto,
+        @Body() body: TenantMemberInviteCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto

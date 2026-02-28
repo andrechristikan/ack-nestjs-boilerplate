@@ -3,44 +3,90 @@ import { plainToInstance } from 'class-transformer';
 import { HelperService } from '@common/helper/services/helper.service';
 import { InviteStatusResponseDto } from '@modules/invite/dtos/response/invite-status.response.dto';
 import { InviteListResponseDto } from '@modules/invite/dtos/response/invite-list.response.dto';
-import { InviteTokenPayload } from '@modules/invite/interfaces/invite.interface';
+import { InviteConfigDto } from '@modules/invite/dtos/invite.config.dto';
+import {
+    InviteConfig,
+    InviteConfigOverride,
+    InviteTokenPayload,
+} from '@modules/invite/interfaces/invite.interface';
 import { ConfigService } from '@nestjs/config';
 import { Invite as InviteModel, Prisma, User } from '@prisma/client';
 import { Duration } from 'luxon';
+import { ValidationError, validateSync } from 'class-validator';
+
+function collectValidationMessages(
+    errors: ValidationError[],
+    parentPath = ''
+): string[] {
+    const messages: string[] = [];
+
+    for (const error of errors) {
+        const currentPath = parentPath
+            ? `${parentPath}.${error.property}`
+            : error.property;
+
+        if (error.constraints) {
+            for (const constraint of Object.values(error.constraints)) {
+                messages.push(`${currentPath}: ${constraint}`);
+            }
+        }
+
+        if (error.children?.length) {
+            messages.push(
+                ...collectValidationMessages(error.children, currentPath)
+            );
+        }
+    }
+
+    return messages;
+}
+
+export function mergeInviteConfig(
+    defaults: InviteConfig,
+    override?: InviteConfigOverride
+): InviteConfig {
+    return {
+        expiredInMinutes:
+            override?.expiredInMinutes ?? defaults.expiredInMinutes,
+        tokenLength: override?.tokenLength ?? defaults.tokenLength,
+        linkBaseUrl: override?.linkBaseUrl ?? defaults.linkBaseUrl,
+        resendInMinutes: override?.resendInMinutes ?? defaults.resendInMinutes,
+        reference: {
+            prefix: override?.reference?.prefix ?? defaults.reference.prefix,
+            length: override?.reference?.length ?? defaults.reference.length,
+        },
+    };
+}
+
+export function validateInviteConfig(
+    config: InviteConfig,
+    invitationType: string
+): void {
+    const payload = plainToInstance(InviteConfigDto, config);
+    const errors = validateSync(payload, {
+        whitelist: true,
+        forbidNonWhitelisted: false,
+    });
+
+    if (!errors.length) {
+        return;
+    }
+
+    const messages = collectValidationMessages(errors);
+    throw new Error(
+        `Invalid invite config for "${invitationType}": ${messages.join('; ')}`
+    );
+}
 
 @Injectable()
 export class InviteUtil {
     private readonly homeUrl: string;
-    private readonly inviteReferencePrefix: string;
-    private readonly inviteReferenceLength: number;
-    readonly inviteExpiredInMinutes: number;
-    private readonly inviteTokenLength: number;
-    readonly inviteResendInMinutes: number;
-    private readonly inviteLinkBaseUrl: string;
 
     constructor(
         private readonly helperService: HelperService,
         private readonly configService: ConfigService
     ) {
         this.homeUrl = this.configService.get<string>('home.url');
-        this.inviteReferencePrefix = this.configService.get(
-            'invite.reference.prefix'
-        );
-        this.inviteReferenceLength = this.configService.get(
-            'invite.reference.length'
-        );
-        this.inviteExpiredInMinutes = this.configService.get(
-            'invite.expiredInMinutes'
-        );
-        this.inviteTokenLength = this.configService.get(
-            'invite.tokenLength'
-        );
-        this.inviteResendInMinutes = this.configService.get(
-            'invite.resendInMinutes'
-        );
-        this.inviteLinkBaseUrl = this.configService.get<string>(
-            'invite.linkBaseUrl'
-        );
     }
 
     private toMetadataObject(
@@ -53,42 +99,42 @@ export class InviteUtil {
         return metadata as Record<string, unknown>;
     }
 
-    inviteCreateReference(): string {
+    inviteCreateReference(config: InviteConfig): string {
         const random = this.helperService.randomString(
-            this.inviteReferenceLength
+            config.reference.length
         );
 
-        return `${this.inviteReferencePrefix}-${random}`;
+        return `${config.reference.prefix}-${random}`;
     }
 
-    inviteCreateToken(): string {
-        return this.helperService.randomString(this.inviteTokenLength);
+    inviteCreateToken(config: InviteConfig): string {
+        return this.helperService.randomString(config.tokenLength);
     }
 
-    inviteSetExpiredDate(): Date {
+    inviteSetExpiredDate(config: InviteConfig): Date {
         const now = this.helperService.dateCreate();
 
         return this.helperService.dateForward(
             now,
-            Duration.fromObject({ minutes: this.inviteExpiredInMinutes })
+            Duration.fromObject({ minutes: config.expiredInMinutes })
         );
     }
 
-    createInviteTokenPayload(): InviteTokenPayload {
-        const token = this.inviteCreateToken();
+    createInviteTokenPayload(config: InviteConfig): InviteTokenPayload {
+        const token = this.inviteCreateToken(config);
 
         return {
-            reference: this.inviteCreateReference(),
-            expiresAt: this.inviteSetExpiredDate(),
+            reference: this.inviteCreateReference(config),
+            expiresAt: this.inviteSetExpiredDate(config),
             token,
-            expiredInMinutes: this.inviteExpiredInMinutes,
-            resendInMinutes: this.inviteResendInMinutes,
-            link: `${this.homeUrl}/${this.inviteLinkBaseUrl}/${token}`,
+            expiredInMinutes: config.expiredInMinutes,
+            resendInMinutes: config.resendInMinutes,
+            link: `${this.homeUrl}/${config.linkBaseUrl}/${token}`,
         };
     }
 
-    createInviteLink(token: string): string {
-        return `${this.homeUrl}/${this.inviteLinkBaseUrl}/${token}`;
+    createInviteLink(token: string, config: InviteConfig): string {
+        return `${this.homeUrl}/${config.linkBaseUrl}/${token}`;
     }
 
     mapInviteStatus(invite?: {

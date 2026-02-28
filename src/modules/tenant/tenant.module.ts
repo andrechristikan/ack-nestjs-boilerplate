@@ -12,7 +12,8 @@ import { InviteModule } from '@modules/invite/invite.module';
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
 import { AuthModule } from '@modules/auth/auth.module';
-import { TenantInviteProvider } from '@modules/tenant/services/tenant-invite.provider';
+import { TenantInvitationType } from '@modules/tenant/constants/tenant.constant';
+import { ConfigService } from '@nestjs/config';
 
 @Global()
 @Module({
@@ -20,7 +21,6 @@ import { TenantInviteProvider } from '@modules/tenant/services/tenant-invite.pro
         TenantService,
         TenantMemberService,
         TenantRepository,
-        TenantInviteProvider,
         TenantAuthService,
         TenantUtil,
         TenantGuard,
@@ -34,9 +34,17 @@ import { TenantInviteProvider } from '@modules/tenant/services/tenant-invite.pro
         TenantAuthService,
         TenantRepository,
         TenantUtil,
-        TenantInviteProvider,
     ],
-    imports: [UserModule, RoleModule, AuthModule, InviteModule],
+    imports: [
+        UserModule,
+        RoleModule,
+        AuthModule,
+        InviteModule.forFeatureAsync({
+            invitationType: TenantInvitationType,
+            inject: [ConfigService],
+            useFactory: () => ({}),
+        }),
+    ],
     controllers: [],
 })
 export class TenantModule {}

@@ -18,6 +18,7 @@ import { LoggerModule } from '@common/logger/logger.module';
 import { QueueRegisterModule } from 'src/queues/queue.register.module';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { SessionModule } from '@modules/session/session.module';
+import { InviteModule } from '@modules/invite/invite.module';
 import { TenantModule } from '@modules/tenant/tenant.module';
 import { whenTenancyEnabled } from '@modules/tenant/utils/tenant.toggle';
 
@@ -56,6 +57,7 @@ import { whenTenancyEnabled } from '@modules/tenant/utils/tenant.toggle';
         FeatureFlagModule,
         TermPolicyModule,
         SessionModule,
+        InviteModule.forRoot(),
         ...whenTenancyEnabled([TenantModule]),
     ],
 })

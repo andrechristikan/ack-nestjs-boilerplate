@@ -23,7 +23,7 @@ import {
 } from '@modules/project/constants/project.policy.constant';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
-import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
+import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
@@ -166,7 +166,7 @@ export class ProjectTenantSharedController {
     @Post('/:projectId/members/invites')
     async createMemberInvite(
         @Param('projectId', RequestRequiredPipe) projectId: string,
-        @Body() body: InviteCreateRequestDto,
+        @Body() body: ProjectMemberInviteCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: RequestUserAgentDto

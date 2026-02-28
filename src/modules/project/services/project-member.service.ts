@@ -12,7 +12,7 @@ import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.respo
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
-import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
+import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
@@ -20,8 +20,12 @@ import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
-import { ProjectInviteProvider } from '@modules/project/services/project-invite.provider';
+import {
+    ProjectInvitationType,
+    ProjectInviteEmailTypeLabel,
+} from '@modules/project/constants/project.constant';
 import { ProjectUtil } from '@modules/project/utils/project.util';
+import { UserService } from '@modules/user/services/user.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     ConflictException,
@@ -36,6 +40,7 @@ import {
     EnumProjectStatus,
     EnumRoleScope,
     EnumRoleType,
+    EnumUserSignUpFrom,
 } from '@prisma/client';
 
 @Injectable()
@@ -45,10 +50,10 @@ export class ProjectMemberService {
         private readonly roleRepository: RoleRepository,
         private readonly roleService: RoleService,
         private readonly userRepository: UserRepository,
+        private readonly userService: UserService,
         private readonly inviteService: InviteService,
         private readonly inviteUtil: InviteUtil,
-        private readonly projectUtil: ProjectUtil,
-        private readonly projectInviteProvider: ProjectInviteProvider
+        private readonly projectUtil: ProjectUtil
     ) {}
 
     async create(
@@ -86,7 +91,7 @@ export class ProjectMemberService {
             });
         }
 
-        if (role.scope !== this.projectInviteProvider.roleScope) {
+        if (role.scope !== EnumRoleScope.project) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
                 message: 'project.role.error.notFound',
@@ -145,7 +150,7 @@ export class ProjectMemberService {
                 });
             }
 
-            if (role.scope !== this.projectInviteProvider.roleScope) {
+            if (role.scope !== EnumRoleScope.project) {
                 throw new NotFoundException({
                     statusCode: HttpStatus.NOT_FOUND,
                     message: 'project.role.error.notFound',
@@ -178,17 +183,75 @@ export class ProjectMemberService {
 
     async createInvite(
         projectId: string,
-        dto: InviteCreateRequestDto,
+        dto: ProjectMemberInviteCreateRequestDto,
         createdBy: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<InviteCreateResponseDto>> {
-        return this.inviteService.createInvite(
+        const [project, role] = await Promise.all([
+            this.projectRepository.findOneById(projectId),
+            this.roleRepository.existById(dto.roleId),
+        ]);
+        if (!project) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'invite.error.contextNotFound',
+            });
+        }
+
+        if (!role || role.scope !== EnumRoleScope.project) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'project.role.error.notFound',
+            });
+        }
+
+        const normalizedEmail = dto.email.toLowerCase().trim();
+        let user = await this.userRepository.findOneByEmail(normalizedEmail);
+        if (!user) {
+            user = await this.userService.createForInvitation(
+                normalizedEmail,
+                EnumUserSignUpFrom.project,
+                requestLog,
+                createdBy
+            );
+        }
+
+        const existingMember = await this.projectRepository.findMemberByProjectAndUser(
             projectId,
-            dto,
-            this.projectInviteProvider,
-            requestLog,
-            createdBy
+            user.id
         );
+        if (existingMember && existingMember.status !== EnumProjectMemberStatus.pending) {
+            throw new ConflictException({
+                statusCode: HttpStatus.CONFLICT,
+                message: 'invite.error.memberExist',
+            });
+        }
+
+        const memberId =
+            existingMember?.status === EnumProjectMemberStatus.pending
+                ? existingMember.id
+                : (
+                      await this.projectRepository.createMember({
+                          projectId,
+                          userId: user.id,
+                          roleId: role.id,
+                          status: EnumProjectMemberStatus.pending,
+                          createdBy,
+                          updatedBy: createdBy,
+                      })
+                  ).id;
+
+        const data = await this.inviteService.issueInvite({
+            invitationType: ProjectInvitationType,
+            roleScope: EnumRoleScope.project,
+            contextId: projectId,
+            contextName: project.name,
+            memberId,
+            userId: user.id,
+            requestedBy: createdBy,
+        });
+
+        return { data };
     }
 
     async sendInvite(
@@ -197,13 +260,30 @@ export class ProjectMemberService {
         requestedBy: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<InviteSendResponseDto>> {
-        return this.inviteService.sendInvite(
-            projectId,
+        const member = await this.projectRepository.findOneMemberByIdAndProject(
             memberId,
-            this.projectInviteProvider,
-            requestLog,
-            requestedBy
+            projectId
         );
+        if (!member || !member.user) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'invite.error.memberNotFound',
+            });
+        }
+
+        const data = await this.inviteService.dispatchInvite({
+            invitationType: ProjectInvitationType,
+            roleScope: EnumRoleScope.project,
+            emailTypeLabel: ProjectInviteEmailTypeLabel,
+            contextId: projectId,
+            contextName: member.project.name,
+            memberId: member.id,
+            userId: member.user.id,
+            requestLog,
+            requestedBy,
+        });
+
+        return { data };
     }
 
     async getMemberRoles(projectId: string): Promise<

@@ -15,10 +15,10 @@ import {
     ProjectDocParamsId,
     ProjectDocParamsProjectMemberId,
 } from '@modules/project/constants/project.doc.constant';
-import { InviteCreateRequestDto } from '@modules/invite/dtos/request/invite.create.request.dto';
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
+import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
@@ -160,7 +160,7 @@ export function ProjectTenantSharedCreateMemberInviteDoc(): MethodDecorator {
         DocRequest({
             params: ProjectDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: InviteCreateRequestDto,
+            dto: ProjectMemberInviteCreateRequestDto,
         }),
         DocResponse<InviteCreateResponseDto>(
             'project.member.invite.create',

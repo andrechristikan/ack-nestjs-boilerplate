@@ -3,7 +3,7 @@ import { IsMongoId, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
 import { Transform } from 'class-transformer';
 
-export class InviteCreateRequestDto {
+export class ProjectMemberInviteCreateRequestDto {
     @ApiProperty({
         required: true,
         description: 'Email address to invite',
