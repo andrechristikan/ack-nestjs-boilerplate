@@ -48,11 +48,20 @@ export class InviteService implements IInviteService {
         private readonly inviteUtil: InviteUtil
     ) {}
 
+    /**
+     * Retrieves the invite configuration for a given invitation type.
+     * Throws if the type is not registered in the config registry.
+     */
     private getInviteConfigOrThrow(invitationType: string): InviteConfig {
         return this.inviteConfigRegistry.getOrThrow(invitationType);
     }
 
-    async issueInvite(input: InviteIssueInput): Promise<InviteCreateResponseDto> {
+    /**
+     * Creates an invitation for a user to join a context (project, tenant, etc.) with a specific role.
+     * Generates an invite token and reuses existing active invite if one already exists for this user/context.
+     * Does not send the email—use dispatchInvite() for that.
+     */
+    async createInvite(input: InviteIssueInput): Promise<InviteCreateResponseDto> {
         const {
             invitationType,
             roleScope,
@@ -123,6 +132,11 @@ export class InviteService implements IInviteService {
         }
     }
 
+    /**
+     * Creates an invitation (if needed) and sends an invite email to the user.
+     * Enforces a rate limit on resend—users cannot request a new email within the configured interval.
+     * Updates the invite's sentAt timestamp and logs the action.
+     */
     async dispatchInvite(input: InviteDispatchInput): Promise<InviteSendResponseDto> {
         const {
             invitationType,
@@ -264,11 +278,9 @@ export class InviteService implements IInviteService {
     }
 
     /**
-     * Soft-deletes a pending invitation by setting `deletedAt` / `deletedBy`
-     * on the invitation record.
-     *
-     * The token itself is NOT marked as used so it remains distinguishable
-     * from a completed invitation in `mapInviteStatus()`.
+     * Soft-deletes the most recent active invitation for a user.
+     * Marks the invite as deleted without invalidating the token, so it can be distinguished
+     * from accepted/expired invitations in status queries.
      */
     async deleteInvite({ userId, deletedBy }: InviteDeleteInput): Promise<void> {
         const invite =
@@ -286,9 +298,8 @@ export class InviteService implements IInviteService {
     }
 
     /**
-     * Lists invitations filtered by invitation type and optional context.
-     *
-     * Queries `Invitation` records and filters by scalar invitation fields.
+     * Lists invitations filtered by type and optional context.
+     * Allows querying invites for display/management purposes.
      */
     async listInvites(options?: InviteListInput): Promise<InviteListResponseDto[]> {
         const invites = await this.inviteRepository.findMany(options);
@@ -296,8 +307,13 @@ export class InviteService implements IInviteService {
         return this.inviteUtil.mapList(invites);
     }
 
-    async getInvite({ token }: InviteGetInput): Promise<InvitePublicResponseDto> {
-        const invite = await this.inviteRepository.findOneByToken(token);
+    /**
+     * Retrieves invitation details by token (public view).
+     * Determines invite status: pending, expired, completed, or deleted.
+     * Used by users to check their invite before accepting or signing up.
+     */
+    async getInvite({ token, invitationType }: InviteGetInput): Promise<InvitePublicResponseDto> {
+        const invite = await this.inviteRepository.findOneByToken(token, invitationType);
         if (!invite) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
@@ -317,6 +333,7 @@ export class InviteService implements IInviteService {
         }
 
         return {
+            //TODO: We need to partially-censor the user-email.
             email: invite.user.email,
             isVerified: invite.user.isVerified,
             status,
@@ -334,6 +351,10 @@ export class InviteService implements IInviteService {
         };
     }
 
+    /**
+     * Retrieves an active (non-expired, non-deleted, non-accepted) invitation by token.
+     * Used internally to validate and fetch invite data before processing accept/signup operations.
+     */
     async getActiveInviteForProcessing({
         token,
     }: InviteGetActiveInput): Promise<InviteWithUser> {
@@ -348,6 +369,11 @@ export class InviteService implements IInviteService {
         return invite;
     }
 
+    /**
+     * Finalizes an invite acceptance for an already-verified user.
+     * Activates the membership and marks the invite as accepted.
+     * If the user is unverified, they must use finalizeInviteSignup() instead.
+     */
     async finalizeInviteAccept({
         inviteId,
         userId,
@@ -397,26 +423,23 @@ export class InviteService implements IInviteService {
         }
     }
 
+    /**
+     * Completes user signup via an invite token.
+     * Sets user name, password, and marks the user as verified.
+     * Only works for unverified users—verified users must use finalizeInviteAccept().
+     */
     async finalizeInviteSignup({
-        inviteId,
-        userId,
+        token,
         firstName,
         lastName,
         password,
         requestLog,
     }: InviteFinalizeSignupInput): Promise<void> {
-        const invite = await this.inviteRepository.findOneActiveById(inviteId);
+        const invite = await this.inviteRepository.findOneActiveByToken(token);
         if (!invite) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
                 message: 'user.error.invitationTokenInvalid',
-            });
-        }
-
-        if (invite.userId !== userId) {
-            throw new ForbiddenException({
-                statusCode: HttpStatus.FORBIDDEN,
-                message: 'http.clientError.forbidden',
             });
         }
 
@@ -441,7 +464,8 @@ export class InviteService implements IInviteService {
                 requestLog
             );
 
-            await this.emailService.sendVerified(
+            //TODO: We shall move this to Queue instead of sending email here.
+            this.emailService.sendVerified(
                 invite.user.id,
                 {
                     email: invite.user.email,

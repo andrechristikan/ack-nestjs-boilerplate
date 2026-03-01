@@ -1,3 +1,4 @@
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -34,6 +35,7 @@ import {
     BadRequestException,
     ConflictException,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
 import {
@@ -215,7 +217,7 @@ export class TenantMemberService {
                       })
                   ).id;
 
-        const data = await this.inviteService.issueInvite({
+        const data = await this.inviteService.createInvite({
             invitationType: TenantInvitationType,
             roleScope: EnumRoleScope.tenant,
             contextId: tenantId,
@@ -226,6 +228,37 @@ export class TenantMemberService {
         });
 
         return { data };
+    }
+
+    async claimInvite(
+        token: string,
+        firstName: string,
+        lastName: string,
+        password: string,
+        requestLog: IRequestLog
+    ): Promise<void> {
+        const invite = await this.inviteService.getActiveInviteForProcessing({ token });
+
+        try {
+            await this.inviteService.finalizeInviteSignup({
+                token,
+                firstName,
+                lastName,
+                password,
+                requestLog,
+            });
+
+            await this.tenantRepository.updateMember(invite.memberId, {
+                status: EnumTenantMemberStatus.active,
+                updatedBy: invite.userId,
+            });
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
     async sendInvite(

@@ -1,10 +1,7 @@
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { TenantLoginRequestDto } from '@modules/tenant/dtos/request/tenant.login.request.dto';
-import {
-    TenantLoginResponseDto,
-    TenantMembershipDto,
-} from '@modules/tenant/dtos/response/tenant.login.response.dto';
+import { TenantLoginResponseDto } from '@modules/tenant/dtos/response/tenant.login.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { TenantUtil } from '@modules/tenant/utils/tenant.util';
@@ -25,37 +22,34 @@ export class TenantAuthService {
         dto: TenantLoginRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<TenantLoginResponseDto>> {
-        // 1. Lightweight lookup — null means user not found or not active
-        const user = await this.userRepository.findOneActiveByEmail(dto.email);
+        // 1. Validate credentials and resolve the user in parallel.
+        //    loginCredential throws on bad credentials, so membership check
+        //    is only reached when authentication fully succeeds.
+        //    Note: for non-2FA users loginCredential already creates a session;
+        //    if the membership gate below throws, that session will be orphaned.
+        const [loginResult, user] = await Promise.all([
+            this.userService.loginCredential(
+                { email: dto.email, password: dto.password, from: dto.from },
+                requestLog
+            ),
+            this.userRepository.findOneActiveByEmail(dto.email),
+        ]);
 
-        let tenants: TenantMembershipDto[] = [];
+        // 2. Gate: user must have at least one active tenant membership
+        const memberships =
+            await this.tenantRepository.findAllMembershipsByUser(user.id);
 
-        if (user !== null) {
-            // 2. Gate: user must have at least one active tenant membership
-            const memberships =
-                await this.tenantRepository.findAllMembershipsByUser(user.id);
-
-            if (memberships.length === 0) {
-                throw new ForbiddenException({
-                    statusCode: EnumTenantStatusCodeError.loginNoMembership,
-                    message: 'tenant.error.loginNoMembership',
-                });
-            }
-
-            tenants = memberships.map(m => this.tenantUtil.mapMembership(m));
+        if (memberships.length === 0) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.loginNoMembership,
+                message: 'tenant.error.loginNoMembership',
+            });
         }
-
-        // 3. Delegate all credential validation and token creation to UserService.
-        //    When user is null, UserService will throw the correct error (notFound / inactive).
-        const loginResult = await this.userService.loginCredential(
-            { email: dto.email, password: dto.password, from: dto.from },
-            requestLog
-        );
 
         return {
             data: {
                 ...loginResult.data,
-                tenants,
+                tenants: memberships.map(m => this.tenantUtil.mapMembership(m)),
             },
         };
     }

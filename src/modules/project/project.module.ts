@@ -9,6 +9,7 @@ import { InviteModule } from '@modules/invite/invite.module';
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
 import { ProjectInvitationType } from '@modules/project/constants/project.constant';
+import { ProjectPublicController } from '@modules/project/controllers/project.public.controller';
 import { ConfigService } from '@nestjs/config';
 
 @Module({
@@ -41,6 +42,6 @@ import { ConfigService } from '@nestjs/config';
         ProjectMemberService,
         ProjectRepository,
     ],
-    controllers: [],
+    controllers: [ProjectPublicController],
 })
 export class ProjectModule {}

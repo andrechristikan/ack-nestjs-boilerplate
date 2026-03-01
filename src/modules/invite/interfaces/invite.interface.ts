@@ -46,16 +46,11 @@ export interface InviteFeatureConfigRegistration {
     config: InviteConfig;
 }
 
-export interface InviteModuleForFeatureOptions {
-    invitationType: string;
-    config?: InviteConfigOverride;
-}
-
 export interface InviteModuleForFeatureAsyncOptions
     extends Pick<ModuleMetadata, 'imports'> {
     invitationType: string;
     inject?: FactoryProvider<InviteConfigOverride>['inject'];
-    useFactory: FactoryProvider<InviteConfigOverride>['useFactory'];
+    useFactory?: FactoryProvider<InviteConfigOverride>['useFactory'];
 }
 
 export type InviteWithUser = Prisma.InviteGetPayload<{
@@ -114,6 +109,7 @@ export interface InviteListInput {
 
 export interface InviteGetInput {
     token: string;
+    invitationType: string;
 }
 
 export interface InviteGetActiveInput {
@@ -127,8 +123,7 @@ export interface InviteFinalizeAcceptInput {
 }
 
 export interface InviteFinalizeSignupInput {
-    inviteId: string;
-    userId: string;
+    token: string;
     firstName: string;
     lastName: string;
     password: string;

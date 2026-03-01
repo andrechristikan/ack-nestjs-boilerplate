@@ -241,7 +241,7 @@ export class ProjectMemberService {
                       })
                   ).id;
 
-        const data = await this.inviteService.issueInvite({
+        const data = await this.inviteService.createInvite({
             invitationType: ProjectInvitationType,
             roleScope: EnumRoleScope.project,
             contextId: projectId,
@@ -252,6 +252,37 @@ export class ProjectMemberService {
         });
 
         return { data };
+    }
+
+    async claimInvite(
+        token: string,
+        firstName: string,
+        lastName: string,
+        password: string,
+        requestLog: IRequestLog
+    ): Promise<void> {
+        const invite = await this.inviteService.getActiveInviteForProcessing({ token });
+
+        try {
+            await this.inviteService.finalizeInviteSignup({
+                token,
+                firstName,
+                lastName,
+                password,
+                requestLog,
+            });
+
+            await this.projectRepository.updateMember(invite.memberId, {
+                status: EnumProjectMemberStatus.active,
+                updatedBy: invite.userId,
+            });
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
     async sendInvite(

@@ -1,8 +1,9 @@
 import { InviteConfig } from '@modules/invite/interfaces/invite.interface';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class InviteConfigRegistry {
+    private readonly logger = new Logger(InviteConfigRegistry.name);
     private readonly registry = new Map<string, InviteConfig>();
 
     register(invitationType: string, config: InviteConfig): void {
@@ -14,6 +15,9 @@ export class InviteConfigRegistry {
         }
 
         this.registry.set(invitationType, config);
+        this.logger.debug(
+            `Registered invite config for type "${invitationType}": ${JSON.stringify(config)}`
+        );
     }
 
     getOrThrow(invitationType: string): InviteConfig {

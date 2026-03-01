@@ -15,7 +15,7 @@ import {
 } from '@modules/invite/interfaces/invite.interface';
 
 export interface IInviteService {
-    issueInvite(input: InviteIssueInput): Promise<InviteCreateResponseDto>;
+    createInvite(input: InviteIssueInput): Promise<InviteCreateResponseDto>;
 
     dispatchInvite(input: InviteDispatchInput): Promise<InviteSendResponseDto>;
 

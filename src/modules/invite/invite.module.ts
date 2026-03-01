@@ -18,7 +18,6 @@ import {
     InviteConfig,
     InviteConfigOverride,
     InviteModuleForFeatureAsyncOptions,
-    InviteModuleForFeatureOptions,
 } from '@modules/invite/interfaces/invite.interface';
 import { InviteConfigRegistry } from '@modules/invite/services/invite-config.registry';
 import { ConfigService } from '@nestjs/config';
@@ -40,13 +39,6 @@ export class InviteModule {
         };
     }
 
-    static forFeature(options: InviteModuleForFeatureOptions): DynamicModule {
-        return this.forFeatureAsync({
-            invitationType: options.invitationType,
-            useFactory: () => options.config ?? {},
-        });
-    }
-
     static forFeatureAsync(
         options: InviteModuleForFeatureAsyncOptions
     ): DynamicModule {
@@ -59,7 +51,7 @@ export class InviteModule {
 
         const configProvider: FactoryProvider<InviteConfigOverride> = {
             provide: configOverrideToken,
-            useFactory: options.useFactory,
+            useFactory: options.useFactory ?? (() => ({})),
             inject: options.inject ?? [],
         };
 

@@ -26,10 +26,11 @@ export class InviteRepository {
         private readonly helperService: HelperService
     ) {}
 
-    async findOneByToken(token: string): Promise<InviteWithUser | null> {
+    async findOneByToken(token: string, invitationType: string): Promise<InviteWithUser | null> {
         return this.databaseService.invite.findFirst({
             where: {
                 token,
+                invitationType,
                 user: {
                     deletedAt: null,
                 },
