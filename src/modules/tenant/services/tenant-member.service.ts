@@ -275,20 +275,10 @@ export class TenantMemberService {
         requestedBy: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<InviteSendResponseDto>> {
-        const [tenant, member] = await Promise.all([
-            this.tenantRepository.findOneById(tenantId),
-            this.tenantRepository.findOneMemberByIdAndTenant(
-                memberId,
-                tenantId
-            ),
-        ]);
-
-        if (!tenant) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.notFound,
-                message: 'invite.error.contextNotFound',
-            });
-        }
+        const member = await this.tenantRepository.findOneMemberByIdAndTenant(
+            memberId,
+            tenantId
+        );
 
         if (!member) {
             throw new NotFoundException({
@@ -302,7 +292,7 @@ export class TenantMemberService {
                 inviteType: TenantInviteType,
                 roleScope: EnumRoleScope.tenant,
                 contextId: tenantId,
-                contextName: tenant.name,
+                contextName: member.tenant.name,
                 memberId: member.id,
                 userId: member.userId,
             },

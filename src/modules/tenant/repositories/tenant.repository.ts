@@ -157,7 +157,7 @@ export class TenantRepository {
     async findOneMemberByIdAndTenant(
         memberId: string,
         tenantId: string
-    ): Promise<ITenantMember | null> {
+    ): Promise<ITenantMemberWithTenant | null> {
         return this.databaseService.tenantMember.findFirst({
             where: {
                 id: memberId,
@@ -168,6 +168,7 @@ export class TenantRepository {
             },
             include: {
                 role: true,
+                tenant: true,
             },
         });
     }
