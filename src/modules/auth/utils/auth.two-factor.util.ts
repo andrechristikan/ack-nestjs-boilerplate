@@ -17,11 +17,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
 import {
+    HashAlgorithm,
+    OTPStrategy,
     generateSecret,
     generateURI,
-    OTPStrategy,
     verifySync,
-    HashAlgorithm,
 } from 'otplib';
 
 /**

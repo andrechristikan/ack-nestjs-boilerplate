@@ -140,7 +140,7 @@ export class DeviceService implements IDeviceService {
                     userId
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                // TODO: NEXT
+                // TODO: LAST REVOKE
                 // this.notificationPushTokenRepository.revokeBySessionId(
                 //     sessionId,
                 //     revokeBy
@@ -185,7 +185,7 @@ export class DeviceService implements IDeviceService {
                     removedBy
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                // TODO: NEXT
+                // TODO: LAST REVOKE
                 // this.notificationPushTokenRepository.revokeBySessionId(
                 //     sessionId,
                 //     revokeBy

@@ -1,14 +1,15 @@
 import { EnumEmailProcess } from '@modules/email/enums/email.enum';
+import { IEmailSendPayload } from '@modules/email/interfaces/email.interface';
 import {
-    ICreateByAdminPayload,
-    IEmailForgotPasswordPayload,
-    IEmailMobileNumberVerifiedPayload,
-    IEmailNewLoginPayload,
-    IEmailSendPayload,
-    IEmailTempPasswordPayload,
-    IEmailVerificationPayload,
-    IEmailVerifiedPayload,
-} from '@modules/email/interfaces/email.interface';
+    INotificationCreateByAdminPayload,
+    INotificationEmailVerificationPayload,
+    INotificationEmailVerifiedPayload,
+    INotificationForgotPasswordPayload,
+    INotificationMobileNumberVerifiedPayload,
+    INotificationNewDeviceLoginPayload,
+    INotificationPublishTermPolicyPayload,
+    INotificationTemporaryPasswordPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
@@ -19,6 +20,25 @@ export class EmailUtil {
     constructor(
         @InjectQueue(EnumQueue.email) private readonly emailQueue: Queue
     ) {}
+
+    async sendResetPassword(
+        userId: string,
+        { email, username }: IEmailSendPayload
+    ): Promise<void> {
+        await this.emailQueue.add(
+            EnumEmailProcess.resetPassword,
+            {
+                send: { email: email, name: username },
+            },
+            {
+                priority: EnumQueuePriority.low,
+                deduplication: {
+                    id: `${EnumEmailProcess.resetPassword}-${userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
 
     async sendChangePassword(
         userId: string,
@@ -46,7 +66,7 @@ export class EmailUtil {
             passwordCreatedAt,
             passwordExpiredAt,
             password,
-        }: ICreateByAdminPayload
+        }: INotificationCreateByAdminPayload
     ): Promise<void> {
         await this.emailQueue.add(
             EnumEmailProcess.createByAdmin,
@@ -76,7 +96,7 @@ export class EmailUtil {
             expiredInMinutes,
             link,
             reference,
-        }: IEmailVerificationPayload
+        }: INotificationEmailVerificationPayload
     ): Promise<void> {
         await this.emailQueue.add(
             EnumEmailProcess.verification,
@@ -94,24 +114,24 @@ export class EmailUtil {
         );
     }
 
-    async sendTemporaryPassword(
+    async sendTemporaryPasswordByAdmin(
         userId: string,
         { email, username }: IEmailSendPayload,
         {
             password,
             passwordCreatedAt,
             passwordExpiredAt,
-        }: IEmailTempPasswordPayload
+        }: INotificationTemporaryPasswordPayload
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumEmailProcess.temporaryPassword,
+            EnumEmailProcess.temporaryPasswordByAdmin,
             {
                 send: { email, username },
                 data: { password, passwordCreatedAt, passwordExpiredAt },
             },
             {
                 deduplication: {
-                    id: `${EnumEmailProcess.temporaryPassword}-${userId}`,
+                    id: `${EnumEmailProcess.temporaryPasswordByAdmin}-${userId}`,
                     ttl: 1000,
                 },
                 priority: EnumQueuePriority.medium,
@@ -135,10 +155,10 @@ export class EmailUtil {
         );
     }
 
-    async sendVerified(
+    async sendVerifiedEmail(
         userId: string,
         { email, username }: IEmailSendPayload,
-        { reference }: IEmailVerifiedPayload
+        { reference }: INotificationEmailVerifiedPayload
     ): Promise<void> {
         await this.emailQueue.add(
             EnumEmailProcess.emailVerified,
@@ -166,8 +186,8 @@ export class EmailUtil {
             expiredInMinutes,
             link,
             reference,
-        }: IEmailForgotPasswordPayload,
-        resendInMinutes: number
+            resendInMinutes,
+        }: INotificationForgotPasswordPayload
     ): Promise<void> {
         await this.emailQueue.add(
             EnumEmailProcess.forgotPassword,
@@ -191,8 +211,11 @@ export class EmailUtil {
     async sendVerifiedMobileNumber(
         userId: string,
         { email, username }: IEmailSendPayload,
-        { mobileNumber, reference }: IEmailMobileNumberVerifiedPayload,
-        resendInMinutes: number
+        {
+            mobileNumber,
+            reference,
+            resendInMinutes,
+        }: INotificationMobileNumberVerifiedPayload
     ): Promise<void> {
         await this.emailQueue.add(
             EnumEmailProcess.mobileNumberVerified,
@@ -229,13 +252,18 @@ export class EmailUtil {
         );
     }
 
-    async sendNewLogin(
+    async sendNewDeviceLogin(
         userId: string,
         { email, username }: IEmailSendPayload,
-        { loginFrom, loginWith, loginAt, requestLog }: IEmailNewLoginPayload
+        {
+            loginFrom,
+            loginWith,
+            loginAt,
+            requestLog,
+        }: INotificationNewDeviceLoginPayload
     ): Promise<void> {
         await this.emailQueue.add(
-            EnumEmailProcess.newLogin,
+            EnumEmailProcess.newDeviceLogin,
             {
                 send: { email, username },
                 data: {
@@ -247,10 +275,24 @@ export class EmailUtil {
             },
             {
                 deduplication: {
-                    id: `${EnumEmailProcess.newLogin}-${userId}`,
+                    id: `${EnumEmailProcess.newDeviceLogin}-${userId}`,
                     ttl: 1000,
                 },
                 priority: EnumQueuePriority.high,
+            }
+        );
+    }
+
+    async sendPublishTermPolicy(
+        payload: INotificationPublishTermPolicyPayload
+    ): Promise<void> {
+        await this.emailQueue.add(
+            EnumEmailProcess.publishTermPolicy,
+            {
+                data: payload,
+            },
+            {
+                priority: EnumQueuePriority.medium,
             }
         );
     }

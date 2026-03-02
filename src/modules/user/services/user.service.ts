@@ -105,11 +105,14 @@ import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.req
 import { ConfigService } from '@nestjs/config';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
-import { EmailUtil } from '@modules/email/utils/email.util';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { DeviceDto } from '@modules/device/dtos/device.dto';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import {
+    INotificationNewDeviceLoginPayload,
+    INotificationSendPayload,
+} from '@modules/notification/interfaces/notification.interface';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -126,13 +129,12 @@ export class UserService implements IUserService {
         private readonly awsS3Service: AwsS3Service,
         private readonly helperService: HelperService,
         private readonly fileService: FileService,
+        private readonly notificationService: NotificationService,
         private readonly authUtil: AuthUtil,
         private readonly sessionUtil: SessionUtil,
         private readonly sessionRepository: SessionRepository,
         private readonly featureFlagUtil: FeatureFlagUtil,
-        private readonly emailUtil: EmailUtil,
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
-        private readonly notificationUtil: NotificationUtil,
         private readonly configService: ConfigService
     ) {
         this.userRoleName = this.configService.get<string>('user.default.role');
@@ -295,17 +297,18 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await this.emailUtil.sendWelcomeByAdmin(
-                created.id,
+            await this.notificationService.sendWelcomeByAdmin(
                 {
                     email,
+                    userId: created.id,
                     username: randomUsername,
                 },
                 {
                     password: passwordString,
                     passwordCreatedAt: password.passwordCreated.toISOString(),
                     passwordExpiredAt: password.passwordExpired.toISOString(),
-                }
+                },
+                createdBy
             );
 
             return {
@@ -807,9 +810,9 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.emailUtil.sendTemporaryPassword(
-                updated.id,
+            await this.notificationService.sendTemporaryPasswordByAdmin(
                 {
+                    userId: updated.id,
                     email: updated.email,
                     username: updated.username,
                 },
@@ -817,7 +820,8 @@ export class UserService implements IUserService {
                     password: passwordString,
                     passwordCreatedAt: password.passwordCreated.toISOString(),
                     passwordExpiredAt: password.passwordExpired.toISOString(),
-                }
+                },
+                updatedBy
             );
 
             return {
@@ -910,9 +914,10 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.emailUtil.sendChangePassword(user.id, {
+            await this.notificationService.sendChangePassword({
                 email: user.email,
                 username: user.username,
+                userId: user.id,
             });
 
             return;
@@ -1029,10 +1034,15 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await this.emailUtil.sendWelcome(user.id, {
-                email: user.email,
-                username: user.username,
-            });
+            await this.notificationService.sendWelcomeSocial(
+                {
+                    email: user.email,
+                    username: user.username,
+                    userId: user.id,
+                },
+                loginWith,
+                from
+            );
         }
 
         if (user.status !== EnumUserStatus.active) {
@@ -1171,26 +1181,19 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await Promise.all([
-                this.emailUtil.sendWelcome(created.id, {
-                    email: created.email,
-                    username: created.username,
-                }),
-                this.emailUtil.sendVerification(
-                    created.id,
-                    {
-                        email: created.email,
-                        username: created.username,
-                    },
-                    {
-                        expiredAt: emailVerification.expiredAt.toISOString(),
-                        reference: emailVerification.reference,
-                        link: emailVerification.link,
-                        expiredInMinutes: emailVerification.expiredInMinutes,
-                    }
-                ),
-            ]);
-
+            await this.notificationService.sendWelcome(
+                {
+                    email,
+                    userId: created.id,
+                    username: randomUsername,
+                },
+                {
+                    expiredAt: emailVerification.expiredAt.toISOString(),
+                    reference: emailVerification.reference,
+                    link: emailVerification.link,
+                    expiredInMinutes: emailVerification.expiredInMinutes,
+                }
+            );
             return;
         } catch (err: unknown) {
             throw new InternalServerErrorException({
@@ -1224,9 +1227,9 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await this.emailUtil.sendVerified(
-                verification.user.id,
+            await this.notificationService.sendVerifiedEmail(
                 {
+                    userId: verification.user.id,
                     email: verification.user.email,
                     username: verification.user.username,
                 },
@@ -1245,7 +1248,7 @@ export class UserService implements IUserService {
         }
     }
 
-    async sendEmail(
+    async sendVerificationEmail(
         { email }: UserSendEmailVerificationRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
@@ -1301,9 +1304,9 @@ export class UserService implements IUserService {
                 requestLog
             );
 
-            await this.emailUtil.sendVerification(
-                user.id,
+            await this.notificationService.sendWelcome(
                 {
+                    userId: user.id,
                     email: user.email,
                     username: user.username,
                 },
@@ -1373,10 +1376,9 @@ export class UserService implements IUserService {
                 requestLog
             );
 
-            // @note: send email after all creation
-            await this.emailUtil.sendForgotPassword(
-                user.id,
+            await this.notificationService.sendForgotPassword(
                 {
+                    userId: user.id,
                     email: user.email,
                     username: user.username,
                 },
@@ -1385,8 +1387,8 @@ export class UserService implements IUserService {
                     link: resetPassword.link,
                     reference: resetPassword.reference,
                     expiredInMinutes: resetPassword.expiredInMinutes,
-                },
-                resetPassword.resendInMinutes
+                    resendInMinutes: resetPassword.resendInMinutes,
+                }
             );
 
             return;
@@ -1477,7 +1479,8 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.emailUtil.sendChangePassword(resetPassword.user.id, {
+            await this.notificationService.sendResetPassword({
+                userId: resetPassword.user.id,
                 email: resetPassword.user.email,
                 username: resetPassword.user.username,
             });
@@ -1529,31 +1532,19 @@ export class UserService implements IUserService {
 
         if (!existDevice) {
             promises.push(
-                this.notificationUtil.sendNewLogin(
-                    {
-                        userId: user.id,
-                        username: user.username,
-                        deviceFingerprint: device.fingerprint,
-                    },
-                    {
-                        loginAt,
-                        loginFrom,
-                        loginWith,
-                        requestLog,
-                    }
-                ),
-                this.emailUtil.sendNewLogin(
-                    user.id,
+                this.notificationService.sendNewDeviceLogin(
                     {
                         email: user.email,
+                        userId: user.id,
                         username: user.username,
-                    },
+                        notificationToken: device.notificationToken,
+                    } as INotificationSendPayload,
                     {
-                        loginAt,
                         loginFrom,
                         loginWith,
+                        loginAt,
                         requestLog,
-                    }
+                    } as INotificationNewDeviceLoginPayload
                 )
             );
         }
@@ -2039,10 +2030,14 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.emailUtil.sendResetTwoFactorByAdmin(user.id, {
-                email: user.email,
-                username: user.username,
-            });
+            await this.notificationService.sendResetTwoFactorByAdmin(
+                {
+                    userId: user.id,
+                    email: user.email,
+                    username: user.username,
+                },
+                updatedBy
+            );
 
             return;
         } catch (err: unknown) {
@@ -2118,9 +2113,9 @@ export class UserService implements IUserService {
             const sendEmailPromises = [];
             for (const [index, newUser] of newUsers.entries()) {
                 sendEmailPromises.push(
-                    this.emailUtil.sendWelcomeByAdmin(
-                        newUser.id,
+                    this.notificationService.sendWelcomeByAdmin(
                         {
+                            userId: newUser.id,
                             email: newUser.email,
                             username: newUser.username,
                         },
@@ -2130,7 +2125,8 @@ export class UserService implements IUserService {
                                 newUser.passwordCreated.toISOString(),
                             passwordExpiredAt:
                                 newUser.passwordExpired.toISOString(),
-                        }
+                        },
+                        createdBy
                     )
                 );
             }

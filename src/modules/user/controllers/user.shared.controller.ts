@@ -101,7 +101,7 @@ export class UserSharedController {
         @AuthJwtToken() refreshToken: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
         return this.userService.refresh(user, refreshToken, {
             ipAddress,
@@ -138,7 +138,7 @@ export class UserSharedController {
         body: UserUpdateProfileRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.updateProfile(userId, body, {
             ipAddress,
@@ -176,7 +176,7 @@ export class UserSharedController {
         @Body() body: UserUpdateProfilePhotoRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.updatePhotoProfile(userId, body, {
             ipAddress,
@@ -209,7 +209,7 @@ export class UserSharedController {
         file: IFile,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.uploadPhotoProfile(userId, file, {
             ipAddress,
@@ -231,7 +231,7 @@ export class UserSharedController {
         @Body() body: UserChangePasswordRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.changePassword(user, body, {
             ipAddress,
@@ -253,7 +253,7 @@ export class UserSharedController {
         body: UserAddMobileNumberRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
         return this.userService.addMobileNumber(userId, body, {
             ipAddress,
@@ -276,7 +276,7 @@ export class UserSharedController {
         body: UserUpdateMobileNumberRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
         return this.userService.updateMobileNumber(
             userId,
@@ -302,7 +302,7 @@ export class UserSharedController {
         @Param('mobileNumberId') mobileNumberId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
         return this.userService.deleteMobileNumber(userId, mobileNumberId, {
             ipAddress,
@@ -325,7 +325,7 @@ export class UserSharedController {
         body: UserClaimUsernameRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.claimUsername(userId, body, {
             ipAddress,
@@ -359,7 +359,7 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>> {
         return this.userService.setupTwoFactor(user, {
             ipAddress,
@@ -381,7 +381,7 @@ export class UserSharedController {
         @Body() body: UserTwoFactorEnableRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         return this.userService.enableTwoFactor(user, body, {
             ipAddress,
@@ -403,7 +403,7 @@ export class UserSharedController {
         @Body() body: UserTwoFactorDisableRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.disableTwoFactor(user, body, {
             ipAddress,
@@ -423,7 +423,7 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         return this.userService.regenerateTwoFactorBackupCodes(user, {
             ipAddress,
@@ -432,7 +432,7 @@ export class UserSharedController {
         });
     }
 
-    // TODO: NEXT - Implement logout api
+    // TODO: LAST - Implement logout api
 
     // TODO: Verify number implementation, but which provider?
 }

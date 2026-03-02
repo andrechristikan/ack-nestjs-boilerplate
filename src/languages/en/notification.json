@@ -1,16 +1,11 @@
 {
-    "list": "Here are your notifications.",
+    "list": "Successfully retrieved notifications.",
     "markAsRead": "Notification marked as read.",
     "markAllAsRead": "{count} notifications marked as read.",
     "updateUserSetting": "Notification settings updated.",
+    "listUserSetting": "Successfully retrieved notification settings.",
     "error": {
         "notFound": "Notification not found.",
         "alreadyRead": "Notification is already marked as read."
-    },
-    "notify": {
-        "newLogin": {
-            "title": "New Login Detected",
-            "body": "A new login to your account was detected."
-        }
     }
 }

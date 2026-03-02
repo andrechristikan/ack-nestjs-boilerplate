@@ -1,6 +1,7 @@
 export enum EnumEmailProcess {
+    resetPassword = 'resetPassword',
     changePassword = 'changePassword',
-    temporaryPassword = 'temporaryPassword',
+    temporaryPasswordByAdmin = 'temporaryPasswordByAdmin',
     welcome = 'welcome',
     createByAdmin = 'createByAdmin',
     forgotPassword = 'forgotPassword',
@@ -8,5 +9,6 @@ export enum EnumEmailProcess {
     emailVerified = 'emailVerified',
     mobileNumberVerified = 'mobileNumberVerified',
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
-    newLogin = 'newLogin',
+    newDeviceLogin = 'newDeviceLogin',
+    publishTermPolicy = 'publishTermPolicy',
 }

@@ -69,7 +69,7 @@ export class SessionSharedController {
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.sessionService.revoke(userId, sessionId, {
             ipAddress,

@@ -1,13 +1,13 @@
+import { IEmailSendPayload } from '@modules/email/interfaces/email.interface';
 import {
-    ICreateByAdminPayload,
-    IEmailForgotPasswordPayload,
-    IEmailMobileNumberVerifiedPayload,
-    IEmailNewLoginPayload,
-    IEmailSendPayload,
-    IEmailTempPasswordPayload,
-    IEmailVerificationPayload,
-    IEmailVerifiedPayload,
-} from '@modules/email/interfaces/email.interface';
+    INotificationCreateByAdminPayload,
+    INotificationEmailVerificationPayload,
+    INotificationEmailVerifiedPayload,
+    INotificationForgotPasswordPayload,
+    INotificationMobileNumberVerifiedPayload,
+    INotificationNewDeviceLoginPayload,
+    INotificationTemporaryPasswordPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
 export interface IEmailProcessorService {
@@ -15,30 +15,30 @@ export interface IEmailProcessorService {
     processWelcome(data: IEmailSendPayload): Promise<IQueueResponse>;
     processCreateByAdmin(
         data: IEmailSendPayload,
-        payload: ICreateByAdminPayload
+        payload: INotificationCreateByAdminPayload
     ): Promise<IQueueResponse>;
-    processTempPassword(
+    processTemporaryPasswordByAdmin(
         data: IEmailSendPayload,
-        payload: IEmailTempPasswordPayload
+        payload: INotificationTemporaryPasswordPayload
     ): Promise<IQueueResponse>;
     processForgotPassword(
         data: IEmailSendPayload,
-        payload: IEmailForgotPasswordPayload
+        payload: INotificationForgotPasswordPayload
     ): Promise<IQueueResponse>;
     processVerification(
         data: IEmailSendPayload,
-        payload: IEmailVerificationPayload
+        payload: INotificationEmailVerificationPayload
     ): Promise<IQueueResponse>;
     processEmailVerified(
         data: IEmailSendPayload,
-        payload: IEmailVerifiedPayload
+        payload: INotificationEmailVerifiedPayload
     ): Promise<IQueueResponse>;
     processMobileNumberVerified(
         data: IEmailSendPayload,
-        payload: IEmailMobileNumberVerifiedPayload
+        payload: INotificationMobileNumberVerifiedPayload
     ): Promise<IQueueResponse>;
-    processNewLoginNotification(
+    processNewDeviceLogin(
         data: IEmailSendPayload,
-        payload: IEmailNewLoginPayload
+        payload: INotificationNewDeviceLoginPayload
     ): Promise<IQueueResponse>;
 }

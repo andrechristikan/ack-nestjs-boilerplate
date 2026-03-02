@@ -171,7 +171,7 @@ export class UserAdminController {
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<DatabaseIdDto>> {
         return this.userService.createByAdmin(
             body,
@@ -204,7 +204,7 @@ export class UserAdminController {
         @Body() body: UserUpdateStatusRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.updateStatusByAdmin(
             userId,
@@ -237,7 +237,7 @@ export class UserAdminController {
         @AuthJwtPayload('userId') updatedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.updatePasswordByAdmin(
             userId,
@@ -269,7 +269,7 @@ export class UserAdminController {
         @AuthJwtPayload('userId') updatedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.resetTwoFactorByAdmin(userId, updatedBy, {
             ipAddress,
@@ -305,7 +305,7 @@ export class UserAdminController {
         data: UserImportRequestDto[],
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.importByAdmin(data, createdBy, {
             ipAddress,

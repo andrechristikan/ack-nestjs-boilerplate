@@ -11,6 +11,7 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { NotificationDocParamsId } from '@modules/notification/constants/notification.doc';
 import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
+import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function NotificationSharedListDoc(): MethodDecorator {
@@ -27,6 +28,25 @@ export function NotificationSharedListDoc(): MethodDecorator {
             dto: NotificationResponseDto,
             type: EnumPaginationType.cursor,
         })
+    );
+}
+
+export function NotificationSharedListUserSettingDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'Get all notification settings for current user',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ termPolicy: true }),
+        DocResponse<NotificationUserSettingResponseDto>(
+            'notification.listUserSetting',
+            {
+                dto: NotificationUserSettingResponseDto,
+            }
+        )
     );
 }
 

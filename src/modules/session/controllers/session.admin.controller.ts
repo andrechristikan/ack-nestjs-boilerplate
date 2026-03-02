@@ -109,7 +109,7 @@ export class SessionAdminController {
         @AuthJwtPayload('userId') revokedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.sessionService.revokeByAdmin(
             userId,

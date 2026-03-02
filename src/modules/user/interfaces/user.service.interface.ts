@@ -181,7 +181,7 @@ export interface IUserService {
         { token }: UserVerifyEmailRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
-    sendEmail(
+    sendVerificationEmail(
         { email }: UserSendEmailVerificationRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;

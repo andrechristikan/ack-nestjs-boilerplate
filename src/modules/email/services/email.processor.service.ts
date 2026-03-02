@@ -1,17 +1,18 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { EnumEmailProcess } from '@modules/email/enums/email.enum';
-import {
-    ICreateByAdminPayload,
-    IEmailForgotPasswordPayload,
-    IEmailMobileNumberVerifiedPayload,
-    IEmailNewLoginPayload,
-    IEmailSendPayload,
-    IEmailTempPasswordPayload,
-    IEmailVerificationPayload,
-    IEmailVerifiedPayload,
-} from '@modules/email/interfaces/email.interface';
+import { IEmailSendPayload } from '@modules/email/interfaces/email.interface';
 import { IEmailProcessorService } from '@modules/email/interfaces/email.processor.service.interface';
+import {
+    INotificationCreateByAdminPayload,
+    INotificationEmailVerificationPayload,
+    INotificationEmailVerifiedPayload,
+    INotificationForgotPasswordPayload,
+    INotificationMobileNumberVerifiedPayload,
+    INotificationNewDeviceLoginPayload,
+    INotificationPublishTermPolicyPayload,
+    INotificationTemporaryPasswordPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { title } from 'case';
@@ -28,6 +29,8 @@ export class EmailProcessorService implements IEmailProcessorService {
     private readonly homeName: string;
     private readonly homeUrl: string;
 
+    private readonly batchSize: number;
+
     constructor(
         private readonly awsSESService: AwsSESService,
         private readonly helperService: HelperService,
@@ -38,6 +41,8 @@ export class EmailProcessorService implements IEmailProcessorService {
 
         this.homeName = this.configService.get<string>('home.name');
         this.homeUrl = this.configService.get<string>('home.url');
+
+        this.batchSize = this.configService.get<number>('email.batchSize');
     }
 
     async processWelcome({
@@ -97,17 +102,17 @@ export class EmailProcessorService implements IEmailProcessorService {
         }
     }
 
-    async processTempPassword(
+    async processTemporaryPasswordByAdmin(
         { email, username, bcc, cc }: IEmailSendPayload,
         {
             password: passwordString,
             passwordExpiredAt,
             passwordCreatedAt,
-        }: IEmailTempPasswordPayload
+        }: INotificationTemporaryPasswordPayload
     ): Promise<IQueueResponse> {
         try {
             await this.awsSESService.send({
-                templateName: EnumEmailProcess.temporaryPassword,
+                templateName: EnumEmailProcess.temporaryPasswordByAdmin,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -134,13 +139,41 @@ export class EmailProcessorService implements IEmailProcessorService {
         }
     }
 
+    async processResetPassword({
+        email,
+        username,
+        bcc,
+        cc,
+    }: IEmailSendPayload): Promise<IQueueResponse> {
+        try {
+            await this.awsSESService.send({
+                templateName: EnumEmailProcess.resetPassword,
+                recipients: [email],
+                sender: this.noreplyEmail,
+                templateData: {
+                    homeName: this.homeName,
+                    supportEmail: title(this.supportEmail),
+                    homeUrl: this.homeUrl,
+                    username,
+                },
+                cc,
+                bcc,
+            });
+
+            return { message: 'Reset password email processed' };
+        } catch (err: unknown) {
+            this.logger.error(err);
+            throw err;
+        }
+    }
+
     async processCreateByAdmin(
         { username, email }: IEmailSendPayload,
         {
             password: passwordString,
             passwordExpiredAt,
             passwordCreatedAt,
-        }: ICreateByAdminPayload
+        }: INotificationCreateByAdminPayload
     ): Promise<IQueueResponse> {
         try {
             await this.awsSESService.send({
@@ -177,7 +210,7 @@ export class EmailProcessorService implements IEmailProcessorService {
             link,
             reference,
             expiredInMinutes,
-        }: IEmailForgotPasswordPayload
+        }: INotificationForgotPasswordPayload
     ): Promise<IQueueResponse> {
         try {
             await this.awsSESService.send({
@@ -212,7 +245,7 @@ export class EmailProcessorService implements IEmailProcessorService {
             reference,
             link,
             expiredInMinutes,
-        }: IEmailVerificationPayload
+        }: INotificationEmailVerificationPayload
     ): Promise<IQueueResponse> {
         try {
             await this.awsSESService.send({
@@ -242,7 +275,7 @@ export class EmailProcessorService implements IEmailProcessorService {
 
     async processEmailVerified(
         { username, email }: IEmailSendPayload,
-        { reference }: IEmailVerifiedPayload
+        { reference }: INotificationEmailVerifiedPayload
     ): Promise<IQueueResponse> {
         try {
             await this.awsSESService.send({
@@ -267,7 +300,7 @@ export class EmailProcessorService implements IEmailProcessorService {
 
     async processMobileNumberVerified(
         { username, email }: IEmailSendPayload,
-        { reference, mobileNumber }: IEmailMobileNumberVerifiedPayload
+        { reference, mobileNumber }: INotificationMobileNumberVerifiedPayload
     ): Promise<IQueueResponse> {
         try {
             await this.awsSESService.send({
@@ -317,18 +350,18 @@ export class EmailProcessorService implements IEmailProcessorService {
         }
     }
 
-    async processNewLoginNotification(
+    async processNewDeviceLogin(
         { username, email }: IEmailSendPayload,
         {
             loginFrom,
             loginWith,
             loginAt,
             requestLog: { userAgent, ipAddress },
-        }: IEmailNewLoginPayload
+        }: INotificationNewDeviceLoginPayload
     ): Promise<IQueueResponse> {
         try {
             await this.awsSESService.send({
-                templateName: EnumEmailProcess.newLogin,
+                templateName: EnumEmailProcess.newDeviceLogin,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -344,10 +377,18 @@ export class EmailProcessorService implements IEmailProcessorService {
                 },
             });
 
-            return { message: 'New login notification email processed' };
+            return { message: 'New device login email processed' };
         } catch (err: unknown) {
             this.logger.error(err);
             throw err;
         }
+    }
+
+    async processPublishTermPolicy({
+        type,
+        version,
+    }: INotificationPublishTermPolicyPayload): Promise<IQueueResponse> {
+        // TODO: NEXT 2: Implement this with bulk email sending to all users
+        return;
     }
 }

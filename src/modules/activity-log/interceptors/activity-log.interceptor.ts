@@ -20,6 +20,7 @@ import { EnumActivityLogAction, UserAgent } from '@prisma/client';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Response } from 'express';
 import { IResponseActivityLogReturn } from '@common/response/interfaces/response.interface';
+import geoIp from 'geoip-lite';
 
 /**
  * Interceptor that automatically logs user activities to the database.
@@ -62,6 +63,17 @@ export class ActivityLogInterceptor implements NestInterceptor {
                             headers['user-agent']
                         ) as UserAgent;
                         const ipAddress = getClientIp(request);
+                        const geo = ipAddress ? geoIp.lookup(ipAddress) : null;
+                        const geoLocation =
+                            geo && ipAddress
+                                ? {
+                                      latitude: geo.ll[0],
+                                      longitude: geo.ll[1],
+                                      country: geo.country,
+                                      region: geo.region,
+                                      city: geo.city,
+                                  }
+                                : null;
 
                         const action: EnumActivityLogAction =
                             this.reflector.get<EnumActivityLogAction>(
@@ -81,6 +93,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
                                 {
                                     ipAddress,
                                     userAgent,
+                                    geoLocation,
                                 },
                                 {
                                     ...metadata,

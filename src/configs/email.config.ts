@@ -4,6 +4,7 @@ export interface IConfigEmail {
     noreply: string;
     support: string;
     admin: string;
+    batchSize: number;
 }
 
 export default registerAs(
@@ -12,5 +13,6 @@ export default registerAs(
         noreply: 'noreply@mail.com',
         support: 'support@mail.com',
         admin: 'admin@mail.com',
+        batchSize: 100,
     })
 );

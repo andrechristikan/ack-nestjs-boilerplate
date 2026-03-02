@@ -1,6 +1,8 @@
 import { ActivityLogSharedController } from '@modules/activity-log/controllers/activity-log.shared.controller';
 import { DeviceSharedController } from '@modules/device/controllers/device.shared.controller';
 import { DeviceModule } from '@modules/device/device.module';
+import { NotificationSharedController } from '@modules/notification/controllers/notification.shared.controller';
+import { NotificationModule } from '@modules/notification/notification.module';
 import { PasswordHistorySharedController } from '@modules/password-history/controllers/password-history.shared.controller';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { SessionSharedController } from '@modules/session/controllers/session.shared.controller';
@@ -21,9 +23,15 @@ import { Module } from '@nestjs/common';
         SessionSharedController,
         TermPolicySharedController,
         DeviceSharedController,
+        NotificationSharedController,
     ],
     providers: [],
     exports: [],
-    imports: [UserModule, PasswordHistoryModule, DeviceModule],
+    imports: [
+        UserModule,
+        PasswordHistoryModule,
+        DeviceModule,
+        NotificationModule,
+    ],
 })
 export class RoutesSharedModule {}

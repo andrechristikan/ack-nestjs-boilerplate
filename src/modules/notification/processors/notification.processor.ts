@@ -1,6 +1,6 @@
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import {
-    INotificationNewLoginPayload,
+    INotificationNewDeviceLoginPayload,
     INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationProcessorService } from '@modules/notification/services/notification.processor.service';
@@ -26,9 +26,9 @@ export class NotificationProcessor extends QueueProcessorBase {
     ): Promise<IQueueResponse> {
         try {
             switch (job.name) {
-                case EnumNotificationProcess.newLogin:
-                    return this.notificationProcessorService.processNewLogin(
-                        job.data as INotificationWorkerPayload<INotificationNewLoginPayload>
+                case EnumNotificationProcess.newDeviceLogin:
+                    return this.notificationProcessorService.processNewDeviceLogin(
+                        job.data as INotificationWorkerPayload<INotificationNewDeviceLoginPayload>
                     );
                 default:
                     return {

@@ -12,7 +12,7 @@ export class NotificationResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
-        example: EnumNotificationType.security_alert,
+        example: EnumNotificationType.securityAlert,
         enum: EnumNotificationType,
     })
     type: EnumNotificationType;
@@ -40,7 +40,7 @@ export class NotificationResponseDto extends DatabaseDto {
         required: false,
         example: { exampleKey: 'exampleValue' },
     })
-    data?: unknown;
+    metadata?: unknown;
 
     @ApiProperty({
         required: true,

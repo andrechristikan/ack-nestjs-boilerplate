@@ -10,9 +10,12 @@ export interface IEmailTemplateService {
     importCreateByAdmin(): Promise<boolean>;
     getCreateByAdmin(): Promise<GetTemplateCommandOutput | null>;
     deleteCreateByAdmin(): Promise<boolean>;
-    importTempPassword(): Promise<boolean>;
-    getTempPassword(): Promise<GetTemplateCommandOutput | null>;
-    deleteTempPassword(): Promise<boolean>;
+    importTemporaryPasswordByAdmin(): Promise<boolean>;
+    getTemporaryPasswordByAdmin(): Promise<GetTemplateCommandOutput | null>;
+    deleteTemporaryPasswordByAdmin(): Promise<boolean>;
+    importResetPassword(): Promise<boolean>;
+    getResetPassword(): Promise<GetTemplateCommandOutput | null>;
+    deleteResetPassword(): Promise<boolean>;
     importForgotPassword(): Promise<boolean>;
     getForgotPassword(): Promise<GetTemplateCommandOutput | null>;
     deleteForgotPassword(): Promise<boolean>;
@@ -28,7 +31,10 @@ export interface IEmailTemplateService {
     importResetTwoFactorByAdmin(): Promise<boolean>;
     getResetTwoFactorByAdmin(): Promise<GetTemplateCommandOutput | null>;
     deleteResetTwoFactorByAdmin(): Promise<boolean>;
-    importNewLogin(): Promise<boolean>;
-    getNewLogin(): Promise<GetTemplateCommandOutput | null>;
-    deleteNewLogin(): Promise<boolean>;
+    importNewDeviceLogin(): Promise<boolean>;
+    getNewDeviceLogin(): Promise<GetTemplateCommandOutput | null>;
+    deleteNewDeviceLogin(): Promise<boolean>;
+    importPublishTermPolicy(): Promise<boolean>;
+    getTermPolicy(): Promise<GetTemplateCommandOutput | null>;
+    deleteTermPolicy(): Promise<boolean>;
 }

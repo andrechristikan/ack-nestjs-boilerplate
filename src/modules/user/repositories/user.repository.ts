@@ -38,7 +38,6 @@ import {
 import { Injectable } from '@nestjs/common';
 import {
     Country,
-    Device,
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
@@ -993,25 +992,38 @@ export class UserRepository {
                     },
                 });
 
-                await tx.session.create({
-                    data: {
-                        id: sessionId,
-                        jti,
-                        expiredAt,
-                        isRevoked: false,
-                        ipAddress,
-                        userAgent,
-                        geoLocation,
-                        device: {
-                            connect: {
-                                userId_fingerprint: {
-                                    userId,
-                                    fingerprint,
+                await Promise.all([
+                    tx.session.create({
+                        data: {
+                            id: sessionId,
+                            jti,
+                            expiredAt,
+                            isRevoked: false,
+                            ipAddress,
+                            userAgent,
+                            geoLocation,
+                            device: {
+                                connect: {
+                                    userId_fingerprint: {
+                                        userId,
+                                        fingerprint,
+                                    },
                                 },
                             },
                         },
-                    },
-                });
+                    }),
+                    tx.device.updateMany({
+                        where: {
+                            notificationToken,
+                            NOT: {
+                                userId: userId,
+                            },
+                        },
+                        data: {
+                            notificationToken: null,
+                        },
+                    }),
+                ]);
 
                 return user;
             }

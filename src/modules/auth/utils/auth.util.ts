@@ -476,13 +476,17 @@ export class AuthUtil {
      * Checks if a password has expired based on its expiration date.
      *
      * Compares the password expiration date with the current date to determine
-     * if the user should be prompted to change their password.
+     * if the user should be prompted to change their password. Returns false if
+     * no expiration date is provided.
      *
-     * @param passwordExpired - The date when the password expires
-     * @returns True if the password has expired (current date > expiration date), false otherwise
+     * @param passwordExpired - Optional date when the password expires. If not provided, returns false
+     * @returns True if the password has expired (current date > expiration date), false if password has not expired or no expiration date is provided
      */
-    checkPasswordExpired(passwordExpired: Date): boolean {
-        if (!passwordExpired) { return false; }
+    checkPasswordExpired(passwordExpired?: Date): boolean {
+        if (!passwordExpired) {
+            return false;
+        }
+
         const today: Date = this.helperService.dateCreate();
         return today > passwordExpired;
     }

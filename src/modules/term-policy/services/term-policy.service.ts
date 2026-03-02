@@ -18,6 +18,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
 import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
@@ -51,7 +52,8 @@ export class TermPolicyService implements ITermPolicyService {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly awsS3Service: AwsS3Service
+        private readonly awsS3Service: AwsS3Service,
+        private readonly notificationService: NotificationService
     ) {}
 
     async validateTermPolicyGuard(
@@ -589,6 +591,15 @@ export class TermPolicyService implements ITermPolicyService {
                     access: EnumAwsS3Accessibility.private,
                 }),
             ]);
+
+            // @note: send email after all creation
+            await this.notificationService.sendPublishTermPolicy(
+                {
+                    type: termPolicy.type,
+                    version: termPolicy.version,
+                },
+                updatedBy
+            );
 
             return {
                 metadataActivityLog:

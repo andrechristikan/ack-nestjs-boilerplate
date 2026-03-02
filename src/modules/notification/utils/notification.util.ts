@@ -1,9 +1,13 @@
-import { Notification } from '@generated/prisma-client';
+import {
+    Notification,
+    NotificationUserSetting,
+} from '@generated/prisma-client';
+import { NotificationUserSettingDto } from '@modules/notification/dtos/notification.user-setting.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import {
-    INotificationNewLoginPayload,
-    INotificationSendPayload,
+    INotificationNewDeviceLoginPayload,
+    INotificationSendPushPayload,
     INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -19,16 +23,58 @@ export class NotificationUtil {
         private readonly notificationQueue: Queue
     ) {}
 
-    async sendNewLogin(
-        send: INotificationSendPayload,
-        payload: INotificationNewLoginPayload
+    async sendPushNewDeviceLogin(
+        send: INotificationSendPushPayload,
+        payload: INotificationNewDeviceLoginPayload
     ): Promise<void> {
         await this.notificationQueue.add(
-            EnumNotificationProcess.newLogin,
+            EnumNotificationProcess.newDeviceLogin,
             {
                 send,
                 data: payload,
-            } as INotificationWorkerPayload<INotificationNewLoginPayload>,
+            } as INotificationWorkerPayload<INotificationNewDeviceLoginPayload>,
+            {
+                priority: EnumQueuePriority.high,
+            }
+        );
+    }
+
+    async sendPushTemporaryPasswordByAdmin(
+        send: INotificationSendPushPayload
+    ): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.temporaryPasswordByAdmin,
+            {
+                send,
+            } as INotificationWorkerPayload,
+            {
+                priority: EnumQueuePriority.high,
+            }
+        );
+    }
+
+    async sendPushResetTwoFactorByAdmin(
+        send: INotificationSendPushPayload
+    ): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.resetTwoFactorByAdmin,
+            {
+                send,
+            } as INotificationWorkerPayload,
+            {
+                priority: EnumQueuePriority.high,
+            }
+        );
+    }
+
+    async sendPushResetPassword(
+        send: INotificationSendPushPayload
+    ): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.resetPassword,
+            {
+                send,
+            } as INotificationWorkerPayload,
             {
                 priority: EnumQueuePriority.high,
             }
@@ -37,5 +83,11 @@ export class NotificationUtil {
 
     mapList(notifications: Notification[]): NotificationResponseDto[] {
         return plainToInstance(NotificationResponseDto, notifications);
+    }
+
+    mapUserSettingList(
+        settings: NotificationUserSetting[]
+    ): NotificationUserSettingDto[] {
+        return plainToInstance(NotificationUserSettingDto, settings);
     }
 }

@@ -68,7 +68,7 @@ export class UserPublicController {
         @Body() body: UserLoginRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginCredential(body, {
             ipAddress,
@@ -87,7 +87,7 @@ export class UserPublicController {
         email: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation,
+        @RequestGeoLocation() geoLocation: GeoLocation | null,
         @Body() body: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginWithSocial(
@@ -113,7 +113,7 @@ export class UserPublicController {
         @Body() body: UserCreateSocialRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginWithSocial(
             email,
@@ -137,7 +137,7 @@ export class UserPublicController {
         body: UserSignUpRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<void> {
         return this.userService.signUp(body, {
             ipAddress,
@@ -154,7 +154,7 @@ export class UserPublicController {
         @Body() body: UserVerifyEmailRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.verifyEmail(body, {
             ipAddress,
@@ -172,9 +172,9 @@ export class UserPublicController {
         @Body() body: UserSendEmailVerificationRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
-        return this.userService.sendEmail(body, {
+        return this.userService.sendVerificationEmail(body, {
             ipAddress,
             userAgent,
             geoLocation,
@@ -191,7 +191,7 @@ export class UserPublicController {
         @Body() body: UserForgotPasswordRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.forgotPassword(body, {
             ipAddress,
@@ -209,7 +209,7 @@ export class UserPublicController {
         @Body() body: UserForgotPasswordResetRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.resetPassword(body, {
             ipAddress,
@@ -227,7 +227,7 @@ export class UserPublicController {
         @Body() body: UserLoginVerifyTwoFactorRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
         return this.userService.loginVerifyTwoFactor(body, {
             ipAddress,
@@ -245,7 +245,7 @@ export class UserPublicController {
         @Body() body: UserLoginSetupTwoFactorRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         return this.userService.loginSetupTwoFactor(body, {
             ipAddress,

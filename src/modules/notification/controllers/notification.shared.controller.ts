@@ -1,6 +1,7 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import {
+    RequestGeoLocation,
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
@@ -14,7 +15,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma, UserAgent } from '@generated/prisma-client';
+import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -22,12 +23,14 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     NotificationSharedListDoc,
+    NotificationSharedListUserSettingDoc,
     NotificationSharedMarkAllAsReadDoc,
     NotificationSharedMarkAsReadDoc,
     NotificationSharedUpdateUserSettingDoc,
 } from '@modules/notification/docs/notification.shared.doc';
 import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
+import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -68,6 +71,19 @@ export class NotificationSharedController {
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
         return this.notificationService.getListCursor(userId, pagination);
+    }
+
+    @NotificationSharedListUserSettingDoc()
+    @Response('notification.listUserSetting')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/list/user-setting')
+    async listUserSetting(
+        @AuthJwtPayload('userId') userId: string
+    ): Promise<IResponseReturn<NotificationUserSettingResponseDto>> {
+        return this.notificationService.getListUserSetting(userId);
     }
 
     @NotificationSharedMarkAsReadDoc()
@@ -116,11 +132,13 @@ export class NotificationSharedController {
         @Body()
         body: NotificationUserSettingRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.notificationService.updateUserSetting(userId, body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 }

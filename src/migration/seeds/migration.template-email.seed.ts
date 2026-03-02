@@ -32,18 +32,18 @@ export class MigrationTemplateEmailSeed
             verificationEmail,
             welcomeEmail,
             resetTwoFactorByAdminEmail,
-            newLoginEmail,
+            newDeviceLoginEmail,
         ] = await Promise.all([
             this.emailTemplateService.getChangePassword(),
             this.emailTemplateService.getCreateByAdmin(),
             this.emailTemplateService.getEmailVerified(),
             this.emailTemplateService.getForgotPassword(),
             this.emailTemplateService.getMobileNumberVerified(),
-            this.emailTemplateService.getTempPassword(),
+            this.emailTemplateService.getTemporaryPasswordByAdmin(),
             this.emailTemplateService.getVerification(),
             this.emailTemplateService.getWelcome(),
             this.emailTemplateService.getResetTwoFactorByAdmin(),
-            this.emailTemplateService.getNewLogin(),
+            this.emailTemplateService.getNewDeviceLogin(),
         ]);
 
         const promises: Promise<boolean>[] = [];
@@ -88,7 +88,9 @@ export class MigrationTemplateEmailSeed
             this.logger.log(
                 'Temporary Password Email template missing, importing...'
             );
-            promises.push(this.emailTemplateService.importTempPassword());
+            promises.push(
+                this.emailTemplateService.importTemporaryPasswordByAdmin()
+            );
         }
 
         if (!verificationEmail) {
@@ -112,9 +114,11 @@ export class MigrationTemplateEmailSeed
             );
         }
 
-        if (!newLoginEmail) {
-            this.logger.log('New Login Email template missing, importing...');
-            promises.push(this.emailTemplateService.importNewLogin());
+        if (!newDeviceLoginEmail) {
+            this.logger.log(
+                'New Device Login Email template missing, importing...'
+            );
+            promises.push(this.emailTemplateService.importNewDeviceLogin());
         }
 
         if (promises.length > 0) {
@@ -141,11 +145,11 @@ export class MigrationTemplateEmailSeed
                 this.emailTemplateService.deleteEmailVerified(),
                 this.emailTemplateService.deleteForgotPassword(),
                 this.emailTemplateService.deleteMobileNumberVerified(),
-                this.emailTemplateService.deleteTempPassword(),
+                this.emailTemplateService.deleteTemporaryPasswordByAdmin(),
                 this.emailTemplateService.deleteVerification(),
                 this.emailTemplateService.deleteWelcome(),
                 this.emailTemplateService.deleteResetTwoFactorByAdmin(),
-                this.emailTemplateService.deleteNewLogin(),
+                this.emailTemplateService.deleteNewDeviceLogin(),
             ]);
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing emails');

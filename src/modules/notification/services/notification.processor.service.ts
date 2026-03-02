@@ -1,9 +1,8 @@
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import {
-    INotificationNewLoginPayload,
+    INotificationNewDeviceLoginPayload,
     INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { UserRepository } from '@modules/user/repositories/user.repository';
 import { Injectable } from '@nestjs/common';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
@@ -11,10 +10,10 @@ import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 export class NotificationProcessorService {
     constructor(private readonly firebaseService: FirebaseService) {}
 
-    async processNewLogin({
-        send: { deviceFingerprint, userId, username },
+    async processNewDeviceLogin({
+        send: { userId, username },
         data,
-    }: INotificationWorkerPayload<INotificationNewLoginPayload>): Promise<IQueueResponse> {
+    }: INotificationWorkerPayload<INotificationNewDeviceLoginPayload>): Promise<IQueueResponse> {
         if (!this.firebaseService.isInitializedFlag) {
             return {
                 message:
@@ -22,12 +21,14 @@ export class NotificationProcessorService {
             };
         }
 
-        // TODO: NEXT - Implement new login notification logic here
+        // TODO: NEXT 2 - Implement new login notification logic here
 
         return {
             message: 'New login notification processed',
         };
     }
+
+    // TODO: NEXT 2: Implement other notification processing methods here (e.g. processEmailVerification, processPasswordReset, etc.)
 
     //     async processLogin(job: NotificationPushJobDto): Promise<void> {
     //         const tokens =

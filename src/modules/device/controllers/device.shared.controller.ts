@@ -5,7 +5,6 @@ import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestRequestIdMiddleware } from '@common/request/middlewares/request.request-id.middleware';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -83,7 +82,7 @@ export class DeviceSharedController {
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation,
+        @RequestGeoLocation() geoLocation: GeoLocation | null,
         @Body() body: DeviceDto
     ): Promise<IResponseReturn<void>> {
         return this.deviceService.refresh(userId, body, {
@@ -105,7 +104,7 @@ export class DeviceSharedController {
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation,
+        @RequestGeoLocation() geoLocation: GeoLocation | null,
         @Param('deviceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         deviceId: string
     ): Promise<IResponseReturn<void>> {

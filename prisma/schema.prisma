@@ -381,7 +381,7 @@ model Notification {
   priority EnumNotificationPriority @default(normal)
   title    String
   body     String
-  data     Json?
+  metadata Json?
   isRead   Boolean                  @default(false)
   readAt   DateTime?
 
@@ -681,15 +681,17 @@ enum EnumDeviceNotificationProvider {
 }
 
 enum EnumNotificationType {
-  security_alert
+  securityAlert
   transactional
-  user_activity
+  userActivity
   marketing
 }
 
 enum EnumNotificationChannel {
   push
   email
+  inApp
+  silent
 }
 
 enum EnumNotificationPriority {

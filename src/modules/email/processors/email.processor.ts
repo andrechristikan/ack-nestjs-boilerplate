@@ -4,18 +4,18 @@ import { EnumEmailProcess } from '@modules/email/enums/email.enum';
 import { EnumQueue } from 'src/queues/enums/queue.enum';
 import { QueueProcessorBase } from 'src/queues/bases/queue.processor.base';
 import { QueueProcessor } from 'src/queues/decorators/queue.decorator';
-import {
-    ICreateByAdminPayload,
-    IEmailForgotPasswordPayload,
-    IEmailMobileNumberVerifiedPayload,
-    IEmailNewLoginPayload,
-    IEmailTempPasswordPayload,
-    IEmailVerificationPayload,
-    IEmailVerifiedPayload,
-    IEmailWorkerPayload,
-} from '@modules/email/interfaces/email.interface';
+import { IEmailWorkerPayload } from '@modules/email/interfaces/email.interface';
 import { EmailProcessorService } from '@modules/email/services/email.processor.service';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
+import {
+    INotificationCreateByAdminPayload,
+    INotificationEmailVerificationPayload,
+    INotificationEmailVerifiedPayload,
+    INotificationForgotPasswordPayload,
+    INotificationMobileNumberVerifiedPayload,
+    INotificationNewDeviceLoginPayload,
+    INotificationTemporaryPasswordPayload,
+} from '@modules/notification/interfaces/notification.interface';
 
 @QueueProcessor(EnumQueue.email)
 export class EmailProcessor extends QueueProcessorBase {
@@ -44,43 +44,44 @@ export class EmailProcessor extends QueueProcessorBase {
                 case EnumEmailProcess.createByAdmin:
                     return this.emailProcessorService.processCreateByAdmin(
                         job.data.send,
-                        job.data.data as ICreateByAdminPayload
+                        job.data.data as INotificationCreateByAdminPayload
                     );
 
-                case EnumEmailProcess.temporaryPassword:
-                    return this.emailProcessorService.processTempPassword(
+                case EnumEmailProcess.temporaryPasswordByAdmin:
+                    return this.emailProcessorService.processTemporaryPasswordByAdmin(
                         job.data.send,
-                        job.data.data as IEmailTempPasswordPayload
+                        job.data.data as INotificationTemporaryPasswordPayload
                     );
 
                 case EnumEmailProcess.forgotPassword:
                     return this.emailProcessorService.processForgotPassword(
                         job.data.send,
-                        job.data.data as IEmailForgotPasswordPayload
+                        job.data.data as INotificationForgotPasswordPayload
                     );
 
                 case EnumEmailProcess.verification:
                     return this.emailProcessorService.processVerification(
                         job.data.send,
-                        job.data.data as IEmailVerificationPayload
+                        job.data.data as INotificationEmailVerificationPayload
                     );
 
                 case EnumEmailProcess.emailVerified:
                     return this.emailProcessorService.processEmailVerified(
                         job.data.send,
-                        job.data.data as IEmailVerifiedPayload
+                        job.data.data as INotificationEmailVerifiedPayload
                     );
 
                 case EnumEmailProcess.mobileNumberVerified:
                     return this.emailProcessorService.processMobileNumberVerified(
                         job.data.send,
-                        job.data.data as IEmailMobileNumberVerifiedPayload
+                        job.data
+                            .data as INotificationMobileNumberVerifiedPayload
                     );
 
-                case EnumEmailProcess.newLogin:
-                    return this.emailProcessorService.processNewLoginNotification(
+                case EnumEmailProcess.newDeviceLogin:
+                    return this.emailProcessorService.processNewDeviceLogin(
                         job.data.send,
-                        job.data.data as IEmailNewLoginPayload
+                        job.data.data as INotificationNewDeviceLoginPayload
                     );
 
                 default:

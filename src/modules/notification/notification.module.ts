@@ -1,3 +1,4 @@
+import { EmailModule } from '@modules/email/email.module';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationProcessorService } from '@modules/notification/services/notification.processor.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -5,7 +6,7 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { Module } from '@nestjs/common';
 
 @Module({
-    imports: [],
+    imports: [EmailModule],
     exports: [
         NotificationService,
         NotificationProcessorService,
@@ -22,7 +23,7 @@ import { Module } from '@nestjs/common';
 })
 export class NotificationModule {}
 
-// TODO: NEXT
+// TODO: INIT
 // - complete logic in notification processor service
 // - which part of notification that needs to be registered to firebase
 // - which part of notification that need to be revoked

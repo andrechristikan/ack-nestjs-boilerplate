@@ -1,17 +1,10 @@
-import {
-    PaginationCursorQuery,
-    PaginationOffsetQuery,
-} from '@common/pagination/decorators/pagination.decorator';
-import {
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import {
     RequestGeoLocation,
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestRequestIdMiddleware } from '@common/request/middlewares/request.request-id.middleware';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -37,7 +30,6 @@ import {
     DeviceAdminListDoc,
     DeviceAdminRemoveDoc,
 } from '@modules/device/docs/device.admin.doc';
-import { DeviceDto } from '@modules/device/dtos/device.dto';
 import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
 import { DeviceService } from '@modules/device/services/device.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
@@ -49,14 +41,12 @@ import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
-    Body,
     Controller,
     Delete,
     Get,
     HttpCode,
     HttpStatus,
     Param,
-    Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -121,7 +111,7 @@ export class DeviceAdminController {
         @AuthJwtPayload('userId') removedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation,
+        @RequestGeoLocation() geoLocation: GeoLocation | null,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @Param('deviceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)

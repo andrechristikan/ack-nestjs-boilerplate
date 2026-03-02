@@ -245,10 +245,10 @@ export class AwsSESService implements IAwsSESService {
         bcc,
         cc,
         templateName,
+        defaultTemplateData,
     }: AwsSESSendBulkDto): Promise<SendBulkTemplatedEmailCommandOutput> {
         const command: SendBulkTemplatedEmailCommand =
             new SendBulkTemplatedEmailCommand({
-                DefaultTemplateData: '',
                 Template: templateName,
                 Destinations: recipients.map(e => ({
                     Destination: {
@@ -261,6 +261,7 @@ export class AwsSESService implements IAwsSESService {
                     ),
                 })),
                 Source: sender,
+                DefaultTemplateData: JSON.stringify(defaultTemplateData ?? {}),
                 ReplyToAddresses: [replyTo ?? sender],
             });
 

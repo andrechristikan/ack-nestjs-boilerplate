@@ -15,7 +15,7 @@ export class NotificationUserSettingRequestDto {
     @ApiProperty({
         required: true,
         enum: EnumNotificationType,
-        example: EnumNotificationType.security_alert,
+        example: EnumNotificationType.securityAlert,
     })
     @IsEnum(EnumNotificationType)
     @IsNotEmpty()

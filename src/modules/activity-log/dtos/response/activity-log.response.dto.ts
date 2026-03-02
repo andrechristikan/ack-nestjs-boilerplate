@@ -1,4 +1,5 @@
 import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { RequestGeoLocationResponseDto } from '@common/request/dtos/reasponse/request.geo-location.response.dto';
 import { RequestUserAgentResponseDto } from '@common/request/dtos/reasponse/request.user-agent.response.dto';
 import { faker } from '@faker-js/faker';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
@@ -39,6 +40,13 @@ export class ActivityLogResponseDto extends DatabaseDto {
     })
     @Type(() => RequestUserAgentResponseDto)
     userAgent: RequestUserAgentResponseDto;
+
+    @ApiProperty({
+        required: false,
+        type: RequestGeoLocationResponseDto,
+    })
+    @Type(() => RequestGeoLocationResponseDto)
+    geoLocation?: RequestGeoLocationResponseDto;
 
     @ApiProperty({
         required: false,
