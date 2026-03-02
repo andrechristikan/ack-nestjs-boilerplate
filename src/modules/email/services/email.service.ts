@@ -95,7 +95,7 @@ export class EmailService implements IEmailService {
             expiredInMinutes,
             link,
             reference,
-            invitationType,
+            inviteType,
             roleScope,
             contextName,
         }: EmailInviteDto
@@ -112,7 +112,7 @@ export class EmailService implements IEmailService {
                     expiredInMinutes,
                     link,
                     reference,
-                    invitationType,
+                    inviteType,
                     roleScope,
                     contextName,
                 },

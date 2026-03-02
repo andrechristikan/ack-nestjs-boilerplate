@@ -269,7 +269,7 @@ export class EmailUtil {
             reference,
             link,
             expiredInMinutes,
-            invitationType,
+            inviteType,
             roleScope,
             contextName,
         }: EmailInviteDto
@@ -286,7 +286,7 @@ export class EmailUtil {
                     username,
                     link,
                     reference,
-                    invitationType,
+                    inviteType,
                     roleScope,
                     contextName,
                     expiredAt: this.helperService.dateFormatToRFC2822(

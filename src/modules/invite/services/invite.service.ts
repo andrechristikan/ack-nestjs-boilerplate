@@ -5,20 +5,20 @@ import { EmailService } from '@modules/email/services/email.service';
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteListResponseDto } from '@modules/invite/dtos/response/invite-list.response.dto';
 import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
-import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { InviteRepository } from '@modules/invite/repositories/invite.repository';
 import {
-    InviteConfig,
-    InviteDeleteInput,
-    InviteDispatchInput,
-    InviteFinalizeAcceptInput,
+    InviteCreate,
     InviteFinalizeSignupInput,
-    InviteGetActiveInput,
-    InviteGetInput,
-    InviteIssueInput,
-    InviteListInput,
     InviteWithUser,
 } from '@modules/invite/interfaces/invite.interface';
+import {
+    IPaginationCursorReturn,
+    IPaginationEqual,
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IInviteService } from '@modules/invite/interfaces/invite.service.interface';
 import { InviteConfigRegistry } from '@modules/invite/services/invite-config.registry';
 import { InviteUtil } from '@modules/invite/utils/invite.util';
@@ -35,6 +35,7 @@ import {
 } from '@nestjs/common';
 import { EnumUserStatus } from '@prisma/client';
 import { Duration } from 'luxon';
+import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 
 @Injectable()
 export class InviteService implements IInviteService {
@@ -49,68 +50,59 @@ export class InviteService implements IInviteService {
     ) {}
 
     /**
-     * Retrieves the invite configuration for a given invitation type.
-     * Throws if the type is not registered in the config registry.
-     */
-    private getInviteConfigOrThrow(invitationType: string): InviteConfig {
-        return this.inviteConfigRegistry.getOrThrow(invitationType);
-    }
-
-    /**
      * Creates an invitation for a user to join a context (project, tenant, etc.) with a specific role.
      * Generates an invite token and reuses existing active invite if one already exists for this user/context.
      * Does not send the email—use dispatchInvite() for that.
      */
-    async createInvite(input: InviteIssueInput): Promise<InviteCreateResponseDto> {
-        const {
-            invitationType,
+    async createInvite(
+        {
+            inviteType,
             roleScope,
             contextId,
             contextName,
             memberId,
             userId,
-            requestedBy,
-        } = input;
+        }: InviteCreate,
+        requestedBy: string
+    ): Promise<InviteCreateResponseDto> {
+        const config = this.inviteConfigRegistry.getOrThrow(inviteType);
+        const user = await this.userRepository.findOneById(userId);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: EnumUserStatusCodeError.notFound,
+                message: 'user.error.notFound',
+            });
+        } else if (user.status !== EnumUserStatus.active) {
+            throw new ForbiddenException({
+                statusCode: EnumUserStatusCodeError.inactiveForbidden,
+                message: 'user.error.inactive',
+            });
+        }
 
         try {
-            const config = this.getInviteConfigOrThrow(invitationType);
-            const user = await this.userRepository.findOneById(userId);
-            if (!user) {
-                throw new NotFoundException({
-                    statusCode: EnumUserStatusCodeError.notFound,
-                    message: 'user.error.notFound',
-                });
-            } else if (user.status !== EnumUserStatus.active) {
-                throw new ForbiddenException({
-                    statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                    message: 'user.error.inactive',
-                });
-            }
-
             let inviteRecord =
                 await this.inviteRepository.findOneLatestActiveByUserAndContext(
                     user.id,
-                    invitationType,
+                    inviteType,
                     contextId
                 );
 
             if (!inviteRecord) {
-                const inviteToken =
-                    this.inviteUtil.createInviteTokenPayload(config);
+                const inviteToken = this.inviteUtil.createInviteToken(config);
 
-                inviteRecord = await this.inviteRepository.createInvite({
-                    userId: user.id,
-                    userEmail: user.email,
-                    token: inviteToken.token,
-                    reference: inviteToken.reference,
-                    expiresAt: inviteToken.expiresAt,
-                    invitationType,
-                    roleScope,
-                    contextId,
-                    contextName,
-                    memberId,
-                    requestedBy,
-                });
+                inviteRecord = await this.inviteRepository.createInvite(
+                    user.email,
+                    {
+                        userId: user.id,
+                        inviteType,
+                        roleScope,
+                        contextId,
+                        contextName,
+                        memberId,
+                    },
+                    inviteToken,
+                    requestedBy
+                );
             }
 
             return {
@@ -137,59 +129,57 @@ export class InviteService implements IInviteService {
      * Enforces a rate limit on resend—users cannot request a new email within the configured interval.
      * Updates the invite's sentAt timestamp and logs the action.
      */
-    async dispatchInvite(input: InviteDispatchInput): Promise<InviteSendResponseDto> {
-        const {
-            invitationType,
+    async dispatchInvite(
+        {
+            inviteType,
             roleScope,
-            emailTypeLabel,
             contextId,
             contextName,
             memberId,
             userId,
-            requestLog,
-            requestedBy,
-        } = input;
+        }: InviteCreate,
+        requestLog: IRequestLog,
+        requestedBy: string
+    ): Promise<InviteSendResponseDto> {
+        const config = this.inviteConfigRegistry.getOrThrow(inviteType);
+        const user = await this.userRepository.findOneById(userId);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: EnumUserStatusCodeError.notFound,
+                message: 'user.error.notFound',
+            });
+        } else if (user.status !== EnumUserStatus.active) {
+            throw new ForbiddenException({
+                statusCode: EnumUserStatusCodeError.inactiveForbidden,
+                message: 'user.error.inactive',
+            });
+        }
 
         try {
-            const config = this.getInviteConfigOrThrow(invitationType);
-            const user = await this.userRepository.findOneById(userId);
-            if (!user) {
-                throw new NotFoundException({
-                    statusCode: EnumUserStatusCodeError.notFound,
-                    message: 'user.error.notFound',
-                });
-            } else if (user.status !== EnumUserStatus.active) {
-                throw new ForbiddenException({
-                    statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                    message: 'user.error.inactive',
-                });
-            }
-
             const today = this.helperService.dateCreate();
             let invite =
                 await this.inviteRepository.findOneLatestActiveByUserAndContext(
                     user.id,
-                    invitationType,
+                    inviteType,
                     contextId
                 );
 
             if (!invite) {
-                const invitePayload =
-                    this.inviteUtil.createInviteTokenPayload(config);
+                const invitePayload = this.inviteUtil.createInviteToken(config);
 
-                invite = await this.inviteRepository.createInvite({
-                    userId: user.id,
-                    userEmail: user.email,
-                    token: invitePayload.token,
-                    reference: invitePayload.reference,
-                    expiresAt: invitePayload.expiresAt,
-                    invitationType,
-                    roleScope,
-                    contextId,
-                    contextName,
-                    memberId,
-                    requestedBy,
-                });
+                invite = await this.inviteRepository.createInvite(
+                    user.email,
+                    {
+                        userId: user.id,
+                        inviteType,
+                        roleScope,
+                        contextId,
+                        contextName,
+                        memberId,
+                    },
+                    invitePayload,
+                    requestedBy
+                );
             }
 
             const lastSentAt = invite.sentAt;
@@ -217,6 +207,7 @@ export class InviteService implements IInviteService {
                 }
             }
 
+            //TODO: We shall move this to Queue instead of sending email here.
             await this.emailService.sendInvite(
                 user.id,
                 {
@@ -226,9 +217,12 @@ export class InviteService implements IInviteService {
                 {
                     expiredAt: invite.expiresAt.toISOString(),
                     reference: invite.reference,
-                    link: this.inviteUtil.createInviteLink(invite.token, config),
+                    link: this.inviteUtil.createInviteLink(
+                        invite.token,
+                        config
+                    ),
                     expiredInMinutes: config.expiredInMinutes,
-                    invitationType: emailTypeLabel,
+                    inviteType,
                     roleScope,
                     contextName,
                 }
@@ -256,8 +250,7 @@ export class InviteService implements IInviteService {
                     remainingSeconds: Math.max(
                         0,
                         Math.floor(
-                            (invite.expiresAt.getTime() - now.getTime()) /
-                                1000
+                            (invite.expiresAt.getTime() - now.getTime()) / 1000
                         )
                     ),
                     sentAt: now,
@@ -278,33 +271,49 @@ export class InviteService implements IInviteService {
     }
 
     /**
-     * Soft-deletes the most recent active invitation for a user.
-     * Marks the invite as deleted without invalidating the token, so it can be distinguished
-     * from accepted/expired invitations in status queries.
+     * Soft-deletes an active invitation by its ID.
+     * Guards are enforced in the repository (expiresAt > now, user.deletedAt: null).
      */
-    async deleteInvite({ userId, deletedBy }: InviteDeleteInput): Promise<void> {
-        const invite =
-            await this.inviteRepository.findOneLatestActiveByUserId(userId);
-        if (!invite) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'invite.error.notFound',
-            });
-        }
-
-        await this.inviteRepository.softDelete(invite.id, deletedBy);
-
-        return;
+    async deleteInvite(inviteId: string, deletedBy: string): Promise<void> {
+        await this.inviteRepository.softDelete(inviteId, deletedBy);
     }
 
-    /**
-     * Lists invitations filtered by type and optional context.
-     * Allows querying invites for display/management purposes.
-     */
-    async listInvites(options?: InviteListInput): Promise<InviteListResponseDto[]> {
-        const invites = await this.inviteRepository.findMany(options);
+    async getListOffset(
+        pagination: IPaginationQueryOffsetParams,
+        inviteType?: Record<string, IPaginationEqual>,
+        contextId?: Record<string, IPaginationEqual>,
+        userId?: Record<string, IPaginationEqual>
+    ): Promise<IResponsePagingReturn<InviteListResponseDto>> {
+        const { data, ...others } =
+            await this.inviteRepository.findWithPaginationOffset(
+                pagination,
+                inviteType,
+                contextId,
+                userId
+            );
+        return {
+            data: this.inviteUtil.mapList(data),
+            ...others,
+        };
+    }
 
-        return this.inviteUtil.mapList(invites);
+    async getListCursor(
+        pagination: IPaginationQueryCursorParams,
+        inviteType?: Record<string, IPaginationEqual>,
+        contextId?: Record<string, IPaginationEqual>,
+        userId?: Record<string, IPaginationEqual>
+    ): Promise<IPaginationCursorReturn<InviteListResponseDto>> {
+        const { data, ...others } =
+            await this.inviteRepository.findWithPaginationCursor(
+                pagination,
+                inviteType,
+                contextId,
+                userId
+            );
+        return {
+            data: this.inviteUtil.mapList(data),
+            ...others,
+        };
     }
 
     /**
@@ -312,8 +321,14 @@ export class InviteService implements IInviteService {
      * Determines invite status: pending, expired, completed, or deleted.
      * Used by users to check their invite before accepting or signing up.
      */
-    async getInvite({ token, invitationType }: InviteGetInput): Promise<InvitePublicResponseDto> {
-        const invite = await this.inviteRepository.findOneByToken(token, invitationType);
+    async getInvite(
+        token: string,
+        inviteType: string
+    ): Promise<InvitePublicResponseDto> {
+        const invite = await this.inviteRepository.findOneByToken(
+            token,
+            inviteType
+        );
         if (!invite) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
@@ -351,14 +366,14 @@ export class InviteService implements IInviteService {
         };
     }
 
-    /**
-     * Retrieves an active (non-expired, non-deleted, non-accepted) invitation by token.
-     * Used internally to validate and fetch invite data before processing accept/signup operations.
-     */
-    async getActiveInviteForProcessing({
-        token,
-    }: InviteGetActiveInput): Promise<InviteWithUser> {
-        const invite = await this.inviteRepository.findOneActiveByToken(token);
+    async getOneActiveByToken(
+        token: string,
+        inviteType: string
+    ): Promise<InviteWithUser> {
+        const invite = await this.inviteRepository.findOneActiveByToken(
+            token,
+            inviteType
+        );
         if (!invite) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
@@ -374,11 +389,11 @@ export class InviteService implements IInviteService {
      * Activates the membership and marks the invite as accepted.
      * If the user is unverified, they must use finalizeInviteSignup() instead.
      */
-    async finalizeInviteAccept({
-        inviteId,
-        userId,
-        requestLog,
-    }: InviteFinalizeAcceptInput): Promise<void> {
+    async finalizeInviteAccept(
+        inviteId: string,
+        userId: string,
+        requestLog: IRequestLog
+    ): Promise<void> {
         const invite = await this.inviteRepository.findOneActiveById(inviteId);
         if (!invite) {
             throw new BadRequestException({
@@ -428,14 +443,20 @@ export class InviteService implements IInviteService {
      * Sets user name, password, and marks the user as verified.
      * Only works for unverified users—verified users must use finalizeInviteAccept().
      */
-    async finalizeInviteSignup({
-        token,
-        firstName,
-        lastName,
-        password,
-        requestLog,
-    }: InviteFinalizeSignupInput): Promise<void> {
-        const invite = await this.inviteRepository.findOneActiveByToken(token);
+    async finalizeInviteSignup(
+        {
+            token,
+            inviteType,
+            firstName,
+            lastName,
+            password,
+        }: InviteFinalizeSignupInput,
+        requestLog: IRequestLog
+    ): Promise<void> {
+        const invite = await this.inviteRepository.findOneActiveByToken(
+            token,
+            inviteType
+        );
         if (!invite) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.tokenInvalid,

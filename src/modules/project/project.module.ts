@@ -8,7 +8,7 @@ import { ProjectUtil } from '@modules/project/utils/project.util';
 import { InviteModule } from '@modules/invite/invite.module';
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
-import { ProjectInvitationType } from '@modules/project/constants/project.constant';
+import { ProjectInviteType } from '@modules/project/constants/project.constant';
 import { ProjectPublicController } from '@modules/project/controllers/project.public.controller';
 import { ConfigService } from '@nestjs/config';
 
@@ -17,7 +17,7 @@ import { ConfigService } from '@nestjs/config';
         UserModule,
         RoleModule,
         InviteModule.forFeatureAsync({
-            invitationType: ProjectInvitationType,
+            inviteType: ProjectInviteType,
             inject: [ConfigService],
             useFactory: (configService: ConfigService) => ({
                 expiredInMinutes: configService.getOrThrow<number>(

@@ -12,7 +12,7 @@ import { InviteModule } from '@modules/invite/invite.module';
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
 import { AuthModule } from '@modules/auth/auth.module';
-import { TenantInvitationType } from '@modules/tenant/constants/tenant.constant';
+import { TenantInviteType } from '@modules/tenant/constants/tenant.constant';
 import { ConfigService } from '@nestjs/config';
 
 @Global()
@@ -40,7 +40,7 @@ import { ConfigService } from '@nestjs/config';
         RoleModule,
         AuthModule,
         InviteModule.forFeatureAsync({
-            invitationType: TenantInvitationType,
+            inviteType: TenantInviteType,
             inject: [ConfigService],
             useFactory: () => ({}),
         }),

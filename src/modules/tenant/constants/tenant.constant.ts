@@ -7,5 +7,5 @@ export const TenantPermissionRequiredMetaKey =
 export const TenantRoleAdmin = 'tenant-admin';
 export const TenantRoleUser = 'tenant-user';
 export const TenantRolePlatformSupport = 'tenant-platform-support';
-export const TenantInvitationType = 'tenantMember';
+export const TenantInviteType = 'tenantMember';
 export const TenantInviteEmailTypeLabel = 'tenant_member';

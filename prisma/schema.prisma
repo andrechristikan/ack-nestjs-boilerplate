@@ -328,7 +328,7 @@ model Invite {
   expiresAt      DateTime
   acceptedAt     DateTime?
   sentAt         DateTime?
-  invitationType String
+  inviteType     String
   roleScope      EnumRoleScope
   contextId      String         @db.ObjectId
   contextName    String
@@ -349,9 +349,9 @@ model Invite {
   @@unique(fields: [token])
   @@index(fields: [token, expiresAt, acceptedAt, deletedAt])
   @@index(fields: [userId, createdAt])
-  @@index(fields: [userId, invitationType, contextId, createdAt])
+  @@index(fields: [userId, inviteType, contextId, createdAt])
   @@index(fields: [memberId, createdAt])
-  @@index(fields: [invitationType, contextId, createdAt])
+  @@index(fields: [inviteType, contextId, createdAt])
   @@index(fields: [createdAt])
   @@map("Invites")
 }

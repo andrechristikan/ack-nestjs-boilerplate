@@ -2,9 +2,7 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
-import {
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -23,8 +21,8 @@ import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.me
 import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import {
-    TenantInvitationType,
     TenantInviteEmailTypeLabel,
+    TenantInviteType,
     TenantRolePlatformSupport,
 } from '@modules/tenant/constants/tenant.constant';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
@@ -108,7 +106,6 @@ export class TenantMemberService {
         dto: TenantMemberUpdateRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-
         const member = await this.tenantRepository.findOneMemberByIdAndTenant(
             memberId,
             tenantId
@@ -146,7 +143,6 @@ export class TenantMemberService {
         memberId: string,
         _updatedBy: string
     ): Promise<IResponseReturn<void>> {
-
         const member = await this.tenantRepository.findOneMemberByIdAndTenant(
             memberId,
             tenantId
@@ -192,11 +188,15 @@ export class TenantMemberService {
             );
         }
 
-        const existingMember = await this.tenantRepository.findMemberByTenantAndUser(
-            tenantId,
-            user.id
-        );
-        if (existingMember && existingMember.status !== EnumTenantMemberStatus.pending) {
+        const existingMember =
+            await this.tenantRepository.findMemberByTenantAndUser(
+                tenantId,
+                user.id
+            );
+        if (
+            existingMember &&
+            existingMember.status !== EnumTenantMemberStatus.pending
+        ) {
             throw new ConflictException({
                 statusCode: EnumTenantStatusCodeError.memberExist,
                 message: 'invite.error.memberExist',
@@ -217,15 +217,17 @@ export class TenantMemberService {
                       })
                   ).id;
 
-        const data = await this.inviteService.createInvite({
-            invitationType: TenantInvitationType,
-            roleScope: EnumRoleScope.tenant,
-            contextId: tenantId,
-            contextName: tenant.name,
-            memberId,
-            userId: user.id,
-            requestedBy: createdBy,
-        });
+        const data = await this.inviteService.createInvite(
+            {
+                inviteType: TenantInviteType,
+                roleScope: EnumRoleScope.tenant,
+                contextId: tenantId,
+                contextName: tenant.name,
+                memberId,
+                userId: user.id,
+            },
+            createdBy
+        );
 
         return { data };
     }
@@ -237,16 +239,22 @@ export class TenantMemberService {
         password: string,
         requestLog: IRequestLog
     ): Promise<void> {
-        const invite = await this.inviteService.getActiveInviteForProcessing({ token });
+        const invite = await this.inviteService.getOneActiveByToken(
+            token,
+            TenantInviteType
+        );
 
         try {
-            await this.inviteService.finalizeInviteSignup({
-                token,
-                firstName,
-                lastName,
-                password,
-                requestLog,
-            });
+            await this.inviteService.finalizeInviteSignup(
+                {
+                    token,
+                    inviteType: TenantInviteType,
+                    firstName,
+                    lastName,
+                    password,
+                },
+                requestLog
+            );
 
             await this.tenantRepository.updateMember(invite.memberId, {
                 status: EnumTenantMemberStatus.active,
@@ -269,7 +277,10 @@ export class TenantMemberService {
     ): Promise<IResponseReturn<InviteSendResponseDto>> {
         const [tenant, member] = await Promise.all([
             this.tenantRepository.findOneById(tenantId),
-            this.tenantRepository.findOneMemberByIdAndTenant(memberId, tenantId),
+            this.tenantRepository.findOneMemberByIdAndTenant(
+                memberId,
+                tenantId
+            ),
         ]);
 
         if (!tenant) {
@@ -286,24 +297,23 @@ export class TenantMemberService {
             });
         }
 
-        const data = await this.inviteService.dispatchInvite({
-            invitationType: TenantInvitationType,
-            roleScope: EnumRoleScope.tenant,
-            emailTypeLabel: TenantInviteEmailTypeLabel,
-            contextId: tenantId,
-            contextName: tenant.name,
-            memberId: member.id,
-            userId: member.userId,
+        const data = await this.inviteService.dispatchInvite(
+            {
+                inviteType: TenantInviteType,
+                roleScope: EnumRoleScope.tenant,
+                contextId: tenantId,
+                contextName: tenant.name,
+                memberId: member.id,
+                userId: member.userId,
+            },
             requestLog,
-            requestedBy,
-        });
+            requestedBy
+        );
 
         return { data };
     }
 
-    async getMemberRoles(): Promise<
-        IResponseReturn<RoleListResponseDto[]>
-    > {
+    async getMemberRoles(): Promise<IResponseReturn<RoleListResponseDto[]>> {
         return this.roleService.getListRolesByScopeAndType(
             EnumRoleScope.tenant,
             EnumRoleType.user
@@ -379,7 +389,13 @@ export class TenantMemberService {
         });
 
         return {
-            data: this.tenantUtil.mapJitAccess(member, tenant, role.name, expiresAt, dto.reason),
+            data: this.tenantUtil.mapJitAccess(
+                member,
+                tenant,
+                role.name,
+                expiresAt,
+                dto.reason
+            ),
         };
     }
 
@@ -387,7 +403,6 @@ export class TenantMemberService {
         tenantId: string,
         userId: string
     ): Promise<IResponseReturn<void>> {
-
         const jitMember =
             await this.tenantRepository.findActiveJitMemberByTenantAndUser(
                 tenantId,

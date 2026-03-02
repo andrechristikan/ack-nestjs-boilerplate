@@ -10,7 +10,7 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
 import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
 import { InviteService } from '@modules/invite/services/invite.service';
-import { ProjectInvitationType } from '@modules/project/constants/project.constant';
+import { ProjectInviteType } from '@modules/project/constants/project.constant';
 import {
     ProjectPublicClaimInviteDoc,
     ProjectPublicGetInviteDoc,
@@ -37,7 +37,7 @@ export class ProjectPublicController {
     async getInvite(
         @Param('token', RequestRequiredPipe) token: string
     ): Promise<IResponseReturn<InvitePublicResponseDto>> {
-        return this.inviteService.getInvite({ token, invitationType: ProjectInvitationType }).then(data => ({ data }));
+        return this.inviteService.getInvite(token, ProjectInviteType).then(data => ({ data }));
     }
 
     @ProjectPublicClaimInviteDoc()

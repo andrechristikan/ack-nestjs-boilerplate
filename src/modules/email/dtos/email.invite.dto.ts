@@ -8,7 +8,7 @@ export class EmailInviteDto extends EmailVerificationDto {
         type: String,
         example: 'tenant_member',
     })
-    invitationType: string;
+    inviteType: string;
 
     @ApiProperty({
         required: true,

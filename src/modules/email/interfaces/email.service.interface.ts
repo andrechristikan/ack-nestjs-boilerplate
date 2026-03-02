@@ -33,7 +33,7 @@ export interface IEmailService {
             expiredInMinutes,
             link,
             reference,
-            invitationType,
+            inviteType,
             roleScope,
             contextName,
         }: EmailInviteDto

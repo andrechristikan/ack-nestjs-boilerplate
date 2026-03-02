@@ -7,7 +7,7 @@ import { InviteConfigDto } from '@modules/invite/dtos/invite.config.dto';
 import {
     InviteConfig,
     InviteConfigOverride,
-    InviteTokenPayload,
+    InviteTokenCreate,
 } from '@modules/invite/interfaces/invite.interface';
 import { ConfigService } from '@nestjs/config';
 import { Invite as InviteModel, Prisma, User } from '@prisma/client';
@@ -60,7 +60,7 @@ export function mergeInviteConfig(
 
 export function validateInviteConfig(
     config: InviteConfig,
-    invitationType: string
+    inviteType: string
 ): void {
     const payload = plainToInstance(InviteConfigDto, config);
     const errors = validateSync(payload, {
@@ -74,7 +74,7 @@ export function validateInviteConfig(
 
     const messages = collectValidationMessages(errors);
     throw new Error(
-        `Invalid invite config for "${invitationType}": ${messages.join('; ')}`
+        `Invalid invite config for "${inviteType}": ${messages.join('; ')}`
     );
 }
 
@@ -92,7 +92,11 @@ export class InviteUtil {
     private toMetadataObject(
         metadata: Prisma.JsonValue | null
     ): Record<string, unknown> | null {
-        if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+        if (
+            !metadata ||
+            typeof metadata !== 'object' ||
+            Array.isArray(metadata)
+        ) {
             return null;
         }
 
@@ -100,9 +104,7 @@ export class InviteUtil {
     }
 
     inviteCreateReference(config: InviteConfig): string {
-        const random = this.helperService.randomString(
-            config.reference.length
-        );
+        const random = this.helperService.randomString(config.reference.length);
 
         return `${config.reference.prefix}-${random}`;
     }
@@ -120,7 +122,7 @@ export class InviteUtil {
         );
     }
 
-    createInviteTokenPayload(config: InviteConfig): InviteTokenPayload {
+    createInviteToken(config: InviteConfig): InviteTokenCreate {
         const token = this.inviteCreateToken(config);
 
         return {
@@ -184,9 +186,7 @@ export class InviteUtil {
         });
     }
 
-    mapListItem(
-        v: InviteModel & { user: User }
-    ): InviteListResponseDto {
+    mapListItem(v: InviteModel & { user: User }): InviteListResponseDto {
         return plainToInstance(InviteListResponseDto, {
             id: v.id,
             userId: v.userId,

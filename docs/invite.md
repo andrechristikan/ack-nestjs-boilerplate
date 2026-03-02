@@ -76,7 +76,7 @@ InviteModule.forRoot();
 - In each consumer module (`ProjectModule`, `TenantModule`, etc.):
   - `InviteModule.forFeature(...)` or
   - `InviteModule.forFeatureAsync(...)`
-- This registers config for one `invitationType`.
+- This registers config for one `inviteType`.
 - Effective config is computed as:
   - `mergeInviteConfig(rootDefaults, featureOverride)`
 - Effective config is validated before registration.
@@ -115,7 +115,7 @@ Rules:
 
 ```ts
 await this.inviteService.issueInvite({
-  invitationType: ProjectInvitationType,
+  inviteType: ProjectInviteType,
   roleScope: EnumRoleScope.project,
   contextId: projectId,
   contextName: project.name,
@@ -129,7 +129,7 @@ await this.inviteService.issueInvite({
 
 ```ts
 await this.inviteService.dispatchInvite({
-  invitationType: ProjectInvitationType,
+  inviteType: ProjectInviteType,
   roleScope: EnumRoleScope.project,
   emailTypeLabel: ProjectInviteEmailTypeLabel,
   contextId: projectId,
@@ -146,7 +146,7 @@ await this.inviteService.dispatchInvite({
 Recommended pattern:
 1. Consumer module resolves domain logic (context, role, membership, user rules).
 2. Consumer module imports Invite with per-feature config registration.
-3. Consumer service calls Invite service methods with `invitationType`.
+3. Consumer service calls Invite service methods with `inviteType`.
 
 Important:
 - Do **not** resolve invite config inside consumer services.
@@ -158,7 +158,7 @@ Important:
 
 ```ts
 InviteModule.forFeatureAsync({
-  invitationType: ProjectInvitationType,
+  inviteType: ProjectInviteType,
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     expiredInMinutes: configService.getOrThrow<number>('invite.expiredInMinutes'),
@@ -171,7 +171,7 @@ InviteModule.forFeatureAsync({
 
 ```ts
 InviteModule.forFeatureAsync({
-  invitationType: TenantInvitationType,
+  inviteType: TenantInviteType,
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     resendInMinutes: configService.getOrThrow<number>('invite.resendInMinutes'),
@@ -186,7 +186,7 @@ InviteModule.forFeatureAsync({
 
 ```ts
 InviteModule.forFeature({
-  invitationType: 'customMemberInvite',
+  inviteType: 'customMemberInvite',
   config: {
     linkBaseUrl: 'custom-invite',
     resendInMinutes: 10,
@@ -198,19 +198,19 @@ InviteModule.forFeature({
 
 Invite config registration fails fast when:
 1. configuration is invalid (validation error), or
-2. same `invitationType` is registered more than once.
+2. same `inviteType` is registered more than once.
 
 Invite service execution fails fast when:
-1. `invitationType` is not registered in `InviteConfigRegistry`.
+1. `inviteType` is not registered in `InviteConfigRegistry`.
    - Error message:
-   - `Invite config not registered for "<invitationType>"`
+   - `Invite config not registered for "<inviteType>"`
 
 ## Design Guidelines
 
 - Keep Invite module domain-neutral and reusable.
 - Keep project/tenant/domain-specific lookup logic in consumer modules.
 - Register invite config at module import time.
-- Keep `invitationType` constants near each consumer domain.
+- Keep `inviteType` constants near each consumer domain.
 
 ## Important Notes
 

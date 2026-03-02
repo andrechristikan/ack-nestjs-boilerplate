@@ -43,10 +43,10 @@ export class InviteModule {
         options: InviteModuleForFeatureAsyncOptions
     ): DynamicModule {
         const configOverrideToken = Symbol(
-            `INVITE_CONFIG_OVERRIDE_${options.invitationType}`
+            `INVITE_CONFIG_OVERRIDE_${options.inviteType}`
         );
         const registrationToken = Symbol(
-            `INVITE_CONFIG_REGISTER_${options.invitationType}`
+            `INVITE_CONFIG_REGISTER_${options.inviteType}`
         );
 
         const configProvider: FactoryProvider<InviteConfigOverride> = {
@@ -65,9 +65,9 @@ export class InviteModule {
                 const defaultConfig =
                     configService.getOrThrow<InviteConfig>('invite');
                 const config = mergeInviteConfig(defaultConfig, overrideConfig);
-                validateInviteConfig(config, options.invitationType);
+                validateInviteConfig(config, options.inviteType);
 
-                registry.register(options.invitationType, config);
+                registry.register(options.inviteType, config);
 
                 return true;
             },

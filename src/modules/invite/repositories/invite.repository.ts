@@ -2,7 +2,15 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import {
+    IPaginationCursorReturn,
+    IPaginationEqual,
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { Injectable } from '@nestjs/common';
 import {
@@ -14,7 +22,8 @@ import {
     User,
 } from '@prisma/client';
 import {
-    IInviteCreate,
+    InviteCreate,
+    InviteTokenCreate,
     InviteWithUser,
 } from '@modules/invite/interfaces/invite.interface';
 
@@ -23,14 +32,18 @@ export class InviteRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly paginationService: PaginationService
     ) {}
 
-    async findOneByToken(token: string, invitationType: string): Promise<InviteWithUser | null> {
+    async findOneByToken(
+        token: string,
+        inviteType: string
+    ): Promise<InviteWithUser | null> {
         return this.databaseService.invite.findFirst({
             where: {
                 token,
-                invitationType,
+                inviteType,
                 user: {
                     deletedAt: null,
                 },
@@ -41,12 +54,16 @@ export class InviteRepository {
         });
     }
 
-    async findOneActiveByToken(token: string): Promise<InviteWithUser | null> {
+    async findOneActiveByToken(
+        token: string,
+        inviteType: string
+    ): Promise<InviteWithUser | null> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.invite.findFirst({
             where: {
                 token,
+                inviteType,
                 acceptedAt: null,
                 expiresAt: {
                     gt: today,
@@ -85,30 +102,9 @@ export class InviteRepository {
         });
     }
 
-    async findOneLatestActiveByUserId(userId: string): Promise<Invite | null> {
-        const today = this.helperService.dateCreate();
-
-        return this.databaseService.invite.findFirst({
-            where: {
-                userId,
-                deletedAt: null,
-                acceptedAt: null,
-                expiresAt: {
-                    gt: today,
-                },
-                user: {
-                    deletedAt: null,
-                },
-            },
-            orderBy: {
-                createdAt: EnumPaginationOrderDirectionType.desc,
-            },
-        });
-    }
-
     async findOneLatestActiveByUserAndContext(
         userId: string,
-        invitationType: string,
+        inviteType: string,
         contextId: string
     ): Promise<Invite | null> {
         const today = this.helperService.dateCreate();
@@ -116,7 +112,7 @@ export class InviteRepository {
         return this.databaseService.invite.findFirst({
             where: {
                 userId,
-                invitationType,
+                inviteType,
                 contextId,
                 deletedAt: null,
                 acceptedAt: null,
@@ -133,51 +129,59 @@ export class InviteRepository {
         });
     }
 
-    async findMany(options?: {
-        invitationType?: string;
-        contextId?: string;
-        userId?: string;
-        includeDeleted?: boolean;
-        pendingOnly?: boolean;
-    }): Promise<InviteWithUser[]> {
-        const today = this.helperService.dateCreate();
-        const where: Prisma.InviteWhereInput = {
-            ...(options?.includeDeleted ? {} : { deletedAt: null }),
-            user: { deletedAt: null },
-            ...(options?.pendingOnly
-                ? {
-                      acceptedAt: null,
-                      expiresAt: {
-                          gt: today,
-                      },
-                  }
-                : {}),
-        };
-
-        if (options?.userId) {
-            where.userId = options.userId;
-        }
-
-        if (options?.invitationType) {
-            where.invitationType = options.invitationType;
-        }
-
-        if (options?.contextId) {
-            where.contextId = options.contextId;
-        }
-
-        return this.databaseService.invite.findMany({
-            where,
-            include: { user: true },
-            orderBy: { createdAt: 'desc' },
-        });
+    async findWithPaginationOffset(
+        { where, ...params }: IPaginationQueryOffsetParams,
+        inviteType?: Record<string, IPaginationEqual>,
+        contextId?: Record<string, IPaginationEqual>,
+        userId?: Record<string, IPaginationEqual>
+    ): Promise<IResponsePagingReturn<InviteWithUser>> {
+        return this.paginationService.offset<InviteWithUser>(
+            this.databaseService.invite,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    ...inviteType,
+                    ...contextId,
+                    ...userId,
+                    user: { deletedAt: null },
+                },
+                include: { user: true },
+            }
+        );
     }
 
-    async softDelete(id: string, deletedBy: string): Promise<Invite> {
+    async findWithPaginationCursor(
+        { where, ...params }: IPaginationQueryCursorParams,
+        inviteType?: Record<string, IPaginationEqual>,
+        contextId?: Record<string, IPaginationEqual>,
+        userId?: Record<string, IPaginationEqual>
+    ): Promise<IPaginationCursorReturn<InviteWithUser>> {
+        return this.paginationService.cursor<InviteWithUser>(
+            this.databaseService.invite,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    ...inviteType,
+                    ...contextId,
+                    ...userId,
+                    user: { deletedAt: null },
+                },
+                include: { user: true },
+            }
+        );
+    }
+
+    async softDelete(id: string, deletedBy: string): Promise<void> {
         const now = this.helperService.dateCreate();
 
-        return this.databaseService.invite.update({
-            where: { id },
+        await this.databaseService.invite.updateMany({
+            where: {
+                id,
+                expiresAt: { gt: now },
+                user: { deletedAt: null },
+            },
             data: {
                 deletedAt: now,
                 deletedBy,
@@ -310,20 +314,19 @@ export class InviteRepository {
         );
     }
 
-    async createInvite({
-        userId,
-        userEmail,
-        token,
-        reference,
-        expiresAt,
-        invitationType,
-        roleScope,
-        contextId,
-        contextName,
-        memberId,
-        metadata,
-        requestedBy,
-    }: IInviteCreate): Promise<Invite> {
+    async createInvite(
+        userEmail: string,
+        {
+            userId,
+            inviteType,
+            roleScope,
+            contextId,
+            contextName,
+            memberId,
+        }: InviteCreate,
+        { token, reference, expiresAt }: InviteTokenCreate,
+        requestedBy: string
+    ): Promise<Invite> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.$transaction(
@@ -342,7 +345,7 @@ export class InviteRepository {
                         updatedBy: requestedBy,
                     },
                 });
-
+                //TODO: Create ActivityLogs
                 return client.invite.create({
                     data: {
                         userId,
@@ -352,12 +355,11 @@ export class InviteRepository {
                         expiresAt,
                         acceptedAt: null,
                         sentAt: null,
-                        invitationType,
+                        inviteType,
                         roleScope,
                         contextId,
                         contextName,
                         memberId,
-                        metadata,
                         deletedAt: null,
                         deletedBy: null,
                         createdBy: requestedBy,

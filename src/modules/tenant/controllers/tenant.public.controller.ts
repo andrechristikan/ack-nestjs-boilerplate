@@ -11,7 +11,7 @@ import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-f
 import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
 import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
 import { InviteService } from '@modules/invite/services/invite.service';
-import { TenantInvitationType } from '@modules/tenant/constants/tenant.constant';
+import { TenantInviteType } from '@modules/tenant/constants/tenant.constant';
 import {
     TenantPublicClaimInviteDoc,
     TenantPublicGetInviteDoc,
@@ -68,7 +68,7 @@ export class TenantPublicController {
     async getInvite(
         @Param('token', RequestRequiredPipe) token: string
     ): Promise<IResponseReturn<InvitePublicResponseDto>> {
-        return this.inviteService.getInvite({ token, invitationType: TenantInvitationType }).then(data => ({ data }));
+        return this.inviteService.getInvite(token, TenantInviteType).then(data => ({ data }));
     }
 
     @TenantPublicClaimInviteDoc()

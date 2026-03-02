@@ -6,25 +6,25 @@ export class InviteConfigRegistry {
     private readonly logger = new Logger(InviteConfigRegistry.name);
     private readonly registry = new Map<string, InviteConfig>();
 
-    register(invitationType: string, config: InviteConfig): void {
-        const existing = this.registry.get(invitationType);
+    register(inviteType: string, config: InviteConfig): void {
+        const existing = this.registry.get(inviteType);
         if (existing) {
             throw new Error(
-                `Duplicate invite config registration for "${invitationType}"`
+                `Duplicate invite config registration for "${inviteType}"`
             );
         }
 
-        this.registry.set(invitationType, config);
+        this.registry.set(inviteType, config);
         this.logger.debug(
-            `Registered invite config for type "${invitationType}": ${JSON.stringify(config)}`
+            `Registered invite config for type "${inviteType}": ${JSON.stringify(config)}`
         );
     }
 
-    getOrThrow(invitationType: string): InviteConfig {
-        const config = this.registry.get(invitationType);
+    getOrThrow(inviteType: string): InviteConfig {
+        const config = this.registry.get(inviteType);
         if (!config) {
             throw new Error(
-                `Invite config not registered for "${invitationType}"`
+                `Invite config not registered for "${inviteType}"`
             );
         }
 

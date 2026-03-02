@@ -3,31 +3,79 @@ import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send
 import { InviteListResponseDto } from '@modules/invite/dtos/response/invite-list.response.dto';
 import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
 import {
-    InviteDeleteInput,
-    InviteDispatchInput,
-    InviteFinalizeAcceptInput,
+    InviteCreate,
     InviteFinalizeSignupInput,
-    InviteGetActiveInput,
-    InviteGetInput,
-    InviteIssueInput,
-    InviteListInput,
     InviteWithUser,
 } from '@modules/invite/interfaces/invite.interface';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import {
+    IPaginationCursorReturn,
+    IPaginationEqual,
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 
 export interface IInviteService {
-    createInvite(input: InviteIssueInput): Promise<InviteCreateResponseDto>;
+    createInvite(
+        {
+            inviteType,
+            roleScope,
+            contextId,
+            contextName,
+            memberId,
+            userId,
+        }: InviteCreate,
+        requestedBy: string
+    ): Promise<InviteCreateResponseDto>;
 
-    dispatchInvite(input: InviteDispatchInput): Promise<InviteSendResponseDto>;
+    dispatchInvite(
+        {
+            inviteType,
+            roleScope,
+            contextId,
+            contextName,
+            memberId,
+            userId,
+        }: InviteCreate,
+        requestLog: IRequestLog,
+        requestedBy: string
+    ): Promise<InviteSendResponseDto>;
 
-    deleteInvite(input: InviteDeleteInput): Promise<void>;
+    deleteInvite(inviteId: string, deletedBy: string): Promise<void>;
 
-    listInvites(input?: InviteListInput): Promise<InviteListResponseDto[]>;
+    getListOffset(
+        pagination: IPaginationQueryOffsetParams,
+        inviteType?: Record<string, IPaginationEqual>,
+        contextId?: Record<string, IPaginationEqual>,
+        userId?: Record<string, IPaginationEqual>
+    ): Promise<IResponsePagingReturn<InviteListResponseDto>>;
 
-    getInvite(input: InviteGetInput): Promise<InvitePublicResponseDto>;
+    getListCursor(
+        pagination: IPaginationQueryCursorParams,
+        inviteType?: Record<string, IPaginationEqual>,
+        contextId?: Record<string, IPaginationEqual>,
+        userId?: Record<string, IPaginationEqual>
+    ): Promise<IPaginationCursorReturn<InviteListResponseDto>>;
 
-    getActiveInviteForProcessing(input: InviteGetActiveInput): Promise<InviteWithUser>;
+    getInvite(
+        token: string,
+        inviteType: string
+    ): Promise<InvitePublicResponseDto>;
 
-    finalizeInviteAccept(input: InviteFinalizeAcceptInput): Promise<void>;
+    getOneActiveByToken(
+        token: string,
+        inviteType: string
+    ): Promise<InviteWithUser>;
 
-    finalizeInviteSignup(input: InviteFinalizeSignupInput): Promise<void>;
+    finalizeInviteAccept(
+        inviteId: string,
+        userId: string,
+        requestLog: IRequestLog
+    ): Promise<void>;
+
+    finalizeInviteSignup(
+        input: InviteFinalizeSignupInput,
+        requestLog: IRequestLog
+    ): Promise<void>;
 }

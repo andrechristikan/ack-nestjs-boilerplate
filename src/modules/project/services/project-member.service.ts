@@ -21,8 +21,8 @@ import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import {
-    ProjectInvitationType,
     ProjectInviteEmailTypeLabel,
+    ProjectInviteType,
 } from '@modules/project/constants/project.constant';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserService } from '@modules/user/services/user.service';
@@ -128,7 +128,6 @@ export class ProjectMemberService {
         dto: ProjectMemberUpdateRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-
         const member = await this.projectRepository.findOneMemberByIdAndProject(
             memberId,
             projectId
@@ -216,11 +215,15 @@ export class ProjectMemberService {
             );
         }
 
-        const existingMember = await this.projectRepository.findMemberByProjectAndUser(
-            projectId,
-            user.id
-        );
-        if (existingMember && existingMember.status !== EnumProjectMemberStatus.pending) {
+        const existingMember =
+            await this.projectRepository.findMemberByProjectAndUser(
+                projectId,
+                user.id
+            );
+        if (
+            existingMember &&
+            existingMember.status !== EnumProjectMemberStatus.pending
+        ) {
             throw new ConflictException({
                 statusCode: HttpStatus.CONFLICT,
                 message: 'invite.error.memberExist',
@@ -241,15 +244,17 @@ export class ProjectMemberService {
                       })
                   ).id;
 
-        const data = await this.inviteService.createInvite({
-            invitationType: ProjectInvitationType,
-            roleScope: EnumRoleScope.project,
-            contextId: projectId,
-            contextName: project.name,
-            memberId,
-            userId: user.id,
-            requestedBy: createdBy,
-        });
+        const data = await this.inviteService.createInvite(
+            {
+                inviteType: ProjectInviteType,
+                roleScope: EnumRoleScope.project,
+                contextId: projectId,
+                contextName: project.name,
+                memberId,
+                userId: user.id,
+            },
+            createdBy
+        );
 
         return { data };
     }
@@ -261,16 +266,22 @@ export class ProjectMemberService {
         password: string,
         requestLog: IRequestLog
     ): Promise<void> {
-        const invite = await this.inviteService.getActiveInviteForProcessing({ token });
+        const invite = await this.inviteService.getOneActiveByToken(
+            token,
+            ProjectInviteType
+        );
 
         try {
-            await this.inviteService.finalizeInviteSignup({
-                token,
-                firstName,
-                lastName,
-                password,
-                requestLog,
-            });
+            await this.inviteService.finalizeInviteSignup(
+                {
+                    token,
+                    inviteType: ProjectInviteType,
+                    firstName,
+                    lastName,
+                    password,
+                },
+                requestLog
+            );
 
             await this.projectRepository.updateMember(invite.memberId, {
                 status: EnumProjectMemberStatus.active,
@@ -302,24 +313,25 @@ export class ProjectMemberService {
             });
         }
 
-        const data = await this.inviteService.dispatchInvite({
-            invitationType: ProjectInvitationType,
-            roleScope: EnumRoleScope.project,
-            emailTypeLabel: ProjectInviteEmailTypeLabel,
-            contextId: projectId,
-            contextName: member.project.name,
-            memberId: member.id,
-            userId: member.user.id,
+        const data = await this.inviteService.dispatchInvite(
+            {
+                inviteType: ProjectInviteType,
+                roleScope: EnumRoleScope.project,
+                contextId: projectId,
+                contextName: member.project.name,
+                memberId: member.id,
+                userId: member.user.id,
+            },
             requestLog,
-            requestedBy,
-        });
+            requestedBy
+        );
 
         return { data };
     }
 
-    async getMemberRoles(projectId: string): Promise<
-        IResponseReturn<RoleListResponseDto[]>
-    > {
+    async getMemberRoles(
+        projectId: string
+    ): Promise<IResponseReturn<RoleListResponseDto[]>> {
         void projectId;
 
         return this.roleService.getListRolesByScopeAndType(
@@ -343,9 +355,7 @@ export class ProjectMemberService {
             data: data.map(member =>
                 this.projectUtil.mapMember(
                     member,
-                    this.inviteUtil.mapInviteStatus(
-                        member.user.invites[0]
-                    )
+                    this.inviteUtil.mapInviteStatus(member.user.invites[0])
                 )
             ),
         };
@@ -373,7 +383,6 @@ export class ProjectMemberService {
         projectId: string,
         userId: string
     ): Promise<IResponseReturn<ProjectResponseDto>> {
-
         const member = await this.projectRepository.findMemberByProjectAndUser(
             projectId,
             userId,
