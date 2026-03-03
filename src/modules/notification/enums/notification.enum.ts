@@ -1,6 +1,15 @@
 export enum EnumNotificationProcess {
-    newDeviceLogin = 'newDeviceLogin',
+    welcomeByAdmin = 'welcomeByAdmin',
+    welcome = 'welcome',
+    welcomeSocial = 'welcomeSocial',
     temporaryPasswordByAdmin = 'temporaryPasswordByAdmin',
-    resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
+    changePassword = 'changePassword',
+    verifiedEmail = 'verifiedEmail',
+    verifiedMobileNumber = 'verifiedMobileNumber',
+    verificationEmail = 'verificationEmail',
+    forgotPassword = 'forgotPassword',
     resetPassword = 'resetPassword',
+    newDeviceLogin = 'newDeviceLogin',
+    resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
+    publishTermPolicy = 'publishTermPolicy',
 }

@@ -20,6 +20,7 @@ import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { SessionModule } from '@modules/session/session.module';
 import { FirebaseModule } from '@common/firebase/firebase.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
+import { NotificationModule } from '@modules/notification/notification.module';
 
 /**
  * Common module that provides shared functionality across the application.
@@ -58,6 +59,7 @@ import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
         PolicyModule,
         TermPolicyModule,
         SessionModule,
+        NotificationModule,
     ],
 })
 export class CommonModule {}

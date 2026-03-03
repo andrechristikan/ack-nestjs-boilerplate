@@ -5,7 +5,10 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
-import { INotificationPublishTermPolicyPayload } from '@modules/notification/interfaces/notification.interface';
+import {
+    INotificationEmailSendPayload,
+    INotificationPublishTermPolicyPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
@@ -68,12 +71,14 @@ export class NotificationRepository {
     }
 
     async createWelcomeByAdmin(
+        notificationId: string,
         userId: string,
         username: string,
         createdBy: string
     ): Promise<Notification> {
         return this.databaseService.notification.create({
             data: {
+                id: notificationId,
                 type: EnumNotificationType.userActivity,
                 title: 'notification.notify.welcomeByAdmin.title',
                 body: `notification.notify.welcomeByAdmin.body`,
@@ -90,6 +95,9 @@ export class NotificationRepository {
                             {
                                 channel: EnumNotificationChannel.email,
                             },
+                            {
+                                channel: EnumNotificationChannel.inApp,
+                            },
                         ],
                     },
                 },
@@ -98,12 +106,14 @@ export class NotificationRepository {
     }
 
     async createTemporaryPasswordByAdmin(
+        notificationId: string,
         userId: string,
         username: string,
         createdBy: string
     ): Promise<Notification> {
         return this.databaseService.notification.create({
             data: {
+                id: notificationId,
                 type: EnumNotificationType.securityAlert,
                 title: 'notification.notify.temporaryPasswordByAdmin.title',
                 body: `notification.notify.temporaryPasswordByAdmin.body`,
@@ -120,6 +130,12 @@ export class NotificationRepository {
                             {
                                 channel: EnumNotificationChannel.email,
                             },
+                            {
+                                channel: EnumNotificationChannel.inApp,
+                            },
+                            {
+                                channel: EnumNotificationChannel.push,
+                            },
                         ],
                     },
                 },
@@ -128,11 +144,13 @@ export class NotificationRepository {
     }
 
     async createWelcome(
+        notificationId: string,
         userId: string,
         username: string
     ): Promise<Notification> {
         return this.databaseService.notification.create({
             data: {
+                id: notificationId,
                 type: EnumNotificationType.userActivity,
                 title: 'notification.notify.welcome.title',
                 body: `notification.notify.welcome.body`,
@@ -148,6 +166,9 @@ export class NotificationRepository {
                         data: [
                             {
                                 channel: EnumNotificationChannel.email,
+                            },
+                            {
+                                channel: EnumNotificationChannel.inApp,
                             },
                         ],
                     },
@@ -157,21 +178,19 @@ export class NotificationRepository {
     }
 
     async createWelcomeSocial(
+        notificationId: string,
         userId: string,
-        username: string,
-        loginWith: EnumUserLoginWith,
-        loginFrom: EnumUserLoginFrom
+        username: string
     ): Promise<Notification> {
         return this.databaseService.notification.create({
             data: {
+                id: notificationId,
                 type: EnumNotificationType.userActivity,
                 title: 'notification.notify.welcome.title',
                 body: `notification.notify.welcome.body`,
                 userId,
                 metadata: {
                     username,
-                    loginWith,
-                    loginFrom,
                 },
                 isRead: false,
                 priority: EnumNotificationPriority.normal,
@@ -182,6 +201,9 @@ export class NotificationRepository {
                             {
                                 channel: EnumNotificationChannel.email,
                             },
+                            {
+                                channel: EnumNotificationChannel.inApp,
+                            },
                         ],
                     },
                 },
@@ -190,11 +212,13 @@ export class NotificationRepository {
     }
 
     async createResetPassword(
+        notificationId: string,
         userId: string,
         username: string
     ): Promise<Notification> {
         return this.databaseService.notification.create({
             data: {
+                id: notificationId,
                 type: EnumNotificationType.securityAlert,
                 title: 'notification.notify.resetPassword.title',
                 body: `notification.notify.resetPassword.body`,
@@ -211,6 +235,12 @@ export class NotificationRepository {
                             {
                                 channel: EnumNotificationChannel.email,
                             },
+                            {
+                                channel: EnumNotificationChannel.push,
+                            },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                            },
                         ],
                     },
                 },
@@ -219,12 +249,14 @@ export class NotificationRepository {
     }
 
     async createResetTwoFactorByAdmin(
+        notificationId: string,
         userId: string,
         username: string,
         updatedBy: string
     ): Promise<Notification> {
         return this.databaseService.notification.create({
             data: {
+                id: notificationId,
                 type: EnumNotificationType.securityAlert,
                 title: 'notification.notify.resetTwoFactorByAdmin.title',
                 body: `notification.notify.resetTwoFactorByAdmin.body`,
@@ -241,6 +273,12 @@ export class NotificationRepository {
                             {
                                 channel: EnumNotificationChannel.email,
                             },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                            },
+                            {
+                                channel: EnumNotificationChannel.push,
+                            },
                         ],
                     },
                 },
@@ -249,6 +287,7 @@ export class NotificationRepository {
     }
 
     async createNewDeviceLogin(
+        notificationId: string,
         userId: string,
         username: string,
         loginFrom: EnumUserLoginFrom,
@@ -257,6 +296,7 @@ export class NotificationRepository {
     ): Promise<Notification> {
         return this.databaseService.notification.create({
             data: {
+                id: notificationId,
                 type: EnumNotificationType.securityAlert,
                 title: 'notification.notify.newDeviceLogin.title',
                 body: `notification.notify.newDeviceLogin.body`,
@@ -279,6 +319,9 @@ export class NotificationRepository {
                             {
                                 channel: EnumNotificationChannel.push,
                             },
+                            {
+                                channel: EnumNotificationChannel.inApp,
+                            },
                         ],
                     },
                 },
@@ -286,12 +329,14 @@ export class NotificationRepository {
         });
     }
 
-    async createPublishTermPolicy(
+    async createManyPublishTermPolicy(
+        notificationId: string,
         { type, version }: INotificationPublishTermPolicyPayload,
         publishedBy: string
     ): Promise<Notification> {
         return this.databaseService.notification.create({
             data: {
+                id: notificationId,
                 type: EnumNotificationType.transactional,
                 title: 'notification.notify.publishTermPolicy.title',
                 body: `notification.notify.publishTermPolicy.body`,
@@ -309,10 +354,226 @@ export class NotificationRepository {
                             {
                                 channel: EnumNotificationChannel.email,
                             },
+                            {
+                                channel: EnumNotificationChannel.inApp,
+                            },
                         ],
                     },
                 },
             },
+        });
+    }
+
+    async createChangePassword(
+        notificationId: string,
+        userId: string,
+        username: string
+    ): Promise<Notification> {
+        return this.databaseService.notification.create({
+            data: {
+                id: notificationId,
+                type: EnumNotificationType.securityAlert,
+                title: 'notification.notify.changePassword.title',
+                body: `notification.notify.changePassword.body`,
+                userId,
+                metadata: {
+                    username,
+                },
+                isRead: false,
+                priority: EnumNotificationPriority.high,
+                createdBy: userId,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.email,
+                            },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                            },
+                        ],
+                    },
+                },
+            },
+        });
+    }
+
+    async createVerifiedEmail(
+        notificationId: string,
+        userId: string,
+        username: string
+    ): Promise<Notification> {
+        return this.databaseService.notification.create({
+            data: {
+                id: notificationId,
+                type: EnumNotificationType.userActivity,
+                title: 'notification.notify.verifiedEmail.title',
+                body: `notification.notify.verifiedEmail.body`,
+                userId,
+                metadata: {
+                    username,
+                },
+                isRead: false,
+                priority: EnumNotificationPriority.normal,
+                createdBy: userId,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.email,
+                            },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                            },
+                        ],
+                    },
+                },
+            },
+        });
+    }
+
+    async createVerificationEmail(
+        notificationId: string,
+        userId: string,
+        username: string
+    ): Promise<Notification> {
+        return this.databaseService.notification.create({
+            data: {
+                id: notificationId,
+                type: EnumNotificationType.userActivity,
+                title: 'notification.notify.verificationEmail.title',
+                body: `notification.notify.verificationEmail.body`,
+                userId,
+                metadata: {
+                    username,
+                },
+                isRead: false,
+                priority: EnumNotificationPriority.high,
+                createdBy: userId,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.email,
+                            },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                            },
+                        ],
+                    },
+                },
+            },
+        });
+    }
+
+    async createMobileNumberVerified(
+        notificationId: string,
+        userId: string,
+        username: string,
+        mobileNumber: string
+    ): Promise<Notification> {
+        return this.databaseService.notification.create({
+            data: {
+                id: notificationId,
+                type: EnumNotificationType.userActivity,
+                title: 'notification.notify.mobileNumberVerified.title',
+                body: `notification.notify.mobileNumberVerified.body`,
+                userId,
+                metadata: {
+                    username,
+                    mobileNumber: this.helperService.censorString(mobileNumber),
+                },
+                isRead: false,
+                priority: EnumNotificationPriority.normal,
+                createdBy: userId,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.email,
+                            },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                            },
+                        ],
+                    },
+                },
+            },
+        });
+    }
+
+    async createForgotPassword(
+        notificationId: string,
+        userId: string,
+        username: string
+    ): Promise<Notification> {
+        return this.databaseService.notification.create({
+            data: {
+                id: notificationId,
+                type: EnumNotificationType.securityAlert,
+                title: 'notification.notify.forgotPassword.title',
+                body: `notification.notify.forgotPassword.body`,
+                userId,
+                metadata: {
+                    username,
+                },
+                isRead: false,
+                priority: EnumNotificationPriority.critical,
+                createdBy: userId,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.email,
+                            },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                            },
+                        ],
+                    },
+                },
+            },
+        });
+    }
+
+    async createPublishTermPolicy(
+        payloads: INotificationEmailSendPayload[],
+        { type, version }: INotificationPublishTermPolicyPayload,
+        proceedBy: string
+    ): Promise<void> {
+        const data: Prisma.NotificationCreateManyInput[] = payloads.map(
+            payload => ({
+                userId: payload.userId,
+                type: EnumNotificationType.transactional,
+                title: 'notification.notify.publishTermPolicy.title',
+                body: `notification.notify.publishTermPolicy.body`,
+                metadata: {
+                    type,
+                    version,
+                },
+                isRead: false,
+                priority: EnumNotificationPriority.normal,
+                createdBy: proceedBy,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.email,
+                            },
+                            {
+                                channel: EnumNotificationChannel.inApp,
+                            },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                            },
+                        ],
+                    },
+                },
+            })
+        );
+
+        await this.databaseService.notification.createMany({
+            data,
         });
     }
 

@@ -117,7 +117,8 @@ export class DeviceRepository {
 
     async findByUserId(
         userId: string,
-        excludeFingerprint?: string[]
+        excludeFingerprint?: string[],
+        shouldHaveToken?: boolean
     ): Promise<Device[]> {
         return this.databaseService.device.findMany({
             where: {
@@ -126,6 +127,9 @@ export class DeviceRepository {
                     excludeFingerprint.length > 0 && {
                         fingerprint: { notIn: excludeFingerprint },
                     }),
+                ...(shouldHaveToken && {
+                    notificationToken: { not: null },
+                }),
             },
         });
     }

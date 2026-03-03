@@ -1,0 +1,40 @@
+import { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
+
+export interface INotificationTemplateService {
+    emailImportChangePassword(): Promise<boolean>;
+    emailGetChangePassword(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteChangePassword(): Promise<boolean>;
+    emailImportWelcome(): Promise<boolean>;
+    emailGetWelcome(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteWelcome(): Promise<boolean>;
+    emailImportWelcomeByAdmin(): Promise<boolean>;
+    emailGetWelcomeByAdmin(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteWelcomeByAdmin(): Promise<boolean>;
+    emailImportTemporaryPasswordByAdmin(): Promise<boolean>;
+    emailGetTemporaryPasswordByAdmin(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteTemporaryPasswordByAdmin(): Promise<boolean>;
+    emailImportResetPassword(): Promise<boolean>;
+    emailGetResetPassword(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteResetPassword(): Promise<boolean>;
+    emailImportForgotPassword(): Promise<boolean>;
+    emailGetForgotPassword(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteForgotPassword(): Promise<boolean>;
+    emailImportVerificationEmail(): Promise<boolean>;
+    emailGetVerificationEmail(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteVerificationEmail(): Promise<boolean>;
+    emailImportVerifiedEmail(): Promise<boolean>;
+    emailGetVerifiedEmail(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteVerifiedEmail(): Promise<boolean>;
+    emailImportVerifiedMobileNumber(): Promise<boolean>;
+    emailGetVerifiedMobileNumber(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteVerifiedMobileNumber(): Promise<boolean>;
+    emailImportResetTwoFactorByAdmin(): Promise<boolean>;
+    emailGetResetTwoFactorByAdmin(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteResetTwoFactorByAdmin(): Promise<boolean>;
+    emailImportNewDeviceLogin(): Promise<boolean>;
+    emailGetNewDeviceLogin(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteNewDeviceLogin(): Promise<boolean>;
+    emailImportPublishTermPolicy(): Promise<boolean>;
+    emailGetPublishTermPolicy(): Promise<GetTemplateCommandOutput | null>;
+    emailDeletePublishTermPolicy(): Promise<boolean>;
+}

@@ -1,182 +1,532 @@
-import { FirebaseService } from '@common/firebase/services/firebase.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperService } from '@common/helper/services/helper.service';
+import { DeviceRepository } from '@modules/device/repositories/device.repository';
+import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import {
+    INotificationEmailSendPayload,
+    INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
+    INotificationPublishTermPolicyPayload,
+    INotificationSendPushPayload,
+    INotificationTemporaryPasswordPayload,
+    INotificationVerificationEmailPayload,
+    INotificationVerifiedEmailPayload,
+    INotificationVerifiedMobileNumberPayload,
+    INotificationWelcomeByAdminPayload,
+    INotificationWorkerBulkPayload,
     INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
+import { INotificationProcessorService } from '@modules/notification/interfaces/notification.processor.service.interface';
+import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { NotificationEmailUtil } from '@modules/notification/utils/notification.email.util';
+import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
+import { UserRepository } from '@modules/user/repositories/user.repository';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Job } from 'bullmq';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
 @Injectable()
-export class NotificationProcessorService {
-    constructor(private readonly firebaseService: FirebaseService) {}
+export class NotificationProcessorService implements INotificationProcessorService {
+    private readonly emailBatchSize: number;
 
-    async processNewDeviceLogin({
-        send: { userId, username },
-        data,
-    }: INotificationWorkerPayload<INotificationNewDeviceLoginPayload>): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitializedFlag) {
-            return {
-                message:
-                    'Firebase not initialized, skipping new login notification',
-            };
-        }
+    constructor(
+        private readonly notificationRepository: NotificationRepository,
+        private readonly userRepository: UserRepository,
+        private readonly deviceRepository: DeviceRepository,
+        private readonly helperService: HelperService,
+        private readonly configService: ConfigService,
+        private readonly notificationPushUtil: NotificationPushUtil,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly notificationEmailUtil: NotificationEmailUtil
+    ) {
+        this.emailBatchSize = this.configService.get<number>('email.batchSize');
+    }
 
-        // TODO: NEXT 2 - Implement new login notification logic here
+    async processWelcomeByAdmin({
+        data: { proceedBy, userId, data },
+    }: Job<
+        INotificationWorkerPayload<INotificationWelcomeByAdminPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const user = await this.userRepository.findOneActiveById(userId);
+        const notificationId = this.databaseUtil.createId();
+
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        await Promise.all([
+            this.notificationRepository.createWelcomeByAdmin(
+                notificationId,
+                user.id,
+                user.username,
+                proceedBy
+            ),
+            this.notificationEmailUtil.sendWelcomeByAdmin(emailPayload, data),
+        ]);
 
         return {
-            message: 'New login notification processed',
+            message: 'Welcome by admin notification processed',
         };
     }
 
-    // TODO: NEXT 2: Implement other notification processing methods here (e.g. processEmailVerification, processPasswordReset, etc.)
+    async processTemporaryPasswordByAdmin({
+        data: { proceedBy, userId, data },
+    }: Job<
+        INotificationWorkerPayload<INotificationTemporaryPasswordPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const [user, devices] = await Promise.all([
+            this.userRepository.findOneActiveById(userId),
+            this.deviceRepository.findByUserId(userId),
+        ]);
+        const notificationId = this.databaseUtil.createId();
 
-    //     async processLogin(job: NotificationPushJobDto): Promise<void> {
-    //         const tokens =
-    //             await this.notificationPushTokenRepository.findActiveTokensByUser(
-    //                 job.userId
-    //             );
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+        const notificationToken = devices.map(
+            device => device.notificationToken
+        );
+        const pushPayload: INotificationSendPushPayload = {
+            userId,
+            notificationId,
+            notificationToken,
+            username: user.username,
+        };
 
-    //         if (!tokens.length) {
-    //             this.logger.log({
-    //                 message: 'pushLoginSkipped',
-    //                 reason: 'noActiveTokens',
-    //                 userId: job.userId,
-    //                 type: job.type,
-    //                 title: job.title,
-    //             });
-    //             return;
-    //         }
+        await Promise.all([
+            this.notificationRepository.createTemporaryPasswordByAdmin(
+                notificationId,
+                user.id,
+                user.username,
+                proceedBy
+            ),
+            this.notificationEmailUtil.sendTemporaryPasswordByAdmin(
+                emailPayload,
+                data
+            ),
+            this.notificationPushUtil.sendTemporaryPasswordByAdmin(pushPayload),
+        ]);
 
-    //         // Create delivery record if notificationId provided
-    //         let deliveryId: string | undefined;
-    //         if (job.notificationId) {
-    //             const delivery = await this.notificationDeliveryRepository.create(
-    //                 job.notificationId,
-    //                 EnumNotificationChannel.push
-    //             );
-    //             deliveryId = delivery.id;
-    //         }
+        return {
+            message: 'Temporary password by admin notification processed',
+        };
+    }
 
-    //         // Check if Firebase is initialized
-    //         if (!this.firebaseService.isInitialized()) {
-    //             this.logger.warn({
-    //                 message: 'firebaseNotInitialized',
-    //                 userId: job.userId,
-    //                 tokenCount: tokens.length,
-    //             });
+    async processWelcome({
+        data: { userId, data },
+    }: Job<
+        INotificationWorkerPayload<INotificationVerificationEmailPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const user = await this.userRepository.findOneActiveById(userId);
+        const notificationId = this.databaseUtil.createId();
 
-    //             if (deliveryId) {
-    //                 await this.notificationDeliveryRepository.markFailed(
-    //                     deliveryId,
-    //                     'Firebase not initialized'
-    //                 );
-    //             }
-    //             return;
-    //         }
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
 
-    //         // Convert data to string values for FCM
-    //         const stringData: Record<string, string> = {};
-    //         if (job.data) {
-    //             for (const [key, value] of Object.entries(job.data)) {
-    //                 stringData[key] = String(value);
-    //             }
-    //         }
+        await Promise.all([
+            this.notificationRepository.createWelcome(
+                notificationId,
+                user.id,
+                user.username
+            ),
+            this.notificationEmailUtil.sendWelcome(emailPayload),
+            this.notificationEmailUtil.sendVerificationEmail(
+                emailPayload,
+                data
+            ),
+        ]);
 
-    //         // Send to all tokens
-    //         const tokenStrings = tokens.map(t => t.token);
-    //         const result = await this.firebaseService.sendMulticast(
-    //             tokenStrings,
-    //             {
-    //                 title: job.title,
-    //                 body: job.body,
-    //                 data: stringData,
-    //             }
-    //         );
+        return {
+            message: 'Welcome notification processed',
+        };
+    }
 
-    //         this.logger.log({
-    //             message: 'pushLoginSent',
-    //             userId: job.userId,
-    //             type: job.type,
-    //             title: job.title,
-    //             successCount: result.successCount,
-    //             failureCount: result.failureCount,
-    //             invalidTokenCount: result.invalidTokens.length,
-    //         });
+    async processWelcomeSocial({
+        data: { userId },
+    }: Job<
+        INotificationWorkerPayload,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const user = await this.userRepository.findOneActiveById(userId);
+        const notificationId = this.databaseUtil.createId();
 
-    //         // Determine successful tokens (all tokens minus invalid ones)
-    //         const invalidSet = new Set(result.invalidTokens);
-    //         const successfulTokens = tokenStrings.filter(t => !invalidSet.has(t));
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
 
-    //         // Update token failure counts (awaited - critical data)
-    //         try {
-    //             // Reset failure count for successful tokens
-    //             if (successfulTokens.length > 0) {
-    //                 await this.notificationPushTokenRepository.resetFailureCountBatch(
-    //                     successfulTokens
-    //                 );
-    //             }
+        await Promise.all([
+            this.notificationRepository.createWelcomeSocial(
+                notificationId,
+                user.id,
+                user.username
+            ),
+            this.notificationEmailUtil.sendWelcome(emailPayload),
+        ]);
 
-    //             // Increment failure count for invalid tokens
-    //             // Don't immediately revoke - use lazy cleanup strategy
-    //             if (result.invalidTokens.length > 0) {
-    //                 await this.notificationPushTokenRepository.incrementFailureCountBatch(
-    //                     result.invalidTokens
-    //                 );
+        return {
+            message: 'Welcome social notification processed',
+        };
+    }
 
-    //                 // Enqueue async cleanup job (fire-and-forget, low priority)
-    //                 // This is just scheduling - not critical data storage
-    //                 this.enqueueTokenCleanup().catch(err =>
-    //                     this.logger.error('Failed to enqueue token cleanup', err)
-    //                 );
-    //             }
-    //         } catch (error: unknown) {
-    //             this.logger.error('Failed to update token failure counts', error);
-    //         }
+    async processChangePassword({
+        data: { userId },
+    }: Job<
+        INotificationWorkerPayload,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const user = await this.userRepository.findOneActiveById(userId);
+        const notificationId = this.databaseUtil.createId();
 
-    //         // Update delivery status
-    //         if (deliveryId) {
-    //             if (result.successCount > 0) {
-    //                 await this.notificationDeliveryRepository.markSent(deliveryId);
-    //             } else {
-    //                 await this.notificationDeliveryRepository.markFailed(
-    //                     deliveryId,
-    //                     `All ${result.failureCount} pushes failed`
-    //                 );
-    //             }
-    //         }
-    //     }
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
 
-    //     /**
-    //      * Enqueue async token cleanup job (fire-and-forget)
-    //      */
-    //     private async enqueueTokenCleanup(): Promise<void> {
-    //         await this.notificationQueue.add(
-    //             EnumNotificationProcess.cleanupInvalidTokens,
-    //             {},
-    //             {
-    //                 jobId: `${EnumNotificationProcess.cleanupInvalidTokens}-${Date.now()}`,
-    //                 priority: EnumQueuePriority.LOW,
-    //                 delay: 60000, // Wait 1 minute before cleanup
-    //             }
-    //         );
-    //     }
+        await Promise.all([
+            this.notificationRepository.createChangePassword(
+                notificationId,
+                user.id,
+                user.username
+            ),
+            this.notificationEmailUtil.sendChangePassword(emailPayload),
+        ]);
 
-    //     /**
-    //      * Process token cleanup job - revokes stale tokens
-    //      * Called by queue processor
-    //      */
-    //     async processTokenCleanup(): Promise<void> {
-    //         const revokedCount =
-    //             await this.notificationPushTokenRepository.revokeStaleTokens(
-    //                 3, // Max failures before revoke
-    //                 7 // Days since last failure
-    //             );
+        return {
+            message: 'Change password notification processed',
+        };
+    }
 
-    //         if (revokedCount > 0) {
-    //             this.logger.log({
-    //                 message: 'staleTokensRevoked',
-    //                 count: revokedCount,
-    //             });
-    //         }
-    //     }
+    async processVerifiedEmail({
+        data: { userId, data },
+    }: Job<
+        INotificationWorkerPayload<INotificationVerifiedEmailPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const user = await this.userRepository.findOneActiveById(userId);
+        const notificationId = this.databaseUtil.createId();
+
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        await Promise.all([
+            this.notificationRepository.createVerifiedEmail(
+                notificationId,
+                user.id,
+                user.username
+            ),
+            this.notificationEmailUtil.sendVerifiedEmail(emailPayload, data),
+        ]);
+
+        return {
+            message: 'Verified email notification processed',
+        };
+    }
+
+    async processVerificationEmail({
+        data: { userId, data },
+    }: Job<
+        INotificationWorkerPayload<INotificationVerificationEmailPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const user = await this.userRepository.findOneActiveById(userId);
+        const notificationId = this.databaseUtil.createId();
+
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        await Promise.all([
+            this.notificationRepository.createVerificationEmail(
+                notificationId,
+                user.id,
+                user.username
+            ),
+            this.notificationEmailUtil.sendVerificationEmail(
+                emailPayload,
+                data
+            ),
+        ]);
+
+        return {
+            message: 'Verification email notification processed',
+        };
+    }
+
+    async processVerifiedMobileNumber({
+        data: { userId, data },
+    }: Job<
+        INotificationWorkerPayload<INotificationVerifiedMobileNumberPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const user = await this.userRepository.findOneActiveById(userId);
+        const notificationId = this.databaseUtil.createId();
+
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        await Promise.all([
+            this.notificationRepository.createMobileNumberVerified(
+                notificationId,
+                user.id,
+                user.username,
+                data.mobileNumber
+            ),
+            this.notificationEmailUtil.sendVerifiedMobileNumber(
+                emailPayload,
+                data
+            ),
+        ]);
+
+        return {
+            message: 'Mobile number verified notification processed',
+        };
+    }
+
+    async processForgotPassword({
+        data: { userId, data },
+    }: Job<
+        INotificationWorkerPayload<INotificationForgotPasswordPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const user = await this.userRepository.findOneActiveById(userId);
+        const notificationId = this.databaseUtil.createId();
+
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        await Promise.all([
+            this.notificationRepository.createForgotPassword(
+                notificationId,
+                user.id,
+                user.username
+            ),
+            this.notificationEmailUtil.sendForgotPassword(emailPayload, data),
+        ]);
+
+        return {
+            message: 'Forgot password notification processed',
+        };
+    }
+
+    async processResetPassword({
+        data: { userId },
+    }: Job<
+        INotificationWorkerPayload,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const [user, devices] = await Promise.all([
+            this.userRepository.findOneActiveById(userId),
+            this.deviceRepository.findByUserId(userId, null, true),
+        ]);
+        const notificationId = this.databaseUtil.createId();
+
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+        const notificationToken = devices.map(
+            device => device.notificationToken
+        );
+        const pushPayload: INotificationSendPushPayload = {
+            userId,
+            notificationId,
+            notificationToken,
+            username: user.username,
+        };
+
+        await Promise.all([
+            this.notificationRepository.createResetPassword(
+                notificationId,
+                user.id,
+                user.username
+            ),
+            this.notificationEmailUtil.sendResetPassword(emailPayload),
+            this.notificationPushUtil.sendResetPassword(pushPayload),
+        ]);
+
+        return {
+            message: 'Reset password notification processed',
+        };
+    }
+
+    async processResetTwoFactorByAdmin({
+        data: { userId, proceedBy },
+    }: Job<
+        INotificationWorkerPayload,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const [user, devices] = await Promise.all([
+            this.userRepository.findOneActiveById(userId),
+            this.deviceRepository.findByUserId(userId, null, true),
+        ]);
+        const notificationId = this.databaseUtil.createId();
+
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+        const notificationToken = devices.map(
+            device => device.notificationToken
+        );
+        const pushPayload: INotificationSendPushPayload = {
+            userId,
+            notificationId,
+            notificationToken,
+            username: user.username,
+        };
+
+        await Promise.all([
+            this.notificationRepository.createResetTwoFactorByAdmin(
+                notificationId,
+                user.id,
+                user.username,
+                proceedBy
+            ),
+            this.notificationEmailUtil.sendResetTwoFactorByAdmin(emailPayload),
+            this.notificationPushUtil.sendResetTwoFactorByAdmin(pushPayload),
+        ]);
+
+        return {
+            message: 'Reset two factor by admin notification processed',
+        };
+    }
+
+    async processNewDeviceLogin({
+        data: { userId, data },
+    }: Job<
+        INotificationWorkerPayload<INotificationNewDeviceLoginPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const [user, devices] = await Promise.all([
+            this.userRepository.findOneActiveById(userId),
+            this.deviceRepository.findByUserId(userId),
+        ]);
+        const notificationId = this.databaseUtil.createId();
+
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+        const notificationToken = devices.map(
+            device => device.notificationToken
+        );
+        const pushPayload: INotificationSendPushPayload = {
+            userId,
+            notificationId,
+            notificationToken,
+            username: user.username,
+        };
+
+        await Promise.all([
+            this.notificationRepository.createNewDeviceLogin(
+                notificationId,
+                user.id,
+                user.username,
+                data.loginFrom,
+                data.loginWith,
+                data.requestLog.userAgent
+            ),
+            this.notificationEmailUtil.sendNewDeviceLogin(emailPayload, data),
+            this.notificationPushUtil.sendNewDeviceLogin(pushPayload, data),
+        ]);
+
+        return {
+            message: 'New device login notification processed',
+        };
+    }
+
+    async processPublishTermPolicy({
+        data: { data, proceedBy },
+    }: Job<
+        INotificationWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const users = await this.userRepository.findActive();
+        const userChunked = this.helperService.arrayChunk(
+            users,
+            this.emailBatchSize
+        );
+
+        for (const chunk of userChunked) {
+            const emailPayload: INotificationEmailSendPayload[] = chunk.map(
+                user => ({
+                    userId: user.id,
+                    email: user.email,
+                    username: user.username,
+                    notificationId: this.databaseUtil.createId(),
+                })
+            );
+
+            await Promise.all([
+                this.notificationEmailUtil.sendPublishTermPolicy(
+                    emailPayload,
+                    data
+                ),
+                this.notificationRepository.createPublishTermPolicy(
+                    emailPayload,
+                    data,
+                    proceedBy
+                ),
+            ]);
+        }
+
+        return {
+            message: 'Publish term policy notification processed',
+            count: users.length,
+            batches: userChunked.length,
+        };
+    }
 }

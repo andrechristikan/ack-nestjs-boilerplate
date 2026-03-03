@@ -164,6 +164,26 @@ export class UserRepository {
         });
     }
 
+    async findActive(): Promise<
+        {
+            id: string;
+            email: string;
+            username: string;
+        }[]
+    > {
+        return this.databaseService.user.findMany({
+            where: {
+                status: EnumUserStatus.active,
+                deletedAt: null,
+            },
+            select: {
+                id: true,
+                username: true,
+                email: true,
+            },
+        });
+    }
+
     async findOneById(id: string): Promise<User | null> {
         return this.databaseService.user.findUnique({
             where: { id, deletedAt: null },
@@ -281,7 +301,7 @@ export class UserRepository {
 
     async findOneActiveByVerificationEmailToken(
         token: string
-    ): Promise<(Verification & { user: User }) | null> {
+    ): Promise<Verification | null> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.verification.findFirst({
@@ -296,9 +316,6 @@ export class UserRepository {
                     deletedAt: null,
                     status: EnumUserStatus.active,
                 },
-            },
-            include: {
-                user: true,
             },
         });
     }

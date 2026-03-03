@@ -108,11 +108,8 @@ import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/us
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { DeviceDto } from '@modules/device/dtos/device.dto';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import {
-    INotificationNewDeviceLoginPayload,
-    INotificationSendPayload,
-} from '@modules/notification/interfaces/notification.interface';
+import { INotificationNewDeviceLoginPayload } from '@modules/notification/interfaces/notification.interface';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -129,7 +126,7 @@ export class UserService implements IUserService {
         private readonly awsS3Service: AwsS3Service,
         private readonly helperService: HelperService,
         private readonly fileService: FileService,
-        private readonly notificationService: NotificationService,
+        private readonly notificationUtil: NotificationUtil,
         private readonly authUtil: AuthUtil,
         private readonly sessionUtil: SessionUtil,
         private readonly sessionRepository: SessionRepository,
@@ -297,12 +294,8 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await this.notificationService.sendWelcomeByAdmin(
-                {
-                    email,
-                    userId: created.id,
-                    username: randomUsername,
-                },
+            await this.notificationUtil.sendWelcomeByAdmin(
+                created.id,
                 {
                     password: passwordString,
                     passwordCreatedAt: password.passwordCreated.toISOString(),
@@ -810,12 +803,8 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.notificationService.sendTemporaryPasswordByAdmin(
-                {
-                    userId: updated.id,
-                    email: updated.email,
-                    username: updated.username,
-                },
+            await this.notificationUtil.sendTemporaryPasswordByAdmin(
+                updated.id,
                 {
                     password: passwordString,
                     passwordCreatedAt: password.passwordCreated.toISOString(),
@@ -914,11 +903,7 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.notificationService.sendChangePassword({
-                email: user.email,
-                username: user.username,
-                userId: user.id,
-            });
+            await this.notificationUtil.sendChangePassword(user.id);
 
             return;
         } catch (err: unknown) {
@@ -1034,15 +1019,7 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await this.notificationService.sendWelcomeSocial(
-                {
-                    email: user.email,
-                    username: user.username,
-                    userId: user.id,
-                },
-                loginWith,
-                from
-            );
+            await this.notificationUtil.sendWelcomeSocial(user.id);
         }
 
         if (user.status !== EnumUserStatus.active) {
@@ -1181,19 +1158,12 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await this.notificationService.sendWelcome(
-                {
-                    email,
-                    userId: created.id,
-                    username: randomUsername,
-                },
-                {
-                    expiredAt: emailVerification.expiredAt.toISOString(),
-                    reference: emailVerification.reference,
-                    link: emailVerification.link,
-                    expiredInMinutes: emailVerification.expiredInMinutes,
-                }
-            );
+            await this.notificationUtil.sendWelcome(created.id, {
+                expiredAt: emailVerification.expiredAt.toISOString(),
+                reference: emailVerification.reference,
+                link: emailVerification.link,
+                expiredInMinutes: emailVerification.expiredInMinutes,
+            });
             return;
         } catch (err: unknown) {
             throw new InternalServerErrorException({
@@ -1227,16 +1197,9 @@ export class UserService implements IUserService {
             );
 
             // @note: send email after all creation
-            await this.notificationService.sendVerifiedEmail(
-                {
-                    userId: verification.user.id,
-                    email: verification.user.email,
-                    username: verification.user.username,
-                },
-                {
-                    reference: verification.reference,
-                }
-            );
+            await this.notificationUtil.sendVerifiedEmail(verification.userId, {
+                reference: verification.reference,
+            });
 
             return;
         } catch (err: unknown) {
@@ -1304,19 +1267,12 @@ export class UserService implements IUserService {
                 requestLog
             );
 
-            await this.notificationService.sendWelcome(
-                {
-                    userId: user.id,
-                    email: user.email,
-                    username: user.username,
-                },
-                {
-                    expiredAt: emailVerification.expiredAt.toISOString(),
-                    reference: emailVerification.reference,
-                    link: emailVerification.link,
-                    expiredInMinutes: emailVerification.expiredInMinutes,
-                }
-            );
+            await this.notificationUtil.sendWelcome(user.id, {
+                expiredAt: emailVerification.expiredAt.toISOString(),
+                reference: emailVerification.reference,
+                link: emailVerification.link,
+                expiredInMinutes: emailVerification.expiredInMinutes,
+            });
 
             return;
         } catch (err: unknown) {
@@ -1376,20 +1332,13 @@ export class UserService implements IUserService {
                 requestLog
             );
 
-            await this.notificationService.sendForgotPassword(
-                {
-                    userId: user.id,
-                    email: user.email,
-                    username: user.username,
-                },
-                {
-                    expiredAt: resetPassword.expiredAt.toISOString(),
-                    link: resetPassword.link,
-                    reference: resetPassword.reference,
-                    expiredInMinutes: resetPassword.expiredInMinutes,
-                    resendInMinutes: resetPassword.resendInMinutes,
-                }
-            );
+            await this.notificationUtil.sendForgotPassword(user.id, {
+                expiredAt: resetPassword.expiredAt.toISOString(),
+                link: resetPassword.link,
+                reference: resetPassword.reference,
+                expiredInMinutes: resetPassword.expiredInMinutes,
+                resendInMinutes: resetPassword.resendInMinutes,
+            });
 
             return;
         } catch (err: unknown) {
@@ -1479,11 +1428,7 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.notificationService.sendResetPassword({
-                userId: resetPassword.user.id,
-                email: resetPassword.user.email,
-                username: resetPassword.user.username,
-            });
+            await this.notificationUtil.sendResetPassword(resetPassword.userId);
 
             return;
         } catch (err: unknown) {
@@ -1532,20 +1477,12 @@ export class UserService implements IUserService {
 
         if (!existDevice) {
             promises.push(
-                this.notificationService.sendNewDeviceLogin(
-                    {
-                        email: user.email,
-                        userId: user.id,
-                        username: user.username,
-                        notificationToken: device.notificationToken,
-                    } as INotificationSendPayload,
-                    {
-                        loginFrom,
-                        loginWith,
-                        loginAt,
-                        requestLog,
-                    } as INotificationNewDeviceLoginPayload
-                )
+                this.notificationUtil.sendNewDeviceLogin(user.id, {
+                    loginFrom,
+                    loginWith,
+                    loginAt,
+                    requestLog,
+                } as INotificationNewDeviceLoginPayload)
             );
         }
 
@@ -2030,12 +1967,8 @@ export class UserService implements IUserService {
             ]);
 
             // @note: send email after all creation
-            await this.notificationService.sendResetTwoFactorByAdmin(
-                {
-                    userId: user.id,
-                    email: user.email,
-                    username: user.username,
-                },
+            await this.notificationUtil.sendResetTwoFactorByAdmin(
+                user.id,
                 updatedBy
             );
 
@@ -2113,12 +2046,8 @@ export class UserService implements IUserService {
             const sendEmailPromises = [];
             for (const [index, newUser] of newUsers.entries()) {
                 sendEmailPromises.push(
-                    this.notificationService.sendWelcomeByAdmin(
-                        {
-                            userId: newUser.id,
-                            email: newUser.email,
-                            username: newUser.username,
-                        },
+                    this.notificationUtil.sendWelcomeByAdmin(
+                        newUser.id,
                         {
                             password: passwords[index],
                             passwordCreatedAt:

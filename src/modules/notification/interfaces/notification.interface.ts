@@ -5,43 +5,32 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client';
 
-export interface INotificationSendPushPayload {
-    userId: string;
-    username: string;
-}
-
-export interface INotificationSendEmailPayload extends INotificationSendPushPayload {
-    email: string;
-}
-
-export type INotificationSendPayload = INotificationSendEmailPayload;
-
 export interface INotificationTemporaryPasswordPayload {
     password: string; // TODO: Need to encode this link
     passwordExpiredAt: string;
     passwordCreatedAt: string;
 }
 
-export type INotificationCreateByAdminPayload =
+export type INotificationWelcomeByAdminPayload =
     INotificationTemporaryPasswordPayload;
 
-export interface INotificationEmailVerificationPayload {
+export interface INotificationVerificationEmailPayload {
     link: string; // TODO: Need to encode this link
     expiredAt: string;
     expiredInMinutes: number;
     reference: string;
 }
 
-export type INotificationEmailVerifiedPayload = Pick<
-    INotificationEmailVerificationPayload,
+export type INotificationVerifiedEmailPayload = Pick<
+    INotificationVerificationEmailPayload,
     'reference'
 >;
 
-export interface INotificationForgotPasswordPayload extends INotificationEmailVerificationPayload {
+export interface INotificationForgotPasswordPayload extends INotificationVerificationEmailPayload {
     resendInMinutes: number;
 }
 
-export interface INotificationMobileNumberVerifiedPayload extends INotificationEmailVerifiedPayload {
+export interface INotificationVerifiedMobileNumberPayload extends INotificationVerifiedEmailPayload {
     resendInMinutes: number;
     mobileNumber: string;
 }
@@ -58,7 +47,47 @@ export interface INotificationPublishTermPolicyPayload {
     version: number;
 }
 
-export interface INotificationWorkerPayload<T = unknown> {
+export interface INotificationWorkerBulkPayload<T = unknown> {
+    proceedBy: string;
+    data?: T;
+}
+
+export interface INotificationWorkerPayload<
+    T = unknown,
+> extends INotificationWorkerBulkPayload<T> {
+    userId: string;
+}
+
+// For push notification
+
+export interface INotificationSendPushPayload {
+    userId: string;
+    notificationId: string;
+    notificationToken: string[];
+    username: string;
+}
+
+export interface INotificationPushWorkerPayload<T = unknown> {
     send: INotificationSendPushPayload;
+    data?: T;
+}
+
+// For email notification
+export interface INotificationEmailSendPayload {
+    userId: string;
+    notificationId: string;
+    email: string;
+    username: string;
+    cc?: string[];
+    bcc?: string[];
+}
+
+export interface INotificationEmailWorkerPayload<T = unknown> {
+    send: INotificationEmailSendPayload;
+    data?: T;
+}
+
+export interface INotificationEmailWorkerBulkPayload<T = unknown> {
+    send: INotificationEmailSendPayload[];
     data?: T;
 }

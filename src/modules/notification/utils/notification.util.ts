@@ -6,8 +6,14 @@ import { NotificationUserSettingDto } from '@modules/notification/dtos/notificat
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import {
+    INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
-    INotificationSendPushPayload,
+    INotificationPublishTermPolicyPayload,
+    INotificationTemporaryPasswordPayload,
+    INotificationVerificationEmailPayload,
+    INotificationVerifiedEmailPayload,
+    INotificationWelcomeByAdminPayload,
+    INotificationWorkerBulkPayload,
     INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -23,60 +29,242 @@ export class NotificationUtil {
         private readonly notificationQueue: Queue
     ) {}
 
-    async sendPushNewDeviceLogin(
-        send: INotificationSendPushPayload,
-        payload: INotificationNewDeviceLoginPayload
+    async sendWelcomeByAdmin(
+        userId: string,
+        password: INotificationWelcomeByAdminPayload,
+        createdBy: string
     ): Promise<void> {
         await this.notificationQueue.add(
-            EnumNotificationProcess.newDeviceLogin,
+            EnumNotificationProcess.welcomeByAdmin,
             {
-                send,
-                data: payload,
-            } as INotificationWorkerPayload<INotificationNewDeviceLoginPayload>,
+                userId,
+                proceedBy: createdBy,
+                data: password,
+            } as INotificationWorkerPayload<INotificationWelcomeByAdminPayload>,
             {
-                priority: EnumQueuePriority.high,
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.welcomeByAdmin}-${userId}`,
+                    ttl: 1000,
+                },
             }
         );
     }
 
-    async sendPushTemporaryPasswordByAdmin(
-        send: INotificationSendPushPayload
+    async sendWelcome(
+        userId: string,
+        verification: INotificationVerificationEmailPayload
+    ): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.welcome,
+            {
+                userId,
+                data: verification,
+                proceedBy: userId,
+            } as INotificationWorkerPayload<INotificationVerificationEmailPayload>,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.welcome}-${userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    async sendWelcomeSocial(userId: string): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.welcomeSocial,
+            {
+                userId,
+                proceedBy: userId,
+            } as INotificationWorkerPayload,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.welcomeSocial}-${userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    async sendTemporaryPasswordByAdmin(
+        userId: string,
+        password: INotificationTemporaryPasswordPayload,
+        createdBy: string
     ): Promise<void> {
         await this.notificationQueue.add(
             EnumNotificationProcess.temporaryPasswordByAdmin,
             {
-                send,
+                userId,
+                data: password,
+                proceedBy: createdBy,
             } as INotificationWorkerPayload,
             {
                 priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationProcess.temporaryPasswordByAdmin}-${userId}`,
+                    ttl: 1000,
+                },
             }
         );
     }
 
-    async sendPushResetTwoFactorByAdmin(
-        send: INotificationSendPushPayload
+    async sendChangePassword(userId: string): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.resetPassword,
+            {
+                userId,
+                proceedBy: userId,
+            } as INotificationWorkerPayload,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.resetPassword}-${userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    async sendVerifiedEmail(
+        userId: string,
+        verified: INotificationVerifiedEmailPayload
+    ): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.verifiedEmail,
+            {
+                userId,
+                data: verified,
+                proceedBy: userId,
+            } as INotificationWorkerPayload<INotificationVerifiedEmailPayload>,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.verifiedEmail}-${userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    async sendVerificationEmail(
+        userId: string,
+        verification: INotificationVerificationEmailPayload
+    ): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.verificationEmail,
+            {
+                userId,
+                data: verification,
+                proceedBy: userId,
+            } as INotificationWorkerPayload<INotificationVerificationEmailPayload>,
+            {
+                priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationProcess.verificationEmail}-${userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    async sendForgotPassword(
+        userId: string,
+        forgotPassword: INotificationForgotPasswordPayload
+    ): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.forgotPassword,
+            {
+                userId,
+                data: forgotPassword,
+                proceedBy: userId,
+            } as INotificationWorkerPayload<INotificationForgotPasswordPayload>,
+            {
+                priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationProcess.forgotPassword}-${userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    async sendResetPassword(userId: string): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.resetPassword,
+            {
+                userId,
+                proceedBy: userId,
+            } as INotificationWorkerPayload,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.resetPassword}-${userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    async sendResetTwoFactorByAdmin(
+        userId: string,
+        createdBy: string
     ): Promise<void> {
         await this.notificationQueue.add(
             EnumNotificationProcess.resetTwoFactorByAdmin,
             {
-                send,
+                userId,
+                proceedBy: createdBy,
             } as INotificationWorkerPayload,
             {
                 priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationProcess.resetTwoFactorByAdmin}-${userId}`,
+                    ttl: 1000,
+                },
             }
         );
     }
 
-    async sendPushResetPassword(
-        send: INotificationSendPushPayload
+    async sendNewDeviceLogin(
+        userId: string,
+        newDevice: INotificationNewDeviceLoginPayload
     ): Promise<void> {
         await this.notificationQueue.add(
-            EnumNotificationProcess.resetPassword,
+            EnumNotificationProcess.newDeviceLogin,
             {
-                send,
-            } as INotificationWorkerPayload,
+                userId,
+                data: newDevice,
+                proceedBy: userId,
+            } as INotificationWorkerPayload<INotificationNewDeviceLoginPayload>,
             {
                 priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationProcess.newDeviceLogin}-${userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    async sendPublishTermPolicy(
+        payload: INotificationPublishTermPolicyPayload,
+        publishedBy: string
+    ): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.publishTermPolicy,
+            {
+                proceedBy: publishedBy,
+                data: payload,
+            } as INotificationWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
+            {
+                priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationProcess.publishTermPolicy}-${payload.type}-${payload.version}`,
+                    ttl: 1000,
+                },
             }
         );
     }

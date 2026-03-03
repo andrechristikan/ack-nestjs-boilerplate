@@ -1,6 +1,7 @@
 export enum EnumQueue {
-    email = 'email',
     notification = 'notification',
+    notificationEmail = 'notificationEmail',
+    notificationPush = 'notificationPush',
 }
 
 export enum EnumQueuePriority {
