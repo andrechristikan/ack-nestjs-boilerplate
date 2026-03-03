@@ -52,7 +52,7 @@ export class InviteService implements IInviteService {
     /**
      * Creates an invitation for a user to join a context (project, tenant, etc.) with a specific role.
      * Generates an invite token and reuses existing active invite if one already exists for this user/context.
-     * Does not send the email—use dispatchInvite() for that.
+     * Does not send the email—use resendInvite() for that.
      */
     async createInvite(
         {
@@ -107,6 +107,7 @@ export class InviteService implements IInviteService {
 
             return {
                 memberId,
+                inviteId: inviteRecord.id,
                 userId: user.id,
                 email: user.email,
                 invite: this.inviteUtil.mapInviteStatus(inviteRecord),
@@ -125,94 +126,57 @@ export class InviteService implements IInviteService {
     }
 
     /**
-     * Creates an invitation (if needed) and sends an invite email to the user.
+     * Sends an invite email for an already-existing active invite.
      * Enforces a rate limit on resend—users cannot request a new email within the configured interval.
      * Updates the invite's sentAt timestamp and logs the action.
      */
-    async dispatchInvite(
-        {
-            inviteType,
-            roleScope,
-            contextId,
-            contextName,
-            memberId,
-            userId,
-        }: InviteCreate,
+    async sendInvite(
+        inviteId: string,
         requestLog: IRequestLog,
         requestedBy: string
     ): Promise<InviteSendResponseDto> {
-        const config = this.inviteConfigRegistry.getOrThrow(inviteType);
-        const user = await this.userRepository.findOneById(userId);
-        if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
-        } else if (user.status !== EnumUserStatus.active) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                message: 'user.error.inactive',
+        const invite = await this.inviteRepository.findOneActiveById(inviteId);
+        if (!invite) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+                message: 'user.error.invitationTokenInvalid',
             });
         }
 
-        try {
-            const today = this.helperService.dateCreate();
-            let invite =
-                await this.inviteRepository.findOneLatestActiveByUserAndContext(
-                    user.id,
-                    inviteType,
-                    contextId
-                );
+        const config = this.inviteConfigRegistry.getOrThrow(invite.inviteType);
+        const today = this.helperService.dateCreate();
+        const lastSentAt = invite.sentAt;
+        if (lastSentAt) {
+            const canResendAt = this.helperService.dateForward(
+                lastSentAt,
+                Duration.fromObject({
+                    minutes: config.resendInMinutes,
+                })
+            );
 
-            if (!invite) {
-                const invitePayload = this.inviteUtil.createInviteToken(config);
-
-                invite = await this.inviteRepository.createInvite(
-                    user.email,
-                    {
-                        userId: user.id,
-                        inviteType,
-                        roleScope,
-                        contextId,
-                        contextName,
-                        memberId,
+            if (today < canResendAt) {
+                throw new BadRequestException({
+                    statusCode:
+                        EnumUserStatusCodeError.verificationEmailResendLimitExceeded,
+                    message: 'project.member.error.inviteResendLimitExceeded',
+                    messageProperties: {
+                        resendIn: this.helperService.dateDiff(
+                            today,
+                            canResendAt
+                        ).minutes,
                     },
-                    invitePayload,
-                    requestedBy
-                );
+                });
             }
+        }
 
-            const lastSentAt = invite.sentAt;
-            if (lastSentAt) {
-                const canResendAt = this.helperService.dateForward(
-                    lastSentAt,
-                    Duration.fromObject({
-                        minutes: config.resendInMinutes,
-                    })
-                );
-
-                if (today < canResendAt) {
-                    throw new BadRequestException({
-                        statusCode:
-                            EnumUserStatusCodeError.verificationEmailResendLimitExceeded,
-                        message:
-                            'project.member.error.inviteResendLimitExceeded',
-                        messageProperties: {
-                            resendIn: this.helperService.dateDiff(
-                                today,
-                                canResendAt
-                            ).minutes,
-                        },
-                    });
-                }
-            }
+        try {
 
             //TODO: We shall move this to Queue instead of sending email here.
             await this.emailService.sendInvite(
-                user.id,
+                invite.user.id,
                 {
-                    email: user.email,
-                    username: user.username,
+                    email: invite.user.email,
+                    username: invite.user.username,
                 },
                 {
                     expiredAt: invite.expiresAt.toISOString(),
@@ -222,15 +186,15 @@ export class InviteService implements IInviteService {
                         config
                     ),
                     expiredInMinutes: config.expiredInMinutes,
-                    inviteType,
-                    roleScope,
-                    contextName,
+                    inviteType: invite.inviteType,
+                    roleScope: invite.roleScope,
+                    contextName: invite.contextName,
                 }
             );
 
             await this.inviteRepository.markInviteSent(
                 invite.id,
-                user.id,
+                invite.user.id,
                 requestedBy,
                 requestLog
             );
@@ -383,12 +347,33 @@ export class InviteService implements IInviteService {
         return invite;
     }
 
+    async getOneActiveByUserAndContext(
+        userId: string,
+        inviteType: string,
+        contextId: string
+    ): Promise<{ id: string }> {
+        const invite =
+            await this.inviteRepository.findOneLatestActiveByUserAndContext(
+                userId,
+                inviteType,
+                contextId
+            );
+        if (!invite) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+                message: 'user.error.invitationTokenInvalid',
+            });
+        }
+
+        return invite;
+    }
+
     /**
      * Finalizes an invite acceptance for an already-verified user.
      * Activates the membership and marks the invite as accepted.
-     * If the user is unverified, they must use finalizeInviteSignup() instead.
+     * If the user is not yet registered, they must use finalizeInviteSignup() instead.
      */
-    async finalizeInviteAccept(
+    async acceptInvite(
         inviteId: string,
         userId: string,
         requestLog: IRequestLog
@@ -440,9 +425,9 @@ export class InviteService implements IInviteService {
     /**
      * Completes user signup via an invite token.
      * Sets user name, password, and marks the user as verified.
-     * Only works for unverified users—verified users must use finalizeInviteAccept().
+     * Only works for new users — verified users must use finalizeInviteAccept().
      */
-    async finalizeInviteSignup(
+    async signupByInvite(
         {
             token,
             inviteType,

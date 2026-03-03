@@ -257,7 +257,7 @@ export class TenantMemberService {
             // FIXME: finalizeInviteSignup and updateMember must be wrapped in a single
             // transaction. If updateMember fails after signup completes, the user is activated
             // but the tenant member status remains pending indefinitely.
-            await this.inviteService.finalizeInviteSignup(
+            await this.inviteService.signupByInvite(
                 {
                     token,
                     inviteType: TenantInviteType,
@@ -299,15 +299,15 @@ export class TenantMemberService {
             });
         }
 
-        const data = await this.inviteService.dispatchInvite(
-            {
-                inviteType: TenantInviteType,
-                roleScope: EnumRoleScope.tenant,
-                contextId: tenantId,
-                contextName: member.tenant.name,
-                memberId: member.id,
-                userId: member.userId,
-            },
+        const { id: inviteId } =
+            await this.inviteService.getOneActiveByUserAndContext(
+                member.userId,
+                TenantInviteType,
+                tenantId
+            );
+
+        const data = await this.inviteService.sendInvite(
+            inviteId,
             requestLog,
             requestedBy
         );

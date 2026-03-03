@@ -29,15 +29,8 @@ export interface IInviteService {
         requestedBy: string
     ): Promise<InviteCreateResponseDto>;
 
-    dispatchInvite(
-        {
-            inviteType,
-            roleScope,
-            contextId,
-            contextName,
-            memberId,
-            userId,
-        }: InviteCreate,
+    sendInvite(
+        inviteId: string,
         requestLog: IRequestLog,
         requestedBy: string
     ): Promise<InviteSendResponseDto>;
@@ -68,13 +61,19 @@ export interface IInviteService {
         inviteType: string
     ): Promise<InviteWithUser>;
 
-    finalizeInviteAccept(
+    getOneActiveByUserAndContext(
+        userId: string,
+        inviteType: string,
+        contextId: string
+    ): Promise<{ id: string }>;
+
+    acceptInvite(
         inviteId: string,
         userId: string,
         requestLog: IRequestLog
     ): Promise<void>;
 
-    finalizeInviteSignup(
+    signupByInvite(
         input: InviteFinalizeSignupInput,
         requestLog: IRequestLog
     ): Promise<void>;

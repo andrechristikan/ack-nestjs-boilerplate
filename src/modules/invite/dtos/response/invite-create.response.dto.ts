@@ -11,6 +11,11 @@ export class InviteCreateResponseDto {
     @ApiProperty({
         required: true,
     })
+    inviteId: string;
+
+    @ApiProperty({
+        required: true,
+    })
     userId: string;
 
     @ApiProperty({

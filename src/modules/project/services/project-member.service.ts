@@ -285,7 +285,7 @@ export class ProjectMemberService {
             // FIXME: finalizeInviteSignup and updateMember must be wrapped in a single
             // transaction. If updateMember fails after signup completes, the user is activated
             // but the project member status remains pending indefinitely.
-            await this.inviteService.finalizeInviteSignup(
+            await this.inviteService.signupByInvite(
                 {
                     token,
                     inviteType: ProjectInviteType,
@@ -326,15 +326,15 @@ export class ProjectMemberService {
             });
         }
 
-        const data = await this.inviteService.dispatchInvite(
-            {
-                inviteType: ProjectInviteType,
-                roleScope: EnumRoleScope.project,
-                contextId: projectId,
-                contextName: member.project.name,
-                memberId: member.id,
-                userId: member.user.id,
-            },
+        const { id: inviteId } =
+            await this.inviteService.getOneActiveByUserAndContext(
+                member.user.id,
+                ProjectInviteType,
+                projectId
+            );
+
+        const data = await this.inviteService.sendInvite(
+            inviteId,
             requestLog,
             requestedBy
         );
