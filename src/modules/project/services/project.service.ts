@@ -22,6 +22,7 @@ import { ProjectUtil } from '@modules/project/utils/project.util';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import {
     ConflictException,
     ForbiddenException,
@@ -308,38 +309,49 @@ export class ProjectService {
             });
         }
 
-        const project = await this.projectRepository.create({
-            ...ownership,
-            name: dto.name.trim(),
-            status: EnumProjectStatus.active,
-            createdBy,
-            updatedBy: createdBy,
-        });
+        // FIXME: project creation and all subsequent createMember calls must be
+        // wrapped in a single transaction. If any member creation fails, the project record
+        // is left without its intended members and no rollback occurs.
+        try {
+            const project = await this.projectRepository.create({
+                ...ownership,
+                name: dto.name.trim(),
+                status: EnumProjectStatus.active,
+                createdBy,
+                updatedBy: createdBy,
+            });
 
-        await this.projectRepository.createMember({
-            projectId: project.id,
-            userId: createdBy,
-            roleId: adminRole.id,
-            status: EnumProjectMemberStatus.active,
-            createdBy,
-            updatedBy: createdBy,
-        });
-
-        for (const member of resolvedMembers) {
             await this.projectRepository.createMember({
                 projectId: project.id,
-                userId: member.userId,
-                roleId: member.roleId,
+                userId: createdBy,
+                roleId: adminRole.id,
                 status: EnumProjectMemberStatus.active,
                 createdBy,
                 updatedBy: createdBy,
             });
-        }
 
-        return {
-            data: {
-                id: project.id,
-            },
-        };
+            for (const member of resolvedMembers) {
+                await this.projectRepository.createMember({
+                    projectId: project.id,
+                    userId: member.userId,
+                    roleId: member.roleId,
+                    status: EnumProjectMemberStatus.active,
+                    createdBy,
+                    updatedBy: createdBy,
+                });
+            }
+
+            return {
+                data: {
+                    id: project.id,
+                },
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 }

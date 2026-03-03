@@ -242,7 +242,6 @@ export class InviteService implements IInviteService {
                 })
             );
 
-            const now = this.helperService.dateCreate();
             return {
                 invite: {
                     status: 'pending',
@@ -250,10 +249,10 @@ export class InviteService implements IInviteService {
                     remainingSeconds: Math.max(
                         0,
                         Math.floor(
-                            (invite.expiresAt.getTime() - now.getTime()) / 1000
+                            (invite.expiresAt.getTime() - today.getTime()) / 1000
                         )
                     ),
-                    sentAt: now,
+                    sentAt: today,
                 },
                 resendAvailableAt,
             };

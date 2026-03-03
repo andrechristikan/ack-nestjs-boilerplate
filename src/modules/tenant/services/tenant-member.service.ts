@@ -21,7 +21,6 @@ import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.me
 import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import {
-    TenantInviteEmailTypeLabel,
     TenantInviteType,
     TenantRolePlatformSupport,
 } from '@modules/tenant/constants/tenant.constant';
@@ -177,6 +176,9 @@ export class TenantMemberService {
             });
         }
 
+        // FIXME: user creation, member creation, and invite creation
+        // must be wrapped in a single transaction. If invite creation fails, the pending
+        // member record and the stub user are left orphaned with no rollback.
         const normalizedEmail = dto.email.toLowerCase().trim();
         let user = await this.userRepository.findOneByEmail(normalizedEmail);
         if (!user) {
@@ -203,8 +205,8 @@ export class TenantMemberService {
             });
         }
 
-        const memberId =
-            existingMember?.status === EnumTenantMemberStatus.pending
+        try {
+            const memberId = existingMember
                 ? existingMember.id
                 : (
                       await this.tenantRepository.createMember({
@@ -217,19 +219,26 @@ export class TenantMemberService {
                       })
                   ).id;
 
-        const data = await this.inviteService.createInvite(
-            {
-                inviteType: TenantInviteType,
-                roleScope: EnumRoleScope.tenant,
-                contextId: tenantId,
-                contextName: tenant.name,
-                memberId,
-                userId: user.id,
-            },
-            createdBy
-        );
+            const data = await this.inviteService.createInvite(
+                {
+                    inviteType: TenantInviteType,
+                    roleScope: EnumRoleScope.tenant,
+                    contextId: tenantId,
+                    contextName: tenant.name,
+                    memberId,
+                    userId: user.id,
+                },
+                createdBy
+            );
 
-        return { data };
+            return { data };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
     async claimInvite(
@@ -245,6 +254,9 @@ export class TenantMemberService {
         );
 
         try {
+            // FIXME: finalizeInviteSignup and updateMember must be wrapped in a single
+            // transaction. If updateMember fails after signup completes, the user is activated
+            // but the tenant member status remains pending indefinitely.
             await this.inviteService.finalizeInviteSignup(
                 {
                     token,
@@ -415,17 +427,17 @@ export class TenantMemberService {
         roleId: string
     ): Promise<{ id: string; name: string; scope: EnumRoleScope }> {
         const role = await this.roleRepository.existById(roleId);
-        if (role && role.scope !== EnumRoleScope.tenant) {
-            throw new BadRequestException({
-                statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
-                message: 'tenant.role.error.scopeMismatch',
-            });
-        }
-
         if (!role) {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.roleNotFound,
                 message: 'tenant.role.error.notFound',
+            });
+        }
+
+        if (role.scope !== EnumRoleScope.tenant) {
+            throw new BadRequestException({
+                statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
+                message: 'tenant.role.error.scopeMismatch',
             });
         }
 

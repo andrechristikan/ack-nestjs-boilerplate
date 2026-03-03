@@ -204,6 +204,9 @@ export class ProjectMemberService {
             });
         }
 
+        // FIXME: user creation, member creation, and invite creation
+        // must be wrapped in a single transaction. If invite creation fails, the pending
+        // member record and the stub user are left orphaned with no rollback.
         const normalizedEmail = dto.email.toLowerCase().trim();
         let user = await this.userRepository.findOneByEmail(normalizedEmail);
         if (!user) {
@@ -230,8 +233,8 @@ export class ProjectMemberService {
             });
         }
 
-        const memberId =
-            existingMember?.status === EnumProjectMemberStatus.pending
+        try {
+            const memberId = existingMember
                 ? existingMember.id
                 : (
                       await this.projectRepository.createMember({
@@ -244,19 +247,26 @@ export class ProjectMemberService {
                       })
                   ).id;
 
-        const data = await this.inviteService.createInvite(
-            {
-                inviteType: ProjectInviteType,
-                roleScope: EnumRoleScope.project,
-                contextId: projectId,
-                contextName: project.name,
-                memberId,
-                userId: user.id,
-            },
-            createdBy
-        );
+            const data = await this.inviteService.createInvite(
+                {
+                    inviteType: ProjectInviteType,
+                    roleScope: EnumRoleScope.project,
+                    contextId: projectId,
+                    contextName: project.name,
+                    memberId,
+                    userId: user.id,
+                },
+                createdBy
+            );
 
-        return { data };
+            return { data };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
     async claimInvite(
@@ -272,6 +282,9 @@ export class ProjectMemberService {
         );
 
         try {
+            // FIXME: finalizeInviteSignup and updateMember must be wrapped in a single
+            // transaction. If updateMember fails after signup completes, the user is activated
+            // but the project member status remains pending indefinitely.
             await this.inviteService.finalizeInviteSignup(
                 {
                     token,

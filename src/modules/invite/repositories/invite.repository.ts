@@ -121,6 +121,7 @@ export class InviteRepository {
                 },
                 user: {
                     deletedAt: null,
+                    status: EnumUserStatus.active,
                 },
             },
             orderBy: {
@@ -252,6 +253,9 @@ export class InviteRepository {
     ): Promise<User> {
         const today = this.helperService.dateCreate();
 
+        // FIXME: internal $transaction must be removed and replaced with a caller-supplied
+        // tx when this method is invoked inside a service-level transaction
+        // (called from claimInvite in tenant/project member services).
         return this.databaseService.$transaction(
             async (client: Prisma.TransactionClient) => {
                 await client.invite.update({
@@ -329,6 +333,8 @@ export class InviteRepository {
     ): Promise<Invite> {
         const today = this.helperService.dateCreate();
 
+        // FIXME: internal $transaction must be removed and replaced with a caller-supplied
+        // tx when this method is invoked inside a service-level transaction.
         return this.databaseService.$transaction(
             async (client: Prisma.TransactionClient) => {
                 await client.invite.updateMany({
@@ -379,6 +385,8 @@ export class InviteRepository {
     ): Promise<void> {
         const sentAt = this.helperService.dateCreate();
 
+        // FIXME: internal $transaction must be removed and replaced with a caller-supplied
+        // tx when this method is invoked inside a service-level transaction.
         await this.databaseService.$transaction(
             async (client: Prisma.TransactionClient) => {
                 await Promise.all([
