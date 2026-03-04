@@ -1,10 +1,15 @@
+import { MessageService } from '@common/message/services/message.service';
 import {
+    EnumNotificationChannel,
+    EnumNotificationType,
     Notification,
     NotificationUserSetting,
 } from '@generated/prisma-client';
+import { NotificationSettingUpdateAllowedCombinations } from '@modules/notification/constants/notification.constant';
 import { NotificationUserSettingDto } from '@modules/notification/dtos/notification.user-setting.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
 import {
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
@@ -12,12 +17,13 @@ import {
     INotificationTemporaryPasswordPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
+    INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
     INotificationWorkerBulkPayload,
     INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { plainToInstance } from 'class-transformer';
 import { EnumQueue, EnumQueuePriority } from 'src/queues/enums/queue.enum';
@@ -26,7 +32,8 @@ import { EnumQueue, EnumQueuePriority } from 'src/queues/enums/queue.enum';
 export class NotificationUtil {
     constructor(
         @InjectQueue(EnumQueue.notification)
-        private readonly notificationQueue: Queue
+        private readonly notificationQueue: Queue,
+        private readonly messageService: MessageService
     ) {}
 
     async sendWelcomeByAdmin(
@@ -113,7 +120,7 @@ export class NotificationUtil {
 
     async sendChangePassword(userId: string): Promise<void> {
         await this.notificationQueue.add(
-            EnumNotificationProcess.resetPassword,
+            EnumNotificationProcess.changePassword,
             {
                 userId,
                 proceedBy: userId,
@@ -121,7 +128,7 @@ export class NotificationUtil {
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
-                    id: `${EnumNotificationProcess.resetPassword}-${userId}`,
+                    id: `${EnumNotificationProcess.changePassword}-${userId}`,
                     ttl: 1000,
                 },
             }
@@ -161,7 +168,7 @@ export class NotificationUtil {
                 proceedBy: userId,
             } as INotificationWorkerPayload<INotificationVerificationEmailPayload>,
             {
-                priority: EnumQueuePriority.high,
+                priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.verificationEmail}-${userId}`,
                     ttl: 1000,
@@ -182,7 +189,7 @@ export class NotificationUtil {
                 proceedBy: userId,
             } as INotificationWorkerPayload<INotificationForgotPasswordPayload>,
             {
-                priority: EnumQueuePriority.high,
+                priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.forgotPassword}-${userId}`,
                     ttl: 1000,
@@ -260,13 +267,61 @@ export class NotificationUtil {
                 data: payload,
             } as INotificationWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
             {
-                priority: EnumQueuePriority.high,
+                priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.publishTermPolicy}-${payload.type}-${payload.version}`,
                     ttl: 1000,
                 },
             }
         );
+    }
+
+    async sendVerifiedMobileNumber(
+        userId: string,
+        verifiedMobile: INotificationVerifiedMobileNumberPayload
+    ): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.verifiedMobileNumber,
+            {
+                userId,
+                data: verifiedMobile,
+                proceedBy: userId,
+            } as INotificationWorkerPayload<INotificationVerifiedMobileNumberPayload>,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    validateUserSetting(
+        type: EnumNotificationType,
+        channel: EnumNotificationChannel
+    ): void {
+        const validType = NotificationSettingUpdateAllowedCombinations.find(
+            e => e.type === type
+        );
+
+        if (!validType) {
+            throw new BadRequestException({
+                statusCode: EnumNotificationStatusCodeError.invalidType,
+                message: this.messageService.setMessage(
+                    'notification.error.invalidType'
+                ),
+            });
+        }
+
+        if (!validType.channels.includes(channel)) {
+            throw new BadRequestException({
+                statusCode: EnumNotificationStatusCodeError.invalidChannel,
+                message: this.messageService.setMessage(
+                    'notification.error.invalidChannel'
+                ),
+            });
+        }
     }
 
     mapList(notifications: Notification[]): NotificationResponseDto[] {

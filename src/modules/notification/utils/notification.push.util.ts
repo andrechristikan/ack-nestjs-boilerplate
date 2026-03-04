@@ -1,5 +1,6 @@
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import {
+    INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPushWorkerPayload,
     INotificationSendPushPayload,
@@ -47,7 +48,7 @@ export class NotificationPushUtil {
             EnumNotificationProcess.resetPassword,
             payload,
             {
-                priority: EnumQueuePriority.high,
+                priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.resetPassword}-${sendPayload.userId}`,
                     ttl: 1000,
@@ -93,6 +94,26 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationProcess.newDeviceLogin}-${sendPayload.userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    async sendForgotPassword(
+        sendPayload: INotificationSendPushPayload
+    ): Promise<void> {
+        const payload: INotificationPushWorkerPayload = {
+            send: sendPayload,
+        };
+
+        await this.notificationPushQueue.add(
+            EnumNotificationProcess.forgotPassword,
+            payload,
+            {
+                priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationProcess.forgotPassword}-${sendPayload.userId}`,
                     ttl: 1000,
                 },
             }

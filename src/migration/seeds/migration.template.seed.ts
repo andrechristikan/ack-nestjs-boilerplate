@@ -36,7 +36,8 @@ export class MigrationTemplateEmailNotificationSeed
 
         const [
             changePasswordEmail,
-            createByAdminEmail,
+            welcomeSocialEmail,
+            welcomeByAdminEmail,
             emailVerifiedEmail,
             forgotPasswordEmail,
             mobileNumberVerifiedEmail,
@@ -48,6 +49,7 @@ export class MigrationTemplateEmailNotificationSeed
             publishTermPolicyEmail,
         ] = await Promise.all([
             this.notificationEmailTemplateService.emailGetChangePassword(),
+            this.notificationEmailTemplateService.emailGetWelcomeSocial(),
             this.notificationEmailTemplateService.emailGetWelcomeByAdmin(),
             this.notificationEmailTemplateService.emailGetVerifiedEmail(),
             this.notificationEmailTemplateService.emailGetForgotPassword(),
@@ -70,9 +72,18 @@ export class MigrationTemplateEmailNotificationSeed
             );
         }
 
-        if (!createByAdminEmail) {
+        if (!welcomeSocialEmail) {
             this.logger.log(
-                'Create By Admin Email template missing, importing...'
+                'Welcome Social Email template missing, importing...'
+            );
+            promises.push(
+                this.notificationEmailTemplateService.emailImportWelcomeSocial()
+            );
+        }
+
+        if (!welcomeByAdminEmail) {
+            this.logger.log(
+                'Welcome By Admin Email template missing, importing...'
             );
             promises.push(
                 this.notificationEmailTemplateService.emailImportWelcomeByAdmin()
@@ -178,6 +189,7 @@ export class MigrationTemplateEmailNotificationSeed
         try {
             await Promise.all([
                 this.notificationEmailTemplateService.emailDeleteChangePassword(),
+                this.notificationEmailTemplateService.emailDeleteWelcomeSocial(),
                 this.notificationEmailTemplateService.emailDeleteWelcomeByAdmin(),
                 this.notificationEmailTemplateService.emailDeleteVerifiedEmail(),
                 this.notificationEmailTemplateService.emailDeleteForgotPassword(),

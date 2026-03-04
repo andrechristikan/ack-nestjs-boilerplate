@@ -106,6 +106,8 @@ export class NotificationService {
         data: NotificationUserSettingRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
+        this.notificationUtil.validateUserSetting(data.type, data.channel);
+
         await this.notificationRepository.updateUserSetting(
             userId,
             data,

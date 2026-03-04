@@ -112,6 +112,54 @@ export class NotificationTemplateService implements INotificationTemplateService
         }
     }
 
+    async emailImportWelcomeSocial(): Promise<boolean> {
+        try {
+            const templatePath = join(
+                this.templatesDir,
+                'notification.welcome-social.template.hbs'
+            );
+
+            await this.awsSESService.createTemplate({
+                name: EnumNotificationProcess.welcomeSocial,
+                subject: `Welcome Social`,
+                htmlBody: readFileSync(templatePath, 'utf8'),
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
+    async emailGetWelcomeSocial(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            const template = await this.awsSESService.getTemplate({
+                name: EnumNotificationProcess.welcomeSocial,
+            });
+            return template;
+        } catch (err: unknown) {
+            this.logger.warn(err);
+
+            return null;
+        }
+    }
+
+    async emailDeleteWelcomeSocial(): Promise<boolean> {
+        try {
+            await this.awsSESService.deleteTemplate({
+                name: EnumNotificationProcess.welcomeSocial,
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err);
+
+            return false;
+        }
+    }
+
     async emailImportWelcomeByAdmin(): Promise<boolean> {
         try {
             const templatePath = join(

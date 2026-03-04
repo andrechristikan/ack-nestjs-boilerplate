@@ -12,6 +12,8 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
+    EnumNotificationChannel,
+    EnumNotificationType,
     EnumPasswordHistoryType,
     EnumTermPolicyStatus,
     EnumTermPolicyType,
@@ -232,6 +234,22 @@ export class MigrationUserSeed
                                         termPolicyId: termPolicy.id,
                                         createdBy: userId,
                                     })),
+                                },
+                            },
+                            notificationSettings: {
+                                createMany: {
+                                    data: Object.values(EnumNotificationChannel)
+                                        .map(channel =>
+                                            Object.values(
+                                                EnumNotificationType
+                                            ).map(type => ({
+                                                channel,
+                                                userId,
+                                                type,
+                                                isActive: true,
+                                            }))
+                                        )
+                                        .flat(),
                                 },
                             },
                             twoFactor: {

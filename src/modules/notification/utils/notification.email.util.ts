@@ -57,7 +57,7 @@ export class NotificationEmailUtil {
             payload,
             {
                 jobId: `${EnumNotificationProcess.welcomeByAdmin}-${userId}`,
-                priority: EnumQueuePriority.low,
+                priority: EnumQueuePriority.medium,
             }
         );
     }
@@ -218,6 +218,31 @@ export class NotificationEmailUtil {
             jobId: `${EnumNotificationProcess.welcome}-${userId}`,
             priority: EnumQueuePriority.low,
         });
+    }
+
+    async sendWelcomeSocial({
+        email,
+        username,
+        userId,
+        notificationId,
+    }: INotificationEmailSendPayload): Promise<void> {
+        const payload: INotificationEmailWorkerPayload = {
+            send: {
+                userId,
+                email,
+                username,
+                notificationId,
+            },
+        };
+
+        await this.emailQueue.add(
+            EnumNotificationProcess.welcomeSocial,
+            payload,
+            {
+                jobId: `${EnumNotificationProcess.welcomeSocial}-${userId}`,
+                priority: EnumQueuePriority.low,
+            }
+        );
     }
 
     async sendVerifiedEmail(

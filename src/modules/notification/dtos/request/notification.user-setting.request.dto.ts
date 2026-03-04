@@ -5,19 +5,30 @@ import { IsBoolean, IsEnum, IsNotEmpty } from 'class-validator';
 export class NotificationUserSettingRequestDto {
     @ApiProperty({
         required: true,
-        enum: EnumNotificationChannel,
+        enum: [
+            EnumNotificationChannel.email,
+            EnumNotificationChannel.push,
+            EnumNotificationChannel.inApp,
+        ],
         example: EnumNotificationChannel.email,
     })
-    @IsEnum(EnumNotificationChannel)
+    @IsEnum([
+        EnumNotificationChannel.email,
+        EnumNotificationChannel.push,
+        EnumNotificationChannel.inApp,
+    ])
     @IsNotEmpty()
     channel: EnumNotificationChannel;
 
     @ApiProperty({
         required: true,
-        enum: EnumNotificationType,
-        example: EnumNotificationType.securityAlert,
+        enum: [
+            EnumNotificationType.userActivity,
+            EnumNotificationType.marketing,
+        ],
+        example: EnumNotificationType.userActivity,
     })
-    @IsEnum(EnumNotificationType)
+    @IsEnum([EnumNotificationType.userActivity, EnumNotificationType.marketing])
     @IsNotEmpty()
     type: EnumNotificationType;
 

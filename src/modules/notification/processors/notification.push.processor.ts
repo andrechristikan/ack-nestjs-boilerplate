@@ -58,6 +58,14 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                             EnumNotificationProcess
                         >
                     );
+                case EnumNotificationProcess.forgotPassword:
+                    return this.notificationPushProcessorService.processForgotPassword(
+                        job as Job<
+                            INotificationPushWorkerPayload,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
                 default:
                     return {
                         message: `No notification processor found for the given job name ${job.name}`,

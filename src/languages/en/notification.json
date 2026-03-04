@@ -6,6 +6,8 @@
     "listUserSetting": "Successfully retrieved notification settings.",
     "error": {
         "notFound": "Notification not found.",
-        "alreadyRead": "Notification is already marked as read."
+        "alreadyRead": "Notification is already marked as read.",
+        "invalidType": "Invalid notification type.",
+        "invalidChannel": "Invalid notification channel."
     }
 }

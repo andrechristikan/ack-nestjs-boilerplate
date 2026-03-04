@@ -1,48 +1,109 @@
 import {
-    INotificationEmailSendPayload,
+    INotificationEmailWorkerBulkPayload,
+    INotificationEmailWorkerPayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
+    INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
 } from '@modules/notification/interfaces/notification.interface';
+import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import { Job } from 'bullmq';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
 export interface INotificationEmailProcessorService {
     processChangePassword(
-        data: INotificationEmailSendPayload
+        job: Job<
+            INotificationEmailWorkerPayload,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse>;
     processWelcome(
-        data: INotificationEmailSendPayload
+        job: Job<
+            INotificationEmailWorkerPayload,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse>;
+    processWelcomeSocial(
+        job: Job<
+            INotificationEmailWorkerPayload,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse>;
     processWelcomeByAdmin(
-        data: INotificationEmailSendPayload,
-        payload: INotificationWelcomeByAdminPayload
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationWelcomeByAdminPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse>;
     processTemporaryPasswordByAdmin(
-        data: INotificationEmailSendPayload,
-        payload: INotificationTemporaryPasswordPayload
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationTemporaryPasswordPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse>;
     processForgotPassword(
-        data: INotificationEmailSendPayload,
-        payload: INotificationForgotPasswordPayload
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationForgotPasswordPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse>;
     processVerificationEmail(
-        data: INotificationEmailSendPayload,
-        payload: INotificationVerificationEmailPayload
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationVerificationEmailPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse>;
     processVerifiedEmail(
-        data: INotificationEmailSendPayload,
-        payload: INotificationVerifiedEmailPayload
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationVerifiedEmailPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse>;
     processVerifiedMobileNumber(
-        data: INotificationEmailSendPayload,
-        payload: INotificationVerifiedMobileNumberPayload
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationVerifiedMobileNumberPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse>;
     processNewDeviceLogin(
-        data: INotificationEmailSendPayload,
-        payload: INotificationNewDeviceLoginPayload
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationNewDeviceLoginPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse>;
+    processResetPassword(
+        job: Job<
+            INotificationEmailWorkerPayload,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse>;
+    processResetTwoFactorByAdmin(
+        job: Job<
+            INotificationEmailWorkerPayload,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse>;
+    processPublishTermPolicy(
+        job: Job<
+            INotificationEmailWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse>;
 }

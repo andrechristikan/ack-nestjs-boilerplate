@@ -3,7 +3,8 @@ import { HelperService } from '@common/helper/services/helper.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { INotificationEmailProcessorService } from '@modules/notification/interfaces/notification.email.processor.service.interface';
 import {
-    INotificationEmailSendPayload,
+    INotificationEmailWorkerBulkPayload,
+    INotificationEmailWorkerPayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
@@ -18,6 +19,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { title } from 'case';
 import { flatten } from 'flat';
+import { Job } from 'bullmq';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
 @Injectable()
@@ -49,15 +51,16 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         this.batchSize = this.configService.get<number>('email.batchSize');
     }
 
-    // TODO: DONT FORGET TO CHECK USER SETTINGS BEFORE SENDING PUSH NOTIFICATIONS
-
-    async processWelcome({
-        email,
-        username,
-        bcc,
-        cc,
-    }: INotificationEmailSendPayload): Promise<IQueueResponse> {
+    async processWelcome(
+        job: Job<
+            INotificationEmailWorkerPayload,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
         try {
+            const { email, username, bcc, cc } = job.data.send;
+
             await this.awsSESService.send({
                 templateName: EnumNotificationProcess.welcome,
                 recipients: [email],
@@ -67,10 +70,9 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     supportEmail: title(this.supportEmail),
                     homeUrl: this.homeUrl,
                     username,
-                    email: title(email),
                 },
-                cc,
-                bcc,
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
             });
 
             return { message: 'Welcome email processed' };
@@ -80,28 +82,74 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         }
     }
 
-    async processChangePassword({
-        email,
-        username,
-        bcc,
-        cc,
-    }: INotificationEmailSendPayload): Promise<IQueueResponse> {
+    async processWelcomeSocial(
+        job: Job<
+            INotificationEmailWorkerPayload,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
         try {
+            const { email, username, bcc, cc } = job.data.send;
+
             await this.awsSESService.send({
-                templateName: EnumNotificationProcess.changePassword,
+                templateName: EnumNotificationProcess.welcomeSocial,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
                     homeName: this.homeName,
-                    supportEmail: this.supportEmail,
+                    supportEmail: title(this.supportEmail),
                     homeUrl: this.homeUrl,
                     username,
                 },
-                cc,
-                bcc,
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Change password email processed' };
+            return { message: 'Welcome social email processed' };
+        } catch (err: unknown) {
+            this.logger.error(err);
+            throw err;
+        }
+    }
+
+    async processWelcomeByAdmin(
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationWelcomeByAdminPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        try {
+            const { email, username, cc, bcc } = job.data.send;
+            const {
+                password: passwordString,
+                passwordExpiredAt,
+                passwordCreatedAt,
+            } = job.data.data;
+
+            await this.awsSESService.send({
+                templateName: EnumNotificationProcess.welcomeByAdmin,
+                recipients: [email],
+                sender: this.noreplyEmail,
+                templateData: {
+                    homeName: this.homeName,
+                    supportEmail: title(this.supportEmail),
+                    homeUrl: this.homeUrl,
+                    username,
+                    password: passwordString,
+                    passwordExpiredAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(passwordExpiredAt)
+                    ),
+                    passwordCreatedAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(passwordCreatedAt)
+                    ),
+                },
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
+            });
+
+            return { message: 'Create by admin email processed' };
         } catch (err: unknown) {
             this.logger.error(err);
             throw err;
@@ -109,14 +157,20 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
     }
 
     async processTemporaryPasswordByAdmin(
-        { email, username, bcc, cc }: INotificationEmailSendPayload,
-        {
-            password: passwordString,
-            passwordExpiredAt,
-            passwordCreatedAt,
-        }: INotificationTemporaryPasswordPayload
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationTemporaryPasswordPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse> {
         try {
+            const { email, username, cc, bcc } = job.data.send;
+            const {
+                password: passwordString,
+                passwordExpiredAt,
+                passwordCreatedAt,
+            } = job.data.data;
+
             await this.awsSESService.send({
                 templateName: EnumNotificationProcess.temporaryPasswordByAdmin,
                 recipients: [email],
@@ -134,8 +188,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                         this.helperService.dateCreateFromIso(passwordCreatedAt)
                     ),
                 },
-                cc,
-                bcc,
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
             });
 
             return { message: 'Temporary password email processed' };
@@ -145,13 +199,47 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         }
     }
 
-    async processResetPassword({
-        email,
-        username,
-        bcc,
-        cc,
-    }: INotificationEmailSendPayload): Promise<IQueueResponse> {
+    async processChangePassword(
+        job: Job<
+            INotificationEmailWorkerPayload,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
         try {
+            const { email, username, cc, bcc } = job.data.send;
+
+            await this.awsSESService.send({
+                templateName: EnumNotificationProcess.changePassword,
+                recipients: [email],
+                sender: this.noreplyEmail,
+                templateData: {
+                    homeName: this.homeName,
+                    supportEmail: title(this.supportEmail),
+                    homeUrl: this.homeUrl,
+                    username,
+                },
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
+            });
+
+            return { message: 'Change password email processed' };
+        } catch (err: unknown) {
+            this.logger.error(err);
+            throw err;
+        }
+    }
+
+    async processResetPassword(
+        job: Job<
+            INotificationEmailWorkerPayload,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        try {
+            const { email, username, cc, bcc } = job.data.send;
+
             await this.awsSESService.send({
                 templateName: EnumNotificationProcess.resetPassword,
                 recipients: [email],
@@ -162,8 +250,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     homeUrl: this.homeUrl,
                     username,
                 },
-                cc,
-                bcc,
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
             });
 
             return { message: 'Reset password email processed' };
@@ -173,87 +261,18 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         }
     }
 
-    async processWelcomeByAdmin(
-        { username, email }: INotificationEmailSendPayload,
-        {
-            password: passwordString,
-            passwordExpiredAt,
-            passwordCreatedAt,
-        }: INotificationWelcomeByAdminPayload
-    ): Promise<IQueueResponse> {
-        try {
-            await this.awsSESService.send({
-                templateName: EnumNotificationProcess.welcomeByAdmin,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
-                    username,
-                    email: title(email),
-                    password: passwordString,
-                    passwordExpiredAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(passwordExpiredAt)
-                    ),
-                    passwordCreatedAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(passwordCreatedAt)
-                    ),
-                },
-            });
-
-            return { message: 'Create by admin email processed' };
-        } catch (err: unknown) {
-            this.logger.error(err);
-            throw err;
-        }
-    }
-
-    async processForgotPassword(
-        { username, email }: INotificationEmailSendPayload,
-        {
-            expiredAt,
-            link,
-            reference,
-            expiredInMinutes,
-        }: INotificationForgotPasswordPayload
-    ): Promise<IQueueResponse> {
-        try {
-            await this.awsSESService.send({
-                templateName: EnumNotificationProcess.forgotPassword,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
-                    username,
-                    link,
-                    expiredAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(expiredAt)
-                    ),
-                    reference,
-                    expiredInMinutes,
-                },
-            });
-
-            return { message: 'Forgot password email processed' };
-        } catch (err: unknown) {
-            this.logger.error(err);
-            throw err;
-        }
-    }
-
     async processVerificationEmail(
-        { username, email }: INotificationEmailSendPayload,
-        {
-            expiredAt,
-            reference,
-            link,
-            expiredInMinutes,
-        }: INotificationVerificationEmailPayload
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationVerificationEmailPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse> {
         try {
+            const { email, username, cc, bcc } = job.data.send;
+            const { expiredAt, reference, link, expiredInMinutes } =
+                job.data.data;
+
             await this.awsSESService.send({
                 templateName: EnumNotificationProcess.verificationEmail,
                 recipients: [email],
@@ -270,6 +289,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     ),
                     expiredInMinutes,
                 },
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
             });
 
             return { message: 'Verification email processed' };
@@ -280,10 +301,16 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
     }
 
     async processVerifiedEmail(
-        { username, email }: INotificationEmailSendPayload,
-        { reference }: INotificationVerifiedEmailPayload
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationVerifiedEmailPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse> {
         try {
+            const { email, username, cc, bcc } = job.data.send;
+            const { reference } = job.data.data;
+
             await this.awsSESService.send({
                 templateName: EnumNotificationProcess.verifiedEmail,
                 recipients: [email],
@@ -295,6 +322,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     username,
                     reference,
                 },
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
             });
 
             return { message: 'Email verified email processed' };
@@ -304,11 +333,56 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         }
     }
 
-    async processVerifiedMobileNumber(
-        { username, email }: INotificationEmailSendPayload,
-        { reference, mobileNumber }: INotificationVerifiedMobileNumberPayload
+    async processForgotPassword(
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationForgotPasswordPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse> {
         try {
+            const { email, username, cc, bcc } = job.data.send;
+            const { expiredAt, link, reference, expiredInMinutes } =
+                job.data.data;
+
+            await this.awsSESService.send({
+                templateName: EnumNotificationProcess.forgotPassword,
+                recipients: [email],
+                sender: this.noreplyEmail,
+                templateData: {
+                    homeName: this.homeName,
+                    supportEmail: title(this.supportEmail),
+                    homeUrl: this.homeUrl,
+                    username,
+                    link,
+                    expiredAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(expiredAt)
+                    ),
+                    reference,
+                    expiredInMinutes,
+                },
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
+            });
+
+            return { message: 'Forgot password email processed' };
+        } catch (err: unknown) {
+            this.logger.error(err);
+            throw err;
+        }
+    }
+
+    async processVerifiedMobileNumber(
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationVerifiedMobileNumberPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        try {
+            const { email, username, cc, bcc } = job.data.send;
+            const { reference, mobileNumber } = job.data.data;
+
             await this.awsSESService.send({
                 templateName: EnumNotificationProcess.verifiedMobileNumber,
                 recipients: [email],
@@ -321,6 +395,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     reference,
                     mobileNumber,
                 },
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
             });
 
             return { message: 'Mobile number verified email processed' };
@@ -330,11 +406,16 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         }
     }
 
-    async processResetTwoFactorByAdmin({
-        username,
-        email,
-    }: INotificationEmailSendPayload): Promise<IQueueResponse> {
+    async processResetTwoFactorByAdmin(
+        job: Job<
+            INotificationEmailWorkerPayload,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
         try {
+            const { email, username, cc, bcc } = job.data.send;
+
             await this.awsSESService.send({
                 templateName: EnumNotificationProcess.resetTwoFactorByAdmin,
                 recipients: [email],
@@ -345,11 +426,11 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     homeUrl: this.homeUrl,
                     username,
                 },
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
             });
 
-            return {
-                message: 'Reset two factor by admin email processed',
-            };
+            return { message: 'Reset two factor by admin email processed' };
         } catch (err: unknown) {
             this.logger.error(err);
             throw err;
@@ -357,22 +438,28 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
     }
 
     async processNewDeviceLogin(
-        { username, email }: INotificationEmailSendPayload,
-        {
-            loginFrom,
-            loginWith,
-            loginAt,
-            requestLog: { userAgent, ipAddress },
-        }: INotificationNewDeviceLoginPayload
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationNewDeviceLoginPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
     ): Promise<IQueueResponse> {
         try {
+            const { email, username, cc, bcc } = job.data.send;
+            const {
+                loginFrom,
+                loginWith,
+                loginAt,
+                requestLog: { userAgent, ipAddress },
+            } = job.data.data;
+
             await this.awsSESService.send({
                 templateName: EnumNotificationProcess.newDeviceLogin,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
                     homeName: this.homeName,
-                    supportEmail: this.supportEmail,
+                    supportEmail: title(this.supportEmail),
                     homeUrl: this.homeUrl,
                     username,
                     loginFrom,
@@ -381,6 +468,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     userAgent: flatten(userAgent),
                     ipAddress,
                 },
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
             });
 
             return { message: 'New device login email processed' };
@@ -390,11 +479,15 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         }
     }
 
-    async processPublishTermPolicy({
-        type,
-        version,
-    }: INotificationPublishTermPolicyPayload): Promise<IQueueResponse> {
+    async processPublishTermPolicy(
+        job: Job<
+            INotificationEmailWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
         try {
+            const { type, version } = job.data.data;
             const users = await this.userRepository.findActive();
             const userChunks = this.helperService.arrayChunk(
                 users,
@@ -406,21 +499,18 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     templateName: EnumNotificationProcess.publishTermPolicy,
                     recipients: chunk.map(u => ({
                         recipient: u.email,
-                        templateData: {
-                            username: u.username,
-                        },
+                        templateData: { username: u.username },
                     })),
                     sender: this.noreplyEmail,
                     defaultTemplateData: {
                         homeName: this.homeName,
-                        supportEmail: this.supportEmail,
+                        supportEmail: title(this.supportEmail),
                         homeUrl: this.homeUrl,
                         type,
                         version,
                     },
                 });
 
-                // Add delay between batches to avoid hitting SES sending limits
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 

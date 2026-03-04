@@ -93,6 +93,25 @@ export class NotificationPushProcessorService {
         };
     }
 
+    async processForgotPassword(
+        job: Job<
+            INotificationPushWorkerPayload,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        if (!this.firebaseService.isInitializedFlag) {
+            return {
+                message:
+                    'Firebase not initialized, skipping forgot password notification',
+            };
+        }
+
+        return {
+            message: 'Forgot password notification processed',
+        };
+    }
+
     //     async processLogin(job: NotificationPushJobDto): Promise<void> {
     //         const tokens =
     //             await this.notificationPushTokenRepository.findActiveTokensByUser(
