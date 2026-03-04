@@ -3,7 +3,6 @@ import { HelperService } from '@common/helper/services/helper.service';
 import {
     EnumNotificationChannel,
     EnumNotificationType,
-    NotificationUserSetting,
 } from '@generated/prisma-client';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
@@ -81,7 +80,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     }
 
     async processWelcome({
-        data: { userId, data, proceedBy },
+        data: { userId, data },
     }: Job<
         INotificationWorkerPayload<INotificationVerificationEmailPayload>,
         unknown,
@@ -258,7 +257,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
         const pushPayload: INotificationSendPushPayload = {
             userId,
             notificationId,
-            notificationToken: devices.map(d => d.notificationToken),
+            notificationTokens: devices.map(d => d.notificationToken),
             username: user.username,
         };
 
@@ -273,7 +272,10 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 emailPayload,
                 data
             ),
-            this.notificationPushUtil.sendTemporaryPasswordByAdmin(pushPayload),
+            this.notificationPushUtil.sendTemporaryPasswordByAdmin(
+                pushPayload,
+                data
+            ),
         ]);
 
         return {
@@ -317,10 +319,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        const [user, devices] = await Promise.all([
-            this.userRepository.findOneActiveById(userId),
-            this.deviceRepository.findByUserId(userId, null, true),
-        ]);
+        const user = await this.userRepository.findOneActiveById(userId);
 
         const notificationId = this.databaseUtil.createId();
         const emailPayload: INotificationEmailSendPayload = {
@@ -328,12 +327,6 @@ export class NotificationProcessorService implements INotificationProcessorServi
             email: user.email,
             username: user.username,
             notificationId,
-        };
-        const pushPayload: INotificationSendPushPayload = {
-            userId,
-            notificationId,
-            notificationToken: devices.map(d => d.notificationToken),
-            username: user.username,
         };
 
         await Promise.all([
@@ -343,7 +336,6 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 user.username
             ),
             this.notificationEmailUtil.sendForgotPassword(emailPayload, data),
-            this.notificationPushUtil.sendForgotPassword(pushPayload),
         ]);
 
         return { message: 'Forgot password notification processed' };
@@ -371,7 +363,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
         const pushPayload: INotificationSendPushPayload = {
             userId,
             notificationId,
-            notificationToken: devices.map(d => d.notificationToken),
+            notificationTokens: devices.map(d => d.notificationToken),
             username: user.username,
         };
 
@@ -410,7 +402,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
         const pushPayload: INotificationSendPushPayload = {
             userId,
             notificationId,
-            notificationToken: devices.map(d => d.notificationToken),
+            notificationTokens: devices.map(d => d.notificationToken),
             username: user.username,
         };
 
@@ -450,7 +442,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
         const pushPayload: INotificationSendPushPayload = {
             userId,
             notificationId,
-            notificationToken: devices.map(d => d.notificationToken),
+            notificationTokens: devices.map(d => d.notificationToken),
             username: user.username,
         };
 

@@ -1,3 +1,4 @@
+import { HelperService } from '@common/helper/services/helper.service';
 import { MessageService } from '@common/message/services/message.service';
 import {
     EnumNotificationChannel,
@@ -33,20 +34,31 @@ export class NotificationUtil {
     constructor(
         @InjectQueue(EnumQueue.notification)
         private readonly notificationQueue: Queue,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly helperService: HelperService
     ) {}
 
     async sendWelcomeByAdmin(
         userId: string,
-        password: INotificationWelcomeByAdminPayload,
+        {
+            password,
+            passwordCreatedAt,
+            passwordExpiredAt,
+        }: INotificationWelcomeByAdminPayload,
         createdBy: string
     ): Promise<void> {
+        const encryptedPassword = this.helperService.simpleEncrypt(password);
+
         await this.notificationQueue.add(
             EnumNotificationProcess.welcomeByAdmin,
             {
                 userId,
                 proceedBy: createdBy,
-                data: password,
+                data: {
+                    password: encryptedPassword,
+                    passwordCreatedAt,
+                    passwordExpiredAt,
+                },
             } as INotificationWorkerPayload<INotificationWelcomeByAdminPayload>,
             {
                 priority: EnumQueuePriority.medium,
@@ -60,13 +72,25 @@ export class NotificationUtil {
 
     async sendWelcome(
         userId: string,
-        verification: INotificationVerificationEmailPayload
+        {
+            link,
+            expiredAt,
+            expiredInMinutes,
+            reference,
+        }: INotificationVerificationEmailPayload
     ): Promise<void> {
+        const encryptedLink = this.helperService.simpleEncrypt(link);
+
         await this.notificationQueue.add(
             EnumNotificationProcess.welcome,
             {
                 userId,
-                data: verification,
+                data: {
+                    link: encryptedLink,
+                    expiredAt,
+                    expiredInMinutes,
+                    reference,
+                },
                 proceedBy: userId,
             } as INotificationWorkerPayload<INotificationVerificationEmailPayload>,
             {
@@ -98,14 +122,24 @@ export class NotificationUtil {
 
     async sendTemporaryPasswordByAdmin(
         userId: string,
-        password: INotificationTemporaryPasswordPayload,
+        {
+            password,
+            passwordCreatedAt,
+            passwordExpiredAt,
+        }: INotificationTemporaryPasswordPayload,
         createdBy: string
     ): Promise<void> {
+        const encryptedPassword = this.helperService.simpleEncrypt(password);
+
         await this.notificationQueue.add(
             EnumNotificationProcess.temporaryPasswordByAdmin,
             {
                 userId,
-                data: password,
+                data: {
+                    password: encryptedPassword,
+                    passwordCreatedAt,
+                    passwordExpiredAt,
+                },
                 proceedBy: createdBy,
             } as INotificationWorkerPayload,
             {
@@ -158,13 +192,25 @@ export class NotificationUtil {
 
     async sendVerificationEmail(
         userId: string,
-        verification: INotificationVerificationEmailPayload
+        {
+            expiredAt,
+            expiredInMinutes,
+            link,
+            reference,
+        }: INotificationVerificationEmailPayload
     ): Promise<void> {
+        const encryptedLink = this.helperService.simpleEncrypt(link);
+
         await this.notificationQueue.add(
             EnumNotificationProcess.verificationEmail,
             {
                 userId,
-                data: verification,
+                data: {
+                    link: encryptedLink,
+                    expiredAt,
+                    expiredInMinutes,
+                    reference,
+                },
                 proceedBy: userId,
             } as INotificationWorkerPayload<INotificationVerificationEmailPayload>,
             {
@@ -179,13 +225,27 @@ export class NotificationUtil {
 
     async sendForgotPassword(
         userId: string,
-        forgotPassword: INotificationForgotPasswordPayload
+        {
+            link,
+            expiredAt,
+            expiredInMinutes,
+            reference,
+            resendInMinutes,
+        }: INotificationForgotPasswordPayload
     ): Promise<void> {
+        const encryptedLink = this.helperService.simpleEncrypt(link);
+
         await this.notificationQueue.add(
             EnumNotificationProcess.forgotPassword,
             {
                 userId,
-                data: forgotPassword,
+                data: {
+                    link: encryptedLink,
+                    expiredAt,
+                    expiredInMinutes,
+                    reference,
+                    resendInMinutes,
+                },
                 proceedBy: userId,
             } as INotificationWorkerPayload<INotificationForgotPasswordPayload>,
             {

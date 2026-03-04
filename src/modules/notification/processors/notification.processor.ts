@@ -143,7 +143,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                     };
             }
         } catch (error: unknown) {
-            this.logger.error(error);
+            this.logger.error(error, 'Failed to process notification job');
             throw error;
         }
     }

@@ -18,8 +18,17 @@ import {
 } from '@modules/notification/interfaces/notification.interface';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailProcessorService } from '@modules/notification/services/notification.email.processor.service';
+import {
+    AwsSESRateLimitDurationInMs,
+    AwsSESRateLimitPerDuration,
+} from '@common/aws/constants/aws.constant';
 
-@QueueProcessor(EnumQueue.notificationEmail)
+@QueueProcessor(EnumQueue.notificationEmail, {
+    limiter: {
+        max: AwsSESRateLimitPerDuration,
+        duration: AwsSESRateLimitDurationInMs,
+    },
+})
 export class NotificationEmailProcessor extends QueueProcessorBase {
     private readonly logger = new Logger(NotificationEmailProcessor.name);
 
@@ -158,7 +167,10 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     };
             }
         } catch (error: unknown) {
-            this.logger.error(error);
+            this.logger.error(
+                error,
+                'Failed to process notification email job'
+            );
             throw error;
         }
     }

@@ -298,8 +298,8 @@ export class UserService implements IUserService {
                 created.id,
                 {
                     password: passwordString,
-                    passwordCreatedAt: password.passwordCreated.toISOString(),
-                    passwordExpiredAt: password.passwordExpired.toISOString(),
+                    passwordCreatedAt: password.passwordCreated,
+                    passwordExpiredAt: password.passwordExpired,
                 },
                 createdBy
             );
@@ -807,8 +807,8 @@ export class UserService implements IUserService {
                 updated.id,
                 {
                     password: passwordString,
-                    passwordCreatedAt: password.passwordCreated.toISOString(),
-                    passwordExpiredAt: password.passwordExpired.toISOString(),
+                    passwordCreatedAt: password.passwordCreated,
+                    passwordExpiredAt: password.passwordExpired,
                 },
                 updatedBy
             );
@@ -1159,7 +1159,7 @@ export class UserService implements IUserService {
 
             // @note: send email after all creation
             await this.notificationUtil.sendWelcome(created.id, {
-                expiredAt: emailVerification.expiredAt.toISOString(),
+                expiredAt: emailVerification.expiredAt,
                 reference: emailVerification.reference,
                 link: emailVerification.link,
                 expiredInMinutes: emailVerification.expiredInMinutes,
@@ -1268,7 +1268,7 @@ export class UserService implements IUserService {
             );
 
             await this.notificationUtil.sendWelcome(user.id, {
-                expiredAt: emailVerification.expiredAt.toISOString(),
+                expiredAt: emailVerification.expiredAt,
                 reference: emailVerification.reference,
                 link: emailVerification.link,
                 expiredInMinutes: emailVerification.expiredInMinutes,
@@ -1333,7 +1333,7 @@ export class UserService implements IUserService {
             );
 
             await this.notificationUtil.sendForgotPassword(user.id, {
-                expiredAt: resetPassword.expiredAt.toISOString(),
+                expiredAt: resetPassword.expiredAt,
                 link: resetPassword.link,
                 reference: resetPassword.reference,
                 expiredInMinutes: resetPassword.expiredInMinutes,
@@ -2050,10 +2050,8 @@ export class UserService implements IUserService {
                         newUser.id,
                         {
                             password: passwords[index],
-                            passwordCreatedAt:
-                                newUser.passwordCreated.toISOString(),
-                            passwordExpiredAt:
-                                newUser.passwordExpired.toISOString(),
+                            passwordCreatedAt: newUser.passwordCreated,
+                            passwordExpiredAt: newUser.passwordExpired,
                         },
                         createdBy
                     )

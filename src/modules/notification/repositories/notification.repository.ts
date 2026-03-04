@@ -526,6 +526,16 @@ export class NotificationRepository {
         });
     }
 
+    async findOneByUserId(
+        userId: string,
+        notificationId: string
+    ): Promise<{ title: string; body: string } | null> {
+        return this.databaseService.notification.findUnique({
+            where: { id: notificationId, userId },
+            select: { title: true, body: true },
+        });
+    }
+
     async updateUserSetting(
         userId: string,
         { channel, type, isActive }: NotificationUserSettingRequestDto,

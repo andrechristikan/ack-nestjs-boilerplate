@@ -7,8 +7,8 @@ import {
 
 export interface INotificationTemporaryPasswordPayload {
     password: string; // TODO: Need to encode this link
-    passwordExpiredAt: string;
-    passwordCreatedAt: string;
+    passwordExpiredAt: Date;
+    passwordCreatedAt: Date;
 }
 
 export type INotificationWelcomeByAdminPayload =
@@ -16,7 +16,7 @@ export type INotificationWelcomeByAdminPayload =
 
 export interface INotificationVerificationEmailPayload {
     link: string; // TODO: Need to encode this link
-    expiredAt: string;
+    expiredAt: Date;
     expiredInMinutes: number;
     reference: string;
 }
@@ -63,13 +63,19 @@ export interface INotificationWorkerPayload<
 export interface INotificationSendPushPayload {
     userId: string;
     notificationId: string;
-    notificationToken: string[];
+    notificationTokens: string[];
     username: string;
 }
 
 export interface INotificationPushWorkerPayload<T = unknown> {
     send: INotificationSendPushPayload;
     data?: T;
+}
+
+export interface INotificationPushWorkerCleanupTokenPayload {
+    data: {
+        invalidTokens: string[];
+    };
 }
 
 // For email notification

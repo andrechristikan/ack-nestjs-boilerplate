@@ -1,264 +1,344 @@
 import { FirebaseService } from '@common/firebase/services/firebase.service';
-import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import { HelperService } from '@common/helper/services/helper.service';
+import { MessageService } from '@common/message/services/message.service';
+import { GeoLocation, UserAgent } from '@generated/prisma-client';
+import { DeviceRepository } from '@modules/device/repositories/device.repository';
+import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import {
     INotificationNewDeviceLoginPayload,
+    INotificationPushWorkerCleanupTokenPayload,
     INotificationPushWorkerPayload,
+    INotificationTemporaryPasswordPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { Injectable } from '@nestjs/common';
+import { INotificationPushProcessorService } from '@modules/notification/interfaces/notification.push.processor.service.interface';
+import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
 @Injectable()
-export class NotificationPushProcessorService {
-    constructor(private readonly firebaseService: FirebaseService) {}
+export class NotificationPushProcessorService
+    implements INotificationPushProcessorService, OnModuleInit
+{
+    constructor(
+        private readonly firebaseService: FirebaseService,
+        private readonly notificationRepository: NotificationRepository,
+        private readonly messageService: MessageService,
+        private readonly helperService: HelperService,
+        private readonly notificationPushUtil: NotificationPushUtil,
+        private readonly deviceRepository: DeviceRepository
+    ) {}
 
-    // TODO: DONT FORGET TO CHECK USER SETTINGS BEFORE SENDING PUSH NOTIFICATIONS
+    async onModuleInit(): Promise<void> {
+        await this.notificationPushUtil.sendCleanupStaleTokens();
+    }
+
+    private resolveCity(geoLocation?: GeoLocation): string {
+        return geoLocation?.city ?? 'Unknown Location';
+    }
+
+    private resolveDevice(userAgent: UserAgent): string {
+        const { device, os, browser } = userAgent;
+
+        if (device?.vendor && device?.model) {
+            return `${device.vendor} ${device.model}`;
+        }
+
+        if (os?.name) {
+            return os.name;
+        }
+
+        if (browser?.name) {
+            return browser.name;
+        }
+
+        return 'Unknown Device';
+    }
 
     async processNewDeviceLogin({
         data: {
-            send: { notificationToken, username },
+            send: { notificationTokens, username, notificationId, userId },
             data,
         },
     }: Job<
         INotificationPushWorkerPayload<INotificationNewDeviceLoginPayload>,
         IQueueResponse,
-        EnumNotificationProcess
+        EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitializedFlag) {
+        if (!this.firebaseService.isInitialized()) {
             return {
                 message:
                     'Firebase not initialized, skipping new login notification',
             };
         }
 
+        const notification = await this.notificationRepository.findOneByUserId(
+            userId,
+            notificationId
+        );
+        if (!notification) {
+            return {
+                message:
+                    'Notification not found, skipping new login notification',
+            };
+        }
+
+        const device = this.resolveDevice(data.requestLog.userAgent);
+        const city = this.resolveCity(data.requestLog.geoLocation);
+        const loginAt = this.helperService.dateFormatToRFC2822(data.loginAt);
+        const title = this.messageService.setMessage(notification.title);
+        const body = this.messageService.setMessage(notification.body, {
+            properties: { device, city, username, loginAt },
+        });
+
+        const result = await this.firebaseService.sendMulticast(
+            notificationTokens,
+            {
+                title,
+                body,
+            }
+        );
+
+        await this.notificationPushUtil.sendCleanupTokens(
+            userId,
+            result.invalidTokens
+        );
+
         return {
             message: 'New login notification processed',
         };
     }
 
-    async processResetTwoFactorByAdmin(
-        job: Job<
-            INotificationPushWorkerPayload,
-            IQueueResponse,
-            EnumNotificationProcess
-        >
-    ): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitializedFlag) {
+    async processResetTwoFactorByAdmin({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+        },
+    }: Job<
+        INotificationPushWorkerPayload,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        if (!this.firebaseService.isInitialized()) {
             return {
                 message:
                     'Firebase not initialized, skipping reset two-factor notification',
             };
         }
 
+        const notification = await this.notificationRepository.findOneByUserId(
+            userId,
+            notificationId
+        );
+        if (!notification) {
+            return {
+                message:
+                    'Notification not found, skipping reset two-factor notification',
+            };
+        }
+
+        const title = this.messageService.setMessage(notification.title);
+        const body = this.messageService.setMessage(notification.body, {
+            properties: { username },
+        });
+
+        const result = await this.firebaseService.sendMulticast(
+            notificationTokens,
+            {
+                title,
+                body,
+            }
+        );
+
+        await this.notificationPushUtil.sendCleanupTokens(
+            userId,
+            result.invalidTokens
+        );
+
         return {
             message: 'Reset two-factor notification processed',
         };
     }
 
-    async processTemporaryPasswordByAdmin(
-        job: Job<
-            INotificationPushWorkerPayload,
-            IQueueResponse,
-            EnumNotificationProcess
-        >
-    ): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitializedFlag) {
+    async processTemporaryPasswordByAdmin({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+            data,
+        },
+    }: Job<
+        INotificationPushWorkerPayload<INotificationTemporaryPasswordPayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        if (!this.firebaseService.isInitialized()) {
             return {
                 message:
                     'Firebase not initialized, skipping temporary password notification',
             };
         }
 
+        const notification = await this.notificationRepository.findOneByUserId(
+            userId,
+            notificationId
+        );
+        if (!notification) {
+            return {
+                message:
+                    'Notification not found, skipping temporary password notification',
+            };
+        }
+
+        const passwordExpiredAt = this.helperService.dateFormatToRFC2822(
+            data.passwordExpiredAt
+        );
+
+        const title = this.messageService.setMessage(notification.title);
+        const body = this.messageService.setMessage(notification.body, {
+            properties: { username, passwordExpiredAt },
+        });
+
+        const result = await this.firebaseService.sendMulticast(
+            notificationTokens,
+            {
+                title,
+                body,
+            }
+        );
+
+        await this.notificationPushUtil.sendCleanupTokens(
+            userId,
+            result.invalidTokens
+        );
+
         return {
             message: 'Temporary password notification processed',
         };
     }
 
-    async processResetPassword(
-        job: Job<
-            INotificationPushWorkerPayload,
-            IQueueResponse,
-            EnumNotificationProcess
-        >
-    ): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitializedFlag) {
+    async processResetPassword({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+        },
+    }: Job<
+        INotificationPushWorkerPayload,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        if (!this.firebaseService.isInitialized()) {
             return {
                 message:
                     'Firebase not initialized, skipping reset password notification',
             };
         }
 
+        const notification = await this.notificationRepository.findOneByUserId(
+            userId,
+            notificationId
+        );
+        if (!notification) {
+            return {
+                message:
+                    'Notification not found, skipping reset password notification',
+            };
+        }
+
+        const title = this.messageService.setMessage(notification.title);
+        const body = this.messageService.setMessage(notification.body, {
+            properties: { username },
+        });
+
+        const result = await this.firebaseService.sendMulticast(
+            notificationTokens,
+            {
+                title,
+                body,
+            }
+        );
+
+        await this.notificationPushUtil.sendCleanupTokens(
+            userId,
+            result.invalidTokens
+        );
+
         return {
             message: 'Reset password notification processed',
         };
     }
 
-    async processForgotPassword(
-        job: Job<
-            INotificationPushWorkerPayload,
-            IQueueResponse,
-            EnumNotificationProcess
-        >
-    ): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitializedFlag) {
+    async processForgotPassword({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+        },
+    }: Job<
+        INotificationPushWorkerPayload,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        if (!this.firebaseService.isInitialized()) {
             return {
                 message:
                     'Firebase not initialized, skipping forgot password notification',
             };
         }
 
+        const notification = await this.notificationRepository.findOneByUserId(
+            userId,
+            notificationId
+        );
+        if (!notification) {
+            return {
+                message:
+                    'Notification not found, skipping forgot password notification',
+            };
+        }
+
+        const title = this.messageService.setMessage(notification.title);
+        const body = this.messageService.setMessage(notification.body, {
+            properties: { username },
+        });
+
+        const result = await this.firebaseService.sendMulticast(
+            notificationTokens,
+            {
+                title,
+                body,
+            }
+        );
+
+        await this.notificationPushUtil.sendCleanupTokens(
+            userId,
+            result.invalidTokens
+        );
+
         return {
             message: 'Forgot password notification processed',
         };
     }
 
-    //     async processLogin(job: NotificationPushJobDto): Promise<void> {
-    //         const tokens =
-    //             await this.notificationPushTokenRepository.findActiveTokensByUser(
-    //                 job.userId
-    //             );
+    async processCleanupTokens({
+        data: {
+            data: { invalidTokens },
+        },
+    }: Job<
+        INotificationPushWorkerCleanupTokenPayload,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        const result = await this.deviceRepository.cleanupTokens(invalidTokens);
 
-    //         if (!tokens.length) {
-    //             this.logger.log({
-    //                 message: 'pushLoginSkipped',
-    //                 reason: 'noActiveTokens',
-    //                 userId: job.userId,
-    //                 type: job.type,
-    //                 title: job.title,
-    //             });
-    //             return;
-    //         }
+        return {
+            message: `Processed token cleanup for invalid tokens`,
+            countRequestedTokens: invalidTokens.length,
+            countRemovedTokens: result.count,
+        };
+    }
 
-    //         // Create delivery record if notificationId provided
-    //         let deliveryId: string | undefined;
-    //         if (job.notificationId) {
-    //             const delivery = await this.notificationDeliveryRepository.create(
-    //                 job.notificationId,
-    //                 EnumNotificationChannel.push
-    //             );
-    //             deliveryId = delivery.id;
-    //         }
+    async processCleanupStaleTokens(): Promise<IQueueResponse> {
+        const staleTokens = await this.deviceRepository.cleanupStaleTokens();
 
-    //         // Check if Firebase is initialized
-    //         if (!this.firebaseService.isInitialized()) {
-    //             this.logger.warn({
-    //                 message: 'firebaseNotInitialized',
-    //                 userId: job.userId,
-    //                 tokenCount: tokens.length,
-    //             });
-
-    //             if (deliveryId) {
-    //                 await this.notificationDeliveryRepository.markFailed(
-    //                     deliveryId,
-    //                     'Firebase not initialized'
-    //                 );
-    //             }
-    //             return;
-    //         }
-
-    //         // Convert data to string values for FCM
-    //         const stringData: Record<string, string> = {};
-    //         if (job.data) {
-    //             for (const [key, value] of Object.entries(job.data)) {
-    //                 stringData[key] = String(value);
-    //             }
-    //         }
-
-    //         // Send to all tokens
-    //         const tokenStrings = tokens.map(t => t.token);
-    //         const result = await this.firebaseService.sendMulticast(
-    //             tokenStrings,
-    //             {
-    //                 title: job.title,
-    //                 body: job.body,
-    //                 data: stringData,
-    //             }
-    //         );
-
-    //         this.logger.log({
-    //             message: 'pushLoginSent',
-    //             userId: job.userId,
-    //             type: job.type,
-    //             title: job.title,
-    //             successCount: result.successCount,
-    //             failureCount: result.failureCount,
-    //             invalidTokenCount: result.invalidTokens.length,
-    //         });
-
-    //         // Determine successful tokens (all tokens minus invalid ones)
-    //         const invalidSet = new Set(result.invalidTokens);
-    //         const successfulTokens = tokenStrings.filter(t => !invalidSet.has(t));
-
-    //         // Update token failure counts (awaited - critical data)
-    //         try {
-    //             // Reset failure count for successful tokens
-    //             if (successfulTokens.length > 0) {
-    //                 await this.notificationPushTokenRepository.resetFailureCountBatch(
-    //                     successfulTokens
-    //                 );
-    //             }
-
-    //             // Increment failure count for invalid tokens
-    //             // Don't immediately revoke - use lazy cleanup strategy
-    //             if (result.invalidTokens.length > 0) {
-    //                 await this.notificationPushTokenRepository.incrementFailureCountBatch(
-    //                     result.invalidTokens
-    //                 );
-
-    //                 // Enqueue async cleanup job (fire-and-forget, low priority)
-    //                 // This is just scheduling - not critical data storage
-    //                 this.enqueueTokenCleanup().catch(err =>
-    //                     this.logger.error('Failed to enqueue token cleanup', err)
-    //                 );
-    //             }
-    //         } catch (error: unknown) {
-    //             this.logger.error('Failed to update token failure counts', error);
-    //         }
-
-    //         // Update delivery status
-    //         if (deliveryId) {
-    //             if (result.successCount > 0) {
-    //                 await this.notificationDeliveryRepository.markSent(deliveryId);
-    //             } else {
-    //                 await this.notificationDeliveryRepository.markFailed(
-    //                     deliveryId,
-    //                     `All ${result.failureCount} pushes failed`
-    //                 );
-    //             }
-    //         }
-    //     }
-
-    //     /**
-    //      * Enqueue async token cleanup job (fire-and-forget)
-    //      */
-    //     private async enqueueTokenCleanup(): Promise<void> {
-    //         await this.notificationQueue.add(
-    //             EnumNotificationProcess.cleanupInvalidTokens,
-    //             {},
-    //             {
-    //                 jobId: `${EnumNotificationProcess.cleanupInvalidTokens}-${Date.now()}`,
-    //                 priority: EnumQueuePriority.LOW,
-    //                 delay: 60000, // Wait 1 minute before cleanup
-    //             }
-    //         );
-    //     }
-
-    //     /**
-    //      * Process token cleanup job - revokes stale tokens
-    //      * Called by queue processor
-    //      */
-    //     async processTokenCleanup(): Promise<void> {
-    //         const revokedCount =
-    //             await this.notificationPushTokenRepository.revokeStaleTokens(
-    //                 3, // Max failures before revoke
-    //                 7 // Days since last failure
-    //             );
-
-    //         if (revokedCount > 0) {
-    //             this.logger.log({
-    //                 message: 'staleTokensRevoked',
-    //                 count: revokedCount,
-    //             });
-    //         }
-    //     }
+        return {
+            message: `Processed stale token cleanup`,
+            countRemovedTokens: staleTokens.count,
+        };
+    }
 }

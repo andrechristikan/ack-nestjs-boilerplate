@@ -155,6 +155,13 @@ export class SessionRepository {
                         },
                     },
                 },
+                device: {
+                    update: {
+                        notificationToken: null,
+                        lastActiveAt: null,
+                        notificationProvider: null,
+                    },
+                },
             },
         });
     }
@@ -183,6 +190,13 @@ export class SessionRepository {
                                 createdBy: revokedBy,
                             },
                         },
+                    },
+                },
+                device: {
+                    update: {
+                        notificationToken: null,
+                        lastActiveAt: null,
+                        notificationProvider: null,
                     },
                 },
             },

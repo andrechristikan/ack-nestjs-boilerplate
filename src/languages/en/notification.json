@@ -4,6 +4,24 @@
     "markAllAsRead": "{count} notifications marked as read.",
     "updateUserSetting": "Notification settings updated.",
     "listUserSetting": "Successfully retrieved notification settings.",
+    "notify": {
+        "newDeviceLogin": {
+            "title": "New Device Login",
+            "body": "Hi {username}, there is a new device login from {device} in {city} at {loginAt}."
+        },
+        "resetTwoFactorByAdmin": {
+            "title": "Two-Factor Authentication Reset",
+            "body": "Hi {username}, your two-factor authentication has been reset by admin."
+        },
+        "temporaryPasswordByAdmin": {
+            "title": "Temporary Password",
+            "body": "Hi {username}, a temporary password has been set. It will expire at {passwordExpiredAt}."
+        },
+        "resetPassword": {
+            "title": "Password Reset",
+            "body": "Hi {username}, your password has been reset successfully."
+        }
+    },
     "error": {
         "notFound": "Notification not found.",
         "alreadyRead": "Notification is already marked as read.",

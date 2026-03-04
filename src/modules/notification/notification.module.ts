@@ -5,6 +5,7 @@ import { NotificationEmailProcessorService } from '@modules/notification/service
 import { NotificationProcessorService } from '@modules/notification/services/notification.processor.service';
 import { NotificationPushProcessorService } from '@modules/notification/services/notification.push.processor.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationTemplateService } from '@modules/notification/services/notification.template.service';
 import { NotificationEmailUtil } from '@modules/notification/utils/notification.email.util';
 import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
@@ -16,6 +17,7 @@ import { Global, Module } from '@nestjs/common';
     imports: [UserModule, DeviceModule, AwsModule],
     exports: [
         NotificationService,
+        NotificationTemplateService,
         NotificationProcessorService,
         NotificationEmailProcessorService,
         NotificationPushProcessorService,
@@ -26,6 +28,7 @@ import { Global, Module } from '@nestjs/common';
     ],
     providers: [
         NotificationService,
+        NotificationTemplateService,
         NotificationProcessorService,
         NotificationEmailProcessorService,
         NotificationPushProcessorService,
@@ -37,12 +40,3 @@ import { Global, Module } from '@nestjs/common';
     controllers: [],
 })
 export class NotificationModule {}
-
-// TODO: INIT
-// - complete logic in notification processor service
-// - which part of notification that needs to be registered to firebase
-// - which part of notification that need to be revoked
-// - test notification is working end to end
-// - implement log out api
-// - update and complete docs
-// - ignore delivery status and outbox event design pattern for now

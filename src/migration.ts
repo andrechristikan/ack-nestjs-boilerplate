@@ -4,7 +4,7 @@ import { Logger as LoggerPino } from 'nestjs-pino';
 
 async function bootstrap(): Promise<void> {
     const app = await CommandFactory.createWithoutRunning(MigrationModule, {
-        abortOnError: true,
+        abortOnError: false,
         bufferLogs: false,
     });
 

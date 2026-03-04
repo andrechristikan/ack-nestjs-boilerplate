@@ -467,7 +467,6 @@ export class UserRepository {
                                     Object.values(EnumNotificationType).map(
                                         type => ({
                                             channel,
-                                            userId,
                                             type,
                                             isActive: true,
                                         })
@@ -1121,7 +1120,6 @@ export class UserRepository {
                                     Object.values(EnumNotificationType).map(
                                         type => ({
                                             channel,
-                                            userId,
                                             type,
                                             isActive: true,
                                         })
@@ -1278,7 +1276,6 @@ export class UserRepository {
                                     Object.values(EnumNotificationType).map(
                                         type => ({
                                             channel,
-                                            userId,
                                             type,
                                             isActive: true,
                                         })
@@ -1954,7 +1951,6 @@ export class UserRepository {
                                                     EnumNotificationType
                                                 ).map(type => ({
                                                     channel,
-                                                    userId,
                                                     type,
                                                     isActive: true,
                                                 }))

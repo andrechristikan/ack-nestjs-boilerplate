@@ -31,7 +31,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import change password template');
 
             return false;
         }
@@ -58,7 +58,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete change password template');
 
             return false;
         }
@@ -79,7 +79,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import welcome template');
 
             return false;
         }
@@ -106,7 +106,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete welcome template');
 
             return false;
         }
@@ -127,7 +127,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import welcome social template');
 
             return false;
         }
@@ -154,7 +154,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete welcome social template');
 
             return false;
         }
@@ -175,7 +175,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import welcome by admin template');
 
             return false;
         }
@@ -202,7 +202,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete welcome by admin template');
 
             return false;
         }
@@ -223,7 +223,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import temporary password by admin template');
 
             return false;
         }
@@ -250,7 +250,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete temporary password by admin template');
 
             return false;
         }
@@ -271,7 +271,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import reset password template');
 
             return false;
         }
@@ -298,7 +298,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete reset password template');
 
             return false;
         }
@@ -319,7 +319,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import forgot password template');
 
             return false;
         }
@@ -346,7 +346,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete forgot password template');
 
             return false;
         }
@@ -367,7 +367,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import verification email template');
 
             return false;
         }
@@ -394,7 +394,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete verification email template');
 
             return false;
         }
@@ -415,7 +415,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import verified email template');
 
             return false;
         }
@@ -442,7 +442,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete verified email template');
 
             return false;
         }
@@ -463,7 +463,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import verified mobile number template');
 
             return false;
         }
@@ -490,7 +490,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete verified mobile number template');
 
             return false;
         }
@@ -511,7 +511,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import reset two factor by admin template');
 
             return false;
         }
@@ -538,7 +538,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete reset two factor by admin template');
 
             return false;
         }
@@ -559,7 +559,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import new device login template');
 
             return false;
         }
@@ -586,7 +586,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete new device login template');
 
             return false;
         }
@@ -607,7 +607,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import publish term policy template');
 
             return false;
         }
@@ -634,7 +634,7 @@ export class NotificationTemplateService implements INotificationTemplateService
 
             return true;
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to delete publish term policy template');
 
             return false;
         }

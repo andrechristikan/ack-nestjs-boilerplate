@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { FirebaseStaleTokenThresholdInDays } from '@common/firebase/constants/firebase.constant';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryCursorParams,
@@ -17,6 +18,7 @@ import {
 import { DeviceDto } from '@modules/device/dtos/device.dto';
 import { IDevice } from '@modules/device/interfaces/device.interface';
 import { Injectable } from '@nestjs/common';
+import { Duration } from 'luxon';
 
 @Injectable()
 export class DeviceRepository {
@@ -294,5 +296,67 @@ export class DeviceRepository {
                 return device;
             }
         );
+    }
+
+    async cleanupTokensByIds(
+        userId: string,
+        deviceIds: string[]
+    ): Promise<Prisma.BatchPayload> {
+        return this.databaseService.device.updateMany({
+            where: {
+                id: {
+                    in: deviceIds,
+                },
+                userId,
+            },
+            data: {
+                notificationToken: null,
+                notificationProvider: null,
+                lastActiveAt: null,
+            },
+        });
+    }
+
+    async cleanupTokens(tokens: string[]): Promise<Prisma.BatchPayload> {
+        return this.databaseService.device.updateMany({
+            where: {
+                notificationToken: {
+                    in: tokens,
+                },
+            },
+            data: {
+                notificationToken: null,
+                notificationProvider: null,
+                lastActiveAt: null,
+            },
+        });
+    }
+
+    async cleanupStaleTokens(
+        thresholdInDays: number = FirebaseStaleTokenThresholdInDays
+    ): Promise<Prisma.BatchPayload> {
+        const today = this.helperService.dateCreate();
+        const thresholdDate = this.helperService.dateBackward(
+            today,
+            Duration.fromObject({
+                days: thresholdInDays,
+            })
+        );
+
+        return this.databaseService.device.updateMany({
+            where: {
+                notificationToken: {
+                    not: null,
+                },
+                lastActiveAt: {
+                    lt: thresholdDate,
+                },
+            },
+            data: {
+                notificationToken: null,
+                notificationProvider: null,
+                lastActiveAt: null,
+            },
+        });
     }
 }

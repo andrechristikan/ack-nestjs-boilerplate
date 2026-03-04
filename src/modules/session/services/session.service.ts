@@ -126,11 +126,6 @@ export class SessionService implements ISessionService {
         await Promise.all([
             this.sessionRepository.revoke(userId, sessionId, requestLog),
             this.sessionUtil.deleteOneLogin(userId, sessionId),
-            // TODO: LAST REVOKE
-            // this.notificationPushTokenRepository.revokeBySessionId(
-            //     sessionId,
-            //     userId
-            // ),
         ]);
 
         return;
@@ -174,11 +169,6 @@ export class SessionService implements ISessionService {
                 revokedBy
             ),
             this.sessionUtil.deleteOneLogin(userId, sessionId),
-            // TODO: LAST REVOKE
-            // this.notificationPushTokenRepository.revokeBySessionId(
-            //     sessionId,
-            //     revokeBy
-            // ),
         ]);
 
         return {

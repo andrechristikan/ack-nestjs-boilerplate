@@ -244,7 +244,6 @@ export class MigrationUserSeed
                                                 EnumNotificationType
                                             ).map(type => ({
                                                 channel,
-                                                userId,
                                                 type,
                                                 isActive: true,
                                             }))
@@ -277,6 +276,7 @@ export class MigrationUserSeed
 
         try {
             await this.databaseService.$transaction([
+                this.databaseService.twoFactor.deleteMany({}),
                 this.databaseService.session.deleteMany({}),
                 this.databaseService.userMobileNumber.deleteMany({}),
                 this.databaseService.verification.deleteMany({}),
@@ -284,6 +284,7 @@ export class MigrationUserSeed
                 this.databaseService.forgotPassword.deleteMany({}),
                 this.databaseService.activityLog.deleteMany({}),
                 this.databaseService.termPolicyUserAcceptance.deleteMany({}),
+                this.databaseService.notificationUserSetting.deleteMany({}),
                 this.databaseService.user.deleteMany({}),
             ]);
         } catch (error: unknown) {

@@ -10,6 +10,7 @@ import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/re
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
+import { INotificationService } from '@modules/notification/interfaces/notification.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import {
@@ -19,7 +20,7 @@ import {
 } from '@nestjs/common';
 
 @Injectable()
-export class NotificationService {
+export class NotificationService implements INotificationService {
     constructor(
         private readonly notificationRepository: NotificationRepository,
         private readonly notificationUtil: NotificationUtil
@@ -116,107 +117,4 @@ export class NotificationService {
 
         return;
     }
-
-    // async newLoginNotification(
-    //     user: User,
-    //     loginFrom: EnumUserLoginFrom,
-    //     loginWith: EnumUserLoginWith,
-    //     loginAt: Date,
-    //     { ipAddress, userAgent }: IRequestLog
-    // ): Promise<Notification> {
-    //     await this.notificationRepository.createNewLogin(
-    //         user.id,
-    //         loginFrom,
-    //         loginWith
-    //     );
-    //     // @note: post action
-    //     await Promise.all([
-    //         this.emailService.sendNewLogin(
-    //             user.id,
-    //             {
-    //                 email: user.email,
-    //                 username: user.username,
-    //             },
-    //             {
-    //                 loginFrom,
-    //                 loginWith,
-    //                 ipAddress,
-    //                 loginAt: this.helperService.dateFormatToIso(loginAt),
-    //                 userAgent,
-    //             }
-    //         ),
-    //         this.notificationPushService.enqueueLogin(
-    //             user.id,
-    //             EnumNotificationType.login,
-    //             'Login',
-    //             `Login from ${loginFrom} via ${loginWith}`,
-    //             {
-    //                 loginFrom,
-    //                 loginWith,
-    //                 ipAddress: requestLog.ipAddress,
-    //                 userAgent: requestLog.userAgent,
-    //             }
-    //         ),
-    //     ]);
-    //     return;
-    // }
-    // async registerPushToken(
-    //     userId: string,
-    //     sessionId: string,
-    //     { token, provider }: NotificationRegisterPushTokenRequestDto,
-    //     userAgent: RequestUserAgentDto
-    // ): Promise<IResponseReturn<void>> {
-    //     await this.notificationPushTokenRepository.register(
-    //         userId,
-    //         sessionId,
-    //         token,
-    //         provider,
-    //         userAgent
-    //     );
-    //     return;
-    // }
-    // private async isChannelEnabled(
-    //     userId: string,
-    //     channel: EnumNotificationChannel,
-    //     delivery: EnumNotificationDelivery
-    // ): Promise<boolean> {
-    //     if (delivery === EnumNotificationDelivery.silent) {
-    //         return false;
-    //     }
-    //     if (delivery === EnumNotificationDelivery.email) {
-    //         return (
-    //             channel === EnumNotificationChannel.email &&
-    //             (await this.notificationSettingRepository.isEnabled(
-    //                 userId,
-    //                 channel,
-    //                 EnumNotificationSettingType.login
-    //             ))
-    //         );
-    //     }
-    //     if (delivery === EnumNotificationDelivery.push) {
-    //         return (
-    //             channel === EnumNotificationChannel.push &&
-    //             (await this.notificationSettingRepository.isEnabled(
-    //                 userId,
-    //                 channel,
-    //                 EnumNotificationSettingType.login
-    //             ))
-    //         );
-    //     }
-    //     return this.notificationSettingRepository.isEnabled(
-    //         userId,
-    //         channel,
-    //         EnumNotificationSettingType.login
-    //     );
-    // }
-    // async revokePushToken(
-    //     userId: string,
-    //     sessionId: string
-    // ): Promise<IResponseReturn<void>> {
-    //     await this.notificationPushTokenRepository.revokeBySessionId(
-    //         sessionId,
-    //         userId
-    //     );
-    //     return;
-    // }
 }

@@ -140,11 +140,6 @@ export class DeviceService implements IDeviceService {
                     userId
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                // TODO: LAST REVOKE
-                // this.notificationPushTokenRepository.revokeBySessionId(
-                //     sessionId,
-                //     revokeBy
-                // ),
             ]);
 
             return;
@@ -185,11 +180,6 @@ export class DeviceService implements IDeviceService {
                     removedBy
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
-                // TODO: LAST REVOKE
-                // this.notificationPushTokenRepository.revokeBySessionId(
-                //     sessionId,
-                //     revokeBy
-                // ),
             ]);
 
             return {

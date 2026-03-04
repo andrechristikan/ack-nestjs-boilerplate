@@ -77,7 +77,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Welcome email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to process welcome email');
             throw err;
         }
     }
@@ -108,7 +108,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Welcome social email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to process welcome social email');
             throw err;
         }
     }
@@ -138,12 +138,14 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     homeUrl: this.homeUrl,
                     username,
                     password: passwordString,
-                    passwordExpiredAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(passwordExpiredAt)
-                    ),
-                    passwordCreatedAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(passwordCreatedAt)
-                    ),
+                    passwordExpiredAt:
+                        this.helperService.dateFormatToRFC2822(
+                            passwordExpiredAt
+                        ),
+                    passwordCreatedAt:
+                        this.helperService.dateFormatToRFC2822(
+                            passwordCreatedAt
+                        ),
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
@@ -151,7 +153,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Create by admin email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to process welcome by admin email');
             throw err;
         }
     }
@@ -166,10 +168,14 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         try {
             const { email, username, cc, bcc } = job.data.send;
             const {
-                password: passwordString,
+                password: encryptedPasswordString,
                 passwordExpiredAt,
                 passwordCreatedAt,
             } = job.data.data;
+
+            const passwordString = this.helperService.simpleDecrypt(
+                encryptedPasswordString
+            );
 
             await this.awsSESService.send({
                 templateName: EnumNotificationProcess.temporaryPasswordByAdmin,
@@ -181,12 +187,14 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     homeUrl: this.homeUrl,
                     username,
                     password: passwordString,
-                    passwordExpiredAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(passwordExpiredAt)
-                    ),
-                    passwordCreatedAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(passwordCreatedAt)
-                    ),
+                    passwordExpiredAt:
+                        this.helperService.dateFormatToRFC2822(
+                            passwordExpiredAt
+                        ),
+                    passwordCreatedAt:
+                        this.helperService.dateFormatToRFC2822(
+                            passwordCreatedAt
+                        ),
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
@@ -194,7 +202,10 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Temporary password email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(
+                err,
+                'Failed to process temporary password email'
+            );
             throw err;
         }
     }
@@ -225,7 +236,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Change password email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to process change password email');
             throw err;
         }
     }
@@ -256,7 +267,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Reset password email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to process reset password email');
             throw err;
         }
     }
@@ -270,8 +281,14 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
     ): Promise<IQueueResponse> {
         try {
             const { email, username, cc, bcc } = job.data.send;
-            const { expiredAt, reference, link, expiredInMinutes } =
-                job.data.data;
+            const {
+                expiredAt,
+                reference,
+                link: encryptedLink,
+                expiredInMinutes,
+            } = job.data.data;
+
+            const link = this.helperService.simpleDecrypt(encryptedLink);
 
             await this.awsSESService.send({
                 templateName: EnumNotificationProcess.verificationEmail,
@@ -284,9 +301,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     username,
                     link,
                     reference,
-                    expiredAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(expiredAt)
-                    ),
+                    expiredAt:
+                        this.helperService.dateFormatToRFC2822(expiredAt),
                     expiredInMinutes,
                 },
                 ...(cc?.length && { cc }),
@@ -295,7 +311,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Verification email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to process verification email');
             throw err;
         }
     }
@@ -328,7 +344,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Email verified email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to process verified email');
             throw err;
         }
     }
@@ -342,8 +358,14 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
     ): Promise<IQueueResponse> {
         try {
             const { email, username, cc, bcc } = job.data.send;
-            const { expiredAt, link, reference, expiredInMinutes } =
-                job.data.data;
+            const {
+                expiredAt,
+                link: encryptedLink,
+                reference,
+                expiredInMinutes,
+            } = job.data.data;
+
+            const link = this.helperService.simpleDecrypt(encryptedLink);
 
             await this.awsSESService.send({
                 templateName: EnumNotificationProcess.forgotPassword,
@@ -355,9 +377,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     homeUrl: this.homeUrl,
                     username,
                     link,
-                    expiredAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(expiredAt)
-                    ),
+                    expiredAt:
+                        this.helperService.dateFormatToRFC2822(expiredAt),
                     reference,
                     expiredInMinutes,
                 },
@@ -367,7 +388,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Forgot password email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to process forgot password email');
             throw err;
         }
     }
@@ -401,7 +422,10 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Mobile number verified email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(
+                err,
+                'Failed to process verified mobile number email'
+            );
             throw err;
         }
     }
@@ -432,7 +456,10 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Reset two factor by admin email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(
+                err,
+                'Failed to process reset two factor by admin email'
+            );
             throw err;
         }
     }
@@ -474,7 +501,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'New device login email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to process new device login email');
             throw err;
         }
     }
@@ -516,7 +543,10 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
             return { message: 'Publish term policy email processed' };
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(
+                err,
+                'Failed to process publish term policy email'
+            );
             throw err;
         }
     }

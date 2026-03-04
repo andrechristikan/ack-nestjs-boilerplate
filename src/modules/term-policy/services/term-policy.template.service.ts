@@ -50,7 +50,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 }
             );
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import terms of service');
 
             throw err;
         }
@@ -84,7 +84,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 }
             );
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import privacy');
 
             throw err;
         }
@@ -118,7 +118,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 }
             );
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import cookie');
 
             throw err;
         }
@@ -152,7 +152,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 }
             );
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import marketing');
 
             throw err;
         }

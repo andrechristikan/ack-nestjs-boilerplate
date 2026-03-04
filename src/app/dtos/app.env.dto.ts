@@ -9,6 +9,7 @@ import {
     IsOptional,
     IsString,
     Matches,
+    MaxLength,
     Min,
     MinLength,
     ValidateIf,
@@ -55,6 +56,12 @@ export class AppEnvDto {
     @IsNotEmpty()
     @IsEnum(EnumRequestTimezone)
     APP_TIMEZONE: EnumRequestTimezone;
+
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(32)
+    @MaxLength(64)
+    APP_ENCRYPTION_SECRET_KEY: string;
 
     /**
      * The name of the home/organization

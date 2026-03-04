@@ -13,10 +13,6 @@ import { createPrivateKey } from 'crypto';
 import * as firebaseAdmin from 'firebase-admin';
 import { App as FirebaseApp } from 'firebase-admin/app';
 import { Messaging } from 'firebase-admin/lib/messaging/messaging';
-import {
-    BatchResponse,
-    MulticastMessage,
-} from 'firebase-admin/lib/messaging/messaging-api';
 
 @Injectable()
 export class FirebaseService implements OnModuleInit {
@@ -28,8 +24,6 @@ export class FirebaseService implements OnModuleInit {
 
     private app: FirebaseApp | null = null;
     private messaging: Messaging | null = null;
-
-    isInitializedFlag = false;
 
     constructor(
         private readonly configService: ConfigService,
@@ -71,15 +65,13 @@ export class FirebaseService implements OnModuleInit {
 
             this.messaging = firebaseAdmin.messaging(this.app);
 
-            this.isInitializedFlag = true;
-
             this.logger.log('Firebase Admin SDK initialized successfully');
         } catch (error: unknown) {
             this.logger.error(error, 'Failed to initialize Firebase Admin SDK');
         }
     }
 
-    private isInitialized(): boolean {
+    isInitialized(): boolean {
         return !!this.app || !!this.messaging;
     }
 
@@ -93,6 +85,7 @@ export class FirebaseService implements OnModuleInit {
     ): Promise<boolean> {
         if (!this.isInitialized()) {
             this.logger.warn('Firebase not initialized, skipping push');
+
             return false;
         }
 
@@ -126,25 +119,29 @@ export class FirebaseService implements OnModuleInit {
     async sendMulticast(
         tokens: string[],
         payload: IFirebasePushPayload,
-        chunkSize: number
+        chunkSize: number = FirebaseMaxSendPushBatchSize
     ): Promise<IFirebasePushResult> {
-        if (!this.isInitialized() || tokens.length === 0) {
-            if (!this.isInitialized()) {
-                this.logger.warn(
-                    'Firebase not initialized, skipping multicast'
-                );
-            }
+        if (!this.isInitialized()) {
+            this.logger.warn('Firebase not initialized, skipping multicast');
 
             return {
                 successCount: 0,
                 failureCount: tokens.length,
                 invalidTokens: [],
             };
-        } else if (chunkSize < 1) {
-            throw new Error('chunkSize must be at least 1');
-        } else if (chunkSize > FirebaseMaxSendPushBatchSize) {
+        }
+
+        if (tokens.length === 0) {
+            return {
+                successCount: 0,
+                failureCount: 0,
+                invalidTokens: [],
+            };
+        }
+
+        if (chunkSize < 1 || chunkSize > FirebaseMaxSendPushBatchSize) {
             throw new Error(
-                `chunkSize cannot be greater than ${FirebaseMaxSendPushBatchSize}`
+                `chunkSize must be between 1 and ${FirebaseMaxSendPushBatchSize}`
             );
         }
 
@@ -154,13 +151,8 @@ export class FirebaseService implements OnModuleInit {
                 chunkSize
             );
 
-            let successCount = 0;
-            let failureCount = 0;
-            let invalidTokens: string[] = [];
-            const messages: Promise<BatchResponse>[] = [];
-
-            for (const chunk of chunkedTokens) {
-                const message: MulticastMessage = {
+            const promises = chunkedTokens.map(chunk =>
+                this.messaging.sendEachForMulticast({
                     tokens: chunk,
                     notification: {
                         title: payload.title,
@@ -168,23 +160,30 @@ export class FirebaseService implements OnModuleInit {
                         imageUrl: payload.imageUrl,
                     },
                     data: payload.data,
-                };
+                })
+            );
 
-                messages.push(this.messaging.sendEachForMulticast(message));
-            }
+            const responses = await Promise.allSettled(promises);
 
-            const responses: PromiseSettledResult<BatchResponse>[] =
-                await Promise.allSettled(messages);
+            let successCount = 0;
+            let failureCount = 0;
+            let invalidTokens: string[] = [];
 
-            for (const response of responses) {
+            for (
+                let chunkIndex = 0;
+                chunkIndex < responses.length;
+                chunkIndex++
+            ) {
+                const response = responses[chunkIndex];
+                const chunk = chunkedTokens[chunkIndex];
+
                 if (response.status === 'fulfilled') {
                     successCount += response.value.successCount;
+                    failureCount += response.value.failureCount;
 
-                    if (response.value.failureCount !== 0) {
-                        failureCount += response.value.failureCount;
-
-                        const invalidTokensInChunk = response.value.responses
-                            .map((resp, index) => {
+                    if (response.value.failureCount > 0) {
+                        const invalidInChunk = response.value.responses
+                            .map((resp, tokenIndex) => {
                                 if (
                                     !resp.success &&
                                     resp.error &&
@@ -192,32 +191,24 @@ export class FirebaseService implements OnModuleInit {
                                         resp.error as { code?: string }
                                     )
                                 ) {
-                                    return chunkedTokens[
-                                        responses.indexOf(response)
-                                    ][index];
+                                    return chunk[tokenIndex];
                                 }
-
                                 return null;
                             })
                             .filter((token): token is string => token !== null);
 
-                        invalidTokens =
-                            invalidTokens.concat(invalidTokensInChunk);
+                        invalidTokens = invalidTokens.concat(invalidInChunk);
                     }
                 } else {
-                    failureCount += chunkSize;
+                    failureCount += chunk.length;
                 }
             }
 
-            return {
-                successCount,
-                failureCount,
-                invalidTokens,
-            };
+            return { successCount, failureCount, invalidTokens };
         } catch (error: unknown) {
             this.logger.error(
-                'Failed to send multicast push notification',
-                error
+                error,
+                'Failed to send multicast push notification'
             );
 
             return {
