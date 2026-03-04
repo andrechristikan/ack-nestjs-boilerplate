@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     IPaginationCursorReturn,
     IPaginationQueryCursorParams,
@@ -18,7 +19,8 @@ import { ActivityLog, EnumActivityLogAction, Prisma } from '@prisma/client';
 export class ActivityLogRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findWithPaginationOffset(
@@ -84,8 +86,8 @@ export class ActivityLogRepository {
                 userId,
                 action,
                 ipAddress,
-                userAgent,
-                geoLocation,
+                userAgent: this.databaseUtil.toPlainObject(userAgent),
+                geoLocation: this.databaseUtil.toPlainObject(geoLocation),
                 metadata:
                     metadata && Object.keys(metadata).length > 0
                         ? (metadata as Prisma.InputJsonValue)

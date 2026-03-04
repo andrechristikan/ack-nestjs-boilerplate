@@ -1,7 +1,6 @@
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { MessageService } from '@common/message/services/message.service';
-import { GeoLocation, UserAgent } from '@generated/prisma-client';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import {
@@ -34,28 +33,6 @@ export class NotificationPushProcessorService
         await this.notificationPushUtil.sendCleanupStaleTokens();
     }
 
-    private resolveCity(geoLocation?: GeoLocation): string {
-        return geoLocation?.city ?? 'Unknown Location';
-    }
-
-    private resolveDevice(userAgent: UserAgent): string {
-        const { device, os, browser } = userAgent;
-
-        if (device?.vendor && device?.model) {
-            return `${device.vendor} ${device.model}`;
-        }
-
-        if (os?.name) {
-            return os.name;
-        }
-
-        if (browser?.name) {
-            return browser.name;
-        }
-
-        return 'Unknown Device';
-    }
-
     async processNewDeviceLogin({
         data: {
             send: { notificationTokens, username, notificationId, userId },
@@ -84,8 +61,12 @@ export class NotificationPushProcessorService
             };
         }
 
-        const device = this.resolveDevice(data.requestLog.userAgent);
-        const city = this.resolveCity(data.requestLog.geoLocation);
+        const device = this.helperService.resolveDevice(
+            data.requestLog.userAgent
+        );
+        const city = this.helperService.resolveCity(
+            data.requestLog.geoLocation
+        );
         const loginAt = this.helperService.dateFormatToRFC2822(data.loginAt);
         const title = this.messageService.setMessage(notification.title);
         const body = this.messageService.setMessage(notification.body, {

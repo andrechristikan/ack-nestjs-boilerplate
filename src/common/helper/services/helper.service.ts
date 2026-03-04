@@ -12,6 +12,7 @@ import { DateObjectUnits, DateTime, Duration, DurationLikeObject } from 'luxon';
 import _ from 'lodash';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { hostname } from 'os';
+import { GeoLocation, UserAgent } from '@generated/prisma-client';
 
 /**
  * Comprehensive utility service providing helper functions for common operations.
@@ -857,5 +858,27 @@ export class HelperService implements IHelperService {
      */
     getHostname(): string {
         return hostname();
+    }
+
+    resolveCity(geoLocation?: GeoLocation): string {
+        return geoLocation?.city ?? 'Unknown Location';
+    }
+
+    resolveDevice(userAgent: UserAgent): string {
+        const { device, os, browser } = userAgent;
+
+        if (device?.vendor && device?.model) {
+            return `${device.vendor} ${device.model}`;
+        }
+
+        if (os?.name) {
+            return os.name;
+        }
+
+        if (browser?.name) {
+            return browser.name;
+        }
+
+        return 'Unknown Device';
     }
 }

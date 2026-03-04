@@ -24,7 +24,6 @@ import { INotificationProcessorService } from '@modules/notification/interfaces/
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailUtil } from '@modules/notification/utils/notification.email.util';
 import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -43,8 +42,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
         private readonly configService: ConfigService,
         private readonly notificationPushUtil: NotificationPushUtil,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationEmailUtil: NotificationEmailUtil,
-        private readonly notificationUtil: NotificationUtil
+        private readonly notificationEmailUtil: NotificationEmailUtil
     ) {
         this.emailBatchSize = this.configService.get<number>('email.batchSize');
     }
@@ -266,6 +264,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 notificationId,
                 user.id,
                 user.username,
+                data.passwordExpiredAt,
                 proceedBy
             ),
             this.notificationEmailUtil.sendTemporaryPasswordByAdmin(
@@ -446,6 +445,12 @@ export class NotificationProcessorService implements INotificationProcessorServi
             username: user.username,
         };
 
+        const device = this.helperService.resolveDevice(
+            data.requestLog.userAgent
+        );
+        const city = this.helperService.resolveCity(
+            data.requestLog.geoLocation
+        );
         await Promise.all([
             this.notificationRepository.createNewDeviceLogin(
                 notificationId,
@@ -453,7 +458,9 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 user.username,
                 data.loginFrom,
                 data.loginWith,
-                data.requestLog.userAgent
+                device,
+                city,
+                data.loginAt
             ),
             this.notificationEmailUtil.sendNewDeviceLogin(emailPayload, data),
             this.notificationPushUtil.sendNewDeviceLogin(pushPayload, data),

@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { FirebaseStaleTokenThresholdInDays } from '@common/firebase/constants/firebase.constant';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
@@ -25,7 +26,8 @@ export class DeviceRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperService: HelperService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findWithPaginationOffsetByAdmin(
@@ -211,8 +213,9 @@ export class DeviceRepository {
                     create: {
                         action: EnumActivityLogAction.userDeviceRefresh,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -286,8 +289,10 @@ export class DeviceRepository {
                             userId,
                             action: EnumActivityLogAction.userRemoveDevice,
                             ipAddress,
-                            userAgent,
-                            geoLocation,
+                            userAgent:
+                                this.databaseUtil.toPlainObject(userAgent),
+                            geoLocation:
+                                this.databaseUtil.toPlainObject(geoLocation),
                             createdBy: removedBy,
                         },
                     }),
@@ -312,7 +317,6 @@ export class DeviceRepository {
             data: {
                 notificationToken: null,
                 notificationProvider: null,
-                lastActiveAt: null,
             },
         });
     }
@@ -327,7 +331,6 @@ export class DeviceRepository {
             data: {
                 notificationToken: null,
                 notificationProvider: null,
-                lastActiveAt: null,
             },
         });
     }
@@ -355,7 +358,6 @@ export class DeviceRepository {
             data: {
                 notificationToken: null,
                 notificationProvider: null,
-                lastActiveAt: null,
             },
         });
     }

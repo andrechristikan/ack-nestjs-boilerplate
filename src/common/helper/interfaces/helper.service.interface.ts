@@ -3,6 +3,7 @@ import {
     IHelperEmailValidation,
     IHelperPasswordOptions,
 } from '@common/helper/interfaces/helper.interface';
+import { GeoLocation, UserAgent } from '@generated/prisma-client';
 import { DateObjectUnits, DateTime, Duration, DurationLikeObject } from 'luxon';
 
 export interface IHelperService {
@@ -56,4 +57,6 @@ export interface IHelperService {
     dateBackward(date: Date, duration: Duration): Date;
     dateCreateDuration(duration: DurationLikeObject): Duration;
     dateDiff(dateOne: Date, dateTwo: Date): Duration;
+    resolveCity(geoLocation?: GeoLocation): string;
+    resolveDevice(userAgent: UserAgent): string;
 }

@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryCursorParams,
@@ -16,7 +17,8 @@ export class SessionRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperService: HelperService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findWithPaginationOffsetByAdmin(
@@ -148,8 +150,12 @@ export class SessionRepository {
                             create: {
                                 action: EnumActivityLogAction.userRevokeSession,
                                 ipAddress,
-                                userAgent,
-                                geoLocation,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                geoLocation:
+                                    this.databaseUtil.toPlainObject(
+                                        geoLocation
+                                    ),
                                 createdBy: userId,
                             },
                         },
@@ -185,8 +191,12 @@ export class SessionRepository {
                             create: {
                                 action: EnumActivityLogAction.userRevokeSessionByAdmin,
                                 ipAddress,
-                                userAgent,
-                                geoLocation,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                geoLocation:
+                                    this.databaseUtil.toPlainObject(
+                                        geoLocation
+                                    ),
                                 createdBy: revokedBy,
                             },
                         },

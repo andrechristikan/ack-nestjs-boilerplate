@@ -1449,7 +1449,10 @@ export class UserService implements IUserService {
     ): Promise<AuthTokenResponseDto> {
         const [{ tokens, sessionId, jti }, existDevice] = await Promise.all([
             this.authUtil.createTokens(user, loginFrom, loginWith),
-            this.deviceRepository.exist(user.id, device.fingerprint),
+            this.deviceRepository.existByFingerprint(
+                user.id,
+                device.fingerprint
+            ),
         ]);
         const loginAt = this.helperService.dateCreate();
         const expiredAt = this.helperService.dateForward(

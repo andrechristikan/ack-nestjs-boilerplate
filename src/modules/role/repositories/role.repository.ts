@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -16,7 +17,8 @@ import { Prisma, Role } from '@prisma/client';
 export class RoleRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findWithPaginationOffsetByAdmin(
@@ -110,9 +112,7 @@ export class RoleRepository {
         return this.databaseService.role.create({
             data: {
                 name: name,
-                abilities: abilities.map(ability => ({
-                    ...ability,
-                })),
+                abilities: this.databaseUtil.toPlainArray(abilities),
                 ...others,
             },
         });
@@ -125,9 +125,7 @@ export class RoleRepository {
         return this.databaseService.role.update({
             where: { id },
             data: {
-                abilities: abilities.map(ability => ({
-                    ...ability,
-                })),
+                abilities: this.databaseUtil.toPlainArray(abilities),
                 ...others,
             },
         });

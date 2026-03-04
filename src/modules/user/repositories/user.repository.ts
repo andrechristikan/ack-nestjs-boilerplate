@@ -446,15 +446,27 @@ export class UserRepository {
                                 {
                                     action: EnumActivityLogAction.userCreated,
                                     ipAddress,
-                                    userAgent,
-                                    geoLocation,
+                                    userAgent:
+                                        this.databaseUtil.toPlainObject(
+                                            userAgent
+                                        ),
+                                    geoLocation:
+                                        this.databaseUtil.toPlainObject(
+                                            geoLocation
+                                        ),
                                     createdBy,
                                 },
                                 {
                                     action: EnumActivityLogAction.userSendVerificationEmail,
                                     ipAddress,
-                                    userAgent,
-                                    geoLocation,
+                                    userAgent:
+                                        this.databaseUtil.toPlainObject(
+                                            userAgent
+                                        ),
+                                    geoLocation:
+                                        this.databaseUtil.toPlainObject(
+                                            geoLocation
+                                        ),
                                     createdBy,
                                 },
                             ],
@@ -516,8 +528,9 @@ export class UserRepository {
                                 ? EnumActivityLogAction.userBlocked
                                 : EnumActivityLogAction.userUpdateStatus,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: updatedBy,
                     },
                 },
@@ -540,8 +553,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userUpdateProfile,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -563,8 +577,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userUpdatePhotoProfile,
                         ipAddress: ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -588,8 +603,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userDeleteSelf,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                         createdAt: deletedAt,
                     },
@@ -656,8 +672,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userAddMobileNumber,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -715,8 +732,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userUpdateMobileNumber,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -753,8 +771,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userDeleteMobileNumber,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -789,8 +808,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userClaimUsername,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -830,8 +850,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userUpdatePasswordByAdmin,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: updatedBy,
                     },
                 },
@@ -902,8 +923,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userChangePassword,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -963,6 +985,16 @@ export class UserRepository {
 
         return this.databaseService.$transaction(
             async (tx: Prisma.TransactionClient) => {
+                await tx.device.updateMany({
+                    where: {
+                        notificationToken,
+                    },
+                    data: {
+                        notificationToken: null,
+                        notificationProvider: null,
+                    },
+                });
+
                 const user = await tx.user.update({
                     where: { id: userId, deletedAt: null },
                     data: {
@@ -1000,46 +1032,43 @@ export class UserRepository {
                             create: {
                                 action,
                                 ipAddress,
-                                userAgent,
-                                geoLocation,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                geoLocation:
+                                    this.databaseUtil.toPlainObject(
+                                        geoLocation
+                                    ),
                                 createdBy: userId,
                             },
                         },
                     },
                 });
 
-                await Promise.all([
-                    tx.session.create({
-                        data: {
-                            id: sessionId,
-                            jti,
-                            expiredAt,
-                            isRevoked: false,
-                            ipAddress,
-                            userAgent,
-                            geoLocation,
-                            device: {
-                                connect: {
-                                    userId_fingerprint: {
-                                        userId,
-                                        fingerprint,
-                                    },
+                await tx.session.create({
+                    data: {
+                        id: sessionId,
+                        jti,
+                        expiredAt,
+                        isRevoked: false,
+                        ipAddress,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
+                        user: {
+                            connect: {
+                                id: userId,
+                            },
+                        },
+                        device: {
+                            connect: {
+                                userId_fingerprint: {
+                                    userId,
+                                    fingerprint,
                                 },
                             },
                         },
-                    }),
-                    tx.device.updateMany({
-                        where: {
-                            notificationToken,
-                            NOT: {
-                                userId: userId,
-                            },
-                        },
-                        data: {
-                            notificationToken: null,
-                        },
-                    }),
-                ]);
+                    },
+                });
 
                 return user;
             }
@@ -1108,8 +1137,10 @@ export class UserRepository {
                         create: {
                             action: EnumActivityLogAction.userCreated,
                             ipAddress,
-                            userAgent,
-                            geoLocation,
+                            userAgent:
+                                this.databaseUtil.toPlainObject(userAgent),
+                            geoLocation:
+                                this.databaseUtil.toPlainObject(geoLocation),
                             createdBy: userId,
                         },
                     },
@@ -1168,8 +1199,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userVerifiedEmail,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -1255,15 +1287,27 @@ export class UserRepository {
                                 {
                                     action: EnumActivityLogAction.userSignedUp,
                                     ipAddress,
-                                    userAgent,
-                                    geoLocation,
+                                    userAgent:
+                                        this.databaseUtil.toPlainObject(
+                                            userAgent
+                                        ),
+                                    geoLocation:
+                                        this.databaseUtil.toPlainObject(
+                                            geoLocation
+                                        ),
                                     createdBy: userId,
                                 },
                                 {
                                     action: EnumActivityLogAction.userSendVerificationEmail,
                                     ipAddress,
-                                    userAgent,
-                                    geoLocation,
+                                    userAgent:
+                                        this.databaseUtil.toPlainObject(
+                                            userAgent
+                                        ),
+                                    geoLocation:
+                                        this.databaseUtil.toPlainObject(
+                                            geoLocation
+                                        ),
                                     createdBy: userId,
                                 },
                             ],
@@ -1337,8 +1381,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userForgotPassword,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -1396,8 +1441,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userResetPassword,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -1450,8 +1496,12 @@ export class UserRepository {
                             create: {
                                 action: EnumActivityLogAction.userVerifiedEmail,
                                 ipAddress,
-                                userAgent,
-                                geoLocation,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                geoLocation:
+                                    this.databaseUtil.toPlainObject(
+                                        geoLocation
+                                    ),
                                 createdBy: userId,
                             },
                         },
@@ -1505,8 +1555,14 @@ export class UserRepository {
                                 create: {
                                     action: EnumActivityLogAction.userSendVerificationEmail,
                                     ipAddress,
-                                    userAgent,
-                                    geoLocation,
+                                    userAgent:
+                                        this.databaseUtil.toPlainObject(
+                                            userAgent
+                                        ),
+                                    geoLocation:
+                                        this.databaseUtil.toPlainObject(
+                                            geoLocation
+                                        ),
                                     createdBy: userId,
                                 },
                             },
@@ -1548,8 +1604,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userRefreshToken,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -1569,8 +1626,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userReachMaxPasswordAttempt,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -1600,8 +1658,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userVerifyTwoFactor,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                         createdAt: now,
                     },
@@ -1637,8 +1696,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userSetupTwoFactor,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                         createdAt: now,
                     },
@@ -1683,8 +1743,10 @@ export class UserRepository {
                         create: {
                             action: EnumActivityLogAction.userEnableTwoFactor,
                             ipAddress,
-                            userAgent,
-                            geoLocation,
+                            userAgent:
+                                this.databaseUtil.toPlainObject(userAgent),
+                            geoLocation:
+                                this.databaseUtil.toPlainObject(geoLocation),
                             createdBy: userId,
                             createdAt: now,
                         },
@@ -1723,8 +1785,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userDisableTwoFactor,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                         createdAt: now,
                     },
@@ -1758,8 +1821,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                         createdAt: now,
                     },
@@ -1796,8 +1860,9 @@ export class UserRepository {
                     create: {
                         action: EnumActivityLogAction.adminUserResetTwoFactor,
                         ipAddress,
-                        userAgent,
-                        geoLocation,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: updatedBy,
                         createdAt: now,
                     },
@@ -1927,15 +1992,27 @@ export class UserRepository {
                                             {
                                                 action: EnumActivityLogAction.userCreated,
                                                 ipAddress,
-                                                userAgent,
-                                                geoLocation,
+                                                userAgent:
+                                                    this.databaseUtil.toPlainObject(
+                                                        userAgent
+                                                    ),
+                                                geoLocation:
+                                                    this.databaseUtil.toPlainObject(
+                                                        geoLocation
+                                                    ),
                                                 createdBy,
                                             },
                                             {
                                                 action: EnumActivityLogAction.userSendVerificationEmail,
                                                 ipAddress,
-                                                userAgent,
-                                                geoLocation,
+                                                userAgent:
+                                                    this.databaseUtil.toPlainObject(
+                                                        userAgent
+                                                    ),
+                                                geoLocation:
+                                                    this.databaseUtil.toPlainObject(
+                                                        geoLocation
+                                                    ),
                                                 createdBy,
                                             },
                                         ],

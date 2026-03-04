@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
@@ -20,7 +21,6 @@ import {
     Notification,
     NotificationUserSetting,
     Prisma,
-    UserAgent,
 } from '@prisma/client';
 
 @Injectable()
@@ -28,7 +28,8 @@ export class NotificationRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findWithPaginationCursor(
@@ -171,6 +172,7 @@ export class NotificationRepository {
         notificationId: string,
         userId: string,
         username: string,
+        passwordExpiredAt: Date,
         createdBy: string
     ): Promise<Notification> {
         return this.databaseService.notification.create({
@@ -180,7 +182,7 @@ export class NotificationRepository {
                 title: 'notification.notify.temporaryPasswordByAdmin.title',
                 body: 'notification.notify.temporaryPasswordByAdmin.body',
                 userId,
-                metadata: { username },
+                metadata: { username, passwordExpiredAt },
                 isRead: false,
                 priority: EnumNotificationPriority.critical,
                 createdBy,
@@ -413,7 +415,9 @@ export class NotificationRepository {
         username: string,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        userAgent: UserAgent
+        device: string,
+        city: string,
+        loginAt: Date
     ): Promise<Notification> {
         return this.databaseService.notification.create({
             data: {
@@ -422,7 +426,14 @@ export class NotificationRepository {
                 title: 'notification.notify.newDeviceLogin.title',
                 body: 'notification.notify.newDeviceLogin.body',
                 userId,
-                metadata: { username, loginFrom, loginWith, userAgent },
+                metadata: {
+                    username,
+                    loginFrom,
+                    loginWith,
+                    device,
+                    city,
+                    loginAt,
+                },
                 isRead: false,
                 priority: EnumNotificationPriority.critical,
                 createdBy: userId,
@@ -550,8 +561,10 @@ export class NotificationRepository {
                         create: {
                             action: EnumActivityLogAction.userUpdateNotificationSetting,
                             ipAddress,
-                            userAgent,
-                            geoLocation,
+                            userAgent:
+                                this.databaseUtil.toPlainObject(userAgent),
+                            geoLocation:
+                                this.databaseUtil.toPlainObject(geoLocation),
                             createdBy: userId,
                         },
                     },

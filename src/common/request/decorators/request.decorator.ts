@@ -16,7 +16,7 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { RealIp } from 'nestjs-real-ip';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { UAParser } from 'ua-parser-js';
-import RequestIp from '@supercharge/request-ip';
+import { getClientIp } from '@supercharge/request-ip';
 import geoIp from 'geoip-lite';
 import { GeoLocation } from '@generated/prisma-client';
 
@@ -66,7 +66,7 @@ export const RequestIPAddress = RealIp;
 export const RequestGeoLocation = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): GeoLocation | null => {
         const request = ctx.switchToHttp().getRequest<IRequestApp>();
-        const ip = RequestIp.getClientIp(request);
+        const ip = getClientIp(request);
 
         if (!ip) {
             return null;

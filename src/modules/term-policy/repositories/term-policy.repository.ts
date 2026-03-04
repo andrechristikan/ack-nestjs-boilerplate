@@ -194,8 +194,10 @@ export class TermPolicyRepository {
                         create: {
                             action: EnumActivityLogAction.userAcceptTermPolicy,
                             ipAddress,
-                            userAgent,
-                            geoLocation,
+                            userAgent:
+                                this.databaseUtil.toPlainObject(userAgent),
+                            geoLocation:
+                                this.databaseUtil.toPlainObject(geoLocation),
                             createdBy: user.id,
                             metadata: {
                                 termPolicyType: type,
