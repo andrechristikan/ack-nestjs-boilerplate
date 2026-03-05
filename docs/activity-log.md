@@ -60,6 +60,7 @@ Each activity log contains:
 - **action** - Type of activity (enum)
 - **ipAddress** - Request IP address
 - **userAgent** - Browser/device info (JSON)
+- **geoLocation** - Geographic location derived from IP address (optional, JSON) — contains `latitude`, `longitude`, `country`, `region`, `city`
 - **metadata** - Additional context (optional, JSON)
 - **createdAt** - Timestamp
 
@@ -110,6 +111,13 @@ async blockUser(userId: string): Promise<IResponseReturn> {
 {
   "userId": "admin-id",
   "action": "adminUserUpdateStatus",
+  "geoLocation": {
+    "latitude": -6.2,
+    "longitude": 106.8,
+    "country": "ID",
+    "region": "JK",
+    "city": "Jakarta"
+  },
   "metadata": {
     "userId": "user-123",
     "userName": "John Doe",
@@ -187,6 +195,13 @@ async blockUser(userId: string): Promise<IResponseReturn> {
   "action": "adminUserUpdateStatus",
   "ipAddress": "192.168.1.1",
   "userAgent": { ... },
+  "geoLocation": {
+    "latitude": -6.2,
+    "longitude": 106.8,
+    "country": "ID",
+    "region": "JK",
+    "city": "Jakarta"
+  },
   "metadata": {
     "userId": "user-123",
     "userName": "John Doe",

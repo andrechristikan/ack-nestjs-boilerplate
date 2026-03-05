@@ -110,11 +110,11 @@ Documents request specifications including body, parameters, and queries.
 
 ```typescript
 enum EnumDocRequestBodyType {
-    JSON = 'json',
-    FORM_DATA = 'formData',
-    FORM_URLENCODED = 'formUrlencoded',
-    TEXT = 'text',
-    NONE = 'none',
+    json = 'json',
+    formData = 'formData',
+    formUrlencoded = 'formUrlencoded',
+    text = 'text',
+    none = 'none',
 }
 ```
 
@@ -140,7 +140,7 @@ enum EnumDocRequestBodyType {
             type: 'string'
         }
     ],
-    bodyType: EnumDocRequestBodyType.JSON,
+    bodyType: EnumDocRequestBodyType.json,
     dto: UpdateUserDto
 })
 @Put('/:id')
@@ -267,7 +267,7 @@ async getUsers() {
 // Cursor pagination
 @DocResponsePaging<UserListResponseDto>('user.list', {
     dto: UserListResponseDto,
-    type: EnumPaginationType.CURSOR,
+    type: EnumPaginationType.cursor,
     availableSearch: ['name', 'email'],
     availableOrder: ['createdAt', 'name']
 })
@@ -285,7 +285,7 @@ Documents file download/response endpoints.
 
 - `options?: IDocResponseFileOptions`
   - `httpStatus?: HttpStatus` - HTTP status (default: 200)
-  - `extension?: EnumFileExtension` - File extension (default: CSV)
+  - `extension?: EnumFileExtensionDocument` - File extension (default: CSV)
 
 **Usage:**
 
@@ -628,7 +628,7 @@ export function UserPublicSignUpDoc(): MethodDecorator {
             summary: 'User sign up',
         }),
         DocRequest({
-            bodyType: EnumDocRequestBodyType.JSON,
+            bodyType: EnumDocRequestBodyType.json,
             dto: UserSignUpRequestDto,
         }),
         DocAuth({

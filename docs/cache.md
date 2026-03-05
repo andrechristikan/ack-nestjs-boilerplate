@@ -77,9 +77,9 @@ CommonModule
     │   └── Uses: RedisClientCachedProvider
     │   └── Provides: CacheMainProvider
     │
-    └── SessionModule
+    └── SessionModule (Global)
         └── Uses: RedisClientCachedProvider
-        └── Provides: SessionCacheProvider (Scoped)
+        └── Provides: SessionCacheProvider
 ```
 
 ### RedisCacheModule
@@ -128,7 +128,7 @@ export class UserService {
 
 **Provider:** `SessionCacheProvider`
 
-**Scope:** Module-scoped (only within SessionModule)
+**Scope:** Global (available everywhere)
 
 **Depends on:** `RedisClientCachedProvider` (shares same Redis connection)
 
@@ -140,11 +140,6 @@ export class SessionService {
     ) {}
 }
 ```
-
-**Why Scoped?**
-- Sessions are domain-specific
-- Prevents accidental usage outside session context
-- Still uses shared Redis connection (resource efficient)
 
 ## Configuration
 

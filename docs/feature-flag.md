@@ -25,7 +25,7 @@ Feature flag module provides dynamic feature management for controlling applicat
 
 ## Features
 
-Feature flags provided in `src/migration/feature-flag.ts`:
+Feature flags provided in `src/migration/data/migration.feature-flag.data.ts`:
 
 | Key | Description | Rollout | Metadata |
 |-----|-------------|---------|----------|
@@ -109,15 +109,15 @@ export class AuthController {
 @Injectable()
 export class YourService {
   constructor(
-    private readonly featureFlagService: FeatureFlagService
+    private readonly featureFlagUtil: FeatureFlagUtil
   ) {}
 
   async example() {
     // Get feature flag with cache
-    const flag = await this.featureFlagService.findOneByKeyAndCache('loginWithGoogle');
+    const flag = await this.featureFlagUtil.getByKeyAndCache('loginWithGoogle');
     
     // Get metadata only
-    const metadata = await this.featureFlagService.findOneMetadataByKeyAndCache('changePassword');
+    const metadata = await this.featureFlagUtil.getMetadataByKeyAndCache('changePassword');
   }
 }
 ```
@@ -179,7 +179,7 @@ Feature flags are cached for performance. Configuration in `src/configs/feature-
 ```typescript
 {
   cachePrefixKey: 'FeatureFlag',
-  cacheTtlMs: 3600  // 1 hour
+  cacheTtlMs: 3600000  // 1 hour
 }
 ```
 

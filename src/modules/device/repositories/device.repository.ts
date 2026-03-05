@@ -243,10 +243,16 @@ export class DeviceRepository {
         return this.databaseService.$transaction(
             async (tx: Prisma.TransactionClient) => {
                 const today = this.helperService.dateCreate();
-                const device = await tx.device.delete({
+                const device = await tx.device.update({
                     where: {
                         id: deviceId,
                         userId,
+                    },
+                    data: {
+                        notificationToken: null,
+                        notificationProvider: null,
+                        lastActiveAt: today,
+                        updatedBy: removedBy,
                     },
                     include: {
                         user: true,
@@ -269,11 +275,6 @@ export class DeviceRepository {
                 await Promise.all([
                     tx.session.updateMany({
                         where: {
-                            isRevoked: false,
-                            revokedAt: null,
-                            expiredAt: {
-                                gt: today,
-                            },
                             device: {
                                 id: deviceId,
                             },
@@ -317,20 +318,7 @@ export class DeviceRepository {
             data: {
                 notificationToken: null,
                 notificationProvider: null,
-            },
-        });
-    }
-
-    async cleanupTokens(tokens: string[]): Promise<Prisma.BatchPayload> {
-        return this.databaseService.device.updateMany({
-            where: {
-                notificationToken: {
-                    in: tokens,
-                },
-            },
-            data: {
-                notificationToken: null,
-                notificationProvider: null,
+                updatedBy: userId,
             },
         });
     }

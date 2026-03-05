@@ -260,7 +260,9 @@ model Device {
   notificationProvider EnumDeviceNotificationProvider?
 
   createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
 
   user     User      @relation("UserDevices", fields: [userId], references: [id])
   sessions Session[] @relation("DeviceSessions")

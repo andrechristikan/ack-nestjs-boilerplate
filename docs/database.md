@@ -114,8 +114,8 @@ Template seeding uses the same script and commands as Database Seeds, but is spe
 Every time you run the email template seed, the templates will be inserted into AWS SES automatically.
 
 **How to Run Email Template Seeds:**
-- Seed: `pnpm migration template-email --type seed`
-- Remove: `pnpm migration template-email --type remove`
+- Seed: `pnpm migration template-email-notification --type seed`
+- Remove: `pnpm migration template-email-notification --type remove`
 
 #### Term Policy Templates
 
@@ -123,7 +123,7 @@ Every time you run the term policy template seed, the policy documents will be l
 
 **How to Run Term Policy Template Seeds:**
 - Seed: `pnpm migration template-termPolicy --type seed`
-- Remove: `pnpm migration template-termPolicy --type remove`
+- Remove: `pnpm migration template-termPolicy --type remove` *(no-op — term policy removal is intentionally skipped)*
 
 
 ### AWS S3 Configuration Seed

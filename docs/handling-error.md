@@ -26,10 +26,9 @@ The error handling system provides comprehensive exception management using Nest
 - [Response Metadata](#response-metadata)
 - [Response Headers](#response-headers)
 - [Usage](#usage)
-  - [Standard HTTP Exception](#standard-http-exception)
+  - [Error with Default HTTP Exception](#error-with-default-http-exception)
   - [Custom Error with Message Properties](#custom-error-with-message-properties)
   - [Custom Error with Additional Data](#custom-error-with-additional-data)
-  - [Custom Error with Metadata](#custom-error-with-metadata)
 
 ## Exception Filters
 
@@ -164,11 +163,13 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 **Custom exception support**: Extracts custom properties if exception response implements `IAppException`:
 ```typescript
 interface IAppException<T = unknown> {
-  statusCode: number;           // Custom status code
-  message: string;              // Message path for i18n
-  messageProperties?: object;   // Variables for message interpolation
-  data?: T;                     // Additional error context
-  metadata?: object;            // Additional metadata to merge
+  statusCode: number;                         // Custom status code
+  message: string;                            // Message path for i18n
+  messageProperties?: Record<string, string | number>; // Variables for message interpolation
+  data?: T;                                   // Additional error context
+  metadata?: Record<string, string | number>; // Additional metadata to merge into response
+  errors?: IMessageValidationError[];         // Optional validation error details
+  _error?: unknown;                           // Internal error object (not serialized)
 }
 ```
 

@@ -1018,6 +1018,7 @@ export class UserRepository {
                                     notificationProvider,
                                     notificationToken,
                                     lastActiveAt: today,
+                                    createdBy: userId,
                                 },
                                 update: {
                                     name,
@@ -1025,6 +1026,7 @@ export class UserRepository {
                                     notificationProvider,
                                     notificationToken,
                                     lastActiveAt: today,
+                                    updatedBy: userId,
                                 },
                             },
                         },

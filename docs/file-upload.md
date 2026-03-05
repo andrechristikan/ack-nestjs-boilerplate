@@ -2,7 +2,7 @@
 
 This documentation explains the features and usage of:
 - **File Module**: Located at `src/common/file`
-- **Aws S3 Module**: Located at `src/modules/aws` 
+- **Aws S3 Module**: Located at `src/common/aws` 
 
 ## Overview
 
@@ -62,7 +62,7 @@ Handles multiple files upload with the same field name.
 
 **Parameters:**
 - `options.field` (optional): Field name in form-data (default: `'files'`)
-- `options.maxFiles` (optional): Maximum number of files (default: `2`)
+- `options.maxFiles` (optional): Maximum number of files (default: `3`)
 - `options.fileSize` (optional): Maximum file size per file in bytes (default: `FileSizeInBytes`)
 
 **Example:**
@@ -398,7 +398,11 @@ Thrown during CSV validation with detailed error context. This exception provide
   message: string;
   errors: Array<{
     row: number;           // Row index (0-based)
-    errors: ValidationError[];  // class-validator errors
+    errors: Array<{
+      key: string;         // Constraint name (e.g. 'isEmail', 'min')
+      property: string;    // DTO property name
+      message: string;     // Translated error message
+    }>;
   }>;
 }
 ```
@@ -408,8 +412,8 @@ Thrown during CSV validation with detailed error context. This exception provide
 | Error Type | Status Code | Message | Description |
 |------------|-------------|---------|-------------|
 | Invalid Extension | 5011 | `file.error.extensionInvalid` | File extension not in allowed list |
-| Empty File | 422 | `Unprocessable Entity` | File buffer is empty or missing |
-| Invalid Format | 415 | `Unsupported Media Type` | File format not supported (CSV) |
+| Empty File | 5010 | `file.error.required` | File buffer is empty or missing |
+| Invalid Format | 5011 | `file.error.extensionInvalid` | File passed to CSV pipe is not a `.csv` file |
 | Validation Failed | 5030 | `file.error.validationDto` | DTO validation failed with details |
 
 **Error Response Examples:**
@@ -430,16 +434,14 @@ Thrown during CSV validation with detailed error context. This exception provide
       "row": 0,
       "errors": [
         {
+          "key": "isEmail",
           "property": "email",
-          "constraints": {
-            "isEmail": "email must be an email"
-          }
+          "message": "email must be a valid email address"
         },
         {
+          "key": "min",
           "property": "age",
-          "constraints": {
-            "min": "age must not be less than 18"
-          }
+          "message": "age must not be less than 18"
         }
       ]
     }

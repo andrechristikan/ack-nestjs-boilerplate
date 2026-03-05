@@ -23,6 +23,7 @@ Configuration for tokens, sessions, password, social providers, and API keys is 
 - [Cache Documentation][ref-doc-cache] - For understanding session storage and caching mechanisms
 - [Configuration Documentation][ref-doc-configuration] - For auth configuration details
 - [Environment Documentation][ref-doc-environment] - For JWT and OAuth environment variables
+- [Device Documentation][ref-doc-device] - For device management and its impact on session lifecycle
 
 ## Table of Contents
 
@@ -719,6 +720,51 @@ async loginApple(@AuthJwtPayload() payload: IAuthSocialPayload) {
 
 TOTP-based 2FA adds a second verification step to login. Tokens are only issued after the user passes 2FA.
 
+### Configuration
+
+Two-Factor settings are configured in `src/configs/auth.config.ts`:
+
+```typescript
+export default registerAs(
+    'auth',
+    (): IConfigAuth => ({
+        twoFactor: {
+            strategy: 'totp',          // OTP strategy (totp)
+            algorithm: 'sha1',         // Hash algorithm (sha1)
+            issuer: 'ACKNestJsTwoFactor',
+            digits: 6,
+            periodInSeconds: 30,       // Token validity window in seconds
+            window: 1,
+            secretLength: 32,
+            challengeTtlInMs: 300000,  // 5 minutes
+            cachePrefixKey: 'TwoFactor',
+            maxAttempt: 5,
+            lockAttemptDuration: 120000, // 2 minutes
+            backupCodes: {
+                count: 8,
+                length: 10,
+            },
+            encryption: {
+                key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY,
+            },
+        },
+    })
+);
+```
+
+**Configuration Options:**
+- `strategy`: OTP strategy — `totp` (time-based)
+- `algorithm`: Hash algorithm used for TOTP generation — `sha1`
+- `periodInSeconds`: Token validity window in seconds (default: `30`)
+- `digits`: Number of digits in the OTP code (default: `6`)
+- `window`: Number of time steps to allow before/after current period for clock drift tolerance (default: `1`)
+- `secretLength`: Length of the generated secret (default: `32`)
+- `challengeTtlInMs`: TTL for the challenge token in cache (default: `5m`)
+- `maxAttempt`: Max failed TOTP attempts before lockout (default: `5`)
+- `lockAttemptDuration`: Lockout duration after max attempts exceeded (default: `2m`)
+- `backupCodes.count`: Number of backup codes generated (default: `8`)
+- `backupCodes.length`: Length of each backup code (default: `10`)
+
 ### Flow
 
 ```mermaid
@@ -1012,8 +1058,16 @@ User:{userId}:Session:{sessionId}
 
 Used for session listing and management purposes.
 
+**Fields Stored:**
+- `jti` — JWT ID for session tracking
+- `ipAddress` — Client IP at login time
+- `userAgent` — Parsed user agent (browser, OS, device)
+- `geoLocation` — Geographic location derived from IP (optional) — `latitude`, `longitude`, `country`, `region`, `city`
+- `deviceId` — Reference to the `Device` record associated with this session
+- `expiredAt`, `revokedAt`, `isRevoked` — Lifecycle fields
+
 **When Updated:**
-- Created during login with initial jti
+- Created during login with initial jti (linked to a Device)
 - Updated when session jti is rotated during token refresh
 - Updated when session is revoked
 - Can be queried to show user's active sessions across devices
@@ -1234,6 +1288,7 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for providing the idea and co
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-presign]: presign.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-device]: device.md
 [ref-doc-two-factor]: two-factor.md
 
 <!-- CONTRIBUTOR -->

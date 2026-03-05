@@ -115,7 +115,7 @@ export class NotificationPushUtil {
     ): Promise<void> {
         if (invalidTokens.length > 0) {
             const payload: INotificationPushWorkerCleanupTokenPayload = {
-                data: { invalidTokens },
+                data: { invalidTokens, userId },
             };
 
             await this.notificationPushQueue.add(

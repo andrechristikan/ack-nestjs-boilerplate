@@ -298,14 +298,17 @@ export class NotificationPushProcessorService
 
     async processCleanupTokens({
         data: {
-            data: { invalidTokens },
+            data: { userId, invalidTokens },
         },
     }: Job<
         INotificationPushWorkerCleanupTokenPayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        const result = await this.deviceRepository.cleanupTokens(invalidTokens);
+        const result = await this.deviceRepository.cleanupTokensByIds(
+            userId,
+            invalidTokens
+        );
 
         return {
             message: `Processed token cleanup for invalid tokens`,

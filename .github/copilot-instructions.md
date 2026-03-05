@@ -9,7 +9,7 @@ This document provides instructions for GitHub Copilot to generate code that fol
 
 ## Project Overview
 
-ACK NestJS Boilerplate (v8.1.0+) is a comprehensive authentication and authorization service built with NestJS v11.x. It uses:
+ACK NestJS Boilerplate (v8.2.0+) is a comprehensive authentication and authorization service built with NestJS v11.x. It uses:
 - **Prisma ORM** for database operations (MongoDB with replication set)
 - **PNPM** as the package manager
 - **Repository Design Pattern** for data access layer
