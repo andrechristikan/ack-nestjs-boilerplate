@@ -63,7 +63,7 @@ Located in `src/configs/auth.config.ts`:
 |---------|-------|-------------|
 | `issuer` | `YourAppName` | Displayed in authenticator apps |
 | `digits` | `6` | TOTP code length (standard) |
-| `step` | `30` | Time window in seconds |
+| `periodInSeconds` | `30` | Time window in seconds |
 | `window` | `1` | Clock skew tolerance (±30 seconds) |
 | `secretLength` | `32` | Base32 secret length |
 | `challengeTtlInMs` | `300000` | Challenge token TTL (5 minutes) |
@@ -156,7 +156,7 @@ After 7th failed attempt (attempt=7):
 - `POST /shared/user/2fa/regenerate-backup-codes` - Regenerate backup codes
 
 **Password Operations (require 2FA if enabled):**
-- `PUT /shared/user/password/change` - **Change password (requires 2FA verification if enabled)**
+- `PATCH /shared/user/change-password` - **Change password (requires 2FA verification if enabled)**
 
 ### Public Endpoints
 **Login Flow:**
@@ -393,7 +393,7 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: PUT /shared/user/password/change<br/>{oldPassword, newPassword, code/backupCode, method}
+    User->>API: PATCH /shared/user/change-password<br/>{oldPassword, newPassword, code/backupCode, method}
     API->>Database: Verify old password
     alt Old Password Invalid
         API->>User: Error: Password not match (400)

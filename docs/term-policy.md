@@ -382,7 +382,7 @@ flowchart TD
 Template migration seed available at:
 
 ```
-src/migration/seeds/migration.template-term-policy.seed.ts
+src/migration/seeds/migration.template.seed.ts
 ```
 
 This seed file provides:

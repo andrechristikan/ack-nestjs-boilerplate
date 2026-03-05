@@ -17,8 +17,6 @@ AWS S3 presigned URLs provide secure, time-limited access to S3 objects without 
 - [Related Documents](#related-documents)
 - [AWS S3 Presigned URL Get](#aws-s3-presigned-url-get)
 - [AWS S3 Presigned URL Upload](#aws-s3-presigned-url-upload)
-- [Error Handling](#error-handling)
-- [Troubleshooting](#troubleshooting)
 
 ## AWS S3 Presigned URL Get
 
@@ -29,7 +27,7 @@ AWS S3 presigned URLs for downloads enable secure, temporary access to private S
 1. Client requests a presigned URL from the backend with the file key
 2. Backend validates user authorization and generates a time-limited presigned URL
 3. Client downloads the file directly from S3 using the presigned URL via HTTP GET
-4. URL expires after the configured time period (default: 1 hour)
+4. URL expires after the configured time period (default: **30 minutes**, hardcoded as `presignExpired: 30 * 60` in `aws.config.ts`)
 
 ### Implementation
 
@@ -178,7 +176,7 @@ const presign = await awsS3Service.presignGetItem(
   }
 );
 
-// Example 2: Generate presign URL with default expiration (1 hour)
+// Example 2: Generate presign URL with default expiration (30 minutes)
 const presign = await awsS3Service.presignGetItem(
   'user/456/images/banner.jpg',
   {
@@ -212,7 +210,7 @@ sequenceDiagram
         
         Backend->>AwsS3Service: presignGetItem(key, options)
         AwsS3Service->>S3: Request presigned URL
-        S3-->>AwsS3Service: Presigned URL (1 hour expiry)
+        S3-->>AwsS3Service: Presigned URL (expires per config, default 30 min)
         AwsS3Service-->>Backend: AwsS3PresignDto
         Backend-->>Client: {presignUrl, key, mime, expiredIn}
         
@@ -242,6 +240,8 @@ AWS S3 presigned URLs enable secure client-side direct uploads to S3 without exp
 3. Client uploads the file **directly to S3** using the presigned URL via HTTP PUT
 4. Client notifies the backend of successful upload with the S3 key
 5. Backend saves file reference to database with audit trail
+
+> **Default expiration:** 30 minutes (`presignExpired: 30 * 60` seconds, hardcoded in `aws.config.ts`). Override per-call via the `expired` option.
 
 ### Implementation
 
@@ -323,7 +323,7 @@ export class UserController {
     @AuthJwtPayload('userId') userId: string,
     @Body() body: UserUpdateProfilePhotoRequestDto,
     @RequestIPAddress() ipAddress: string,
-    @RequestUserAgent() userAgent: RequestUserAgentDto
+    @RequestUserAgent() userAgent: UserAgent
   ): Promise<IResponseReturn<void>> {
     return this.userService.updatePhotoProfile(userId, body, {
       ipAddress,
@@ -354,13 +354,13 @@ export class UserService {
       extension,
     });
 
-    // Generate presigned URL (1 hour expiration, auto-encrypted)
+    // Generate presigned URL (explicit 1 hour expiration, auto-encrypted)
     const presign: AwsS3PresignDto = await this.awsS3Service.presignPutItem(
       { key, size },
       { 
         forceUpdate: true,
         access: EnumAwsS3Accessibility.private,
-        expired: 3600 // 1 hour
+        expired: 3600 // 1 hour (default is 30 min from config)
       }
     );
 
@@ -473,7 +473,7 @@ sequenceDiagram
     Backend->>AwsS3Service: presignPutItem(key, size, options)
     Note over AwsS3Service: Add ServerSideEncryption: AES256
     AwsS3Service->>S3: Request presigned URL
-    S3-->>AwsS3Service: Presigned URL (1 hour expiry)
+    S3-->>AwsS3Service: Presigned URL (expires per config, default 30 min)
     AwsS3Service-->>Backend: AwsS3PresignDto
     Backend-->>Client: {presignUrl, key, mime, expiredIn}
     

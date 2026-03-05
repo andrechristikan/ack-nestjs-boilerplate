@@ -6,7 +6,7 @@ This documentation explains the features and usage of **Queue Module**: Located 
 
 Queue module for background job processing using [BullMQ][ref-bullmq] and [Redis][ref-redis]. This module implements a DRY design pattern with singleton Redis connections for efficient resource management.
 
-All queue configurations are centralized in `src/config/redis.config.ts`, with root setup and management located in `src/queues`.
+All queue configurations are centralized in `src/configs/redis.config.ts`, with root setup and management located in `src/queues`.
 
 ## Related Documents
 
@@ -36,7 +36,7 @@ All queue configurations are centralized in `src/config/redis.config.ts`, with r
 
 ## Configuration
 
-Queue configuration is managed in `src/config/redis.config.ts`:
+Queue configuration is managed in `src/configs/redis.config.ts`:
 
 ```typescript
 export interface IConfigRedis {
@@ -65,12 +65,14 @@ The queue system consists of:
 
 Currently available queues defined in `src/queues/enums/queue.enum.ts`:
 
-- `EnumQueue.email`: Email processing queue
+- `EnumQueue.notification`: General notification processing queue
+- `EnumQueue.notificationEmail`: Email notification processing queue
+- `EnumQueue.notificationPush`: Push notification processing queue
 
-Queue priorities:
-- `HIGH`: 1
-- `MEDIUM`: 5
-- `LOW`: 10
+Queue priorities defined in `EnumQueuePriority`:
+- `high`: 1
+- `medium`: 5
+- `low`: 10
 
 ## Usage
 
@@ -79,19 +81,23 @@ Queue priorities:
 Inject the queue into your service:
 
 ```typescript
-export class YourService {
+@Injectable()
+export class NotificationPushUtil {
     constructor(
-        @InjectQueue(EnumQueue.email) 
-        private readonly emailQueue: Queue
+        @InjectQueue(EnumQueue.notificationPush)
+        private readonly notificationPushQueue: Queue
     ) {}
 
-    async sendEmail(data: EmailWorkerDto<unknown>): Promise<void> {
-        await this.emailQueue.add(
-            EnumEmailProcess.welcome,
-            data,
+    async sendNewDeviceLogin(payload: INotificationPushWorkerPayload): Promise<void> {
+        await this.notificationPushQueue.add(
+            EnumNotificationPushProcess.newDeviceLogin,
+            payload,
             {
-                priority: EnumQueueProperty.high,
-                attempts: 3,
+                priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationPushProcess.newDeviceLogin}-${payload.send.userId}`,
+                    ttl: 1000,
+                },
             }
         );
     }
@@ -122,8 +128,10 @@ You can override these options when adding jobs to the queue.
 
 ```typescript
 export enum EnumQueue {
-    email = 'email',
-    notification = 'notification', // New queue
+    notification = 'notification',
+    notificationEmail = 'notificationEmail',
+    notificationPush = 'notificationPush',
+    yourQueue = 'yourQueue', // New queue
 }
 ```
 
@@ -132,8 +140,9 @@ export enum EnumQueue {
 ```typescript
 static forRoot(): DynamicModule {
     const queues = [
+        // ... existing queues
         BullModule.registerQueue({
-            name: EnumQueue.email,
+            name: EnumQueue.yourQueue,
             configKey: QueueConfigKey,
             defaultJobOptions: {
                 attempts: 3,
@@ -143,20 +152,6 @@ static forRoot(): DynamicModule {
                 },
                 removeOnComplete: 20,
                 removeOnFail: 50,
-            },
-        }),
-        // Add new queue
-        BullModule.registerQueue({
-            name: EnumQueue.notification,
-            configKey: QueueConfigKey,
-            defaultJobOptions: {
-                attempts: 5,
-                backoff: {
-                    type: 'fixed',
-                    delay: 3000,
-                },
-                removeOnComplete: 10,
-                removeOnFail: 20,
             },
         }),
     ];
@@ -169,43 +164,32 @@ static forRoot(): DynamicModule {
 1. Create processor class extending `QueueProcessorBase`:
 
 ```typescript
-@QueueProcessor(EnumQueue.notification)
-export class NotificationProcessor extends QueueProcessorBase {
-    private readonly logger = new Logger(NotificationProcessor.name);
+@QueueProcessor(EnumQueue.notificationPush)
+export class NotificationPushProcessor extends QueueProcessorBase {
+    private readonly logger = new Logger(NotificationPushProcessor.name);
 
     constructor(
-        private readonly notificationService: NotificationService
+        private readonly notificationPushProcessorService: NotificationPushProcessorService
     ) {
         super();
     }
 
-    async process(job: Job<NotificationWorkerDto, unknown, string>): Promise<void> {
+    async process(
+        job: Job<unknown, IQueueResponse, EnumNotificationPushProcess>
+    ): Promise<IQueueResponse> {
         try {
-            const jobName = job.name;
-            
-            switch (jobName) {
-                case EnumNotificationProcess.sendPush:
-                    await this.processPushNotification(job.data);
-                    break;
-                case EnumNotificationProcess.sendSms:
-                    await this.processSms(job.data);
-                    break;
+            switch (job.name) {
+                case EnumNotificationPushProcess.newDeviceLogin:
+                    return this.notificationPushProcessorService.processNewDeviceLogin(
+                        job as Job<INotificationPushWorkerPayload, IQueueResponse>
+                    );
                 default:
-                    break;
+                    return { message: `No processor found for job ${job.name}` };
             }
         } catch (error: unknown) {
-            this.logger.error(error);
+            this.logger.error(error, 'Failed to process notification push job');
+            throw error;
         }
-
-        return;
-    }
-
-    async processPushNotification(data: NotificationDto): Promise<boolean> {
-        return this.notificationService.sendPush(data);
-    }
-
-    async processSms(data: NotificationDto): Promise<boolean> {
-        return this.notificationService.sendSms(data);
     }
 }
 ```
@@ -214,13 +198,12 @@ export class NotificationProcessor extends QueueProcessorBase {
 
 ```typescript
 @Module({
-    imports: [
-        EmailModule,
-        NotificationModule, // Add module
-    ],
+    imports: [],
     providers: [
-        EmailProcessor,
-        NotificationProcessor, // Add processor
+        NotificationEmailProcessor,
+        NotificationPushProcessor,
+        NotificationProcessor,
+        YourNewProcessor, // Add processor
     ],
 })
 export class QueueModule {}
@@ -255,6 +238,8 @@ export abstract class QueueProcessorBase extends WorkerHost {
             }
         }
     }
+
+    abstract process(job: Job): Promise<IQueueResponse>;
 }
 ```
 
@@ -318,7 +303,7 @@ Default credentials:
 Configuration in `docker-compose.yml`:
 ```yaml
 redis-bullboard:
-    image: deadly0/bull-board:3.2.6
+    image: venatum/bull-board:latest
     ports:
         - 3010:3000
     environment:
@@ -327,6 +312,7 @@ redis-bullboard:
         - BULL_PREFIX=Queue
         - USER_LOGIN=admin
         - USER_PASSWORD=admin123
+        - REDIS_DB=1
 ```
 
 

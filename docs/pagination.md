@@ -43,8 +43,7 @@ The module uses a pipe-based architecture with factory functions for maximum fle
             - [@PaginationQueryFilterEqualString](#paginationqueryfilterequalstring)
             - [@PaginationQueryFilterNotEqual<T>](#paginationqueryfilternotequalt)
             - [@PaginationQueryFilterDate](#paginationqueryfilterdate)
-        - [Ordering Decorator](#ordering-decorator)
-            - [@PaginationOrder](#paginationorder)
+        - [Ordering Configuration](#ordering-configuration)
 - [Pagination Strategies](#pagination-strategies)
     - [Offset-Based](#offset-based)
     - [Cursor-Based](#cursor-based)
@@ -75,11 +74,16 @@ Core service that processes pagination operations without redundant validation (
 Executes offset-based pagination.
 
 ```typescript
-async offset<TReturn>(
+async offset<TReturn, TArgsSelect = unknown, TArgsWhere = unknown>(
     repository: IPaginationRepository,
-    args: IPaginationQueryOffsetParams
+    args: IPaginationQueryOffsetParams<TArgsSelect, TArgsWhere>
 ): Promise<IPaginationOffsetReturn<TReturn>>
 ```
+
+**Type Parameters:**
+- `TReturn` — shape of each item in the returned `data` array
+- `TArgsSelect` — Prisma `select` type for the model (e.g. `Prisma.UserSelect`). Defaults to `unknown`
+- `TArgsWhere` — Prisma `where` type for the model (e.g. `Prisma.UserWhereInput`). Defaults to `unknown`
 
 **Parameters:**
 - `repository`: Repository instance implementing IPaginationRepository
@@ -109,11 +113,16 @@ async offset<TReturn>(
 Executes cursor-based pagination.
 
 ```typescript
-async cursor<TReturn>(
+async cursor<TReturn, TArgsSelect = unknown, TArgsWhere = unknown>(
     repository: IPaginationRepository,
-    args: IPaginationQueryCursorParams
+    args: IPaginationQueryCursorParams<TArgsSelect, TArgsWhere>
 ): Promise<IPaginationCursorReturn<TReturn>>
 ```
+
+**Type Parameters:**
+- `TReturn` — shape of each item in the returned `data` array
+- `TArgsSelect` — Prisma `select` type for the model (e.g. `Prisma.UserSelect`). Defaults to `unknown`
+- `TArgsWhere` — Prisma `where` type for the model (e.g. `Prisma.UserWhereInput`). Defaults to `unknown`
 
 **Parameters:**
 - `repository`: Repository instance
@@ -369,31 +378,36 @@ Filters by ISO date string with range operations.
 ```typescript
 PaginationQueryFilterDate(
     field: string,
-    options?: {
-        customField?: string,
-        type?: EnumPaginationFilterDateBetweenType,
-        dayOf?: DayOfOption
-    }
+    options?: IPaginationQueryFilterDateOptions
 )
+```
+
+**`IPaginationQueryFilterDateOptions`:**
+```typescript
+{
+    customField?: string;
+    type?: EnumPaginationFilterDateBetweenType;
+    dayOf?: EnumHelperDateDayOf;
+}
 ```
 
 **Parameters:**
 - `field`: Query parameter name
 - `options.type`:
-  - `START`: Greater than or equal (gte) - use for start date
-  - `END`: Less than or equal (lte) - use for end date
-  - Undefined: Equals - exact date match
-- `options.dayOf`: Day adjustment option
+  - `EnumPaginationFilterDateBetweenType.start`: Greater than or equal (`gte`) — use for start date
+  - `EnumPaginationFilterDateBetweenType.end`: Less than or equal (`lte`) — use for end date
+  - Undefined: Equals — exact date match
+- `options.dayOf`: Day adjustment option (`EnumHelperDateDayOf`)
 
 **Usage:**
 ```typescript
 @PaginationQueryFilterDate('createdAt', {
-    type: EnumPaginationFilterDateBetweenType.START
+    type: EnumPaginationFilterDateBetweenType.start
 })
 startDate?: Record<string, IPaginationDate>
 
 @PaginationQueryFilterDate('createdAt', {
-    type: EnumPaginationFilterDateBetweenType.END
+    type: EnumPaginationFilterDateBetweenType.end
 })
 endDate?: Record<string, IPaginationDate>
 ```
@@ -406,33 +420,26 @@ endDate?: Record<string, IPaginationDate>
 - Accepts ISO format (YYYY-MM-DD, ISO 8601 timestamps)
 - Throws `BadRequestException` (400) for invalid ISO date
 
-#### Ordering Decorator
+#### Ordering Configuration
 
-##### @PaginationOrder
+Ordering is **not** a standalone decorator. It is configured via the `availableOrderBy` option in `@PaginationOffsetQuery` or `@PaginationCursorQuery`. Internally, `PaginationOrderPipe` handles the validation and transformation.
 
-Decorator for field ordering.
-
-**Factory Function:**
+**Configuration:**
 ```typescript
-PaginationOrderPipe(defaultAvailableOrder?: string[]): Type<PipeTransform>
+@PaginationOffsetQuery({
+    availableOrderBy: ['createdAt', 'name', 'email']
+})
+pagination: IPaginationQueryOffsetParams
 ```
-
-**Parameters:**
-- `defaultAvailableOrder`: Array of fields allowed for ordering
 
 **Default Behavior:**
-- If no `orderBy`: sorts by `createdAt: DESC`
-- If `orderBy` not in allowed fields: throws `BadRequestException` (400)
-
-**Usage:**
-```typescript
-@PaginationOrder(['createdAt', 'name', 'email'])
-order?: IPaginationOrderBy
-```
+- If no `orderBy` query param is sent: falls back to `{ createdAt: 'desc' }`
+- If `availableOrderBy` is omitted: any `orderBy` value is ignored and `createdAt: desc` is used
+- If `orderBy` is not in `availableOrderBy`: throws `BadRequestException` (400)
 
 **Query Parameters:**
-- `orderBy`: Field name (must be in allowed list)
-- `orderDirection`: 'asc' or 'desc'
+- `orderBy`: Field name (must be in `availableOrderBy` list)
+- `orderDirection`: `asc` or `desc`
 
 **Transforms:**
 - Query: `?orderBy=name&orderDirection=asc`
@@ -585,12 +592,12 @@ country?: Record<string, IPaginationNotEqual>
 **Date Range:**
 ```typescript
 @PaginationQueryFilterDate('createdAt', {
-    type: EnumPaginationFilterDateBetweenType.START
+    type: EnumPaginationFilterDateBetweenType.start
 })
 startDate?: Record<string, IPaginationDate>
 
 @PaginationQueryFilterDate('createdAt', {
-    type: EnumPaginationFilterDateBetweenType.END
+    type: EnumPaginationFilterDateBetweenType.end
 })
 endDate?: Record<string, IPaginationDate>
 
@@ -610,9 +617,11 @@ endDate?: Record<string, IPaginationDate>
 ```
 
 **Field Whitelist:**
-Must be specified in decorator to prevent SQL injection:
+Must be specified via `availableOrderBy` in the query decorator to prevent injection:
 ```typescript
-@PaginationOrder(['createdAt', 'name', 'email'])
+@PaginationOffsetQuery({
+    availableOrderBy: ['createdAt', 'name', 'email']
+})
 ```
 
 ## Usage Examples
@@ -753,7 +762,7 @@ async listUsers(
     @PaginationQueryFilterEqualBoolean('isActive')
     isActive?: Record<string, IPaginationEqual>,
     @PaginationQueryFilterDate('createdAt', {
-        type: EnumPaginationFilterDateBetweenType.START
+        type: EnumPaginationFilterDateBetweenType.start
     })
     startDate?: Record<string, IPaginationDate>
 ) {
@@ -862,11 +871,11 @@ export class UserAdminController {
         @PaginationQueryFilterNotEqual('country')
         country?: Record<string, IPaginationNotEqual>,
         @PaginationQueryFilterDate('createdAt', {
-            type: EnumPaginationFilterDateBetweenType.START
+            type: EnumPaginationFilterDateBetweenType.start
         })
         startDate?: Record<string, IPaginationDate>,
         @PaginationQueryFilterDate('createdAt', {
-            type: EnumPaginationFilterDateBetweenType.END
+            type: EnumPaginationFilterDateBetweenType.end
         })
         endDate?: Record<string, IPaginationDate>
     ) {

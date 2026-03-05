@@ -36,7 +36,6 @@ src
   ├── modules
   ├── router
   ├── queues
-  ├── templates
   ├── instrument.ts
   ├── main.ts
   ├── migration.ts
@@ -63,8 +62,8 @@ The Common Module provides shared functionality and global services across the A
 - Caching and queueing (Redis, BullMQ)
 - Logging (LoggerModule)
 - Database access (DatabaseModule)
-- Authentication and authorization (AuthModule, PolicyModule, RoleModule, ApiKeyModule, FeatureFlagModule, TermPolicyModule, SessionModule)
-- Utilities for messaging, requests, helpers, files, and pagination
+- Authentication and authorization (AuthModule, PolicyModule, RoleModule, ApiKeyModule, FeatureFlagModule, TermPolicyModule, SessionModule, ActivityLogModule, NotificationModule)
+- Utilities for messaging, requests, helpers, files, pagination, and Firebase
 - Registers all these modules as global or shared imports for use throughout the application
 
 ## Configs
@@ -72,7 +71,7 @@ The Common Module provides shared functionality and global services across the A
 **Location:** `src/configs/`
 
 The configs folder contains strongly-typed configuration files for all major application features and integrations, including:
-- Database, Redis, Logger, Auth, AWS, Email, Feature Flags, User, Session, Request/Response, and more
+- Database, Redis, Logger, Auth, AWS, Email, Firebase, Feature Flags, User, Session, Request/Response, and more
 - Each config file (e.g., `database.config.ts`, `auth.config.ts`) centralizes environment variables, settings, and validation logic for its domain
 - The `index.ts` file aggregates and exports all configs for use in global configuration management
 
@@ -101,7 +100,7 @@ The migration folder manages database migrations, initialization, and data seedi
 The queues folder implements background job processing using BullMQ and Redis. It includes:
 - `queue.module.ts`: Main queue module for job orchestration
 - `queue.register.module.ts`: Registers and manages queue processors
-- Subfolders for queue bases, constants, decorators, enums, exceptions
+- Subfolders for queue bases, constants, decorators, enums, exceptions, interfaces
 - Supports immediate, delayed, and recurring jobs for tasks like email sending, data processing, etc.
 
 ## Router
@@ -241,8 +240,11 @@ Below are explanations for the root folders and files outside `src/` (excluding 
 
 ### Folders
 
+- **.github/**: GitHub-specific configuration including Actions workflows, issue templates, and Copilot instructions.
+- **.husky/**: Git hooks for enforcing code quality checks (e.g., commit message linting) before commits.
 - **ci/**: Contains CI/CD configuration files.
 - **docs/**: Project documentation, including architecture, features, and usage guides.
+- **generated/**: Auto-generated files including the Prisma client and Swagger JSON output.
 - **keys/**: Stores public/private keys and JWKS files for authentication and security.
 - **logs/**: Directory for application logs.
 - **prisma/**: Contains Prisma ORM schema and migration files for database management.
@@ -265,6 +267,8 @@ Below are explanations for the root folders and files outside `src/` (excluding 
 - **eslint.config.mjs**: ESLint configuration for code linting and style enforcement.
 - **nest-cli.json**: Configuration for NestJS CLI, defining project structure and build options.
 - **package.json**: Node.js project manifest, listing dependencies, scripts, and metadata.
+- **pnpm-lock.yaml**: pnpm lockfile ensuring deterministic dependency installation.
+- **pnpm-workspace.yaml**: pnpm workspace configuration for monorepo support.
 - **tsconfig.json**: TypeScript configuration file, specifying compiler options and project structure.
 
 

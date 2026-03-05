@@ -123,25 +123,21 @@ Paginated API response decorator with optional caching. Supports both offset-bas
 @ResponsePaging('user.list')
 @Get('/list')
 async listUsers(
-  @PaginationQuery() { page, perPage, orderBy, orderDirection }: PaginationListDto
+  @PaginationOffsetQuery() query: IPaginationQuery
 ): Promise<IResponsePagingReturn<UserDto>> {
-  const { data, totalPage, count } = await this.userService.findAll({
-    page,
-    perPage,
-    orderBy,
-    orderDirection
-  });
+  const { data, totalPage, count } = await this.userService.findAll(query);
   
   return {
     type: 'offset',
     data,
     totalPage,
-    page,
-    perPage,
+    page: query.page,
+    perPage: query.perPage,
     count,
-    hasNext: page < totalPage,
-    nextPage: page < totalPage ? page + 1 : undefined,
-    previousPage: page > 1 ? page - 1 : undefined
+    hasNext: query.page < totalPage,
+    hasPrevious: query.page > 1,
+    nextPage: query.page < totalPage ? query.page + 1 : undefined,
+    previousPage: query.page > 1 ? query.page - 1 : undefined
   };
 }
 ```
@@ -152,7 +148,7 @@ async listUsers(
 @ResponsePaging('user.list')
 @Get('/list')
 async listUsers(
-  @PaginationQuery() query: PaginationListDto
+  @PaginationCursorQuery() query: IPaginationQuery
 ): Promise<IResponsePagingReturn<UserDto>> {
   const { data, cursor, count, hasNext } = await this.userService.findAllCursor(query);
   
@@ -329,30 +325,26 @@ async exportUsers(@Query('format') format: 'csv' | 'pdf'): Promise<IResponseFile
     correlationId: string;
     
     // Pagination metadata
-    type: 'offset' | 'cursor'; // Pagination type
+    type: 'offset' | 'cursor';
     search?: string;
     filters?: Record<string, any>;
     perPage: number;
+    count: number;
+    hasNext: boolean;
+    orderBy: string;
+    orderDirection: 'asc' | 'desc';
+    availableSearch: string[];
+    availableOrderBy: string[];
     
     // Offset-specific fields (when type = 'offset')
     page?: number;
     totalPage?: number;
-    count?: number;
     nextPage?: number;
     previousPage?: number;
     hasPrevious?: boolean;
     
     // Cursor-specific fields (when type = 'cursor')
     nextCursor?: string;
-    previousCursor?: string;
-    count?: number; // Optional, included if requested
-    
-    // Common fields
-    hasNext: boolean;
-    orderBy: string;
-    orderDirection: 'asc' | 'desc';
-    availableSearch: string[];
-    availableOrderBy: string[];
   };
   data: T[];
 }

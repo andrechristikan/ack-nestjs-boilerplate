@@ -48,6 +48,7 @@ consumer
   - [@RequestTimeout](#requesttimeout)
   - [@RequestEnvProtected](#requestenvprotected)
   - [@RequestIPAddress](#requestipaddress)
+  - [@RequestGeoLocation](#requestgeolocation)
   - [@RequestUserAgent](#requestuseragent)
 
 
@@ -280,6 +281,25 @@ async checkIP(@RequestIPAddress() ip: string) {
   return { ip };
 }
 ```
+
+### @RequestGeoLocation
+
+Extracts geolocation information from the client's IP address using `geoip-lite`.
+
+**Signature:**
+```typescript
+RequestGeoLocation(): ParameterDecorator
+```
+
+**Example:**
+```typescript
+@Get('/geo-info')
+async getGeoInfo(@RequestGeoLocation() geoLocation: GeoLocation | null) {
+  return { geoLocation };
+}
+```
+
+**Return Type:** `GeoLocation | null` — returns `null` when IP cannot be resolved or geolocation data is unavailable.
 
 ### @RequestUserAgent
 

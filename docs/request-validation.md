@@ -384,13 +384,21 @@ export function IsStrongPassword(validationOptions?: ValidationOptions) {
 }
 ```
 
-**Register in module**:
+**Register in `RequestModule`**:
+
+Add the constraint to the `providers` array inside `RequestModule.forRoot()`:
 
 ```typescript
-@Module({
-  providers: [IsStrongPasswordConstraint],
-})
-export class RequestModule {}
+static forRoot(): DynamicModule {
+  return {
+    module: RequestModule,
+    providers: [
+      // ... existing constraints
+      IsStrongPasswordConstraint,
+    ],
+    // ...
+  };
+}
 ```
 
 ## Validation Pipes
@@ -410,12 +418,12 @@ export class UserController {
 }
 ```
 
-**RequestParseObjectIdPipe**
+**RequestIsValidObjectIdPipe**
 Validates MongoDB ObjectId:
 
 ```typescript
 @Get(':userId')
-findOne(@Param('userId', RequestParseObjectIdPipe) userId: string) {
+findOne(@Param('userId', RequestIsValidObjectIdPipe) userId: string) {
   return this.userService.findById(userId);
 }
 ```
@@ -445,23 +453,23 @@ setValidationMessage(
 
   for (const error of errors) {
     let property = error.property;
-    
-    // Extract constraints from current error
-    const constraints: string[] = this.extractConstraints(error);
+    let constraints: Record<string, string> = error.constraints;
+    let constraintKeys = constraints ? Object.keys(constraints) : [];
 
     // Handle nested errors if no direct constraints found
-    if (constraints.length === 0) {
+    if (constraintKeys.length === 0) {
       const nestedResult = this.processNestedValidationError(error);
       property = nestedResult.property;  // Full path: address.street
-      constraints.push(...nestedResult.constraints);
+      constraints = nestedResult.constraints;
+      constraintKeys = Object.keys(nestedResult.constraints);
     }
 
     // Create localized message for each constraint
-    for (const constraint of constraints) {
+    for (const constraintKey of constraintKeys) {
       messages.push(
         this.createValidationMessage(
-          constraint,
-          error.constraints[constraint],
+          constraintKey,
+          constraints[constraintKey],
           error.value,
           property,
           options
@@ -498,10 +506,13 @@ Error messages are translated using [nestjs-i18n][ref-nestjs-i18n] through [Mess
 ```json
 {
   "error": {
-    "isEmail": "{property} must be a valid email address",
-    "isNotEmpty": "{property} is required",
-    "minLength": "{property} must be at least {min} characters",
-    "isPassword": "{property} must contain uppercase, lowercase, number and special character"
+    "isEmail": "{property} should be a valid email address.",
+    "isNotEmpty": "{property} cannot be empty.",
+    "minLength": "{property} is shorter than the minimum length allowed.",
+    "isPassword": {
+      "required": "{property} password is required.",
+      "strong": "{property} must be a strong password containing uppercase, lowercase, numbers, and special characters."
+    }
   }
 }
 ```
@@ -524,18 +535,18 @@ defaultMessage(validationArguments?: ValidationArguments): string {
 **Final response** (handled by `AppValidationFilter`):
 ```json
 {
-  "statusCode": 422,
-  "message": "Validation error",
+  "statusCode": 5030,
+  "message": "There are validation errors.",
   "errors": [
     {
       "key": "isEmail",
       "property": "email",
-      "message": "email must be a valid email address"
+      "message": "email should be a valid email address."
     },
     {
       "key": "minLength",
       "property": "password",
-      "message": "password must be at least 8 characters"
+      "message": "password is shorter than the minimum length allowed."
     }
   ],
   "metadata": {
