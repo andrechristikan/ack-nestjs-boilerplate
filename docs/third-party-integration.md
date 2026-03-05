@@ -21,6 +21,7 @@ ACK NestJS Boilerplate integrates with various third-party services and provider
 - [AWS Services](#aws-services)
   - [S3 Storage](#s3-storage)
   - [SES Email](#ses-email)
+  - [Error Codes](#error-codes)
 - [Firebase](#firebase)
 - [Sentry](#sentry)
 - [Redis](#redis)
@@ -56,6 +57,36 @@ AWS_S3_PRIVATE_CDN=https://your-private-cdn.cloudfront.net
 - Private file storage (sensitive documents)
 - Presigned URL generation for secure access
 
+**No-Op Mode:**
+
+If any of `AWS_S3_IAM_CREDENTIAL_KEY`, `AWS_S3_IAM_CREDENTIAL_SECRET`, or `AWS_S3_REGION` is not set, `AwsS3Service` will not create an S3 client and will operate in **no-op mode**. On startup, it logs:
+
+```
+AWS S3 credentials not configured. S3 functionalities will be disabled.
+```
+
+Use `isInitialized()` to check readiness before calling S3 operations:
+
+```typescript
+if (!this.awsS3Service.isInitialized()) {
+    // S3 is disabled — skip upload
+    return;
+}
+```
+
+When not initialized, each method returns a safe typed default and emits the same warn log instead of throwing:
+
+| Method | Default return |
+|---|---|
+| `checkConnection`, `checkBucket` | `false` |
+| `checkItem`, `getItem`, `putItem`, `createMultiPart` | `null` |
+| `presignGetItem`, `presignPutItem`, `presignPutItemPart`, `moveItem` | `null` |
+| `getItems`, `moveItems` | `[]` |
+| `deleteItem`, `deleteItems`, `deleteDir`, `completeMultipart`, `abortMultipart`, bucket-config methods | `void` (silent no-op) |
+| `putItemMultiPart` | the unmodified `multipart` input |
+
+> **Callers must null-check** methods that return `AwsS3Dto | null`, `AwsS3MultipartDto | null`, or `AwsS3PresignDto | null` before using the result.
+
 For detailed implementation, see [File Upload][ref-doc-file-upload].
 
 ### SES Email
@@ -79,6 +110,34 @@ AWS_SES_REGION=ap-southeast-3
 - Email verification
 - Notification emails
 
+**No-Op Mode:**
+
+If any of `AWS_SES_IAM_CREDENTIAL_KEY`, `AWS_SES_IAM_CREDENTIAL_SECRET`, or `AWS_SES_REGION` is not set, `AwsSESService` will not create an SES client and will operate in **no-op mode**. On startup, it logs:
+
+```
+AWS SES credentials not configured. Email functionalities will be disabled.
+```
+
+Use `isInitialized()` to check readiness before sending emails:
+
+```typescript
+if (!this.awsSesService.isInitialized()) {
+    // SES is disabled — skip email
+    return;
+}
+```
+
+When not initialized, each method returns a safe typed default and emits the same warn log instead of throwing:
+
+| Method | Default return |
+|---|---|
+| `checkConnection` | `false` |
+| `listTemplates` | `{ TemplatesMetadata: [], $metadata: {} }` |
+| `getTemplate` | `{ $metadata: {}, Template: null }` |
+| `createTemplate`, `updateTemplate`, `deleteTemplate` | `{ $metadata: {} }` |
+| `send` | `{ MessageId: null, $metadata: {} }` |
+| `sendBulk` | `{ Status: [], $metadata: {} }` |
+
 **Bulk Email (`AwsSESSendBulkDto<T>`):**
 
 For sending the same template to multiple recipients, use `AwsSESSendBulkDto`. Each recipient can carry its own `templateData`, and the optional `defaultTemplateData` field provides fallback values applied to all recipients that do not supply their own data:
@@ -98,6 +157,14 @@ await this.awsSesService.sendBulk({
 `defaultTemplateData` is serialized as `DefaultTemplateData` in the SES `SendBulkTemplatedEmail` command. If omitted, it defaults to `{}`.
 
 Email processing is handled through the queue system. See [Queue][ref-doc-queue] for details.
+
+### Error Codes
+
+AWS service errors use `EnumAwsStatusCodeError` located at `src/common/aws/enums/aws.status-code.enum.ts`:
+
+| Enum | Code | i18n Key | Description |
+|---|---|---|---|
+| `EnumAwsStatusCodeError.serviceUnavailable` | `5240` | `aws.error.serviceUnavailable` | AWS service is unavailable |
 
 ## Firebase
 

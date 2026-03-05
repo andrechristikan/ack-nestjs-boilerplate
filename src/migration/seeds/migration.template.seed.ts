@@ -1,3 +1,5 @@
+import { AwsS3Service } from '@common/aws/services/aws.s3.service';
+import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -26,13 +28,23 @@ export class MigrationTemplateEmailNotificationSeed
     );
 
     constructor(
-        private readonly notificationEmailTemplateService: NotificationTemplateService
+        private readonly notificationEmailTemplateService: NotificationTemplateService,
+        private readonly awsSESService: AwsSESService
     ) {
         super();
     }
 
     async seed(): Promise<void> {
         this.logger.log('Seeding Emails...');
+
+        const isSESInitialized = this.awsSESService.isInitialized();
+        if (!isSESInitialized) {
+            this.logger.error(
+                'AWS SES is not initialized. Cannot seed email templates.'
+            );
+
+            throw new Error('AWS SES is not initialized');
+        }
 
         const [
             changePasswordEmail,
@@ -226,6 +238,7 @@ export class MigrationTemplateTermPolicySeed
     constructor(
         private readonly termPolicyTemplateService: TermPolicyTemplateService,
         private readonly databaseService: DatabaseService,
+        private readonly awsS3Service: AwsS3Service,
         private readonly databaseUtil: DatabaseUtil
     ) {
         super();
@@ -233,6 +246,15 @@ export class MigrationTemplateTermPolicySeed
 
     async seed(): Promise<void> {
         this.logger.log('Seeding Term Policies...');
+
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            this.logger.error(
+                'AWS S3 is not initialized. Cannot seed term policies.'
+            );
+
+            throw new Error('AWS S3 is not initialized');
+        }
 
         try {
             const [

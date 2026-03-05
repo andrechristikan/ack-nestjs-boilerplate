@@ -82,7 +82,9 @@ import {
     ForbiddenException,
     Injectable,
     InternalServerErrorException,
+    Logger,
     NotFoundException,
+    ServiceUnavailableException,
     UnauthorizedException,
 } from '@nestjs/common';
 import {
@@ -110,9 +112,12 @@ import { DeviceDto } from '@modules/device/dtos/device.dto';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { INotificationNewDeviceLoginPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 
 @Injectable()
 export class UserService implements IUserService {
+    private readonly logger = new Logger(UserService.name);
+
     private readonly userRoleName: string;
     private readonly userCountryName: string;
 
@@ -454,15 +459,23 @@ export class UserService implements IUserService {
                 extension,
             });
 
-        const aws: AwsS3PresignDto = await this.awsS3Service.presignPutItem(
-            {
-                key,
-                size,
-            },
-            {
-                forceUpdate: true,
-            }
-        );
+        const aws: AwsS3PresignDto | null =
+            await this.awsS3Service.presignPutItem(
+                {
+                    key,
+                    size,
+                },
+                {
+                    forceUpdate: true,
+                }
+            );
+
+        if (!aws) {
+            throw new ServiceUnavailableException({
+                statusCode: EnumAwsStatusCodeError.serviceUnavailable,
+                message: 'aws.error.serviceUnavailable',
+            });
+        }
 
         return { data: aws };
     }
@@ -742,17 +755,29 @@ export class UserService implements IUserService {
                     extension,
                 });
 
-            const aws: AwsS3Dto = await this.awsS3Service.putItem({
+            const aws: AwsS3Dto | null = await this.awsS3Service.putItem({
                 key,
                 size: file.size,
                 file: file.buffer,
             });
 
-            await this.userRepository.updatePhotoProfile(
-                userId,
-                aws,
-                requestLog
-            );
+            if (aws) {
+                this.logger.debug(
+                    {
+                        userId,
+                        fileSize: file.size,
+                        awsKey: aws.key,
+                        awsBucket: aws.bucket,
+                    },
+                    `Photo profile uploaded to S3 with key: ${key}`
+                );
+
+                await this.userRepository.updatePhotoProfile(
+                    userId,
+                    aws,
+                    requestLog
+                );
+            }
 
             return;
         } catch (err: unknown) {

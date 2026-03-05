@@ -22,7 +22,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         private readonly awsS3Service: AwsS3Service
     ) {}
 
-    async importTermsOfService(): Promise<AwsS3Dto> {
+    async importTermsOfService(): Promise<AwsS3Dto | null> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -56,7 +56,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         }
     }
 
-    async importPrivacy(): Promise<AwsS3Dto> {
+    async importPrivacy(): Promise<AwsS3Dto | null> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -90,7 +90,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         }
     }
 
-    async importCookie(): Promise<AwsS3Dto> {
+    async importCookie(): Promise<AwsS3Dto | null> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -124,7 +124,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         }
     }
 
-    async importMarketing(): Promise<AwsS3Dto> {
+    async importMarketing(): Promise<AwsS3Dto | null> {
         try {
             const templatePath = join(
                 this.templatesDir,

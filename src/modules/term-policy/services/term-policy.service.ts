@@ -1,6 +1,7 @@
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -39,6 +40,7 @@ import {
     Injectable,
     InternalServerErrorException,
     NotFoundException,
+    ServiceUnavailableException,
 } from '@nestjs/common';
 import {
     EnumTermPolicyStatus,
@@ -331,16 +333,24 @@ export class TermPolicyService implements ITermPolicyService {
                 }
             );
 
-        const aws: AwsS3PresignDto = await this.awsS3Service.presignPutItem(
-            {
-                key,
-                size,
-            },
-            {
-                forceUpdate: true,
-                access: EnumAwsS3Accessibility.private,
-            }
-        );
+        const aws: AwsS3PresignDto | null =
+            await this.awsS3Service.presignPutItem(
+                {
+                    key,
+                    size,
+                },
+                {
+                    forceUpdate: true,
+                    access: EnumAwsS3Accessibility.private,
+                }
+            );
+
+        if (!aws) {
+            throw new ServiceUnavailableException({
+                statusCode: EnumAwsStatusCodeError.serviceUnavailable,
+                message: 'aws.error.serviceUnavailable',
+            });
+        }
 
         return { data: aws };
     }
@@ -528,12 +538,17 @@ export class TermPolicyService implements ITermPolicyService {
             });
         }
 
-        const awsPresign = await this.awsS3Service.presignGetItem(
-            existContent.key,
-            {
+        const awsPresign: AwsS3PresignDto | null =
+            await this.awsS3Service.presignGetItem(existContent.key, {
                 access: EnumAwsS3Accessibility.private,
-            }
-        );
+            });
+
+        if (!awsPresign) {
+            throw new ServiceUnavailableException({
+                statusCode: EnumAwsStatusCodeError.serviceUnavailable,
+                message: 'aws.error.serviceUnavailable',
+            });
+        }
 
         return { data: awsPresign };
     }
