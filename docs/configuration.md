@@ -38,6 +38,7 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
 - [Term Policy Configuration](#term-policy-configuration)
 - [Feature Flag Configuration](#feature-flag-configuration)
 - [Response Configuration](#response-configuration)
+- [Firebase Configuration](#firebase-configuration)
 - [Conclusion](#conclusion)
 
 ## Configuration Structure
@@ -128,6 +129,11 @@ urlVersion: {
 }
 ```
 
+**`encryptionSecretKey`** - AES-256 encryption secret key
+```typescript
+encryptionSecretKey: string     // Secret key used to derive AES-256 encryption key for sensitive data
+```
+
 ### Auth Configuration
 
 **File**: `src/configs/auth.config.ts`
@@ -181,8 +187,10 @@ password: {
 ```typescript
 twoFactor: {
   issuer: string;                 // Issuer name for OTP (TOTP)
+  strategy: string;               // OTP strategy (default: 'totp')
+  algorithm: string;              // Hash algorithm for OTP (default: 'sha1')
   digits: number;                 // Number of digits in OTP
-  step: number;                   // Time step in seconds for OTP validity
+  periodInSeconds: number;        // Time period in seconds for OTP validity
   window: number;                 // Allowed window for OTP validation
   secretLength: number;           // Length of OTP secret
   challengeTtlInMs: number;       // Challenge TTL in milliseconds
@@ -527,7 +535,9 @@ language: string                // Default application language
 **File**: `src/configs/email.config.ts`
 **Interface**: `IConfigEmail`
 
-This configuration manages default email addresses for system communications.
+This configuration manages default email addresses for system communications. Email addresses (`noreply`, `support`, `admin`) can be overridden via environment variables. If not set, they fall back to hardcoded default values.
+
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -544,6 +554,11 @@ support: string                 // Support/contact email address
 **`admin`** - Admin email address
 ```typescript
 admin: string                   // Administrator email address
+```
+
+**`batchSize`** - Email batch size
+```typescript
+batchSize: number               // Maximum number of emails per batch (default: 100)
 ```
 
 ### Verification Configuration
@@ -716,6 +731,34 @@ This configuration handles API response caching settings.
 ```typescript
 cachePrefix: string             // Cache prefix for API response data
 ```
+
+### Firebase Configuration
+
+**File**: `src/configs/firebase.config.ts`  
+**Interface**: `IConfigFirebase`
+
+This configuration manages Firebase integration settings for push notification delivery via FCM.
+
+> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
+
+#### Configuration Keys:
+
+**`projectId`** - Firebase project ID
+```typescript
+projectId?: string              // Firebase project ID from Firebase console
+```
+
+**`clientEmail`** - Firebase service account email
+```typescript
+clientEmail?: string            // Firebase service account client email
+```
+
+**`privateKey`** - Firebase service account private key
+```typescript
+privateKey?: string             // Firebase service account private key
+```
+
+> **Note**: All Firebase config fields are optional. They are required only when push notification features are enabled. The `FirebaseConfig` is registered in `src/configs/index.ts` alongside other config modules.
 
 
 <!-- REFERENCES -->

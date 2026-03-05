@@ -73,7 +73,6 @@ export class AppEnvDto {
     @IsString()
     @IsOptional()
     @IsEmail()
-    @ValidateIf(o => o.EMAIL_NO_REPLY)
     EMAIL_NO_REPLY: string;
 
     /**
@@ -82,7 +81,6 @@ export class AppEnvDto {
     @IsString()
     @IsOptional()
     @IsEmail()
-    @ValidateIf(o => o.EMAIL_SUPPORT)
     EMAIL_SUPPORT: string;
 
     /**
@@ -91,7 +89,6 @@ export class AppEnvDto {
     @IsString()
     @IsOptional()
     @IsEmail()
-    @ValidateIf(o => o.EMAIL_ADMIN)
     EMAIL_ADMIN: string;
 
     /**

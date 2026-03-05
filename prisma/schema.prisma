@@ -440,27 +440,6 @@ model NotificationUserSetting {
   @@map("NotificationUserSettings")
 }
 
-model OutboxEvents {
-  id           String              @id @default(auto()) @map("_id") @db.ObjectId
-  jobId        String
-  jobToken     String
-  type         EnumOutboxEventType
-  payload      Json
-  attempts     Int                 @default(0)
-  nextRunAt    DateTime?
-  processedAt  DateTime?
-  errorMessage String?
-  errorStack   String?
-
-  // timestamps fields
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique(fields: [jobId])
-  @@index(fields: [type, nextRunAt(sort: Asc), attempts])
-  @@map("OutboxEvents")
-}
-
 type UserTermPolicy {
   termsOfService Boolean
   privacy        Boolean
@@ -699,9 +678,4 @@ enum EnumNotificationPriority {
   normal
   high
   critical
-}
-
-enum EnumOutboxEventType {
-  notification
-  email
 }

@@ -2,6 +2,11 @@
 
 This document provides instructions for GitHub Copilot to generate code that follows the patterns, conventions, and architecture of this project.
 
+> **Copilot Behavior Note**
+> - Every suggestion or implementation **must consider best practices** (security, maintainability, scalability, readability).
+> - If an approach is chosen for **performance** reasons or to **match an existing implementation**, **it must be explicitly noted** — e.g., with a comment like `// NOTE: this approach is chosen for performance` or `// NOTE: aligned with existing pattern in codebase`.
+> - If an example is needed to clarify a suggestion, **provide the code example immediately** — do not defer or ask for confirmation first.
+
 ## Project Overview
 
 ACK NestJS Boilerplate (v8.1.0+) is a comprehensive authentication and authorization service built with NestJS v11.x. It uses:
@@ -56,16 +61,9 @@ module/
 Always use repository pattern for database operations. The `DatabaseService` extends `PrismaClient`, so inject it directly without `@Inject`:
 
 ```typescript
-// Repository Interface
-export interface IUserRepository {
-    findById(id: string): Promise<User | null>;
-    create(data: CreateUserDto): Promise<User>;
-    // ... other methods
-}
-
-// Repository Implementation
+// Repository — no interface needed, inject directly as class
 @Injectable()
-export class UserRepository implements IUserRepository {
+export class UserRepository {
     constructor(private readonly databaseService: DatabaseService) {}
 
     async findById(id: string): Promise<User | null> {
@@ -75,10 +73,16 @@ export class UserRepository implements IUserRepository {
     }
 }
 
-// Service using Repository
-export class UserService {
+// Service Interface — services always have an interface
+export interface IUserService {
+    findById(id: string): Promise<User | null>;
+    // ... other methods
+}
+
+// Service Implementation — injects repository directly as class
+export class UserService implements IUserService {
     constructor(
-        private readonly userRepository: IUserRepository
+        private readonly userRepository: UserRepository
     ) {}
 }
 ```
@@ -94,6 +98,7 @@ Always use TypeScript path aliases defined in `tsconfig.json`:
 - `@routes/*` → `src/router/routes/*`
 - `@router` → `src/router/router.module.ts`
 - `@migration/*` → `src/migration/*`
+- `@test/*` → `test/*`
 - `@generated/*` → `generated/*`
 - `@prisma/client` → `generated/prisma-client`
 
@@ -172,7 +177,10 @@ export class CreateUserDto {
 
 ### Response Decorators
 
-Use standardized response decorators:
+Use standardized response decorators. The return object supports two optional fields:
+
+- **`metadata?: IResponseMetadata`** — override response behavior: `statusCode`, `httpStatus`, `messagePath`, `messageProperties`
+- **`metadataActivityLog?: IActivityLogMetadata`** — pass activity log context (captured automatically by `@ActivityLog` decorator)
 
 ```typescript
 // Standard response
@@ -184,6 +192,19 @@ async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
     };
 }
 
+// Override response message or statusCode via metadata
+@Response('user.create')
+@Post('/')
+async createUser(@Body() body: CreateUserRequestDto): Promise<IResponseReturn<UserDto>> {
+    return {
+        data: await this.userService.create(body),
+        metadata: {
+            statusCode: EnumUserStatusCodeError.alreadyExists,
+            messageProperties: { name: body.name },
+        },
+    };
+}
+
 // Paginated response
 @ResponsePaging('user.list')
 @Get('/')
@@ -192,14 +213,44 @@ async listUsers(@Query() query: UserListDto): Promise<IResponsePagingReturn<User
 }
 ```
 
+### Request Context Decorators (IP, Geo, User Agent)
+
+Use these parameter decorators from `@common/request/decorators/request.decorator.ts` to extract client context in route handlers:
+
+- **`@RequestIPAddress()`** — real client IP via `nestjs-real-ip`
+- **`@RequestGeoLocation()`** — `GeoLocation | null` via `geoip-lite` (country, region, city, lat/lng)
+- **`@RequestUserAgent()`** — parsed `UserAgent` object via `ua-parser-js` (browser, OS, device, engine, CPU)
+
+They are typically used together and passed to services that need to record or react to client context (e.g., session creation, new device detection, activity logging):
+
+```typescript
+import { RequestGeoLocation, RequestIPAddress, RequestUserAgent } from '@common/request/decorators/request.decorator';
+import { GeoLocation, UserAgent } from '@generated/prisma-client';
+
+@Post('/login')
+async login(
+    @Body() body: UserLoginRequestDto,
+    @RequestIPAddress() ipAddress: string,
+    @RequestUserAgent() userAgent: UserAgent,
+    @RequestGeoLocation() geoLocation: GeoLocation | null
+): Promise<IResponseReturn<AuthTokenResponseDto>> {
+    return {
+        data: await this.userService.login(body, { ipAddress, userAgent, geoLocation })
+    };
+}
+```
+
+The combined shape is modelled by `IRequestLog` in `@common/request/interfaces/request.interface.ts`:
+
+```typescript
+export interface IRequestLog {
+    userAgent: UserAgent;
+    ipAddress: string;
+    geoLocation?: GeoLocation;
+}
+```
+
 ### Error Handling
-
-
-
-You can also pass additional properties in exceptions:
-- `messageProperties`: object (for i18n interpolation)
-- `errors`: `IMessageValidationError` (for validation error details, only read if thrown with `RequestValidationException` or `FileImportException`)
-- `metadata`: object (for extra context)
 
 Throw exceptions with proper message paths:
 
@@ -211,6 +262,11 @@ if (!user) {
     });
 }
 ```
+
+Optional exception properties (all from `IAppException`):
+- **`messageProperties?: IMessageProperties`** — `Record<string, string | number>` for i18n interpolation (e.g., `{ field: 'email', max: 100 }`)
+- **`errors?: IMessageValidationError[]`** — validation error details; only read when thrown via `RequestValidationException` or `FileImportException`
+- **`metadata?: Record<string, string | number>`** — extra context for debugging or logging
 
 ## Database Operations
 
@@ -267,19 +323,22 @@ await this.databaseService.$transaction(async (tx) => {
 Inject queue and add jobs:
 
 ```typescript
-export class EmailService {
+export class NotificationPushUtil {
     constructor(
-        @InjectQueue(EnumQueue.email) 
-        private readonly emailQueue: Queue
+        @InjectQueue(EnumQueue.notificationPush) 
+        private readonly notificationPushQueue: Queue
     ) {}
 
-    async sendWelcomeEmail(userId: string): Promise<void> {
-        await this.emailQueue.add(
-            EnumEmailProcess.welcome,
-            { userId },
+    async sendNewDeviceLogin(payload: INotificationPushWorkerPayload): Promise<void> {
+        await this.notificationPushQueue.add(
+            EnumNotificationPushProcess.newDeviceLogin,
+            payload,
             {
                 priority: EnumQueuePriority.high,
-                attempts: 3,
+                deduplication: {
+                    id: `${EnumNotificationPushProcess.newDeviceLogin}-${payload.send.userId}`,
+                    ttl: 1000,
+                },
             }
         );
     }
@@ -288,23 +347,34 @@ export class EmailService {
 
 ### Creating Processors
 
-Extend `QueueProcessorBase`:
+Extend `QueueProcessorBase` and implement a single `process(job)` method with a switch statement:
 
 ```typescript
-@QueueProcessor(EnumQueue.email)
-export class EmailProcessor extends QueueProcessorBase {
-    @Process(EnumEmailProcess.welcome)
-    async processWelcome(job: Job<EmailWorkerDto>): Promise<void> {
+@QueueProcessor(EnumQueue.notificationPush)
+export class NotificationPushProcessor extends QueueProcessorBase {
+    private readonly logger = new Logger(NotificationPushProcessor.name);
+
+    constructor(
+        private readonly notificationPushProcessorService: NotificationPushProcessorService
+    ) {
+        super();
+    }
+
+    async process(
+        job: Job<unknown, IQueueResponse, EnumNotificationPushProcess>
+    ): Promise<IQueueResponse> {
         try {
-            const { userId } = job.data;
-            // Process job
-            await this.sendEmail(userId);
-        } catch (error) {
-            throw new QueueException(
-                'Email send failed',
-                error,
-                job.data
-            );
+            switch (job.name) {
+                case EnumNotificationPushProcess.newDeviceLogin:
+                    return this.notificationPushProcessorService.processNewDeviceLogin(
+                        job as Job<INotificationPushWorkerPayload, IQueueResponse>
+                    );
+                default:
+                    return { success: false };
+            }
+        } catch (error: unknown) {
+            this.logger.error(error);
+            throw new QueueException('Process failed', error as Error, job.data);
         }
     }
 }
@@ -312,7 +382,9 @@ export class EmailProcessor extends QueueProcessorBase {
 
 ## Logging
 
-Always use `Logger` from `@nestjs/common` with class context:
+Always use `Logger` from `@nestjs/common` with class context.
+
+**Parameter order**: when logging with details or an error object, pass the **object/detail as param 1** and the **message string as param 2** — never reversed:
 
 ```typescript
 import { Logger } from '@nestjs/common';
@@ -328,7 +400,8 @@ export class UserService {
             this.logger.log(`User created: ${user.id}`);
             return user;
         } catch (error) {
-            this.logger.error(`Failed to create user: ${error.message}`, error.stack);
+            // ✅ CORRECT: object first, message second
+            this.logger.error(error, 'Failed to create user');
             throw error;
         }
     }
@@ -339,6 +412,9 @@ Sensitive data is automatically redacted (password, token, apiKey, etc.).
 
 ## Caching
 
+Redis is split into two databases:
+- **`CACHE_REDIS_URL`** (db `0`) — general cache and session store (`CacheMainProvider`, `SessionCacheProvider`)
+- **`QUEUE_REDIS_URL`** (db `1`) — BullMQ queue processing
 
 Use Redis for caching with decorators:
 
@@ -357,21 +433,31 @@ async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
 
 ## Environment Configuration
 
-Configuration files are in `src/configs/` and use environment variables:
+Configuration files are in `src/configs/` and use environment variables. **Every config file must export a TypeScript interface** alongside the `registerAs` function:
 
 ```typescript
+// Always define an interface
+export interface IConfigAuth {
+    password: {
+        attempt: boolean;
+        maxAttempt: number;
+    };
+    accessToken: {
+        secretKey: string;
+        expirationTime: string;
+    };
+}
+
 export default registerAs(
     'auth',
     (): IConfigAuth => ({
         password: {
             attempt: true,
             maxAttempt: 5,
-            // ...
         },
         accessToken: {
             secretKey: process.env.AUTH_JWT_ACCESS_TOKEN_SECRET_KEY,
             expirationTime: '15m',
-            // ...
         }
     })
 );
@@ -470,7 +556,7 @@ This rule sorts import members within each import statement, but does **not** en
 
 ## Best Practices
 
-1. **Always use interfaces** for dependency injection contracts
+1. **Use interfaces for services only** — repositories and utils are injected directly as classes; services always define and implement an interface
 2. **Inject repositories**, not Prisma directly in services
 3. **Use enums** for constants and status codes
 4. **Validate DTOs** with class-validator decorators
@@ -513,6 +599,7 @@ pnpm db:studio         # Open Prisma Studio
 # Migration & Seeding
 pnpm migration:seed    # Seed all data
 pnpm migration:remove  # Remove all seeded data
+pnpm migration:fresh   # Reset DB and re-seed (force push + seed)
 pnpm migration {module} --type seed    # Seed specific module
 pnpm migration {module} --type remove  # Remove specific module
 
@@ -554,7 +641,9 @@ pnpm package:check     # Check package updates
 3. **Global Module Pattern**
    - Mark shared modules with `@Global()` decorator
    - Avoid repeated imports in feature modules
-   - Examples: `CacheMainModule`, `RedisCacheModule`, `MessageModule`
+   - Common globals: `DatabaseModule`, `PaginationModule`, `CacheMainModule`, `RedisCacheModule`, `MessageModule`, `HelperModule`, `FileModule`, `FirebaseModule`
+   - Module globals: `AuthModule`, `SessionModule`, `RoleModule`, `ApiKeyModule`, `PolicyModule`, `ActivityLogModule`, `NotificationModule`, `FeatureFlagModule`, `TermPolicyModule`
+   - Queue globals: `QueueRegisterModule`
 
 4. **Decorator-Based Protection**
    - Stack decorators in correct order (see [Decorator Order](#decorator-order))
@@ -728,6 +817,7 @@ pnpm package:check     # Check package updates
 Refer to these documentation files in `/docs`:
 - `project-structure.md` - Detailed project architecture
 - `authentication.md` - Authentication and session management
+- `two-factor.md` - Two-factor authentication (TOTP)
 - `authorization.md` - Authorization and access control
 - `database.md` - Database setup and operations
 - `request-validation.md` - Request validation patterns
@@ -739,6 +829,7 @@ Refer to these documentation files in `/docs`:
 - `configuration.md` - Configuration management
 - `environment.md` - Environment variables
 - `file-upload.md` - File upload handling
+- `presign.md` - Presigned URL handling
 - `pagination.md` - Pagination patterns
 - `message.md` - Internationalization
 - `activity-log.md` - Activity logging
@@ -746,6 +837,8 @@ Refer to these documentation files in `/docs`:
 - `feature-flag.md` - Feature flags
 - `security-and-middleware.md` - Security features
 - `third-party-integration.md` - External integrations
+- `notification.md` - Notification system (push, email, in-app)
+- `doc.md` - Swagger/API documentation setup
 
 ---
 

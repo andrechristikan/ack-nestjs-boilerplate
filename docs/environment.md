@@ -33,6 +33,8 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
   - [Social Authentication Settings](#social-authentication-settings)
   - [Two-Factor Authentication Settings](#two-factor-authentication-settings)
   - [AWS Settings](#aws-settings)
+  - [Email Settings](#email-settings)
+  - [Firebase Settings](#firebase-settings)
   - [Redis Settings](#redis-settings)
   - [Debug Settings](#debug-settings)
 
@@ -72,9 +74,10 @@ APP_NAME=ACKNestJs
 APP_ENV=local
 APP_LANGUAGE=en
 APP_TIMEZONE=Asia/Jakarta
+APP_ENCRYPTION_SECRET_KEY=qwerty1234567890abcdefghijklmnop
 
 # Home/Organization
-HOME_URL=https://example.id
+HOME_URL=https://example.com
 HOME_NAME=ACKNestJs
 
 # HTTP Server
@@ -100,7 +103,7 @@ DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&rep
 DATABASE_DEBUG=true
 
 # JWT Authentication
-AUTH_JWT_ISSUER=https://example.id
+AUTH_JWT_ISSUER=https://example.com
 AUTH_JWT_AUDIENCE=ACKNestJs
 
 # Access Token Configuration
@@ -143,6 +146,16 @@ AWS_SES_IAM_CREDENTIAL_SECRET=
 AWS_SES_IAM_ARN=
 AWS_SES_REGION=ap-southeast-3
 
+# Email
+EMAIL_NO_REPLY=no-reply@mail.com
+EMAIL_SUPPORT=support@mail.com
+EMAIL_ADMIN=admin@mail.com
+
+# Firebase (Optional)
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
+
 # Redis
 CACHE_REDIS_URL=redis://localhost:6379/0
 QUEUE_REDIS_URL=redis://localhost:6379/1
@@ -181,6 +194,12 @@ Default timezone for date operations. Example: `Asia/Jakarta`, `UTC`
 APP_TIMEZONE=Asia/Jakarta
 ```
 
+**`APP_ENCRYPTION_SECRET_KEY`** *(required)*  
+Secret key used to derive an AES-256 encryption key for encrypting sensitive data (recommended 32+ characters).
+```bash
+APP_ENCRYPTION_SECRET_KEY=qwerty1234567890abcdefghijklmnop
+```
+
 ### Home/Organization Settings
 
 **`HOME_NAME`** *(required)*  
@@ -192,7 +211,7 @@ HOME_NAME=ACKNestJs
 **`HOME_URL`** *(required)*  
 URL for your home/landing page.
 ```bash
-HOME_URL=https://example.id
+HOME_URL=https://example.com
 ```
 
 ### HTTP Server Settings
@@ -300,7 +319,7 @@ DATABASE_DEBUG=true
 **`AUTH_JWT_ISSUER`** *(required)*  
 JWT issuer claim value (usually your domain).
 ```bash
-AUTH_JWT_ISSUER=https://example.id
+AUTH_JWT_ISSUER=https://example.com
 ```
 
 **`AUTH_JWT_AUDIENCE`** *(required)*  
@@ -507,6 +526,50 @@ AWS_SES_IAM_ARN=
 AWS region for SES service.
 ```bash
 AWS_SES_REGION=ap-southeast-3
+```
+
+### Email Settings
+
+> **Note**: Email settings are optional.
+
+**`EMAIL_NO_REPLY`** *(optional/required for email features)*  
+Sender email address used for no-reply emails (e.g., transactional, notifications).
+```bash
+EMAIL_NO_REPLY=no-reply@mail.com
+```
+
+**`EMAIL_SUPPORT`** *(optional/required for email features)*  
+Support email address shown in email templates.
+```bash
+EMAIL_SUPPORT=support@mail.com
+```
+
+**`EMAIL_ADMIN`** *(optional/required for email features)*  
+Admin email address for internal notifications.
+```bash
+EMAIL_ADMIN=admin@mail.com
+```
+
+### Firebase Settings
+
+> **Note**: Firebase settings are optional. Required only if push notification features are enabled.
+
+**`FIREBASE_PROJECT_ID`** *(optional/required for push notifications)*  
+Firebase project ID from your Firebase console.
+```bash
+FIREBASE_PROJECT_ID=
+```
+
+**`FIREBASE_CLIENT_EMAIL`** *(optional/required for push notifications)*  
+Firebase service account client email.
+```bash
+FIREBASE_CLIENT_EMAIL=
+```
+
+**`FIREBASE_PRIVATE_KEY`** *(optional/required for push notifications)*  
+Firebase service account private key. Replace newlines with `\n` when storing in `.env`.
+```bash
+FIREBASE_PRIVATE_KEY=
 ```
 
 ### Redis Settings
