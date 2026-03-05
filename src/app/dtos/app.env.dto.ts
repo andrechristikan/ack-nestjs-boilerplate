@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
     IsBoolean,
+    IsEmail,
     IsEnum,
     IsIP,
     IsInt,
@@ -50,6 +51,15 @@ export class AppEnvDto {
     APP_LANGUAGE: EnumMessageLanguage;
 
     /**
+     * The secret key used for encryption in the application
+     */
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(32)
+    @MaxLength(64)
+    APP_ENCRYPTION_SECRET_KEY: string;
+
+    /**
      * The default timezone for the application
      */
     @IsString()
@@ -57,11 +67,32 @@ export class AppEnvDto {
     @IsEnum(EnumRequestTimezone)
     APP_TIMEZONE: EnumRequestTimezone;
 
+    /**
+     * Email address used for sending no-reply emails
+     */
     @IsString()
-    @IsNotEmpty()
-    @MinLength(32)
-    @MaxLength(64)
-    APP_ENCRYPTION_SECRET_KEY: string;
+    @IsOptional()
+    @IsEmail()
+    @ValidateIf(o => o.EMAIL_NO_REPLY)
+    EMAIL_NO_REPLY: string;
+
+    /**
+     * Email address for customer support contact
+     */
+    @IsString()
+    @IsOptional()
+    @IsEmail()
+    @ValidateIf(o => o.EMAIL_SUPPORT)
+    EMAIL_SUPPORT: string;
+
+    /**
+     * Email address for administrative contact
+     */
+    @IsString()
+    @IsOptional()
+    @IsEmail()
+    @ValidateIf(o => o.EMAIL_ADMIN)
+    EMAIL_ADMIN: string;
 
     /**
      * The name of the home/organization

@@ -36,6 +36,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     private readonly batchSize: number;
 
+    private readonly defaultTemplateData: Record<string, string>;
+
     constructor(
         private readonly awsSESService: AwsSESService,
         private readonly helperService: HelperService,
@@ -49,6 +51,12 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         this.homeUrl = this.configService.get<string>('home.url');
 
         this.batchSize = this.configService.get<number>('email.batchSize');
+
+        this.defaultTemplateData = {
+            homeName: this.homeName,
+            supportEmail: title(this.supportEmail),
+            homeUrl: this.homeUrl,
+        };
     }
 
     async processWelcome(
@@ -66,9 +74,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                 },
                 ...(cc?.length && { cc }),
@@ -97,9 +103,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                 },
                 ...(cc?.length && { cc }),
@@ -133,9 +137,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                     password: passwordString,
                     passwordExpiredAt:
@@ -182,9 +184,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                     password: passwordString,
                     passwordExpiredAt:
@@ -225,9 +225,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                 },
                 ...(cc?.length && { cc }),
@@ -256,9 +254,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                 },
                 ...(cc?.length && { cc }),
@@ -295,9 +291,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                     link,
                     reference,
@@ -332,9 +326,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                     reference,
                 },
@@ -372,9 +364,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                     link,
                     expiredAt:
@@ -409,9 +399,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                     reference,
                     mobileNumber,
@@ -445,9 +433,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                 },
                 ...(cc?.length && { cc }),
@@ -485,9 +471,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
-                    homeName: this.homeName,
-                    supportEmail: title(this.supportEmail),
-                    homeUrl: this.homeUrl,
+                    ...this.defaultTemplateData,
                     username,
                     loginFrom,
                     loginWith,
@@ -530,9 +514,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     })),
                     sender: this.noreplyEmail,
                     defaultTemplateData: {
-                        homeName: this.homeName,
-                        supportEmail: title(this.supportEmail),
-                        homeUrl: this.homeUrl,
+                        ...this.defaultTemplateData,
                         type,
                         version,
                     },

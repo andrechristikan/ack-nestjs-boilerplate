@@ -10,9 +10,9 @@ export interface IConfigEmail {
 export default registerAs(
     'email',
     (): IConfigEmail => ({
-        noreply: 'noreply@mail.com',
-        support: 'support@mail.com',
-        admin: 'admin@mail.com',
+        noreply: process.env.EMAIL_NO_REPLY ?? 'noreply@mail.com',
+        support: process.env.EMAIL_SUPPORT ?? 'support@mail.com',
+        admin: process.env.EMAIL_ADMIN ?? 'admin@mail.com',
         batchSize: 100,
     })
 );
