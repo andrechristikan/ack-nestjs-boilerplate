@@ -4,11 +4,12 @@ import { Logger as LoggerPino } from 'nestjs-pino';
 
 async function bootstrap(): Promise<void> {
     const app = await CommandFactory.createWithoutRunning(MigrationModule, {
-        abortOnError: false,
-        bufferLogs: false,
+        abortOnError: true,
+        bufferLogs: true,
     });
 
     app.useLogger(app.get(LoggerPino));
+    await app.flushLogs();
 
     await CommandFactory.runApplication(app);
 
