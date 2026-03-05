@@ -1,6 +1,7 @@
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { MessageService } from '@common/message/services/message.service';
+import { EnumNotificationChannel } from '@generated/prisma-client';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import {
@@ -50,9 +51,10 @@ export class NotificationPushProcessorService
             };
         }
 
-        const notification = await this.notificationRepository.findOneByUserId(
+        const notification = await this.notificationRepository.updateProcessAt(
             userId,
-            notificationId
+            notificationId,
+            EnumNotificationChannel.push
         );
         if (!notification) {
             return {
@@ -81,10 +83,18 @@ export class NotificationPushProcessorService
             }
         );
 
-        await this.notificationPushUtil.sendCleanupTokens(
-            userId,
-            result.invalidTokens
-        );
+        await Promise.all([
+            this.notificationPushUtil.sendCleanupTokens(
+                userId,
+                result.failureTokens
+            ),
+            this.notificationRepository.updateSentAt(
+                userId,
+                notificationId,
+                EnumNotificationChannel.push,
+                result.failureTokens
+            ),
+        ]);
 
         return {
             message: 'New login notification processed',
@@ -107,9 +117,10 @@ export class NotificationPushProcessorService
             };
         }
 
-        const notification = await this.notificationRepository.findOneByUserId(
+        const notification = await this.notificationRepository.updateProcessAt(
             userId,
-            notificationId
+            notificationId,
+            EnumNotificationChannel.push
         );
         if (!notification) {
             return {
@@ -131,10 +142,18 @@ export class NotificationPushProcessorService
             }
         );
 
-        await this.notificationPushUtil.sendCleanupTokens(
-            userId,
-            result.invalidTokens
-        );
+        await Promise.all([
+            this.notificationPushUtil.sendCleanupTokens(
+                userId,
+                result.failureTokens
+            ),
+            this.notificationRepository.updateSentAt(
+                userId,
+                notificationId,
+                EnumNotificationChannel.push,
+                result.failureTokens
+            ),
+        ]);
 
         return {
             message: 'Reset two-factor notification processed',
@@ -158,9 +177,10 @@ export class NotificationPushProcessorService
             };
         }
 
-        const notification = await this.notificationRepository.findOneByUserId(
+        const notification = await this.notificationRepository.updateProcessAt(
             userId,
-            notificationId
+            notificationId,
+            EnumNotificationChannel.push
         );
         if (!notification) {
             return {
@@ -186,10 +206,18 @@ export class NotificationPushProcessorService
             }
         );
 
-        await this.notificationPushUtil.sendCleanupTokens(
-            userId,
-            result.invalidTokens
-        );
+        await Promise.all([
+            this.notificationPushUtil.sendCleanupTokens(
+                userId,
+                result.failureTokens
+            ),
+            this.notificationRepository.updateSentAt(
+                userId,
+                notificationId,
+                EnumNotificationChannel.push,
+                result.failureTokens
+            ),
+        ]);
 
         return {
             message: 'Temporary password notification processed',
@@ -212,9 +240,10 @@ export class NotificationPushProcessorService
             };
         }
 
-        const notification = await this.notificationRepository.findOneByUserId(
+        const notification = await this.notificationRepository.updateProcessAt(
             userId,
-            notificationId
+            notificationId,
+            EnumNotificationChannel.push
         );
         if (!notification) {
             return {
@@ -236,10 +265,18 @@ export class NotificationPushProcessorService
             }
         );
 
-        await this.notificationPushUtil.sendCleanupTokens(
-            userId,
-            result.invalidTokens
-        );
+        await Promise.all([
+            this.notificationPushUtil.sendCleanupTokens(
+                userId,
+                result.failureTokens
+            ),
+            this.notificationRepository.updateSentAt(
+                userId,
+                notificationId,
+                EnumNotificationChannel.push,
+                result.failureTokens
+            ),
+        ]);
 
         return {
             message: 'Reset password notification processed',
@@ -262,9 +299,10 @@ export class NotificationPushProcessorService
             };
         }
 
-        const notification = await this.notificationRepository.findOneByUserId(
+        const notification = await this.notificationRepository.updateProcessAt(
             userId,
-            notificationId
+            notificationId,
+            EnumNotificationChannel.push
         );
         if (!notification) {
             return {
@@ -286,10 +324,18 @@ export class NotificationPushProcessorService
             }
         );
 
-        await this.notificationPushUtil.sendCleanupTokens(
-            userId,
-            result.invalidTokens
-        );
+        await Promise.all([
+            this.notificationPushUtil.sendCleanupTokens(
+                userId,
+                result.failureTokens
+            ),
+            this.notificationRepository.updateSentAt(
+                userId,
+                notificationId,
+                EnumNotificationChannel.push,
+                result.failureTokens
+            ),
+        ]);
 
         return {
             message: 'Forgot password notification processed',
@@ -298,7 +344,7 @@ export class NotificationPushProcessorService
 
     async processCleanupTokens({
         data: {
-            data: { userId, invalidTokens },
+            data: { userId, failureTokens },
         },
     }: Job<
         INotificationPushWorkerCleanupTokenPayload,
@@ -307,12 +353,12 @@ export class NotificationPushProcessorService
     >): Promise<IQueueResponse> {
         const result = await this.deviceRepository.cleanupTokensByIds(
             userId,
-            invalidTokens
+            failureTokens
         );
 
         return {
             message: `Processed token cleanup for invalid tokens`,
-            countRequestedTokens: invalidTokens.length,
+            countRequestedTokens: failureTokens.length,
             countRemovedTokens: result.count,
         };
     }

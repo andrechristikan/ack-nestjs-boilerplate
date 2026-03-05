@@ -10,10 +10,8 @@ import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
 import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
 import { AwsModule } from '@common/aws/aws.module';
-import {
-    MigrationTemplateEmailNotificationSeed,
-    MigrationTemplateTermPolicySeed,
-} from '@migration/seeds/migration.template.seed';
+import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migration.template-notification.seed';
+import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
 
 /**
  * Migration module that provides database seeding functionality.

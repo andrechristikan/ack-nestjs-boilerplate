@@ -58,7 +58,7 @@ export interface INotificationPushProcessorService {
     >): Promise<IQueueResponse>;
     processCleanupTokens({
         data: {
-            data: { invalidTokens },
+            data: { failureTokens, userId },
         },
     }: Job<
         INotificationPushWorkerCleanupTokenPayload,

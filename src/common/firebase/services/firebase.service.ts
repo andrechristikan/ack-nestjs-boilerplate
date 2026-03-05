@@ -72,7 +72,7 @@ export class FirebaseService implements OnModuleInit {
     }
 
     isInitialized(): boolean {
-        return !!this.app || !!this.messaging;
+        return !!this.app && !!this.messaging;
     }
 
     private isInvalidTokenError(error?: { code?: string }): boolean {
@@ -125,17 +125,17 @@ export class FirebaseService implements OnModuleInit {
             this.logger.warn('Firebase not initialized, skipping multicast');
 
             return {
+                failureTokens: [],
                 successCount: 0,
                 failureCount: tokens.length,
-                invalidTokens: [],
             };
         }
 
         if (tokens.length === 0) {
             return {
+                failureTokens: [],
                 successCount: 0,
                 failureCount: 0,
-                invalidTokens: [],
             };
         }
 
@@ -145,77 +145,53 @@ export class FirebaseService implements OnModuleInit {
             );
         }
 
-        try {
-            const chunkedTokens = this.helperService.arrayChunk(
-                tokens,
-                chunkSize
-            );
+        const chunkedTokens = this.helperService.arrayChunk(tokens, chunkSize);
 
-            const promises = chunkedTokens.map(chunk =>
-                this.messaging.sendEachForMulticast({
-                    tokens: chunk,
-                    notification: {
-                        title: payload.title,
-                        body: payload.body,
-                        imageUrl: payload.imageUrl,
-                    },
-                    data: payload.data,
-                })
-            );
+        const promises = chunkedTokens.map(chunk =>
+            this.messaging.sendEachForMulticast({
+                tokens: chunk,
+                notification: {
+                    title: payload.title,
+                    body: payload.body,
+                    imageUrl: payload.imageUrl,
+                },
+                data: payload.data,
+            })
+        );
 
-            const responses = await Promise.allSettled(promises);
+        const responses = await Promise.allSettled(promises);
 
-            let successCount = 0;
-            let failureCount = 0;
-            let invalidTokens: string[] = [];
+        let successCount = 0;
+        let failureCount = 0;
+        const failureTokens: string[] = [];
 
-            for (
-                let chunkIndex = 0;
-                chunkIndex < responses.length;
-                chunkIndex++
-            ) {
-                const response = responses[chunkIndex];
-                const chunk = chunkedTokens[chunkIndex];
+        for (let chunkIndex = 0; chunkIndex < responses.length; chunkIndex++) {
+            const response = responses[chunkIndex];
+            const chunk = chunkedTokens[chunkIndex];
 
-                if (response.status === 'fulfilled') {
-                    successCount += response.value.successCount;
-                    failureCount += response.value.failureCount;
+            if (response.status === 'fulfilled') {
+                successCount += response.value.successCount;
+                failureCount += response.value.failureCount;
 
-                    if (response.value.failureCount > 0) {
-                        const invalidInChunk = response.value.responses
-                            .map((resp, tokenIndex) => {
-                                if (
-                                    !resp.success &&
-                                    resp.error &&
-                                    this.isInvalidTokenError(
-                                        resp.error as { code?: string }
-                                    )
-                                ) {
-                                    return chunk[tokenIndex];
-                                }
-                                return null;
-                            })
-                            .filter((token): token is string => token !== null);
-
-                        invalidTokens = invalidTokens.concat(invalidInChunk);
+                for (const [
+                    tokenIndex,
+                    resp,
+                ] of response.value.responses.entries()) {
+                    if (!resp.success && resp.error) {
+                        if (
+                            this.isInvalidTokenError(
+                                resp.error as { code?: string }
+                            )
+                        ) {
+                            failureTokens.push(chunk[tokenIndex]);
+                        }
                     }
-                } else {
-                    failureCount += chunk.length;
                 }
+            } else {
+                failureCount += chunk.length;
             }
-
-            return { successCount, failureCount, invalidTokens };
-        } catch (error: unknown) {
-            this.logger.error(
-                error,
-                'Failed to send multicast push notification'
-            );
-
-            return {
-                successCount: 0,
-                failureCount: tokens.length,
-                invalidTokens: [],
-            };
         }
+
+        return { successCount, failureCount, failureTokens };
     }
 }

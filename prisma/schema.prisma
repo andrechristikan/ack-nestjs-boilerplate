@@ -408,7 +408,7 @@ model NotificationDelivery {
   channel        EnumNotificationChannel
   sentAt         DateTime?
   processedAt    DateTime?
-  externalId     String?
+  failureTokens  String[]                @default([])
 
   notification Notification @relation("NotificationDeliveries", fields: [notificationId], references: [id])
 
@@ -417,7 +417,6 @@ model NotificationDelivery {
   updatedAt DateTime @updatedAt
 
   @@unique(fields: [notificationId, channel])
-  @@index(fields: [externalId])
   @@index(fields: [channel, createdAt(sort: Desc)])
   @@map("NotificationDeliveries")
 }

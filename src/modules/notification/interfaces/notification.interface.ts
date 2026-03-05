@@ -75,7 +75,7 @@ export interface INotificationPushWorkerPayload<T = unknown> {
 export interface INotificationPushWorkerCleanupTokenPayload {
     data: {
         userId: string;
-        invalidTokens: string[];
+        failureTokens: string[];
     };
 }
 

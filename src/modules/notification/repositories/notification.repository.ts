@@ -74,6 +74,7 @@ export class NotificationRepository {
         username: string,
         createdBy: string
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -88,12 +89,18 @@ export class NotificationRepository {
                 deliveries: {
                     createMany: {
                         data: [
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                             {
                                 channel: EnumNotificationChannel.email,
                             },
                             {
                                 channel: EnumNotificationChannel.inApp,
+                                processedAt: today,
+                                sentAt: today,
                             },
                         ],
                     },
@@ -107,6 +114,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -121,12 +129,18 @@ export class NotificationRepository {
                 deliveries: {
                     createMany: {
                         data: [
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                             {
                                 channel: EnumNotificationChannel.email,
                             },
                             {
                                 channel: EnumNotificationChannel.inApp,
+                                processedAt: today,
+                                sentAt: today,
                             },
                         ],
                     },
@@ -140,6 +154,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -154,12 +169,18 @@ export class NotificationRepository {
                 deliveries: {
                     createMany: {
                         data: [
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                             {
                                 channel: EnumNotificationChannel.email,
                             },
                             {
                                 channel: EnumNotificationChannel.inApp,
+                                processedAt: today,
+                                sentAt: today,
                             },
                         ],
                     },
@@ -175,6 +196,7 @@ export class NotificationRepository {
         passwordExpiredAt: Date,
         createdBy: string
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -191,7 +213,11 @@ export class NotificationRepository {
                         data: [
                             { channel: EnumNotificationChannel.email },
                             { channel: EnumNotificationChannel.push },
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                         ],
                     },
                 },
@@ -204,6 +230,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -219,7 +246,11 @@ export class NotificationRepository {
                     createMany: {
                         data: [
                             { channel: EnumNotificationChannel.email },
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                         ],
                     },
                 },
@@ -232,6 +263,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -246,7 +278,11 @@ export class NotificationRepository {
                 deliveries: {
                     createMany: {
                         data: [
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                             {
                                 channel: EnumNotificationChannel.email,
                             },
@@ -262,6 +298,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -276,7 +313,11 @@ export class NotificationRepository {
                 deliveries: {
                     createMany: {
                         data: [
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                             {
                                 channel: EnumNotificationChannel.email,
                             },
@@ -293,6 +334,7 @@ export class NotificationRepository {
         username: string,
         mobileNumber: string
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -310,7 +352,11 @@ export class NotificationRepository {
                 deliveries: {
                     createMany: {
                         data: [
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                             {
                                 channel: EnumNotificationChannel.email,
                             },
@@ -326,6 +372,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -342,7 +389,11 @@ export class NotificationRepository {
                         data: [
                             { channel: EnumNotificationChannel.email },
                             { channel: EnumNotificationChannel.push },
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                         ],
                     },
                 },
@@ -355,6 +406,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -371,7 +423,11 @@ export class NotificationRepository {
                         data: [
                             { channel: EnumNotificationChannel.email },
                             { channel: EnumNotificationChannel.push },
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                         ],
                     },
                 },
@@ -385,6 +441,7 @@ export class NotificationRepository {
         username: string,
         updatedBy: string
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -401,7 +458,11 @@ export class NotificationRepository {
                         data: [
                             { channel: EnumNotificationChannel.email },
                             { channel: EnumNotificationChannel.push },
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                         ],
                     },
                 },
@@ -419,6 +480,7 @@ export class NotificationRepository {
         city: string,
         loginAt: Date
     ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
         return this.databaseService.notification.create({
             data: {
                 id: notificationId,
@@ -442,7 +504,11 @@ export class NotificationRepository {
                         data: [
                             { channel: EnumNotificationChannel.email },
                             { channel: EnumNotificationChannel.push },
-                            { channel: EnumNotificationChannel.silent },
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
                         ],
                     },
                 },
@@ -455,6 +521,7 @@ export class NotificationRepository {
         { type, version }: INotificationPublishTermPolicyPayload,
         proceedBy: string
     ): Promise<void> {
+        const today = this.helperService.dateCreate();
         await Promise.all(
             payloads.map(payload =>
                 this.databaseService.notification.create({
@@ -472,7 +539,11 @@ export class NotificationRepository {
                             createMany: {
                                 data: [
                                     { channel: EnumNotificationChannel.email },
-                                    { channel: EnumNotificationChannel.silent },
+                                    {
+                                        channel: EnumNotificationChannel.silent,
+                                        processedAt: today,
+                                        sentAt: today,
+                                    },
                                 ],
                             },
                         },
@@ -537,13 +608,58 @@ export class NotificationRepository {
         });
     }
 
-    async findOneByUserId(
+    async updateProcessAt(
         userId: string,
-        notificationId: string
+        notificationId: string,
+        channel: EnumNotificationChannel
     ): Promise<{ title: string; body: string } | null> {
-        return this.databaseService.notification.findUnique({
+        const today = this.helperService.dateCreate();
+        return this.databaseService.notification.update({
             where: { id: notificationId, userId },
+            data: {
+                deliveries: {
+                    update: {
+                        where: {
+                            notificationId_channel: {
+                                notificationId,
+                                channel,
+                            },
+                        },
+                        data: {
+                            processedAt: today,
+                        },
+                    },
+                },
+            },
             select: { title: true, body: true },
+        });
+    }
+
+    async updateSentAt(
+        userId: string,
+        notificationId: string,
+        channel: EnumNotificationChannel,
+        failureTokens: string[]
+    ): Promise<void> {
+        const today = this.helperService.dateCreate();
+        await this.databaseService.notification.update({
+            where: { id: notificationId, userId },
+            data: {
+                deliveries: {
+                    update: {
+                        where: {
+                            notificationId_channel: {
+                                notificationId,
+                                channel,
+                            },
+                        },
+                        data: {
+                            failureTokens,
+                            sentAt: today,
+                        },
+                    },
+                },
+            },
         });
     }
 

@@ -111,11 +111,11 @@ export class NotificationPushUtil {
 
     async sendCleanupTokens(
         userId: string,
-        invalidTokens: string[]
+        failureTokens: string[]
     ): Promise<void> {
-        if (invalidTokens.length > 0) {
+        if (failureTokens.length > 0) {
             const payload: INotificationPushWorkerCleanupTokenPayload = {
-                data: { invalidTokens, userId },
+                data: { failureTokens, userId },
             };
 
             await this.notificationPushQueue.add(

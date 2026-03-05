@@ -8,5 +8,5 @@ export interface IFirebasePushPayload {
 export interface IFirebasePushResult {
     successCount: number;
     failureCount: number;
-    invalidTokens: string[];
+    failureTokens: string[];
 }
