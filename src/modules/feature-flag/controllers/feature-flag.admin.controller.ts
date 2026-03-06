@@ -31,7 +31,7 @@ import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/t
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Body, Controller, Get, Param, Patch, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType, Prisma } from '@prisma/client';
 
 @ApiTags('common.admin.featureFlag')
 @Controller({
@@ -57,7 +57,10 @@ export class FeatureFlagAdminController {
         @PaginationOffsetQuery({
             availableSearch: FeatureFlagDefaultAvailableSearch,
         })
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.FeatureFlagSelect,
+            Prisma.FeatureFlagWhereInput
+        >
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
         return this.featureFlagService.getListByAdmin(pagination);
     }

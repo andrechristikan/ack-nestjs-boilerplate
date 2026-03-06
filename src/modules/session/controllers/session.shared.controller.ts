@@ -1,16 +1,17 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import {
+    RequestGeoLocation,
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -47,7 +48,10 @@ export class SessionSharedController {
         @PaginationCursorQuery({
             availableOrderBy: SessionDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.SessionSelect,
+            Prisma.SessionWhereInput
+        >,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         return this.sessionService.getListCursor(userId, pagination);
@@ -64,11 +68,13 @@ export class SessionSharedController {
         @Param('sessionId', RequestRequiredPipe) sessionId: string,
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.sessionService.revoke(userId, sessionId, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 }

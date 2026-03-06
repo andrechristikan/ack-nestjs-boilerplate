@@ -30,7 +30,7 @@ import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.respo
 import { RoleService } from '@modules/role/services/role.service';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType, Prisma } from '@prisma/client';
 
 @ApiTags('modules.system.role')
 @Controller({
@@ -48,7 +48,10 @@ export class RoleSystemController {
         @PaginationCursorQuery({
             availableSearch: RoleDefaultAvailableSearch,
         })
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.RoleSelect,
+            Prisma.RoleWhereInput
+        >,
         @PaginationQueryFilterInEnum<EnumRoleType>('type', RoleDefaultType)
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {

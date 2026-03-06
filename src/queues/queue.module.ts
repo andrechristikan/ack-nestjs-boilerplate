@@ -1,13 +1,18 @@
-import { EmailModule } from '@modules/email/email.module';
-import { EmailProcessor } from '@modules/email/processors/email.processor';
+import { NotificationEmailProcessor } from '@modules/notification/processors/notification.email.processor';
+import { NotificationProcessor } from '@modules/notification/processors/notification.processor';
+import { NotificationPushProcessor } from '@modules/notification/processors/notification.push.processor';
 import { Module } from '@nestjs/common';
 
 /**
- * Module for managing queue processors
- * Imports EmailModule and provides EmailProcessor for handling email queues
+ * Module for managing queue processors.
+ * Imports queue-related modules and provides processors for background jobs.
  */
 @Module({
-    imports: [EmailModule],
-    providers: [EmailProcessor],
+    imports: [],
+    providers: [
+        NotificationEmailProcessor,
+        NotificationPushProcessor,
+        NotificationProcessor,
+    ],
 })
 export class QueueModule {}

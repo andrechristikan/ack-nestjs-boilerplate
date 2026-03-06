@@ -20,7 +20,7 @@ import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/req
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import { EnumTermPolicyType } from '@prisma/client';
+import { EnumTermPolicyType, Prisma } from '@prisma/client';
 
 export interface ITermPolicyService {
     validateTermPolicyGuard(
@@ -28,17 +28,26 @@ export interface ITermPolicyService {
         requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void>;
     getListByAdmin(
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TermPolicySelect,
+            Prisma.TermPolicyWhereInput
+        >,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>>;
     getListPublished(
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.TermPolicySelect,
+            Prisma.TermPolicyWhereInput
+        >,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>>;
     getListUserAccepted(
         userId: string,
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams<
+            Prisma.TermPolicyUserAcceptanceSelect,
+            Prisma.TermPolicyUserAcceptanceWhereInput
+        >
     ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>>;
     userAccept(
         user: IUser,

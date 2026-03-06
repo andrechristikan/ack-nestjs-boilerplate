@@ -252,7 +252,7 @@ export function PaginationQueryFilterEqualPipe<T>(
             } else if ('isNumber' in options && options.isNumber) {
                 finalValue = Number.parseFloat(value.trim()) as T;
 
-                if (isNaN(finalValue as number)) {
+                if (Number.isNaN(finalValue as number)) {
                     throw new BadRequestException({
                         statusCode:
                             EnumPaginationStatusCodeError.filterInvalidValue,
@@ -345,7 +345,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
             } else if ('isNumber' in options && options.isNumber) {
                 finalValue = Number.parseFloat(value.trim()) as T;
 
-                if (isNaN(finalValue as number)) {
+                if (Number.isNaN(finalValue as number)) {
                     throw new BadRequestException({
                         statusCode:
                             EnumPaginationStatusCodeError.filterInvalidValue,

@@ -16,7 +16,13 @@ import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
-import { authenticator } from 'otplib';
+import {
+    HashAlgorithm,
+    OTPStrategy,
+    generateSecret,
+    generateURI,
+    verifySync,
+} from 'otplib';
 
 /**
  * Utility class for Two-Factor Authentication (2FA) operations.
@@ -28,9 +34,11 @@ import { authenticator } from 'otplib';
  */
 @Injectable()
 export class AuthTwoFactorUtil {
+    private readonly strategy: OTPStrategy;
+    private readonly algorithm: HashAlgorithm;
     private readonly issuer: string;
     private readonly digits: number;
-    private readonly step: number;
+    private readonly periodInSeconds: number;
     private readonly window: number;
     private readonly secretLength: number;
     private readonly challengeTtlInMs: number;
@@ -46,9 +54,17 @@ export class AuthTwoFactorUtil {
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {
+        this.strategy = this.configService.get<OTPStrategy>(
+            'auth.twoFactor.strategy'
+        );
+        this.algorithm = this.configService.get<HashAlgorithm>(
+            'auth.twoFactor.algorithm'
+        );
         this.issuer = this.configService.get<string>('auth.twoFactor.issuer');
         this.digits = this.configService.get<number>('auth.twoFactor.digits');
-        this.step = this.configService.get<number>('auth.twoFactor.step');
+        this.periodInSeconds = this.configService.get<number>(
+            'auth.twoFactor.periodInSeconds'
+        );
         this.window = this.configService.get<number>('auth.twoFactor.window');
         this.secretLength = this.configService.get<number>(
             'auth.twoFactor.secretLength'
@@ -74,12 +90,6 @@ export class AuthTwoFactorUtil {
         this.lockAttemptDuration = this.configService.get<number>(
             'auth.twoFactor.lockAttemptDuration'
         );
-
-        authenticator.options = {
-            step: this.step,
-            digits: this.digits,
-            window: this.window,
-        };
     }
 
     /**
@@ -87,7 +97,9 @@ export class AuthTwoFactorUtil {
      * @returns {string} Secret string
      */
     generateSecret(): string {
-        return authenticator.generateSecret(this.secretLength);
+        return generateSecret({
+            length: this.secretLength,
+        });
     }
 
     /**
@@ -97,7 +109,15 @@ export class AuthTwoFactorUtil {
      * @returns Key URI
      */
     createKeyUri(email: string, secret: string): string {
-        return authenticator.keyuri(email, this.issuer, secret);
+        return generateURI({
+            issuer: this.issuer,
+            label: `${this.issuer}:${email}`,
+            secret,
+            digits: this.digits,
+            period: this.periodInSeconds,
+            strategy: this.strategy,
+            algorithm: this.algorithm,
+        });
     }
 
     /**
@@ -107,7 +127,17 @@ export class AuthTwoFactorUtil {
      * @returns True if valid
      */
     verifyCode(secret: string, code: string): boolean {
-        return authenticator.check(code, secret);
+        const verified = verifySync({
+            token: code,
+            secret,
+            algorithm: this.algorithm,
+            strategy: this.strategy,
+            digits: this.digits,
+            period: this.periodInSeconds,
+            epochTolerance: [this.window * this.periodInSeconds, 0],
+        });
+
+        return verified.valid;
     }
 
     /**

@@ -34,12 +34,13 @@ import {
 } from '@modules/term-policy/docs/term-policy.shared.doc';
 import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import {
+    RequestGeoLocation,
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { IUser } from '@modules/user/interfaces/user.interface';
+import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
 
 @ApiTags('modules.shared.user.termPolicy')
 @Controller({
@@ -58,7 +59,10 @@ export class TermPolicySharedController {
     @Get('/list/accepted')
     async listAccepted(
         @PaginationCursorQuery()
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.TermPolicyUserAcceptanceSelect,
+            Prisma.TermPolicyUserAcceptanceWhereInput
+        >,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>> {
         return this.termPolicyService.getListUserAccepted(userId, pagination);
@@ -76,11 +80,13 @@ export class TermPolicySharedController {
         @UserCurrent() user: IUser,
         @Body() body: TermPolicyAcceptRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyService.userAccept(user, body, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 }

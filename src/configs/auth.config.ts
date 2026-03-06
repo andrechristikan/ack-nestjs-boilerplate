@@ -1,6 +1,7 @@
 import { registerAs } from '@nestjs/config';
 import ms from 'ms';
 import { Algorithm } from 'jsonwebtoken';
+import { HashAlgorithm, OTPStrategy } from 'otplib';
 
 export interface IConfigAuth {
     jwt: {
@@ -50,9 +51,11 @@ export interface IConfigAuth {
         cachePrefixKey: string;
     };
     twoFactor: {
+        strategy: OTPStrategy;
+        algorithm: HashAlgorithm;
         issuer: string;
         digits: number;
-        step: number;
+        periodInSeconds: number;
         window: number;
         secretLength: number;
         challengeTtlInMs: number;
@@ -131,9 +134,11 @@ export default registerAs(
             cachePrefixKey: 'ApiKey',
         },
         twoFactor: {
+            strategy: 'totp',
+            algorithm: 'sha1',
             issuer: process.env.AUTH_TWO_FACTOR_ISSUER ?? 'ACKNestJsTwoFactor',
             digits: 6,
-            step: 30,
+            periodInSeconds: 30,
             window: 1,
             secretLength: 32,
             challengeTtlInMs: ms('5m'),

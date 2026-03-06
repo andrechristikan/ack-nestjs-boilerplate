@@ -5,7 +5,7 @@ import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class UserChangePasswordRequestDto extends PartialType(
-    OmitType(UserLoginVerifyTwoFactorRequestDto, ['challengeToken'])
+    OmitType(UserLoginVerifyTwoFactorRequestDto, ['challengeToken', 'device'])
 ) {
     @ApiProperty({
         description:

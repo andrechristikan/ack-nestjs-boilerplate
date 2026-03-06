@@ -21,13 +21,6 @@ const userData: {
         role: 'admin',
         password: 'aaAA@123',
     },
-    {
-        country: 'ID',
-        email: 'user@mail.com',
-        name: 'User',
-        role: 'user',
-        password: 'aaAA@123',
-    },
 ];
 
 export const migrationUserData: Record<
@@ -40,7 +33,16 @@ export const migrationUserData: Record<
         password: string;
     }[]
 > = {
-    [EnumAppEnvironment.local]: userData,
+    [EnumAppEnvironment.local]: [
+        ...userData,
+        {
+            country: 'ID',
+            email: 'user@mail.com',
+            name: 'User',
+            role: 'user',
+            password: 'aaAA@123',
+        },
+    ],
     [EnumAppEnvironment.development]: userData,
     [EnumAppEnvironment.staging]: userData,
     [EnumAppEnvironment.production]: userData,
