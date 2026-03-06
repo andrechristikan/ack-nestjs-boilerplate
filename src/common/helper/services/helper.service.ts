@@ -860,10 +860,21 @@ export class HelperService implements IHelperService {
         return hostname();
     }
 
+    /**
+     * Resolves city name from GeoLocation object.
+     * @param {GeoLocation} [geoLocation] - Optional GeoLocation object containing city information
+     * @returns {string} City name if available, otherwise 'Unknown Location'
+     */
     resolveCity(geoLocation?: GeoLocation): string {
         return geoLocation?.city ?? 'Unknown Location';
     }
 
+    /**
+     * Resolves device information from UserAgent object.
+     * Attempts to identify device model and vendor, falling back to OS or browser name if necessary.
+     * @param {UserAgent} userAgent - UserAgent object containing device, OS, and browser information
+     * @returns {string} Resolved device description or 'Unknown Device' if information is insufficient
+     */
     resolveDevice(userAgent: UserAgent): string {
         const { device, os, browser } = userAgent;
 

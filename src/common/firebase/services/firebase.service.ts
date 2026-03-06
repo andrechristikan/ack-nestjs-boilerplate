@@ -14,6 +14,13 @@ import * as firebaseAdmin from 'firebase-admin';
 import { App as FirebaseApp } from 'firebase-admin/app';
 import { Messaging } from 'firebase-admin/lib/messaging/messaging';
 
+/**
+ * Service responsible for managing Firebase Admin SDK initialization
+ * and sending push notifications via Firebase Cloud Messaging (FCM).
+ *
+ * Supports both single-device and multicast push notification delivery.
+ * The service gracefully degrades when Firebase credentials are not configured.
+ */
 @Injectable()
 export class FirebaseService implements OnModuleInit {
     private readonly logger = new Logger(FirebaseService.name);
@@ -45,6 +52,13 @@ export class FirebaseService implements OnModuleInit {
         }).export({ type: 'pkcs8', format: 'pem' }) as string;
     }
 
+    /**
+     * Initializes the Firebase Admin SDK on module startup.
+     *
+     * If any required credential (`projectId`, `clientEmail`, `privateKey`) is missing,
+     * a warning is logged and initialization is skipped.
+     * Errors during SDK initialization are caught and logged without throwing.
+     */
     async onModuleInit(): Promise<void> {
         if (!this.projectId || !this.clientEmail || !this.privateKey) {
             this.logger.warn(
@@ -71,14 +85,35 @@ export class FirebaseService implements OnModuleInit {
         }
     }
 
+    /**
+     * Checks whether the Firebase Admin SDK has been successfully initialized.
+     *
+     * @returns `true` if both the Firebase app and messaging instances are available, otherwise `false`.
+     */
     isInitialized(): boolean {
         return !!this.app && !!this.messaging;
     }
 
+    /**
+     * Determines whether a Firebase error is caused by an invalid or expired FCM token.
+     *
+     * @param error - The error object returned by Firebase, optionally containing a `code` property.
+     * @returns `true` if the error code matches a known invalid token error code, otherwise `false`.
+     */
     private isInvalidTokenError(error?: { code?: string }): boolean {
         return FirebaseInvalidTokenCodes.includes(error?.code);
     }
 
+    /**
+     * Sends a push notification to a single device via FCM.
+     *
+     * If Firebase is not initialized, the operation is skipped and `false` is returned.
+     * Invalid token errors are logged as warnings; all other errors are logged as errors.
+     *
+     * @param token - The FCM registration token of the target device.
+     * @param payload - The push notification payload containing title, body, image URL, and custom data.
+     * @returns `true` if the notification was sent successfully, otherwise `false`.
+     */
     async sendPush(
         token: string,
         payload: IFirebasePushPayload
@@ -116,6 +151,22 @@ export class FirebaseService implements OnModuleInit {
         }
     }
 
+    /**
+     * Sends a push notification to multiple devices via FCM using batch multicast.
+     *
+     * Tokens are split into chunks to respect FCM's batch size limit.
+     * Each chunk is sent concurrently via `Promise.allSettled`, so a failure in one chunk
+     * does not affect others. Invalid tokens are collected and returned in `failureTokens`.
+     *
+     * If Firebase is not initialized, the operation is skipped and all tokens are counted as failures.
+     * If the token list is empty, an empty result is returned immediately.
+     *
+     * @param tokens - Array of FCM registration tokens to send the notification to.
+     * @param payload - The push notification payload containing title, body, image URL, and custom data.
+     * @param chunkSize - Number of tokens per batch. Must be between 1 and `FirebaseMaxSendPushBatchSize`. Defaults to `FirebaseMaxSendPushBatchSize`.
+     * @returns An object containing `successCount`, `failureCount`, and `failureTokens` (invalid tokens).
+     * @throws {Error} If `chunkSize` is outside the valid range.
+     */
     async sendMulticast(
         tokens: string[],
         payload: IFirebasePushPayload,

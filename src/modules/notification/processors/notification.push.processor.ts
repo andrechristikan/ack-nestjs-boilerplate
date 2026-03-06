@@ -17,6 +17,11 @@ import { QueueProcessor } from 'src/queues/decorators/queue.decorator';
 import { EnumQueue } from 'src/queues/enums/queue.enum';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
+/**
+ * Background job processor for push notifications via Firebase Cloud Messaging (FCM).
+ * Sends push notifications to mobile devices and handles FCM token cleanup.
+ * Respects Firebase rate limits to avoid throttling.
+ */
 @QueueProcessor(EnumQueue.notificationPush, {
     limiter: {
         max: FirebaseMaxRateLimitPerDuration,
@@ -32,6 +37,14 @@ export class NotificationPushProcessor extends QueueProcessorBase {
         super();
     }
 
+    /**
+     * Processes push notification jobs from the queue.
+     * Routes job to appropriate handler method based on job name (enum).
+     * Handles sending push notifications and cleaning up invalid FCM tokens.
+     *
+     * @param job - The BullMQ job containing push notification type and payload
+     * @returns Queue response with success/failure status and optional message
+     */
     async process(
         job: Job<unknown, IQueueResponse, EnumNotificationPushProcess>
     ): Promise<IQueueResponse> {

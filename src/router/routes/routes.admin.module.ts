@@ -13,8 +13,9 @@ import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 
 /**
- * Admin routes module that provides administrative endpoints.
- * Contains controllers for managing API keys, roles, users, password history, activity logs, sessions, term policies, and feature flags.
+ * Admin routes module providing administrative API endpoints.
+ * Includes controllers for managing API keys, roles, users, password history, activity logs,
+ * sessions, term policies, feature flags, and devices.
  */
 @Module({
     controllers: [

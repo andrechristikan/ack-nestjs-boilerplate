@@ -12,6 +12,10 @@ import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { EnumQueue, EnumQueuePriority } from 'src/queues/enums/queue.enum';
 
+/**
+ * Utility for queueing push notification jobs to Firebase Cloud Messaging.
+ * Enqueues various push notification types (alerts, resets, device login) with rate limiting.
+ */
 @Injectable()
 export class NotificationPushUtil {
     private readonly defTz: string;
@@ -24,6 +28,13 @@ export class NotificationPushUtil {
         this.defTz = this.configService.get<string>('app.timezone');
     }
 
+    /**
+     * Enqueues a temporary password push notification sent by admin.
+     *
+     * @param sendPayload - User to notify (userId, fcmTokens, username)
+     * @param data - Temporary password data (password, created/expiry dates)
+     * @returns Promise resolving when job is enqueued
+     */
     async sendTemporaryPasswordByAdmin(
         sendPayload: INotificationSendPushPayload,
         data: INotificationTemporaryPasswordPayload
@@ -46,6 +57,12 @@ export class NotificationPushUtil {
         );
     }
 
+    /**
+     * Enqueues a password reset push notification.
+     *
+     * @param sendPayload - User to notify (userId, fcmTokens, username)
+     * @returns Promise resolving when job is enqueued
+     */
     async sendResetPassword(
         sendPayload: INotificationSendPushPayload
     ): Promise<void> {
@@ -66,6 +83,12 @@ export class NotificationPushUtil {
         );
     }
 
+    /**
+     * Enqueues a 2FA reset push notification sent by admin.
+     *
+     * @param sendPayload - User to notify (userId, fcmTokens, username)
+     * @returns Promise resolving when job is enqueued
+     */
     async sendResetTwoFactorByAdmin(
         sendPayload: INotificationSendPushPayload
     ): Promise<void> {
@@ -86,6 +109,13 @@ export class NotificationPushUtil {
         );
     }
 
+    /**
+     * Enqueues a new device login alert push notification.
+     *
+     * @param sendPayload - User to notify (userId, fcmTokens, username)
+     * @param data - Login details (device, IP, location, time)
+     * @returns Promise resolving when job is enqueued
+     */
     async sendNewDeviceLogin(
         sendPayload: INotificationSendPushPayload,
         data: INotificationNewDeviceLoginPayload
@@ -109,6 +139,14 @@ export class NotificationPushUtil {
         );
     }
 
+    /**
+     * Enqueues a cleanup job for invalid FCM tokens.
+     * Only enqueues if there are failure tokens to cleanup.
+     *
+     * @param userId - The user whose tokens failed
+     * @param failureTokens - Array of invalid FCM tokens to remove
+     * @returns Promise resolving when job is enqueued or if no tokens to cleanup
+     */
     async sendCleanupTokens(
         userId: string,
         failureTokens: string[]
@@ -132,6 +170,12 @@ export class NotificationPushUtil {
         }
     }
 
+    /**
+     * Enqueues a daily cleanup job for stale/expired FCM tokens.
+     * Runs as a cron job daily at midnight in the configured timezone.
+     *
+     * @returns Promise resolving when recurring job is scheduled
+     */
     async sendCleanupStaleTokens(): Promise<void> {
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.cleanupStaleTokens,

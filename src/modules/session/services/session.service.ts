@@ -18,10 +18,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 /**
  * Session Management Service
  *
- * Provides session management operations including retrieving active sessions with pagination,
- * revoking user sessions, and revoking sessions via admin. Manages both cache and database
- * persistence for session data.
- *
+ * Provides session operations including retrieving active sessions with pagination,
+ * revoking user sessions, and revoking sessions via admin action.
+ * Manages both cache and database persistence for session data.
  */
 @Injectable()
 export class SessionService implements ISessionService {
@@ -33,13 +32,9 @@ export class SessionService implements ISessionService {
     /**
      * Retrieves a paginated list of active sessions for a user using offset-based pagination.
      *
-     * Queries the database for sessions belonging to the specified user with offset pagination,
-     * then transforms the results into response DTOs.
-     *
      * @param userId - The unique identifier of the user
-     * @param pagination - Offset-based pagination parameters (limit, offset)
-     * @returns Promise resolving to paginated session data with pagination metadata
-     *
+     * @param pagination - Offset pagination parameters (limit, offset, orderBy, where)
+     * @returns Paginated session data with pagination metadata (count, page, totalPage, hasNext, hasPrevious)
      */
     async getListOffsetByAdmin(
         userId: string,
@@ -64,14 +59,9 @@ export class SessionService implements ISessionService {
     /**
      * Retrieves a paginated list of active sessions for a user using cursor-based pagination.
      *
-     * Queries the database for sessions belonging to the specified user with cursor pagination,
-     * then transforms the results into response DTOs. Cursor-based pagination is more efficient
-     * for large datasets and prevents issues with offset-based pagination.
-     *
      * @param userId - The unique identifier of the user
-     * @param pagination - Cursor-based pagination parameters (first/last, cursor, etc.)
-     * @returns Promise resolving to paginated session data with pagination metadata
-     *
+     * @param pagination - Cursor pagination parameters (cursor, first/last, orderBy, where)
+     * @returns Paginated session data with pagination metadata and cursor for next page
      */
     async getListCursor(
         userId: string,
@@ -95,17 +85,13 @@ export class SessionService implements ISessionService {
     }
 
     /**
-     * Revokes a specific user session.
-     *
-     * Validates that the session exists and is active for the user, then revokes the session
-     * in both the database and cache simultaneously. Also revokes all push tokens associated
-     * with this session. Removes the session from the user's active sessions.
+     * Revokes a specific user session from both database and cache.
      *
      * @param userId - The unique identifier of the user
      * @param sessionId - The unique identifier of the session to revoke
      * @param requestLog - Request log information for audit trail
-     * @returns Promise resolving to an empty response indicating successful revocation
-     *
+     * @returns Empty response indicating successful revocation
+     * @throws {NotFoundException} If session does not exist or is not active
      */
     async revoke(
         userId: string,
@@ -132,18 +118,14 @@ export class SessionService implements ISessionService {
     }
 
     /**
-     * Revokes a user session via admin action.
-     *
-     * Similar to revoke() but records the admin/revoker information for audit purposes.
-     * Validates that the session exists and is active, then revokes it from both database
-     * and cache while tracking who initiated the revocation. Also revokes associated push tokens.
+     * Revokes a user session via admin action with audit tracking.
      *
      * @param userId - The unique identifier of the user
      * @param sessionId - The unique identifier of the session to revoke
      * @param requestLog - Request log information for audit trail
-     * @param revokedBy - The identifier (admin/user) who initiated the revocation
-     * @returns Promise resolving to a response containing activity log metadata for audit trail
-     *
+     * @param revokedBy - The identifier of admin/user who initiated the revocation
+     * @returns Response with activity log metadata for audit trail
+     * @throws {NotFoundException} If session does not exist or is not active
      */
     async revokeByAdmin(
         userId: string,

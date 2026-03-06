@@ -9,7 +9,7 @@ async function bootstrap(): Promise<void> {
     });
 
     app.useLogger(app.get(LoggerPino));
-    await app.flushLogs();
+    app.flushLogs();
 
     await CommandFactory.runApplication(app);
 

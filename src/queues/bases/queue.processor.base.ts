@@ -5,17 +5,17 @@ import { QueueException } from 'src/queues/exceptions/queue.exception';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
 
 /**
- * Base class for queue processors that extends WorkerHost functionality.
- * Provides common error handling and Sentry integration for failed jobs.
+ * Base class for all queue job processors.
+ * Provides common error handling and Sentry integration for job failures.
+ * Extend this class when creating new processor classes.
  */
 export abstract class QueueProcessorBase extends WorkerHost {
     /**
      * Handles failed job events and reports fatal errors to Sentry.
-     * Only reports to Sentry on the last attempt for fatal errors.
+     * Only reports on the last retry attempt to avoid duplicate error reports.
      *
-     * @param {Job<unknown, null, string> | undefined} job - The failed job instance
-     * @param {Error} error - The error that caused the job to fail
-     * @returns {void}
+     * @param job - The failed job instance
+     * @param error - The error that caused the job to fail
      */
     @OnWorkerEvent('failed')
     onFailed(job: Job<unknown, null, string> | undefined, error: Error): void {
@@ -37,5 +37,12 @@ export abstract class QueueProcessorBase extends WorkerHost {
         }
     }
 
+    /**
+     * Abstract method that must be implemented by all processor subclasses.
+     * Processes a single job from the queue.
+     *
+     * @param job - The BullMQ job to process
+     * @returns Queue response with success/failure status
+     */
     abstract process(job: Job): Promise<IQueueResponse>;
 }

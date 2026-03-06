@@ -24,9 +24,8 @@ import { NotificationModule } from '@modules/notification/notification.module';
 
 /**
  * Common module that provides shared functionality across the application.
- * Configures global services including configuration, caching, logging, database, authentication, and pagination.
+ * All services within this module are marked as global and available across the application.
  */
-
 @Module({
     controllers: [],
     providers: [],

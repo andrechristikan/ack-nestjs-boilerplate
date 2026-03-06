@@ -24,7 +24,8 @@ import geoIp from 'geoip-lite';
 
 /**
  * Interceptor that automatically logs user activities to the database.
- * Captures user actions, IP addresses, user agents, and metadata for audit trail purposes.
+ * Captures user actions, IP addresses, user agents, geolocation, and metadata for audit trail purposes.
+ * Runs after successful response and asynchronously saves activity logs without blocking the response.
  */
 @Injectable()
 export class ActivityLogInterceptor implements NestInterceptor {
@@ -35,11 +36,12 @@ export class ActivityLogInterceptor implements NestInterceptor {
 
     /**
      * Intercepts HTTP requests to log user activities after successful responses.
-     * Extracts user information, IP address, user agent, and action metadata to create activity log entries.
+     * Extracts user info, IP address, user agent, geolocation, and action metadata from decorators.
+     * Activity is saved asynchronously so it doesn't block the response.
      *
-     * @param {ExecutionContext} context - The execution context containing request information
-     * @param {CallHandler} next - The next handler in the chain
-     * @returns {Observable<Promise<Response>>} Observable of the response with activity logging
+     * @param context - Execution context containing request/response information
+     * @param next - The next handler in the chain
+     * @returns Observable that emits the response with background activity logging
      */
     intercept(
         context: ExecutionContext,

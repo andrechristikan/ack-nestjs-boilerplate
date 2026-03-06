@@ -29,6 +29,11 @@ import { Queue } from 'bullmq';
 import { plainToInstance } from 'class-transformer';
 import { EnumQueue, EnumQueuePriority } from 'src/queues/enums/queue.enum';
 
+/**
+ * Central notification utility for multi-channel notifications.
+ * Routes notifications to email, push, and in-app channels based on user preferences.
+ * Encrypts sensitive data before enqueueing and validates notification settings.
+ */
 @Injectable()
 export class NotificationUtil {
     constructor(
@@ -38,6 +43,14 @@ export class NotificationUtil {
         private readonly helperService: HelperService
     ) {}
 
+    /**
+     * Queues welcome notification with temporary password sent by admin.
+     *
+     * @param userId - User receiving the notification
+     * @param passwordData - Temporary password data (plaintext password, dates)
+     * @param createdBy - Admin/user ID who initiated the action
+     * @returns Promise resolving when job is enqueued
+     */
     async sendWelcomeByAdmin(
         userId: string,
         {
@@ -70,6 +83,13 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues welcome notification for new user with verification link.
+     *
+     * @param userId - User receiving the notification
+     * @param verificationData - Email verification link data (link, expiry, reference)
+     * @returns Promise resolving when job is enqueued
+     */
     async sendWelcome(
         userId: string,
         {
@@ -103,6 +123,12 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues welcome notification for social login user.
+     *
+     * @param userId - User receiving the notification
+     * @returns Promise resolving when job is enqueued
+     */
     async sendWelcomeSocial(userId: string): Promise<void> {
         await this.notificationQueue.add(
             EnumNotificationProcess.welcomeSocial,
@@ -120,6 +146,14 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues temporary password notification sent by admin.
+     *
+     * @param userId - User receiving the notification
+     * @param passwordData - Temporary password data (plaintext password, dates)
+     * @param createdBy - Admin/user ID who initiated the action
+     * @returns Promise resolving when job is enqueued
+     */
     async sendTemporaryPasswordByAdmin(
         userId: string,
         {
@@ -152,6 +186,12 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues password change confirmation notification.
+     *
+     * @param userId - User receiving the notification
+     * @returns Promise resolving when job is enqueued
+     */
     async sendChangePassword(userId: string): Promise<void> {
         await this.notificationQueue.add(
             EnumNotificationProcess.changePassword,
@@ -169,6 +209,13 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues email verification confirmation notification.
+     *
+     * @param userId - User receiving the notification
+     * @param verified - Verified email data (reference)
+     * @returns Promise resolving when job is enqueued
+     */
     async sendVerifiedEmail(
         userId: string,
         verified: INotificationVerifiedEmailPayload
@@ -190,6 +237,13 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues email verification link notification.
+     *
+     * @param userId - User receiving the notification
+     * @param verificationData - Email verification link data (link, expiry, reference)
+     * @returns Promise resolving when job is enqueued
+     */
     async sendVerificationEmail(
         userId: string,
         {
@@ -223,6 +277,13 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues forgot password reset link notification.
+     *
+     * @param userId - User receiving the notification
+     * @param forgotPasswordData - Reset link data (link, expiry, reference, resend time)
+     * @returns Promise resolving when job is enqueued
+     */
     async sendForgotPassword(
         userId: string,
         {
@@ -258,6 +319,12 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues password reset confirmation notification.
+     *
+     * @param userId - User receiving the notification
+     * @returns Promise resolving when job is enqueued
+     */
     async sendResetPassword(userId: string): Promise<void> {
         await this.notificationQueue.add(
             EnumNotificationProcess.resetPassword,
@@ -275,6 +342,13 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues 2FA reset notification sent by admin.
+     *
+     * @param userId - User receiving the notification
+     * @param createdBy - Admin/user ID who initiated the action
+     * @returns Promise resolving when job is enqueued
+     */
     async sendResetTwoFactorByAdmin(
         userId: string,
         createdBy: string
@@ -295,6 +369,13 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues new device login alert notification.
+     *
+     * @param userId - User receiving the notification
+     * @param newDevice - Login details (device, IP, location, time)
+     * @returns Promise resolving when job is enqueued
+     */
     async sendNewDeviceLogin(
         userId: string,
         newDevice: INotificationNewDeviceLoginPayload
@@ -316,6 +397,13 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues term policy publication notification to multiple users.
+     *
+     * @param payload - Term policy publication data
+     * @param publishedBy - Admin/user ID who published the policy
+     * @returns Promise resolving when job is enqueued
+     */
     async sendPublishTermPolicy(
         payload: INotificationPublishTermPolicyPayload,
         publishedBy: string
@@ -336,6 +424,13 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Queues mobile number verification confirmation notification.
+     *
+     * @param userId - User receiving the notification
+     * @param verifiedMobile - Verified mobile number and reference
+     * @returns Promise resolving when job is enqueued
+     */
     async sendVerifiedMobileNumber(
         userId: string,
         verifiedMobile: INotificationVerifiedMobileNumberPayload
@@ -357,6 +452,14 @@ export class NotificationUtil {
         );
     }
 
+    /**
+     * Validates if a notification type/channel combination is allowed.
+     * Throws error if combination is not in the allowed list.
+     *
+     * @param type - Notification type (userActivity, marketing, etc.)
+     * @param channel - Delivery channel (email, push, inApp)
+     * @throws {BadRequestException} If combination is not allowed
+     */
     validateUserSetting(
         type: EnumNotificationType,
         channel: EnumNotificationChannel
@@ -384,10 +487,22 @@ export class NotificationUtil {
         }
     }
 
+    /**
+     * Maps notification entities to response DTOs.
+     *
+     * @param notifications - Array of notification entities from database
+     * @returns Array of notification response DTOs
+     */
     mapList(notifications: Notification[]): NotificationResponseDto[] {
         return plainToInstance(NotificationResponseDto, notifications);
     }
 
+    /**
+     * Maps user notification settings to response DTOs.
+     *
+     * @param settings - Array of user notification settings from database
+     * @returns Array of notification setting response DTOs
+     */
     mapUserSettingList(
         settings: NotificationUserSetting[]
     ): NotificationUserSettingDto[] {
