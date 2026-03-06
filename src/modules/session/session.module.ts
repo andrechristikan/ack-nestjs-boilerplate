@@ -1,16 +1,16 @@
 import { Global, Module } from '@nestjs/common';
-import { SessionUtil } from '@modules/session/utils/session.util';
 import { SessionService } from '@modules/session/services/session.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import KeyvRedis from '@keyv/redis';
+import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import {
     CACHE_MANAGER,
     CacheModule as CacheManagerModule,
     CacheOptions,
 } from '@nestjs/cache-manager';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import KeyvRedis from '@keyv/redis';
-import { SessionCacheProvider } from '@modules/session/constants/session.constant';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import { SessionUtil } from '@modules/session/utils/session.util';
+import { SessionCacheProvider } from '@modules/session/constants/session.constant';
 
 @Global()
 @Module({
@@ -29,11 +29,11 @@ import { RedisClientCachedProvider } from '@common/redis/constants/redis.constan
             },
         }),
     ],
-    exports: [SessionUtil, SessionService, SessionRepository],
+    exports: [SessionService, SessionRepository, SessionUtil],
     providers: [
-        SessionUtil,
         SessionService,
         SessionRepository,
+        SessionUtil,
         {
             provide: SessionCacheProvider,
             useExisting: CACHE_MANAGER,

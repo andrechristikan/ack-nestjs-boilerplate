@@ -3,10 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
 import { Algorithm } from 'jsonwebtoken';
 import {
+    IAuthAccessTokenGenerate,
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
     IAuthPassword,
     IAuthPasswordOptions,
+    IAuthRefreshTokenGenerate,
     IAuthSocialPayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
@@ -17,6 +19,9 @@ import verifyAppleToken, {
     VerifyAppleIdTokenResponse,
 } from 'verify-apple-id-token';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { IUser } from '@modules/user/interfaces/user.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 
 /**
  * Authentication Utility Service
@@ -35,7 +40,7 @@ export class AuthUtil {
     private readonly jwtAccessTokenKid: string;
     private readonly jwtAccessTokenPrivateKey: string;
     private readonly jwtAccessTokenPublicKey: string;
-    readonly jwtAccessTokenExpirationTimeInSeconds: number;
+    private readonly jwtAccessTokenExpirationTimeInSeconds: number;
     private readonly jwtAccessTokenAlgorithm: Algorithm;
 
     private readonly jwtRefreshTokenKid: string;
@@ -44,7 +49,7 @@ export class AuthUtil {
     readonly jwtRefreshTokenExpirationTimeInSeconds: number;
     private readonly jwtRefreshTokenAlgorithm: Algorithm;
 
-    readonly jwtPrefix: string;
+    private readonly jwtPrefix: string;
     private readonly jwtAudience: string;
     private readonly jwtIssuer: string;
     private readonly jwtHeader: string;
@@ -73,6 +78,7 @@ export class AuthUtil {
     private readonly googleClient: OAuth2Client;
 
     constructor(
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperService: HelperService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService
@@ -470,13 +476,17 @@ export class AuthUtil {
      * Checks if a password has expired based on its expiration date.
      *
      * Compares the password expiration date with the current date to determine
-     * if the user should be prompted to change their password.
+     * if the user should be prompted to change their password. Returns false if
+     * no expiration date is provided.
      *
-     * @param passwordExpired - The date when the password expires
-     * @returns True if the password has expired (current date > expiration date), false otherwise
+     * @param passwordExpired - Optional date when the password expires. If not provided, returns false
+     * @returns True if the password has expired (current date > expiration date), false if password has not expired or no expiration date is provided
      */
-    checkPasswordExpired(passwordExpired: Date): boolean {
-        if (!passwordExpired) { return false; }
+    checkPasswordExpired(passwordExpired?: Date): boolean {
+        if (!passwordExpired) {
+            return false;
+        }
+
         const today: Date = this.helperService.dateCreate();
         return today > passwordExpired;
     }
@@ -580,5 +590,142 @@ export class AuthUtil {
                 request.headers[`${this.jwtHeader?.toLowerCase()}`] as string
             )?.split(`${this.jwtPrefix} `) ?? []
         );
+    }
+
+    /**
+     * Creates both access and refresh tokens for a user session.
+     *
+     * Generates JWT tokens with current timestamp, unique session ID, and unique token identifier (jti)
+     * for session tracking and security validation.
+     *
+     * @param user - The user entity containing profile and role information
+     * @param loginFrom - The source/platform of the login (website, mobile, etc.)
+     * @param loginWith - The authentication method used for login (email, google, apple, etc.)
+     * @returns Token response object containing access token, refresh token, expiration time, jti, and sessionId
+     */
+    createTokens(
+        user: IUser,
+        loginFrom: EnumUserLoginFrom,
+        loginWith: EnumUserLoginWith
+    ): IAuthAccessTokenGenerate {
+        const loginDate = this.helperService.dateCreate();
+
+        const sessionId = this.databaseUtil.createId();
+        const jti = this.generateJti();
+        const payloadAccessToken: IAuthJwtAccessTokenPayload =
+            this.createPayloadAccessToken(
+                user,
+                sessionId,
+                loginDate,
+                loginFrom,
+                loginWith
+            );
+        const accessToken: string = this.createAccessToken(
+            user.id,
+            jti,
+            payloadAccessToken
+        );
+
+        const payloadRefreshToken: IAuthJwtRefreshTokenPayload =
+            this.createPayloadRefreshToken(payloadAccessToken);
+        const refreshToken: string = this.createRefreshToken(
+            user.id,
+            jti,
+            payloadRefreshToken
+        );
+
+        const tokens: AuthTokenResponseDto = {
+            tokenType: this.jwtPrefix,
+            roleType: user.role.type,
+            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
+            accessToken,
+            refreshToken,
+        };
+
+        return {
+            tokens,
+            jti,
+            sessionId,
+        };
+    }
+
+    /**
+     * Refreshes an access token using a valid refresh token.
+     *
+     * This method extracts session and user information from the provided refresh token, then generates a new access token
+     * and a new refresh token with a new token identifier (jti). The new refresh token's expiration is adjusted based on the
+     * remaining validity of the original refresh token, ensuring the session does not extend beyond its original lifetime.
+     *
+     * @param user - The user entity containing profile and role information
+     * @param refreshTokenFromRequest - The existing refresh token to extract session and expiration data from
+     * @returns IAuthRefreshTokenGenerate object containing the new access token, new refresh token (with adjusted expiry), new jti, sessionId, and remaining expiration in ms
+     * @throws {UnauthorizedException} If the refresh token is invalid or session validation fails
+     */
+    refreshToken(
+        user: IUser,
+        refreshTokenFromRequest: string
+    ): IAuthRefreshTokenGenerate {
+        const {
+            sessionId,
+            loginAt,
+            loginFrom,
+            loginWith,
+            exp: oldExp,
+        } = this.payloadToken<IAuthJwtRefreshTokenPayload>(
+            refreshTokenFromRequest
+        );
+
+        const jti = this.generateJti();
+        const payloadAccessToken: IAuthJwtAccessTokenPayload =
+            this.createPayloadAccessToken(
+                user,
+                sessionId,
+                loginAt,
+                loginFrom,
+                loginWith
+            );
+        const accessToken: string = this.createAccessToken(
+            user.id,
+            jti,
+            payloadAccessToken
+        );
+
+        const newPayloadRefreshToken: IAuthJwtRefreshTokenPayload =
+            this.createPayloadRefreshToken(payloadAccessToken);
+
+        const today = this.helperService.dateCreate();
+        const expiredAt = this.helperService.dateCreateFromTimestamp(
+            oldExp * 1000
+        );
+
+        const newRefreshTokenExpire = this.helperService.dateDiff(
+            expiredAt,
+            today
+        );
+        const newRefreshTokenExpireInSeconds = newRefreshTokenExpire.seconds
+            ? newRefreshTokenExpire.seconds
+            : Math.floor(newRefreshTokenExpire.milliseconds / 1000);
+
+        const newRefreshToken: string = this.createRefreshToken(
+            user.id,
+            jti,
+            newPayloadRefreshToken,
+            newRefreshTokenExpireInSeconds
+        );
+
+        const tokens: AuthTokenResponseDto = {
+            tokenType: this.jwtPrefix,
+            roleType: user.role.type,
+            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
+            accessToken,
+            refreshToken: newRefreshToken,
+        };
+
+        return {
+            tokens,
+            jti,
+            sessionId,
+            expiredInMs: newRefreshTokenExpire.milliseconds,
+        };
     }
 }

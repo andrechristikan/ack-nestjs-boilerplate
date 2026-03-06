@@ -3,7 +3,7 @@ import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagi
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Injectable } from '@nestjs/common';
-import { Country } from '@prisma/client';
+import { Country, Prisma } from '@prisma/client';
 
 @Injectable()
 export class CountryRepository {
@@ -13,12 +13,16 @@ export class CountryRepository {
     ) {}
 
     async findWithPagination(
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.CountrySelect,
+            Prisma.CountryWhereInput
+        >
     ): Promise<IResponsePagingReturn<Country>> {
-        return this.paginationService.offset<Country>(
-            this.databaseService.country,
-            pagination
-        );
+        return this.paginationService.offset<
+            Country,
+            Prisma.CountrySelect,
+            Prisma.CountryWhereInput
+        >(this.databaseService.country, pagination);
     }
 
     async existById(id: string): Promise<{ id: string } | null> {

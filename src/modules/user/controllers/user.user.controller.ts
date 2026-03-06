@@ -1,8 +1,8 @@
 import {
+    RequestGeoLocation,
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -17,7 +17,7 @@ import { UserUserDeleteSelfDoc } from '@modules/user/docs/user.user.doc';
 import { UserService } from '@modules/user/services/user.service';
 import { Controller, Delete } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType, GeoLocation, UserAgent } from '@prisma/client';
 
 @ApiTags('modules.user.user')
 @Controller({
@@ -38,11 +38,13 @@ export class UserUserController {
     async deleteSelf(
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation
     ): Promise<IResponseReturn<void>> {
         return this.userService.deleteSelf(userId, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 }

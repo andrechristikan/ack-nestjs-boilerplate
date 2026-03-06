@@ -27,6 +27,9 @@ import {
     EnumActivityLogAction,
     EnumRoleType,
     EnumUserStatus,
+    GeoLocation,
+    Prisma,
+    UserAgent,
 } from '@prisma/client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -70,12 +73,12 @@ import {
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import {
+    RequestGeoLocation,
     RequestIPAddress,
     RequestTimeout,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
@@ -109,7 +112,10 @@ export class UserAdminController {
         @PaginationOffsetQuery({
             availableSearch: UserDefaultAvailableSearch,
         })
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >,
         @PaginationQueryFilterInEnum<EnumUserStatus>(
             'status',
             UserDefaultStatus
@@ -164,13 +170,15 @@ export class UserAdminController {
         body: UserCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<DatabaseIdDto>> {
         return this.userService.createByAdmin(
             body,
             {
                 ipAddress,
                 userAgent,
+                geoLocation,
             },
             createdBy
         );
@@ -195,7 +203,8 @@ export class UserAdminController {
         @AuthJwtPayload('userId') updatedBy: string,
         @Body() body: UserUpdateStatusRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.updateStatusByAdmin(
             userId,
@@ -203,6 +212,7 @@ export class UserAdminController {
             {
                 ipAddress,
                 userAgent,
+                geoLocation,
             },
             updatedBy
         );
@@ -226,13 +236,15 @@ export class UserAdminController {
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.updatePasswordByAdmin(
             userId,
             {
                 ipAddress,
                 userAgent,
+                geoLocation,
             },
             updatedBy
         );
@@ -256,11 +268,13 @@ export class UserAdminController {
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.resetTwoFactorByAdmin(userId, updatedBy, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 
@@ -290,11 +304,13 @@ export class UserAdminController {
         )
         data: UserImportRequestDto[],
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.userService.importByAdmin(data, createdBy, {
             ipAddress,
             userAgent,
+            geoLocation,
         });
     }
 

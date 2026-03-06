@@ -4,5 +4,5 @@ import { IntersectionType, OmitType, PickType } from '@nestjs/swagger';
 
 export class UserCreateSocialRequestDto extends IntersectionType(
     OmitType(UserSignUpRequestDto, ['email', 'from', 'password'] as const),
-    PickType(UserLoginRequestDto, ['from'])
+    PickType(UserLoginRequestDto, ['from', 'device'] as const)
 ) {}

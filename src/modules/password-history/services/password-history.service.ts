@@ -8,6 +8,7 @@ import {
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
 import { PasswordHistoryUtil } from '@modules/password-history/utils/password-history.util';
+import { Prisma } from '@generated/prisma-client';
 @Injectable()
 export class PasswordHistoryService implements IPasswordHistoryService {
     constructor(
@@ -17,7 +18,10 @@ export class PasswordHistoryService implements IPasswordHistoryService {
 
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.PasswordHistorySelect,
+            Prisma.PasswordHistoryWhereInput
+        >
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {
         const { data, ...others } =
             await this.passwordHistoryRepository.findWithPaginationOffsetByAdmin(
@@ -35,7 +39,10 @@ export class PasswordHistoryService implements IPasswordHistoryService {
 
     async getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams<
+            Prisma.PasswordHistorySelect,
+            Prisma.PasswordHistoryWhereInput
+        >
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {
         const { data, ...others } =
             await this.passwordHistoryRepository.findWithPaginationCursor(

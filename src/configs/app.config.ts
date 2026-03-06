@@ -8,6 +8,7 @@ export interface IConfigApp {
     env: EnumAppEnvironment;
     timezone: string;
     version: string;
+    encryptionSecretKey: string;
     author: {
         name: string;
         email: string;
@@ -33,6 +34,7 @@ export default registerAs(
             EnumAppEnvironment[process.env.APP_ENV] ?? EnumAppEnvironment.local,
         timezone: process.env.APP_TIMEZONE ?? EnumRequestTimezone.asiaJakarta,
         version,
+        encryptionSecretKey: process.env.APP_ENCRYPTION_SECRET_KEY,
         author: author as {
             name: string;
             email: string;

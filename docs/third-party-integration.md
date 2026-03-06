@@ -21,6 +21,8 @@ ACK NestJS Boilerplate integrates with various third-party services and provider
 - [AWS Services](#aws-services)
   - [S3 Storage](#s3-storage)
   - [SES Email](#ses-email)
+  - [Error Codes](#error-codes)
+- [Firebase](#firebase)
 - [Sentry](#sentry)
 - [Redis](#redis)
 - [MongoDB](#mongodb)
@@ -40,8 +42,9 @@ ACK NestJS Boilerplate integrates with various third-party services and provider
 
 **Environment Variables:**
 ```dotenv
-AWS_S3_PUBLIC_CREDENTIAL_KEY=your_access_key
-AWS_S3_PUBLIC_CREDENTIAL_SECRET=your_secret_key
+AWS_S3_IAM_CREDENTIAL_KEY=your_access_key
+AWS_S3_IAM_CREDENTIAL_SECRET=your_secret_key
+AWS_S3_IAM_ARN=your_iam_arn
 AWS_S3_REGION=ap-southeast-3
 AWS_S3_PUBLIC_BUCKET=your_public_bucket
 AWS_S3_PUBLIC_CDN=https://your-cdn.cloudfront.net
@@ -54,6 +57,36 @@ AWS_S3_PRIVATE_CDN=https://your-private-cdn.cloudfront.net
 - Private file storage (sensitive documents)
 - Presigned URL generation for secure access
 
+**No-Op Mode:**
+
+If any of `AWS_S3_IAM_CREDENTIAL_KEY`, `AWS_S3_IAM_CREDENTIAL_SECRET`, or `AWS_S3_REGION` is not set, `AwsS3Service` will not create an S3 client and will operate in **no-op mode**. On startup, it logs:
+
+```
+AWS S3 credentials not configured. S3 functionalities will be disabled.
+```
+
+Use `isInitialized()` to check readiness before calling S3 operations:
+
+```typescript
+if (!this.awsS3Service.isInitialized()) {
+    // S3 is disabled — skip upload
+    return;
+}
+```
+
+When not initialized, each method returns a safe typed default and emits the same warn log instead of throwing:
+
+| Method | Default return |
+|---|---|
+| `checkConnection`, `checkBucket` | `false` |
+| `checkItem`, `getItem`, `putItem`, `createMultiPart` | `null` |
+| `presignGetItem`, `presignPutItem`, `presignPutItemPart`, `moveItem` | `null` |
+| `getItems`, `moveItems` | `[]` |
+| `deleteItem`, `deleteItems`, `deleteDir`, `completeMultipart`, `abortMultipart`, bucket-config methods | `void` (silent no-op) |
+| `putItemMultiPart` | the unmodified `multipart` input |
+
+> **Callers must null-check** methods that return `AwsS3Dto | null`, `AwsS3MultipartDto | null`, or `AwsS3PresignDto | null` before using the result.
+
 For detailed implementation, see [File Upload][ref-doc-file-upload].
 
 ### SES Email
@@ -65,8 +98,9 @@ For detailed implementation, see [File Upload][ref-doc-file-upload].
 
 **Environment Variables:**
 ```dotenv
-AWS_SES_CREDENTIAL_KEY=your_access_key
-AWS_SES_CREDENTIAL_SECRET=your_secret_key
+AWS_SES_IAM_CREDENTIAL_KEY=your_access_key
+AWS_SES_IAM_CREDENTIAL_SECRET=your_secret_key
+AWS_SES_IAM_ARN=your_iam_arn
 AWS_SES_REGION=ap-southeast-3
 ```
 
@@ -76,7 +110,84 @@ AWS_SES_REGION=ap-southeast-3
 - Email verification
 - Notification emails
 
+**No-Op Mode:**
+
+If any of `AWS_SES_IAM_CREDENTIAL_KEY`, `AWS_SES_IAM_CREDENTIAL_SECRET`, or `AWS_SES_REGION` is not set, `AwsSESService` will not create an SES client and will operate in **no-op mode**. On startup, it logs:
+
+```
+AWS SES credentials not configured. Email functionalities will be disabled.
+```
+
+Use `isInitialized()` to check readiness before sending emails:
+
+```typescript
+if (!this.awsSesService.isInitialized()) {
+    // SES is disabled — skip email
+    return;
+}
+```
+
+When not initialized, each method returns a safe typed default and emits the same warn log instead of throwing:
+
+| Method | Default return |
+|---|---|
+| `checkConnection` | `false` |
+| `listTemplates` | `{ TemplatesMetadata: [], $metadata: {} }` |
+| `getTemplate` | `{ $metadata: {}, Template: null }` |
+| `createTemplate`, `updateTemplate`, `deleteTemplate` | `{ $metadata: {} }` |
+| `send` | `{ MessageId: null, $metadata: {} }` |
+| `sendBulk` | `{ Status: [], $metadata: {} }` |
+
+**Bulk Email (`AwsSESSendBulkDto<T>`):**
+
+For sending the same template to multiple recipients, use `AwsSESSendBulkDto`. Each recipient can carry its own `templateData`, and the optional `defaultTemplateData` field provides fallback values applied to all recipients that do not supply their own data:
+
+```typescript
+await this.awsSesService.sendBulk({
+    templateName: 'welcome',
+    sender: 'no-reply@mail.com',
+    defaultTemplateData: { appName: 'ACKNestJs' },   // fallback for all recipients
+    recipients: [
+        { to: 'a@mail.com', templateData: { name: 'Alice' } },
+        { to: 'b@mail.com', templateData: { name: 'Bob' } },
+    ],
+});
+```
+
+`defaultTemplateData` is serialized as `DefaultTemplateData` in the SES `SendBulkTemplatedEmail` command. If omitted, it defaults to `{}`.
+
 Email processing is handled through the queue system. See [Queue][ref-doc-queue] for details.
+
+### Error Codes
+
+AWS service errors use `EnumAwsStatusCodeError` located at `src/common/aws/enums/aws.status-code.enum.ts`:
+
+| Enum | Code | i18n Key | Description |
+|---|---|---|---|
+| `EnumAwsStatusCodeError.serviceUnavailable` | `5240` | `aws.error.serviceUnavailable` | AWS service is unavailable |
+
+## Firebase
+
+[Firebase Admin SDK][ref-firebase] is used for sending push notifications to mobile devices.
+
+**Packages:**
+- `firebase-admin`
+
+**Environment Variables:**
+```dotenv
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_CLIENT_EMAIL=your_client_email
+FIREBASE_PRIVATE_KEY=your_base64_encoded_private_key
+```
+
+**Features:**
+- Push notification delivery via FCM
+- Batch send support
+- Invalid token detection and cleanup
+
+Leave `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` empty to disable Firebase in development.
+
+For notification details, see [Notification Documentation][ref-doc-notification].
 
 ## Sentry
 
@@ -181,93 +292,21 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 
 <!-- REFERENCES -->
 
-<!-- BADGE LINKS -->
-
-[ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-forks-shield]: https://img.shields.io/github/forks/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-stars-shield]: https://img.shields.io/github/stars/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-issues-shield]: https://img.shields.io/github/issues/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-license-shield]: https://img.shields.io/github/license/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
-[nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
-[typescript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
-[mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
-[jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
-[jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
-[docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
-[github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
-[linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
-
-<!-- CONTACTS -->
-
-[ref-author-linkedin]: https://linkedin.com/in/andrechristikan
-[ref-author-email]: mailto:andrechristikan@gmail.com
-[ref-author-github]: https://github.com/andrechristikan
-[ref-author-paypal]: https://www.paypal.me/andrechristikan
-[ref-author-kofi]: https://ko-fi.com/andrechristikan
-
-<!-- Repo LINKS -->
-
-[ref-ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
-[ref-ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate/issues
-[ref-ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
-[ref-ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
-[ref-ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
-[ref-ack-license]: LICENSE.md
-
-<!-- THIRD PARTY -->
-
-[ref-nestjs]: http://nestjs.com
-[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
-[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
-[ref-prisma]: https://www.prisma.io
-[ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
-[ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
-[ref-mongodb]: https://docs.mongodb.com/
+[ref-aws-s3]: https://docs.aws.amazon.com/s3/
+[ref-aws-ses]: https://docs.aws.amazon.com/ses/
+[ref-firebase]: https://firebase.google.com/docs/admin/setup
+[ref-sentry]: https://sentry.io
 [ref-redis]: https://redis.io
-[ref-bullmq]: https://bullmq.io
-[ref-nodejs]: https://nodejs.org/
-[ref-typescript]: https://www.typescriptlang.org/
-[ref-docker]: https://docs.docker.com
-[ref-dockercompose]: https://docs.docker.com/compose/
-[ref-pnpm]: https://pnpm.io
-[ref-12factor]: https://12factor.net
-[ref-commander]: https://nest-commander.jaymcdoniel.dev
-[ref-package-json]: package.json
-[ref-jwt]: https://jwt.io
-[ref-jest]: https://jestjs.io/docs/getting-started
-[ref-git]: https://git-scm.com
-[ref-google-console]: https://console.cloud.google.com/
-[ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
+[ref-mongodb]: https://docs.mongodb.com/
+[ref-prisma]: https://www.prisma.io
+[ref-google-oauth]: https://developers.google.com/identity/protocols/oauth2
+[ref-apple-signin]: https://developer.apple.com/sign-in-with-apple/
 
-[ref-doc-root]: ../readme.md
-[ref-doc-activity-log]: activity-log.md
-[ref-doc-authentication]: authentication.md
-[ref-doc-authorization]: authorization.md
-[ref-doc-cache]: cache.md
 [ref-doc-configuration]: configuration.md
-[ref-doc-database]: database.md
 [ref-doc-environment]: environment.md
-[ref-doc-feature-flag]: feature-flag.md
+[ref-doc-authentication]: authentication.md
 [ref-doc-file-upload]: file-upload.md
-[ref-doc-handling-error]: handling-error.md
-[ref-doc-installation]: installation.md
-[ref-doc-logger]: logger.md
-[ref-doc-message]: message.md
-[ref-doc-pagination]: pagination.md
-[ref-doc-project-structure]: project-structure.md
 [ref-doc-queue]: queue.md
-[ref-doc-request-validation]: request-validation.md
-[ref-doc-response]: response.md
-[ref-doc-security-and-middleware]: security-and-middleware.md
-[ref-doc-doc]: doc.md
-[ref-doc-third-party-integration]: third-party-integration.md
-[ref-doc-presign]: presign.md
-[ref-doc-term-policy]: term-policy.md
-[ref-doc-two-factor]: two-factor.md
-
-<!-- CONTRIBUTOR -->
-
-[ref-contributor-gzerox]: https://github.com/Gzerox
-[ref-contributor-ak2g]: https://github.com/ak2g
+[ref-doc-cache]: cache.md
+[ref-doc-database]: database.md
+[ref-doc-notification]: notification.md

@@ -29,6 +29,13 @@ This documentation explains the database architecture and features in ACK NestJS
 	- [Users](#users)
 	- [Feature Flags](#feature-flags)
 	- [Term Policies](#term-policies)
+- [Composite Types](#composite-types)
+	- [GeoLocation](#geolocation)
+	- [UserAgent](#useragent)
+	- [UserTermPolicy](#usertermpolicy)
+	- [UserPhoto](#userphoto)
+	- [RoleAbility](#roleability)
+	- [TermPolicyContent](#termpolicycontent)
 - [Docker](#docker)
 - [Database Tools](#database-tools)
 	- [Prisma ORM](#prisma-orm)
@@ -81,6 +88,7 @@ ACK NestJS Boilerplate provides ready-to-use seed scripts to help you quickly in
 **How to Run All Seeds:**
 - `pnpm migration:seed` — runs all seed commands to populate initial data.
 - `pnpm migration:remove` — removes all seeded data from the database.
+- `pnpm migration:fresh` — force-resets the database schema (`prisma db push --force-reset`) then immediately re-seeds all data. Useful during development when you need a clean slate.
 
 **How to Seed/Remove a Specific Module:**
 Run the command:
@@ -114,8 +122,8 @@ Template seeding uses the same script and commands as Database Seeds, but is spe
 Every time you run the email template seed, the templates will be inserted into AWS SES automatically.
 
 **How to Run Email Template Seeds:**
-- Seed: `pnpm migration template-email --type seed`
-- Remove: `pnpm migration template-email --type remove`
+- Seed: `pnpm migration template-email-notification --type seed`
+- Remove: `pnpm migration template-email-notification --type remove`
 
 #### Term Policy Templates
 
@@ -123,7 +131,7 @@ Every time you run the term policy template seed, the policy documents will be l
 
 **How to Run Term Policy Template Seeds:**
 - Seed: `pnpm migration template-termPolicy --type seed`
-- Remove: `pnpm migration template-termPolicy --type remove`
+- Remove: `pnpm migration template-termPolicy --type remove` *(no-op — term policy removal is intentionally skipped)*
 
 
 ### AWS S3 Configuration Seed
@@ -220,13 +228,22 @@ Three user roles are created with different permission levels:
 
 > ⚠️ These are test accounts with default passwords. Change or remove these accounts in production environments.
 
-Three test users are created, one for each role:
+The seeded users differ per environment. This is controlled by `migrationUserData` in `src/migration/data/migration.user.data.ts`:
 
-| Email | Name | Role | Password | Country |
-|-------|------|------|----------|---------|
-| superadmin@mail.com | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) |
-| admin@mail.com | Admin | admin | `aaAA@123` | ID (Indonesia) |
-| user@mail.com | User | user | `aaAA@123` | ID (Indonesia) |
+| Environment | Seeded Users |
+|---|---|
+| `local` | superadmin + admin + user |
+| `development` | superadmin + admin only |
+| `staging` | superadmin + admin only |
+| `production` | superadmin + admin only |
+
+**User accounts:**
+
+| Email | Name | Role | Password | Country | Environments |
+|-------|------|------|----------|---------|-------------|
+| superadmin@mail.com | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) | all |
+| admin@mail.com | Admin | admin | `aaAA@123` | ID (Indonesia) | all |
+| user@mail.com | User | user | `aaAA@123` | ID (Indonesia) | `local` only |
 
 ### Feature Flags
 
@@ -256,6 +273,214 @@ Four term policy documents are created:
 The actual content for these policies is stored as file references in `src/migration/data/term-policy/*`. The files are not automatically linked to the database records. You must run the term policy migration script to link the files and update the content keys in the database.
 
 For more details on how seeding works, see: [Template Seeds](#template-seeds)
+
+
+## Composite Types
+
+Prisma composite types are embedded sub-documents in MongoDB (not separate collections). They are defined with the `type` keyword in `prisma/schema.prisma` and stored inline within the parent document rather than in separate collections.
+
+### GeoLocation
+
+Represents the geographic location derived from a client's IP address using `geoip-lite`.
+
+```prisma
+type GeoLocation {
+  latitude  Float
+  longitude Float
+  country   String
+  region    String
+  city      String
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `latitude` | `Float` | Latitude coordinate |
+| `longitude` | `Float` | Longitude coordinate |
+| `country` | `String` | ISO country code (e.g. `"ID"`) |
+| `region` | `String` | Region/state code (e.g. `"JK"`) |
+| `city` | `String` | City name (e.g. `"Jakarta"`) |
+
+**Used in:**
+- `Session.geoLocation` — location at login time
+- `ActivityLog.geoLocation` — location when the action was performed
+
+Resolved automatically via the `@RequestGeoLocation()` parameter decorator. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+
+---
+
+### UserAgent
+
+Represents parsed user-agent information from the client's `User-Agent` HTTP header using `ua-parser-js`. `UserAgent` is the top-level type that embeds four sub-types.
+
+```prisma
+type UserAgent {
+  ua      String?
+  browser UserAgentBrowser?
+  cpu     UserAgentCpu?
+  device  UserAgentDevice?
+  engine  UserAgentEngine?
+  os      UserAgentOs?
+}
+
+type UserAgentBrowser {
+  name    String?
+  version String?
+  major   String?
+  type    String?
+}
+
+type UserAgentCpu {
+  architecture String?
+}
+
+type UserAgentDevice {
+  type   String?
+  vendor String?
+  model  String?
+}
+
+type UserAgentEngine {
+  name    String?
+  version String?
+}
+
+type UserAgentOs {
+  name    String?
+  version String?
+}
+```
+
+**`UserAgent` fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `ua` | `String?` | Raw user-agent string |
+| `browser` | `UserAgentBrowser?` | Browser details |
+| `cpu` | `UserAgentCpu?` | CPU architecture |
+| `device` | `UserAgentDevice?` | Device details |
+| `engine` | `UserAgentEngine?` | Rendering engine details |
+| `os` | `UserAgentOs?` | Operating system details |
+
+**Used in:**
+- `Session.userAgent` — client info at login time
+- `ActivityLog.userAgent` — client info when the action was performed
+
+Resolved automatically via the `@RequestUserAgent()` parameter decorator. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+
+---
+
+### UserTermPolicy
+
+Represents the user's acceptance flags for each term policy type. Stored inline on the `User` document.
+
+```prisma
+type UserTermPolicy {
+  termsOfService Boolean
+  privacy        Boolean
+  marketing      Boolean
+  cookies        Boolean
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `termsOfService` | `Boolean` | Has accepted Terms of Service |
+| `privacy` | `Boolean` | Has accepted Privacy Policy |
+| `marketing` | `Boolean` | Has accepted Marketing terms |
+| `cookies` | `Boolean` | Has accepted Cookie policy |
+
+**Used in:**
+- `User.termPolicy`
+
+---
+
+### UserPhoto
+
+Represents the user's profile photo stored in AWS S3.
+
+```prisma
+type UserPhoto {
+  bucket       String
+  key          String
+  cdnUrl       String?
+  completedUrl String
+  mime         String
+  extension    String
+  access       String
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `bucket` | `String` | S3 bucket name |
+| `key` | `String` | S3 object key |
+| `cdnUrl` | `String?` | Optional CDN base URL |
+| `completedUrl` | `String` | Full resolved URL (CDN or S3 direct) |
+| `mime` | `String` | MIME type (e.g. `image/jpeg`) |
+| `extension` | `String` | File extension (e.g. `jpg`) |
+| `access` | `String` | Access level (`public` or `private`) |
+
+**Used in:**
+- `User.photo`
+
+---
+
+### RoleAbility
+
+Represents a single CASL ability entry embedded in a `Role`. Each entry defines which actions are allowed on a given policy subject.
+
+```prisma
+type RoleAbility {
+  action  String[]
+  subject String
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `action` | `String[]` | List of allowed actions (e.g. `["read", "create"]`) |
+| `subject` | `String` | Policy subject (e.g. `"user"`, `"apiKey"`) |
+
+**Used in:**
+- `Role.abilities`
+
+See [Authorization Documentation][ref-doc-authorization] for how abilities are evaluated at runtime.
+
+---
+
+### TermPolicyContent
+
+Represents a localized content file for a term policy document, stored in AWS S3.
+
+```prisma
+type TermPolicyContent {
+  language     String
+  bucket       String
+  key          String
+  cdnUrl       String?
+  completedUrl String
+  mime         String
+  extension    String
+  access       String
+  size         Int
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `language` | `String` | Language code (e.g. `"en"`) |
+| `bucket` | `String` | S3 bucket name |
+| `key` | `String` | S3 object key |
+| `cdnUrl` | `String?` | Optional CDN base URL |
+| `completedUrl` | `String` | Full resolved URL |
+| `mime` | `String` | MIME type (e.g. `application/pdf`) |
+| `extension` | `String` | File extension (e.g. `pdf`) |
+| `access` | `String` | Access level (`public` or `private`) |
+| `size` | `Int` | File size in bytes |
+
+**Used in:**
+- `TermPolicy.contents`
 
 
 ## Docker
@@ -308,7 +533,7 @@ Prisma, combined with the Repository Pattern, allows you to switch databases wit
 | Database | Best For | Transaction Support |
 |----------|----------|---------------------|
 | **MongoDB** | Document-based, flexible schema | ✅ Yes (replica set) |
-| **PostgreSQL** | Production apps, complex queries | ✅ Yes |
+| **PostgreSQL** | Relational Database, reliability | ✅ Yes |
 
 **Other supported databases:** MySQL, SQLite, SQL Server, CockroachDB
 
@@ -363,95 +588,12 @@ pnpm migration:seed
 
 <!-- REFERENCES -->
 
-<!-- BADGE LINKS -->
-
-[ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-forks-shield]: https://img.shields.io/github/forks/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-stars-shield]: https://img.shields.io/github/stars/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-issues-shield]: https://img.shields.io/github/issues/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-license-shield]: https://img.shields.io/github/license/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
-[nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
-[typescript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
-[mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
-[jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
-[jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
-[docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
-[github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
-[linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
-
-<!-- CONTACTS -->
-
-[ref-author-linkedin]: https://linkedin.com/in/andrechristikan
-[ref-author-email]: mailto:andrechristikan@gmail.com
-[ref-author-github]: https://github.com/andrechristikan
-[ref-author-paypal]: https://www.paypal.me/andrechristikan
-[ref-author-kofi]: https://ko-fi.com/andrechristikan
-
-<!-- Repo LINKS -->
-
-[ref-ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
-[ref-ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate/issues
-[ref-ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
-[ref-ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
-[ref-ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
-[ref-ack-license]: LICENSE.md
-
-<!-- THIRD PARTY -->
-
-[ref-nestjs]: http://nestjs.com
-[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
-[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
-[ref-prisma]: https://www.prisma.io
 [ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
 [ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
-[ref-mongodb]: https://docs.mongodb.com/
-[ref-redis]: https://redis.io
-[ref-bullmq]: https://bullmq.io
-[ref-nodejs]: https://nodejs.org/
-[ref-typescript]: https://www.typescriptlang.org/
-[ref-docker]: https://docs.docker.com
-[ref-dockercompose]: https://docs.docker.com/compose/
-[ref-pnpm]: https://pnpm.io
-[ref-12factor]: https://12factor.net
 [ref-commander]: https://nest-commander.jaymcdoniel.dev
-[ref-package-json]: package.json
-[ref-jwt]: https://jwt.io
-[ref-jest]: https://jestjs.io/docs/getting-started
-[ref-git]: https://git-scm.com
-[ref-google-console]: https://console.cloud.google.com/
-[ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
 
-<!-- DOCUMENTS -->
-
-[ref-doc-root]: ../readme.md
-[ref-doc-activity-log]: activity-log.md
-[ref-doc-authentication]: authentication.md
-[ref-doc-authorization]: authorization.md
-[ref-doc-cache]: cache.md
-[ref-doc-configuration]: configuration.md
-[ref-doc-database]: database.md
-[ref-doc-environment]: environment.md
-[ref-doc-feature-flag]: feature-flag.md
-[ref-doc-file-upload]: file-upload.md
-[ref-doc-handling-error]: handling-error.md
 [ref-doc-installation]: installation.md
-[ref-doc-logger]: logger.md
-[ref-doc-message]: message.md
-[ref-doc-pagination]: pagination.md
-[ref-doc-project-structure]: project-structure.md
-[ref-doc-queue]: queue.md
-[ref-doc-request-validation]: request-validation.md
-[ref-doc-response]: response.md
+[ref-doc-environment]: environment.md
+[ref-doc-configuration]: configuration.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
-[ref-doc-doc]: doc.md
-[ref-doc-third-party-integration]: third-party-integration.md
-[ref-doc-presign]: presign.md
-[ref-doc-term-policy]: term-policy.md
-[ref-doc-two-factor]: two-factor.md
-
-<!-- CONTRIBUTOR -->
-
-[ref-contributor-gzerox]: https://github.com/Gzerox
-[ref-contributor-ak2g]: https://github.com/ak2g
+[ref-doc-authorization]: authorization.md

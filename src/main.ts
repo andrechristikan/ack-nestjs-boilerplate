@@ -14,7 +14,7 @@ import { Logger as PinoLogger } from 'nestjs-pino';
 async function bootstrap(): Promise<void> {
     const app: NestApplication = await NestFactory.create(AppModule, {
         abortOnError: true,
-        bufferLogs: false,
+        bufferLogs: true,
     });
 
     // Custom Logger

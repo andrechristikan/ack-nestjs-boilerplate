@@ -57,6 +57,7 @@ import {
     EnumActivityLogAction,
     EnumApiKeyType,
     EnumRoleType,
+    Prisma,
 } from '@prisma/client';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -90,7 +91,10 @@ export class ApiKeyAdminController {
         @PaginationOffsetQuery({
             availableSearch: ApiKeyDefaultAvailableSearch,
         })
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >,
         @PaginationQueryFilterEqualBoolean('isActive')
         isActive?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterInEnum<EnumApiKeyType>('type', ApiKeyDefaultType)

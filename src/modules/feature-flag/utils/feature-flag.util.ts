@@ -2,6 +2,7 @@ import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperService } from '@common/helper/services/helper.service';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
 import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FeatureFlag } from '@prisma/client';
@@ -15,6 +16,7 @@ export class FeatureFlagUtil {
 
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
+        private readonly featureFlagRepository: FeatureFlagRepository,
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {
@@ -99,5 +101,28 @@ export class FeatureFlagUtil {
         const percentage = num % 100;
 
         return percentage < rolloutPercent;
+    }
+
+    async getByKeyAndCache(key: string): Promise<FeatureFlag | null> {
+        const cached = await this.getCacheByKey(key);
+        if (cached) {
+            return cached;
+        }
+
+        const apiKey = await this.featureFlagRepository.findOneByKey(key);
+        if (apiKey) {
+            await this.setCacheByKey(key, apiKey);
+        }
+
+        return apiKey;
+    }
+
+    async getMetadataByKeyAndCache<T>(key: string): Promise<T | null> {
+        const cached = await this.getByKeyAndCache(key);
+        if (cached && cached.metadata) {
+            return cached.metadata as T;
+        }
+
+        return null;
     }
 }

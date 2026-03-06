@@ -1,3 +1,4 @@
+import { HelperService } from '@common/helper/services/helper.service';
 import { Injectable } from '@nestjs/common';
 import {
     ValidationArguments,
@@ -14,6 +15,7 @@ import {
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class GreaterThanEqualOtherPropertyConstraint implements ValidatorConstraintInterface {
+    constructor(private readonly helperService: HelperService) {}
     /**
      * Validates that the current value is greater than or equal to the related property value.
      *
@@ -70,13 +72,13 @@ export class GreaterThanEqualOtherPropertyConstraint implements ValidatorConstra
      * @returns Converted number or null if conversion fails
      */
     private convertToNumber(value: unknown): number | null {
-        if (typeof value === 'number' && !isNaN(value)) {
+        if (typeof value === 'number' && !Number.isNaN(value)) {
             return value;
         }
 
         if (typeof value === 'string') {
             const converted = Number(value);
-            return !isNaN(converted) ? converted : null;
+            return !Number.isNaN(converted) ? converted : null;
         }
 
         return null;
@@ -89,18 +91,18 @@ export class GreaterThanEqualOtherPropertyConstraint implements ValidatorConstra
      * @returns Converted Date or null if conversion fails
      */
     private convertToDate(value: unknown): Date | null {
-        if (value instanceof Date && !isNaN(value.getTime())) {
+        if (value instanceof Date && !Number.isNaN(value.getTime())) {
             return value;
         }
 
         if (typeof value === 'string') {
-            const date = new Date(value);
-            return !isNaN(date.getTime()) ? date : null;
+            const date = this.helperService.dateCreateFromIso(value);
+            return !Number.isNaN(date.getTime()) ? date : null;
         }
 
         if (typeof value === 'number') {
-            const date = new Date(value);
-            return !isNaN(date.getTime()) ? date : null;
+            const date = this.helperService.dateCreateFromTimestamp(value);
+            return !Number.isNaN(date.getTime()) ? date : null;
         }
 
         return null;
@@ -137,6 +139,8 @@ export function GreaterThanEqualOtherProperty(
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class GreaterThanOtherPropertyConstraint implements ValidatorConstraintInterface {
+    constructor(private readonly helperService: HelperService) {}
+
     /**
      * Validates that the current value is strictly greater than the related property value.
      *
@@ -193,13 +197,13 @@ export class GreaterThanOtherPropertyConstraint implements ValidatorConstraintIn
      * @returns Converted number or null if conversion fails
      */
     private convertToNumber(value: unknown): number | null {
-        if (typeof value === 'number' && !isNaN(value)) {
+        if (typeof value === 'number' && !Number.isNaN(value)) {
             return value;
         }
 
         if (typeof value === 'string') {
             const converted = Number(value);
-            return !isNaN(converted) ? converted : null;
+            return !Number.isNaN(converted) ? converted : null;
         }
 
         return null;
@@ -212,18 +216,18 @@ export class GreaterThanOtherPropertyConstraint implements ValidatorConstraintIn
      * @returns Converted Date or null if conversion fails
      */
     private convertToDate(value: unknown): Date | null {
-        if (value instanceof Date && !isNaN(value.getTime())) {
+        if (value instanceof Date && !Number.isNaN(value.getTime())) {
             return value;
         }
 
         if (typeof value === 'string') {
-            const date = new Date(value);
-            return !isNaN(date.getTime()) ? date : null;
+            const date = this.helperService.dateCreateFromIso(value);
+            return !Number.isNaN(date.getTime()) ? date : null;
         }
 
         if (typeof value === 'number') {
-            const date = new Date(value);
-            return !isNaN(date.getTime()) ? date : null;
+            const date = this.helperService.dateCreateFromTimestamp(value);
+            return !Number.isNaN(date.getTime()) ? date : null;
         }
 
         return null;

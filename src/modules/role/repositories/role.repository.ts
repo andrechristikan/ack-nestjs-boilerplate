@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -10,20 +11,31 @@ import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.req
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { IRole } from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 
 @Injectable()
 export class RoleRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findWithPaginationOffsetByAdmin(
-        { where, ...params }: IPaginationQueryOffsetParams,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.RoleSelect,
+            Prisma.RoleWhereInput
+        >,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<Role>> {
-        return this.paginationService.offset<Role>(this.databaseService.role, {
+        return this.paginationService.offset<
+            Role,
+            Prisma.RoleSelect,
+            Prisma.RoleWhereInput
+        >(this.databaseService.role, {
             ...params,
             where: {
                 ...where,
@@ -33,10 +45,20 @@ export class RoleRepository {
     }
 
     async findWithPaginationCursor(
-        { where, ...params }: IPaginationQueryCursorParams,
+        {
+            where,
+            ...params
+        }: IPaginationQueryCursorParams<
+            Prisma.RoleSelect,
+            Prisma.RoleWhereInput
+        >,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<Role>> {
-        return this.paginationService.cursor<Role>(this.databaseService.role, {
+        return this.paginationService.cursor<
+            Role,
+            Prisma.RoleSelect,
+            Prisma.RoleWhereInput
+        >(this.databaseService.role, {
             ...params,
             where: {
                 ...where,
@@ -90,9 +112,7 @@ export class RoleRepository {
         return this.databaseService.role.create({
             data: {
                 name: name,
-                abilities: abilities.map(ability => ({
-                    ...ability,
-                })),
+                abilities: this.databaseUtil.toPlainArray(abilities),
                 ...others,
             },
         });
@@ -105,9 +125,7 @@ export class RoleRepository {
         return this.databaseService.role.update({
             where: { id },
             data: {
-                abilities: abilities.map(ability => ({
-                    ...ability,
-                })),
+                abilities: this.databaseUtil.toPlainArray(abilities),
                 ...others,
             },
         });

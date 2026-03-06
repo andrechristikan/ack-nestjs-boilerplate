@@ -56,13 +56,36 @@ Language options are defined in the enum:
 
 ```typescript
 export enum EnumMessageLanguage {
-    EN = 'en',
+    en = 'en',
 }
 ```
 
 ## Message Files
 
-Message files use JSON format with nested structure. Key paths follow the pattern: `filename.field.nested`.
+Message files use JSON format with nested structure. Key paths follow the pattern: `filename.field.nested`. Files are located in `src/languages/en/`:
+
+| File | Description |
+|------|-------------|
+| `activityLog.json` | Activity log messages |
+| `apiKey.json` | API key messages |
+| `app.json` | General application messages |
+| `auth.json` | Authentication messages |
+| `country.json` | Country-related messages |
+| `device.json` | Device management messages |
+| `featureFlag.json` | Feature flag messages |
+| `file.json` | File upload messages |
+| `health.json` | Health check messages |
+| `hello.json` | Hello endpoint messages |
+| `http.json` | HTTP error messages |
+| `notification.json` | Notification messages |
+| `pagination.json` | Pagination messages |
+| `passwordHistory.json` | Password history messages |
+| `policy.json` | Policy messages |
+| `request.json` | Request validation messages |
+| `role.json` | Role messages |
+| `session.json` | Session messages |
+| `termPolicy.json` | Terms & policy messages |
+| `user.json` | User messages |
 
 Example structure:
 
@@ -104,6 +127,26 @@ export class UserService {
         return this.messageService.setMessage('user.welcome');
     }
 }
+```
+
+### Filter Language
+
+Use `filterLanguage` to validate if a language is supported before using it:
+
+```typescript
+const validLang = this.messageService.filterLanguage('id');
+// Returns 'id' if supported, undefined if not
+```
+
+### Bulk Import Validation Messages
+
+Use `setValidationImportMessage` to format validation errors for bulk/import operations:
+
+```typescript
+const errors = this.messageService.setValidationImportMessage([
+    { row: 1, errors: validationErrors }
+]);
+// Returns: [{ row: 1, errors: [{ key, property, message }] }]
 ```
 
 ### Translation with Variables
@@ -154,26 +197,22 @@ await axios.get('http://localhost:3000/api/users', {
 
 ### Exception Filters
 
-Exception filters automatically translate message paths.
+Exception filters automatically translate message paths. The exception body follows the `IAppException` interface.
 
 ```typescript
 throw new BadRequestException({
-    statusCode: EnumUserStatus_CODE_ERROR.emailExist,
+    statusCode: EnumUserStatusCodeError.emailExist,
     message: 'user.error.emailExists', // Will be translated
 });
 ```
 
-With variables:
+With variables, pass `messageProperties` directly in the exception body:
 
 ```typescript
 throw new NotFoundException({
-    statusCode: EnumUserStatus_CODE_ERROR.notFound,
+    statusCode: EnumUserStatusCodeError.notFound,
     message: 'user.error.notFoundWithId',
-    _metadata: {
-        customProperty: {
-            messageProperties: { id: userId }
-        }
-    }
+    messageProperties: { id: userId },
 });
 ```
 
@@ -184,13 +223,13 @@ The `@Response` decorator translates success message paths. See [Response Docume
 ```typescript
 @Response('user.create')
 @Post('/')
-async create(@Body() dto: CreateUserDto): Promise<IResponse> {
+async create(@Body() dto: CreateUserRequestDto): Promise<IResponseReturn<UserResponseDto>> {
     const user = await this.userService.create(dto);
     return { data: user };
 }
 ```
 
-With variables:
+With variables, pass `messageProperties` via the `metadata` field on `IResponseReturn`:
 
 ```typescript
 @Response('user.update')
@@ -198,15 +237,13 @@ With variables:
 async update(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto
-): Promise<IResponse> {
+): Promise<IResponseReturn<UserResponseDto>> {
     const user = await this.userService.update(id, dto);
     return {
         data: user,
-        _metadata: {
-            customProperty: {
-                messageProperties: { name: user.name }
-            }
-        }
+        metadata: {
+            messageProperties: { name: user.name },
+        },
     };
 }
 ```
@@ -297,8 +334,8 @@ cp src/languages/en/*.json src/languages/id/
 
 ```typescript
 export enum EnumMessageLanguage {
-    EN = 'en',
-    ID = 'id', // Add new language
+    en = 'en',
+    id = 'id', // Add new language
 }
 ```
 
@@ -308,94 +345,9 @@ export enum EnumMessageLanguage {
 
 <!-- REFERENCES -->
 
-<!-- BADGE LINKS -->
-
-[ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-forks-shield]: https://img.shields.io/github/forks/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-stars-shield]: https://img.shields.io/github/stars/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-issues-shield]: https://img.shields.io/github/issues/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-license-shield]: https://img.shields.io/github/license/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
-[nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
-[typescript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
-[mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
-[jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
-[jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
-[docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
-[github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
-[linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
-
-<!-- CONTACTS -->
-
-[ref-author-linkedin]: https://linkedin.com/in/andrechristikan
-[ref-author-email]: mailto:andrechristikan@gmail.com
-[ref-author-github]: https://github.com/andrechristikan
-[ref-author-paypal]: https://www.paypal.me/andrechristikan
-[ref-author-kofi]: https://ko-fi.com/andrechristikan
-
-<!-- Repo LINKS -->
-
-[ref-ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
-[ref-ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate/issues
-[ref-ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
-[ref-ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
-[ref-ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
-[ref-ack-license]: LICENSE.md
-
-<!-- THIRD PARTY -->
-
-[ref-nestjs]: http://nestjs.com
-[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
-[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
 [ref-nestjs-i18n]: https://nestjs-i18n.com
-[ref-prisma]: https://www.prisma.io
-[ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
-[ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
-[ref-mongodb]: https://docs.mongodb.com/
-[ref-redis]: https://redis.io
-[ref-bullmq]: https://bullmq.io
-[ref-nodejs]: https://nodejs.org/
-[ref-typescript]: https://www.typescriptlang.org/
-[ref-docker]: https://docs.docker.com
-[ref-dockercompose]: https://docs.docker.com/compose/
-[ref-pnpm]: https://pnpm.io
-[ref-12factor]: https://12factor.net
-[ref-commander]: https://nest-commander.jaymcdoniel.dev
-[ref-package-json]: package.json
-[ref-jwt]: https://jwt.io
-[ref-jest]: https://jestjs.io/docs/getting-started
-[ref-git]: https://git-scm.com
-[ref-google-console]: https://console.cloud.google.com/
-[ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
 
-[ref-doc-root]: ../readme.md
-[ref-doc-activity-log]: activity-log.md
-[ref-doc-authentication]: authentication.md
-[ref-doc-authorization]: authorization.md
-[ref-doc-cache]: cache.md
-[ref-doc-configuration]: configuration.md
-[ref-doc-database]: database.md
-[ref-doc-environment]: environment.md
-[ref-doc-feature-flag]: feature-flag.md
-[ref-doc-file-upload]: file-upload.md
-[ref-doc-handling-error]: handling-error.md
-[ref-doc-installation]: installation.md
-[ref-doc-logger]: logger.md
-[ref-doc-message]: message.md
-[ref-doc-pagination]: pagination.md
-[ref-doc-project-structure]: project-structure.md
-[ref-doc-queue]: queue.md
-[ref-doc-request-validation]: request-validation.md
 [ref-doc-response]: response.md
+[ref-doc-handling-error]: handling-error.md
+[ref-doc-request-validation]: request-validation.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
-[ref-doc-doc]: doc.md
-[ref-doc-third-party-integration]: third-party-integration.md
-[ref-doc-presign]: presign.md
-[ref-doc-term-policy]: term-policy.md
-[ref-doc-two-factor]: two-factor.md
-
-<!-- CONTRIBUTOR -->
-
-[ref-contributor-gzerox]: https://github.com/Gzerox
-[ref-contributor-ak2g]: https://github.com/ak2g
