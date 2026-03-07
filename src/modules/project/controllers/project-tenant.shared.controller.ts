@@ -5,7 +5,7 @@ import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
+import { Prisma, UserAgent } from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response, ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn, IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -74,7 +74,11 @@ export class ProjectTenantSharedController {
     @Get('')
     async list(
         @TenantCurrent() tenant: ITenant,
-        @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
+        @PaginationOffsetQuery()
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ProjectSelect,
+            Prisma.ProjectWhereInput
+        >
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
         return this.projectService.getListByTenant(tenant.id, pagination);
     }
@@ -169,7 +173,7 @@ export class ProjectTenantSharedController {
         @Body() body: ProjectMemberInviteCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent
     ): Promise<IResponseReturn<InviteCreateResponseDto>> {
         return this.projectMemberService.createInvite(
             projectId,
@@ -193,7 +197,7 @@ export class ProjectTenantSharedController {
         @Param('memberId', RequestRequiredPipe) memberId: string,
         @AuthJwtPayload('userId') requestedBy: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent
     ): Promise<IResponseReturn<InviteSendResponseDto>> {
         return this.projectMemberService.sendInvite(
             projectId,
@@ -238,7 +242,11 @@ export class ProjectTenantSharedController {
     @Get('/:projectId/members')
     async listMembers(
         @Param('projectId', RequestRequiredPipe) projectId: string,
-        @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
+        @PaginationOffsetQuery()
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ProjectMemberSelect,
+            Prisma.ProjectMemberWhereInput
+        >
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
         return this.projectMemberService.listMembers(projectId, pagination);
     }

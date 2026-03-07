@@ -4,6 +4,7 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -34,7 +35,10 @@ export class TenantRepository {
     async findWithPaginationOffset({
         where,
         ...params
-    }: IPaginationQueryOffsetParams): Promise<IResponsePagingReturn<Tenant>> {
+    }: IPaginationQueryOffsetParams<
+        Prisma.TenantSelect,
+        Prisma.TenantWhereInput
+    >): Promise<IResponsePagingReturn<Tenant>> {
         return this.paginationService.offset<Tenant>(
             this.databaseService.tenant,
             {
@@ -201,7 +205,10 @@ export class TenantRepository {
 
     async findMembersWithPaginationOffset(
         tenantId: string,
-        { where, ...params }: IPaginationQueryOffsetParams
+        { where, ...params }: IPaginationQueryOffsetParams<
+            Prisma.TenantMemberSelect,
+            Prisma.TenantMemberWhereInput
+        >
     ): Promise<IResponsePagingReturn<ITenantMemberWithUser>> {
         return this.paginationService.offset<ITenantMemberWithUser>(
             this.databaseService.tenantMember,
@@ -273,7 +280,10 @@ export class TenantRepository {
 
     async findMembershipsWithPaginationCursorByUser(
         userId: string,
-        { where, ...params }: IPaginationQueryCursorParams
+        { where, ...params }: IPaginationQueryCursorParams<
+            Prisma.TenantMemberSelect,
+            Prisma.TenantMemberWhereInput
+        >
     ): Promise<IResponsePagingReturn<ITenantMemberWithTenant>> {
         return this.paginationService.cursor<ITenantMemberWithTenant>(
             this.databaseService.tenantMember,

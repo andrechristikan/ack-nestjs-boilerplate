@@ -4,12 +4,13 @@ import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyService } from '@modules/policy/services/policy.service';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
@@ -44,7 +45,7 @@ export class TenantService implements ITenantService {
         private readonly tenantRepository: TenantRepository,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperService: HelperService,
-        private readonly policyAbilityFactory: PolicyAbilityFactory,
+        private readonly policyService: PolicyService,
         private readonly tenantUtil: TenantUtil
     ) {}
 
@@ -184,9 +185,8 @@ export class TenantService implements ITenantService {
         const abilities =
             (request.__tenantMember?.role?.abilities ?? []) as RoleAbilityRequestDto[];
 
-        const abilityRule =
-            this.policyAbilityFactory.createForUser(abilities);
-        const isAllowed = this.policyAbilityFactory.handlerAbilities(
+        const abilityRule = this.policyService.createAbility(abilities);
+        const isAllowed = this.policyService.hasAbilities(
             abilityRule,
             requiredAbilities
         );
@@ -202,7 +202,10 @@ export class TenantService implements ITenantService {
     }
 
     async getListOffset(
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TenantSelect,
+            Prisma.TenantWhereInput
+        >
     ): Promise<IResponsePagingReturn<TenantResponseDto>> {
         const { data, ...others } =
             await this.tenantRepository.findWithPaginationOffset(pagination);

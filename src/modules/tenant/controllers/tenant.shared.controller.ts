@@ -7,7 +7,7 @@ import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
+import { Prisma, UserAgent } from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -124,7 +124,10 @@ export class TenantSharedController {
     async listMembers(
         @TenantCurrent() tenant: ITenant,
         @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TenantMemberSelect,
+            Prisma.TenantMemberWhereInput
+        >
     ): Promise<IResponsePagingReturn<TenantMemberResponseDto>> {
         return this.tenantMemberService.getMembersOffset(tenant.id, pagination);
     }
@@ -179,7 +182,7 @@ export class TenantSharedController {
         @Body() body: TenantMemberInviteCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent
     ): Promise<IResponseReturn<InviteCreateResponseDto>> {
         return this.tenantMemberService.createInvite(
             tenant.id,
@@ -205,7 +208,7 @@ export class TenantSharedController {
         @Param('memberId', RequestRequiredPipe) memberId: string,
         @AuthJwtPayload('userId') requestedBy: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent
     ): Promise<IResponseReturn<InviteSendResponseDto>> {
         return this.tenantMemberService.sendInvite(
             tenant.id,

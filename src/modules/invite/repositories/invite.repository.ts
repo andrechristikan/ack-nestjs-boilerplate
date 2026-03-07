@@ -131,12 +131,22 @@ export class InviteRepository {
     }
 
     async findWithPaginationOffset(
-        { where, ...params }: IPaginationQueryOffsetParams,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.InviteSelect,
+            Prisma.InviteWhereInput
+        >,
         inviteType?: Record<string, IPaginationEqual>,
         contextId?: Record<string, IPaginationEqual>,
         userId?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<InviteWithUser>> {
-        return this.paginationService.offset<InviteWithUser>(
+        return this.paginationService.offset<
+            InviteWithUser,
+            Prisma.InviteSelect,
+            Prisma.InviteWhereInput
+        >(
             this.databaseService.invite,
             {
                 ...params,
@@ -153,12 +163,22 @@ export class InviteRepository {
     }
 
     async findWithPaginationCursor(
-        { where, ...params }: IPaginationQueryCursorParams,
+        {
+            where,
+            ...params
+        }: IPaginationQueryCursorParams<
+            Prisma.InviteSelect,
+            Prisma.InviteWhereInput
+        >,
         inviteType?: Record<string, IPaginationEqual>,
         contextId?: Record<string, IPaginationEqual>,
         userId?: Record<string, IPaginationEqual>
     ): Promise<IPaginationCursorReturn<InviteWithUser>> {
-        return this.paginationService.cursor<InviteWithUser>(
+        return this.paginationService.cursor<
+            InviteWithUser,
+            Prisma.InviteSelect,
+            Prisma.InviteWhereInput
+        >(
             this.databaseService.invite,
             {
                 ...params,

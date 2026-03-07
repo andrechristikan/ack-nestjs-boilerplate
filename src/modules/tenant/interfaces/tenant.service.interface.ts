@@ -12,6 +12,7 @@ import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.upda
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import { ITenant, ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
 import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant.interface';
+import { Prisma } from '@generated/prisma-client';
 
 export interface ITenantService {
     validateTenantGuard(request: IRequestAppWithTenant): Promise<ITenant>;
@@ -28,7 +29,10 @@ export interface ITenantService {
     ): Promise<boolean>;
 
     getListOffset(
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TenantSelect,
+            Prisma.TenantWhereInput
+        >
     ): Promise<IResponsePagingReturn<TenantResponseDto>>;
     getOne(id: string): Promise<IResponseReturn<TenantResponseDto>>;
     create(

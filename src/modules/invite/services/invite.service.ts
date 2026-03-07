@@ -1,7 +1,7 @@
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { HelperService } from '@common/helper/services/helper.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { EmailService } from '@modules/email/services/email.service';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteListResponseDto } from '@modules/invite/dtos/response/invite-list.response.dto';
 import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
@@ -33,7 +33,7 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumUserStatus } from '@prisma/client';
+import { EnumUserStatus, Prisma } from '@prisma/client';
 import { Duration } from 'luxon';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 
@@ -45,7 +45,7 @@ export class InviteService implements IInviteService {
         private readonly inviteConfigRegistry: InviteConfigRegistry,
         private readonly helperService: HelperService,
         private readonly authUtil: AuthUtil,
-        private readonly emailService: EmailService,
+        private readonly notificationUtil: NotificationUtil,
         private readonly inviteUtil: InviteUtil
     ) {}
 
@@ -171,25 +171,18 @@ export class InviteService implements IInviteService {
 
         try {
 
-            //TODO: We shall move this to Queue instead of sending email here.
-            await this.emailService.sendInvite(
+            await this.notificationUtil.sendInvite(
                 invite.user.id,
                 {
-                    email: invite.user.email,
-                    username: invite.user.username,
-                },
-                {
-                    expiredAt: invite.expiresAt.toISOString(),
-                    reference: invite.reference,
-                    link: this.inviteUtil.createInviteLink(
-                        invite.token,
-                        config
-                    ),
+                    link: this.inviteUtil.createInviteLink(invite.token, config),
+                    expiredAt: invite.expiresAt,
                     expiredInMinutes: config.expiredInMinutes,
+                    reference: invite.reference,
                     inviteType: invite.inviteType,
                     roleScope: invite.roleScope,
                     contextName: invite.contextName,
-                }
+                },
+                requestedBy
             );
 
             await this.inviteRepository.markInviteSent(
@@ -242,7 +235,10 @@ export class InviteService implements IInviteService {
     }
 
     async getListOffset(
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.InviteSelect,
+            Prisma.InviteWhereInput
+        >,
         inviteType?: Record<string, IPaginationEqual>,
         contextId?: Record<string, IPaginationEqual>,
         userId?: Record<string, IPaginationEqual>
@@ -261,7 +257,10 @@ export class InviteService implements IInviteService {
     }
 
     async getListCursor(
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.InviteSelect,
+            Prisma.InviteWhereInput
+        >,
         inviteType?: Record<string, IPaginationEqual>,
         contextId?: Record<string, IPaginationEqual>,
         userId?: Record<string, IPaginationEqual>
@@ -469,16 +468,9 @@ export class InviteService implements IInviteService {
                 requestLog
             );
 
-            //TODO: We shall move this to Queue instead of sending email here.
-            this.emailService.sendVerified(
+            this.notificationUtil.sendVerifiedEmail(
                 invite.user.id,
-                {
-                    email: invite.user.email,
-                    username: invite.user.username,
-                },
-                {
-                    reference: invite.reference,
-                }
+                { reference: invite.reference }
             );
 
             return;

@@ -1,5 +1,6 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client';
 import { Response, ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn, IResponseReturn } from '@common/response/interfaces/response.interface';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
@@ -52,7 +53,10 @@ export class ProjectSharedController {
     @Get('')
     async list(
         @AuthJwtPayload('userId') userId: string,
-        @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
+        @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams<
+            Prisma.ProjectMemberSelect,
+            Prisma.ProjectMemberWhereInput
+        >
     ): Promise<IResponsePagingReturn<ProjectAccessResponseDto>> {
         return this.projectMemberService.list(userId, pagination);
     }

@@ -2,7 +2,7 @@ import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
+import { UserAgent } from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -53,7 +53,7 @@ export class TenantPublicController {
     async loginWithCredential(
         @Body() body: TenantLoginRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent
     ): Promise<IResponseReturn<TenantLoginResponseDto>> {
         return this.tenantAuthService.loginCredential(body, {
             ipAddress,
@@ -79,7 +79,7 @@ export class TenantPublicController {
         @Param('token', RequestRequiredPipe) token: string,
         @Body() { firstName, lastName, password }: InviteClaimRequestDto,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent
     ): Promise<void> {
         return this.tenantMemberService.claimInvite(
             token,

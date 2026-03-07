@@ -3,6 +3,7 @@ import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -324,7 +325,10 @@ export class TenantMemberService {
 
     async getMembersOffset(
         tenantId: string,
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TenantMemberSelect,
+            Prisma.TenantMemberWhereInput
+        >
     ): Promise<IResponsePagingReturn<TenantMemberResponseDto>> {
         const { data, ...others } =
             await this.tenantRepository.findMembersWithPaginationOffset(

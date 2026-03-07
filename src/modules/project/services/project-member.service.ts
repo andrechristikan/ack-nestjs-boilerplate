@@ -1,6 +1,7 @@
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
@@ -355,7 +356,10 @@ export class ProjectMemberService {
 
     async listMembers(
         projectId: string,
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ProjectMemberSelect,
+            Prisma.ProjectMemberWhereInput
+        >
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
         const { data, ...others } =
             await this.projectRepository.findMembersWithPaginationOffsetByProject(
@@ -376,7 +380,10 @@ export class ProjectMemberService {
 
     async list(
         userId: string,
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ProjectMemberSelect,
+            Prisma.ProjectMemberWhereInput
+        >
     ): Promise<IResponsePagingReturn<ProjectAccessResponseDto>> {
         const { data, ...others } =
             await this.projectRepository.findMembersWithPaginationOffsetByUser(

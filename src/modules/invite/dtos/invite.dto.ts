@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EmailVerificationDto } from '@modules/email/dtos/email.verification.dto';
 import { EnumRoleScope } from '@prisma/client';
+import { InviteVerificationDto } from './invite-verification.dto';
 
-export class EmailInviteDto extends EmailVerificationDto {
+export class InviteDto extends InviteVerificationDto {
     @ApiProperty({
         required: true,
         type: String,
@@ -12,7 +12,7 @@ export class EmailInviteDto extends EmailVerificationDto {
 
     @ApiProperty({
         required: true,
-        example: 'project',
+        example: 'admin',
     })
     roleScope: EnumRoleScope;
 

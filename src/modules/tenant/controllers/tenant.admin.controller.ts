@@ -1,6 +1,7 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -74,7 +75,10 @@ export class TenantAdminController {
     @Get('')
     async list(
         @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TenantSelect,
+            Prisma.TenantWhereInput
+        >
     ): Promise<IResponsePagingReturn<TenantResponseDto>> {
         return this.tenantService.getListOffset(pagination);
     }

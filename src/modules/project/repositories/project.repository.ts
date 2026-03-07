@@ -1,6 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -31,7 +32,10 @@ export class ProjectRepository {
 
     async findWithPaginationOffsetByTenant(
         tenantId: string,
-        { where, ...params }: IPaginationQueryOffsetParams
+        { where, ...params }: IPaginationQueryOffsetParams<
+            Prisma.ProjectSelect,
+            Prisma.ProjectWhereInput
+        >
     ): Promise<IResponsePagingReturn<Project>> {
         return this.paginationService.offset<Project>(
             this.databaseService.project,
@@ -176,7 +180,10 @@ export class ProjectRepository {
 
     async findMembersWithPaginationOffsetByProject(
         projectId: string,
-        { where, ...params }: IPaginationQueryOffsetParams
+        { where, ...params }: IPaginationQueryOffsetParams<
+            Prisma.ProjectMemberSelect,
+            Prisma.ProjectMemberWhereInput
+        >
     ): Promise<IResponsePagingReturn<IProjectMemberWithInvite>> {
         return this.paginationService.offset<IProjectMemberWithInvite>(
             this.databaseService.projectMember,
@@ -231,7 +238,10 @@ export class ProjectRepository {
 
     async findMembersWithPaginationOffsetByUser(
         userId: string,
-        { where, ...params }: IPaginationQueryOffsetParams
+        { where, ...params }: IPaginationQueryOffsetParams<
+            Prisma.ProjectMemberSelect,
+            Prisma.ProjectMemberWhereInput
+        >
     ): Promise<IResponsePagingReturn<IProjectMember>> {
         return this.paginationService.offset<IProjectMember>(
             this.databaseService.projectMember,

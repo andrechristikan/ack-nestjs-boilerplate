@@ -2,12 +2,13 @@ import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyService } from '@modules/policy/services/policy.service';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
@@ -41,7 +42,7 @@ import {
 export class ProjectService {
     constructor(
         private readonly projectRepository: ProjectRepository,
-        private readonly policyAbilityFactory: PolicyAbilityFactory,
+        private readonly policyService: PolicyService,
         private readonly projectUtil: ProjectUtil,
         private readonly roleRepository: RoleRepository,
         private readonly userRepository: UserRepository
@@ -108,12 +109,12 @@ export class ProjectService {
         if (!request.__projectAbilities) {
             const abilities =
                 (request.__projectMember?.role?.abilities ?? []) as RoleAbilityRequestDto[];
-            request.__projectAbilities = this.policyAbilityFactory.createForUser(
+            request.__projectAbilities = this.policyService.createAbility(
                 abilities
             );
         }
 
-        const isAllowed = this.policyAbilityFactory.handlerAbilities(
+        const isAllowed = this.policyService.hasAbilities(
             request.__projectAbilities,
             requiredAbilities
         );
@@ -159,7 +160,10 @@ export class ProjectService {
 
     async getListByTenant(
         tenantId: string,
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ProjectSelect,
+            Prisma.ProjectWhereInput
+        >
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
         const { data, ...others } =
             await this.projectRepository.findWithPaginationOffsetByTenant(

@@ -11,7 +11,6 @@ import {
     mergeInviteConfig,
     validateInviteConfig,
 } from '@modules/invite/utils/invite.util';
-import { EmailModule } from '@modules/email/email.module';
 import { UserModule } from '@modules/user/user.module';
 import { AuthModule } from '@modules/auth/auth.module';
 import {
@@ -28,7 +27,7 @@ export class InviteModule {
     static forRoot(): DynamicModule {
         return {
             module: InviteModule,
-            imports: [UserModule, AuthModule, EmailModule],
+            imports: [UserModule, AuthModule],
             providers: [
                 InviteService,
                 InviteRepository,
