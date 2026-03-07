@@ -11,6 +11,8 @@ import {
 import {
     EnumPolicyAction,
     EnumPolicyEffect,
+    EnumPolicyPlaceholder,
+    EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import {
     IPolicyAbilityInput,
@@ -19,6 +21,34 @@ import {
     PolicyAbility,
     PolicyConditionContext,
 } from '@modules/policy/interfaces/policy.interface';
+import { RoleAbility } from '@prisma/client';
+
+/**
+ * Full runtime shape of a `RoleAbility` composite including optional fields not
+ * yet reflected in the generated Prisma client type.
+ */
+type RoleAbilityFull = RoleAbility & {
+    effect?: string;
+    fields?: unknown;
+    conditions?: unknown;
+    reason?: string;
+    priority?: number;
+};
+
+/**
+ * Reverse lookup from placeholder string value (e.g. `'$userId'`) to the
+ * matching key in `PolicyConditionContext` (e.g. `'userId'`).
+ *
+ * Derived directly from `EnumPolicyPlaceholder` so adding a new placeholder
+ * to the enum automatically extends resolution without touching the factory.
+ */
+const PLACEHOLDER_TO_CONTEXT_KEY: Record<string, keyof PolicyConditionContext> =
+    Object.fromEntries(
+        Object.entries(EnumPolicyPlaceholder).map(([key, value]) => [
+            value,
+            key as keyof PolicyConditionContext,
+        ])
+    );
 
 /**
  * Typed adapter for CASL's `AbilityBuilder.can` / `cannot` methods.
@@ -46,6 +76,72 @@ type AbilityApplyFn = (
 @Injectable()
 export class PolicyAbilityFactory {
     /**
+     * Parses and validates raw ability data from Prisma's composite type into
+     * typed `IPolicyAbilityInput` objects.
+     *
+     * Prisma stores `fields` and `conditions` as `Json?`, so their runtime
+     * shapes are untyped. This method validates that these fields conform to
+     * the expected shapes and throws `InternalServerErrorException` on
+     * malformed data, surfacing storage-level misconfiguration clearly.
+     *
+     * @param raw - The raw `RoleAbility[]` value from a Prisma query result.
+     * @returns Validated `IPolicyAbilityInput[]` ready for `createForUser`.
+     * @throws {InternalServerErrorException} When any entry has invalid shape.
+     */
+    parseAbilities(raw: RoleAbility[]): IPolicyAbilityInput[] {
+        return raw.map((entry, index) => {
+            const e = entry as RoleAbilityFull;
+
+            if (!Array.isArray(e.action) || e.action.length === 0) {
+                throw new InternalServerErrorException({
+                    statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
+                    message: 'policy.error.invalidConfiguration',
+                    errors: [{ index, reason: 'ability.action must be a non-empty array' }],
+                });
+            }
+
+            if (typeof e.subject !== 'string' || !(Object.values(EnumPolicySubject) as string[]).includes(e.subject)) {
+                throw new InternalServerErrorException({
+                    statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
+                    message: 'policy.error.invalidConfiguration',
+                    errors: [{ index, reason: `ability.subject "${e.subject}" is not a valid EnumPolicySubject` }],
+                });
+            }
+
+            const fields = e.fields as string[] | null | undefined;
+            if (
+                fields != null &&
+                (!Array.isArray(fields) || !fields.every(f => typeof f === 'string'))
+            ) {
+                throw new InternalServerErrorException({
+                    statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
+                    message: 'policy.error.invalidConfiguration',
+                    errors: [{ index, reason: 'ability.fields must be an array of strings when provided' }],
+                });
+            }
+
+            const conditions = e.conditions as PrismaQuery | null | undefined;
+            if (conditions != null && (typeof conditions !== 'object' || Array.isArray(conditions))) {
+                throw new InternalServerErrorException({
+                    statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
+                    message: 'policy.error.invalidConfiguration',
+                    errors: [{ index, reason: 'ability.conditions must be a plain object when provided' }],
+                });
+            }
+
+            return {
+                action: e.action as EnumPolicyAction[],
+                subject: e.subject as EnumPolicySubject,
+                effect: e.effect as EnumPolicyEffect | undefined,
+                fields: fields ?? undefined,
+                conditions: conditions ?? undefined,
+                reason: e.reason,
+                priority: e.priority,
+            };
+        });
+    }
+
+    /**
      * Sorts abilities so that lower-priority rules come first and, within the same
      * priority level, `can` (allow) rules precede `cannot` (deny) rules.
      *
@@ -55,10 +151,8 @@ export class PolicyAbilityFactory {
     private sortRules(
         abilities: IPolicyAbilityInput[]
     ): IPolicyAbilityInput[] {
-        const priority = (a: IPolicyAbilityInput): number => a.priority ?? 0;
-
         return [...abilities].sort((left, right) => {
-            const byPriority = priority(left) - priority(right);
+            const byPriority = (left.priority ?? 0) - (right.priority ?? 0);
             if (byPriority !== 0) {
                 return byPriority;
             }
@@ -101,14 +195,9 @@ export class PolicyAbilityFactory {
         const fields = ability.fields?.filter(Boolean);
         const hasFields = fields != null && fields.length > 0;
 
-        let rule;
-        if (hasFields) {
-            rule = applyFn(ability.action, ability.subject, fields, ability.conditions);
-        } else if (ability.conditions) {
-            rule = applyFn(ability.action, ability.subject, ability.conditions);
-        } else {
-            rule = applyFn(ability.action, ability.subject);
-        }
+        const rule = hasFields
+            ? applyFn(ability.action, ability.subject, fields, ability.conditions)
+            : applyFn(ability.action, ability.subject, ability.conditions);
 
         if (ability.reason) {
             rule.because(ability.reason);
@@ -138,42 +227,27 @@ export class PolicyAbilityFactory {
             return undefined;
         }
 
-        const resolveValue = (value: unknown, path: string): unknown => {
+        const resolveValue = (value: unknown): unknown => {
             if (typeof value === 'string' && value.startsWith('$')) {
-                const token = value.slice(1) as keyof PolicyConditionContext;
-                if (token in context) {
-                    return context[token];
+                if (!(value in PLACEHOLDER_TO_CONTEXT_KEY)) {
+                    throw new InternalServerErrorException({
+                        statusCode: EnumPolicyStatusCodeError.invalidConditionPlaceholder,
+                        message: 'policy.error.invalidConditionPlaceholder',
+                        errors: [{ placeholder: value }],
+                    });
                 }
-
-                throw new InternalServerErrorException({
-                    statusCode:
-                        EnumPolicyStatusCodeError.invalidConditionPlaceholder,
-                    message: 'policy.error.invalidConditionPlaceholder',
-                    errors: [{ path, placeholder: value }],
-                });
+                return context[PLACEHOLDER_TO_CONTEXT_KEY[value]];
             }
-
-            if (Array.isArray(value)) {
-                return value.map((item, index) =>
-                    resolveValue(item, `${path}[${index}]`)
-                );
-            }
-
+            if (Array.isArray(value)) {return value.map(resolveValue);}
             if (value && typeof value === 'object') {
                 return Object.fromEntries(
-                    Object.entries(value as Record<string, unknown>).map(
-                        ([key, nested]) => [
-                            key,
-                            resolveValue(nested, `${path}.${key}`),
-                        ]
-                    )
+                    Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, resolveValue(v)])
                 );
             }
-
             return value;
         };
 
-        return resolveValue(conditions, 'conditions') as PrismaQuery;
+        return resolveValue(conditions) as PrismaQuery;
     }
 
     /**

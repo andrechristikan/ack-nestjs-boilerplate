@@ -22,9 +22,7 @@ type PolicyRuleArgs = [IPolicyRule, ...IPolicyRule[]];
 type PolicyRequirementArgs = [IPolicyRequirement, ...IPolicyRequirement[]];
 
 function isRequirement(input: AuthorizeInput): input is IPolicyRequirement {
-    return (
-        'rules' in input && Array.isArray((input as IPolicyRequirement).rules)
-    );
+    return 'rules' in input;
 }
 
 /**
@@ -78,11 +76,15 @@ export function PolicyAbilityProtected(
 
     const requirements: IPolicyRequirement[] =
         requirementCount > 0
-            ? (inputs as PolicyRequirementArgs).map(requirement => ({
-                  ...requirement,
-                  rules: requirement.rules ?? [],
-                  match: requirement.match ?? EnumPolicyMatch.all,
-              }))
+            ? (inputs as PolicyRequirementArgs).map(requirement => {
+                  if (requirement.rules == null || requirement.rules.length === 0) {
+                      throw new Error('PolicyAbilityProtected: each IPolicyRequirement must have at least one rule.');
+                  }
+                  return {
+                      ...requirement,
+                      match: requirement.match ?? EnumPolicyMatch.all,
+                  };
+              })
             : [
                   {
                       rules: inputs as PolicyRuleArgs,
@@ -114,16 +116,16 @@ export function PolicyAbilityProtected(
  */
 export const PolicyAbilityCurrent = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): PolicyAbility => {
-        const { __policyAbilities } = ctx
+        const { __abilities } = ctx
             .switchToHttp()
             .getRequest<IRequestApp>();
-        if (__policyAbilities == null) {
+        if (__abilities == null) {
             throw new InternalServerErrorException({
                 statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
                 message: 'policy.error.invalidConfiguration',
             });
         }
 
-        return __policyAbilities;
+        return __abilities;
     }
 );

@@ -5,9 +5,9 @@ import {
 } from '@modules/policy/interfaces/policy.interface';
 
 export interface IPolicyService {
+    buildAbility(request: IRequestApp): PolicyAbility;
     validatePolicyGuard(
         request: IRequestApp,
         requirements: IPolicyRequirement[]
-    ): boolean;
-    getOrCreateRequestAbility(request: IRequestApp): PolicyAbility;
+    ): PolicyAbility;
 }

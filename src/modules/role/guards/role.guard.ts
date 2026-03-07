@@ -28,12 +28,7 @@ export class RoleGuard implements CanActivate {
             ) ?? [];
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
-        const abilities = await this.roleService.validateRoleGuard(
-            request,
-            requiredRoles
-        );
-
-        request.__abilities = abilities;
+        await this.roleService.validateRoleGuard(request, requiredRoles);
 
         return true;
     }

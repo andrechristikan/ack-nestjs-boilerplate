@@ -4,10 +4,7 @@ import { IPaginationQuery } from '@common/pagination/interfaces/pagination.inter
 import { ApiKey } from '@prisma/client';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
-import {
-    IPolicyAbilityInput,
-    PolicyAbility,
-} from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 
 export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
     correlationId: string;
@@ -15,8 +12,7 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
 
     __apiKey?: ApiKey;
     __user?: IUser;
-    __abilities?: IPolicyAbilityInput[];
-    __policyAbilities?: PolicyAbility;
+    __abilities?: PolicyAbility;
 
     __pagination?: IPaginationQuery;
 

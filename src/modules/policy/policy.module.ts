@@ -5,7 +5,7 @@ import { PolicyService } from '@modules/policy/services/policy.service';
 @Global()
 @Module({
     providers: [PolicyAbilityFactory, PolicyService],
-    exports: [PolicyService],
+    exports: [PolicyService, PolicyAbilityFactory],
     imports: [],
 })
 export class PolicyModule {}

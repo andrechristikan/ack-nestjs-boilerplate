@@ -1,10 +1,8 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumPolicyMatch } from '@modules/policy/enums/policy.enum';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import {
-    IPolicyAbilityInput,
     IPolicyRequirement,
     PolicyAbility,
 } from '@modules/policy/interfaces/policy.interface';
@@ -14,6 +12,7 @@ import {
     Injectable,
     InternalServerErrorException,
 } from '@nestjs/common';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 
 @Injectable()
 export class PolicyService implements IPolicyService {
@@ -22,43 +21,34 @@ export class PolicyService implements IPolicyService {
     ) {}
 
     /**
-     * Returns the compiled ability for the request user, building and caching it on first call.
+     * Compiles a CASL ability for the request user from their stored role abilities.
      *
      * @throws {ForbiddenException} When the request is not authenticated.
      */
-    getOrCreateRequestAbility(request: IRequestApp): PolicyAbility {
+    buildAbility(request: IRequestApp): PolicyAbility {
         const { __user, user } = request;
-        if (__user == null || user == null) {
+        if (!__user || !user) {
             throw new ForbiddenException({
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }
 
-        if (request.__policyAbilities) {
-            return request.__policyAbilities;
-        }
-
-        const abilities = (request.__abilities ??
-            request.__user.role.abilities) as IPolicyAbilityInput[];
-        const userAbilities = this.policyAbilityFactory.createForUser(abilities, {
-            userId: __user.id,
-        });
-        request.__policyAbilities = userAbilities;
-
-        return userAbilities;
+        const abilities = this.policyAbilityFactory.parseAbilities(__user.role.abilities);
+        return this.policyAbilityFactory.createForUser(abilities, { userId: __user.id });
     }
 
     /**
      * Validates that the authenticated user satisfies all policy requirements for the route.
      *
+     * @returns The compiled `PolicyAbility` for the request user.
      * @throws {InternalServerErrorException} When `requirements` is empty or any requirement has no rules.
      * @throws {ForbiddenException} When the user's ability does not satisfy one or more requirements.
      */
     validatePolicyGuard(
         request: IRequestApp,
         requirements: IPolicyRequirement[]
-    ): boolean {
+    ): PolicyAbility {
         if (
             requirements.length === 0 ||
             requirements.some(r => r.rules == null || r.rules.length === 0)
@@ -69,41 +59,25 @@ export class PolicyService implements IPolicyService {
             });
         }
 
-        const userAbilities = this.getOrCreateRequestAbility(request);
+        const userAbilities = this.buildAbility(request);
 
-        const failedSubjects: string[] = [];
-
-        const isAllowed = requirements.every(requirement => {
-            const mode = requirement.match ?? EnumPolicyMatch.all;
-
-            const passed =
-                mode === EnumPolicyMatch.any
-                    ? requirement.rules.some(r =>
-                          this.policyAbilityFactory.evaluateRule(userAbilities, r)
-                      )
-                    : requirement.rules.every(r =>
-                          this.policyAbilityFactory.evaluateRule(userAbilities, r)
-                      );
-
-            if (passed === false) {
-                const subjects = [...new Set(requirement.rules.map(r => r.subject))];
-                const actions = [...new Set(requirement.rules.flatMap(r => r.action))];
-                failedSubjects.push(`${subjects.join(',')}:[${actions.join(',')}]`);
-            }
-
-            return passed;
+        const failedRequirements = requirements.filter(requirement => {
+            const check = (requirement.match ?? EnumPolicyMatch.all) === EnumPolicyMatch.any ? 'some' : 'every';
+            return !requirement.rules[check](r => this.policyAbilityFactory.evaluateRule(userAbilities, r));
         });
 
-        if (!isAllowed) {
+        if (failedRequirements.length > 0) {
             throw new ForbiddenException({
                 statusCode: EnumPolicyStatusCodeError.forbidden,
                 message: 'policy.error.forbidden',
-                errors: failedSubjects.map(detail => ({
-                    requirement: detail,
-                })),
+                _error: failedRequirements.map(req => {
+                    const subjects = [...new Set(req.rules.map(r => r.subject))];
+                    const actions = [...new Set(req.rules.flatMap(r => r.action))];
+                    return { requirement: `${subjects.join(',')}:[${actions.join(',')}]` };
+                }),
             });
         }
 
-        return true;
+        return userAbilities;
     }
 }

@@ -12,7 +12,6 @@ import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.req
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { IPolicyAbilityInput } from '@modules/policy/interfaces/policy.interface';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { EnumRoleType } from '@prisma/client';
 
@@ -40,5 +39,5 @@ export interface IRoleService {
     validateRoleGuard(
         request: IRequestApp,
         requiredRoles: EnumRoleType[]
-    ): Promise<IPolicyAbilityInput[]>;
+    ): Promise<void>;
 }

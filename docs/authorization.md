@@ -106,9 +106,8 @@ This order is used by current admin controllers.
 Authorization guards communicate through request-scoped fields in `IRequestApp` (`src/common/request/interfaces/request.interface.ts`):
 
 - `request.user`: JWT payload set by authentication guard
-- `request.__user`: full user entity loaded by `UserGuard`
-- `request.__abilities`: role abilities (as `IPolicyAbilityInput[]`) set by `RoleGuard`
-- `request.__policyAbilities`: compiled CASL ability cached by `PolicyService`
+- `request.__user`: full user entity loaded by `UserGuard` (includes `role.abilities` — raw rule array)
+- `request.__abilities`: compiled CASL ability cached by `PolicyService`
 
 ## User Protected
 
@@ -169,8 +168,8 @@ Guard: `RoleGuard` (`src/modules/role/guards/role.guard.ts`)
 
 Behavior:
 1. Reads required roles from metadata (`getAllAndOverride`), so method metadata overrides class metadata.
-2. Calls `RoleService.validateRoleGuard(...)`.
-3. On success, writes role abilities to `request.__abilities` as `IPolicyAbilityInput[]`.
+2. Calls `RoleService.validateRoleGuard(...)` for role-type validation only (does not populate request state).
+3. On success, continues to next guard (raw abilities remain on `request.__user.role.abilities`).
 
 ### Super Admin Behavior
 
@@ -428,8 +427,8 @@ Behavior summary:
 1. Reads authorization metadata with `getAllAndOverride`.
 2. Fails if no requirements are defined (`predefinedNotFound`).
 3. Requires authenticated user context (`request.user` + `request.__user`).
-4. Builds CASL ability from `request.__abilities` (populated by `RoleGuard`) or directly from user role data.
-5. Caches compiled ability in `request.__policyAbilities` for request reuse.
+4. Builds CASL ability from `request.__user.role.abilities` (raw rules stored on user entity).
+5. Caches compiled ability in `request.__abilities` for request reuse.
 6. Evaluates each requirement using `all` or `any` semantics.
 7. Throws `ForbiddenException` with failed subject/action details when any required check fails.
 8. Query-level filtering is applied by consumers (service/repository) using `@casl/prisma` `accessibleBy(...)` with the resolved ability.
@@ -557,9 +556,9 @@ flowchart TD
     E --> F[@TermPolicyAcceptanceProtected]
     F --> G[Controller Handler]
 
-    C --> C1[request.__user loaded]
-    D --> D1[request.__abilities loaded as IPolicyAbilityInput[]]
-    E --> E1[request.__policyAbilities compiled and cached]
+    C --> C1[request.__user loaded<br/>includes role.abilities]
+    D --> D1[Role type validated<br/>no request modification]
+    E --> E1[request.__abilities compiled<br/>and cached]
 
     B -. missing/invalid token .-> X[Unauthorized/Forbidden]
     C -. user inactive/unverified/password expired .-> X

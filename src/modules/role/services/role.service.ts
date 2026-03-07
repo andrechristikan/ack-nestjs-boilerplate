@@ -9,7 +9,6 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { IPolicyAbilityInput } from '@modules/policy/interfaces/policy.interface';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
@@ -163,7 +162,7 @@ export class RoleService implements IRoleService {
     async validateRoleGuard(
         request: IRequestApp,
         requiredRoles: EnumRoleType[]
-    ): Promise<IPolicyAbilityInput[]> {
+    ): Promise<void> {
         const { __user, user } = request;
         if (!__user || !user) {
             throw new ForbiddenException({
@@ -188,7 +187,5 @@ export class RoleService implements IRoleService {
                 message: 'role.error.forbidden',
             });
         }
-
-        return (__user.role.abilities ?? []) as IPolicyAbilityInput[];
     }
 }
