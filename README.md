@@ -64,9 +64,9 @@ This boilerplate is perfect for:
     ```typescript
     @ExampleDoc()
     @ActivityLog(...)
+    @TermPolicyAcceptanceProtected(...)
     @PolicyAbilityProtected({...})
     @RoleProtected(...)
-    @TermPolicyAcceptanceProtected(...)
     @UserProtected()
     @AuthJwtAccessProtected()
     @FeatureFlagProtected(...)
@@ -86,6 +86,8 @@ This boilerplate is perfect for:
 - [x] Add TOTP Authentication Protected to reset password, change password, and regenerate backup codes endpoints
 - [x] Add import and export endpoint with presign upload
 - [x] Add migration script to migrate AWS S3 Policy for public and private, include config for presign expiration
+- [x] Device awareness, Geo Location with `geoip-lite`
+- [x] Notification System includes silent, inApp, push, and email.
 
 ### Next Features
 
@@ -93,12 +95,14 @@ This boilerplate is perfect for:
 - [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
 - [ ] Login with Github SSO
-- [ ] Device awareness, Geo Location
-- [ ] Sliding session (Example: 7d expires for a refresh token, can be extends until x day. if not action in 7d then need to re-login)
-- [ ] Anomaly detection when refresh token
+- [ ] Analytics Dashboard (Docs is provided at [docs/analytics.md][ref-doc-analytics])
+- [ ] Multi-Tenant Architecture
 - [ ] Verification Mobile Number, whatsapp or/and sms
-- [ ] Simple Notification System or Enchant Activity Log to be able act as notification
 - [ ] Versioning System (Force frontend to update, especially mobile)
+
+### Drop Features
+
+- Sliding session (Example: 7d expires for a refresh token, can be extends until x day. if not action in 7d then need to re-login)
 
 ### Test
 - [ ] Unit test
@@ -258,7 +262,7 @@ Thanks to **Repository Pattern** and **Prisma ORM**, switching databases require
 | Database | Best For | Transaction Support |
 |----------|----------|---------------------|
 | **MongoDB** | Document-based, flexible schema | ✅ Yes (replica set) |
-| **PostgreSQL** | Production apps, complex queries | ✅ Yes |
+| **PostgreSQL** | Relational Database, reliability | ✅ Yes |
 
 **Other supported databases:** MySQL, SQLite, SQL Server, CockroachDB
 
@@ -418,7 +422,8 @@ If you find this project helpful and would like to support its development, plea
 [ref-doc-third-party-integration]: docs/third-party-integration.md
 [ref-doc-presign]: docs/presign.md
 [ref-doc-term-policy]: docs/term-policy.md
-[ref-doc-two-factor]: two-factor.md
+[ref-doc-two-factor]: docs/two-factor.md
+[ref-doc-analytics]: docs/analytics.md
 [ref-doc-tenant]: docs/tenant.md
 
 <!-- CONTRIBUTOR -->

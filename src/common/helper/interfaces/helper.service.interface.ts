@@ -3,6 +3,7 @@ import {
     IHelperEmailValidation,
     IHelperPasswordOptions,
 } from '@common/helper/interfaces/helper.interface';
+import { GeoLocation, UserAgent } from '@generated/prisma-client';
 import { DateObjectUnits, DateTime, Duration, DurationLikeObject } from 'luxon';
 
 export interface IHelperService {
@@ -12,6 +13,8 @@ export interface IHelperService {
     base64Encrypt(data: string): string;
     base64Decrypt(data: string): string;
     base64Compare(basicToken1: string, basicToken2: string): boolean;
+    simpleEncrypt(data: string): string;
+    simpleDecrypt(encryptedData: string): string;
     aes256Encrypt<T>(data: T, key: string, iv: string): string;
     aes256Decrypt<T>(encrypted: string, key: string, iv: string): T;
     aes256Compare(aes1: string, aes2: string): boolean;
@@ -54,4 +57,6 @@ export interface IHelperService {
     dateBackward(date: Date, duration: Duration): Date;
     dateCreateDuration(duration: DurationLikeObject): Duration;
     dateDiff(dateOne: Date, dateTwo: Date): Duration;
+    resolveCity(geoLocation?: GeoLocation): string;
+    resolveDevice(userAgent: UserAgent): string;
 }

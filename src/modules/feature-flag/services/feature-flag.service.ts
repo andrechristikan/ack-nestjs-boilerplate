@@ -7,6 +7,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client';
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
@@ -22,7 +23,6 @@ import {
     NotFoundException,
     ServiceUnavailableException,
 } from '@nestjs/common';
-import { FeatureFlag } from '@prisma/client';
 
 @Injectable()
 export class FeatureFlagService implements IFeatureFlagService {
@@ -49,7 +49,9 @@ export class FeatureFlagService implements IFeatureFlagService {
             });
         }
 
-        const featureFlag = await this.findOneByKeyAndCache(keys[0]);
+        const featureFlag = await this.featureFlagUtil.getByKeyAndCache(
+            keys[0]
+        );
         if (!featureFlag || !featureFlag.isEnable) {
             throw new ServiceUnavailableException({
                 statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
@@ -89,31 +91,11 @@ export class FeatureFlagService implements IFeatureFlagService {
         }
     }
 
-    async findOneByKeyAndCache(key: string): Promise<FeatureFlag | null> {
-        const cached = await this.featureFlagUtil.getCacheByKey(key);
-        if (cached) {
-            return cached;
-        }
-
-        const apiKey = await this.featureFlagRepository.findOneByKey(key);
-        if (apiKey) {
-            await this.featureFlagUtil.setCacheByKey(key, apiKey);
-        }
-
-        return apiKey;
-    }
-
-    async findOneMetadataByKeyAndCache<T>(key: string): Promise<T | null> {
-        const cached = await this.findOneByKeyAndCache(key);
-        if (cached && cached.metadata) {
-            return cached.metadata as T;
-        }
-
-        return null;
-    }
-
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.FeatureFlagSelect,
+            Prisma.FeatureFlagWhereInput
+        >
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
         const { data, ...others } =
             await this.featureFlagRepository.findWithPaginationOffsetByAdmin(
@@ -129,7 +111,10 @@ export class FeatureFlagService implements IFeatureFlagService {
     }
 
     async getListCursor(
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams<
+            Prisma.FeatureFlagSelect,
+            Prisma.FeatureFlagWhereInput
+        >
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
         const { data, ...others } =
             await this.featureFlagRepository.findWithPaginationCursor(

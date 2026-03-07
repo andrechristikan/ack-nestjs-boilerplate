@@ -45,7 +45,7 @@ import {
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumUserStatus } from '@prisma/client';
+import { EnumUserStatus, Prisma } from '@prisma/client';
 
 @ApiTags('modules.system.user')
 @Controller({
@@ -63,7 +63,10 @@ export class UserSystemController {
         @PaginationCursorQuery({
             availableSearch: UserDefaultAvailableSearch,
         })
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >,
         @PaginationQueryFilterInEnum<EnumUserStatus>(
             'status',
             UserDefaultStatus

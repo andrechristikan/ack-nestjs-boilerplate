@@ -23,6 +23,7 @@ Configuration for tokens, sessions, password, social providers, and API keys is 
 - [Cache Documentation][ref-doc-cache] - For understanding session storage and caching mechanisms
 - [Configuration Documentation][ref-doc-configuration] - For auth configuration details
 - [Environment Documentation][ref-doc-environment] - For JWT and OAuth environment variables
+- [Device Documentation][ref-doc-device] - For device management and its impact on session lifecycle
 
 ## Table of Contents
 
@@ -719,6 +720,51 @@ async loginApple(@AuthJwtPayload() payload: IAuthSocialPayload) {
 
 TOTP-based 2FA adds a second verification step to login. Tokens are only issued after the user passes 2FA.
 
+### Configuration
+
+Two-Factor settings are configured in `src/configs/auth.config.ts`:
+
+```typescript
+export default registerAs(
+    'auth',
+    (): IConfigAuth => ({
+        twoFactor: {
+            strategy: 'totp',          // OTP strategy (totp)
+            algorithm: 'sha1',         // Hash algorithm (sha1)
+            issuer: 'ACKNestJsTwoFactor',
+            digits: 6,
+            periodInSeconds: 30,       // Token validity window in seconds
+            window: 1,
+            secretLength: 32,
+            challengeTtlInMs: 300000,  // 5 minutes
+            cachePrefixKey: 'TwoFactor',
+            maxAttempt: 5,
+            lockAttemptDuration: 120000, // 2 minutes
+            backupCodes: {
+                count: 8,
+                length: 10,
+            },
+            encryption: {
+                key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY,
+            },
+        },
+    })
+);
+```
+
+**Configuration Options:**
+- `strategy`: OTP strategy — `totp` (time-based)
+- `algorithm`: Hash algorithm used for TOTP generation — `sha1`
+- `periodInSeconds`: Token validity window in seconds (default: `30`)
+- `digits`: Number of digits in the OTP code (default: `6`)
+- `window`: Number of time steps to allow before/after current period for clock drift tolerance (default: `1`)
+- `secretLength`: Length of the generated secret (default: `32`)
+- `challengeTtlInMs`: TTL for the challenge token in cache (default: `5m`)
+- `maxAttempt`: Max failed TOTP attempts before lockout (default: `5`)
+- `lockAttemptDuration`: Lockout duration after max attempts exceeded (default: `2m`)
+- `backupCodes.count`: Number of backup codes generated (default: `8`)
+- `backupCodes.length`: Length of each backup code (default: `10`)
+
 ### Flow
 
 ```mermaid
@@ -1012,8 +1058,16 @@ User:{userId}:Session:{sessionId}
 
 Used for session listing and management purposes.
 
+**Fields Stored:**
+- `jti` — JWT ID for session tracking
+- `ipAddress` — Client IP at login time
+- `userAgent` — Parsed user agent (browser, OS, device)
+- `geoLocation` — Geographic location derived from IP (optional) — `latitude`, `longitude`, `country`, `region`, `city`
+- `deviceId` — Reference to the `Device` record associated with this session
+- `expiredAt`, `revokedAt`, `isRevoked` — Lifecycle fields
+
 **When Updated:**
-- Created during login with initial jti
+- Created during login with initial jti (linked to a Device)
 - Updated when session jti is rotated during token refresh
 - Updated when session is revoked
 - Can be queried to show user's active sessions across devices
@@ -1150,93 +1204,15 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for providing the idea and co
 
 <!-- REFERENCES -->
 
-<!-- BADGE LINKS -->
-
-[ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-forks-shield]: https://img.shields.io/github/forks/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-stars-shield]: https://img.shields.io/github/stars/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-issues-shield]: https://img.shields.io/github/issues/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[ack-license-shield]: https://img.shields.io/github/license/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
-[nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
-[nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
-[typescript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
-[mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
-[jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
-[jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-[pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
-[docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
-[github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
-[linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
-
-<!-- CONTACTS -->
-
-[ref-author-linkedin]: https://linkedin.com/in/andrechristikan
-[ref-author-email]: mailto:andrechristikan@gmail.com
-[ref-author-github]: https://github.com/andrechristikan
-[ref-author-paypal]: https://www.paypal.me/andrechristikan
-[ref-author-kofi]: https://ko-fi.com/andrechristikan
-
-<!-- Repo LINKS -->
-
-[ref-ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
-[ref-ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate/issues
-[ref-ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
-[ref-ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
-[ref-ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
-[ref-ack-license]: LICENSE.md
-
-<!-- THIRD PARTY -->
-
-[ref-nestjs]: http://nestjs.com
-[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
-[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
-[ref-prisma]: https://www.prisma.io
-[ref-mongodb]: https://docs.mongodb.com/
-[ref-redis]: https://redis.io
-[ref-bullmq]: https://bullmq.io
-[ref-nodejs]: https://nodejs.org/
-[ref-typescript]: https://www.typescriptlang.org/
-[ref-docker]: https://docs.docker.com
-[ref-dockercompose]: https://docs.docker.com/compose/
-[ref-pnpm]: https://pnpm.io
-[ref-12factor]: https://12factor.net
-[ref-commander]: https://nest-commander.jaymcdoniel.dev
-[ref-package-json]: package.json
 [ref-jwt]: https://jwt.io
-[ref-jest]: https://jestjs.io/docs/getting-started
-[ref-git]: https://git-scm.com
 [ref-google-console]: https://console.cloud.google.com/
 [ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
 
-<!-- DOCUMENTS -->
-
-[ref-doc-root]: ../readme.md
-[ref-doc-activity-log]: activity-log.md
-[ref-doc-authentication]: authentication.md
-[ref-doc-authorization]: authorization.md
+[ref-doc-installation]: installation.md
 [ref-doc-cache]: cache.md
 [ref-doc-configuration]: configuration.md
-[ref-doc-database]: database.md
 [ref-doc-environment]: environment.md
-[ref-doc-feature-flag]: feature-flag.md
-[ref-doc-file-upload]: file-upload.md
-[ref-doc-handling-error]: handling-error.md
-[ref-doc-installation]: installation.md
-[ref-doc-logger]: logger.md
-[ref-doc-message]: message.md
-[ref-doc-pagination]: pagination.md
-[ref-doc-project-structure]: project-structure.md
-[ref-doc-queue]: queue.md
-[ref-doc-request-validation]: request-validation.md
-[ref-doc-response]: response.md
-[ref-doc-security-and-middleware]: security-and-middleware.md
-[ref-doc-doc]: doc.md
-[ref-doc-third-party-integration]: third-party-integration.md
-[ref-doc-presign]: presign.md
-[ref-doc-term-policy]: term-policy.md
+[ref-doc-device]: device.md
 [ref-doc-two-factor]: two-factor.md
 
-<!-- CONTRIBUTOR -->
-
 [ref-contributor-gzerox]: https://github.com/Gzerox
-[ref-contributor-ak2g]: https://github.com/ak2g

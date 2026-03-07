@@ -1,10 +1,10 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import {
+    RequestGeoLocation,
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { RequestUserAgentDto } from '@common/request/dtos/request.user-agent.dto';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
@@ -35,7 +35,13 @@ import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/t
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumActivityLogAction, EnumRoleType } from '@prisma/client';
+import {
+    EnumActivityLogAction,
+    EnumRoleType,
+    GeoLocation,
+    Prisma,
+    UserAgent,
+} from '@prisma/client';
 
 @ApiTags('modules.admin.user.session')
 @Controller({
@@ -67,7 +73,10 @@ export class SessionAdminController {
         @PaginationOffsetQuery({
             availableOrderBy: SessionDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.SessionSelect,
+            Prisma.SessionWhereInput
+        >,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
@@ -97,9 +106,10 @@ export class SessionAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @Param('sessionId', RequestRequiredPipe) sessionId: string,
-        @AuthJwtPayload('userId') revokeBy: string,
+        @AuthJwtPayload('userId') revokedBy: string,
         @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: RequestUserAgentDto
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<void>> {
         return this.sessionService.revokeByAdmin(
             userId,
@@ -107,8 +117,9 @@ export class SessionAdminController {
             {
                 ipAddress,
                 userAgent,
+                geoLocation,
             },
-            revokeBy
+            revokedBy
         );
     }
 }

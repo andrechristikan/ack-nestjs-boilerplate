@@ -7,13 +7,13 @@ import { PasswordHistoryUtil } from '@modules/password-history/utils/password-hi
     imports: [],
     exports: [
         PasswordHistoryService,
-        PasswordHistoryUtil,
         PasswordHistoryRepository,
+        PasswordHistoryUtil,
     ],
     providers: [
         PasswordHistoryService,
-        PasswordHistoryUtil,
         PasswordHistoryRepository,
+        PasswordHistoryUtil,
     ],
     controllers: [],
 })

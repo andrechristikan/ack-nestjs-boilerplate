@@ -17,6 +17,7 @@ import SessionConfig from '@configs/session.config';
 import TermPolicyConfig from '@configs/term-policy.config';
 import FeatureFlagConfig from '@configs/feature-flag.config';
 import ResponseConfig from '@configs/response.config';
+import FirebaseConfig from '@configs/firebase.config';
 
 export default [
     AppConfig,
@@ -38,4 +39,5 @@ export default [
     TermPolicyConfig,
     FeatureFlagConfig,
     ResponseConfig,
+    FirebaseConfig,
 ];

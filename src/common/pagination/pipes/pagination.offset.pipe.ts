@@ -15,12 +15,6 @@ import { EnumPaginationStatusCodeError } from '@common/pagination/enums/paginati
  * @param {number} defaultPerPage - Default number of items per page (default: PaginationDefaultPerPage)
  * @returns {Type<PipeTransform>} Configured pipe class for offset pagination
  *
- * @example
- * // Usage in controller
- * @Get()
- * @UsePipes(PaginationOffsetPipe(20))
- * findAll(@Query() pagination: IPaginationQueryOffsetParams) { }
- *
  * @constraint
  * - Page: minimum 1, maximum PaginationDefaultMaxPage
  * - PerPage: minimum 1, maximum PaginationDefaultMaxPerPage

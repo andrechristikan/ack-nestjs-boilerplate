@@ -69,6 +69,6 @@ export class RequestMiddlewareModule implements NestModule {
             middlewares.splice(1, 0, RequestTenantMiddleware);
         }
 
-        consumer.apply(...middlewares).forRoutes('*');
+        consumer.apply(...middlewares).forRoutes('{*wildcard}');
     }
 }

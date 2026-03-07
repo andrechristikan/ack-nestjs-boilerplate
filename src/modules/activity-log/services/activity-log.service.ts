@@ -3,6 +3,7 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client';
 import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import { IActivityLogService } from '@modules/activity-log/interfaces/activity-log.service.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
@@ -18,7 +19,10 @@ export class ActivityLogService implements IActivityLogService {
 
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
         const { data, ...others } =
             await this.activityRepository.findWithPaginationOffset(
@@ -36,7 +40,10 @@ export class ActivityLogService implements IActivityLogService {
 
     async getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
         const { data, ...others } =
             await this.activityRepository.findWithPaginationCursor(

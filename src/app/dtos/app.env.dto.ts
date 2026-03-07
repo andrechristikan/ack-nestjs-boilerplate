@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
     IsBoolean,
+    IsEmail,
     IsEnum,
     IsIP,
     IsInt,
@@ -9,6 +10,7 @@ import {
     IsOptional,
     IsString,
     Matches,
+    MaxLength,
     Min,
     MinLength,
     ValidateIf,
@@ -49,12 +51,45 @@ export class AppEnvDto {
     APP_LANGUAGE: EnumMessageLanguage;
 
     /**
+     * The secret key used for encryption in the application
+     */
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(32)
+    @MaxLength(64)
+    APP_ENCRYPTION_SECRET_KEY: string;
+
+    /**
      * The default timezone for the application
      */
     @IsString()
     @IsNotEmpty()
     @IsEnum(EnumRequestTimezone)
     APP_TIMEZONE: EnumRequestTimezone;
+
+    /**
+     * Email address used for sending no-reply emails
+     */
+    @IsString()
+    @IsOptional()
+    @IsEmail()
+    EMAIL_NO_REPLY: string;
+
+    /**
+     * Email address for customer support contact
+     */
+    @IsString()
+    @IsOptional()
+    @IsEmail()
+    EMAIL_SUPPORT: string;
+
+    /**
+     * Email address for administrative contact
+     */
+    @IsString()
+    @IsOptional()
+    @IsEmail()
+    EMAIL_ADMIN: string;
 
     /**
      * The name of the home/organization
@@ -428,4 +463,25 @@ export class AppEnvDto {
     @IsOptional()
     @IsString()
     SENTRY_DSN?: string;
+
+    /**
+     * Firebase project ID for Firebase integration (optional)
+     */
+    @IsOptional()
+    @IsString()
+    FIREBASE_PROJECT_ID?: string;
+
+    /**
+     * Firebase client email for Firebase integration (optional)
+     */
+    @IsOptional()
+    @IsString()
+    FIREBASE_CLIENT_EMAIL?: string;
+
+    /**
+     * Firebase private key for Firebase integration (optional)
+     */
+    @IsOptional()
+    @IsString()
+    FIREBASE_PRIVATE_KEY?: string;
 }

@@ -5,8 +5,8 @@ import { RoleRepository } from '@modules/role/repositories/role.repository';
 
 @Global()
 @Module({
-    providers: [RoleService, RoleUtil, RoleRepository],
-    exports: [RoleService, RoleUtil, RoleRepository],
+    providers: [RoleService, RoleRepository, RoleUtil],
+    exports: [RoleService, RoleRepository, RoleUtil],
     imports: [],
 })
 export class RoleModule {}

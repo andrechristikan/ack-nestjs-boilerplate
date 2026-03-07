@@ -26,7 +26,7 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumRoleScope, EnumRoleType } from '@prisma/client';
+import { EnumRoleScope, EnumRoleType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class RoleService implements IRoleService {
@@ -36,7 +36,10 @@ export class RoleService implements IRoleService {
     ) {}
 
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.RoleSelect,
+            Prisma.RoleWhereInput
+        >,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
         const { data, ...others } =
@@ -54,7 +57,10 @@ export class RoleService implements IRoleService {
     }
 
     async getListCursor(
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.RoleSelect,
+            Prisma.RoleWhereInput
+        >,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
         const { data, ...others } =

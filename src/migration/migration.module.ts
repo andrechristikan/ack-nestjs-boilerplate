@@ -8,20 +8,30 @@ import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-fla
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
-import { MigrationTemplateEmailSeed } from '@migration/seeds/migration.template-email.seed';
-import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
-import { EmailModule } from '@modules/email/email.module';
 import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
 import { AwsModule } from '@common/aws/aws.module';
 import { MigrationTenantSeed } from '@migration/seeds/migration.tenant.seed';
 import { MigrationProjectSeed } from '@migration/seeds/migration.project.seed';
+import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migration.template-notification.seed';
+import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
 
 /**
- * Migration module that provides database seeding functionality.
- * Contains seed providers for API keys, countries, roles, users, tenants, and feature flags.
+ * Migration module that provides database seeding and removal functionality.
+ *
+ * This module manages all database seed providers used during development and initial deployment.
+ * It handles seeding and removal of the following data:
+ * - **API Keys**: Default API keys for third-party integrations
+ * - **Countries**: Country reference data used throughout the application
+ * - **Feature Flags**: Feature toggle configurations
+ * - **Roles**: User role definitions and permissions
+ * - **Term Policies**: Terms and policy framework data
+ * - **Users**: Default user accounts for testing
+ * - **Email Templates**: Email notification templates
+ * - **Term Policy Templates**: Term policy document templates
+ * - **AWS S3 Configuration**: S3 bucket and storage configuration
  */
 @Module({
-    imports: [CommonModule, CountryModule, UserModule, EmailModule, AwsModule],
+    imports: [CommonModule, CountryModule, UserModule, AwsModule],
     providers: [
         MigrationApiKeySeed,
         MigrationCountrySeed,
@@ -31,7 +41,7 @@ import { MigrationProjectSeed } from '@migration/seeds/migration.project.seed';
         MigrationProjectSeed,
         MigrationTermPolicySeed,
         MigrationUserSeed,
-        MigrationTemplateEmailSeed,
+        MigrationTemplateEmailNotificationSeed,
         MigrationTemplateTermPolicySeed,
         MigrationAwsS3ConfigSeed,
     ],

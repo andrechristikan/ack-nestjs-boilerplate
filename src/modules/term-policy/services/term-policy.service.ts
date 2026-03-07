@@ -1,6 +1,7 @@
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -18,6 +19,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
@@ -38,10 +40,12 @@ import {
     Injectable,
     InternalServerErrorException,
     NotFoundException,
+    ServiceUnavailableException,
 } from '@nestjs/common';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
+    Prisma,
     TermPolicy,
 } from '@prisma/client';
 
@@ -49,8 +53,9 @@ import {
 export class TermPolicyService implements ITermPolicyService {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
+        private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly awsS3Service: AwsS3Service
+        private readonly notificationUtil: NotificationUtil
     ) {}
 
     async validateTermPolicyGuard(
@@ -86,7 +91,10 @@ export class TermPolicyService implements ITermPolicyService {
     }
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TermPolicySelect,
+            Prisma.TermPolicyWhereInput
+        >,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
@@ -106,7 +114,10 @@ export class TermPolicyService implements ITermPolicyService {
     }
 
     async getListPublished(
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.TermPolicySelect,
+            Prisma.TermPolicyWhereInput
+        >,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
         const { data, ...others } =
@@ -123,7 +134,10 @@ export class TermPolicyService implements ITermPolicyService {
 
     async getListUserAccepted(
         userId: string,
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams<
+            Prisma.TermPolicyUserAcceptanceSelect,
+            Prisma.TermPolicyUserAcceptanceWhereInput
+        >
     ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>> {
         const { data, ...others } =
             await this.termPolicyRepository.findUserAccepted(
@@ -319,16 +333,24 @@ export class TermPolicyService implements ITermPolicyService {
                 }
             );
 
-        const aws: AwsS3PresignDto = await this.awsS3Service.presignPutItem(
-            {
-                key,
-                size,
-            },
-            {
-                forceUpdate: true,
-                access: EnumAwsS3Accessibility.private,
-            }
-        );
+        const aws: AwsS3PresignDto | null =
+            await this.awsS3Service.presignPutItem(
+                {
+                    key,
+                    size,
+                },
+                {
+                    forceUpdate: true,
+                    access: EnumAwsS3Accessibility.private,
+                }
+            );
+
+        if (!aws) {
+            throw new ServiceUnavailableException({
+                statusCode: EnumAwsStatusCodeError.serviceUnavailable,
+                message: 'aws.error.serviceUnavailable',
+            });
+        }
 
         return { data: aws };
     }
@@ -516,12 +538,17 @@ export class TermPolicyService implements ITermPolicyService {
             });
         }
 
-        const awsPresign = await this.awsS3Service.presignGetItem(
-            existContent.key,
-            {
+        const awsPresign: AwsS3PresignDto | null =
+            await this.awsS3Service.presignGetItem(existContent.key, {
                 access: EnumAwsS3Accessibility.private,
-            }
-        );
+            });
+
+        if (!awsPresign) {
+            throw new ServiceUnavailableException({
+                statusCode: EnumAwsStatusCodeError.serviceUnavailable,
+                message: 'aws.error.serviceUnavailable',
+            });
+        }
 
         return { data: awsPresign };
     }
@@ -579,6 +606,15 @@ export class TermPolicyService implements ITermPolicyService {
                     access: EnumAwsS3Accessibility.private,
                 }),
             ]);
+
+            // @note: send email after all creation
+            await this.notificationUtil.sendPublishTermPolicy(
+                {
+                    type: termPolicy.type,
+                    version: termPolicy.version,
+                },
+                updatedBy
+            );
 
             return {
                 metadataActivityLog:

@@ -46,7 +46,7 @@ import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import { EnumUserLoginWith } from '@prisma/client';
+import { EnumUserLoginWith, Prisma } from '@prisma/client';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
@@ -54,19 +54,27 @@ import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
+
 export interface IUserService {
     validateUserGuard(
         request: IRequestApp,
         requiredVerified: boolean
     ): Promise<IUser>;
     getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<UserListResponseDto>>;
     getListCursor(
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
@@ -157,10 +165,10 @@ export interface IUserService {
     loginWithSocial(
         email: string,
         loginWith: EnumUserLoginWith,
-        { from, ...others }: UserCreateSocialRequestDto,
+        { from, device, ...others }: UserCreateSocialRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<UserLoginResponseDto>>;
-    refreshToken(
+    refresh(
         user: IUser,
         refreshToken: string,
         requestLog: IRequestLog
@@ -173,7 +181,7 @@ export interface IUserService {
         { token }: UserVerifyEmailRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
-    sendEmail(
+    sendVerificationEmail(
         { email }: UserSendEmailVerificationRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
@@ -194,6 +202,10 @@ export interface IUserService {
         }: UserLoginVerifyTwoFactorRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<AuthTokenResponseDto>>;
+    loginSetupTwoFactor(
+        { code, challengeToken }: UserLoginSetupTwoFactorRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
     getTwoFactorStatus(
         user: IUser
     ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>>;

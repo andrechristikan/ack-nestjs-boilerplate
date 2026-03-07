@@ -1,9 +1,10 @@
-import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { ActivityLogSharedController } from '@modules/activity-log/controllers/activity-log.shared.controller';
+import { DeviceSharedController } from '@modules/device/controllers/device.shared.controller';
+import { DeviceModule } from '@modules/device/device.module';
+import { NotificationSharedController } from '@modules/notification/controllers/notification.shared.controller';
 import { PasswordHistorySharedController } from '@modules/password-history/controllers/password-history.shared.controller';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { SessionSharedController } from '@modules/session/controllers/session.shared.controller';
-import { SessionModule } from '@modules/session/session.module';
 import { TermPolicySharedController } from '@modules/term-policy/controllers/term-policy.shared.controller';
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
 import { UserModule } from '@modules/user/user.module';
@@ -14,8 +15,9 @@ import { withTenancyRoute } from '@modules/tenant/utils/tenant.toggle';
 import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.module';
 
 /**
- * Shared routes module that provides endpoints accessible by multiple user types.
- * Contains controllers for users, password history, activity logs, sessions, and term policies that are shared between different access levels.
+ * Shared routes module providing endpoints accessible by multiple user types.
+ * Includes controllers for user management, notifications, sessions, password history,
+ * activity logs, term policies, and device management shared across different access levels.
  */
 @Module({
     controllers: [
@@ -24,6 +26,8 @@ import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.m
         ActivityLogSharedController,
         SessionSharedController,
         TermPolicySharedController,
+        DeviceSharedController,
+        NotificationSharedController,
         ProjectSharedController,
     ],
     providers: [],
@@ -31,8 +35,7 @@ import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.m
     imports: [
         UserModule,
         PasswordHistoryModule,
-        ActivityLogModule,
-        SessionModule,
+        DeviceModule,
         ProjectModule,
         ...withTenancyRoute('/shared', TenantRoutesSharedModule),
     ],

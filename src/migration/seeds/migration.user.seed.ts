@@ -12,6 +12,8 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
+    EnumNotificationChannel,
+    EnumNotificationType,
     EnumPasswordHistoryType,
     EnumTermPolicyStatus,
     EnumTermPolicyType,
@@ -234,6 +236,21 @@ export class MigrationUserSeed
                                     })),
                                 },
                             },
+                            notificationSettings: {
+                                createMany: {
+                                    data: Object.values(EnumNotificationChannel)
+                                        .map(channel =>
+                                            Object.values(
+                                                EnumNotificationType
+                                            ).map(type => ({
+                                                channel,
+                                                type,
+                                                isActive: true,
+                                            }))
+                                        )
+                                        .flat(),
+                                },
+                            },
                             twoFactor: {
                                 create: {
                                     enabled: false,
@@ -259,13 +276,15 @@ export class MigrationUserSeed
 
         try {
             await this.databaseService.$transaction([
+                this.databaseService.twoFactor.deleteMany({}),
                 this.databaseService.session.deleteMany({}),
                 this.databaseService.userMobileNumber.deleteMany({}),
                 this.databaseService.verification.deleteMany({}),
                 this.databaseService.passwordHistory.deleteMany({}),
                 this.databaseService.forgotPassword.deleteMany({}),
                 this.databaseService.activityLog.deleteMany({}),
-                this.databaseService.twoFactor.deleteMany({}),
+                this.databaseService.termPolicyUserAcceptance.deleteMany({}),
+                this.databaseService.notificationUserSetting.deleteMany({}),
                 this.databaseService.user.deleteMany({}),
             ]);
         } catch (error: unknown) {

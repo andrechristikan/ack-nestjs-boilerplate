@@ -16,6 +16,7 @@ export enum EnumPolicySubject {
     passwordHistory = 'passwordHistory',
     termPolicy = 'termPolicy',
     featureFlag = 'featureFlag',
+    device = 'device',
     tenant = 'tenant',
     tenantMember = 'tenantMember',
     project = 'project',

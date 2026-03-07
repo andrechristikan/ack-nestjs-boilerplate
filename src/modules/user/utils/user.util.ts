@@ -224,7 +224,7 @@ export class UserUtil {
     }
 
     forgotPasswordSetExpiredDate(): Date {
-        const now = new Date();
+        const now = this.helperService.dateCreate();
 
         return this.helperService.dateForward(
             now,
