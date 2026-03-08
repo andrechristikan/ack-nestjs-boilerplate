@@ -52,7 +52,13 @@ export class MigrationRoleSeed
                                 role.abilities
                             ),
                         },
-                        update: {},
+                        update: {
+                            description: role.description,
+                            type: role.type,
+                            abilities: this.databaseUtil.toPlainArray(
+                                role.abilities
+                            ),
+                        },
                     })
                 )
             );

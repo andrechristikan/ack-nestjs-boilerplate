@@ -9,11 +9,15 @@ import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/acti
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
+import {
+    PolicyAbilityCurrent,
+    PolicyAbilityProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
+import { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -48,6 +52,7 @@ export class ActivityLogAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @PolicyAbilityCurrent() ability: PolicyAbility,
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams<
             Prisma.ActivityLogSelect,
@@ -56,6 +61,6 @@ export class ActivityLogAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListOffsetByAdmin(userId, pagination);
+        return this.activityLogService.getListOffset(userId, pagination, ability);
     }
 }

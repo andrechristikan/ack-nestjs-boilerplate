@@ -22,18 +22,13 @@ export class RoleGuard implements CanActivate {
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredRoles =
-            this.reflector.get<EnumRoleType[]>(
+            this.reflector.getAllAndOverride<EnumRoleType[]>(
                 RoleRequiredMetaKey,
-                context.getHandler()
+                [context.getHandler(), context.getClass()]
             ) ?? [];
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
-        const abilities = await this.roleService.validateRoleGuard(
-            request,
-            requiredRoles
-        );
-
-        request.__abilities = abilities;
+        await this.roleService.validateRoleGuard(request, requiredRoles);
 
         return true;
     }

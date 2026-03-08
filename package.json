@@ -49,6 +49,7 @@
         "@aws-sdk/client-ses": "^3.1002.0",
         "@aws-sdk/s3-request-presigner": "^3.1002.0",
         "@casl/ability": "^6.8.0",
+        "@casl/prisma": "^1.5.2",
         "@faker-js/faker": "^10.3.0",
         "@keyv/redis": "^5.1.6",
         "@nestjs/axios": "^4.0.1",

@@ -1,9 +1,22 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
+import {
+    IPolicyRequirement,
+    PolicyAbility,
+} from '@modules/policy/interfaces/policy.interface';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@modules/policy/enums/policy.enum';
 
 export interface IPolicyService {
+    buildAbility(request: IRequestApp): PolicyAbility;
     validatePolicyGuard(
         request: IRequestApp,
-        requiredAbilities: RoleAbilityRequestDto[]
-    ): Promise<boolean>;
+        requirements: IPolicyRequirement[]
+    ): PolicyAbility;
+    getPermittedFields(
+        ability: PolicyAbility,
+        action: EnumPolicyAction,
+        subject: EnumPolicySubject
+    ): string[] | undefined;
 }

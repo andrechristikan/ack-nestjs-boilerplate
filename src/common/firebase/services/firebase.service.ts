@@ -9,7 +9,6 @@ import {
 import { HelperService } from '@common/helper/services/helper.service';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createPrivateKey } from 'crypto';
 import * as firebaseAdmin from 'firebase-admin';
 import { App as FirebaseApp } from 'firebase-admin/app';
 import { Messaging } from 'firebase-admin/lib/messaging/messaging';
@@ -40,16 +39,9 @@ export class FirebaseService implements OnModuleInit {
         this.clientEmail = this.configService.get<string>(
             'firebase.clientEmail'
         );
-
-        const privateKeyBuffer = Buffer.from(
-            this.configService.get<string>('firebase.privateKey'),
-            'base64'
-        );
-        this.privateKey = createPrivateKey({
-            key: privateKeyBuffer,
-            format: 'der',
-            type: 'pkcs8',
-        }).export({ type: 'pkcs8', format: 'pem' }) as string;
+        this.privateKey =
+            this.configService.get<string>('firebase.privateKey')?.trim() ||
+            undefined;
     }
 
     /**

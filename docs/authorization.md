@@ -226,15 +226,14 @@ getRoleInfo(@UserCurrent() user: IUser) {
 
 #### `RoleGuard`
 
-The guard implementation that validates user roles and populates role abilities.
+The guard implementation that validates user roles.
 
 The `RoleProtected` decorator follows this validation sequence:
 
 1. **User Validation**: Verifies that `request.__user` and `request.user` exist
-2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access with empty abilities array
-3. **Required Roles Check**: Validates that required roles are defined
-4. **Role Match**: Confirms user's role type matches one of the required roles
-5. **Abilities Population**: Attaches role abilities to `request.__abilities` for downstream use
+2. **Required Roles Check**: Validates that required roles are defined
+3. **Role Match**: Confirms user's role type matches one of the required roles
+4. **Super Admin Role Match Exception**: `superAdmin` bypasses role match restrictions in this guard
 
 **Flow Diagram:**
 
@@ -245,19 +244,19 @@ flowchart TD
     UserGuard --> CheckUser{request.__user and<br/>request.user exist?}
     
     CheckUser -->|No| ErrorUser[Throw ForbiddenException<br/>JWT_ACCESS_TOKEN_INVALID]
-    CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
-    
-    CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant access with<br/>empty abilities array]
-    CheckSuperAdmin -->|No| CheckRequired{Required roles<br/>defined?}
+    CheckUser -->|Yes| CheckRequired{Required roles<br/>defined?}
     
     CheckRequired -->|No| ErrorPredefined[Throw InternalServerErrorException<br/>PREDEFINED_NOT_FOUND]
-    CheckRequired -->|Yes| CheckRoleMatch{User role matches<br/>required roles?}
+    CheckRequired -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
+    
+    CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant access]
+    CheckSuperAdmin -->|No| CheckRoleMatch{User role matches<br/>required roles?}
     
     CheckRoleMatch -->|No| ErrorForbidden[Throw ForbiddenException<br/>ROLE_FORBIDDEN]
-    CheckRoleMatch -->|Yes| SetAbilities[Set request.__abilities<br/>from user role]
+    CheckRoleMatch -->|Yes| GrantAccess[Grant access]
     
     GrantSuperAdmin --> Success([Access Granted])
-    SetAbilities --> Success
+    GrantAccess --> Success
     
     ErrorUser --> End([Request Rejected])
     ErrorPredefined --> End
@@ -267,15 +266,15 @@ flowchart TD
 ### Important Notes
 
 - `@RoleProtected()` **requires** `@AuthJwtAccessProtected()` and `@UserProtected()` to be applied
-- `@AuthJwtAccessProtected()` must be placed at the bottom, followed by `@RoleProtected()`, then `@UserProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
-- This decorator populates `request.__abilities` which is required by policy guards
+- Recommended stack from top to bottom: `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- This decorator validates role access only. CASL ability compilation is done by `PolicyAbilityGuard`/`PolicyService`
 - Incorrect ordering will result in runtime errors
-- Users with `superAdmin` role type have unrestricted access to all `@RoleProtected` routes, regardless of the specified required roles. The guard returns an empty abilities array for super admins, as they bypass ability checks.
+- Users with `superAdmin` role type have unrestricted access to `@RoleProtected` role matching, regardless of the specified required roles.
 
 
 ## Policy Ability Protected
 
-`PolicyAbilityProtected` implements fine-grained, permission-based access control using CASL (an isomorphic authorization library). It allows you to define specific actions (read, create, update, delete, manage) that users can perform on specific subjects (resources like users, roles, settings, etc.).
+`PolicyAbilityProtected` implements fine-grained authorization using CASL v6 with the Prisma adapter (`@casl/prisma`). It validates whether the current user can perform specific actions on specific subjects, with support for grouped requirements, field-level checks, and Prisma condition filters.
 
 ### Decorators
 
@@ -284,7 +283,25 @@ flowchart TD
 **Method decorator** that applies `PolicyAbilityGuard` to route handlers.
 
 **Parameters:**
-- `...requiredAbilities` (RoleAbilityRequestDto[]): One or more policy ability objects defining required permissions
+- `...inputs` supports two modes:
+  - **Shorthand mode**: one or more `IPolicyRule` objects
+  - **Requirement mode**: one or more `IPolicyRequirement` objects with `rules` + optional `match`
+
+**`IPolicyRule` shape:**
+- `subject` (`EnumPolicySubject`)
+- `action` (`EnumPolicyAction[]`)
+- `fields?` (`string[]`) for field-level permission checks
+- `conditions?` (`PrismaQuery`) for conditional checks
+
+**`IPolicyRequirement` shape:**
+- `rules` (`IPolicyRule[]`)
+- `match?` (`EnumPolicyMatch.all | EnumPolicyMatch.any`)  
+  - `all` (default): every rule in the requirement must pass
+  - `any`: at least one rule in the requirement must pass
+
+**Important contract:**
+- Do not mix `IPolicyRule` and `IPolicyRequirement` arguments in the same decorator call.
+- In shorthand mode, all provided rules are wrapped as a single requirement with `match: all`.
 
 **Available Policy Actions:**
 - `EnumPolicyAction.manage` - Full control over a subject
@@ -292,6 +309,14 @@ flowchart TD
 - `EnumPolicyAction.create` - Create new resources
 - `EnumPolicyAction.update` - Modify existing resources
 - `EnumPolicyAction.delete` - Remove resources
+
+**Available Policy Effects (role ability definitions):**
+- `EnumPolicyEffect.can` - Allow rule
+- `EnumPolicyEffect.cannot` - Deny rule
+
+**Available Requirement Match Modes:**
+- `EnumPolicyMatch.all` - Every rule in the group must pass
+- `EnumPolicyMatch.any` - At least one rule in the group must pass
 
 **Available Policy Subjects:**
 - `EnumPolicySubject.all` - All resources
@@ -308,7 +333,7 @@ flowchart TD
 **Usage:**
 
 ```typescript
-// Single ability requirement
+// Shorthand mode: all rules must pass
 @PolicyAbilityProtected({
   subject: EnumPolicySubject.user,
   action: [EnumPolicyAction.read]
@@ -321,28 +346,20 @@ getUsers() {
   return this.userService.findAll();
 }
 
-// Multiple actions on single subject
-@PolicyAbilityProtected({
-  subject: EnumPolicySubject.user,
-  action: [EnumPolicyAction.update, EnumPolicyAction.delete]
-})
-@RoleProtected(EnumRoleType.admin)
-@UserProtected()
-@AuthJwtAccessProtected()
-@Put('users/:id')
-updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-  return this.userService.update(id, dto);
-}
-
-// Multiple ability requirements (different subjects)
+// Requirement mode: at least one rule in this requirement must pass
 @PolicyAbilityProtected(
   {
-    subject: EnumPolicySubject.role,
-    action: [EnumPolicyAction.read]
-  },
-  {
-    subject: EnumPolicySubject.user,
-    action: [EnumPolicyAction.manage]
+    match: EnumPolicyMatch.any,
+    rules: [
+      {
+        subject: EnumPolicySubject.role,
+        action: [EnumPolicyAction.read]
+      },
+      {
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.manage]
+      }
+    ]
   }
 )
 @RoleProtected(EnumRoleType.admin)
@@ -352,22 +369,36 @@ updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
 assignRole(@Param('id') id: string, @Body() dto: AssignRoleDto) {
   return this.userService.assignRole(id, dto.roleId);
 }
+
+// Field-level requirement
+@PolicyAbilityProtected({
+  subject: EnumPolicySubject.activityLog,
+  action: [EnumPolicyAction.read],
+  fields: ['action', 'createdAt', 'ipAddress']
+})
+@UserProtected()
+@AuthJwtAccessProtected()
+@Get('activity-log/list')
+list(@PolicyAbilityCurrent() ability: PolicyAbility) {
+  return this.activityService.getList(ability);
+}
 ```
+
+`PolicyAbilityCurrent()` is a parameter decorator that injects the compiled request-scoped CASL `PolicyAbility`, which can then be used in services with `accessibleBy(...)`.
 
 ### Guards
 
 #### `PolicyAbilityGuard`
 
-The guard implementation that validates user abilities using CASL library.
+The guard implementation that validates request access against policy requirements.
 
 The `PolicyAbilityProtected` decorator follows this validation sequence:
 
-1. **User Validation**: Verifies that `request.__user` and `request.user` exist
-2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access
-3. **Required Abilities Check**: Validates that required abilities are defined
-4. **Ability Creation**: Creates CASL ability rules from user's role abilities (`request.__abilities`)
-5. **Permission Validation**: Checks if user abilities match all required abilities
-6. **Access Decision**: Grants or denies access based on permission match
+1. **Metadata Read**: Reads `IPolicyRequirement[]` from route metadata (`PolicyAuthorizeMetaKey`)
+2. **Requirement Validation**: Rejects empty requirements or empty rule sets (`predefinedNotFound`)
+3. **Ability Build**: Compiles CASL ability from `request.__user.role.abilities`
+4. **Requirement Evaluation**: Evaluates each requirement with `all` (`every`) or `any` (`some`)
+5. **Access Decision**: Throws `forbidden` when at least one requirement fails; otherwise stores compiled ability in `request.__abilities`
 
 **Flow Diagram:**
 
@@ -375,51 +406,93 @@ The `PolicyAbilityProtected` decorator follows this validation sequence:
 flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
-    UserGuard --> RoleGuard[ @RoleProtected<br/>Validate role and load abilities]
-    RoleGuard --> CheckUser{request.__user and<br/>request.user exist?}
+    UserGuard --> PolicyGuard[ @PolicyAbilityProtected<br/>Load requirements metadata]
+    PolicyGuard --> CheckRequired{Requirements exist<br/>and contain rules?}
     
-    CheckUser -->|No| ErrorUser[Throw ForbiddenException<br/>JWT_ACCESS_TOKEN_INVALID]
-    CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
+    CheckRequired -->|No| ErrorPredefined[Throw InternalServerErrorException<br/>predefinedNotFound]
+    CheckRequired -->|Yes| BuildAbility[Build PrismaAbility from<br/>request.__user.role.abilities]
     
-    CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant immediate access]
-    CheckSuperAdmin -->|No| CheckRequired{Required abilities<br/>defined?}
+    BuildAbility --> CheckRequirements{All requirements pass?<br/>all => every, any => some}
     
-    CheckRequired -->|No| ErrorPredefined[Throw InternalServerErrorException<br/>PREDEFINED_NOT_FOUND]
-    CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from request.__abilities]
+    CheckRequirements -->|No| ErrorForbidden[Throw ForbiddenException<br/>policy.error.forbidden]
+    CheckRequirements -->|Yes| SetAbility[Set request.__abilities]
     
-    CreateAbilities --> ValidateAbilities{All required abilities<br/>present in user abilities?}
+    SetAbility --> Success([Access Granted])
     
-    ValidateAbilities -->|No| ErrorForbidden[Throw ForbiddenException<br/>POLICY_FORBIDDEN]
-    ValidateAbilities -->|Yes| GrantAccess[Grant access]
-    
-    GrantSuperAdmin --> Success([Access Granted])
-    GrantAccess --> Success
-    
-    ErrorUser --> End([Request Rejected])
     ErrorPredefined --> End
     ErrorForbidden --> End
 ```
 
 ### CASL Integration
 
-The system uses [CASL][casl] (Code Access Security Library) to handle complex permission logic:
+The system uses [CASL][casl] + [`@casl/prisma`][casl-prisma] through `PolicyAbilityFactory` and `PolicyService`:
 
-**PolicyAbilityFactory:**
+**1) Ability parsing and validation (`parseAbilities`)**
+- Validates persisted role abilities (Prisma composite `RoleAbility`) before compiling:
+  - `action` must be a non-empty array
+  - `subject` must match `EnumPolicySubject`
+  - `fields`, when present, must be `string[]`
+  - `conditions`, when present, must be a plain object
+- Invalid shapes throw `policy.error.invalidConfiguration`.
 
-- `createForUser()`: Builds CASL ability rules from user's assigned abilities
-- `handlerAbilities()`: Validates if user has all required abilities using CASL's `can()` method
+**2) Rule ordering and precedence (`createForUser`)**
+- Uses `AbilityBuilder(createPrismaAbility)` to produce a Prisma-aware ability.
+- Rules are sorted by:
+  - `priority` ascending (`lower` applied first)
+  - within same priority: `can` first, then `cannot`  
+This gives deny rules (`cannot`) precedence when both match at equal priority.
 
-**How it works:**
+**3) Conditions + placeholders**
+- Role abilities can include Prisma-style `conditions`.
+- Placeholders (currently `$userId`) are resolved from request context (`{ userId: request.__user.id }`).
+- Unknown placeholders throw `policy.error.invalidConditionPlaceholder`.
+- Conditions must use Prisma filter style, not Mongo `$operators`.
 
-The factory creates a CASL ability instance that can check if a user can perform specific actions on specific subjects. Every required ability must be satisfied for access to be granted.
+**4) Field-level authorization**
+- Rules can define `fields` to restrict allowed properties.
+- `PolicyService.getPermittedFields(...)` delegates to `permittedFieldsOf(...)`.
+- Return value:
+  - `undefined` => all fields allowed
+  - `string[]` => restrict output/query select to these fields
+
+**5) Request-level usage with Prisma queries**
+- `PolicyAbilityCurrent()` injects the compiled ability.
+- Services can combine query filters safely:
+  - `accessibleBy(ability).Model` for row-level filtering
+  - `getPermittedFields(...)` for field-level projection
+
+```typescript
+const permittedFields = this.policyService.getPermittedFields(
+  ability,
+  EnumPolicyAction.read,
+  EnumPolicySubject.activityLog
+);
+
+return this.activityRepository.findWithPaginationCursor({
+  ...pagination,
+  ...(permittedFields
+    ? { select: Object.fromEntries(permittedFields.map(f => [f, true])) }
+    : {}),
+  where: {
+    AND: [
+      accessibleBy(ability).ActivityLog,
+      pagination.where,
+      { userId },
+    ].filter(Boolean),
+  },
+});
+```
 
 ### Important Notes
 
-- `@PolicyAbilityProtected()` **requires** `@AuthJwtAccessProtected()`, `@RoleProtected()`, and `@UserProtected()` to be applied
-- Decorators must be stacked in this order from bottom to top: `@PolicyAbilityProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- `@PolicyAbilityProtected()` requires authenticated user context from `@AuthJwtAccessProtected()` + `@UserProtected()`
+- `@RoleProtected()` is optional for policy checks and should be used when route-level role gating is also required
+- Recommended stack from top to bottom: `@PolicyAbilityProtected()` → `@RoleProtected()` (optional) → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - Incorrect ordering will result in runtime errors
-- Users with `superAdmin` role type have unrestricted access to all `@PolicyAbilityProtected` routes, bypassing all ability checks.
-- All actions in a required ability must be present in the user's abilities. For example, if you require `[UPDATE, DELETE]` on `USER` subject, the user must have both actions, not just one.
+- There is no hardcoded super-admin bypass in `PolicyAbilityGuard`; unrestricted access depends on assigned abilities (default seed gives `superAdmin` `all/manage`)
+- For a single rule, all actions in `action[]` must pass
+- For grouped requirements, `match: all` requires every rule, while `match: any` requires at least one
+- Subject values map to enum values used by CASL/Prisma (`User`, `Role`, `ActivityLog`, etc.)
 
 ## Term Policy Acceptance Protected
 
@@ -555,12 +628,22 @@ Custom roles are created through the admin role management endpoints. The API do
   "type": "admin",
   "abilities": [
     {
-      "subject": "user",
-      "action": ["read", "update"]
+      "subject": "ActivityLog",
+      "action": ["read"],
+      "fields": ["action", "createdAt", "ipAddress"],
+      "conditions": {
+        "userId": "$userId"
+      },
+      "effect": "can",
+      "reason": "Users can only read their own safe activity-log fields",
+      "priority": 0
     },
     {
-      "subject": "activityLog",
-      "action": ["read"]
+      "subject": "User",
+      "action": ["delete"],
+      "effect": "cannot",
+      "reason": "Explicit deny for destructive user actions",
+      "priority": 10
     }
   ]
 }
@@ -578,12 +661,18 @@ Custom roles are created through the admin role management endpoints. The API do
 **Ability Structure:**
 
 Each ability consists of:
-- **subject**: The resource type (e.g., user, role, apiKey, session, termPolicy, activityLog)
-- **action**: Array of allowed actions (manage, read, create, update, delete)
+- **subject**: Resource type (`all`, `ApiKey`, `Role`, `User`, `Session`, `ActivityLog`, `PasswordHistory`, `TermPolicy`, `FeatureFlag`, `Device`)
+- **action**: Allowed actions (`manage`, `read`, `create`, `update`, `delete`)
+- **effect** *(optional)*: `can` (allow) or `cannot` (deny)
+- **fields** *(optional)*: Field-level allow-list
+- **conditions** *(optional)*: Prisma filter-style conditions (supports placeholders like `$userId`)
+- **reason** *(optional)*: Human-readable rule reason
+- **priority** *(optional)*: Rule order priority (`lower` applies first)
 
 **Available subjects and actions are defined in:**
-- `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, featureFlag, device
+- `EnumPolicySubject`: all, ApiKey, Role, User, Session, ActivityLog, PasswordHistory, TermPolicy, FeatureFlag, Device
 - `EnumPolicyAction`: manage, read, create, update, delete
+- `EnumPolicyEffect`: can, cannot
 
 ### Assigning Roles to Users
 
@@ -595,17 +684,18 @@ Once a custom role is created, it can be assigned to users through:
 **How it works automatically:**
 
 - When a user is assigned a role, they immediately inherit all abilities defined for that role
-- The `RoleGuard` automatically loads the user's role and abilities during authentication
-- The `PolicyAbilityGuard` validates permissions based on the role's abilities
+- `UserGuard` loads the user and role into `request.__user`
+- `PolicyAbilityGuard` compiles CASL `PrismaAbility` from `request.__user.role.abilities` and stores it in `request.__abilities`
+- Services can enforce row-level and field-level restrictions using `accessibleBy(...)` and `getPermittedFields(...)`
 - No application restart or additional configuration is needed
 
 **Permission enforcement flow:**
 
 ```mermaid
 flowchart LR
-    User[User logs in] --> LoadRole[Role & abilities loaded<br/>from database]
-    LoadRole --> RoleGuard[RoleGuard validates<br/>role type]
-    RoleGuard --> PolicyGuard[PolicyAbilityGuard validates<br/>specific permissions]
+    User[User logs in] --> UserGuard[UserGuard validates user<br/>and loads role]
+    UserGuard --> RoleGuard[RoleGuard validates<br/>role type if required]
+    RoleGuard --> PolicyGuard[PolicyAbilityGuard compiles ability<br/>from role abilities]
     PolicyGuard --> Access[Access granted/denied<br/>based on abilities]
 ```
 
@@ -618,6 +708,7 @@ flowchart LR
 <!-- REFERENCES -->
 
 [casl]: https://casl.js.org/
+[casl-prisma]: https://github.com/stalniy/casl/tree/master/packages/casl-prisma
 
 [ref-doc-authentication]: authentication.md
 [ref-doc-configuration]: configuration.md

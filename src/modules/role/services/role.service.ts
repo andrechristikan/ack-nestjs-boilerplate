@@ -13,7 +13,6 @@ import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.req
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { IRoleService } from '@modules/role/interfaces/role.service.interface';
@@ -169,7 +168,7 @@ export class RoleService implements IRoleService {
     async validateRoleGuard(
         request: IRequestApp,
         requiredRoles: EnumRoleType[]
-    ): Promise<RoleAbilityDto[]> {
+    ): Promise<void> {
         const { __user, user } = request;
         if (!__user || !user) {
             throw new ForbiddenException({
@@ -180,20 +179,19 @@ export class RoleService implements IRoleService {
 
         const { role } = __user;
 
-        if (role.type === EnumRoleType.superAdmin) {
-            return [];
-        } else if (requiredRoles.length === 0) {
+        if (requiredRoles.length === 0) {
             throw new InternalServerErrorException({
                 statusCode: EnumRoleStatusCodeError.predefinedNotFound,
                 message: 'role.error.predefinedNotFound',
             });
-        } else if (!requiredRoles.includes(role.type)) {
+        } else if (
+            role.type !== EnumRoleType.superAdmin &&
+            !requiredRoles.includes(role.type)
+        ) {
             throw new ForbiddenException({
                 statusCode: EnumRoleStatusCodeError.forbidden,
                 message: 'role.error.forbidden',
             });
         }
-
-        return this.roleUtil.mapOne(__user.role).abilities;
     }
 }

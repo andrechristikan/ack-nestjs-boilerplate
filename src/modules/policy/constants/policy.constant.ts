@@ -1,1 +1,1 @@
-export const PolicyRequiredAbilityMetaKey = 'PolicyRequiredAbilityMetaKey';
+export const PolicyAuthorizeMetaKey = 'PolicyAuthorizeMetaKey';

@@ -24,11 +24,7 @@ export class ActivityLogRepository {
     ) {}
 
     async findWithPaginationOffset(
-        userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<
+        { where, select, ...params }: IPaginationQueryOffsetParams<
             Prisma.ActivityLogSelect,
             Prisma.ActivityLogWhereInput
         >
@@ -39,21 +35,15 @@ export class ActivityLogRepository {
             Prisma.ActivityLogWhereInput
         >(this.databaseService.activityLog, {
             ...params,
-            where: {
-                ...where,
-                userId,
-            },
-            include: {
-                user: true,
-            },
+            ...(select
+                    ? { select: { ...(select as Record<string, unknown>), user: true } }
+                    : { include: { user: true } }),
+            where,
         });
     }
 
     async findWithPaginationCursor(
-        userId: string,
-        {
-            where,
-            ...params
+        { where, select, ...params
         }: IPaginationQueryCursorParams<
             Prisma.ActivityLogSelect,
             Prisma.ActivityLogWhereInput
@@ -65,13 +55,10 @@ export class ActivityLogRepository {
             Prisma.ActivityLogWhereInput
         >(this.databaseService.activityLog, {
             ...params,
-            where: {
-                ...where,
-                userId,
-            },
-            include: {
-                user: true,
-            },
+            ...(select
+                    ? { select: { ...(select as Record<string, unknown>), user: true } }
+                    : { include: { user: true } }),
+            where,
         });
     }
 

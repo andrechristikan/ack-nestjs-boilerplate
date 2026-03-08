@@ -3,13 +3,21 @@ import {
     ArrayNotEmpty,
     IsArray,
     IsEnum,
+    IsInt,
     IsNotEmpty,
+    IsObject,
+    IsOptional,
     IsString,
+    MaxLength,
+    Min,
 } from 'class-validator';
 import {
     EnumPolicyAction,
+    EnumPolicyEffect,
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
+import { IsValidCaslConditions } from '@modules/role/validators/is-valid-casl-conditions.validator';
+import { Transform } from 'class-transformer';
 
 export class RoleAbilityRequestDto {
     @ApiProperty({
@@ -35,4 +43,60 @@ export class RoleAbilityRequestDto {
     @IsNotEmpty()
     @ArrayNotEmpty()
     action: EnumPolicyAction[];
+
+    @ApiProperty({
+        required: false,
+        description: 'Ability effect (allow or deny)',
+        enum: EnumPolicyEffect,
+        default: EnumPolicyEffect.can,
+    })
+    @Transform(({ value }) => value ?? EnumPolicyEffect.can)
+    @IsEnum(EnumPolicyEffect)
+    @IsOptional()
+    effect?: EnumPolicyEffect = EnumPolicyEffect.can;
+
+    @ApiProperty({
+        required: false,
+        description: 'Optional field-level authorization list',
+        isArray: true,
+        type: String,
+    })
+    @IsString({ each: true })
+    @IsArray()
+    @IsOptional()
+    fields?: string[];
+
+    @ApiProperty({
+        required: false,
+        description: 'Optional CASL conditions object (Prisma filter syntax)',
+        type: Object,
+        additionalProperties: true,
+    })
+    @IsValidCaslConditions()
+    @IsObject()
+    @IsOptional()
+    conditions?: Record<string, unknown>;
+
+    @ApiProperty({
+        required: false,
+        description: 'Optional human-readable description of the rule',
+        maxLength: 255,
+    })
+    @IsString()
+    @MaxLength(255)
+    @IsOptional()
+    reason?: string;
+
+    @ApiProperty({
+        required: false,
+        description: 'Optional priority, lower values are applied first',
+        default: 0,
+    })
+    @Transform(({ value }) =>
+        value === undefined || value === null ? 0 : Number(value)
+    )
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    priority?: number;
 }

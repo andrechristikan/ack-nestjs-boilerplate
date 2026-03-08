@@ -7,10 +7,17 @@ import { ActivityLogSharedListDoc } from '@modules/activity-log/docs/activity-lo
 import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
-    AuthJwtAccessProtected,
-    AuthJwtPayload,
-} from '@modules/auth/decorators/auth.jwt.decorator';
+    PolicyAbilityCurrent,
+    PolicyAbilityProtected,
+} from '@modules/policy/decorators/policy.decorator';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@modules/policy/enums/policy.enum';
+import { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get } from '@nestjs/common';
@@ -27,6 +34,10 @@ export class ActivityLogSharedController {
     @ActivityLogSharedListDoc()
     @ResponsePaging('activityLog.list')
     @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.activityLog,
+        action: [EnumPolicyAction.read],
+    })
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -37,8 +48,9 @@ export class ActivityLogSharedController {
             Prisma.ActivityLogSelect,
             Prisma.ActivityLogWhereInput
         >,
-        @AuthJwtPayload('userId') userId: string
+        @AuthJwtPayload('userId') userId: string,
+        @PolicyAbilityCurrent() ability: PolicyAbility,
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListCursor(userId, pagination);
+        return this.activityLogService.getListCursor(userId, pagination, ability);
     }
 }

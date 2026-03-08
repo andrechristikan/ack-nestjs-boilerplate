@@ -6,15 +6,29 @@ export enum EnumPolicyAction {
     delete = 'delete',
 }
 
+export enum EnumPolicyEffect {
+    can = 'can',
+    cannot = 'cannot',
+}
+
+export enum EnumPolicyMatch {
+    all = 'all',
+    any = 'any',
+}
+
 export enum EnumPolicySubject {
     all = 'all',
-    apiKey = 'apiKey',
-    role = 'role',
-    user = 'user',
-    session = 'session',
-    activityLog = 'activityLog',
-    passwordHistory = 'passwordHistory',
-    termPolicy = 'termPolicy',
-    featureFlag = 'featureFlag',
-    device = 'device',
+    apiKey = 'ApiKey',
+    role = 'Role',
+    user = 'User',
+    session = 'Session',
+    activityLog = 'ActivityLog',
+    passwordHistory = 'PasswordHistory',
+    termPolicy = 'TermPolicy',
+    featureFlag = 'FeatureFlag',
+    device = 'Device',
+}
+
+export enum EnumPolicyPlaceholder {
+    userId = '$userId'
 }
