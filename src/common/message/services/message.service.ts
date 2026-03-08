@@ -77,20 +77,21 @@ export class MessageService implements IMessageService {
 
         for (const error of errors) {
             let property = error.property;
+            let constraints: Record<string, string> = error.constraints;
+            let constraintKeys = constraints ? Object.keys(constraints) : [];
 
-            const constraints: string[] = this.extractConstraints(error);
-
-            if (constraints.length === 0) {
+            if (constraintKeys.length === 0) {
                 const nestedResult = this.processNestedValidationError(error);
                 property = nestedResult.property;
-                constraints.push(...nestedResult.constraints);
+                constraints = nestedResult.constraints;
+                constraintKeys = Object.keys(nestedResult.constraints);
             }
 
-            for (const constraint of constraints) {
+            for (const constraintKey of constraintKeys) {
                 messages.push(
                     this.createValidationMessage(
-                        constraint,
-                        error.constraints[constraint],
+                        constraintKey,
+                        constraints[constraintKey],
                         error.value,
                         property,
                         options
@@ -120,22 +121,13 @@ export class MessageService implements IMessageService {
     }
 
     /**
-     * Extracts constraint keys from a ValidationError object.
-     * @param error - The ValidationError object
-     * @returns Array of constraint keys
-     */
-    private extractConstraints(error: ValidationError): string[] {
-        return Object.keys(error.constraints ?? []);
-    }
-
-    /**
-     * Processes nested validation errors by traversing child errors.
+     * Processes nested ValidationError objects to extract the full property path and the last set of constraints.
      * @param error - The ValidationError object with potential children
-     * @returns Object containing the full property path and constraint keys
+     * @return An object containing the full property path and the last set of constraints found in the nested structure
      */
     private processNestedValidationError(error: ValidationError): {
         property: string;
-        constraints: string[];
+        constraints: Record<string, string>;
     } {
         let property = error.property;
         let children: ValidationError[] = error.children ?? [];
@@ -150,7 +142,7 @@ export class MessageService implements IMessageService {
 
         return {
             property,
-            constraints: Object.keys(lastConstraint ?? []),
+            constraints: lastConstraint,
         };
     }
 

@@ -1,3 +1,4 @@
+import { HelperService } from '@common/helper/services/helper.service';
 import { Injectable } from '@nestjs/common';
 import {
     ValidationOptions,
@@ -13,6 +14,8 @@ import {
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class IsAfterNowConstraint implements ValidatorConstraintInterface {
+    constructor(private readonly helperService: HelperService) {}
+
     /**
      * Validates that the current value is after the current date and time.
      *
@@ -30,7 +33,7 @@ export class IsAfterNowConstraint implements ValidatorConstraintInterface {
             return false;
         }
 
-        const now = new Date();
+        const now = this.helperService.dateCreate();
         return dateValue.getTime() > now.getTime();
     }
 
@@ -52,17 +55,17 @@ export class IsAfterNowConstraint implements ValidatorConstraintInterface {
      */
     private convertToDate(value: unknown): Date | null {
         if (value instanceof Date) {
-            return !isNaN(value.getTime()) ? value : null;
+            return !Number.isNaN(value.getTime()) ? value : null;
         }
 
         if (typeof value === 'string') {
-            const date = new Date(value);
-            return !isNaN(date.getTime()) ? date : null;
+            const date = this.helperService.dateCreateFromIso(value);
+            return !Number.isNaN(date.getTime()) ? date : null;
         }
 
         if (typeof value === 'number') {
-            const date = new Date(value);
-            return !isNaN(date.getTime()) ? date : null;
+            const date = this.helperService.dateCreateFromTimestamp(value);
+            return !Number.isNaN(date.getTime()) ? date : null;
         }
 
         return null;

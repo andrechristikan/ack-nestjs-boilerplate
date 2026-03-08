@@ -8,9 +8,7 @@ import {
 
 @ValidatorConstraint({ async: false })
 @Injectable()
-export class IsFeatureFlagMetadataConstraint
-    implements ValidatorConstraintInterface
-{
+export class IsFeatureFlagMetadataConstraint implements ValidatorConstraintInterface {
     validate(value: unknown): boolean {
         if (
             value === null ||

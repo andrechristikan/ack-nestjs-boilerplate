@@ -18,12 +18,14 @@ import { LoggerModule } from '@common/logger/logger.module';
 import { QueueRegisterModule } from 'src/queues/queue.register.module';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { SessionModule } from '@modules/session/session.module';
+import { FirebaseModule } from '@common/firebase/firebase.module';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
+import { NotificationModule } from '@modules/notification/notification.module';
 
 /**
  * Common module that provides shared functionality across the application.
- * Configures global services including configuration, caching, logging, database, authentication, and pagination.
+ * All services within this module are marked as global and available across the application.
  */
-
 @Module({
     controllers: [],
     providers: [],
@@ -46,14 +48,17 @@ import { SessionModule } from '@modules/session/session.module';
         HelperModule,
         PaginationModule,
         FileModule,
+        FirebaseModule,
 
+        ActivityLogModule,
         ApiKeyModule,
         AuthModule,
-        PolicyModule,
-        RoleModule,
         FeatureFlagModule,
+        RoleModule,
+        PolicyModule,
         TermPolicyModule,
         SessionModule,
+        NotificationModule,
     ],
 })
 export class CommonModule {}

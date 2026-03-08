@@ -4,6 +4,7 @@
     "create": "New user created successfully.",
     "profile": "User profile retrieved successfully.",
     "updateProfile": "User profile updated successfully.",
+    "updateNotificationSetting": "Notification settings updated successfully.",
     "uploadPhotoProfile": "Profile photo upload request successful.",
     "updatePhotoProfile": "Profile picture uploaded successfully.",
     "generatePhotoProfilePresign": "Presigned URL for profile photo upload generated successfully.",
@@ -36,6 +37,8 @@
     },
     "import": "User data imported successfully.",
     "export": "User data export initiated successfully.",
+    "loginSetupTwoFactor": "Two-factor setup initiated successfully.",
+    "loginVerifyTwoFactor": "Two-factor verification successful.",
     "error": {
         "notFound": "Sorry, we couldn't find the user you requested.",
         "inactive": "This user is inactive.",

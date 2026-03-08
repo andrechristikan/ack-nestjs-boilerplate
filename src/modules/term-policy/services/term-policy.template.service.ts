@@ -22,7 +22,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         private readonly awsS3Service: AwsS3Service
     ) {}
 
-    async importTermsOfService(): Promise<AwsS3Dto> {
+    async importTermsOfService(): Promise<AwsS3Dto | null> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -50,13 +50,13 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 }
             );
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import terms of service');
 
             throw err;
         }
     }
 
-    async importPrivacy(): Promise<AwsS3Dto> {
+    async importPrivacy(): Promise<AwsS3Dto | null> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -84,13 +84,13 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 }
             );
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import privacy');
 
             throw err;
         }
     }
 
-    async importCookie(): Promise<AwsS3Dto> {
+    async importCookie(): Promise<AwsS3Dto | null> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -118,13 +118,13 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 }
             );
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import cookie');
 
             throw err;
         }
     }
 
-    async importMarketing(): Promise<AwsS3Dto> {
+    async importMarketing(): Promise<AwsS3Dto | null> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -152,7 +152,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 }
             );
         } catch (err: unknown) {
-            this.logger.error(err);
+            this.logger.error(err, 'Failed to import marketing');
 
             throw err;
         }

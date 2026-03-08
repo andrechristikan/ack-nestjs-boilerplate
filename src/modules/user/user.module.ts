@@ -1,25 +1,16 @@
 import { Module } from '@nestjs/common';
 import { UserService } from '@modules/user/services/user.service';
-import { UserUtil } from '@modules/user/utils/user.util';
-import { UserRepository } from '@modules/user/repositories/user.repository';
-import { CountryModule } from '@modules/country/country.module';
-import { RoleModule } from '@modules/role/role.module';
 import { AwsModule } from '@common/aws/aws.module';
-import { SessionModule } from '@modules/session/session.module';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
-import { EmailModule } from '@modules/email/email.module';
+import { UserRepository } from '@modules/user/repositories/user.repository';
+import { UserUtil } from '@modules/user/utils/user.util';
+import { CountryModule } from '@modules/country/country.module';
+import { DeviceModule } from '@modules/device/device.module';
 
 @Module({
-    imports: [
-        PasswordHistoryModule,
-        CountryModule,
-        RoleModule,
-        AwsModule,
-        SessionModule,
-        EmailModule,
-    ],
-    exports: [UserService, UserUtil, UserRepository],
-    providers: [UserService, UserUtil, UserRepository],
+    imports: [PasswordHistoryModule, AwsModule, CountryModule, DeviceModule],
+    exports: [UserService, UserRepository, UserUtil],
+    providers: [UserService, UserRepository, UserUtil],
     controllers: [],
 })
 export class UserModule {}

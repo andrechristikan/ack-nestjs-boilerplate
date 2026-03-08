@@ -18,6 +18,7 @@ import {
     IAuthPassword,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
+import { DeviceDto } from '@modules/device/dtos/device.dto';
 import { IRole } from '@modules/role/interfaces/role.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
@@ -38,6 +39,10 @@ import { Injectable } from '@nestjs/common';
 import {
     Country,
     EnumActivityLogAction,
+    EnumDeviceNotificationProvider,
+    EnumDevicePlatform,
+    EnumNotificationChannel,
+    EnumNotificationType,
     EnumPasswordHistoryType,
     EnumRoleType,
     EnumTermPolicyStatus,
@@ -65,12 +70,22 @@ export class UserRepository {
     ) {}
 
     async findWithPaginationOffset(
-        { where, ...params }: IPaginationQueryOffsetParams,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IUser>> {
-        return this.paginationService.offset<IUser>(this.databaseService.user, {
+        return this.paginationService.offset<
+            IUser,
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >(this.databaseService.user, {
             ...params,
             where: {
                 ...where,
@@ -87,12 +102,22 @@ export class UserRepository {
     }
 
     async findWithPaginationCursor(
-        { where, ...params }: IPaginationQueryCursorParams,
+        {
+            where,
+            ...params
+        }: IPaginationQueryCursorParams<
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >,
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IPaginationCursorReturn<IUser>> {
-        return this.paginationService.cursor<IUser>(this.databaseService.user, {
+        return this.paginationService.cursor<
+            IUser,
+            Prisma.UserSelect,
+            Prisma.UserWhereInput
+        >(this.databaseService.user, {
             ...params,
             where: {
                 ...where,
@@ -108,7 +133,7 @@ export class UserRepository {
         });
     }
 
-    async findAllByEmails(emails: string[]): Promise<IUser[]> {
+    async findByEmails(emails: string[]): Promise<IUser[]> {
         return this.databaseService.user.findMany({
             where: {
                 email: { in: emails },
@@ -120,7 +145,7 @@ export class UserRepository {
         });
     }
 
-    async findAllExport(
+    async findExport(
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
@@ -135,6 +160,26 @@ export class UserRepository {
             include: {
                 role: true,
                 twoFactor: true,
+            },
+        });
+    }
+
+    async findActive(): Promise<
+        {
+            id: string;
+            email: string;
+            username: string;
+        }[]
+    > {
+        return this.databaseService.user.findMany({
+            where: {
+                status: EnumUserStatus.active,
+                deletedAt: null,
+            },
+            select: {
+                id: true,
+                username: true,
+                email: true,
             },
         });
     }
@@ -256,7 +301,7 @@ export class UserRepository {
 
     async findOneActiveByVerificationEmailToken(
         token: string
-    ): Promise<(Verification & { user: User }) | null> {
+    ): Promise<Verification | null> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.verification.findFirst({
@@ -271,9 +316,6 @@ export class UserRepository {
                     deletedAt: null,
                     status: EnumUserStatus.active,
                 },
-            },
-            include: {
-                user: true,
             },
         });
     }
@@ -345,7 +387,7 @@ export class UserRepository {
             passwordPeriodExpired,
         }: IAuthPassword,
         { id: roleId, type: roleType }: IRole,
-        { ipAddress, userAgent }: IRequestLog,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
         createdBy: string
     ): Promise<User> {
         const termPolicies = await this.databaseService.termPolicy.findMany({
@@ -408,6 +450,10 @@ export class UserRepository {
                                         this.databaseUtil.toPlainObject(
                                             userAgent
                                         ),
+                                    geoLocation:
+                                        this.databaseUtil.toPlainObject(
+                                            geoLocation
+                                        ),
                                     createdBy,
                                 },
                                 {
@@ -417,9 +463,28 @@ export class UserRepository {
                                         this.databaseUtil.toPlainObject(
                                             userAgent
                                         ),
+                                    geoLocation:
+                                        this.databaseUtil.toPlainObject(
+                                            geoLocation
+                                        ),
                                     createdBy,
                                 },
                             ],
+                        },
+                    },
+                    notificationSettings: {
+                        createMany: {
+                            data: Object.values(EnumNotificationChannel)
+                                .map(channel =>
+                                    Object.values(EnumNotificationType).map(
+                                        type => ({
+                                            channel,
+                                            type,
+                                            isActive: true,
+                                        })
+                                    )
+                                )
+                                .flat(),
                         },
                     },
                     twoFactor: {
@@ -448,7 +513,7 @@ export class UserRepository {
     async updateStatusByAdmin(
         id: string,
         { status }: UserUpdateStatusRequestDto,
-        { ipAddress, userAgent }: IRequestLog,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
         updatedBy: string
     ): Promise<User> {
         return this.databaseService.user.update({
@@ -464,6 +529,8 @@ export class UserRepository {
                                 : EnumActivityLogAction.userUpdateStatus,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: updatedBy,
                     },
                 },
@@ -474,7 +541,7 @@ export class UserRepository {
     async updateProfile(
         userId: string,
         { countryId, ...data }: UserUpdateProfileRequestDto,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -487,6 +554,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userUpdateProfile,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -497,7 +566,7 @@ export class UserRepository {
     async updatePhotoProfile(
         userId: string,
         photo: AwsS3Dto,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -509,6 +578,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userUpdatePhotoProfile,
                         ipAddress: ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -518,7 +589,7 @@ export class UserRepository {
 
     async deleteSelf(
         userId: string,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         const deletedAt = this.helperService.dateCreate();
         return this.databaseService.user.update({
@@ -533,6 +604,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userDeleteSelf,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                         createdAt: deletedAt,
                     },
@@ -546,7 +619,6 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: deletedAt,
-                            updatedBy: userId,
                         },
                     },
                 },
@@ -582,7 +654,7 @@ export class UserRepository {
     async addMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<UserMobileNumber & { country: Country }> {
         const updated = await this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -601,6 +673,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userAddMobileNumber,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -632,7 +706,7 @@ export class UserRepository {
             isVerified: boolean;
         },
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<UserMobileNumber & { country: Country }> {
         const updated = await this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -659,6 +733,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userUpdateMobileNumber,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -682,7 +758,7 @@ export class UserRepository {
     async deleteMobileNumber(
         userId: string,
         mobileNumberId: string,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<UserMobileNumber & { country: Country }> {
         const user = await this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -696,6 +772,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userDeleteMobileNumber,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -719,7 +797,7 @@ export class UserRepository {
     async claimUsername(
         userId: string,
         { username }: UserClaimUsernameRequestDto,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -731,6 +809,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userClaimUsername,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -746,7 +826,7 @@ export class UserRepository {
             passwordHash,
             passwordPeriodExpired,
         }: IAuthPassword,
-        { ipAddress, userAgent }: IRequestLog,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
         updatedBy: string
     ): Promise<User> {
         return this.databaseService.user.update({
@@ -771,6 +851,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userUpdatePasswordByAdmin,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: updatedBy,
                     },
                 },
@@ -783,7 +865,6 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: passwordCreated,
-                            updatedBy,
                         },
                     },
                 },
@@ -819,7 +900,7 @@ export class UserRepository {
             passwordHash,
             passwordPeriodExpired,
         }: IAuthPassword,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -843,6 +924,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userChangePassword,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -857,7 +940,6 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: passwordCreated,
-                            updatedBy: userId,
                         },
                     },
                 },
@@ -868,8 +950,11 @@ export class UserRepository {
     async login(
         userId: string,
         { loginFrom, loginWith, sessionId, expiredAt, jti }: IUserLogin,
-        { ipAddress, userAgent }: IRequestLog
+        { fingerprint, name, notificationToken, platform }: DeviceDto,
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
+        const today = this.helperService.dateCreate();
+
         let action: EnumActivityLogAction =
             EnumActivityLogAction.userLoginCredential;
         switch (loginWith) {
@@ -885,35 +970,111 @@ export class UserRepository {
                 break;
         }
 
-        return this.databaseService.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                lastLoginAt: this.helperService.dateCreate(),
-                lastIPAddress: ipAddress,
-                lastLoginFrom: loginFrom,
-                lastLoginWith: loginWith,
-                updatedBy: userId,
-                sessions: {
-                    create: {
+        let notificationProvider: EnumDeviceNotificationProvider | null = null;
+        switch (platform) {
+            case EnumDevicePlatform.android:
+                notificationProvider = EnumDeviceNotificationProvider.fcm;
+                break;
+            case EnumDevicePlatform.ios:
+                notificationProvider = EnumDeviceNotificationProvider.apns;
+                break;
+            default:
+                notificationProvider = null;
+                break;
+        }
+
+        return this.databaseService.$transaction(
+            async (tx: Prisma.TransactionClient) => {
+                await tx.device.updateMany({
+                    where: {
+                        notificationToken,
+                    },
+                    data: {
+                        notificationToken: null,
+                        notificationProvider: null,
+                    },
+                });
+
+                const user = await tx.user.update({
+                    where: { id: userId, deletedAt: null },
+                    data: {
+                        lastLoginAt: today,
+                        lastIPAddress: ipAddress,
+                        lastLoginFrom: loginFrom,
+                        lastLoginWith: loginWith,
+                        updatedBy: userId,
+                        devices: {
+                            upsert: {
+                                where: {
+                                    userId_fingerprint: {
+                                        userId,
+                                        fingerprint,
+                                    },
+                                },
+                                create: {
+                                    fingerprint,
+                                    name,
+                                    platform,
+                                    notificationProvider,
+                                    notificationToken,
+                                    lastActiveAt: today,
+                                    createdBy: userId,
+                                },
+                                update: {
+                                    name,
+                                    platform,
+                                    notificationProvider,
+                                    notificationToken,
+                                    lastActiveAt: today,
+                                    updatedBy: userId,
+                                },
+                            },
+                        },
+                        activityLogs: {
+                            create: {
+                                action,
+                                ipAddress,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                geoLocation:
+                                    this.databaseUtil.toPlainObject(
+                                        geoLocation
+                                    ),
+                                createdBy: userId,
+                            },
+                        },
+                    },
+                });
+
+                await tx.session.create({
+                    data: {
                         id: sessionId,
                         jti,
                         expiredAt,
                         isRevoked: false,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        createdBy: userId,
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
+                        user: {
+                            connect: {
+                                id: userId,
+                            },
+                        },
+                        device: {
+                            connect: {
+                                userId_fingerprint: {
+                                    userId,
+                                    fingerprint,
+                                },
+                            },
+                        },
                     },
-                },
-                activityLogs: {
-                    create: {
-                        action,
-                        ipAddress,
-                        userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        createdBy: userId,
-                    },
-                },
-            },
-        });
+                });
+
+                return user;
+            }
+        );
     }
 
     async createBySocial(
@@ -928,7 +1089,7 @@ export class UserRepository {
             cookies,
             marketing,
         }: UserCreateSocialRequestDto,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
         const userId = this.databaseUtil.createId();
         const signUpWith =
@@ -980,7 +1141,24 @@ export class UserRepository {
                             ipAddress,
                             userAgent:
                                 this.databaseUtil.toPlainObject(userAgent),
+                            geoLocation:
+                                this.databaseUtil.toPlainObject(geoLocation),
                             createdBy: userId,
+                        },
+                    },
+                    notificationSettings: {
+                        createMany: {
+                            data: Object.values(EnumNotificationChannel)
+                                .map(channel =>
+                                    Object.values(EnumNotificationType).map(
+                                        type => ({
+                                            channel,
+                                            type,
+                                            isActive: true,
+                                        })
+                                    )
+                                )
+                                .flat(),
                         },
                     },
                     twoFactor: {
@@ -1012,7 +1190,7 @@ export class UserRepository {
 
     async verify(
         userId: string,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -1024,6 +1202,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userVerifiedEmail,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -1049,7 +1229,7 @@ export class UserRepository {
             passwordPeriodExpired,
         }: IAuthPassword,
         { expiredAt, reference, token, type }: IUserVerificationCreate,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         const termPolicies = await this.databaseService.termPolicy.findMany({
             where: {
@@ -1113,6 +1293,10 @@ export class UserRepository {
                                         this.databaseUtil.toPlainObject(
                                             userAgent
                                         ),
+                                    geoLocation:
+                                        this.databaseUtil.toPlainObject(
+                                            geoLocation
+                                        ),
                                     createdBy: userId,
                                 },
                                 {
@@ -1122,9 +1306,28 @@ export class UserRepository {
                                         this.databaseUtil.toPlainObject(
                                             userAgent
                                         ),
+                                    geoLocation:
+                                        this.databaseUtil.toPlainObject(
+                                            geoLocation
+                                        ),
                                     createdBy: userId,
                                 },
                             ],
+                        },
+                    },
+                    notificationSettings: {
+                        createMany: {
+                            data: Object.values(EnumNotificationChannel)
+                                .map(channel =>
+                                    Object.values(EnumNotificationType).map(
+                                        type => ({
+                                            channel,
+                                            type,
+                                            isActive: true,
+                                        })
+                                    )
+                                )
+                                .flat(),
                         },
                     },
                     verifications: {
@@ -1167,7 +1370,7 @@ export class UserRepository {
         userId: string,
         email: string,
         { expiredAt, reference, token }: IUserForgotPasswordCreate,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<void> {
         await this.databaseService.user.update({
             where: {
@@ -1181,6 +1384,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userForgotPassword,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -1215,7 +1420,7 @@ export class UserRepository {
             passwordHash,
             passwordPeriodExpired,
         }: IAuthPassword,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -1239,6 +1444,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userResetPassword,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -1262,7 +1469,6 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: passwordCreated,
-                            updatedBy: userId,
                         },
                     },
                 },
@@ -1273,7 +1479,7 @@ export class UserRepository {
     async verifyEmail(
         id: string,
         userId: string,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<Verification> {
         const today = this.helperService.dateCreate();
 
@@ -1294,6 +1500,10 @@ export class UserRepository {
                                 ipAddress,
                                 userAgent:
                                     this.databaseUtil.toPlainObject(userAgent),
+                                geoLocation:
+                                    this.databaseUtil.toPlainObject(
+                                        geoLocation
+                                    ),
                                 createdBy: userId,
                             },
                         },
@@ -1307,7 +1517,7 @@ export class UserRepository {
         userId: string,
         userEmail: string,
         { expiredAt, reference, token, type }: IUserVerificationCreate,
-        requestLog: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         const today = this.helperService.dateCreate();
 
@@ -1346,10 +1556,15 @@ export class UserRepository {
                             activityLogs: {
                                 create: {
                                     action: EnumActivityLogAction.userSendVerificationEmail,
-                                    ipAddress: requestLog.ipAddress,
-                                    userAgent: this.databaseUtil.toPlainObject(
-                                        requestLog.userAgent
-                                    ),
+                                    ipAddress,
+                                    userAgent:
+                                        this.databaseUtil.toPlainObject(
+                                            userAgent
+                                        ),
+                                    geoLocation:
+                                        this.databaseUtil.toPlainObject(
+                                            geoLocation
+                                        ),
                                     createdBy: userId,
                                 },
                             },
@@ -1365,12 +1580,14 @@ export class UserRepository {
     async refresh(
         userId: string,
         { loginFrom, loginWith, sessionId, jti }: IUserLogin,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
+        const today = this.helperService.dateCreate();
+
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                lastLoginAt: this.helperService.dateCreate(),
+                lastLoginAt: today,
                 lastIPAddress: ipAddress,
                 lastLoginFrom: loginFrom,
                 lastLoginWith: loginWith,
@@ -1390,6 +1607,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userRefreshToken,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -1399,7 +1618,7 @@ export class UserRepository {
 
     async reachMaxPasswordAttempt(
         userId: string,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
@@ -1410,6 +1629,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userReachMaxPasswordAttempt,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                     },
                 },
@@ -1420,7 +1641,7 @@ export class UserRepository {
     async verifyTwoFactor(
         userId: string,
         { method, newBackupCodes }: IAuthTwoFactorVerifyResult,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
@@ -1440,6 +1661,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userVerifyTwoFactor,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                         createdAt: now,
                     },
@@ -1456,7 +1679,7 @@ export class UserRepository {
         userId: string,
         secretEncrypted: string,
         iv: string,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
@@ -1476,6 +1699,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userSetupTwoFactor,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                         createdAt: now,
                     },
@@ -1491,7 +1716,7 @@ export class UserRepository {
     async enableTwoFactor(
         userId: string,
         backupCodesHashed: string[],
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
@@ -1522,6 +1747,8 @@ export class UserRepository {
                             ipAddress,
                             userAgent:
                                 this.databaseUtil.toPlainObject(userAgent),
+                            geoLocation:
+                                this.databaseUtil.toPlainObject(geoLocation),
                             createdBy: userId,
                             createdAt: now,
                         },
@@ -1537,7 +1764,7 @@ export class UserRepository {
 
     async disableTwoFactor(
         userId: string,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
@@ -1561,6 +1788,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userDisableTwoFactor,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                         createdAt: now,
                     },
@@ -1576,7 +1805,7 @@ export class UserRepository {
     async regenerateTwoFactorBackupCodes(
         userId: string,
         backupCodesHashed: string[],
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
@@ -1595,6 +1824,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: userId,
                         createdAt: now,
                     },
@@ -1610,7 +1841,7 @@ export class UserRepository {
     async resetTwoFactorByAdmin(
         userId: string,
         updatedBy: string,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
@@ -1632,6 +1863,8 @@ export class UserRepository {
                         action: EnumActivityLogAction.adminUserResetTwoFactor,
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
                         createdBy: updatedBy,
                         createdAt: now,
                     },
@@ -1639,7 +1872,7 @@ export class UserRepository {
                 sessions: {
                     updateMany: {
                         where: { isRevoked: false, expiredAt: { gte: now } },
-                        data: { isRevoked: true, revokedAt: now, updatedBy },
+                        data: { isRevoked: true, revokedAt: now },
                     },
                 },
             },
@@ -1684,7 +1917,7 @@ export class UserRepository {
         passwordHasheds: IAuthPassword[],
         countryId: string,
         { id: roleId, type: roleType }: IRole,
-        { ipAddress, userAgent }: IRequestLog,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
         createdBy: string
     ): Promise<User[]> {
         const termPolicies = await this.databaseService.termPolicy.findMany({
@@ -1765,6 +1998,10 @@ export class UserRepository {
                                                     this.databaseUtil.toPlainObject(
                                                         userAgent
                                                     ),
+                                                geoLocation:
+                                                    this.databaseUtil.toPlainObject(
+                                                        geoLocation
+                                                    ),
                                                 createdBy,
                                             },
                                             {
@@ -1774,9 +2011,30 @@ export class UserRepository {
                                                     this.databaseUtil.toPlainObject(
                                                         userAgent
                                                     ),
+                                                geoLocation:
+                                                    this.databaseUtil.toPlainObject(
+                                                        geoLocation
+                                                    ),
                                                 createdBy,
                                             },
                                         ],
+                                    },
+                                },
+                                notificationSettings: {
+                                    createMany: {
+                                        data: Object.values(
+                                            EnumNotificationChannel
+                                        )
+                                            .map(channel =>
+                                                Object.values(
+                                                    EnumNotificationType
+                                                ).map(type => ({
+                                                    channel,
+                                                    type,
+                                                    isActive: true,
+                                                }))
+                                            )
+                                            .flat(),
                                     },
                                 },
                                 twoFactor: {

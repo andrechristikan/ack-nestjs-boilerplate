@@ -40,23 +40,33 @@ export type IPaginationOrderBy = Record<
     EnumPaginationOrderDirectionType
 >;
 
-export interface IPaginationQueryReturn {
-    where?: {
-        or?: Record<string, { contains: string }>[];
-        [key: string]: unknown;
-    };
+export interface IPaginationQueryDefaultWhere {
+    or?: Record<string, { contains?: string }>[];
+    [key: string]: unknown;
+}
+
+export interface IPaginationQueryReturn<
+    TArgsWhere = IPaginationQueryDefaultWhere,
+> {
+    where?: TArgsWhere;
     orderBy?: IPaginationOrderBy;
     limit: number;
     include: unknown;
 }
 
-export interface IPaginationQueryOffsetParams extends IPaginationQueryReturn {
-    select?: unknown;
+export interface IPaginationQueryOffsetParams<
+    TArgsSelect = unknown,
+    TArgsWhere = unknown,
+> extends IPaginationQueryReturn<TArgsWhere> {
+    select?: TArgsSelect;
     skip: number;
 }
 
-export interface IPaginationQueryCursorParams extends IPaginationQueryReturn {
-    select?: unknown;
+export interface IPaginationQueryCursorParams<
+    TArgsSelect = unknown,
+    TArgsWhere = unknown,
+> extends IPaginationQueryReturn<TArgsWhere> {
+    select?: TArgsSelect;
     cursor?: string;
     cursorField?: string;
     includeCount?: boolean;

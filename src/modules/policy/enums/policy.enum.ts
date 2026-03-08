@@ -25,9 +25,10 @@ export enum EnumPolicySubject {
     activityLog = 'ActivityLog',
     passwordHistory = 'PasswordHistory',
     termPolicy = 'TermPolicy',
-    featureFlag = 'FeatureFlag'
+    featureFlag = 'FeatureFlag',
+    device = 'Device',
 }
 
 export enum EnumPolicyPlaceholder {
-    userId = '$userId',
+    userId = '$userId'
 }

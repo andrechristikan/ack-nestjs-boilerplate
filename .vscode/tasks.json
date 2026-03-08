@@ -91,14 +91,14 @@
         {
             "label": "Seed Template",
             "type": "shell",
-            "command": "pnpm migration template-email --type seed && pnpm migration template-termPolicy --type seed",
+            "command": "pnpm migration template-email-notification --type seed && pnpm migration template-termPolicy --type seed",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Remove Template",
             "type": "shell",
-            "command": "pnpm migration template-email --type remove && pnpm migration template-termPolicy --type remove",
+            "command": "pnpm migration template-email-notification --type remove && pnpm migration template-termPolicy --type remove",
             "group": "none",
             "problemMatcher": []
         },

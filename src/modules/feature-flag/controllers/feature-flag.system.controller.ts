@@ -2,6 +2,7 @@ import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagDefaultAvailableSearch } from '@modules/feature-flag/constants/feature-flag.list.constant';
 import { FeatureFlagSystemListDoc } from '@modules/feature-flag/docs/feature-flag.system.doc';
@@ -26,7 +27,10 @@ export class FeatureFlagSystemController {
         @PaginationCursorQuery({
             availableSearch: FeatureFlagDefaultAvailableSearch,
         })
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams<
+            Prisma.FeatureFlagSelect,
+            Prisma.FeatureFlagWhereInput
+        >
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
         return this.featureFlagService.getListCursor(pagination);
     }

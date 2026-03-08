@@ -13,15 +13,24 @@ import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.req
 import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType, Prisma } from '@prisma/client';
 
 export interface IRoleService {
     getListOffsetByAdmin(
-        { where, ...params }: IPaginationQueryOffsetParams,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.RoleSelect,
+            Prisma.RoleWhereInput
+        >,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>>;
     getListCursor(
-        pagination: IPaginationQueryCursorParams,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.RoleSelect,
+            Prisma.RoleWhereInput
+        >,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>>;
     getOne(id: string): Promise<IResponseReturn<RoleDto>>;

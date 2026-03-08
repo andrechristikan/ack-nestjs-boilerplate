@@ -120,7 +120,8 @@ export class UserService {
             this.logger.log(`User created: ${user.id}`);
             return user;
         } catch (error) {
-            this.logger.error(`Failed to create user: ${error.message}`, error.stack);
+            // NOTE: pass object/error first, message string second
+            this.logger.error(error, 'Failed to create user');
             throw error;
         }
     }
@@ -368,9 +369,12 @@ When auto-logging is enabled, the following information is automatically capture
 - Route pattern
 - User-Agent
 - Content-Type
+- Referer
+- Remote address and port
 - Client IP address
 - Authenticated user ID
 - Query parameters (sanitized)
+- Route params (sanitized)
 - Request headers (sanitized)
 
 **Response:**
@@ -385,6 +389,8 @@ Routes excluded from auto-logging (defined in `logger.constant.ts`):
 
 ```typescript
 export const LoggerExcludedRoutes: string[] = [
+    '/api/hello',
+    '/api/hello/*',
     '/api/health',
     '/api/health/*',
     '/metrics',
@@ -409,6 +415,8 @@ To exclude additional routes, modify the constant in `src/common/logger/constant
 
 ```typescript
 export const LoggerExcludedRoutes: string[] = [
+    '/api/hello',
+    '/api/hello/*',
     '/api/health',
     '/api/health/*',
     '/metrics',
@@ -641,10 +649,8 @@ export class PaymentService {
             // Process payment logic
         } catch (error) {
             // This error will be sent to Sentry automatically
-            this.logger.error(
-                `Payment processing failed for order: ${orderId}`,
-                error.stack
-            );
+            // NOTE: pass object/error first, message string second
+            this.logger.error(error, `Payment processing failed for order: ${orderId}`);
             throw error;
         }
     }

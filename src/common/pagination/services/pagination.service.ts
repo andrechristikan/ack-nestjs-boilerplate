@@ -43,9 +43,9 @@ export class PaginationService implements IPaginationService {
      * @returns {Promise<IPaginationOffsetReturn<TReturn>>} Promise that resolves to paginated result with items, metadata (count, page, totalPage, hasNext, hasPrevious, nextPage, previousPage)
      * @throws {BadRequestException} If data integrity issues are detected (unexpected condition)
      */
-    async offset<TReturn>(
+    async offset<TReturn, TArgsSelect = unknown, TArgsWhere = unknown>(
         repository: IPaginationRepository,
-        args: IPaginationQueryOffsetParams
+        args: IPaginationQueryOffsetParams<TArgsSelect, TArgsWhere>
     ): Promise<IPaginationOffsetReturn<TReturn>> {
         const {
             limit,
@@ -115,9 +115,9 @@ export class PaginationService implements IPaginationService {
      * @returns {Promise<IPaginationCursorReturn<TReturn>>} Promise that resolves to cursor paginated result with items, cursor token, hasNext flag, and optional count
      * @throws {BadRequestException} If pagination conditions have changed
      */
-    async cursor<TReturn>(
+    async cursor<TReturn, TArgsSelect = unknown, TArgsWhere = unknown>(
         repository: IPaginationRepository,
-        args: IPaginationQueryCursorParams
+        args: IPaginationQueryCursorParams<TArgsSelect, TArgsWhere>
     ): Promise<IPaginationCursorReturn<TReturn>> {
         const {
             limit,

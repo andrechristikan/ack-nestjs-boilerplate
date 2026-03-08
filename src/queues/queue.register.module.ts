@@ -9,20 +9,33 @@ import {
 import { EnumQueue } from 'src/queues/enums/queue.enum';
 
 /**
- * Global module for registering Bull queues with default configurations
- * Provides dynamic module registration for email queuing system
+ * Global module for registering Bull queues with default configurations.
+ * Provides dynamic module registration for background job processing.
  */
 @Global()
 @Module({})
 export class QueueRegisterModule {
     /**
-     * Creates and configures email queue with default job options
-     * @returns {DynamicModule} Dynamic module with email queue configuration
+     * Creates and configures queues with default job options.
+     * @returns {DynamicModule} Dynamic module with queue configurations.
      */
     static forRoot(): DynamicModule {
         const queues = [
             BullModule.registerQueue({
-                name: EnumQueue.EMAIL,
+                name: EnumQueue.notificationEmail,
+                configKey: QueueConfigKey,
+                defaultJobOptions: {
+                    attempts: 3,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 10000,
+                    },
+                    removeOnComplete: 50,
+                    removeOnFail: 100,
+                },
+            }),
+            BullModule.registerQueue({
+                name: EnumQueue.notificationPush,
                 configKey: QueueConfigKey,
                 defaultJobOptions: {
                     attempts: 3,
@@ -30,8 +43,21 @@ export class QueueRegisterModule {
                         type: 'exponential',
                         delay: 5000,
                     },
-                    removeOnComplete: 20,
-                    removeOnFail: 50,
+                    removeOnComplete: 50,
+                    removeOnFail: 100,
+                },
+            }),
+            BullModule.registerQueue({
+                name: EnumQueue.notification,
+                configKey: QueueConfigKey,
+                defaultJobOptions: {
+                    attempts: 3,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 3000,
+                    },
+                    removeOnComplete: 50,
+                    removeOnFail: 100,
                 },
             }),
         ];
@@ -60,8 +86,8 @@ export class QueueRegisterModule {
                                 delay: 3000,
                             },
                             attempts: 3,
-                            removeOnComplete: 20,
-                            removeOnFail: 50,
+                            removeOnComplete: 50,
+                            removeOnFail: 100,
                         },
                     }),
                 }),
@@ -84,8 +110,8 @@ export class QueueRegisterModule {
                                 delay: 3000,
                             },
                             attempts: 3,
-                            removeOnComplete: 20,
-                            removeOnFail: 50,
+                            removeOnComplete: 50,
+                            removeOnFail: 100,
                         },
                     }),
                 }),

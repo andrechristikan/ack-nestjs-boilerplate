@@ -19,43 +19,53 @@ import { ActivityLog, EnumActivityLogAction, Prisma } from '@prisma/client';
 export class ActivityLogRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
+
     async findWithPaginationOffset(
-        { where, select, ...params }: IPaginationQueryOffsetParams
+        { where, select, ...params }: IPaginationQueryOffsetParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >
     ): Promise<IResponsePagingReturn<IActivityLog>> {
-        return this.paginationService.offset<IActivityLog>(
-            this.databaseService.activityLog,
-            {
-                ...params,
-                ...(select
+        return this.paginationService.offset<
+            IActivityLog,
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >(this.databaseService.activityLog, {
+            ...params,
+            ...(select
                     ? { select: { ...(select as Record<string, unknown>), user: true } }
                     : { include: { user: true } }),
-                where,
-            }
-        );
+            where,
+        });
     }
 
     async findWithPaginationCursor(
-        { where, select, ...params }: IPaginationQueryCursorParams
+        { where, select, ...params
+        }: IPaginationQueryCursorParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
-        return this.paginationService.cursor<IActivityLog>(
-            this.databaseService.activityLog,
-            {
-                ...params,
-                ...(select
+        return this.paginationService.cursor<
+            IActivityLog,
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >(this.databaseService.activityLog, {
+            ...params,
+            ...(select
                     ? { select: { ...(select as Record<string, unknown>), user: true } }
                     : { include: { user: true } }),
-                where,
-            }
-        );
+            where,
+        });
     }
 
     async create(
         userId: string,
         action: EnumActivityLogAction,
-        { ipAddress, userAgent }: IRequestLog,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
         metadata?: IActivityLogMetadata
     ): Promise<ActivityLog> {
         return this.databaseService.activityLog.create({
@@ -64,6 +74,7 @@ export class ActivityLogRepository {
                 action,
                 ipAddress,
                 userAgent: this.databaseUtil.toPlainObject(userAgent),
+                geoLocation: this.databaseUtil.toPlainObject(geoLocation),
                 metadata:
                     metadata && Object.keys(metadata).length > 0
                         ? (metadata as Prisma.InputJsonValue)
