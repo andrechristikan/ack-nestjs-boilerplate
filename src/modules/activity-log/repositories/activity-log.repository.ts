@@ -22,33 +22,32 @@ export class ActivityLogRepository {
         private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService
     ) {}
-
     async findWithPaginationOffset(
-        { where, ...params }: IPaginationQueryOffsetParams
+        { where, select, ...params }: IPaginationQueryOffsetParams
     ): Promise<IResponsePagingReturn<IActivityLog>> {
         return this.paginationService.offset<IActivityLog>(
             this.databaseService.activityLog,
             {
                 ...params,
+                ...(select
+                    ? { select: { ...(select as Record<string, unknown>), user: true } }
+                    : { include: { user: true } }),
                 where,
-                include: {
-                    user: true,
-                },
             }
         );
     }
 
     async findWithPaginationCursor(
-        { where, ...params }: IPaginationQueryCursorParams
+        { where, select, ...params }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
         return this.paginationService.cursor<IActivityLog>(
             this.databaseService.activityLog,
             {
                 ...params,
+                ...(select
+                    ? { select: { ...(select as Record<string, unknown>), user: true } }
+                    : { include: { user: true } }),
                 where,
-                include: {
-                    user: true,
-                },
             }
         );
     }

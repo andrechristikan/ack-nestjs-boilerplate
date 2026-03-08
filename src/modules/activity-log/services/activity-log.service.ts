@@ -9,23 +9,41 @@ import { ActivityLogRepository } from '@modules/activity-log/repositories/activi
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { accessibleBy } from '@casl/prisma';
 import { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import { PolicyService } from '@modules/policy/services/policy.service';
 import { Injectable } from '@nestjs/common';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@modules/policy/enums/policy.enum';
 
 @Injectable()
 export class ActivityLogService implements IActivityLogService {
     constructor(
         private readonly activityRepository: ActivityLogRepository,
-        private readonly activityUtil: ActivityLogUtil
+        private readonly activityUtil: ActivityLogUtil,
+        private readonly policyService: PolicyService
     ) {}
+
+    //TODO: Move to utils
+    private buildFieldOptions(permittedFields?: string[]) {
+        if (!permittedFields) {return {};}
+        return { select: Object.fromEntries(permittedFields.map(f => [f, true])) };
+    }
 
     async getListOffset(
         userId: string,
         pagination: IPaginationQueryOffsetParams,
         ability: PolicyAbility
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
+        const permittedFields = this.policyService.getPermittedFields(
+            ability,
+            EnumPolicyAction.read,
+            EnumPolicySubject.activityLog
+        );
         const { data, ...others } =
             await this.activityRepository.findWithPaginationOffset({
                 ...pagination,
+                ...this.buildFieldOptions(permittedFields),
                 where: {
                     AND: [
                         pagination.where,
@@ -46,10 +64,15 @@ export class ActivityLogService implements IActivityLogService {
         pagination: IPaginationQueryCursorParams,
         ability: PolicyAbility
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-
+        const permittedFields = this.policyService.getPermittedFields(
+            ability,
+            EnumPolicyAction.read,
+            EnumPolicySubject.activityLog
+        );
         const { data, ...others } =
             await this.activityRepository.findWithPaginationCursor({
                 ...pagination,
+                ...this.buildFieldOptions(permittedFields),
                 where: {
                     AND: [
                         accessibleBy(ability).ActivityLog,
