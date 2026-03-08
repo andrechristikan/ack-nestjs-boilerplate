@@ -2,6 +2,7 @@ import {
     AbilityBuilder,
     subject as caslSubject,
 } from '@casl/ability';
+import { permittedFieldsOf } from '@casl/ability/extra';
 import { PrismaQuery, createPrismaAbility } from '@casl/prisma';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import {
@@ -317,5 +318,24 @@ export class PolicyAbilityFactory {
         };
 
         return rule.action.every(canForAction);
+    }
+
+    /**
+     * Returns the fields the ability permits for the given action + subject.
+     *
+     * Returns `undefined` when no field-level restrictions are defined (all fields allowed).
+     * Returns `string[]` when restrictions exist — callers should limit access to those fields only.
+     *
+     * Does NOT check whether the action itself is permitted — call `ability.can()` first if needed.
+     */
+    getPermittedFields(
+        ability: PolicyAbility,
+        action: EnumPolicyAction,
+        subject: EnumPolicySubject,
+    ): string[] | undefined {
+        const fields = permittedFieldsOf(ability, action, subject as IPolicyAbilitySubject, {
+            fieldsFrom: rule => rule.fields ?? [],
+        });
+        return fields.length > 0 ? fields : undefined;
     }
 }

@@ -1,5 +1,9 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { EnumPolicyMatch } from '@modules/policy/enums/policy.enum';
+import {
+    EnumPolicyAction,
+    EnumPolicyMatch,
+    EnumPolicySubject,
+} from '@modules/policy/enums/policy.enum';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import {
@@ -11,11 +15,13 @@ import {
     ForbiddenException,
     Injectable,
     InternalServerErrorException,
+    Logger,
 } from '@nestjs/common';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 
 @Injectable()
 export class PolicyService implements IPolicyService {
+    private readonly logger = new Logger(PolicyService.name);
+
     constructor(
         private readonly policyAbilityFactory: PolicyAbilityFactory
     ) {}
@@ -26,11 +32,15 @@ export class PolicyService implements IPolicyService {
      * @throws {ForbiddenException} When the request is not authenticated.
      */
     buildAbility(request: IRequestApp): PolicyAbility {
+        if (request.__abilities) {
+            return request.__abilities;
+        }
+
         const { __user, user } = request;
         if (!__user || !user) {
-            throw new ForbiddenException({
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                message: 'auth.error.accessTokenUnauthorized',
+            throw new InternalServerErrorException({
+                statusCode: EnumPolicyStatusCodeError.invalidConfiguration,
+                message: 'policy.error.invalidConfiguration',
             });
         }
 
@@ -67,17 +77,37 @@ export class PolicyService implements IPolicyService {
         });
 
         if (failedRequirements.length > 0) {
+            this.logger.warn({
+                message: 'policy.error.forbidden',
+                userId: request.__user?.id,
+                failedRequirements: failedRequirements.map(req => ({
+                    subjects: [...new Set(req.rules.map(r => r.subject))],
+                    actions:  [...new Set(req.rules.flatMap(r => r.action))],
+                })),
+            });
             throw new ForbiddenException({
                 statusCode: EnumPolicyStatusCodeError.forbidden,
                 message: 'policy.error.forbidden',
-                _error: failedRequirements.map(req => {
-                    const subjects = [...new Set(req.rules.map(r => r.subject))];
-                    const actions = [...new Set(req.rules.flatMap(r => r.action))];
-                    return { requirement: `${subjects.join(',')}:[${actions.join(',')}]` };
-                }),
             });
         }
 
         return userAbilities;
+    }
+
+    /**
+     * Returns the fields the ability permits for the given action + subject.
+     *
+     * Delegates to `PolicyAbilityFactory.getPermittedFields`. Exposed here so
+     * consumers only need to depend on `PolicyService`, not the factory directly.
+     *
+     * @returns `undefined` when all fields are permitted; `string[]` when field-level
+     *   restrictions exist — callers should limit access to those fields only.
+     */
+    getPermittedFields(
+        ability: PolicyAbility,
+        action: EnumPolicyAction,
+        subject: EnumPolicySubject
+    ): string[] | undefined {
+        return this.policyAbilityFactory.getPermittedFields(ability, action, subject);
     }
 }
