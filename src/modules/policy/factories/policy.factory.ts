@@ -17,7 +17,6 @@ import {
 } from '@modules/policy/enums/policy.enum';
 import {
     IPolicyAbilityInput,
-    IPolicyAbilitySubject,
     IPolicyRule,
     PolicyAbility,
     PolicyConditionContext,
@@ -62,7 +61,7 @@ const PLACEHOLDER_TO_CONTEXT_KEY: Record<string, keyof PolicyConditionContext> =
  */
 type AbilityApplyFn = (
     action: EnumPolicyAction | EnumPolicyAction[],
-    subject: IPolicyAbilitySubject,
+    subject: EnumPolicySubject,
     fieldsOrConditions?: string | string[] | PrismaQuery,
     conditions?: PrismaQuery
 ) => { because(reason: string): unknown };
@@ -302,16 +301,13 @@ export class PolicyAbilityFactory {
 
         const canForAction = (action: EnumPolicyAction): boolean => {
             if (fields == null || fields.length === 0) {
-                return userAbilities.can(
-                    action,
-                    subject as IPolicyAbilitySubject
-                );
+                return userAbilities.can(action, subject);
             }
 
             return fields.every((field: string) =>
                 userAbilities.can(
                     action,
-                    subject as IPolicyAbilitySubject,
+                    subject,
                     field
                 )
             );
@@ -333,7 +329,7 @@ export class PolicyAbilityFactory {
         action: EnumPolicyAction,
         subject: EnumPolicySubject,
     ): string[] | undefined {
-        const fields = permittedFieldsOf(ability, action, subject as IPolicyAbilitySubject, {
+        const fields = permittedFieldsOf(ability, action, subject, {
             fieldsFrom: rule => rule.fields ?? [],
         });
         return fields.length > 0 ? fields : undefined;

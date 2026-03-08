@@ -1,4 +1,4 @@
-import { PureAbility } from '@casl/ability';
+import { ForcedSubject, PureAbility } from '@casl/ability';
 import { PrismaQuery } from '@casl/prisma';
 import {
     EnumPolicyAction,
@@ -7,10 +7,11 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 
-export type IPolicyAbilitySubject = EnumPolicySubject | 'all';
-
 export type PolicyAbility = PureAbility<
-    [EnumPolicyAction, IPolicyAbilitySubject],
+    [
+        EnumPolicyAction,
+        EnumPolicySubject | ForcedSubject<EnumPolicySubject>
+    ],
     PrismaQuery
 >;
 
