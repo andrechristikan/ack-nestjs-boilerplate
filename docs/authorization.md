@@ -13,7 +13,7 @@ This document describes the authorization architecture used by the ACK NestJS Bo
 The authorization model is layered and fail-closed:
 1. **Authentication layer** validates JWT/API key and populates request identity.
 2. **User layer** resolves the user from database and validates account state.
-3. **Role layer** validates coarse role access and loads raw role abilities.
+3. **Role layer** validates coarse role access.
 4. **Policy layer (CASL)** validates fine-grained permissions with support for allow/deny, conditions, field-level permissions, and rule priority.
 5. **Term policy layer** optionally enforces required legal-consent acceptance.
 
@@ -21,20 +21,20 @@ The system is implemented with NestJS decorators + guards, using `@casl/ability`
 
 ## Implementation Status (Current Branch)
 
-This branch introduces the CASL authorization infrastructure, but the first concrete module rollout is intentionally limited.
+This branch contains a significant authorization overhaul compared to the previous policy module.
+Policy decorators/guards are now used across multiple admin/shared modules.
 
-Current first implementation scope:
+Current CASL data-enforcement reference scope (`accessibleBy` + `getPermittedFields`):
 - `src/modules/activity-log/controllers/activity-log.shared.controller.ts`
 - `src/modules/activity-log/docs/activity-log.admin.doc.ts`
 - `src/modules/activity-log/services/activity-log.service.ts`
 
-In this scope, the controller declares policy requirements, receives compiled ability via `@PolicyAbilityCurrent()`, and the service applies `accessibleBy(...)` filters in Prisma queries.
+In this scope, the controller declares policy requirements, receives compiled ability via `@PolicyAbilityCurrent()`, and the service applies both `accessibleBy(...)` row scoping and `getPermittedFields(...)` projection input for repository queries.
 
 ## Related Documents
 
 - [Authentication Documentation][ref-doc-authentication] - JWT, API key, and request identity population
 - [Term Policy Document][ref-doc-term-policy] - Legal-consent model and acceptance enforcement
-- [Tenant + Project Authorization Composition Documentation][ref-doc-tenant-project-authorization] - Tenant/project authorization composition patterns
 - [CASL Documentation][ref-casl-docs] - Core concepts, ability rules, conditions, and field-level checks
 - [@casl/prisma Package][ref-casl-prisma-docs] - Prisma integration and `accessibleBy` query filtering
 
@@ -60,6 +60,7 @@ In this scope, the controller declares policy requirements, receives compiled ab
   - [Rule Model](#rule-model)
   - [Requirement Model](#requirement-model)
   - [Field-Level Permissions](#field-level-permissions)
+  - [Dynamic Field Discovery with `getPermittedFields`](#dynamic-field-discovery-with-getpermittedfields)
   - [Condition-Based Permissions](#condition-based-permissions)
   - [Rule Ordering and Conflict Resolution](#rule-ordering-and-conflict-resolution)
   - [Guard and Service Behavior](#guard-and-service-behavior)
@@ -82,6 +83,7 @@ In this scope, the controller declares policy requirements, receives compiled ab
   - [Role Data Migration](#role-data-migration)
 - [Error Behavior](#error-behavior)
 - [Best Practices](#best-practices)
+- [Future Improvements / Developments](#future-improvements--developments)
 - [Troubleshooting](#troubleshooting)
 
 ## Authorization Layers
@@ -151,7 +153,7 @@ async profile(@UserCurrent() user: IUser) {
 
 ## Role Protected
 
-`RoleProtected` enforces role-type access and loads role abilities for downstream policy evaluation.
+`RoleProtected` enforces role-type access for downstream policy evaluation.
 
 ### Decorator
 
@@ -318,6 +320,62 @@ CASL evaluates the check per field — the user must have `read` permission on e
 
 **Important**: if the route requires fields but the stored ability has no `fields` restriction (it covers all fields), the check also passes — CASL treats a no-field-restriction ability as granting all fields.
 
+### Dynamic Field Discovery with `getPermittedFields`
+
+`getPermittedFields` is exposed by `PolicyService` and returns the effective field allowlist for an action+subject:
+
+```typescript
+this.policyService.getPermittedFields(
+  ability,
+  EnumPolicyAction.read,
+  EnumPolicySubject.activityLog
+); // string[] | undefined
+```
+
+Return semantics:
+- `undefined`: no field restrictions matched (treat as all fields permitted)
+- `string[]`: allowed fields only; consumer should project/select only these fields
+
+How to use it with `accessibleBy(...)`:
+- `accessibleBy(ability).Subject` handles **row-level** visibility
+- `getPermittedFields(...)` handles **field-level** projection input
+
+Responsibility split between service and repository:
+- **Service**: converts `permittedFields` into a `select` object (does not handle relations)
+- **Repository**: always force-injects `user: true` into `select`, or falls back to `include: { user: true }` when no `select` is present (Prisma disallows `select` and `include` at the same level)
+
+ActivityLog reference pattern:
+
+```typescript
+// service — build field projection and pass via spread
+const permittedFields = this.policyService.getPermittedFields(
+  ability,
+  EnumPolicyAction.read,
+  EnumPolicySubject.activityLog
+);
+
+return this.activityRepository.findWithPaginationCursor({
+  ...pagination,
+  ...this.buildFieldOptions(permittedFields), // spreads { select: {...} } or {}
+  where: {
+    AND: [accessibleBy(ability).ActivityLog, pagination.where, { userId }].filter(Boolean),
+  },
+});
+
+// repository — inject user relation unconditionally
+async findWithPaginationCursor({ where, select, include: _include, ...params }) {
+  return this.paginationService.cursor(model, {
+    ...params,
+    ...(select
+      ? { select: { ...select, user: true } }
+      : { include: { user: true } }),
+    where,
+  });
+}
+```
+
+This method does not replace route authorization checks. Keep `@PolicyAbilityProtected(...)` on the route and use `getPermittedFields(...)` in service/repository for query projection behavior.
+
 ### Condition-Based Permissions
 
 There are two route-level condition mechanisms plus one storage-level mechanism.
@@ -337,10 +395,10 @@ Defines **when the grant applies**. Registered into the CASL ability object via 
 A **compile-time description** of the resource shape this route targets. Used when the developer knows the resource's relevant fields statically without needing to load an entity at runtime.
 
 ```typescript
-{ subject: EnumPolicySubject.subscription, action: [EnumPolicyAction.create], conditions: { type: 'basic' } }
+{ subject: EnumPolicySubject.featureFlag, action: [EnumPolicyAction.update], conditions: { key: 'new_dashboard' } }
 ```
 
-→ "this endpoint creates basic-type subscriptions — check if the caller can create subscriptions of that type"
+→ "this endpoint updates only the `new_dashboard` feature flag — check if the caller can update that scoped resource shape"
 
 #### 3. Context token substitution in stored conditions
 
@@ -375,12 +433,12 @@ At request time, this becomes:
 When the resource shape is known at route definition time (no DB load required):
 
 ```typescript
-// Endpoint that only creates 'basic' subscriptions
+// Endpoint that only updates the 'new_dashboard' feature flag
 @PolicyAbilityProtected({
     rules: [{
-        subject: EnumPolicySubject.subscription,
-        action: [EnumPolicyAction.create],
-        conditions: { type: 'basic' },   // static: route targets basic-type resources
+        subject: EnumPolicySubject.featureFlag,
+        action: [EnumPolicyAction.update],
+        conditions: { key: 'new_dashboard' },   // static route-side shape
     }],
 })
 ```
@@ -388,10 +446,10 @@ When the resource shape is known at route definition time (no DB load required):
 Paired with the stored ability:
 
 ```json
-{ "subject": "Subscription", "action": ["create"], "conditions": { "type": "basic" } }
+{ "subject": "FeatureFlag", "action": ["update"], "conditions": { "key": "new_dashboard" } }
 ```
 
-CASL evaluates: `can(create, subject('Subscription', { type: 'basic' }))` — the static object is used as the tagged subject instance.
+CASL evaluates: `can(update, subject('FeatureFlag', { key: 'new_dashboard' }))` — the static object is used as the tagged subject instance.
 
 Without route `conditions`, CASL performs a capability check only. For list/update/delete data access, enforce record-level constraints in Prisma queries with `accessibleBy(...)`.
 
@@ -430,7 +488,7 @@ Behavior summary:
 4. Builds CASL ability from `request.__user.role.abilities` (raw rules stored on user entity).
 5. Caches compiled ability in `request.__abilities` for request reuse.
 6. Evaluates each requirement using `all` or `any` semantics.
-7. Throws `ForbiddenException` with failed subject/action details when any required check fails.
+7. Throws `ForbiddenException` when any required check fails (detailed subject/action diagnostics are logged server-side).
 8. Query-level filtering is applied by consumers (service/repository) using `@casl/prisma` `accessibleBy(...)` with the resolved ability.
 
 ### Usage
@@ -729,26 +787,38 @@ If the auditor role's ability only included `["name", "email"]`, the check for `
 })
 @Get('/list')
 async list(
+    @AuthJwtPayload('userId') userId: string,
     @PolicyAbilityCurrent() ability: PolicyAbility,
     @PaginationCursorQuery() pagination: IPaginationQueryCursorParams
 ) {
-    return this.activityLogService.getListCursor(pagination, ability);
+    return this.activityLogService.getListCursor(userId, pagination, ability);
 }
 ```
 
-#### Step 3 — Service: enforce Prisma-level scope with `accessibleBy(...)`
+#### Step 3 — Service: enforce Prisma-level scope and field projection input
+
+The service converts `permittedFields` into a `select` object via `buildFieldOptions` and spreads it into the repository call. The repository is responsible for always injecting the `user` relation (merging it into `select`, or falling back to `include` when no `select` is present).
 
 ```typescript
 // src/modules/activity-log/services/activity-log.service.ts
-const { data, ...others } = await this.activityRepository.findWithPaginationCursor({
-    ...pagination,
-    where: {
-        AND: [
-            accessibleBy(ability).ActivityLog,
-            pagination.where,
-        ].filter(Boolean),
-    },
-});
+const permittedFields = this.policyService.getPermittedFields(
+    ability,
+    EnumPolicyAction.read,
+    EnumPolicySubject.activityLog
+);
+
+const { data, ...others } =
+    await this.activityRepository.findWithPaginationCursor({
+        ...pagination,
+        ...this.buildFieldOptions(permittedFields), // { select: {...} } or {}
+        where: {
+            AND: [
+                accessibleBy(ability).ActivityLog,
+                pagination.where,
+                { userId },
+            ].filter(Boolean),
+        },
+    });
 ```
 
 #### Step 4 — Admin doc guard alignment
@@ -765,14 +835,16 @@ stored ability condition:  { "userId": "$userId" }
 resolved at runtime:       { "userId": "<authenticated-user-id>" }
 
 Prisma filter applied:     accessibleBy(ability).ActivityLog
-result:                    only rows matching the resolved `userId` can be returned
+owner clamp applied:       { userId: <authenticated-user-id> }
+field projection input:    getPermittedFields(...)
+result:                    only rows matching the resolved `userId`, with fields constrained when role abilities define them
 ```
 
 ---
 
 ### Example 3 — Static `rule.conditions` (Known Resource Shape)
 
-**Scenario**: A subscription platform exposes separate endpoints for creating "basic" vs "premium" subscriptions. Each endpoint should only be accessible to roles whose stored ability explicitly permits that subscription type — no entity needs to be loaded from the DB.
+**Scenario**: A feature-flag admin API exposes an endpoint dedicated to updating metadata for one specific flag key (`new_dashboard`). The endpoint should only be accessible to roles with a matching scoped ability, without loading a DB entity first.
 
 #### Step 1 — Configure the role ability via API
 
@@ -782,11 +854,11 @@ result:                    only rows matching the resolved `userId` can be retur
 {
   "abilities": [
     {
-      "subject": "Subscription",
-      "action": ["create"],
+      "subject": "FeatureFlag",
+      "action": ["update"],
       "effect": "can",
-      "conditions": { "type": "basic" },
-      "reason": "Role may only create basic subscriptions"
+      "conditions": { "key": "new_dashboard" },
+      "reason": "Role may update only new_dashboard feature-flag metadata"
     }
   ]
 }
@@ -795,38 +867,38 @@ result:                    only rows matching the resolved `userId` can be retur
 #### Step 2 — Controller: declare the static conditions on the rule
 
 ```typescript
-// src/modules/subscription/controllers/subscription.admin.controller.ts
-@Response('subscription.create')
+// conceptual controller example
+@Response('featureFlag.update')
 @PolicyAbilityProtected({
     rules: [{
-        subject: EnumPolicySubject.subscription,
-        action: [EnumPolicyAction.create],
-        conditions: { type: 'basic' },   // static shape — no runtime entity needed
+        subject: EnumPolicySubject.featureFlag,
+        action: [EnumPolicyAction.update],
+        conditions: { key: 'new_dashboard' },   // static shape — no runtime entity needed
     }],
 })
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
-@Post('/create/basic')
-async createBasic(
-    @Body() body: SubscriptionCreateBasicRequestDto
+@Patch('/update/metadata/new-dashboard')
+async updateNewDashboardMetadata(
+    @Body() body: FeatureFlagUpdateMetadataRequestDto
 ): Promise<IResponseReturn<void>> {
-    return this.subscriptionService.createBasic(body);
+    return this.featureFlagService.updateMetadataForNewDashboard(body);
 }
 ```
 
 #### How CASL evaluates the check
 
 ```
-stored ability conditions: { "type": "basic" }
-rule.conditions:           { "type": "basic" }   ← used as synthetic subject
+stored ability conditions: { "key": "new_dashboard" }
+rule.conditions:           { "key": "new_dashboard" }   ← used as synthetic subject
 
-CASL checks: can(create, subject('Subscription', { type: 'basic' }))
-             "basic" === "basic" → ✓ → request allowed
+CASL checks: can(update, subject('FeatureFlag', { key: 'new_dashboard' }))
+             "new_dashboard" === "new_dashboard" → ✓ → request allowed
 ```
 
-A role whose stored ability has `{ "type": "premium" }` would fail this check and receive `403`.
+A role whose stored ability has a different key condition (for example `{ "key": "beta_checkout" }`) would fail this check and receive `403`.
 
 ---
 
@@ -931,12 +1003,18 @@ node dist/migration.js role --type seed
 
 Policy-related error codes are defined in `src/modules/policy/enums/policy.status-code.enum.ts`:
 
-- `forbidden` (`5180`): permission check failed — response includes `errors` array with failed subject/action pairs
+- `forbidden` (`5180`): permission check failed
 - `predefinedNotFound` (`5182`): route has missing/empty authorization definition
+- `invalidConfiguration` (`5183`): invalid/missing policy execution context (for example policy guard not run before `@PolicyAbilityCurrent()`)
+- `invalidConditionPlaceholder` (`5184`): unknown/unsupported `$...` placeholder in stored conditions
 
 Common failure classes:
 - `ForbiddenException` for access denied
 - `InternalServerErrorException` for invalid/missing route policy configuration
+
+Notes:
+- Detailed failed subject/action requirement sets are written to server logs.
+- Forbidden responses do not include that detailed array by default.
 
 ## Best Practices
 
@@ -945,10 +1023,58 @@ Common failure classes:
 3. Add `priority` when rule overlap is expected.
 4. Use `fields` on stored abilities for partial read/update permissions; mirror the same `fields` on the route rule when you want the guard to validate field access.
 5. Use `conditions` on stored abilities for scoped access (for example, `{ "userId": "$userId" }` for owner-scoped resources).
-6. Keep `conditions` simple and testable; token substitution currently supports top-level string values only.
+6. Keep `conditions` simple and testable; token substitution supports recursive resolution (nested objects/arrays), but currently only `$userId` is supported as a placeholder token.
 7. Always combine `PolicyAbilityProtected` with `UserProtected` and `AuthJwtAccessProtected`.
 8. For admin endpoints, keep `RoleProtected` as a coarse gate and `PolicyAbilityProtected` as a fine gate.
 9. For read/update/delete data access, pass `@PolicyAbilityCurrent()` ability to the service layer and apply `accessibleBy(ability)` in repository queries.
+
+## Future Improvements / Developments
+
+This section turns current limitations into actionable next development steps.
+
+### 1) Expand CASL query-level enforcement beyond ActivityLog
+
+Current limitation:
+- `accessibleBy(...)` + `getPermittedFields(...)` is fully demonstrated in ActivityLog, but not uniformly adopted in all modules yet.
+
+Why this matters:
+- Route-level guard checks can pass while query logic in another module still misses consistent row/field scoping patterns.
+
+Suggested next step:
+- Roll out the ActivityLog service/repository pattern to modules with list/get/update/delete endpoints handling sensitive data.
+
+### 2) Standardize repository query composition helper
+
+Current limitation:
+- Each module composes authorization-aware Prisma `where` and optional projection manually.
+
+Why this matters:
+- Repetition increases risk of authorization drift and inconsistent behavior.
+
+Suggested next step:
+- Introduce a shared helper pattern for combining `accessibleBy(...)`, owner clamps, pagination filters, and optional permitted-field projection.
+
+### 3) Formalize nested relation authorization strategy
+
+Current limitation:
+- Root subject authorization is clear, but nested relation filtering/projection still depends on module-specific implementation choices.
+
+Why this matters:
+- Related entities can leak extra rows or columns if nested query rules are inconsistent.
+
+Suggested next step:
+- Define a documented standard for nested relation `where` and nested `select` composition using ability context.
+
+### 4) Add module-level authorization conformance tests
+
+Current limitation:
+- Core policy unit tests exist, but module adoption checks can still regress silently.
+
+Why this matters:
+- New endpoints may accidentally miss `accessibleBy(...)` or forget to pass ability into service/repository flows.
+
+Suggested next step:
+- Add integration tests for protected endpoints that assert both guard-level and query-level authorization behavior.
 
 ## Troubleshooting
 
