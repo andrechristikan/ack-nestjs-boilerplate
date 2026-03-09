@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { ApiParamOptions } from '@nestjs/swagger';
 
-export const DeviceDocParamsId: ApiParamOptions[] = [
+export const DeviceOwnershipDocParamsId: ApiParamOptions[] = [
     {
-        name: 'deviceId',
+        name: 'deviceOwnershipId',
         allowEmptyValue: false,
         required: true,
         type: 'string',

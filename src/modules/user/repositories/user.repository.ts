@@ -18,7 +18,8 @@ import {
     IAuthPassword,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
-import { DeviceDto } from '@modules/device/dtos/device.dto';
+import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
+import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { IRole } from '@modules/role/interfaces/role.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
@@ -30,6 +31,7 @@ import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.re
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import {
     IUser,
+    IUserDevice,
     IUserForgotPasswordCreate,
     IUserLogin,
     IUserProfile,
@@ -38,6 +40,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import {
     Country,
+    Device,
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
@@ -378,6 +381,7 @@ export class UserRepository {
     }
 
     async createByAdmin(
+        userId: string,
         username: string,
         { countryId, email, name }: UserCreateRequestDto,
         {
@@ -405,7 +409,6 @@ export class UserRepository {
             },
         });
 
-        const userId = this.databaseUtil.createId();
         const [user] = await this.databaseService.$transaction([
             this.databaseService.user.create({
                 data: {
@@ -949,8 +952,8 @@ export class UserRepository {
 
     async login(
         userId: string,
+        { device, deviceOwnershipId }: IUserDevice,
         { loginFrom, loginWith, sessionId, expiredAt, jti }: IUserLogin,
-        { fingerprint, name, notificationToken, platform }: DeviceDto,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         const today = this.helperService.dateCreate();
@@ -970,28 +973,17 @@ export class UserRepository {
                 break;
         }
 
-        let notificationProvider: EnumDeviceNotificationProvider | null = null;
-        switch (platform) {
-            case EnumDevicePlatform.android:
-                notificationProvider = EnumDeviceNotificationProvider.fcm;
-                break;
-            case EnumDevicePlatform.ios:
-                notificationProvider = EnumDeviceNotificationProvider.apns;
-                break;
-            default:
-                notificationProvider = null;
-                break;
-        }
-
         return this.databaseService.$transaction(
             async (tx: Prisma.TransactionClient) => {
-                await tx.device.updateMany({
+                await tx.session.updateMany({
                     where: {
-                        notificationToken,
+                        deviceOwnershipId: deviceOwnershipId,
+                        isRevoked: false,
+                        expiredAt: { gte: today },
                     },
                     data: {
-                        notificationToken: null,
-                        notificationProvider: null,
+                        isRevoked: true,
+                        revokedAt: today,
                     },
                 });
 
@@ -1003,33 +995,6 @@ export class UserRepository {
                         lastLoginFrom: loginFrom,
                         lastLoginWith: loginWith,
                         updatedBy: userId,
-                        devices: {
-                            upsert: {
-                                where: {
-                                    userId_fingerprint: {
-                                        userId,
-                                        fingerprint,
-                                    },
-                                },
-                                create: {
-                                    fingerprint,
-                                    name,
-                                    platform,
-                                    notificationProvider,
-                                    notificationToken,
-                                    lastActiveAt: today,
-                                    createdBy: userId,
-                                },
-                                update: {
-                                    name,
-                                    platform,
-                                    notificationProvider,
-                                    notificationToken,
-                                    lastActiveAt: today,
-                                    updatedBy: userId,
-                                },
-                            },
-                        },
                         activityLogs: {
                             create: {
                                 action,
@@ -1043,30 +1008,37 @@ export class UserRepository {
                                 createdBy: userId,
                             },
                         },
-                    },
-                });
-
-                await tx.session.create({
-                    data: {
-                        id: sessionId,
-                        jti,
-                        expiredAt,
-                        isRevoked: false,
-                        ipAddress,
-                        userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        geoLocation:
-                            this.databaseUtil.toPlainObject(geoLocation),
-                        user: {
-                            connect: {
-                                id: userId,
+                        deviceOwnerships: {
+                            upsert: {
+                                where: {
+                                    id: deviceOwnershipId,
+                                    isRevoked: false,
+                                },
+                                create: {
+                                    id: deviceOwnershipId,
+                                    isRevoked: false,
+                                    deviceId: device.id,
+                                    createdBy: userId,
+                                },
+                                update: {
+                                    updatedBy: userId,
+                                },
                             },
                         },
-                        device: {
-                            connect: {
-                                userId_fingerprint: {
-                                    userId,
-                                    fingerprint,
-                                },
+                        sessions: {
+                            create: {
+                                id: sessionId,
+                                jti,
+                                expiredAt,
+                                isRevoked: false,
+                                ipAddress,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                geoLocation:
+                                    this.databaseUtil.toPlainObject(
+                                        geoLocation
+                                    ),
+                                createdBy: userId,
                             },
                         },
                     },
@@ -1212,6 +1184,7 @@ export class UserRepository {
     }
 
     async signUp(
+        userId: string,
         username: string,
         roleId: string,
         {
@@ -1228,7 +1201,7 @@ export class UserRepository {
             passwordHash,
             passwordPeriodExpired,
         }: IAuthPassword,
-        { expiredAt, reference, token, type }: IUserVerificationCreate,
+        { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         const termPolicies = await this.databaseService.termPolicy.findMany({
@@ -1248,7 +1221,6 @@ export class UserRepository {
             },
         });
 
-        const userId = this.databaseUtil.createId();
         const [user] = await this.databaseService.$transaction([
             this.databaseService.user.create({
                 data: {
@@ -1334,7 +1306,7 @@ export class UserRepository {
                         create: {
                             expiredAt,
                             reference,
-                            token,
+                            token: hashedToken,
                             type,
                             to: email,
                             createdBy: userId,
@@ -1369,7 +1341,7 @@ export class UserRepository {
     async forgotPassword(
         userId: string,
         email: string,
-        { expiredAt, reference, token }: IUserForgotPasswordCreate,
+        { expiredAt, reference, hashedToken }: IUserForgotPasswordCreate,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<void> {
         await this.databaseService.user.update({
@@ -1397,7 +1369,7 @@ export class UserRepository {
                     create: {
                         expiredAt,
                         reference,
-                        token,
+                        token: hashedToken,
                         createdBy: userId,
                         to: email,
                     },
@@ -1516,7 +1488,7 @@ export class UserRepository {
     async requestVerificationEmail(
         userId: string,
         userEmail: string,
-        { expiredAt, reference, token, type }: IUserVerificationCreate,
+        { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         const today = this.helperService.dateCreate();
@@ -1546,7 +1518,7 @@ export class UserRepository {
                                 create: {
                                     expiredAt,
                                     reference,
-                                    token,
+                                    token: hashedToken,
                                     type,
                                     to: userEmail,
                                     createdBy: userId,

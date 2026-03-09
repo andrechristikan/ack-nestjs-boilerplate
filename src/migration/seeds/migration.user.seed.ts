@@ -134,9 +134,10 @@ export class MigrationUserSeed
                 this.users.map(user => {
                     const userId = this.databaseUtil.createId();
                     const { passwordCreated, passwordExpired, passwordHash } =
-                        this.authUtil.createPassword(user.password);
-                    const { reference, token, type } =
+                        this.authUtil.createPassword(userId, user.password);
+                    const { reference, hashedToken, type } =
                         this.userUtil.verificationCreateVerification(
+                            userId,
                             EnumVerificationType.email
                         );
 
@@ -184,7 +185,7 @@ export class MigrationUserSeed
                                     expiredAt: this.helperService.dateCreate(),
                                     verifiedAt: this.helperService.dateCreate(),
                                     reference,
-                                    token,
+                                    token: hashedToken,
                                     type,
                                     createdBy: userId,
                                     to: user.email,

@@ -6,6 +6,7 @@ export interface IAuthPassword {
     passwordHash: string;
     passwordExpired: Date;
     passwordCreated: Date;
+    passwordEncrypted: string;
     passwordPeriodExpired: Date;
 }
 
@@ -21,6 +22,7 @@ export interface IAuthJwtAccessTokenPayload {
     username: string;
     userId: string;
     sessionId: string;
+    deviceOwnershipId: string;
     roleId: string;
 
     // standard JWT claims

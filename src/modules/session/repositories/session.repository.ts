@@ -92,9 +92,9 @@ export class SessionRepository {
         });
     }
 
-    async findActiveByDevice(
+    async findActiveByDeviceOwnership(
         userId: string,
-        deviceId: string
+        deviceOwnershipId: string
     ): Promise<
         {
             id: string;
@@ -107,7 +107,9 @@ export class SessionRepository {
                 expiredAt: {
                     gte: this.helperService.dateCreate(),
                 },
-                deviceId,
+                deviceOwnership: {
+                    id: deviceOwnershipId,
+                },
             },
             select: {
                 id: true,
@@ -143,6 +145,11 @@ export class SessionRepository {
             data: {
                 isRevoked: true,
                 revokedAt: this.helperService.dateCreate(),
+                revokedBy: {
+                    connect: {
+                        id: userId,
+                    },
+                },
                 updatedBy: userId,
                 user: {
                     update: {
@@ -161,13 +168,6 @@ export class SessionRepository {
                         },
                     },
                 },
-                device: {
-                    update: {
-                        notificationToken: null,
-                        lastActiveAt: null,
-                        notificationProvider: null,
-                    },
-                },
             },
         });
     }
@@ -184,6 +184,11 @@ export class SessionRepository {
             data: {
                 isRevoked: true,
                 revokedAt: this.helperService.dateCreate(),
+                revokedBy: {
+                    connect: {
+                        id: revokedBy,
+                    },
+                },
                 updatedBy: revokedBy,
                 user: {
                     update: {
@@ -200,13 +205,6 @@ export class SessionRepository {
                                 createdBy: revokedBy,
                             },
                         },
-                    },
-                },
-                device: {
-                    update: {
-                        notificationToken: null,
-                        lastActiveAt: null,
-                        notificationProvider: null,
                     },
                 },
             },

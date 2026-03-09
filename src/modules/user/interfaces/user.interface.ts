@@ -1,5 +1,6 @@
 import {
     Country,
+    Device,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumVerificationType,
@@ -31,13 +32,21 @@ export interface IUserLogin {
     sessionId: string;
 }
 
+export interface IUserDevice {
+    device: Device;
+    deviceOwnershipId: string;
+    activeSessions: { id: string }[];
+}
+
 export interface IUserForgotPasswordCreate {
     expiredAt: Date;
     expiredInMinutes: number;
     resendInMinutes: number;
     reference: string;
     token: string;
+    hashedToken: string;
     link: string;
+    encryptedLink: string;
 }
 
 export interface IUserVerificationCreate {
@@ -47,5 +56,7 @@ export interface IUserVerificationCreate {
     resendInMinutes: number;
     reference: string;
     token: string;
+    hashedToken: string;
     link?: string;
+    encryptedLink?: string;
 }

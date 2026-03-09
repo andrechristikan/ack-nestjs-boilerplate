@@ -5,7 +5,8 @@ import { ConfigService } from '@nestjs/config';
 
 /**
  * Cross-Origin Resource Sharing (CORS) middleware.
- * Configures CORS policies for allowed origins, methods, and headers with credential handling.
+ * Manages CORS policies with origin validation, credential handling, and security controls.
+ * See documentation: docs/security-and-middleware.md and docs/configuration.md
  */
 @Injectable()
 export class RequestCorsMiddleware implements NestMiddleware {
@@ -49,10 +50,9 @@ export class RequestCorsMiddleware implements NestMiddleware {
 
     /**
      * Custom origin validator for CORS configuration.
-     * Supports protocol-agnostic matching with strict port validation.
-     *
-     * @param origin - Origin header from the request
-     * @param callback - Callback function to execute with validation result
+     * Handles boolean, string, and array origin types.
+     * @param origin - Origin header from request
+     * @param callback - Validation result callback
      */
     private originValidator(
         origin: string,
@@ -89,9 +89,8 @@ export class RequestCorsMiddleware implements NestMiddleware {
 
     /**
      * Determines if credentials should be allowed based on origin configuration.
-     * Credentials cannot be used with wildcard (*) origins.
-     *
-     * @returns True if credentials should be allowed
+     * Credentials are disabled for wildcard origins per CORS security spec.
+     * @returns True if credentials allowed (false for wildcard origins)
      */
     private shouldAllowCredentials(): boolean {
         if (typeof this.allowedOrigin === 'string') {
@@ -104,14 +103,11 @@ export class RequestCorsMiddleware implements NestMiddleware {
     }
 
     /**
-     * Validates if an origin URL matches any of the allowed patterns.
-     * - Protocol agnostic (http/https both allowed)
-     * - Port must match exactly (no wildcard)
-     * - Supports wildcard subdomain matching
-     *
-     * @param origin - Origin URL to validate (e.g., "https://app.example.com:3000")
-     * @param patterns - Array of allowed patterns (e.g., ["*.example.com", "trusted.com:8080"])
-     * @returns True if origin matches any allowed pattern
+     * Validates if origin matches allowed patterns.
+     * Supports exact hostname, wildcard subdomains, and port matching.
+     * @param origin - Origin URL to validate
+     * @param patterns - Array of allowed patterns
+     * @returns True if origin matches any pattern
      */
     isOriginAllowed(origin: string, patterns: string[]): boolean {
         // Validate origin format
@@ -152,10 +148,6 @@ export class RequestCorsMiddleware implements NestMiddleware {
                 return false;
             }
 
-            if (!url.hostname) {
-                return false;
-            }
-
             if (url.pathname !== '/' || url.search || url.hash) {
                 return false;
             }
@@ -177,7 +169,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
             const url = new URL(origin);
             return {
                 hostname: url.hostname,
-                port: url.port || '',
+                port: url.port,
             };
         } catch {
             return { hostname: '', port: '' };
@@ -194,25 +186,18 @@ export class RequestCorsMiddleware implements NestMiddleware {
     private parsePattern(pattern: string): { hostname: string; port: string } {
         const [hostname, port] = pattern.split(':');
         return {
-            hostname: hostname || '',
-            port: port || '',
+            hostname,
+            port: port ?? '',
         };
     }
 
     /**
-     * Matches hostname and port against a wildcard pattern.
-     * Only supports leading wildcard (*.example.com).
-     * Port must match exactly - no wildcard support.
-     *
+     * Matches hostname and port against wildcard pattern (e.g., `*.example.com`).
+     * Port must match exactly; no port wildcard support.
      * @param hostname - Hostname to match
-     * @param port - Port to match (empty string for default ports)
-     * @param pattern - Pattern to match against (may include wildcard)
-     * @returns True if hostname and port match the pattern
-     *
-     * @example
-     * matchWildcardOrigin("api.example.com", "", "*.example.com") // true
-     * matchWildcardOrigin("api.example.com", "3000", "*.example.com:3000") // true
-     * matchWildcardOrigin("api.example.com", "3000", "*.example.com") // false (port mismatch)
+     * @param port - Port to match
+     * @param pattern - Wildcard pattern
+     * @returns True if matches
      */
     private matchWildcardOrigin(
         hostname: string,

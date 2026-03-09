@@ -9,11 +9,13 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { DeviceDto } from '@modules/device/dtos/device.dto';
+import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
+import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
 import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
 import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 import { IDeviceService } from '@modules/device/interfaces/device.service.interface';
-import { DeviceRepository } from '@modules/device/repositories/device.repository';
+import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
@@ -26,7 +28,7 @@ import {
 @Injectable()
 export class DeviceService implements IDeviceService {
     constructor(
-        private readonly deviceRepository: DeviceRepository,
+        private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly sessionRepository: SessionRepository,
         private readonly sessionUtil: SessionUtil,
         private readonly deviceUtil: DeviceUtil
@@ -35,19 +37,20 @@ export class DeviceService implements IDeviceService {
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceSelect,
-            Prisma.DeviceWhereInput
+            Prisma.DeviceOwnershipSelect,
+            Prisma.DeviceOwnershipWhereInput
         >
-    ): Promise<IResponsePagingReturn<DeviceResponseDto>> {
+    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
         const { data, ...others } =
-            await this.deviceRepository.findWithPaginationOffsetByAdmin(
+            await this.deviceOwnershipRepository.findActiveWithPaginationOffsetByAdmin(
                 userId,
                 pagination
             );
 
-        const devices: DeviceResponseDto[] = this.deviceUtil.mapList(data);
+        const deviceOwnerships: DeviceOwnershipResponseDto[] =
+            this.deviceUtil.mapList(data);
         return {
-            data: devices,
+            data: deviceOwnerships,
             ...others,
         };
     }
@@ -56,35 +59,38 @@ export class DeviceService implements IDeviceService {
         userId: string,
         sessionId: string,
         pagination: IPaginationQueryCursorParams<
-            Prisma.DeviceSelect,
-            Prisma.DeviceWhereInput
+            Prisma.DeviceOwnershipSelect,
+            Prisma.DeviceOwnershipWhereInput
         >
-    ): Promise<IResponsePagingReturn<DeviceResponseDto>> {
+    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
         const { data, ...others } =
-            await this.deviceRepository.findWithPaginationCursor(
+            await this.deviceOwnershipRepository.findActiveWithPaginationCursor(
                 userId,
                 sessionId,
                 pagination
             );
 
-        const devices: DeviceResponseDto[] = this.deviceUtil.mapList(data);
+        const deviceOwnerships: DeviceOwnershipResponseDto[] =
+            this.deviceUtil.mapList(data);
 
         return {
-            data: devices,
+            data: deviceOwnerships,
             ...others,
         };
     }
 
     async refresh(
         userId: string,
-        { fingerprint, name, notificationToken, platform }: DeviceDto,
+        deviceOwnershipId: string,
+        { name, notificationToken, platform }: DeviceRefreshRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        const existDevice = await this.deviceRepository.existByFingerprint(
-            userId,
-            fingerprint
-        );
-        if (!existDevice) {
+        const existDeviceOwnership =
+            await this.deviceOwnershipRepository.existActive(
+                userId,
+                deviceOwnershipId
+            );
+        if (!existDeviceOwnership) {
             throw new NotFoundException({
                 statusCode: EnumDeviceStatusCodeError.notFound,
                 message: 'device.error.notFound',
@@ -92,10 +98,10 @@ export class DeviceService implements IDeviceService {
         }
 
         try {
-            await this.deviceRepository.refresh(
+            await this.deviceOwnershipRepository.refresh(
                 userId,
+                existDeviceOwnership.id,
                 {
-                    fingerprint,
                     name,
                     notificationToken,
                     platform,
@@ -115,11 +121,15 @@ export class DeviceService implements IDeviceService {
 
     async remove(
         userId: string,
-        deviceId: string,
+        deviceOwnershipId: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        const existDevice = await this.deviceRepository.exist(userId, deviceId);
-        if (!existDevice) {
+        const existDeviceOwnership =
+            await this.deviceOwnershipRepository.existActive(
+                userId,
+                deviceOwnershipId
+            );
+        if (!existDeviceOwnership) {
             throw new NotFoundException({
                 statusCode: EnumDeviceStatusCodeError.notFound,
                 message: 'device.error.notFound',
@@ -127,15 +137,16 @@ export class DeviceService implements IDeviceService {
         }
 
         try {
-            const sessions = await this.sessionRepository.findActiveByDevice(
-                userId,
-                deviceId
-            );
+            const sessions =
+                await this.sessionRepository.findActiveByDeviceOwnership(
+                    userId,
+                    existDeviceOwnership.id
+                );
 
             await Promise.all([
-                this.deviceRepository.remove(
+                this.deviceOwnershipRepository.remove(
                     userId,
-                    deviceId,
+                    existDeviceOwnership.id,
                     requestLog,
                     userId
                 ),
@@ -154,11 +165,14 @@ export class DeviceService implements IDeviceService {
 
     async removeByAdmin(
         userId: string,
-        deviceId: string,
+        deviceOwnershipId: string,
         requestLog: IRequestLog,
         removedBy: string
     ): Promise<IResponseReturn<void>> {
-        const existDevice = await this.deviceRepository.exist(userId, deviceId);
+        const existDevice = await this.deviceOwnershipRepository.existActive(
+            userId,
+            deviceOwnershipId
+        );
         if (!existDevice) {
             throw new NotFoundException({
                 statusCode: EnumDeviceStatusCodeError.notFound,
@@ -167,15 +181,16 @@ export class DeviceService implements IDeviceService {
         }
 
         try {
-            const sessions = await this.sessionRepository.findActiveByDevice(
-                userId,
-                deviceId
-            );
+            const sessions =
+                await this.sessionRepository.findActiveByDeviceOwnership(
+                    userId,
+                    deviceOwnershipId
+                );
 
             const [removed] = await Promise.all([
-                this.deviceRepository.remove(
+                this.deviceOwnershipRepository.remove(
                     userId,
-                    deviceId,
+                    deviceOwnershipId,
                     requestLog,
                     removedBy
                 ),

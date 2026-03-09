@@ -4,9 +4,10 @@ import {
     EnumNotificationChannel,
     EnumNotificationType,
 } from '@generated/prisma-client';
-import { DeviceRepository } from '@modules/device/repositories/device.repository';
+import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import {
+    INotificationAcceptTermPolicyPayload,
     INotificationEmailSendPayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
@@ -37,7 +38,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     constructor(
         private readonly notificationRepository: NotificationRepository,
         private readonly userRepository: UserRepository,
-        private readonly deviceRepository: DeviceRepository,
+        private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly helperService: HelperService,
         private readonly configService: ConfigService,
         private readonly notificationPushUtil: NotificationPushUtil,
@@ -86,23 +87,32 @@ export class NotificationProcessorService implements INotificationProcessorServi
     >): Promise<IQueueResponse> {
         const user = await this.userRepository.findOneActiveById(userId);
 
-        const notificationId = this.databaseUtil.createId();
-        const emailPayload: INotificationEmailSendPayload = {
+        const welcomeNotificationId = this.databaseUtil.createId();
+        const welcomePayload: INotificationEmailSendPayload = {
             userId: user.id,
             email: user.email,
             username: user.username,
-            notificationId,
+            notificationId: welcomeNotificationId,
+        };
+
+        const verificationEmailNotificationId = this.databaseUtil.createId();
+        const verificationEmailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId: verificationEmailNotificationId,
         };
 
         await Promise.all([
             this.notificationRepository.createWelcome(
-                notificationId,
+                welcomeNotificationId,
+                verificationEmailNotificationId,
                 user.id,
                 user.username
             ),
-            this.notificationEmailUtil.sendWelcome(emailPayload),
+            this.notificationEmailUtil.sendWelcome(welcomePayload),
             this.notificationEmailUtil.sendVerificationEmail(
-                emailPayload,
+                verificationEmailPayload,
                 data
             ),
         ]);
@@ -242,7 +252,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     >): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
             this.userRepository.findOneActiveById(userId),
-            this.deviceRepository.findByUserId(userId),
+            this.deviceOwnershipRepository.findTokensByUserId(userId),
         ]);
 
         const notificationId = this.databaseUtil.createId();
@@ -255,7 +265,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
         const pushPayload: INotificationSendPushPayload = {
             userId,
             notificationId,
-            notificationTokens: devices.map(d => d.notificationToken),
+            notificationTokens: devices.map(d => d.device.notificationToken),
             username: user.username,
         };
 
@@ -264,7 +274,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 notificationId,
                 user.id,
                 user.username,
-                data.passwordExpiredAt,
+                this.helperService.dateCreateFromIso(data.passwordExpiredAt),
                 proceedBy
             ),
             this.notificationEmailUtil.sendTemporaryPasswordByAdmin(
@@ -349,7 +359,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     >): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
             this.userRepository.findOneActiveById(userId),
-            this.deviceRepository.findByUserId(userId, null, true),
+            this.deviceOwnershipRepository.findTokensByUserId(userId),
         ]);
 
         const notificationId = this.databaseUtil.createId();
@@ -362,7 +372,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
         const pushPayload: INotificationSendPushPayload = {
             userId,
             notificationId,
-            notificationTokens: devices.map(d => d.notificationToken),
+            notificationTokens: devices.map(d => d.device.notificationToken),
             username: user.username,
         };
 
@@ -388,7 +398,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     >): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
             this.userRepository.findOneActiveById(userId),
-            this.deviceRepository.findByUserId(userId, null, true),
+            this.deviceOwnershipRepository.findTokensByUserId(userId),
         ]);
 
         const notificationId = this.databaseUtil.createId();
@@ -401,7 +411,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
         const pushPayload: INotificationSendPushPayload = {
             userId,
             notificationId,
-            notificationTokens: devices.map(d => d.notificationToken),
+            notificationTokens: devices.map(d => d.device.notificationToken),
             username: user.username,
         };
 
@@ -428,7 +438,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     >): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
             this.userRepository.findOneActiveById(userId),
-            this.deviceRepository.findByUserId(userId),
+            this.deviceOwnershipRepository.findTokensByUserId(userId),
         ]);
 
         const notificationId = this.databaseUtil.createId();
@@ -441,7 +451,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
         const pushPayload: INotificationSendPushPayload = {
             userId,
             notificationId,
-            notificationTokens: devices.map(d => d.notificationToken),
+            notificationTokens: devices.map(d => d.device.notificationToken),
             username: user.username,
         };
 
@@ -460,7 +470,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 data.loginWith,
                 device,
                 city,
-                data.loginAt
+                this.helperService.dateCreateFromIso(data.loginAt)
             ),
             this.notificationEmailUtil.sendNewDeviceLogin(emailPayload, data),
             this.notificationPushUtil.sendNewDeviceLogin(pushPayload, data),
@@ -521,6 +531,30 @@ export class NotificationProcessorService implements INotificationProcessorServi
             userCounts: users.length,
             filteredUserCounts: filteredUsers.length,
             batches: chunks.length,
+        };
+    }
+
+    async processUserAcceptTermPolicy({
+        data: { userId, data },
+    }: Job<
+        INotificationWorkerPayload<INotificationAcceptTermPolicyPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const user = await this.userRepository.findOneActiveById(userId);
+
+        const notificationId = this.databaseUtil.createId();
+
+        await this.notificationRepository.createUserAcceptTermPolicy(
+            notificationId,
+            user.id,
+            user.username,
+            data.type,
+            data.version
+        );
+
+        return {
+            message: 'User accept term policy notification processed',
         };
     }
 }

@@ -6,7 +6,10 @@ import {
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
-import { ResponsePaging } from '@common/response/decorators/response.decorator';
+import {
+    Response,
+    ResponsePaging,
+} from '@common/response/decorators/response.decorator';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -58,7 +61,7 @@ export class SessionSharedController {
     }
 
     @SessionSharedRevokeDoc()
-    @ResponsePaging('session.revoke')
+    @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()

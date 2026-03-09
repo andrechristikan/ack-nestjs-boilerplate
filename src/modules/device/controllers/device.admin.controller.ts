@@ -30,6 +30,7 @@ import {
     DeviceAdminListDoc,
     DeviceAdminRemoveDoc,
 } from '@modules/device/docs/device.admin.doc';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
 import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
 import { DeviceService } from '@modules/device/services/device.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
@@ -79,12 +80,12 @@ export class DeviceAdminController {
     async list(
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceSelect,
-            Prisma.DeviceWhereInput
+            Prisma.DeviceOwnershipSelect,
+            Prisma.DeviceOwnershipWhereInput
         >,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
-    ): Promise<IResponsePagingReturn<DeviceResponseDto>> {
+    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
         return this.deviceService.getListOffsetByAdmin(userId, pagination);
     }
 
@@ -106,7 +107,7 @@ export class DeviceAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Delete('/remove/:deviceId')
+    @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') removedBy: string,
         @RequestIPAddress() ipAddress: string,
@@ -114,12 +115,16 @@ export class DeviceAdminController {
         @RequestGeoLocation() geoLocation: GeoLocation | null,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
-        @Param('deviceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-        deviceId: string
+        @Param(
+            'deviceOwnershipId',
+            RequestRequiredPipe,
+            RequestIsValidObjectIdPipe
+        )
+        deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
         return this.deviceService.removeByAdmin(
             userId,
-            deviceId,
+            deviceOwnershipId,
             {
                 ipAddress,
                 userAgent,

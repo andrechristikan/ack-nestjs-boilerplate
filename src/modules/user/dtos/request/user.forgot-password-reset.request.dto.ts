@@ -13,7 +13,10 @@ import { IsNotEmpty, IsString } from 'class-validator';
 export class UserForgotPasswordResetRequestDto extends IntersectionType(
     PickType(UserChangePasswordRequestDto, ['newPassword'] as const),
     PartialType(
-        OmitType(UserLoginVerifyTwoFactorRequestDto, ['challengeToken'])
+        OmitType(UserLoginVerifyTwoFactorRequestDto, [
+            'challengeToken',
+            'device',
+        ])
     )
 ) {
     @ApiProperty({

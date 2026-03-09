@@ -53,8 +53,8 @@
         "usernameNotAllowed": "This username is not allowed.",
         "usernameContainBadWord": "Username contains inappropriate words.",
         "verificationTokenInvalid": "Verification token is invalid or expired.",
-        "verificationEmailResendLimitExceeded": "You have exceeded the limit for resending verification emails.",
-        "forgotPasswordRequestLimitExceeded": "You have exceeded the limit for password reset requests.",
+        "verificationEmailResendLimitExceeded": "You have exceeded the limit for resending verification emails. Try again after {minutes} minutes.",
+        "forgotPasswordRequestLimitExceeded": "You have exceeded the limit for password reset requests. Try again after {minutes} minutes.",
         "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}"
     }
 }

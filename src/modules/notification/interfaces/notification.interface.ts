@@ -6,17 +6,17 @@ import {
 } from '@generated/prisma-client';
 
 export interface INotificationTemporaryPasswordPayload {
-    password: string; // TODO: Need to encode this link
-    passwordExpiredAt: Date;
-    passwordCreatedAt: Date;
+    password: string;
+    passwordExpiredAt: string;
+    passwordCreatedAt: string;
 }
 
 export type INotificationWelcomeByAdminPayload =
     INotificationTemporaryPasswordPayload;
 
 export interface INotificationVerificationEmailPayload {
-    link: string; // TODO: Need to encode this link
-    expiredAt: Date;
+    link: string;
+    expiredAt: string;
     expiredInMinutes: number;
     reference: string;
 }
@@ -38,13 +38,17 @@ export interface INotificationVerifiedMobileNumberPayload extends INotificationV
 export interface INotificationNewDeviceLoginPayload {
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
-    loginAt: Date;
+    loginAt: string;
     requestLog: IRequestLog;
 }
 
 export interface INotificationPublishTermPolicyPayload {
     type: EnumTermPolicyType;
     version: number;
+}
+
+export interface INotificationAcceptTermPolicyPayload extends INotificationPublishTermPolicyPayload {
+    termPolicyId: string;
 }
 
 export interface INotificationWorkerBulkPayload<T = unknown> {

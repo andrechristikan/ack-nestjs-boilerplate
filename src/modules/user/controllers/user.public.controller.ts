@@ -45,7 +45,6 @@ import {
     HttpStatus,
     Patch,
     Post,
-    Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumUserLoginWith, GeoLocation, UserAgent } from '@prisma/client';
@@ -204,7 +203,8 @@ export class UserPublicController {
     @Response('user.resetPassword')
     @FeatureFlagProtected('changePassword.forgotAllowed')
     @ApiKeyProtected()
-    @Put('/password/reset')
+    @HttpCode(HttpStatus.OK)
+    @Patch('/password/reset')
     async reset(
         @Body() body: UserForgotPasswordResetRequestDto,
         @RequestIPAddress() ipAddress: string,
@@ -222,7 +222,7 @@ export class UserPublicController {
     @Response('user.verifyTwoFactor')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/login/2fa/verify')
+    @Patch('/login/2fa/verify')
     async loginVerifyTwoFactor(
         @Body() body: UserLoginVerifyTwoFactorRequestDto,
         @RequestIPAddress() ipAddress: string,

@@ -12,6 +12,7 @@ export enum EnumNotificationProcess {
     newDeviceLogin = 'newDeviceLogin',
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
     publishTermPolicy = 'publishTermPolicy',
+    userAcceptTermPolicy = 'userAcceptTermPolicy',
 }
 
 export enum EnumNotificationPushProcess {

@@ -164,7 +164,7 @@ export function UserPublicLoginSetupTwoFactorDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary:
-                'User enable two factor during login, for required setup 2FA flow',
+                'User enable two factor during login after reset by admin. Required setup 2FA flow',
         }),
         DocAuth({
             xApiKey: true,

@@ -74,40 +74,6 @@ export class HelperService implements IHelperService {
     }
 
     /**
-     * Encrypts data using AES-256-CBC with a random IV and returns combined string.
-     * Format of returned string is "iv:encryptedData".
-     * @param {string} data - String data to encrypt
-     * @return {string} Encrypted string with IV prefix
-     * @throws {Error} If encryption fails
-     */
-    simpleEncrypt(data: string): string {
-        const randomIv = this.randomString(16);
-        const encrypted = this.aes256Encrypt(
-            data,
-            this.encryptionSecretKey,
-            randomIv
-        );
-
-        return `${randomIv}:${encrypted}`;
-    }
-
-    /**
-     * Decrypts data encrypted with simpleEncrypt method.
-     * Expects input format of "iv:encryptedData".
-     * @param {string} encryptedData - Encrypted string with IV prefix
-     * @return {string} Decrypted original string
-     * @throws {Error} If input format is invalid or decryption fails
-     */
-    simpleDecrypt(encryptedData: string): string {
-        const [iv, encrypted] = encryptedData.split(':');
-        if (!iv || !encrypted) {
-            throw new Error('Invalid encrypted data format');
-        }
-
-        return this.aes256Decrypt(encrypted, this.encryptionSecretKey, iv);
-    }
-
-    /**
      * Encodes string to Base64 format.
      * @param {string} data - String to encode
      * @returns {string} Base64 encoded string
@@ -187,6 +153,24 @@ export class HelperService implements IHelperService {
     }
 
     /**
+     * Encrypts string using AES-256-CBC with random IV and optional extended key.
+     * Generates random IV and combines it with encrypted data for storage/transmission.
+     * @param {string} data - String to encrypt
+     * @param {string} [extendEncryptionKey] - Optional string to extend the encryption key
+     * @return {string} Encrypted string in format "iv:encryptedData"
+     * @throws {Error} If encryption fails
+     */
+    aes256EncryptSimple(data: string, extendEncryptionKey?: string): string {
+        const randomIv = this.randomString(16);
+        const encryptionKey = extendEncryptionKey
+            ? `${this.encryptionSecretKey}:${extendEncryptionKey}`
+            : this.encryptionSecretKey;
+        const encrypted = this.aes256Encrypt(data, encryptionKey, randomIv);
+
+        return `${randomIv}:${encrypted}`;
+    }
+
+    /**
      * Decrypts AES-256-CBC encrypted data.
      * @template T - Type of decrypted data
      * @param {string} encrypted - Encrypted string
@@ -209,6 +193,29 @@ export class HelperService implements IHelperService {
         }
 
         return JSON.parse(decrypted);
+    }
+
+    /**
+     * Decrypts AES-256-CBC encrypted string that includes IV prefix.
+     * Expects input format "iv:encryptedData".
+     * @param {string} encryptedData - Encrypted string with IV prefix
+     * @param {string} extendEncryptionKey - Optional string to extend the encryption key
+     * @return {string} Decrypted original string
+     * @throws {Error} If input format is invalid or decryption fails
+     */
+    aes256DecryptSimple(
+        encryptedData: string,
+        extendEncryptionKey?: string
+    ): string {
+        const [iv, encrypted] = encryptedData.split(':');
+        if (!iv || !encrypted) {
+            throw new Error('Invalid encrypted data format');
+        }
+
+        const encryptionKey = extendEncryptionKey
+            ? `${this.encryptionSecretKey}:${extendEncryptionKey}`
+            : this.encryptionSecretKey;
+        return this.aes256Decrypt(encrypted, encryptionKey, iv);
     }
 
     /**
