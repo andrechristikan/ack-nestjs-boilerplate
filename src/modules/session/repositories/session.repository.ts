@@ -10,7 +10,11 @@ import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ISession } from '@modules/session/interfaces/session.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumActivityLogAction, Prisma, Session } from '@prisma/client';
+import {
+    EnumActivityLogAction,
+    Prisma,
+    Session,
+} from '@generated/prisma-client';
 
 @Injectable()
 export class SessionRepository {
@@ -21,7 +25,7 @@ export class SessionRepository {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    async findWithPaginationOffsetByAdmin(
+    async findActiveWithPaginationOffsetByAdmin(
         userId: string,
         {
             where,
@@ -40,6 +44,7 @@ export class SessionRepository {
             where: {
                 ...where,
                 userId,
+                isRevoked: false,
             },
             include: {
                 user: true,
@@ -47,7 +52,7 @@ export class SessionRepository {
         });
     }
 
-    async findWithPaginationCursor(
+    async findActiveWithPaginationCursor(
         userId: string,
         {
             where,
@@ -66,6 +71,7 @@ export class SessionRepository {
             where: {
                 ...where,
                 userId,
+                isRevoked: false,
             },
             include: {
                 user: true,
@@ -107,9 +113,7 @@ export class SessionRepository {
                 expiredAt: {
                     gte: this.helperService.dateCreate(),
                 },
-                deviceOwnership: {
-                    id: deviceOwnershipId,
-                },
+                deviceOwnershipId,
             },
             select: {
                 id: true,

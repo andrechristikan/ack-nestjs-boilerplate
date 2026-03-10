@@ -275,12 +275,13 @@ model Device {
 }
 
 model DeviceOwnership {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  deviceId    String    @db.ObjectId
-  userId      String    @db.ObjectId
-  revokedAt   DateTime?
-  isRevoked   Boolean   @default(false)
-  revokedById String?   @db.ObjectId
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  deviceId     String    @db.ObjectId
+  userId       String    @db.ObjectId
+  revokedAt    DateTime?
+  isRevoked    Boolean   @default(false)
+  revokedById  String?   @db.ObjectId
+  lastActiveAt DateTime  @default(now())
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
@@ -672,6 +673,7 @@ enum EnumActivityLogAction {
   adminUserUpdatePassword
   adminUserResetTwoFactor
   adminUserImport
+  adminDeviceRemove
 }
 
 enum EnumDevicePlatform {

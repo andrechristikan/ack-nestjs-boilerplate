@@ -46,7 +46,8 @@ import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import { EnumUserLoginWith, Prisma } from '@prisma/client';
+import { EnumUserLoginWith, Prisma } from '@generated/prisma-client';
+import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
@@ -176,7 +177,7 @@ export interface IUserService {
     signUp(
         { countryId, email, password, ...others }: UserSignUpRequestDto,
         requestLog: IRequestLog
-    ): Promise<void>;
+    ): Promise<IResponseReturn<void>>;
     verifyEmail(
         { token }: UserVerifyEmailRequestDto,
         requestLog: IRequestLog
@@ -209,6 +210,10 @@ export interface IUserService {
     getTwoFactorStatus(
         user: IUser
     ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>>;
+    setupTwoFactor(
+        user: IUser,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>>;
     enableTwoFactor(
         user: IUser,
         { code }: UserTwoFactorEnableRequestDto,

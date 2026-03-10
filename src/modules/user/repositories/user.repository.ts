@@ -31,9 +31,9 @@ import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.re
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import {
     IUser,
-    IUserDevice,
     IUserForgotPasswordCreate,
     IUserLogin,
+    IUserLoginResult,
     IUserProfile,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
@@ -61,7 +61,7 @@ import {
     User,
     UserMobileNumber,
     Verification,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @Injectable()
 export class UserRepository {
@@ -622,6 +622,7 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: deletedAt,
+                            revokedById: userId,
                         },
                     },
                 },
@@ -868,6 +869,7 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: passwordCreated,
+                            revokedById: updatedBy,
                         },
                     },
                 },
@@ -943,6 +945,7 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: passwordCreated,
+                            revokedById: userId,
                         },
                     },
                 },
@@ -952,10 +955,10 @@ export class UserRepository {
 
     async login(
         userId: string,
-        { device, deviceOwnershipId }: IUserDevice,
+        { fingerprint, name, notificationToken, platform }: DeviceRequestDto,
         { loginFrom, loginWith, sessionId, expiredAt, jti }: IUserLogin,
         { ipAddress, userAgent, geoLocation }: IRequestLog
-    ): Promise<User> {
+    ): Promise<IUserLoginResult> {
         const today = this.helperService.dateCreate();
 
         let action: EnumActivityLogAction =
@@ -973,19 +976,96 @@ export class UserRepository {
                 break;
         }
 
+        let notificationProvider: EnumDeviceNotificationProvider | null = null;
+        switch (platform) {
+            case EnumDevicePlatform.android:
+                notificationProvider = EnumDeviceNotificationProvider.fcm;
+                break;
+            case EnumDevicePlatform.ios:
+                notificationProvider = EnumDeviceNotificationProvider.apns;
+                break;
+            default:
+                notificationProvider = null;
+                break;
+        }
+
         return this.databaseService.$transaction(
             async (tx: Prisma.TransactionClient) => {
-                await tx.session.updateMany({
+                const device = await tx.device.upsert({
                     where: {
-                        deviceOwnershipId: deviceOwnershipId,
-                        isRevoked: false,
-                        expiredAt: { gte: today },
+                        fingerprint,
                     },
-                    data: {
-                        isRevoked: true,
-                        revokedAt: today,
+                    update: {
+                        name,
+                        platform,
+                        notificationToken,
+                        lastActiveAt: today,
+                        notificationProvider,
+                        updatedBy: userId,
+                    },
+                    create: {
+                        fingerprint,
+                        name,
+                        platform,
+                        notificationToken,
+                        lastActiveAt: today,
+                        notificationProvider,
+                        createdBy: userId,
                     },
                 });
+
+                let isNewDevice = false;
+                let sessionShouldBeInactive = [];
+                let deviceOwnership = await tx.deviceOwnership.findFirst({
+                    where: {
+                        deviceId: device.id,
+                        userId,
+                        isRevoked: false,
+                    },
+                });
+                if (!deviceOwnership) {
+                    isNewDevice = true;
+                    deviceOwnership = await tx.deviceOwnership.create({
+                        data: {
+                            userId,
+                            createdBy: userId,
+                            lastActiveAt: today,
+                            isRevoked: false,
+                            deviceId: device.id,
+                        },
+                    });
+                } else {
+                    const activeSessions = await tx.session.findMany({
+                        where: {
+                            deviceOwnershipId: deviceOwnership.id,
+                            isRevoked: false,
+                            expiredAt: { gte: today },
+                        },
+                    });
+
+                    sessionShouldBeInactive = activeSessions.map(session => ({
+                        id: session.id,
+                    }));
+
+                    [deviceOwnership] = await Promise.all([
+                        tx.deviceOwnership.update({
+                            where: { id: deviceOwnership.id },
+                            data: {
+                                lastActiveAt: today,
+                                updatedBy: userId,
+                            },
+                        }),
+                        tx.session.updateMany({
+                            where: {
+                                id: { in: activeSessions.map(s => s.id) },
+                            },
+                            data: {
+                                isRevoked: true,
+                                revokedAt: today,
+                            },
+                        }),
+                    ]);
+                }
 
                 const user = await tx.user.update({
                     where: { id: userId, deletedAt: null },
@@ -1008,23 +1088,6 @@ export class UserRepository {
                                 createdBy: userId,
                             },
                         },
-                        deviceOwnerships: {
-                            upsert: {
-                                where: {
-                                    id: deviceOwnershipId,
-                                    isRevoked: false,
-                                },
-                                create: {
-                                    id: deviceOwnershipId,
-                                    isRevoked: false,
-                                    deviceId: device.id,
-                                    createdBy: userId,
-                                },
-                                update: {
-                                    updatedBy: userId,
-                                },
-                            },
-                        },
                         sessions: {
                             create: {
                                 id: sessionId,
@@ -1044,7 +1107,15 @@ export class UserRepository {
                     },
                 });
 
-                return user;
+                const result: IUserLoginResult = {
+                    device,
+                    deviceOwnership,
+                    isNewDevice,
+                    user,
+                    sessionShouldBeInactive,
+                };
+
+                return result;
             }
         );
     }
@@ -1441,6 +1512,7 @@ export class UserRepository {
                         data: {
                             isRevoked: true,
                             revokedAt: passwordCreated,
+                            revokedById: userId,
                         },
                     },
                 },
@@ -1766,6 +1838,19 @@ export class UserRepository {
                         createdAt: now,
                     },
                 },
+                sessions: {
+                    updateMany: {
+                        where: {
+                            isRevoked: false,
+                            expiredAt: { gte: now },
+                        },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: now,
+                            revokedById: userId,
+                        },
+                    },
+                },
             },
             include: {
                 role: true,
@@ -1844,7 +1929,11 @@ export class UserRepository {
                 sessions: {
                     updateMany: {
                         where: { isRevoked: false, expiredAt: { gte: now } },
-                        data: { isRevoked: true, revokedAt: now },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: now,
+                            revokedById: updatedBy,
+                        },
                     },
                 },
             },

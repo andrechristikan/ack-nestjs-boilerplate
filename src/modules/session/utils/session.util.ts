@@ -176,19 +176,6 @@ export class SessionUtil {
     }
 
     /**
-     * Clears all session data from the cache.
-     *
-     * Removes all cached sessions across all users. Use with caution as this will
-     * invalidate all active sessions in the application.
-     *
-     * @returns Promise resolving when the cache has been cleared
-     */
-    async flushAll(): Promise<void> {
-        await this.cacheManager.clear();
-        return;
-    }
-
-    /**
      * Converts an array of session entities to session response DTOs.
      *
      * Uses class-transformer to transform session entities into response data transfer objects

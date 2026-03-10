@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumTermPolicyType } from '@prisma/client';
+import { EnumTermPolicyType } from '@generated/prisma-client';
 
 export class UserTermPolicyDto {
     @ApiProperty({

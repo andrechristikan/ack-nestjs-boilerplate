@@ -22,7 +22,7 @@ import {
     EnumUserStatus,
     Prisma,
     TermPolicy,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @Injectable()
 export class TermPolicyRepository {

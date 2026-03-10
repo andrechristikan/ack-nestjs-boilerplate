@@ -8,7 +8,7 @@ import {
 import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
-import { EnumApiKeyType } from '@prisma/client';
+import { EnumApiKeyType } from '@generated/prisma-client';
 
 export class ApiKeyCreateRequestDto extends IntersectionType(
     ApiKeyUpdateRequestDto,

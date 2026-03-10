@@ -72,7 +72,7 @@ import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import { IUser, IUserDevice } from '@modules/user/interfaces/user.interface';
+import { IUser } from '@modules/user/interfaces/user.interface';
 import { IUserService } from '@modules/user/interfaces/user.service.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -93,7 +93,7 @@ import {
     EnumUserStatus,
     EnumVerificationType,
     Prisma,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 import { Duration } from 'luxon';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
@@ -108,13 +108,10 @@ import { ConfigService } from '@nestjs/config';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
-import { INotificationNewDeviceLoginPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
-import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
-import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -129,7 +126,6 @@ export class UserService implements IUserService {
         private readonly countryRepository: CountryRepository,
         private readonly roleRepository: RoleRepository,
         private readonly passwordHistoryRepository: PasswordHistoryRepository,
-        private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly helperService: HelperService,
         private readonly fileService: FileService,
@@ -165,6 +161,11 @@ export class UserService implements IUserService {
             throw new ForbiddenException({
                 statusCode: EnumUserStatusCodeError.notFound,
                 message: 'user.error.notFound',
+            });
+        } else if (user.status === EnumUserStatus.blocked) {
+            throw new ForbiddenException({
+                statusCode: EnumUserStatusCodeError.blockedForbidden,
+                message: 'user.error.blocked',
             });
         } else if (user.status !== EnumUserStatus.active) {
             throw new ForbiddenException({
@@ -339,6 +340,13 @@ export class UserService implements IUserService {
         requestLog: IRequestLog,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
+        if (userId === updatedBy) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatusCodeError.notSelf,
+                message: 'user.error.notSelf',
+            });
+        }
+
         const user = await this.userRepository.findOneById(userId);
         if (!user) {
             throw new NotFoundException({
@@ -347,11 +355,8 @@ export class UserService implements IUserService {
             });
         } else if (user.status === EnumUserStatus.blocked) {
             throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.statusInvalid,
-                message: 'user.error.statusInvalid',
-                messageProperties: {
-                    status: user.status.toLowerCase(),
-                },
+                statusCode: EnumUserStatusCodeError.blockedInvalid,
+                message: 'user.error.blockedInvalid',
             });
         }
 
@@ -804,6 +809,13 @@ export class UserService implements IUserService {
         requestLog: IRequestLog,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
+        if (userId === updatedBy) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatusCodeError.notSelf,
+                message: 'user.error.notSelf',
+            });
+        }
+
         const user = await this.userRepository.findOneById(userId);
         if (!user) {
             throw new NotFoundException({
@@ -812,11 +824,8 @@ export class UserService implements IUserService {
             });
         } else if (user.status === EnumUserStatus.blocked) {
             throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.statusInvalid,
-                message: 'user.error.statusInvalid',
-                messageProperties: {
-                    status: user.status.toLowerCase(),
-                },
+                statusCode: EnumUserStatusCodeError.blockedInvalid,
+                message: 'user.error.blockedInvalid',
             });
         }
 
@@ -1008,11 +1017,6 @@ export class UserService implements IUserService {
                 statusCode: EnumUserStatusCodeError.passwordExpired,
                 message: 'auth.error.passwordExpired',
             });
-        } else if (!user.isVerified) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.emailNotVerified,
-                message: 'user.error.emailNotVerified',
-            });
         }
 
         return this.handleLogin(
@@ -1073,13 +1077,12 @@ export class UserService implements IUserService {
             });
         }
 
-        const promises = [];
         if (!user.isVerified) {
-            promises.push(this.userRepository.verify(user.id, requestLog));
-        }
-
-        if (promises.length > 0) {
-            await Promise.all(promises);
+            const updatedUser = await this.userRepository.verify(
+                user.id,
+                requestLog
+            );
+            user.isVerified = updatedUser.isVerified;
         }
 
         return this.handleLogin(
@@ -1163,7 +1166,7 @@ export class UserService implements IUserService {
             ...others
         }: UserSignUpRequestDto,
         requestLog: IRequestLog
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         const [role, emailExist, checkCountry] = await Promise.all([
             this.roleRepository.existByName(this.userRoleName),
             this.userRepository.existByEmail(email),
@@ -1511,7 +1514,7 @@ export class UserService implements IUserService {
 
     private async createTokenAndSession(
         user: IUser,
-        { activeSessions, device, deviceOwnershipId }: IUserDevice,
+        device: DeviceRequestDto,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
         loginAt: Date,
@@ -1529,19 +1532,10 @@ export class UserService implements IUserService {
             })
         );
 
-        if (activeSessions.length > 0) {
-            await this.sessionUtil.deleteAllLogins(user.id, activeSessions);
-        }
-
-        await Promise.all([
-            this.sessionUtil.setLogin(user.id, sessionId, jti, expiredAt),
-            this.userRepository.login(
+        const { isNewDevice, sessionShouldBeInactive } =
+            await this.userRepository.login(
                 user.id,
-                {
-                    activeSessions,
-                    device,
-                    deviceOwnershipId,
-                },
+                device,
                 {
                     loginFrom,
                     loginWith,
@@ -1550,57 +1544,35 @@ export class UserService implements IUserService {
                     expiredAt,
                 },
                 requestLog
-            ),
-        ]);
-
-        return tokens;
-    }
-
-    private async handleDeviceOwnership(
-        userId: string,
-        device: DeviceRequestDto,
-        loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserLoginWith,
-        loginAt: Date,
-        requestLog: IRequestLog
-    ): Promise<IUserDevice> {
-        const deviceUpserted =
-            await this.deviceOwnershipRepository.upsertDevice(device, userId);
-
-        // check after upsert
-        const existDeviceOwnership =
-            await this.deviceOwnershipRepository.existActiveByFingerprint(
-                userId,
-                device.fingerprint
             );
-        const isNewDevice = !existDeviceOwnership;
 
-        if (isNewDevice) {
-            await this.notificationUtil.sendNewDeviceLogin(userId, {
-                loginFrom,
-                loginWith,
-                loginAt: this.helperService.dateFormatToIso(loginAt),
-                requestLog,
-            } as INotificationNewDeviceLoginPayload);
+        const promises = [
+            this.sessionUtil.setLogin(user.id, sessionId, jti, expiredAt),
+        ];
 
-            return {
-                device: deviceUpserted,
-                deviceOwnershipId: this.databaseUtil.createId(),
-                activeSessions: [],
-            };
+        if (sessionShouldBeInactive.length > 0) {
+            promises.push(
+                this.sessionUtil.deleteAllLogins(
+                    user.id,
+                    sessionShouldBeInactive
+                )
+            );
         }
 
-        const activeSessions =
-            await this.sessionRepository.findActiveByDeviceOwnership(
-                userId,
-                existDeviceOwnership.id
+        if (isNewDevice) {
+            promises.push(
+                this.notificationUtil.sendNewDeviceLogin(user.id, {
+                    requestLog,
+                    loginFrom,
+                    loginWith,
+                    loginAt: this.helperService.dateFormatToIso(loginAt),
+                })
             );
+        }
 
-        return {
-            device: deviceUpserted,
-            deviceOwnershipId: existDeviceOwnership.id,
-            activeSessions,
-        };
+        await Promise.all(promises);
+
+        return tokens;
     }
 
     private async handleLogin(
@@ -1634,21 +1606,17 @@ export class UserService implements IUserService {
                 link: emailVerification.encryptedLink,
                 expiredInMinutes: emailVerification.expiredInMinutes,
             });
+
+            throw new ForbiddenException({
+                statusCode: EnumUserStatusCodeError.emailNotVerified,
+                message: 'user.error.emailNotVerified',
+            });
         }
 
         if (!user.twoFactor.enabled) {
-            const userDevice = await this.handleDeviceOwnership(
-                user.id,
-                device,
-                loginFrom,
-                loginWith,
-                loginAt,
-                requestLog
-            );
-
             const tokens = await this.createTokenAndSession(
                 user,
-                userDevice,
+                device,
                 loginFrom,
                 loginWith,
                 loginAt,
@@ -1666,6 +1634,7 @@ export class UserService implements IUserService {
         const { challengeToken, expiresInMs } =
             await this.authTwoFactorUtil.createChallenge({
                 userId: user.id,
+                device,
                 loginFrom,
                 loginWith,
             });
@@ -1758,7 +1727,6 @@ export class UserService implements IUserService {
             code,
             backupCode,
             method,
-            device,
         }: UserLoginVerifyTwoFactorRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
@@ -1809,19 +1777,10 @@ export class UserService implements IUserService {
 
         try {
             const loginAt = this.helperService.dateCreate();
-            const userDevice = await this.handleDeviceOwnership(
-                user.id,
-                device,
-                challenge.loginFrom,
-                challenge.loginWith,
-                loginAt,
-                requestLog
-            );
-
             const [tokens] = await Promise.all([
                 this.createTokenAndSession(
                     user,
-                    userDevice,
+                    challenge.device,
                     challenge.loginFrom,
                     challenge.loginWith,
                     loginAt,
@@ -2042,7 +2001,12 @@ export class UserService implements IUserService {
         }
 
         try {
-            await this.userRepository.disableTwoFactor(user.id, requestLog);
+            const sessions = await this.sessionRepository.findActive(user.id);
+
+            await Promise.all([
+                this.userRepository.disableTwoFactor(user.id, requestLog),
+                this.sessionUtil.deleteAllLogins(user.id, sessions),
+            ]);
 
             return;
         } catch (err: unknown) {
@@ -2092,6 +2056,13 @@ export class UserService implements IUserService {
         updatedBy: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
+        if (userId === updatedBy) {
+            throw new BadRequestException({
+                statusCode: EnumUserStatusCodeError.notSelf,
+                message: 'user.error.notSelf',
+            });
+        }
+
         const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
             throw new NotFoundException({
@@ -2100,11 +2071,8 @@ export class UserService implements IUserService {
             });
         } else if (user.status === EnumUserStatus.blocked) {
             throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.statusInvalid,
-                message: 'user.error.statusInvalid',
-                messageProperties: {
-                    status: user.status.toLowerCase(),
-                },
+                statusCode: EnumUserStatusCodeError.blockedInvalid,
+                message: 'user.error.blockedInvalid',
             });
         } else if (!user.twoFactor.enabled) {
             throw new BadRequestException({

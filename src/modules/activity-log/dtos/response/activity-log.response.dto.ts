@@ -4,7 +4,7 @@ import { RequestUserAgentResponseDto } from '@common/request/dtos/response/reque
 import { faker } from '@faker-js/faker';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumActivityLogAction } from '@prisma/client';
+import { EnumActivityLogAction } from '@generated/prisma-client';
 import { Type } from 'class-transformer';
 
 export class ActivityLogResponseDto extends DatabaseDto {

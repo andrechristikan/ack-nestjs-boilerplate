@@ -1,6 +1,6 @@
 import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
 import { Injectable } from '@nestjs/common';
-import { Country } from '@prisma/client';
+import { Country } from '@generated/prisma-client';
 import { plainToInstance } from 'class-transformer';
 
 @Injectable()

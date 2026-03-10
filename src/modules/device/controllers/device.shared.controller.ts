@@ -79,7 +79,7 @@ export class DeviceSharedController {
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
-    async device(
+    async refresh(
         @AuthJwtPayload('userId') userId: string,
         @AuthJwtPayload('deviceOwnershipId') deviceOwnershipId: string,
         @RequestIPAddress() ipAddress: string,

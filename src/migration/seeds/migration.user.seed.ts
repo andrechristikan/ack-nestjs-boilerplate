@@ -21,7 +21,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 import { UAParser } from 'ua-parser-js';
 

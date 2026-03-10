@@ -9,7 +9,7 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { UserTermPolicyDto } from '@modules/user/dtos/user.term-policy.dto';

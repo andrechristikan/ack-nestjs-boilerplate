@@ -1,4 +1,4 @@
-import { ActivityLog, User } from '@prisma/client';
+import { ActivityLog, User } from '@generated/prisma-client';
 
 export interface IActivityLog extends ActivityLog {
     user: User;

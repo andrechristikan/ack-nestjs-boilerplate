@@ -20,7 +20,7 @@ import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/req
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import { EnumTermPolicyType, Prisma } from '@prisma/client';
+import { EnumTermPolicyType, Prisma } from '@generated/prisma-client';
 
 export interface ITermPolicyService {
     validateTermPolicyGuard(

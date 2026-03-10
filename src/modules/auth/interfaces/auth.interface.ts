@@ -1,6 +1,7 @@
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { EnumUserLoginFrom, EnumUserLoginWith } from '@prisma/client';
+import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
+import { Device, EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
 
 export interface IAuthPassword {
     passwordHash: string;
@@ -74,6 +75,7 @@ export interface IAuthTwoFactorChallenge {
 
 export interface IAuthTwoFactorChallengeCache {
     userId: string;
+    device: DeviceRequestDto;
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
 }

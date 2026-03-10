@@ -18,7 +18,7 @@ import {
     EnumUserLoginWith,
     PasswordHistory,
     User,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 import { createPrivateKey, createPublicKey } from 'crypto';
 import verifyAppleToken, {
     VerifyAppleIdTokenResponse,

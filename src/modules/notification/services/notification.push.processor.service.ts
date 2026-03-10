@@ -85,7 +85,7 @@ export class NotificationPushProcessorService
             }
         );
 
-        await Promise.all([
+        await Promise.allSettled([
             this.notificationPushUtil.sendCleanupTokens(
                 userId,
                 result.failureTokens

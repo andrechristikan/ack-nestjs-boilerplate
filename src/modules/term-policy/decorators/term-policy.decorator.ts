@@ -1,7 +1,7 @@
 import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
 import { TermPolicyRequiredGuardMetaKey } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
-import { EnumTermPolicyType } from '@prisma/client';
+import { EnumTermPolicyType } from '@generated/prisma-client';
 
 /**
  * Method decorator that applies term policy acceptance protection to routes.

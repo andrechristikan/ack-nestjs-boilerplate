@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType } from '@generated/prisma-client';
 
 export const RoleDocParamsId: ApiParamOptions[] = [
     {

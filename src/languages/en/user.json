@@ -41,6 +41,9 @@
     "loginVerifyTwoFactor": "Two-factor verification successful.",
     "error": {
         "notFound": "Sorry, we couldn't find the user you requested.",
+        "notSelf": "You cannot perform this action on your own account.",
+        "blocked": "This user account has been blocked.",
+        "blockedInvalid": "This user account has been blocked.",
         "inactive": "This user is inactive.",
         "statusInvalid": "Invalid user status.",
         "emailExist": "This email already exists.",

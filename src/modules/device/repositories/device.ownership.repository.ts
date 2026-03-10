@@ -153,22 +153,6 @@ export class DeviceOwnershipRepository {
         });
     }
 
-    async existActiveByFingerprint(
-        userId: string,
-        fingerprint: string
-    ): Promise<{ id: string } | null> {
-        return this.databaseService.deviceOwnership.findFirst({
-            where: {
-                userId,
-                device: {
-                    fingerprint,
-                },
-                isRevoked: false,
-            },
-            select: { id: true },
-        });
-    }
-
     async refresh(
         userId: string,
         deviceOwnershipId: string,
@@ -254,49 +238,6 @@ export class DeviceOwnershipRepository {
         return user.deviceOwnerships[0];
     }
 
-    async upsertDevice(
-        { fingerprint, name, notificationToken, platform }: DeviceRequestDto,
-        upsertBy: string
-    ): Promise<Device> {
-        const today = this.helperService.dateCreate();
-
-        let notificationProvider: EnumDeviceNotificationProvider | null = null;
-        switch (platform) {
-            case EnumDevicePlatform.android:
-                notificationProvider = EnumDeviceNotificationProvider.fcm;
-                break;
-            case EnumDevicePlatform.ios:
-                notificationProvider = EnumDeviceNotificationProvider.apns;
-                break;
-            default:
-                notificationProvider = null;
-                break;
-        }
-
-        return this.databaseService.device.upsert({
-            where: {
-                fingerprint,
-            },
-            update: {
-                name,
-                platform,
-                notificationToken,
-                lastActiveAt: today,
-                notificationProvider,
-                updatedBy: upsertBy,
-            },
-            create: {
-                fingerprint,
-                name,
-                platform,
-                notificationToken,
-                lastActiveAt: today,
-                notificationProvider,
-                createdBy: upsertBy,
-            },
-        });
-    }
-
     async remove(
         userId: string,
         deviceOwnershipId: string,
@@ -340,6 +281,7 @@ export class DeviceOwnershipRepository {
                                 data: {
                                     isRevoked: true,
                                     revokedAt: today,
+                                    revokedById: removedBy,
                                     updatedBy: removedBy,
                                 },
                             },

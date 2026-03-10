@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumNotificationChannel, EnumNotificationType } from '@prisma/client';
+import { EnumNotificationChannel, EnumNotificationType } from '@generated/prisma-client';
 import { IsBoolean, IsEnum, IsNotEmpty } from 'class-validator';
 
 export class NotificationUserSettingRequestDto {

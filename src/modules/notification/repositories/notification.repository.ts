@@ -22,7 +22,7 @@ import {
     Notification,
     NotificationUserSetting,
     Prisma,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @Injectable()
 export class NotificationRepository {

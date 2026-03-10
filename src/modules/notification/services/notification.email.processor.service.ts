@@ -17,7 +17,6 @@ import {
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { title } from 'case';
 import { flatten } from 'flat';
 import { Job } from 'bullmq';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';

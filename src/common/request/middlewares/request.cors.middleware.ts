@@ -169,7 +169,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
             const url = new URL(origin);
             return {
                 hostname: url.hostname,
-                port: url.port,
+                port: url.port ?? '',
             };
         } catch {
             return { hostname: '', port: '' };

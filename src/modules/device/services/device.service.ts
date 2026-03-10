@@ -10,7 +10,6 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
-import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
 import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
 import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
@@ -169,11 +168,12 @@ export class DeviceService implements IDeviceService {
         requestLog: IRequestLog,
         removedBy: string
     ): Promise<IResponseReturn<void>> {
-        const existDevice = await this.deviceOwnershipRepository.existActive(
-            userId,
-            deviceOwnershipId
-        );
-        if (!existDevice) {
+        const existDeviceOwnership =
+            await this.deviceOwnershipRepository.existActive(
+                userId,
+                deviceOwnershipId
+            );
+        if (!existDeviceOwnership) {
             throw new NotFoundException({
                 statusCode: EnumDeviceStatusCodeError.notFound,
                 message: 'device.error.notFound',
@@ -184,13 +184,13 @@ export class DeviceService implements IDeviceService {
             const sessions =
                 await this.sessionRepository.findActiveByDeviceOwnership(
                     userId,
-                    deviceOwnershipId
+                    existDeviceOwnership.id
                 );
 
             const [removed] = await Promise.all([
                 this.deviceOwnershipRepository.remove(
                     userId,
-                    deviceOwnershipId,
+                    existDeviceOwnership.id,
                     requestLog,
                     removedBy
                 ),
