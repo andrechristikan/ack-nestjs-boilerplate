@@ -63,3 +63,8 @@ tmp/
 .swc/
 .turbo/
 .parcel-cache/
+
+# Claude Code - cache data
+.claude/agent-memory/
+.claude/*.local.md
+.claude/settings.local.json

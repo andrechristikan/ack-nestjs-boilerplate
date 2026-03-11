@@ -1016,6 +1016,8 @@ sequenceDiagram
 
 Session management handles user authentication sessions across multiple devices and locations. It provides visibility and control over active sessions, allowing users and administrators to monitor and revoke access as needed.
 
+**Device-Ownership Model**: Sessions are linked to `DeviceOwnership` records, which represent the relationship between a user and a device. This enables enforcing **only one active session per device-user pair** while allowing devices to be shared across multiple users.
+
 This implementation uses a **dual storage strategy**:
 - **Redis**: High-performance session validation and automatic expiration
 - **Database**: Session listing, management, and audit trail
@@ -1063,11 +1065,11 @@ Used for session listing and management purposes.
 - `ipAddress` — Client IP at login time
 - `userAgent` — Parsed user agent (browser, OS, device)
 - `geoLocation` — Geographic location derived from IP (optional) — `latitude`, `longitude`, `country`, `region`, `city`
-- `deviceId` — Reference to the `Device` record associated with this session
-- `expiredAt`, `revokedAt`, `isRevoked` — Lifecycle fields
+- `deviceOwnershipId` — Reference to the `DeviceOwnership` record associated with this session (represents the user-device relationship)
+- `expiredAt`, `revokedAt`, `isRevoked`, `revokedById` — Lifecycle and revocation tracking fields
 
 **When Updated:**
-- Created during login with initial jti (linked to a Device)
+- Created during login with initial jti (linked to a DeviceOwnership)
 - Updated when session jti is rotated during token refresh
 - Updated when session is revoked
 - Can be queried to show user's active sessions across devices
@@ -1113,7 +1115,10 @@ graph TB
 When a session is revoked:
 
 1. **Redis**: Session is deleted immediately
-2. **Database**: Session record is updated (marked as revoked)
+2. **Database**: Session record is updated with revocation metadata:
+   - `isRevoked = true`
+   - `revokedAt = now`
+   - `revokedById = userId` (who initiated the revocation)
 3. **Access Tokens**: All access tokens for this session become invalid immediately (jti validation fails)
 4. **Refresh Tokens**: All refresh tokens for this session become invalid immediately (jti validation fails)
 5. **Active Requests**: Any subsequent API calls with tokens from this session will be rejected with 401 Unauthorized
@@ -1123,7 +1128,9 @@ When a session is revoked:
 1. **Creation (Login)**
    - User logs in successfully
    - System generates unique sessionId and jti
-   - Session stored in both Redis (with TTL) and Database (with jti)
+   - Session linked to a `DeviceOwnership` (the specific user-device pair)
+   - **Device Constraint**: Only one active session per device-user pair is allowed
+   - Session stored in both Redis (with TTL) and Database (with jti and deviceOwnershipId)
    - Tokens issued containing sessionId and jti
 
 2. **Validation (Every Request)**
