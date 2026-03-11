@@ -8,7 +8,7 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
 import { Injectable } from '@nestjs/common';
-import { FeatureFlag, Prisma } from '@prisma/client';
+import { FeatureFlag, Prisma } from '@generated/prisma-client';
 
 @Injectable()
 export class FeatureFlagRepository {

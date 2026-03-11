@@ -11,7 +11,7 @@ import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
-@ApiTags('modules.shared.featureFlag')
+@ApiTags('modules.system.featureFlag')
 @Controller({
     version: '1',
     path: '/feature-flag',

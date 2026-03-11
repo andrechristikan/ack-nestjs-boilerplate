@@ -9,6 +9,7 @@ import {
     RequestTimeout,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -271,7 +272,12 @@ export class UserSharedController {
     @Put('/mobile-number/update/:mobileNumberId')
     async updateMobileNumber(
         @AuthJwtPayload('userId') userId: string,
-        @Param('mobileNumberId') mobileNumberId: string,
+        @Param(
+            'mobileNumberId',
+            RequestRequiredPipe,
+            RequestIsValidObjectIdPipe
+        )
+        mobileNumberId: string,
         @Body()
         body: UserUpdateMobileNumberRequestDto,
         @RequestIPAddress() ipAddress: string,
@@ -299,7 +305,12 @@ export class UserSharedController {
     @Delete('/mobile-number/delete/:mobileNumberId')
     async deleteMobileNumber(
         @AuthJwtPayload('userId') userId: string,
-        @Param('mobileNumberId') mobileNumberId: string,
+        @Param(
+            'mobileNumberId',
+            RequestRequiredPipe,
+            RequestIsValidObjectIdPipe
+        )
+        mobileNumberId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null

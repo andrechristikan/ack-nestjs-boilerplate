@@ -4,7 +4,7 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType } from '@generated/prisma-client';
 
 const roleData: RoleCreateRequestDto[] = [
     {

@@ -50,6 +50,7 @@ export class MigrationTemplateEmailNotificationSeed
             resetTwoFactorByAdminEmail,
             newDeviceLoginEmail,
             publishTermPolicyEmail,
+            resetPasswordEmail,
         ] = await Promise.all([
             this.notificationEmailTemplateService.emailGetChangePassword(),
             this.notificationEmailTemplateService.emailGetWelcomeSocial(),
@@ -63,6 +64,7 @@ export class MigrationTemplateEmailNotificationSeed
             this.notificationEmailTemplateService.emailGetResetTwoFactorByAdmin(),
             this.notificationEmailTemplateService.emailGetNewDeviceLogin(),
             this.notificationEmailTemplateService.emailGetPublishTermPolicy(),
+            this.notificationEmailTemplateService.emailGetResetPassword(),
         ]);
 
         const promises: Promise<boolean>[] = [];
@@ -172,6 +174,15 @@ export class MigrationTemplateEmailNotificationSeed
             );
         }
 
+        if (!resetPasswordEmail) {
+            this.logger.log(
+                'Reset Password Email template missing, importing...'
+            );
+            promises.push(
+                this.notificationEmailTemplateService.emailImportResetPassword()
+            );
+        }
+
         if (promises.length > 0) {
             try {
                 await Promise.all(promises);
@@ -203,6 +214,7 @@ export class MigrationTemplateEmailNotificationSeed
                 this.notificationEmailTemplateService.emailDeleteResetTwoFactorByAdmin(),
                 this.notificationEmailTemplateService.emailDeleteNewDeviceLogin(),
                 this.notificationEmailTemplateService.emailDeletePublishTermPolicy(),
+                this.notificationEmailTemplateService.emailDeleteResetPassword(),
             ]);
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing emails');

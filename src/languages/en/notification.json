@@ -20,6 +20,10 @@
         "resetPassword": {
             "title": "Password Reset",
             "body": "Hi {username}, your password has been reset successfully."
+        },
+        "userAcceptTermPolicy": {
+            "title": "Term Policy Accepted",
+            "body": "Hi {username}, you have accepted the {type} term policy version {version}."
         }
     },
     "error": {

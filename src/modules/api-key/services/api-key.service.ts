@@ -25,7 +25,7 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
-import { ApiKey, EnumApiKeyType, Prisma } from '@prisma/client';
+import { ApiKey, EnumApiKeyType, Prisma } from '@generated/prisma-client';
 import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';

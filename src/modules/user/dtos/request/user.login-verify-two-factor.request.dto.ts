@@ -1,14 +1,10 @@
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { IsTwoFactorBackupCode } from '@modules/auth/validations/auth.two-factor-backup-code.validation';
 import { IsTwoFactorCode } from '@modules/auth/validations/auth.two-factor-code.validation';
-import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
-import { ApiProperty, PickType } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsString, ValidateIf } from 'class-validator';
 
-export class UserLoginVerifyTwoFactorRequestDto extends PickType(
-    UserLoginRequestDto,
-    ['device'] as const
-) {
+export class UserLoginVerifyTwoFactorRequestDto {
     @ApiProperty({
         description:
             'Challenge token returned by the login endpoint when 2FA is required',

@@ -16,12 +16,14 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import {
+    EnumActivityLogAction,
     EnumRoleType,
     GeoLocation,
     Prisma,
     UserAgent,
 } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -30,6 +32,7 @@ import {
     DeviceAdminListDoc,
     DeviceAdminRemoveDoc,
 } from '@modules/device/docs/device.admin.doc';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
 import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
 import { DeviceService } from '@modules/device/services/device.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
@@ -53,7 +56,7 @@ import { ApiTags } from '@nestjs/swagger';
 @ApiTags('modules.admin.user.device')
 @Controller({
     version: '1',
-    path: '/user/:userId/password-history',
+    path: '/user/:userId/device',
 })
 export class DeviceAdminController {
     constructor(private readonly deviceService: DeviceService) {}
@@ -79,12 +82,12 @@ export class DeviceAdminController {
     async list(
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceSelect,
-            Prisma.DeviceWhereInput
+            Prisma.DeviceOwnershipSelect,
+            Prisma.DeviceOwnershipWhereInput
         >,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
-    ): Promise<IResponsePagingReturn<DeviceResponseDto>> {
+    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
         return this.deviceService.getListOffsetByAdmin(userId, pagination);
     }
 
@@ -102,11 +105,12 @@ export class DeviceAdminController {
         }
     )
     @RoleProtected(EnumRoleType.admin)
+    @ActivityLog(EnumActivityLogAction.adminDeviceRemove)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Delete('/remove/:deviceId')
+    @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') removedBy: string,
         @RequestIPAddress() ipAddress: string,
@@ -114,12 +118,16 @@ export class DeviceAdminController {
         @RequestGeoLocation() geoLocation: GeoLocation | null,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
-        @Param('deviceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-        deviceId: string
+        @Param(
+            'deviceOwnershipId',
+            RequestRequiredPipe,
+            RequestIsValidObjectIdPipe
+        )
+        deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
         return this.deviceService.removeByAdmin(
             userId,
-            deviceId,
+            deviceOwnershipId,
             {
                 ipAddress,
                 userAgent,

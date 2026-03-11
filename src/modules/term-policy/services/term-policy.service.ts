@@ -47,7 +47,7 @@ import {
     EnumTermPolicyType,
     Prisma,
     TermPolicy,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @Injectable()
 export class TermPolicyService implements ITermPolicyService {
@@ -187,6 +187,13 @@ export class TermPolicyService implements ITermPolicyService {
                 type,
                 requestLog
             );
+
+            // send notification after accepting term policy
+            await this.notificationUtil.sendUserAcceptTermPolicy(user.id, {
+                termPolicyId: policy.id,
+                type: policy.type,
+                version: policy.version,
+            });
 
             return;
         } catch (err: unknown) {

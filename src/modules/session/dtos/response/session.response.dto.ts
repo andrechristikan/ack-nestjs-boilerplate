@@ -1,10 +1,10 @@
 import { DatabaseDto } from '@common/database/dtos/database.dto';
-import { RequestGeoLocationResponseDto } from '@common/request/dtos/reasponse/request.geo-location.response.dto';
-import { RequestUserAgentResponseDto } from '@common/request/dtos/reasponse/request.user-agent.response.dto';
+import { RequestGeoLocationResponseDto } from '@common/request/dtos/response/request.geo-location.response.dto';
+import { RequestUserAgentResponseDto } from '@common/request/dtos/response/request.user-agent.response.dto';
 import { faker } from '@faker-js/faker';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { Exclude, Type } from 'class-transformer';
 
 export class SessionResponseDto extends DatabaseDto {
     @ApiProperty({
@@ -19,6 +19,16 @@ export class SessionResponseDto extends DatabaseDto {
     })
     @Type(() => UserListResponseDto)
     user: UserListResponseDto;
+
+    @ApiProperty({
+        required: true,
+        example: faker.string.uuid(),
+    })
+    deviceOwnershipId: string;
+
+    @ApiHideProperty()
+    @Exclude()
+    jti: string;
 
     @ApiProperty({
         required: true,
@@ -57,4 +67,17 @@ export class SessionResponseDto extends DatabaseDto {
         example: false,
     })
     isRevoked: boolean;
+
+    @ApiProperty({
+        required: false,
+        example: faker.database.mongodbObjectId(),
+    })
+    revokedById?: string;
+
+    @ApiProperty({
+        required: true,
+        type: UserListResponseDto,
+    })
+    @Type(() => UserListResponseDto)
+    revokedBy: UserListResponseDto;
 }

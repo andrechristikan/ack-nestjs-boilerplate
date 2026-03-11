@@ -17,10 +17,11 @@ import {
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { title } from 'case';
 import { flatten } from 'flat';
 import { Job } from 'bullmq';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
+import { UserUtil } from '@modules/user/utils/user.util';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
 
 @Injectable()
 export class NotificationEmailProcessorService implements INotificationEmailProcessorService {
@@ -42,7 +43,9 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         private readonly awsSESService: AwsSESService,
         private readonly helperService: HelperService,
         private readonly configService: ConfigService,
-        private readonly userRepository: UserRepository
+        private readonly userRepository: UserRepository,
+        private readonly userUtil: UserUtil,
+        private readonly authUtil: AuthUtil
     ) {
         this.noreplyEmail = this.configService.get<string>('email.noreply');
         this.supportEmail = this.configService.get<string>('email.support');
@@ -54,7 +57,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
         this.defaultTemplateData = {
             homeName: this.homeName,
-            supportEmail: title(this.supportEmail),
+            supportEmail: this.supportEmail,
             homeUrl: this.homeUrl,
         };
     }
@@ -69,7 +72,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         try {
             const { email, username, bcc, cc } = job.data.send;
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.welcome,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -81,7 +84,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Welcome email processed' };
+            return { message: 'Welcome email processed', result };
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to process welcome email');
             throw err;
@@ -98,7 +101,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         try {
             const { email, username, bcc, cc } = job.data.send;
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.welcomeSocial,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -110,7 +113,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Welcome social email processed' };
+            return { message: 'Welcome social email processed', result };
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to process welcome social email');
             throw err;
@@ -132,7 +135,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 passwordCreatedAt,
             } = job.data.data;
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.welcomeByAdmin,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -140,20 +143,18 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     ...this.defaultTemplateData,
                     username,
                     password: passwordString,
-                    passwordExpiredAt:
-                        this.helperService.dateFormatToRFC2822(
-                            passwordExpiredAt
-                        ),
-                    passwordCreatedAt:
-                        this.helperService.dateFormatToRFC2822(
-                            passwordCreatedAt
-                        ),
+                    passwordExpiredAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(passwordExpiredAt)
+                    ),
+                    passwordCreatedAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(passwordCreatedAt)
+                    ),
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Create by admin email processed' };
+            return { message: 'Create by admin email processed', result };
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to process welcome by admin email');
             throw err;
@@ -168,18 +169,19 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         >
     ): Promise<IQueueResponse> {
         try {
-            const { email, username, cc, bcc } = job.data.send;
+            const { email, username, cc, bcc, userId } = job.data.send;
             const {
                 password: encryptedPasswordString,
                 passwordExpiredAt,
                 passwordCreatedAt,
             } = job.data.data;
 
-            const passwordString = this.helperService.simpleDecrypt(
+            const passwordString = this.authUtil.decryptPassword(
+                userId,
                 encryptedPasswordString
             );
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.temporaryPasswordByAdmin,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -187,20 +189,18 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     ...this.defaultTemplateData,
                     username,
                     password: passwordString,
-                    passwordExpiredAt:
-                        this.helperService.dateFormatToRFC2822(
-                            passwordExpiredAt
-                        ),
-                    passwordCreatedAt:
-                        this.helperService.dateFormatToRFC2822(
-                            passwordCreatedAt
-                        ),
+                    passwordExpiredAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(passwordExpiredAt)
+                    ),
+                    passwordCreatedAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(passwordCreatedAt)
+                    ),
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Temporary password email processed' };
+            return { message: 'Temporary password email processed', result };
         } catch (err: unknown) {
             this.logger.error(
                 err,
@@ -220,7 +220,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         try {
             const { email, username, cc, bcc } = job.data.send;
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.changePassword,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -232,7 +232,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Change password email processed' };
+            return { message: 'Change password email processed', result };
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to process change password email');
             throw err;
@@ -249,7 +249,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         try {
             const { email, username, cc, bcc } = job.data.send;
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.resetPassword,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -261,7 +261,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Reset password email processed' };
+            return { message: 'Reset password email processed', result };
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to process reset password email');
             throw err;
@@ -276,7 +276,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         >
     ): Promise<IQueueResponse> {
         try {
-            const { email, username, cc, bcc } = job.data.send;
+            const { email, username, cc, bcc, userId } = job.data.send;
             const {
                 expiredAt,
                 reference,
@@ -284,9 +284,13 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 expiredInMinutes,
             } = job.data.data;
 
-            const link = this.helperService.simpleDecrypt(encryptedLink);
+            const link = this.userUtil.decryptedLink(userId, encryptedLink);
+            const expiredAtFormatted = this.helperService.dateFormatToRFC2822(
+                this.helperService.dateCreateFromIso(expiredAt)
+            );
+            const expiredInMinutesFormatted = String(expiredInMinutes);
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.verificationEmail,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -295,15 +299,14 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     username,
                     link,
                     reference,
-                    expiredAt:
-                        this.helperService.dateFormatToRFC2822(expiredAt),
-                    expiredInMinutes,
+                    expiredAt: expiredAtFormatted,
+                    expiredInMinutes: expiredInMinutesFormatted,
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Verification email processed' };
+            return { message: 'Verification email processed', result };
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to process verification email');
             throw err;
@@ -321,7 +324,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
             const { email, username, cc, bcc } = job.data.send;
             const { reference } = job.data.data;
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.verifiedEmail,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -334,7 +337,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Email verified email processed' };
+            return { message: 'Email verified email processed', result };
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to process verified email');
             throw err;
@@ -349,7 +352,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         >
     ): Promise<IQueueResponse> {
         try {
-            const { email, username, cc, bcc } = job.data.send;
+            const { email, username, cc, bcc, userId } = job.data.send;
             const {
                 expiredAt,
                 link: encryptedLink,
@@ -357,9 +360,9 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 expiredInMinutes,
             } = job.data.data;
 
-            const link = this.helperService.simpleDecrypt(encryptedLink);
+            const link = this.userUtil.decryptedLink(userId, encryptedLink);
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.forgotPassword,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -367,8 +370,9 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     ...this.defaultTemplateData,
                     username,
                     link,
-                    expiredAt:
-                        this.helperService.dateFormatToRFC2822(expiredAt),
+                    expiredAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(expiredAt)
+                    ),
                     reference,
                     expiredInMinutes,
                 },
@@ -376,7 +380,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Forgot password email processed' };
+            return { message: 'Forgot password email processed', result };
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to process forgot password email');
             throw err;
@@ -394,7 +398,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
             const { email, username, cc, bcc } = job.data.send;
             const { reference, mobileNumber } = job.data.data;
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.verifiedMobileNumber,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -408,7 +412,10 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Mobile number verified email processed' };
+            return {
+                message: 'Mobile number verified email processed',
+                result,
+            };
         } catch (err: unknown) {
             this.logger.error(
                 err,
@@ -428,7 +435,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         try {
             const { email, username, cc, bcc } = job.data.send;
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.resetTwoFactorByAdmin,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -440,7 +447,10 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'Reset two factor by admin email processed' };
+            return {
+                message: 'Reset two factor by admin email processed',
+                result,
+            };
         } catch (err: unknown) {
             this.logger.error(
                 err,
@@ -466,7 +476,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 requestLog: { userAgent, ipAddress },
             } = job.data.data;
 
-            await this.awsSESService.send({
+            const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.newDeviceLogin,
                 recipients: [email],
                 sender: this.noreplyEmail,
@@ -475,7 +485,9 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     username,
                     loginFrom,
                     loginWith,
-                    loginAt: this.helperService.dateFormatToRFC2822(loginAt),
+                    loginAt: this.helperService.dateFormatToRFC2822(
+                        this.helperService.dateCreateFromIso(loginAt)
+                    ),
                     userAgent: flatten(userAgent),
                     ipAddress,
                 },
@@ -483,7 +495,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 ...(bcc?.length && { bcc }),
             });
 
-            return { message: 'New device login email processed' };
+            return { message: 'New device login email processed', result };
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to process new device login email');
             throw err;
@@ -505,8 +517,9 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 this.batchSize
             );
 
+            const results = [];
             for (const chunk of userChunks) {
-                await this.awsSESService.sendBulk({
+                const result = await this.awsSESService.sendBulk({
                     templateName: EnumNotificationProcess.publishTermPolicy,
                     recipients: chunk.map(u => ({
                         recipient: u.email,
@@ -520,10 +533,12 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     },
                 });
 
+                results.push(result);
+
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
-            return { message: 'Publish term policy email processed' };
+            return { message: 'Publish term policy email processed', results };
         } catch (err: unknown) {
             this.logger.error(
                 err,

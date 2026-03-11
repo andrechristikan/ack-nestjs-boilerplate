@@ -44,7 +44,7 @@ export class SessionService implements ISessionService {
         >
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         const { data, ...others } =
-            await this.sessionRepository.findWithPaginationOffsetByAdmin(
+            await this.sessionRepository.findActiveWithPaginationOffsetByAdmin(
                 userId,
                 pagination
             );
@@ -71,7 +71,7 @@ export class SessionService implements ISessionService {
         >
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         const { data, ...others } =
-            await this.sessionRepository.findWithPaginationCursor(
+            await this.sessionRepository.findActiveWithPaginationCursor(
                 userId,
                 pagination
             );

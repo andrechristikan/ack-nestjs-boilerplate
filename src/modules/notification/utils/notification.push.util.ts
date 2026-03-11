@@ -1,5 +1,6 @@
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import {
+    INotificationAcceptTermPolicyPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPushWorkerCleanupTokenPayload,
     INotificationPushWorkerPayload,

@@ -41,6 +41,9 @@
     "loginVerifyTwoFactor": "Two-factor verification successful.",
     "error": {
         "notFound": "Sorry, we couldn't find the user you requested.",
+        "notSelf": "You cannot perform this action on your own account.",
+        "blocked": "This user account has been blocked.",
+        "blockedInvalid": "This user account has been blocked.",
         "inactive": "This user is inactive.",
         "statusInvalid": "Invalid user status.",
         "emailExist": "This email already exists.",
@@ -53,8 +56,8 @@
         "usernameNotAllowed": "This username is not allowed.",
         "usernameContainBadWord": "Username contains inappropriate words.",
         "verificationTokenInvalid": "Verification token is invalid or expired.",
-        "verificationEmailResendLimitExceeded": "You have exceeded the limit for resending verification emails.",
-        "forgotPasswordRequestLimitExceeded": "You have exceeded the limit for password reset requests.",
+        "verificationEmailResendLimitExceeded": "You have exceeded the limit for resending verification emails. Try again after {minutes} minutes.",
+        "forgotPasswordRequestLimitExceeded": "You have exceeded the limit for password reset requests. Try again after {minutes} minutes.",
         "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}"
     }
 }

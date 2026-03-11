@@ -45,10 +45,13 @@ import {
     HttpStatus,
     Patch,
     Post,
-    Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumUserLoginWith, GeoLocation, UserAgent } from '@prisma/client';
+import {
+    EnumUserLoginWith,
+    GeoLocation,
+    UserAgent,
+} from '@generated/prisma-client';
 
 @ApiTags('modules.public.user')
 @Controller({
@@ -60,9 +63,9 @@ export class UserPublicController {
 
     @UserPublicLoginCredentialDoc()
     @Response('user.loginCredential')
+    @FeatureFlagProtected('loginWithCredential')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @FeatureFlagProtected('loginWithCredential')
     @Post('/login/credential')
     async loginWithCredential(
         @Body() body: UserLoginRequestDto,
@@ -81,14 +84,16 @@ export class UserPublicController {
     @Response('user.loginWithSocialGoogle')
     @AuthSocialGoogleProtected()
     @FeatureFlagProtected('loginWithGoogle')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
     @Post('/login/social/google')
     async loginWithGoogle(
         @AuthJwtPayload<IAuthSocialPayload>('email')
         email: string,
+        @Body() body: UserCreateSocialRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null,
-        @Body() body: UserCreateSocialRequestDto
+        @RequestGeoLocation() geoLocation: GeoLocation | null
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         return this.userService.loginWithSocial(
             email,
@@ -106,6 +111,8 @@ export class UserPublicController {
     @Response('user.loginWithSocialApple')
     @AuthSocialAppleProtected()
     @FeatureFlagProtected('loginWithApple')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
     @Post('/login/social/apple')
     async loginWithApple(
         @AuthJwtPayload<IAuthSocialPayload>('email')
@@ -138,7 +145,7 @@ export class UserPublicController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         return this.userService.signUp(body, {
             ipAddress,
             userAgent,
@@ -204,7 +211,8 @@ export class UserPublicController {
     @Response('user.resetPassword')
     @FeatureFlagProtected('changePassword.forgotAllowed')
     @ApiKeyProtected()
-    @Put('/password/reset')
+    @HttpCode(HttpStatus.OK)
+    @Patch('/password/reset')
     async reset(
         @Body() body: UserForgotPasswordResetRequestDto,
         @RequestIPAddress() ipAddress: string,
@@ -221,8 +229,7 @@ export class UserPublicController {
     @UserPublicLoginVerifyTwoFactorDoc()
     @Response('user.verifyTwoFactor')
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/login/2fa/verify')
+    @Patch('/login/2fa/verify')
     async loginVerifyTwoFactor(
         @Body() body: UserLoginVerifyTwoFactorRequestDto,
         @RequestIPAddress() ipAddress: string,

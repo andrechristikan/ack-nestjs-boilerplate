@@ -1,6 +1,6 @@
 import { ApiProperty, PickType } from '@nestjs/swagger';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { EnumUserGender } from '@prisma/client';
+import { EnumUserGender } from '@generated/prisma-client';
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 

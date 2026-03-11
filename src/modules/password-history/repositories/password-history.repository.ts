@@ -8,7 +8,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
 import { Injectable } from '@nestjs/common';
-import { PasswordHistory, Prisma } from '@prisma/client';
+import { PasswordHistory, Prisma } from '@generated/prisma-client';
 
 @Injectable()
 export class PasswordHistoryRepository {

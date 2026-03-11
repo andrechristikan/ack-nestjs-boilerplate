@@ -1,4 +1,4 @@
-import { Session, User } from '@prisma/client';
+import { Session, User } from '@generated/prisma-client';
 
 export interface ISession extends Session {
     user: User;

@@ -9,7 +9,7 @@ import {
     Injectable,
     InternalServerErrorException,
 } from '@nestjs/common';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType } from '@generated/prisma-client';
 
 @Injectable()
 export class PolicyService implements IPolicyService {

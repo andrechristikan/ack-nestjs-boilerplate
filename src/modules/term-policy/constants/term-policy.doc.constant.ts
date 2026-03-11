@@ -1,6 +1,6 @@
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { faker } from '@faker-js/faker';
-import { EnumTermPolicyStatus, EnumTermPolicyType } from '@prisma/client';
+import { EnumTermPolicyStatus, EnumTermPolicyType } from '@generated/prisma-client';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 export const TermPolicyDocParamsId: ApiParamOptions[] = [
