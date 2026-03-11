@@ -1,6 +1,5 @@
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
-import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
 import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';

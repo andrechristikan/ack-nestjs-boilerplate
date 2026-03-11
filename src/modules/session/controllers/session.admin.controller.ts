@@ -1,5 +1,11 @@
-import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    PaginationOffsetQuery,
+    PaginationQueryFilterEqualBoolean,
+} from '@common/pagination/decorators/pagination.decorator';
+import {
+    IPaginationEqual,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import {
     RequestGeoLocation,
     RequestIPAddress,
@@ -81,9 +87,15 @@ export class SessionAdminController {
             Prisma.SessionWhereInput
         >,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-        userId: string
+        userId: string,
+        @PaginationQueryFilterEqualBoolean('isRevoked')
+        isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        return this.sessionService.getListOffsetByAdmin(userId, pagination);
+        return this.sessionService.getListOffsetByAdmin(
+            userId,
+            pagination,
+            isRevoked
+        );
     }
 
     @SessionAdminRevokeDoc()
@@ -108,7 +120,8 @@ export class SessionAdminController {
     async revoke(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
-        @Param('sessionId', RequestRequiredPipe, RequestIsValidObjectIdPipe) sessionId: string,
+        @Param('sessionId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        sessionId: string,
         @AuthJwtPayload('userId') revokedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,

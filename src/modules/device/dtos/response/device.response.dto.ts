@@ -3,10 +3,9 @@ import { faker } from '@faker-js/faker';
 import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
-    Session,
 } from '@generated/prisma-client';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude, Expose, Transform } from 'class-transformer';
+import { Exclude } from 'class-transformer';
 
 export class DeviceResponseDto extends DatabaseDto {
     @ApiHideProperty()

@@ -1,4 +1,5 @@
 import {
+    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -41,12 +42,14 @@ export class SessionService implements ISessionService {
         pagination: IPaginationQueryOffsetParams<
             Prisma.SessionSelect,
             Prisma.SessionWhereInput
-        >
+        >,
+        isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         const { data, ...others } =
-            await this.sessionRepository.findActiveWithPaginationOffsetByAdmin(
+            await this.sessionRepository.findWithPaginationOffsetByAdmin(
                 userId,
-                pagination
+                pagination,
+                isRevoked
             );
 
         const sessions: SessionResponseDto[] = this.sessionUtil.mapList(data);

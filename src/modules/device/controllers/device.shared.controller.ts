@@ -27,7 +27,6 @@ import {
     DeviceSharedRemoveDoc,
 } from '@modules/device/docs/device.shared.doc';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
-import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
 import { DeviceService } from '@modules/device/services/device.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
