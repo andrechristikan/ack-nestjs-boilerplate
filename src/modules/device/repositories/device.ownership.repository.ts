@@ -3,6 +3,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { FirebaseStaleTokenThresholdInDays } from '@common/firebase/constants/firebase.constant';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
+    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -18,7 +19,6 @@ import {
     Prisma,
 } from '@generated/prisma-client';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
-import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
 import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { Injectable } from '@nestjs/common';
 import { Duration } from 'luxon';
@@ -32,7 +32,7 @@ export class DeviceOwnershipRepository {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    async findActiveWithPaginationOffsetByAdmin(
+    async findWithPaginationOffsetByAdmin(
         userId: string,
         {
             where,
@@ -40,7 +40,8 @@ export class DeviceOwnershipRepository {
         }: IPaginationQueryOffsetParams<
             Prisma.DeviceOwnershipSelect,
             Prisma.DeviceOwnershipWhereInput
-        >
+        >,
+        isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IDeviceOwnership>> {
         const today = this.helperService.dateCreate();
 
@@ -52,8 +53,8 @@ export class DeviceOwnershipRepository {
             ...others,
             where: {
                 ...where,
+                ...isRevoked,
                 userId,
-                isRevoked: false,
             },
             include: {
                 device: true,

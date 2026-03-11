@@ -1,5 +1,6 @@
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import {
+    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -11,7 +12,6 @@ import {
 import { Prisma } from '@generated/prisma-client';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
-import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
 import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 import { IDeviceService } from '@modules/device/interfaces/device.service.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
@@ -38,12 +38,14 @@ export class DeviceService implements IDeviceService {
         pagination: IPaginationQueryOffsetParams<
             Prisma.DeviceOwnershipSelect,
             Prisma.DeviceOwnershipWhereInput
-        >
+        >,
+        isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
         const { data, ...others } =
-            await this.deviceOwnershipRepository.findActiveWithPaginationOffsetByAdmin(
+            await this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
                 userId,
-                pagination
+                pagination,
+                isRevoked
             );
 
         const deviceOwnerships: DeviceOwnershipResponseDto[] =

@@ -42,9 +42,11 @@ export class ApiKeyRepository {
                 ...isActive,
                 ...type,
             },
-            orderBy: {
-                createdAt: EnumPaginationOrderDirectionType.desc,
-            },
+            orderBy: [
+                {
+                    createdAt: EnumPaginationOrderDirectionType.desc,
+                },
+            ],
         });
     }
 

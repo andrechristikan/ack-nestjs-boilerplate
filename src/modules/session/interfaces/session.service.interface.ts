@@ -1,4 +1,5 @@
 import {
+    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -16,7 +17,8 @@ export interface ISessionService {
         pagination: IPaginationQueryOffsetParams<
             Prisma.SessionSelect,
             Prisma.SessionWhereInput
-        >
+        >,
+        isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<SessionResponseDto>>;
     getListCursor(
         userId: string,

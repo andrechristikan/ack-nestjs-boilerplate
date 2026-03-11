@@ -9,7 +9,10 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
-import { SessionDocParamsId } from '@modules/session/constants/session.doc.constant';
+import {
+    SessionDocParamsId,
+    SessionDocQueryList,
+} from '@modules/session/constants/session.doc.constant';
 
 export function SessionAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -18,6 +21,7 @@ export function SessionAdminListDoc(): MethodDecorator {
         }),
         DocRequest({
             params: UserDocParamsId,
+            queries: SessionDocQueryList,
         }),
         DocAuth({
             xApiKey: true,

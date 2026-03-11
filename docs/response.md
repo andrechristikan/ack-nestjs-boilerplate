@@ -329,10 +329,10 @@ async exportUsers(@Query('format') format: 'csv' | 'pdf'): Promise<IResponseFile
     search?: string;
     filters?: Record<string, any>;
     perPage: number;
-    count: number;
+    count?: number;
     hasNext: boolean;
-    orderBy: string;
-    orderDirection: 'asc' | 'desc';
+    hasPrevious: boolean;
+    orderBy: IPaginationOrderBy[];   // e.g. [{ createdAt: 'desc' }]
     availableSearch: string[];
     availableOrderBy: string[];
     
@@ -345,6 +345,7 @@ async exportUsers(@Query('format') format: 'csv' | 'pdf'): Promise<IResponseFile
     
     // Cursor-specific fields (when type = 'cursor')
     nextCursor?: string;
+    previousCursor?: string;
   };
   data: T[];
 }

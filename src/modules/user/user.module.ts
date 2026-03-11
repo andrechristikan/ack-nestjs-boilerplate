@@ -5,7 +5,6 @@ import { PasswordHistoryModule } from '@modules/password-history/password-histor
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { CountryModule } from '@modules/country/country.module';
-import { DeviceModule } from '@modules/device/device.module';
 
 @Module({
     imports: [PasswordHistoryModule, AwsModule, CountryModule],

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiParamOptions } from '@nestjs/swagger';
+import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 
 export const DeviceOwnershipDocParamsId: ApiParamOptions[] = [
     {
@@ -8,5 +8,15 @@ export const DeviceOwnershipDocParamsId: ApiParamOptions[] = [
         required: true,
         type: 'string',
         example: faker.database.mongodbObjectId(),
+    },
+];
+
+export const DeviceOwnershipDocQueryList: ApiQueryOptions[] = [
+    {
+        name: 'isRevoked',
+        allowEmptyValue: true,
+        required: false,
+        type: 'boolean',
+        example: true,
     },
 ];

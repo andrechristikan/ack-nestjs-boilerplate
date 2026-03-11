@@ -2,6 +2,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
+    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -25,7 +26,7 @@ export class SessionRepository {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    async findActiveWithPaginationOffsetByAdmin(
+    async findWithPaginationOffsetByAdmin(
         userId: string,
         {
             where,
@@ -33,7 +34,8 @@ export class SessionRepository {
         }: IPaginationQueryOffsetParams<
             Prisma.SessionSelect,
             Prisma.SessionWhereInput
-        >
+        >,
+        isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<ISession>> {
         return this.paginationService.offset<
             ISession,
@@ -43,8 +45,8 @@ export class SessionRepository {
             ...others,
             where: {
                 ...where,
+                ...isRevoked,
                 userId,
-                isRevoked: false,
             },
             include: {
                 user: true,

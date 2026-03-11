@@ -9,7 +9,10 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
-import { DeviceOwnershipDocParamsId } from '@modules/device/constants/device.doc.constant';
+import {
+    DeviceOwnershipDocParamsId,
+    DeviceOwnershipDocQueryList,
+} from '@modules/device/constants/device.doc.constant';
 
 export function DeviceAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -18,6 +21,7 @@ export function DeviceAdminListDoc(): MethodDecorator {
         }),
         DocRequest({
             params: UserDocParamsId,
+            queries: DeviceOwnershipDocQueryList,
         }),
         DocAuth({
             xApiKey: true,

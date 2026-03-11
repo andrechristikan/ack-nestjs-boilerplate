@@ -97,7 +97,7 @@ export class TermPolicyAdminController {
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
-            availableSearch: TermPolicyDefaultAvailableOrderBy,
+            availableOrderBy: TermPolicyDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<
             Prisma.TermPolicySelect,

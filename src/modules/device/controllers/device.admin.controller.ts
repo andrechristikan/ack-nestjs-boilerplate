@@ -1,5 +1,11 @@
-import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    PaginationOffsetQuery,
+    PaginationQueryFilterEqualBoolean,
+} from '@common/pagination/decorators/pagination.decorator';
+import {
+    IPaginationEqual,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import {
     RequestGeoLocation,
     RequestIPAddress,
@@ -33,7 +39,6 @@ import {
     DeviceAdminRemoveDoc,
 } from '@modules/device/docs/device.admin.doc';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
-import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
 import { DeviceService } from '@modules/device/services/device.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
@@ -86,9 +91,15 @@ export class DeviceAdminController {
             Prisma.DeviceOwnershipWhereInput
         >,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-        userId: string
+        userId: string,
+        @PaginationQueryFilterEqualBoolean('isRevoked')
+        isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
-        return this.deviceService.getListOffsetByAdmin(userId, pagination);
+        return this.deviceService.getListOffsetByAdmin(
+            userId,
+            pagination,
+            isRevoked
+        );
     }
 
     @DeviceAdminRemoveDoc()

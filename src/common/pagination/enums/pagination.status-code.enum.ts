@@ -14,4 +14,5 @@ export enum EnumPaginationStatusCodeError {
     invalidCursorData = 5032,
     failedToEncodeCursor = 5033,
     failedToDecodeCursor = 5034,
+    orderDirectionNotAllowed = 5035,
 }

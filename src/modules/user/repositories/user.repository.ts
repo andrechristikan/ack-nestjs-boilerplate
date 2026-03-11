@@ -19,7 +19,6 @@ import {
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
 import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
-import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { IRole } from '@modules/role/interfaces/role.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
@@ -40,7 +39,6 @@ import {
 import { Injectable } from '@nestjs/common';
 import {
     Country,
-    Device,
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
