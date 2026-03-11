@@ -34,7 +34,7 @@ export class TermPolicyPublicController {
     @Get('/list')
     async list(
         @PaginationCursorQuery({
-            availableSearch: TermPolicyDefaultAvailableOrderBy,
+            availableOrderBy: TermPolicyDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryCursorParams<
             Prisma.TermPolicySelect,

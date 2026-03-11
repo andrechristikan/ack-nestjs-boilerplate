@@ -246,9 +246,14 @@ Documents paginated response with automatic pagination parameters.
         - `perPage` - Data per page (max: 100)
         - `cursor` - The pagination cursor returned from the previous request
 - Optional search query when `availableSearch` provided
-- Optional ordering queries when `availableOrder` provided:
-    - `orderBy` - Field to order by
-    - `orderDirection` - ASC or DESC
+- Optional ordering query when `availableOrder` provided:
+    - `orderBy` - Field and direction in `field:direction` format (e.g., `name:asc`, `createdAt:desc`). Repeat to sort by multiple fields.
+- Shared error responses (422) for both types:
+    - `orderByNotAllowed` (5020), `orderDirectionNotAllowed` (5035), `filterInvalidValue` (5021)
+    - `invalidPerPage`, `perPageExceedsMaximum`, `perPageCannotBeLessThanOne`
+- Type-specific error responses (422):
+    - **Offset**: `invalidOffsetPaginationParams`, `invalidPage`, `pageExceedsMaximum`, `pageCannotBeLessThanOne`
+    - **Cursor**: `invalidCursorPaginationParams`, `cursorTooLong`, `invalidCursorFormat`, `invalidCursorData`, `failedToEncodeCursor`, `failedToDecodeCursor`, `paginationConditionsChanged`
 
 **Usage:**
 

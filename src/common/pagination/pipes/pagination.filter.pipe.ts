@@ -1,8 +1,8 @@
 import {
-    BadRequestException,
     Inject,
     Injectable,
     Type,
+    UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
 import {
@@ -79,7 +79,7 @@ export function PaginationQueryFilterInEnumPipe<T>(
                 defaultEnum.includes(v as T)
             );
             if (!validated) {
-                throw new BadRequestException({
+                throw new UnprocessableEntityException({
                     statusCode:
                         EnumPaginationStatusCodeError.filterInvalidValue,
                     message: `pagination.error.filterInvalidValueEnum`,
@@ -100,6 +100,12 @@ export function PaginationQueryFilterInEnumPipe<T>(
             };
         }
 
+        /**
+         * Adds filter information to request instance for downstream access.
+         * @param {string} field - The field name being filtered
+         * @param {(string | number)[]} value - The filter values
+         * @returns {void}
+         */
         addToRequestInstance(field: string, value: (string | number)[]): void {
             this.request.__pagination = {
                 ...this.request.__pagination,
@@ -169,7 +175,7 @@ export function PaginationQueryFilterNinEnumPipe<T>(
                 defaultEnum.includes(v as T)
             );
             if (!validated) {
-                throw new BadRequestException({
+                throw new UnprocessableEntityException({
                     statusCode:
                         EnumPaginationStatusCodeError.filterInvalidValue,
                     message: `pagination.error.filterInvalidValueEnum`,
@@ -190,6 +196,12 @@ export function PaginationQueryFilterNinEnumPipe<T>(
             };
         }
 
+        /**
+         * Adds filter information to request instance for downstream access.
+         * @param {string} field - The field name being filtered
+         * @param {(string | number)[]} value - The filter values
+         * @returns {void}
+         */
         addToRequestInstance(field: string, value: (string | number)[]): void {
             this.request.__pagination = {
                 ...this.request.__pagination,
@@ -235,10 +247,10 @@ export function PaginationQueryFilterEqualPipe<T>(
             }
 
             let finalValue: T;
-            if ('isBoolean' in options && options.isBoolean) {
+            if (options && 'isBoolean' in options && options.isBoolean) {
                 const booleanString = value.trim();
                 if (booleanString !== 'true' && booleanString !== 'false') {
-                    throw new BadRequestException({
+                    throw new UnprocessableEntityException({
                         statusCode:
                             EnumPaginationStatusCodeError.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
@@ -249,11 +261,11 @@ export function PaginationQueryFilterEqualPipe<T>(
                 }
 
                 finalValue = (booleanString === 'true') as T;
-            } else if ('isNumber' in options && options.isNumber) {
+            } else if (options && 'isNumber' in options && options.isNumber) {
                 finalValue = Number.parseFloat(value.trim()) as T;
 
                 if (Number.isNaN(finalValue as number)) {
-                    throw new BadRequestException({
+                    throw new UnprocessableEntityException({
                         statusCode:
                             EnumPaginationStatusCodeError.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
@@ -280,6 +292,12 @@ export function PaginationQueryFilterEqualPipe<T>(
             };
         }
 
+        /**
+         * Adds filter information to request instance for downstream access.
+         * @param {string} field - The field name being filtered
+         * @param {string | number | boolean} value - The filter value
+         * @returns {void}
+         */
         addToRequestInstance(
             field: string,
             value: string | number | boolean
@@ -328,10 +346,10 @@ export function PaginationQueryFilterNotEqualPipe<T>(
             }
 
             let finalValue: T;
-            if ('isBoolean' in options && options.isBoolean) {
+            if (options && 'isBoolean' in options && options.isBoolean) {
                 const booleanString = value.trim();
                 if (booleanString !== 'true' && booleanString !== 'false') {
-                    throw new BadRequestException({
+                    throw new UnprocessableEntityException({
                         statusCode:
                             EnumPaginationStatusCodeError.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
@@ -342,11 +360,11 @@ export function PaginationQueryFilterNotEqualPipe<T>(
                 }
 
                 finalValue = (booleanString === 'true') as T;
-            } else if ('isNumber' in options && options.isNumber) {
+            } else if (options && 'isNumber' in options && options.isNumber) {
                 finalValue = Number.parseFloat(value.trim()) as T;
 
                 if (Number.isNaN(finalValue as number)) {
-                    throw new BadRequestException({
+                    throw new UnprocessableEntityException({
                         statusCode:
                             EnumPaginationStatusCodeError.filterInvalidValue,
                         message: `pagination.error.filterInvalidValue`,
@@ -373,6 +391,12 @@ export function PaginationQueryFilterNotEqualPipe<T>(
             };
         }
 
+        /**
+         * Adds filter information to request instance for downstream access.
+         * @param {string} field - The field name being filtered
+         * @param {string | number | boolean} value - The filter value
+         * @returns {void}
+         */
         addToRequestInstance(
             field: string,
             value: string | number | boolean
@@ -423,7 +447,7 @@ export function PaginationQueryFilterDatePipe(
             }
 
             if (!this.helperService.dateCheckIso(value)) {
-                throw new BadRequestException({
+                throw new UnprocessableEntityException({
                     statusCode:
                         EnumPaginationStatusCodeError.filterInvalidValue,
                     message: `pagination.error.filterInvalidValue`,
@@ -453,6 +477,12 @@ export function PaginationQueryFilterDatePipe(
             };
         }
 
+        /**
+         * Adds date filter information to request instance for downstream access.
+         * @param {string} field - The field name being filtered
+         * @param {Date} value - The parsed date value
+         * @returns {void}
+         */
         private addToRequestInstance(field: string, value: Date): void {
             this.request.__pagination = {
                 ...this.request.__pagination,

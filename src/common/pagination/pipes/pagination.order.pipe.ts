@@ -1,8 +1,8 @@
 import {
-    BadRequestException,
     Inject,
     Injectable,
     Type,
+    UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
@@ -15,6 +15,10 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import {
+    PaginationAllowedOrderDirections,
+    PaginationDefaultOrderBy,
+} from '@common/pagination/constants/pagination.constant';
 
 /**
  * Factory function to create PaginationOrderPipe that handles ordering functionality for pagination
@@ -29,95 +33,178 @@ export function PaginationOrderPipe(
         constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
         /**
-         * Transforms input value to add ordering functionality with validation
+         * Transforms input value to add ordering functionality with validation.
+         * Falls back to PaginationDefaultOrderBy if no orderBy is provided or no available order fields are configured.
          * @param {Object} value - Input object containing order parameters and pagination params
-         * @param {string} value.orderBy - Field to order by
-         * @param {EnumPaginationOrderDirectionType} value.orderDirection - Direction of ordering (asc/desc)
-         * @returns {Promise<IPaginationQueryOffsetParams | IPaginationQueryCursorParams>} Transformed pagination params with ordering
-         * @throws {UnprocessableEntityException} When orderBy field is not in allowed list
+         * @param {string} [value.orderBy] - Order instruction in `field:direction` format (e.g. `createdAt:desc`). Supports a single entry only.
+         * @returns {Promise<IPaginationQueryOffsetParams | IPaginationQueryCursorParams>} Transformed pagination params with orderBy as array
+         * @throws {UnprocessableEntityException} When the orderBy field is not in the allowed list or the direction is not asc or desc
          */
         async transform(
             value: {
                 orderBy?: string;
-                orderDirection?: EnumPaginationOrderDirectionType;
             } & (IPaginationQueryOffsetParams | IPaginationQueryCursorParams)
         ): Promise<
             IPaginationQueryOffsetParams | IPaginationQueryCursorParams
         > {
             if (
-                !value.orderBy ||
-                !value.orderDirection ||
+                !value?.orderBy ||
                 !defaultAvailableOrder ||
                 defaultAvailableOrder.length === 0
             ) {
                 return {
                     ...value,
-                    orderBy: {
-                        createdAt: EnumPaginationOrderDirectionType.desc,
-                    },
+                    orderBy: PaginationDefaultOrderBy,
                 };
             }
 
-            const finalOrderBy = value.orderBy.trim();
-            const finalOrderDirection =
-                value.orderDirection.trim() as EnumPaginationOrderDirectionType;
+            const orderByExtractFromRequest = this.extractOrderByToArray(
+                value.orderBy
+            );
 
-            if (!defaultAvailableOrder.includes(finalOrderBy)) {
-                throw new BadRequestException({
+            if (orderByExtractFromRequest.length === 0) {
+                return {
+                    ...value,
+                    orderBy: PaginationDefaultOrderBy,
+                };
+            }
+
+            const parsedOrderBy = this.validateOrderBy(
+                orderByExtractFromRequest,
+                defaultAvailableOrder
+            );
+
+            this.addToRequestInstance(parsedOrderBy, defaultAvailableOrder);
+
+            return {
+                ...value,
+                orderBy: parsedOrderBy,
+            };
+        }
+
+        /**
+         * Parses an orderBy string or array into an array of field-direction map objects.
+         * Each entry is split by ':' to separate the field name and direction.
+         * @param {string | string[]} [orderBy] - Single or multiple `field:direction` strings
+         * @returns {Record<string, string>[]} Array of `{ field: direction }` objects
+         */
+        private extractOrderByToArray(
+            orderBy?: string | string[]
+        ): Record<string, string>[] {
+            if (!orderBy) {
+                return [];
+            }
+
+            if (Array.isArray(orderBy)) {
+                return orderBy.map(entry => {
+                    const trimmed = entry.toString().split(':');
+
+                    return {
+                        [trimmed[0]]: trimmed[1]?.toLowerCase(),
+                    };
+                });
+            }
+
+            const trimmed = orderBy.toString().split(':');
+            return trimmed && trimmed.length > 0
+                ? [
+                      {
+                          [trimmed[0]]: trimmed[1]?.toLowerCase(),
+                      },
+                  ]
+                : [];
+        }
+
+        /**
+         * Converts raw field-direction map objects into typed IPaginationOrderBy array.
+         * @param {Record<string, string>[]} orderByExtractFromRequest - Array of raw `{ field: direction }` objects
+         * @returns {IPaginationOrderBy[]} Typed orderBy array for Prisma queries
+         */
+        private parseOrderBy(
+            orderByExtractFromRequest: Record<string, string>[]
+        ): IPaginationOrderBy[] {
+            const parsedOrderBy: IPaginationOrderBy[] = [];
+
+            for (const entry of orderByExtractFromRequest) {
+                const field = Object.keys(entry)[0];
+                const direction = entry[field];
+
+                parsedOrderBy.push({
+                    [field]:
+                        EnumPaginationOrderDirectionType[
+                            direction as EnumPaginationOrderDirectionType
+                        ],
+                });
+            }
+
+            return parsedOrderBy;
+        }
+
+        /**
+         * Validates that all fields and directions in the order request are allowed, then returns the parsed array.
+         * @param {Record<string, string>[]} orderByExtractFromRequest - Parsed order entries to validate
+         * @param {string[]} availableOrderBy - List of permitted order fields
+         * @returns {IPaginationOrderBy[]} Parsed and validated orderBy array
+         * @throws {UnprocessableEntityException} When a field is not in the allowed list
+         * @throws {UnprocessableEntityException} When a direction is not asc or desc
+         */
+        private validateOrderBy(
+            orderByExtractFromRequest: Record<string, string>[],
+            availableOrderBy: string[]
+        ): IPaginationOrderBy[] {
+            const flatOrderBy = orderByExtractFromRequest.reduce(
+                (acc, entry) => ({ ...acc, ...entry }),
+                {}
+            );
+
+            const fields = Object.keys(flatOrderBy);
+            const directions = Object.values(flatOrderBy);
+
+            const invalidField = fields.find(
+                field => !availableOrderBy.includes(field)
+            );
+            const invalidDirection = directions.find(
+                direction =>
+                    direction !== EnumPaginationOrderDirectionType.asc &&
+                    direction !== EnumPaginationOrderDirectionType.desc
+            );
+
+            if (invalidField) {
+                throw new UnprocessableEntityException({
                     statusCode: EnumPaginationStatusCodeError.orderByNotAllowed,
                     message: `pagination.error.orderByNotAllowed`,
                     messageProperties: {
-                        allowedFields: defaultAvailableOrder.join(', '),
+                        allowedFields: availableOrderBy.join(', '),
+                    },
+                });
+            } else if (invalidDirection) {
+                throw new UnprocessableEntityException({
+                    statusCode:
+                        EnumPaginationStatusCodeError.orderDirectionNotAllowed,
+                    message: `pagination.error.orderDirectionNotAllowed`,
+                    messageProperties: {
+                        allowedDirections:
+                            PaginationAllowedOrderDirections.join(', '),
                     },
                 });
             }
 
-            this.addToRequestInstance(
-                finalOrderBy,
-                finalOrderDirection,
-                defaultAvailableOrder
-            );
-
-            return {
-                ...value,
-                orderBy: this.buildOrderObject(
-                    finalOrderBy,
-                    finalOrderDirection
-                ),
-            };
-        }
-
-        /**
-         * Builds order object for database query
-         * @param {string} field - Field name to order by
-         * @param {EnumPaginationOrderDirectionType} orderDirection - Order direction (asc/desc)
-         * @returns {IPaginationOrderBy} Order object for query
-         */
-        private buildOrderObject(
-            field: string,
-            orderDirection: EnumPaginationOrderDirectionType
-        ): IPaginationOrderBy {
-            return {
-                [field]: orderDirection,
-            };
+            return this.parseOrderBy(orderByExtractFromRequest);
         }
 
         /**
          * Adds order information to request instance
-         * @param {string} orderBy - Field to order by
-         * @param {EnumPaginationOrderDirectionType} orderDirection - Order direction
+         * @param {IPaginationOrderBy[]} orderBy - Parsed orderBy array
          * @param {string[]} availableOrderBy - Array of allowed order fields
          * @returns {void}
          */
         private addToRequestInstance(
-            orderBy: string,
-            orderDirection: EnumPaginationOrderDirectionType,
+            orderBy: IPaginationOrderBy[],
             availableOrderBy: string[]
         ): void {
             this.request.__pagination = {
                 ...this.request.__pagination,
                 orderBy,
-                orderDirection,
                 availableOrderBy,
             };
         }
