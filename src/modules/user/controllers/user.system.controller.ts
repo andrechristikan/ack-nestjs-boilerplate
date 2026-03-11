@@ -45,7 +45,7 @@ import {
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumUserStatus, Prisma } from '@prisma/client';
+import { EnumUserStatus, Prisma } from '@generated/prisma-client';
 
 @ApiTags('modules.system.user')
 @Controller({

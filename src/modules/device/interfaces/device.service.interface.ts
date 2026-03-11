@@ -8,38 +8,39 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { DeviceDto } from '@modules/device/dtos/device.dto';
-import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
+import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
 
 export interface IDeviceService {
     getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceSelect,
-            Prisma.DeviceWhereInput
+            Prisma.DeviceOwnershipSelect,
+            Prisma.DeviceOwnershipWhereInput
         >
-    ): Promise<IResponsePagingReturn<DeviceResponseDto>>;
+    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>>;
     getListCursor(
         userId: string,
         sessionId: string,
         pagination: IPaginationQueryCursorParams<
-            Prisma.DeviceSelect,
-            Prisma.DeviceWhereInput
+            Prisma.DeviceOwnershipSelect,
+            Prisma.DeviceOwnershipWhereInput
         >
-    ): Promise<IResponsePagingReturn<DeviceResponseDto>>;
+    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>>;
     refresh(
         userId: string,
-        { fingerprint, name, notificationToken, platform }: DeviceDto,
+        deviceOwnershipId: string,
+        { name, notificationToken, platform }: DeviceRefreshRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
     remove(
         userId: string,
-        deviceId: string,
+        deviceOwnershipId: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>>;
     removeByAdmin(
         userId: string,
-        deviceId: string,
+        deviceOwnershipId: string,
         requestLog: IRequestLog,
         removedBy: string
     ): Promise<IResponseReturn<void>>;

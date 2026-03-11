@@ -14,7 +14,7 @@ import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abili
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
-import { EnumRoleType, Prisma } from '@prisma/client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
 export interface IRoleService {
     getListOffsetByAdmin(

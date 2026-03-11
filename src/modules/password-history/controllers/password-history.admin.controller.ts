@@ -19,7 +19,7 @@ import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/t
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType, Prisma } from '@prisma/client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
 @ApiTags('modules.admin.user.passwordHistory')
 @Controller({

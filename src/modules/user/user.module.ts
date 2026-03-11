@@ -8,7 +8,7 @@ import { CountryModule } from '@modules/country/country.module';
 import { DeviceModule } from '@modules/device/device.module';
 
 @Module({
-    imports: [PasswordHistoryModule, AwsModule, CountryModule, DeviceModule],
+    imports: [PasswordHistoryModule, AwsModule, CountryModule],
     exports: [UserService, UserRepository, UserUtil],
     providers: [UserService, UserRepository, UserUtil],
     controllers: [],

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumUserStatus } from '@prisma/client';
+import { EnumUserStatus } from '@generated/prisma-client';
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 
 export class UserUpdateStatusRequestDto {

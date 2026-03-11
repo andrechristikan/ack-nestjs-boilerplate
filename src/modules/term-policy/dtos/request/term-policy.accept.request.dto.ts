@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumTermPolicyType } from '@prisma/client';
+import { EnumTermPolicyType } from '@generated/prisma-client';
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 
 export class TermPolicyAcceptRequestDto {

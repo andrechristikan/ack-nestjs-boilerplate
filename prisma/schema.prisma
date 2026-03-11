@@ -133,19 +133,21 @@ model User {
   deletedAt DateTime?
   deletedBy String?   @db.ObjectId
 
-  mobileNumbers        UserMobileNumber[]         @relation("UserMobileNumberUser")
-  verifications        Verification[]             @relation("UserVerifications")
-  passwordHistories    PasswordHistory[]          @relation("UserPasswordHistories")
-  activityLogs         ActivityLog[]              @relation("UserActivityLogs")
-  role                 Role?                      @relation("UserRole", fields: [roleId], references: [id])
-  country              Country?                   @relation("UserCountry", fields: [countryId], references: [id])
-  sessions             Session[]                  @relation("UserSessions")
-  acceptances          TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
-  forgotPasswords      ForgotPassword[]           @relation("UserForgotPassword")
-  twoFactor            TwoFactor?                 @relation("UserTwoFactor")
-  notifications        Notification[]             @relation("UserNotifications")
-  notificationSettings NotificationUserSetting[]  @relation("UserNotificationSettings")
-  devices              Device[]                   @relation("UserDevices")
+  mobileNumbers           UserMobileNumber[]         @relation("UserMobileNumberUser")
+  verifications           Verification[]             @relation("UserVerifications")
+  passwordHistories       PasswordHistory[]          @relation("UserPasswordHistories")
+  activityLogs            ActivityLog[]              @relation("UserActivityLogs")
+  role                    Role?                      @relation("UserRole", fields: [roleId], references: [id])
+  country                 Country?                   @relation("UserCountry", fields: [countryId], references: [id])
+  sessions                Session[]                  @relation("UserSessions")
+  acceptances             TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
+  forgotPasswords         ForgotPassword[]           @relation("UserForgotPassword")
+  twoFactor               TwoFactor?                 @relation("UserTwoFactor")
+  notifications           Notification[]             @relation("UserNotifications")
+  notificationSettings    NotificationUserSetting[]  @relation("UserNotificationSettings")
+  deviceOwnerships        DeviceOwnership[]          @relation("DeviceOwnershipUser")
+  revokedSessions         Session[]                  @relation("SessionRevokedByUser")
+  revokedDeviceOwnerships DeviceOwnership[]          @relation("DeviceOwnershipRevokedByUser")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -219,19 +221,21 @@ model ActivityLog {
 }
 
 model Session {
-  id          String       @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String       @db.ObjectId
-  deviceId    String       @db.ObjectId
-  jti         String
-  ipAddress   String
-  userAgent   UserAgent
-  geoLocation GeoLocation?
-  expiredAt   DateTime
-  revokedAt   DateTime?
-  isRevoked   Boolean      @default(false)
+  id                String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String       @db.ObjectId
+  deviceOwnershipId String       @db.ObjectId
+  jti               String
+  ipAddress         String
+  userAgent         UserAgent
+  geoLocation       GeoLocation?
+  expiredAt         DateTime
+  revokedAt         DateTime?
+  isRevoked         Boolean      @default(false)
+  revokedById       String?      @db.ObjectId
 
-  user   User?   @relation("UserSessions", fields: [userId], references: [id])
-  device Device? @relation("DeviceSessions", fields: [deviceId], references: [id])
+  revokedBy       User?            @relation("SessionRevokedByUser", fields: [revokedById], references: [id])
+  user            User?            @relation("UserSessions", fields: [userId], references: [id])
+  deviceOwnership DeviceOwnership? @relation("DeviceOwnershipSessions", fields: [deviceOwnershipId], references: [id])
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -242,8 +246,8 @@ model Session {
   @@unique(fields: [userId, jti])
   @@index(fields: [userId, expiredAt(sort: Desc), isRevoked])
   @@index(fields: [isRevoked, expiredAt(sort: Asc)])
-  @@index(fields: [userId, deviceId, isRevoked])
-  @@index(fields: [deviceId])
+  @@index(fields: [userId, deviceOwnershipId, isRevoked])
+  @@index(fields: [deviceOwnershipId])
   @@index(fields: [createdAt])
   @@index(fields: [updatedAt])
   @@map("Sessions")
@@ -251,7 +255,6 @@ model Session {
 
 model Device {
   id                   String                          @id @default(auto()) @map("_id") @db.ObjectId
-  userId               String                          @db.ObjectId
   fingerprint          String
   name                 String?
   platform             EnumDevicePlatform
@@ -264,13 +267,36 @@ model Device {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  user     User      @relation("UserDevices", fields: [userId], references: [id])
-  sessions Session[] @relation("DeviceSessions")
+  ownerships DeviceOwnership[] @relation("DeviceOwnershipDevice")
 
-  @@unique(fields: [userId, fingerprint])
-  @@index(fields: [notificationToken])
-  @@index(fields: [userId, lastActiveAt(sort: Desc)])
+  @@unique(fields: [fingerprint])
+  @@unique(fields: [notificationToken])
   @@map("Devices")
+}
+
+model DeviceOwnership {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  deviceId     String    @db.ObjectId
+  userId       String    @db.ObjectId
+  revokedAt    DateTime?
+  isRevoked    Boolean   @default(false)
+  revokedById  String?   @db.ObjectId
+  lastActiveAt DateTime  @default(now())
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  revokedBy User?     @relation("DeviceOwnershipRevokedByUser", fields: [revokedById], references: [id])
+  device    Device    @relation("DeviceOwnershipDevice", fields: [deviceId], references: [id])
+  user      User      @relation("DeviceOwnershipUser", fields: [userId], references: [id])
+  sessions  Session[] @relation("DeviceOwnershipSessions")
+
+  @@index(fields: [deviceId, revokedAt])
+  @@index(fields: [userId, revokedAt])
+  @@index(fields: [deviceId, userId, revokedAt])
+  @@map("DeviceOwnerships")
 }
 
 model TwoFactor {
@@ -647,6 +673,7 @@ enum EnumActivityLogAction {
   adminUserUpdatePassword
   adminUserResetTwoFactor
   adminUserImport
+  adminDeviceRemove
 }
 
 enum EnumDevicePlatform {

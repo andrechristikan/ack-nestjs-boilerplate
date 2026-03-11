@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RoleService } from '@modules/role/services/role.service';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType } from '@generated/prisma-client';
 import { RoleRequiredMetaKey } from '@modules/role/constants/role.constant';
 
 /**

@@ -3,7 +3,7 @@ import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagi
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Injectable } from '@nestjs/common';
-import { Country, Prisma } from '@prisma/client';
+import { Country, Prisma } from '@generated/prisma-client';
 
 @Injectable()
 export class CountryRepository {

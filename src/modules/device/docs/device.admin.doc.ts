@@ -9,7 +9,7 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
-import { DeviceDocParamsId } from '@modules/device/constants/device.doc.constant';
+import { DeviceOwnershipDocParamsId } from '@modules/device/constants/device.doc.constant';
 
 export function DeviceAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -36,7 +36,7 @@ export function DeviceAdminRemoveDoc(): MethodDecorator {
             summary: 'admin remove user Device',
         }),
         DocRequest({
-            params: [...UserDocParamsId, ...DeviceDocParamsId],
+            params: [...UserDocParamsId, ...DeviceOwnershipDocParamsId],
         }),
         DocAuth({
             xApiKey: true,

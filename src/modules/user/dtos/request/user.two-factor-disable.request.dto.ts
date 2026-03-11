@@ -3,5 +3,5 @@ import { OmitType } from '@nestjs/swagger';
 
 export class UserTwoFactorDisableRequestDto extends OmitType(
     UserLoginVerifyTwoFactorRequestDto,
-    ['challengeToken', 'device'] as const
+    ['challengeToken'] as const
 ) {}

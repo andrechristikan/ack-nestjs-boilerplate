@@ -3,7 +3,7 @@ import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abili
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { Injectable } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Role } from '@generated/prisma-client';
 import { plainToInstance } from 'class-transformer';
 
 @Injectable()

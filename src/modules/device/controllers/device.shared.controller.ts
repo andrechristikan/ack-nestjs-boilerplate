@@ -26,8 +26,9 @@ import {
     DeviceSharedRefreshDoc,
     DeviceSharedRemoveDoc,
 } from '@modules/device/docs/device.shared.doc';
-import { DeviceDto } from '@modules/device/dtos/device.dto';
-import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
+import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
+import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
 import { DeviceService } from '@modules/device/services/device.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -61,12 +62,12 @@ export class DeviceSharedController {
     async list(
         @PaginationCursorQuery()
         pagination: IPaginationQueryCursorParams<
-            Prisma.DeviceSelect,
-            Prisma.DeviceWhereInput
+            Prisma.DeviceOwnershipSelect,
+            Prisma.DeviceOwnershipWhereInput
         >,
         @AuthJwtPayload('userId') userId: string,
         @AuthJwtPayload('sessionId') sessionId: string
-    ): Promise<IResponsePagingReturn<DeviceResponseDto>> {
+    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
         return this.deviceService.getListCursor(userId, sessionId, pagination);
     }
 
@@ -78,14 +79,15 @@ export class DeviceSharedController {
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
-    async device(
+    async refresh(
         @AuthJwtPayload('userId') userId: string,
+        @AuthJwtPayload('deviceOwnershipId') deviceOwnershipId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null,
-        @Body() body: DeviceDto
+        @Body() body: DeviceRefreshRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.deviceService.refresh(userId, body, {
+        return this.deviceService.refresh(userId, deviceOwnershipId, body, {
             ipAddress,
             userAgent,
             geoLocation,
@@ -99,16 +101,20 @@ export class DeviceSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Delete('/remove/:deviceId')
+    @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null,
-        @Param('deviceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-        deviceId: string
+        @Param(
+            'deviceOwnershipId',
+            RequestRequiredPipe,
+            RequestIsValidObjectIdPipe
+        )
+        deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
-        return this.deviceService.remove(userId, deviceId, {
+        return this.deviceService.remove(userId, deviceOwnershipId, {
             ipAddress,
             userAgent,
             geoLocation,
