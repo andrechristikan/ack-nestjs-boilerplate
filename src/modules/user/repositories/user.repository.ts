@@ -203,6 +203,12 @@ export class UserRepository {
         });
     }
 
+    async findOneByEmail(email: string): Promise<User | null> {
+        return this.databaseService.user.findUnique({
+            where: { email, deletedAt: null },
+        });
+    }
+
     async findOneWithRoleByEmail(email: string): Promise<IUser | null> {
         return this.databaseService.user.findUnique({
             where: { email, deletedAt: null },
@@ -486,6 +492,86 @@ export class UserRepository {
                                     )
                                 )
                                 .flat(),
+                        },
+                    },
+                    twoFactor: {
+                        create: {
+                            enabled: false,
+                            requiredSetup: false,
+                            createdBy,
+                        },
+                    },
+                },
+            }),
+            ...termPolicies.map(termPolicy =>
+                this.databaseService.termPolicyUserAcceptance.create({
+                    data: {
+                        userId,
+                        termPolicyId: termPolicy.id,
+                        createdBy,
+                    },
+                })
+            ),
+        ]);
+
+        return user;
+    }
+
+    async createByInvitation(
+        username: string,
+        email: string,
+        roleId: string,
+        countryId: string,
+        createdBy: string,
+        signUpFrom: EnumUserSignUpFrom,
+        { ipAddress, userAgent }: IRequestLog
+    ): Promise<User> {
+        const termPolicies = await this.databaseService.termPolicy.findMany({
+            where: {
+                type: {
+                    in: [
+                        EnumTermPolicyType.termsOfService,
+                        EnumTermPolicyType.privacy,
+                    ],
+                },
+                status: EnumTermPolicyStatus.published,
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        const userId = this.databaseUtil.createId();
+        const [user] = await this.databaseService.$transaction([
+            this.databaseService.user.create({
+                data: {
+                    id: userId,
+                    email,
+                    countryId,
+                    roleId,
+                    signUpFrom,
+                    signUpWith: EnumUserSignUpWith.credential,
+                    username,
+                    isVerified: false,
+                    status: EnumUserStatus.active,
+                    passwordAttempt: 0,
+                    termPolicy: {
+                        //TODO: the user should accept-explicitly these when "accepting the invitation"
+                        // Those are just dummy-values to make the insert work
+                        [EnumTermPolicyType.cookies]: false,
+                        [EnumTermPolicyType.marketing]: false,
+                        [EnumTermPolicyType.privacy]: true,
+                        [EnumTermPolicyType.termsOfService]: true,
+                    },
+                    createdBy,
+                    deletedAt: null,
+                    activityLogs: {
+                        create: {
+                            action: EnumActivityLogAction.userCreated,
+                            ipAddress,
+                            userAgent:
+                                this.databaseUtil.toPlainObject(userAgent),
+                            createdBy,
                         },
                     },
                     twoFactor: {

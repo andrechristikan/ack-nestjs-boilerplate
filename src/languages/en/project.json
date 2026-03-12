@@ -1,0 +1,36 @@
+{
+    "list": "Projects retrieved successfully.",
+    "create": "Project created successfully.",
+    "get": "Project details fetched successfully.",
+    "update": "Project updated successfully.",
+    "delete": "Project deleted successfully.",
+    "shared": {
+        "list": "Shared projects retrieved successfully.",
+        "get": "Shared project details fetched successfully."
+    },
+    "member": {
+        "create": "Project member created successfully.",
+        "update": "Project member updated successfully.",
+        "list": "Project members retrieved successfully.",
+        "roles": "Project member roles retrieved successfully.",
+        "error": {
+            "exist": "Project member already exists.",
+            "forbidden": "You do not have access to this project member resource.",
+            "userNotFound": "User not found.",
+            "inviteResendLimitExceeded": "Invitation resend limit exceeded. Please wait before retrying.",
+            "inviteAlreadyCompleted": "This user account is already activated."
+        },
+        "invite": {
+            "create": "Invitation member created successfully.",
+            "send": "Invitation sent successfully."
+        }
+    },
+    "role": {
+        "error": {
+            "notFound": "Project role was not found."
+        }
+    },
+    "error": {
+        "notFound": "Project was not found."
+    }
+}

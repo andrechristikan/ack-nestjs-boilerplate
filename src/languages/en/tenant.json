@@ -1,0 +1,45 @@
+{
+    "list": "Tenants retrieved successfully.",
+    "memberships": "Tenant memberships retrieved successfully.",
+    "get": "Tenant details fetched successfully.",
+    "current": "Current tenant fetched successfully.",
+    "create": "Tenant created successfully.",
+    "update": "Tenant updated successfully.",
+    "delete": "Tenant deleted successfully.",
+    "loginCredential": "Logged in successfully to agency application.",
+    "member": {
+        "list": "Tenant members retrieved successfully.",
+        "create": "Tenant member created successfully.",
+        "update": "Tenant member updated successfully.",
+        "delete": "Tenant member deleted successfully.",
+        "error": {
+            "forbidden": "You are not allowed to access this tenant.",
+            "notFound": "Tenant member was not found.",
+            "userNotFound": "User was not found.",
+            "userIdInvalid": "Tenant member userId is invalid.",
+            "memberIdInvalid": "Tenant member id is invalid.",
+            "exist": "User is already assigned to this tenant."
+        },
+        "invite": {
+            "create": "Invitation member created successfully.",
+            "send": "Invitation sent successfully."
+        }
+    },
+    "role": {
+        "error": {
+            "notFound": "Tenant role was not found.",
+            "scopeMismatch": "Role scope is invalid for tenant operations.",
+            "forbidden": "Tenant role does not have permission for this resource.",
+            "predefinedNotFound": "Predefined tenant role is not configured."
+        }
+    },
+    "error": {
+        "xTenantIdRequired": "Tenant header is required.",
+        "xTenantIdInvalid": "Tenant header is invalid.",
+        "notFound": "Tenant was not found.",
+        "inactive": "Tenant is inactive.",
+        "loginNoMembership": "Your account does not have access to any agencies. Please contact your administrator.",
+        "jitAccessAlreadyActive": "JIT access is already active for this tenant.",
+        "jitAccessNotFound": "JIT access was not found for this tenant."
+    }
+}

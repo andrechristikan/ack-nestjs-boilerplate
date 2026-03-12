@@ -10,6 +10,8 @@ import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
 import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
 import { AwsModule } from '@common/aws/aws.module';
+import { MigrationTenantSeed } from '@migration/seeds/migration.tenant.seed';
+import { MigrationProjectSeed } from '@migration/seeds/migration.project.seed';
 import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migration.template-notification.seed';
 import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
 
@@ -35,6 +37,8 @@ import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.temp
         MigrationCountrySeed,
         MigrationFeatureFlagSeed,
         MigrationRoleSeed,
+        MigrationTenantSeed,
+        MigrationProjectSeed,
         MigrationTermPolicySeed,
         MigrationUserSeed,
         MigrationTemplateEmailNotificationSeed,

@@ -10,6 +10,7 @@ import EmailConfig from '@configs/email.config';
 import RedisConfig from '@configs/redis.config';
 import ForgotPasswordConfig from '@configs/forgot-password.config';
 import VerificationConfig from '@configs/verification.config';
+import InviteConfig from '@configs/invite.config';
 import HomeConfig from '@configs/home.config';
 import LoggerConfig from '@configs/logger.config';
 import SessionConfig from '@configs/session.config';
@@ -32,6 +33,7 @@ export default [
     LoggerConfig,
     ForgotPasswordConfig,
     VerificationConfig,
+    InviteConfig,
     HomeConfig,
     SessionConfig,
     TermPolicyConfig,

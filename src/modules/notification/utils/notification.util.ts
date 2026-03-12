@@ -13,6 +13,7 @@ import { EnumNotificationStatusCodeError } from '@modules/notification/enums/not
 import {
     INotificationAcceptTermPolicyPayload,
     INotificationForgotPasswordPayload,
+    INotificationInvitePayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
@@ -463,6 +464,52 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.low,
                 deduplication: {
                     id: `${EnumNotificationProcess.userAcceptTermPolicy}-${userId}-${payload.termPolicyId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /**
+     * Queues invite notification for a user.
+     *
+     * @param userId - User receiving the invitation
+     * @param payload - Invite payload (link, expiry, reference, inviteType, roleScope, contextName)
+     * @param proceedBy - User ID who initiated the invite
+     * @returns Promise resolving when job is enqueued
+     */
+    async sendInvite(
+        userId: string,
+        {
+            link,
+            expiredAt,
+            expiredInMinutes,
+            reference,
+            inviteType,
+            roleScope,
+            contextName,
+        }: INotificationInvitePayload,
+        proceedBy: string
+    ): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.invite,
+            {
+                userId,
+                data: {
+                    link,
+                    expiredAt,
+                    expiredInMinutes,
+                    reference,
+                    inviteType,
+                    roleScope,
+                    contextName,
+                },
+                proceedBy,
+            } as INotificationWorkerPayload<INotificationInvitePayload>,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.invite}-${userId}`,
                     ttl: 1000,
                 },
             }

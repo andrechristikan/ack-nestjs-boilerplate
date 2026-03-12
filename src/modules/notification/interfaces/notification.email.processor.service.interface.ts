@@ -2,6 +2,7 @@ import {
     INotificationEmailWorkerBulkPayload,
     INotificationEmailWorkerPayload,
     INotificationForgotPasswordPayload,
+    INotificationInvitePayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
@@ -102,6 +103,13 @@ export interface INotificationEmailProcessorService {
     processPublishTermPolicy(
         job: Job<
             INotificationEmailWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse>;
+    processInvite(
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationInvitePayload>,
             IQueueResponse,
             EnumNotificationProcess
         >

@@ -73,7 +73,8 @@ export function PaginationCursorPipe(
                 }
 
                 throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidCursorPaginationParams,
+                    statusCode:
+                        EnumPaginationStatusCodeError.invalidCursorPaginationParams,
                     message: 'pagination.error.invalidCursorPaginationParams',
                 });
             }
@@ -115,7 +116,8 @@ export function PaginationCursorPipe(
 
             if (finalPerPage > PaginationDefaultMaxPerPage) {
                 throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.perPageExceedsMaximum,
+                    statusCode:
+                        EnumPaginationStatusCodeError.perPageExceedsMaximum,
                     message: 'pagination.error.perPageExceedsMaximum',
                     messageProperties: {
                         maxPerPage: PaginationDefaultMaxPerPage,
@@ -126,7 +128,8 @@ export function PaginationCursorPipe(
 
             if (finalPerPage < 1) {
                 throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.perPageCannotBeLessThanOne,
+                    statusCode:
+                        EnumPaginationStatusCodeError.perPageCannotBeLessThanOne,
                     message: 'pagination.error.perPageCannotBeLessThanOne',
                     messageProperties: {
                         minPerPage: 1,
@@ -181,7 +184,8 @@ export function PaginationCursorPipe(
             const urlSafeBase64Regex = /^[A-Za-z0-9_-]+$/;
             if (!urlSafeBase64Regex.test(trimmed)) {
                 throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidCursorFormat,
+                    statusCode:
+                        EnumPaginationStatusCodeError.invalidCursorFormat,
                     message: 'pagination.error.invalidCursorFormat',
                     messageProperties: {
                         format: 'URL-safe base64 (A-Za-z0-9_-)',

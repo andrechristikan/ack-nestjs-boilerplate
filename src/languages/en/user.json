@@ -58,6 +58,7 @@
         "verificationTokenInvalid": "Verification token is invalid or expired.",
         "verificationEmailResendLimitExceeded": "You have exceeded the limit for resending verification emails. Try again after {minutes} minutes.",
         "forgotPasswordRequestLimitExceeded": "You have exceeded the limit for password reset requests. Try again after {minutes} minutes.",
-        "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}"
+        "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}",
+        "invitationTokenInvalid": "Invitation token is invalid or expired."
     }
 }

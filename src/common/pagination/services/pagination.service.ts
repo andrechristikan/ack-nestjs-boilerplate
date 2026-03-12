@@ -1,4 +1,7 @@
-import { PaginationDefaultCursorField, PaginationDefaultOrderBy } from '@common/pagination/constants/pagination.constant';
+import {
+    PaginationDefaultCursorField,
+    PaginationDefaultOrderBy,
+} from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import {

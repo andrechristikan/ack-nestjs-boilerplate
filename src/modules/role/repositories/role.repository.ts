@@ -11,7 +11,12 @@ import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.req
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { IRole } from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma, Role } from '@generated/prisma-client';
+import {
+    EnumRoleScope,
+    EnumRoleType,
+    Prisma,
+    Role,
+} from '@generated/prisma-client';
 
 @Injectable()
 export class RoleRepository {
@@ -73,12 +78,40 @@ export class RoleRepository {
         });
     }
 
+    async findAllByScopeAndType(
+        scope: EnumRoleScope,
+        type: EnumRoleType
+    ): Promise<Role[]> {
+        return this.databaseService.role.findMany({
+            where: {
+                scope,
+                type,
+            },
+            orderBy: {
+                name: 'asc',
+            },
+        });
+    }
+
     async existByName(name: string): Promise<IRole | null> {
         return this.databaseService.role.findFirst({
             where: {
                 name: name,
             },
-            select: { id: true, type: true, name: true },
+            select: { id: true, type: true, scope: true, name: true },
+        });
+    }
+
+    async existByNameAndScope(
+        name: string,
+        scope: EnumRoleScope
+    ): Promise<IRole | null> {
+        return this.databaseService.role.findFirst({
+            where: {
+                name,
+                scope,
+            },
+            select: { id: true, type: true, scope: true, name: true },
         });
     }
 
@@ -87,7 +120,7 @@ export class RoleRepository {
             where: {
                 id,
             },
-            select: { id: true, type: true, name: true },
+            select: { id: true, type: true, scope: true, name: true },
         });
     }
 

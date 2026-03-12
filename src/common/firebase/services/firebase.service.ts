@@ -25,9 +25,9 @@ import { Messaging } from 'firebase-admin/lib/messaging/messaging';
 export class FirebaseService implements OnModuleInit {
     private readonly logger = new Logger(FirebaseService.name);
 
-    private readonly projectId: string;
-    private readonly clientEmail: string;
-    private readonly privateKey: string;
+    private readonly projectId?: string;
+    private readonly clientEmail?: string;
+    private readonly privateKeyRaw?: string;
 
     private app: FirebaseApp | null = null;
     private messaging: Messaging | null = null;
@@ -40,16 +40,9 @@ export class FirebaseService implements OnModuleInit {
         this.clientEmail = this.configService.get<string>(
             'firebase.clientEmail'
         );
-
-        const privateKeyBuffer = Buffer.from(
-            this.configService.get<string>('firebase.privateKey'),
-            'base64'
+        this.privateKeyRaw = this.configService.get<string>(
+            'firebase.privateKey'
         );
-        this.privateKey = createPrivateKey({
-            key: privateKeyBuffer,
-            format: 'der',
-            type: 'pkcs8',
-        }).export({ type: 'pkcs8', format: 'pem' }) as string;
     }
 
     /**
@@ -60,7 +53,7 @@ export class FirebaseService implements OnModuleInit {
      * Errors during SDK initialization are caught and logged without throwing.
      */
     async onModuleInit(): Promise<void> {
-        if (!this.projectId || !this.clientEmail || !this.privateKey) {
+        if (!this.projectId || !this.clientEmail || !this.privateKeyRaw) {
             this.logger.warn(
                 'Firebase credentials not configured. Push notifications will be disabled.'
             );
@@ -69,11 +62,18 @@ export class FirebaseService implements OnModuleInit {
         }
 
         try {
+            const privateKeyBuffer = Buffer.from(this.privateKeyRaw, 'base64');
+            const privateKey = createPrivateKey({
+                key: privateKeyBuffer,
+                format: 'der',
+                type: 'pkcs8',
+            }).export({ type: 'pkcs8', format: 'pem' }) as string;
+
             this.app = firebaseAdmin.initializeApp({
                 credential: firebaseAdmin.credential.cert({
                     projectId: this.projectId,
                     clientEmail: this.clientEmail,
-                    privateKey: this.privateKey,
+                    privateKey,
                 }),
             });
 

@@ -10,6 +10,7 @@ import {
     INotificationAcceptTermPolicyPayload,
     INotificationEmailSendPayload,
     INotificationForgotPasswordPayload,
+    INotificationInvitePayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationSendPushPayload,
@@ -387,6 +388,36 @@ export class NotificationProcessorService implements INotificationProcessorServi
         ]);
 
         return { message: 'Change password notification processed', results };
+    }
+
+    async processInvite({
+        data: { userId, data, proceedBy },
+    }: Job<
+        INotificationWorkerPayload<INotificationInvitePayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const user = await this.userRepository.findOneActiveById(userId);
+
+        const notificationId = this.databaseUtil.createId();
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        await Promise.all([
+            this.notificationRepository.createInvite(
+                notificationId,
+                user.id,
+                user.username,
+                proceedBy
+            ),
+            this.notificationEmailUtil.sendInvite(emailPayload, data),
+        ]);
+
+        return { message: 'Invite notification processed' };
     }
 
     async processForgotPassword({

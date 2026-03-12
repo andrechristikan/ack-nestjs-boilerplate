@@ -13,7 +13,11 @@ import {
     IActivityLogMetadata,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Injectable } from '@nestjs/common';
-import { ActivityLog, EnumActivityLogAction, Prisma } from '@generated/prisma-client';
+import {
+    ActivityLog,
+    EnumActivityLogAction,
+    Prisma,
+} from '@generated/prisma-client';
 
 @Injectable()
 export class ActivityLogRepository {

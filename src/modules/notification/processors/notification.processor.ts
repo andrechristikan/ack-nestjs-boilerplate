@@ -2,6 +2,7 @@ import { EnumNotificationProcess } from '@modules/notification/enums/notificatio
 import {
     INotificationAcceptTermPolicyPayload,
     INotificationForgotPasswordPayload,
+    INotificationInvitePayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
@@ -147,6 +148,14 @@ export class NotificationProcessor extends QueueProcessorBase {
                     return this.notificationProcessorService.processChangePassword(
                         job as Job<
                             INotificationWorkerPayload,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
+                case EnumNotificationProcess.invite:
+                    return this.notificationProcessorService.processInvite(
+                        job as Job<
+                            INotificationWorkerPayload<INotificationInvitePayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >

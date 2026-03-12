@@ -2,6 +2,7 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
 import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import {
@@ -14,6 +15,20 @@ import { EnumRoleType } from '@generated/prisma-client';
 @Injectable()
 export class PolicyService implements IPolicyService {
     constructor(private readonly policyAbilityFactory: PolicyAbilityFactory) {}
+
+    createAbility(abilities: RoleAbilityRequestDto[]): IPolicyAbilityRule {
+        return this.policyAbilityFactory.createForUser(abilities);
+    }
+
+    hasAbilities(
+        userAbilities: IPolicyAbilityRule,
+        requiredAbilities: RoleAbilityRequestDto[]
+    ): boolean {
+        return this.policyAbilityFactory.handlerAbilities(
+            userAbilities,
+            requiredAbilities
+        );
+    }
 
     async validatePolicyGuard(
         request: IRequestApp,
@@ -39,9 +54,12 @@ export class PolicyService implements IPolicyService {
             });
         }
 
-        const userAbilities =
-            this.policyAbilityFactory.createForUser(__abilities);
-        const policyHandler = this.policyAbilityFactory.handlerAbilities(
+        const abilities =
+            __abilities ??
+            ((__user.role.abilities ??
+                []) as unknown as RoleAbilityRequestDto[]);
+        const userAbilities = this.createAbility(abilities);
+        const policyHandler = this.hasAbilities(
             userAbilities,
             requiredAbilities
         );

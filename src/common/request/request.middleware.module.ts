@@ -15,6 +15,8 @@ import { RequestResponseTimeMiddleware } from '@common/request/middlewares/reque
 import { RequestCustomLanguageMiddleware } from '@common/request/middlewares/request.custom-language.middleware';
 import { RequestCompressionMiddleware } from '@common/request/middlewares/request.compression.middleware';
 import { SentryModule } from '@sentry/nestjs/setup';
+import { RequestTenantMiddleware } from '@common/request/middlewares/request.tenant.middleware';
+import { TENANCY_ENABLED } from '@modules/tenant/utils/tenant.toggle';
 
 /**
  * Central middleware configuration module for HTTP request/response processing.
@@ -52,17 +54,21 @@ export class RequestMiddlewareModule implements NestModule {
      * @param consumer - NestJS middleware consumer for applying middleware to routes
      */
     configure(consumer: MiddlewareConsumer): void {
-        consumer
-            .apply(
-                RequestRequestIdMiddleware,
-                RequestHelmetMiddleware,
-                RequestBodyParserMiddleware,
-                RequestCorsMiddleware,
-                RequestUrlVersionMiddleware,
-                RequestResponseTimeMiddleware,
-                RequestCustomLanguageMiddleware,
-                RequestCompressionMiddleware
-            )
-            .forRoutes('{*wildcard}');
+        const middlewares = [
+            RequestRequestIdMiddleware,
+            RequestHelmetMiddleware,
+            RequestBodyParserMiddleware,
+            RequestCorsMiddleware,
+            RequestUrlVersionMiddleware,
+            RequestResponseTimeMiddleware,
+            RequestCustomLanguageMiddleware,
+            RequestCompressionMiddleware,
+        ];
+
+        if (TENANCY_ENABLED) {
+            middlewares.splice(1, 0, RequestTenantMiddleware);
+        }
+
+        consumer.apply(...middlewares).forRoutes('{*wildcard}');
     }
 }

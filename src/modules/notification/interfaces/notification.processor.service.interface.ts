@@ -2,6 +2,7 @@ import { EnumNotificationProcess } from '@modules/notification/enums/notificatio
 import {
     INotificationAcceptTermPolicyPayload,
     INotificationForgotPasswordPayload,
+    INotificationInvitePayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
@@ -76,6 +77,13 @@ export interface INotificationProcessorService {
         data: { userId, data },
     }: Job<
         INotificationWorkerPayload<INotificationForgotPasswordPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse>;
+    processInvite({
+        data: { userId, data, proceedBy },
+    }: Job<
+        INotificationWorkerPayload<INotificationInvitePayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;

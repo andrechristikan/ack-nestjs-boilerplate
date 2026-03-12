@@ -69,7 +69,8 @@ export class SessionSharedController {
     @ApiKeyProtected()
     @Delete('/revoke/:sessionId')
     async revoke(
-        @Param('sessionId', RequestRequiredPipe, RequestIsValidObjectIdPipe) sessionId: string,
+        @Param('sessionId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        sessionId: string,
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,

@@ -4,6 +4,7 @@ import {
     INotificationEmailWorkerBulkPayload,
     INotificationEmailWorkerPayload,
     INotificationForgotPasswordPayload,
+    INotificationInvitePayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
@@ -536,6 +537,55 @@ export class NotificationEmailUtil {
                 priority: EnumQueuePriority.high,
             }
         );
+    }
+
+    /**
+     * Enqueues an invite email.
+     *
+     * @param sendPayload - Recipient info (userId, email, username, notificationId)
+     * @param inviteData - Invite payload (link, expiry, reference, inviteType, roleScope, contextName)
+     * @returns Promise resolving when job is enqueued
+     */
+    async sendInvite(
+        {
+            email,
+            username,
+            userId,
+            notificationId,
+        }: INotificationEmailSendPayload,
+        {
+            link,
+            expiredAt,
+            expiredInMinutes,
+            reference,
+            inviteType,
+            roleScope,
+            contextName,
+        }: INotificationInvitePayload
+    ): Promise<void> {
+        const payload: INotificationEmailWorkerPayload<INotificationInvitePayload> =
+            {
+                send: {
+                    userId,
+                    email,
+                    username,
+                    notificationId,
+                },
+                data: {
+                    link,
+                    expiredAt,
+                    expiredInMinutes,
+                    reference,
+                    inviteType,
+                    roleScope,
+                    contextName,
+                },
+            };
+
+        await this.emailQueue.add(EnumNotificationProcess.invite, payload, {
+            jobId: `${EnumNotificationProcess.invite}-${userId}`,
+            priority: EnumQueuePriority.medium,
+        });
     }
 
     /**

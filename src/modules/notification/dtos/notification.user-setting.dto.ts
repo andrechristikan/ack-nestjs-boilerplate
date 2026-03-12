@@ -1,7 +1,10 @@
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumNotificationChannel, EnumNotificationType } from '@generated/prisma-client';
+import {
+    EnumNotificationChannel,
+    EnumNotificationType,
+} from '@generated/prisma-client';
 
 export class NotificationUserSettingDto extends DatabaseDto {
     @ApiProperty({

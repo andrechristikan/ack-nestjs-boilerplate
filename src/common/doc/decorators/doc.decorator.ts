@@ -50,6 +50,8 @@ import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.en
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { faker } from '@faker-js/faker';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
+import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
+import { TenantHeaderId } from '@modules/tenant/constants/tenant.constant';
 
 /**
  * Helper function to create a schema object with consistent structure.
@@ -379,6 +381,150 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
     }
 
     return applyDecorators(DocOneOf(HttpStatus.FORBIDDEN, ...oneOfForbidden));
+}
+
+const DocTenantHeader = ApiHeaders([
+    {
+        name: TenantHeaderId,
+        description: 'Current tenant identifier',
+        required: true,
+        schema: {
+            type: 'string',
+            example: faker.database.mongodbObjectId(),
+        },
+    },
+]);
+
+const DocTenantBaseErrors: MethodDecorator[] = [
+    DocDefault({
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumTenantStatusCodeError.xTenantIdRequired,
+        messagePath: 'tenant.error.xTenantIdRequired',
+    }),
+    DocDefault({
+        httpStatus: HttpStatus.NOT_FOUND,
+        statusCode: EnumTenantStatusCodeError.notFound,
+        messagePath: 'tenant.error.notFound',
+    }),
+];
+
+const DocTenantForbiddenByDecorator = {
+    tenant: DocOneOf(HttpStatus.FORBIDDEN, {
+        statusCode: EnumTenantStatusCodeError.inactive,
+        messagePath: 'tenant.error.inactive',
+    }),
+    member: DocOneOf(
+        HttpStatus.FORBIDDEN,
+        {
+            statusCode: EnumTenantStatusCodeError.inactive,
+            messagePath: 'tenant.error.inactive',
+        },
+        {
+            statusCode: EnumTenantStatusCodeError.memberForbidden,
+            messagePath: 'tenant.member.error.forbidden',
+        },
+        {
+            statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
+            messagePath: 'tenant.role.error.scopeMismatch',
+        }
+    ),
+    permissionOrRole: DocOneOf(
+        HttpStatus.FORBIDDEN,
+        {
+            statusCode: EnumTenantStatusCodeError.inactive,
+            messagePath: 'tenant.error.inactive',
+        },
+        {
+            statusCode: EnumTenantStatusCodeError.memberForbidden,
+            messagePath: 'tenant.member.error.forbidden',
+        },
+        {
+            statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
+            messagePath: 'tenant.role.error.scopeMismatch',
+        },
+        {
+            statusCode: EnumTenantStatusCodeError.memberForbidden,
+            messagePath: 'tenant.role.error.forbidden',
+        }
+    ),
+} as const;
+
+const DocTenantPredefinedRoleNotFound = DocDefault({
+    httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+    statusCode: EnumTenantStatusCodeError.predefinedRoleNotFound,
+    messagePath: 'tenant.role.error.predefinedNotFound',
+});
+
+const DocProjectMemberForbidden = DocOneOf(HttpStatus.FORBIDDEN, {
+    statusCode: HttpStatus.FORBIDDEN,
+    messagePath: 'project.member.error.forbidden',
+});
+
+/**
+ * Documents `TenantProtected` requirements and possible failures.
+ */
+export function DocTenantProtected(): MethodDecorator {
+    return applyDecorators(
+        DocTenantHeader,
+        ...DocTenantBaseErrors,
+        DocTenantForbiddenByDecorator.tenant
+    );
+}
+
+/**
+ * Documents `TenantMemberProtected` requirements and possible failures.
+ */
+export function DocTenantMemberProtected(): MethodDecorator {
+    return applyDecorators(
+        DocTenantHeader,
+        ...DocTenantBaseErrors,
+        DocTenantForbiddenByDecorator.member
+    );
+}
+
+/**
+ * Documents `TenantRoleProtected` requirements and possible failures.
+ */
+export function DocTenantRoleProtected(): MethodDecorator {
+    return applyDecorators(
+        DocTenantHeader,
+        ...DocTenantBaseErrors,
+        DocTenantForbiddenByDecorator.permissionOrRole,
+        DocTenantPredefinedRoleNotFound
+    );
+}
+
+/**
+ * Documents `TenantPermissionProtected` requirements and possible failures.
+ */
+export function DocTenantPermissionProtected(): MethodDecorator {
+    return applyDecorators(
+        DocTenantHeader,
+        ...DocTenantBaseErrors,
+        DocTenantForbiddenByDecorator.permissionOrRole,
+        DocTenantPredefinedRoleNotFound
+    );
+}
+
+/**
+ * Documents project membership requirements (project member validation).
+ */
+export function DocProjectMemberProtected(): MethodDecorator {
+    return applyDecorators(DocProjectMemberForbidden);
+}
+
+/**
+ * Documents `ProjectPermissionProtected` requirements and possible failures.
+ */
+export function DocProjectPermissionProtected(): MethodDecorator {
+    return applyDecorators(
+        DocProjectMemberForbidden,
+        DocDefault({
+            httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            messagePath: 'policy.error.predefinedNotFound',
+        })
+    );
 }
 
 /**

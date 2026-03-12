@@ -47,6 +47,15 @@ export interface INotificationPublishTermPolicyPayload {
     version: number;
 }
 
+export interface INotificationInvitePayload {
+    link: string;
+    expiredAt: Date;
+    expiredInMinutes: number;
+    reference: string;
+    inviteType: string;
+    roleScope: string;
+    contextName: string;
+}
 export interface INotificationAcceptTermPolicyPayload extends INotificationPublishTermPolicyPayload {
     termPolicyId: string;
 }

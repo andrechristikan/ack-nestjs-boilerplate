@@ -6,6 +6,7 @@ import {
     INotificationEmailWorkerBulkPayload,
     INotificationEmailWorkerPayload,
     INotificationForgotPasswordPayload,
+    INotificationInvitePayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
@@ -340,6 +341,54 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
             return { message: 'Email verified email processed', result };
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to process verified email');
+            throw err;
+        }
+    }
+
+    async processInvite(
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationInvitePayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        try {
+            const { userId, email, username, cc, bcc } = job.data.send;
+            const {
+                link: encryptedLink,
+                expiredAt,
+                expiredInMinutes,
+                reference,
+                inviteType,
+                roleScope,
+                contextName,
+            } = job.data.data;
+
+            const link = this.userUtil.decryptedLink(userId, encryptedLink);
+
+            await this.awsSESService.send({
+                templateName: EnumNotificationProcess.invite,
+                recipients: [email],
+                sender: this.noreplyEmail,
+                templateData: {
+                    ...this.defaultTemplateData,
+                    username,
+                    link,
+                    expiredAt:
+                        this.helperService.dateFormatToRFC2822(expiredAt),
+                    expiredInMinutes,
+                    reference,
+                    inviteType,
+                    roleScope,
+                    contextName,
+                },
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
+            });
+
+            return { message: 'Invite email processed' };
+        } catch (err: unknown) {
+            this.logger.error(err, 'Failed to process invite email');
             throw err;
         }
     }

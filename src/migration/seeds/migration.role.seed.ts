@@ -43,7 +43,10 @@ export class MigrationRoleSeed
                 this.roles.map(role =>
                     this.databaseService.role.upsert({
                         where: {
-                            name: role.name.toLowerCase(),
+                            name_scope: {
+                                name: role.name.toLowerCase(),
+                                scope: role.scope,
+                            },
                         },
                         create: {
                             ...role,

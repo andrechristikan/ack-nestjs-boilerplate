@@ -80,6 +80,7 @@ import {
     BadRequestException,
     ConflictException,
     ForbiddenException,
+    HttpException,
     Injectable,
     InternalServerErrorException,
     Logger,
@@ -88,11 +89,14 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import {
+    EnumRoleScope,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumUserSignUpFrom,
     EnumUserStatus,
     EnumVerificationType,
     Prisma,
+    User,
 } from '@generated/prisma-client';
 import { Duration } from 'luxon';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
@@ -1046,8 +1050,9 @@ export class UserService implements IUserService {
         let user = await this.userRepository.findOneWithRoleByEmail(email);
 
         if (!user && featureFlag.signUpAllowed) {
-            const role = await this.roleRepository.existByName(
-                this.userRoleName
+            const role = await this.roleRepository.existByNameAndScope(
+                this.userRoleName,
+                EnumRoleScope.platform
             );
             if (!role) {
                 throw new NotFoundException({
@@ -1168,7 +1173,10 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         const [role, emailExist, checkCountry] = await Promise.all([
-            this.roleRepository.existByName(this.userRoleName),
+            this.roleRepository.existByNameAndScope(
+                this.userRoleName,
+                EnumRoleScope.platform
+            ),
             this.userRepository.existByEmail(email),
             this.countryRepository.existById(countryId),
         ]);
@@ -1342,6 +1350,54 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async createForInvitation(
+        email: string,
+        signUpFrom: EnumUserSignUpFrom,
+        requestLog: IRequestLog,
+        createdBy: string
+    ): Promise<User> {
+        const [role, country] = await Promise.all([
+            this.roleRepository.existByNameAndScope(
+                this.userRoleName,
+                EnumRoleScope.platform
+            ),
+            this.countryRepository.existByAlpha2Code(this.userCountryName),
+        ]);
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: EnumRoleStatusCodeError.notFound,
+                message: 'role.error.notFound',
+            });
+        } else if (!country) {
+            throw new NotFoundException({
+                statusCode: EnumCountryStatusCodeError.notFound,
+                message: 'country.error.notFound',
+            });
+        }
+        try {
+            const randomUsername = this.userUtil.createRandomUsername();
+            return this.userRepository.createByInvitation(
+                randomUsername,
+                email,
+                role.id,
+                country.id,
+                createdBy,
+                signUpFrom,
+                requestLog
+            );
+        } catch (err: unknown) {
+            if (err instanceof HttpException) {
+                throw err;
+            }
+
             throw new InternalServerErrorException({
                 statusCode: EnumAppStatusCodeError.unknown,
                 message: 'http.serverError.internalServerError',
