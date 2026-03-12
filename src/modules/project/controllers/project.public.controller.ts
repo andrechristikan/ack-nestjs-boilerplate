@@ -16,7 +16,15 @@ import {
     ProjectPublicGetInviteDoc,
 } from '@modules/project/docs/project.public.doc';
 import { ProjectMemberService } from '@modules/project/services/project-member.service';
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Post,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.public.project')
@@ -37,7 +45,9 @@ export class ProjectPublicController {
     async getInvite(
         @Param('token', RequestRequiredPipe) token: string
     ): Promise<IResponseReturn<InvitePublicResponseDto>> {
-        return this.inviteService.getInvite(token, ProjectInviteType).then(data => ({ data }));
+        return this.inviteService
+            .getInvite(token, ProjectInviteType)
+            .then(data => ({ data }));
     }
 
     @ProjectPublicClaimInviteDoc()

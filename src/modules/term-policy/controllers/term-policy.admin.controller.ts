@@ -8,6 +8,7 @@ import {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -72,7 +73,7 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     Prisma,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @ApiTags('modules.admin.termPolicy')
 @Controller({
@@ -96,7 +97,7 @@ export class TermPolicyAdminController {
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
-            availableSearch: TermPolicyDefaultAvailableOrderBy,
+            availableOrderBy: TermPolicyDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<
             Prisma.TermPolicySelect,
@@ -118,13 +119,13 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminCreateDoc()
     @Response('termPolicy.create')
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyCreate)
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
+    @ActivityLog(EnumActivityLogAction.adminTermPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -139,19 +140,19 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminDeleteDoc()
     @Response('termPolicy.delete')
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyDelete)
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
+    @ActivityLog(EnumActivityLogAction.adminTermPolicyDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/delete/:termPolicyId')
     async delete(
-        @Param('termPolicyId', RequestRequiredPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicyResponseDto>> {
         return this.termPolicyService.deleteByAdmin(termPolicyId);
@@ -182,19 +183,19 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminUpdateContentDoc()
     @Response('termPolicy.updateContent')
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyUpdateContent)
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
+    @ActivityLog(EnumActivityLogAction.adminTermPolicyUpdateContent)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/:termPolicyId/content/update')
     async updateContent(
-        @Param('termPolicyId', RequestRequiredPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string,
         @Body()
         body: TermPolicyContentRequestDto,
@@ -209,19 +210,19 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminAddContentDoc()
     @Response('termPolicy.addContent')
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyAddContent)
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
+    @ActivityLog(EnumActivityLogAction.adminTermPolicyAddContent)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/:termPolicyId/content/add')
     async addContent(
-        @Param('termPolicyId', RequestRequiredPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string,
         @Body()
         body: TermPolicyContentRequestDto,
@@ -236,19 +237,19 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminRemoveContentDoc()
     @Response('termPolicy.removeContent')
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyRemoveContent)
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
+    @ActivityLog(EnumActivityLogAction.adminTermPolicyRemoveContent)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/update/:termPolicyId/content/remove')
     async removeContent(
-        @Param('termPolicyId', RequestRequiredPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string,
         @Body()
         body: TermPolicyRemoveContentRequestDto,
@@ -275,7 +276,7 @@ export class TermPolicyAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/get/:termPolicyId/content/:language')
     async getContent(
-        @Param('termPolicyId', RequestRequiredPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string,
         @Param('language', RequestRequiredPipe) language: EnumMessageLanguage
     ): Promise<IResponseReturn<AwsS3PresignDto>> {
@@ -284,19 +285,19 @@ export class TermPolicyAdminController {
 
     @TermPolicyAdminPublishDoc()
     @Response('termPolicy.publish')
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyPublish)
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
+    @ActivityLog(EnumActivityLogAction.adminTermPolicyPublish)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/publish/:termPolicyId')
     async publish(
-        @Param('termPolicyId', RequestRequiredPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {

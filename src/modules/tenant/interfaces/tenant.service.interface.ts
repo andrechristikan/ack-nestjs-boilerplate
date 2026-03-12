@@ -1,6 +1,4 @@
-import {
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -10,7 +8,10 @@ import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.r
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
-import { ITenant, ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
+import {
+    ITenant,
+    ITenantMember,
+} from '@modules/tenant/interfaces/tenant.interface';
 import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant.interface';
 import { Prisma } from '@generated/prisma-client';
 

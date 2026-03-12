@@ -5,8 +5,12 @@ import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
-import { ResponsePaging } from '@common/response/decorators/response.decorator';
+import {
+    Response,
+    ResponsePaging,
+} from '@common/response/decorators/response.decorator';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -58,14 +62,15 @@ export class SessionSharedController {
     }
 
     @SessionSharedRevokeDoc()
-    @ResponsePaging('session.revoke')
+    @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/revoke/:sessionId')
     async revoke(
-        @Param('sessionId', RequestRequiredPipe) sessionId: string,
+        @Param('sessionId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        sessionId: string,
         @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,

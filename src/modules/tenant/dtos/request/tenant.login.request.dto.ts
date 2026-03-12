@@ -1,5 +1,5 @@
-import { DeviceDto } from '@modules/device/dtos/device.dto';
-import { EnumUserLoginFrom } from '@prisma/client';
+import { EnumUserLoginFrom } from '@generated/prisma-client';
+import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
 import { Type } from 'class-transformer';
 import {
     IsEmail,
@@ -26,10 +26,10 @@ export class TenantLoginRequestDto {
     @IsEnum(EnumUserLoginFrom)
     from: EnumUserLoginFrom;
 
-    @Type(() => DeviceDto)
     @IsNotEmpty()
     @IsObject()
     @IsNotEmptyObject()
     @ValidateNested()
-    device: DeviceDto;
+    @Type(() => DeviceRequestDto)
+    device: DeviceRequestDto;
 }

@@ -5,7 +5,7 @@ import {
     Tenant,
     TenantMember,
     User,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 export type ITenant = Tenant;
 

@@ -21,8 +21,9 @@ export class TenantMemberGuard implements CanActivate {
      * @throws BadRequestException/NotFoundException from tenant validation
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const request =
-            context.switchToHttp().getRequest<IRequestAppWithTenant>();
+        const request = context
+            .switchToHttp()
+            .getRequest<IRequestAppWithTenant>();
         const tenantMember =
             await this.tenantService.validateTenantMemberGuard(request);
 

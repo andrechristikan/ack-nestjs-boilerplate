@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
-import {
-    TenantMembershipDto,
-} from '@modules/tenant/dtos/response/tenant.login.response.dto';
+import { TenantMembershipDto } from '@modules/tenant/dtos/response/tenant.login.response.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import {
@@ -11,7 +9,7 @@ import {
     ITenantMember,
     ITenantMemberWithTenant,
 } from '@modules/tenant/interfaces/tenant.interface';
-import { TenantMember } from '@prisma/client';
+import { TenantMember } from '@generated/prisma-client';
 
 @Injectable()
 export class TenantUtil {

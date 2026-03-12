@@ -33,7 +33,11 @@ import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.req
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-import { EnumActivityLogAction, EnumRoleType, Prisma } from '@prisma/client';
+import {
+    EnumActivityLogAction,
+    EnumRoleType,
+    Prisma,
+} from '@generated/prisma-client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
@@ -107,13 +111,13 @@ export class RoleAdminController {
 
     @RoleAdminCreateDoc()
     @Response('role.create')
-    @ActivityLog(EnumActivityLogAction.adminRoleCreate)
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
+    @ActivityLog(EnumActivityLogAction.adminRoleCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -127,13 +131,13 @@ export class RoleAdminController {
 
     @RoleAdminUpdateDoc()
     @Response('role.update')
-    @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
+    @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -149,13 +153,13 @@ export class RoleAdminController {
 
     @RoleAdminDeleteDoc()
     @Response('role.delete')
-    @ActivityLog(EnumActivityLogAction.adminRoleDelete)
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
+    @ActivityLog(EnumActivityLogAction.adminRoleDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

@@ -18,9 +18,8 @@ export function withTenancyRoute(
     path: string,
     module: Type
 ): (Type | DynamicModule)[] {
-    if (!TENANCY_ENABLED) {return [];}
-    return [
-        module,
-        NestJsRouterModule.register([{ path, module }]),
-    ];
+    if (!TENANCY_ENABLED) {
+        return [];
+    }
+    return [module, NestJsRouterModule.register([{ path, module }])];
 }

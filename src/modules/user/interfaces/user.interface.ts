@@ -1,5 +1,7 @@
 import {
     Country,
+    Device,
+    DeviceOwnership,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumVerificationType,
@@ -7,7 +9,7 @@ import {
     TwoFactor,
     User,
     UserMobileNumber,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 export interface IUser extends User {
     role: Role;
@@ -31,13 +33,23 @@ export interface IUserLogin {
     sessionId: string;
 }
 
+export interface IUserLoginResult {
+    user: User;
+    device: Device;
+    deviceOwnership: DeviceOwnership;
+    isNewDevice: boolean;
+    sessionShouldBeInactive?: { id: string }[];
+}
+
 export interface IUserForgotPasswordCreate {
     expiredAt: Date;
     expiredInMinutes: number;
     resendInMinutes: number;
     reference: string;
     token: string;
+    hashedToken: string;
     link: string;
+    encryptedLink: string;
 }
 
 export interface IUserVerificationCreate {
@@ -47,5 +59,7 @@ export interface IUserVerificationCreate {
     resendInMinutes: number;
     reference: string;
     token: string;
+    hashedToken: string;
     link?: string;
+    encryptedLink?: string;
 }

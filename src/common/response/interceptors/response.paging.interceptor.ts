@@ -148,7 +148,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         search: request.__pagination.search,
                         filters: request.__pagination.filters,
                         orderBy: request.__pagination.orderBy,
-                        orderDirection: request.__pagination.orderDirection,
                         availableSearch: request.__pagination.availableSearch,
                         availableOrderBy: request.__pagination.availableOrderBy,
                     };
@@ -217,7 +216,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
             page: 0,
             perPage: 0,
             orderBy: undefined,
-            orderDirection: undefined,
             availableSearch: undefined,
             availableOrderBy: undefined,
             nextPage: undefined,

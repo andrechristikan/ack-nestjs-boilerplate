@@ -4,9 +4,11 @@ This documentation explains the features and usage of **Device Module**: Located
 
 ## Overview
 
-Every session is tied to a **Device** record. When a device is removed, all active sessions linked to that device are immediately invalidated — across both Redis and the database — forcing logout on every affected client.
+Devices represent physical or virtual clients that users log in from. Each device is uniquely identified by a `fingerprint` and can be owned by multiple users. User-device relationships are managed through the `DeviceOwnership` model.
 
-This is a critical security mechanism. It allows users (and admins) to forcibly terminate all sessions on a specific device.
+When a device ownership is removed, all active sessions linked to that device-user pair are immediately invalidated — across both Redis and the database — forcing logout on the affected client.
+
+This is a critical security mechanism. It allows users (and admins) to forcibly terminate all sessions on a specific device-user pair.
 
 ## Related Documents
 
@@ -28,15 +30,14 @@ This is a critical security mechanism. It allows users (and admins) to forcibly 
 
 ## Device Model
 
-A Device represents a physical or virtual client that has logged in. It is identified by a unique `fingerprint` per user.
+A Device represents a physical or virtual client. It is identified by a globally unique `fingerprint` that can be owned by multiple users.
 
 **Fields:**
-- `fingerprint` — Unique identifier for the device per user. This value should be generated on the frontend and sent with every login/refresh request. The recommended library is [FingerprintJS](https://fingerprint.com) (or its open-source variant [`@fingerprintjs/fingerprintjs`](https://github.com/fingerprintjs/fingerprintjs))
+- `fingerprint` — Globally unique identifier for the device. This value should be generated on the frontend and sent with every login/refresh request. The recommended library is [FingerprintJS](https://fingerprint.com) (or its open-source variant [`@fingerprintjs/fingerprintjs`](https://github.com/fingerprintjs/fingerprintjs))
 - `name` — Human-readable device name (optional, e.g. `"iPhone 15"`, `"Chrome on Windows"`)
 - `platform` — Platform of the device. See `EnumDevicePlatform` below
-- `notificationToken` — FCM/APNs push token (optional, used for push notifications). Populated via `POST /user/device/refresh`
+- `notificationToken` — FCM/APNs push token (optional, used for push notifications). Globally unique per device. Populated via `POST /user/device/refresh`
 - `notificationProvider` — Derived automatically from `platform`. See `EnumDeviceNotificationProvider` below
-- `lastActiveAt` — Timestamp of last device activity, updated on every `refresh` call
 
 ### Enums
 
@@ -57,26 +58,39 @@ Automatically derived from `platform` when a `notificationToken` is present. Not
 | `fcm` | `android` | Firebase Cloud Messaging |
 | `apns` | `ios` | Apple Push Notification Service |
 
+## DeviceOwnership Model
+
+The `DeviceOwnership` model represents the relationship between a `User` and a `Device`. It tracks:
+- Which device a user owns
+- Device revocation status and history
+- Session count for that device-user pair
+
 ## Device-Session Relationship
 
-Each `Session` record has a required `deviceId` field pointing to a `Device`. One device can have multiple active sessions (e.g. multiple logins from the same device).
+Each `Session` record has a required `deviceOwnershipId` field pointing to a `DeviceOwnership`. One device-user pair can have **only one active session** at a time.
 
 ```
 User
- └── Device (1 per fingerprint per user)
-       └── Session[] (one per login on this device)
+ └── DeviceOwnership (N per user, one per owned device)
+       ├── Device (shared across multiple users via other ownerships)
+       └── Session[] (max 1 active per device-user pair)
+
+Device
+ └── DeviceOwnership[] (can be owned by multiple users)
+       └── Session[] (per ownership)
 ```
 
-When listing devices, the API includes a count of active (non-revoked, non-expired) sessions per device, so users and admins can see which devices are currently logged in.
+When listing devices, the API shows only the devices owned by the user, with session information for their specific ownership.
 
-## What Happens When a Device is Removed
+## What Happens When a Device Ownership is Removed
 
-Removing a device triggers a transaction that:
+Removing a device ownership (device per user) triggers a transaction that:
 
-1. **Updates the `Device` record** — clears `notificationToken` and `notificationProvider` (push token is invalidated), updates `lastActiveAt` and `updatedBy`. The device record is retained in the database.
-2. **Revokes all active sessions** for that device in the database (`isRevoked: true`, `revokedAt: now`)
-3. **Deletes all session keys from Redis** — causing immediate 401 on any subsequent request using those tokens
-4. **Creates an activity log** entry with action `userRemoveDevice`
+1. **Updates the `DeviceOwnership` record** — marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedById: userId`), updates `updatedBy`. The ownership record is retained for audit trail.
+2. **Updates the `Device` record** — clears the `notificationToken` and `notificationProvider` for this specific ownership (push token is invalidated), updates `updatedBy`.
+3. **Revokes the active session** for that device-user pair in the database (`isRevoked: true`, `revokedAt: now`)
+4. **Deletes the session key from Redis** — causing immediate 401 on any subsequent request using those tokens
+5. **Creates an activity log** entry with action `userRemoveDevice` or `adminDeviceRemove`
 
 ```mermaid
 sequenceDiagram
@@ -87,14 +101,16 @@ sequenceDiagram
 
     Client->>API: DELETE /user/device/remove/:deviceId
     API->>Database: Begin transaction
+    API->>Database: Update DeviceOwnership (isRevoked=true)
     API->>Database: Update Device (clear notificationToken + notificationProvider)
-    API->>Database: Set isRevoked=true on all active sessions for device
+    API->>Database: Set isRevoked=true on active session for this device-user pair
     API->>Database: Create activity log (userRemoveDevice)
     API->>Database: Commit transaction
-    API->>Redis: Delete all session keys for affected sessions
-    Note over Redis: All tokens for this device are now invalid
+    API->>Redis: Delete session key for this device-user pair
+    Note over Redis: Tokens for this device-user pair are now invalid
     API-->>Client: 200 OK
-    Note over Client: Any other client using this device gets 401 on next request
+    Note over Client: Client using this device gets 401 on next request
+    Note over Client: Other users owning the same device are unaffected
 ```
 
 ## Endpoints

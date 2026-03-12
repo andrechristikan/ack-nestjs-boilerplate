@@ -1,22 +1,25 @@
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
-import { IDevice } from '@modules/device/interfaces/device.interface';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
+import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class DeviceUtil {
-    mapList(devices: IDevice[]): DeviceResponseDto[] {
-        return plainToInstance(DeviceResponseDto, devices);
+    mapList(devices: IDeviceOwnership[]): DeviceOwnershipResponseDto[] {
+        return plainToInstance(DeviceOwnershipResponseDto, devices);
     }
 
-    mapActivityLogMetadata(device: IDevice): IActivityLogMetadata {
+    mapActivityLogMetadata(
+        deviceOwnership: IDeviceOwnership
+    ): IActivityLogMetadata {
         return {
-            deviceId: device.id,
-            userId: device.userId,
-            userUsername: device.user.username,
-            timestamp: device.updatedAt ?? device.createdAt,
-            sessionCount: device._count.sessions,
+            deviceOwnershipId: deviceOwnership.id,
+            deviceId: deviceOwnership.device.id,
+            userId: deviceOwnership.userId,
+            userUsername: deviceOwnership.user.username,
+            timestamp: deviceOwnership.updatedAt ?? deviceOwnership.createdAt,
+            sessionCount: deviceOwnership._count.sessions,
         };
     }
 }

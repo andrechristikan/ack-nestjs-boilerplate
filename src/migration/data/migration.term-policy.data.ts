@@ -1,6 +1,6 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { EnumTermPolicyType } from '@prisma/client';
+import { EnumTermPolicyType } from '@generated/prisma-client';
 
 const termPolicyData: TermPolicyCreateRequestDto[] = [
     {

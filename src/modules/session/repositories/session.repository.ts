@@ -2,6 +2,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
+    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -10,7 +11,11 @@ import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ISession } from '@modules/session/interfaces/session.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumActivityLogAction, Prisma, Session } from '@prisma/client';
+import {
+    EnumActivityLogAction,
+    Prisma,
+    Session,
+} from '@generated/prisma-client';
 
 @Injectable()
 export class SessionRepository {
@@ -29,7 +34,8 @@ export class SessionRepository {
         }: IPaginationQueryOffsetParams<
             Prisma.SessionSelect,
             Prisma.SessionWhereInput
-        >
+        >,
+        isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<ISession>> {
         return this.paginationService.offset<
             ISession,
@@ -39,6 +45,7 @@ export class SessionRepository {
             ...others,
             where: {
                 ...where,
+                ...isRevoked,
                 userId,
             },
             include: {
@@ -47,7 +54,7 @@ export class SessionRepository {
         });
     }
 
-    async findWithPaginationCursor(
+    async findActiveWithPaginationCursor(
         userId: string,
         {
             where,
@@ -66,6 +73,7 @@ export class SessionRepository {
             where: {
                 ...where,
                 userId,
+                isRevoked: false,
             },
             include: {
                 user: true,
@@ -92,9 +100,9 @@ export class SessionRepository {
         });
     }
 
-    async findActiveByDevice(
+    async findActiveByDeviceOwnership(
         userId: string,
-        deviceId: string
+        deviceOwnershipId: string
     ): Promise<
         {
             id: string;
@@ -107,7 +115,7 @@ export class SessionRepository {
                 expiredAt: {
                     gte: this.helperService.dateCreate(),
                 },
-                deviceId,
+                deviceOwnershipId,
             },
             select: {
                 id: true,
@@ -143,6 +151,11 @@ export class SessionRepository {
             data: {
                 isRevoked: true,
                 revokedAt: this.helperService.dateCreate(),
+                revokedBy: {
+                    connect: {
+                        id: userId,
+                    },
+                },
                 updatedBy: userId,
                 user: {
                     update: {
@@ -161,13 +174,6 @@ export class SessionRepository {
                         },
                     },
                 },
-                device: {
-                    update: {
-                        notificationToken: null,
-                        lastActiveAt: null,
-                        notificationProvider: null,
-                    },
-                },
             },
         });
     }
@@ -184,6 +190,11 @@ export class SessionRepository {
             data: {
                 isRevoked: true,
                 revokedAt: this.helperService.dateCreate(),
+                revokedBy: {
+                    connect: {
+                        id: revokedBy,
+                    },
+                },
                 updatedBy: revokedBy,
                 user: {
                     update: {
@@ -200,13 +211,6 @@ export class SessionRepository {
                                 createdBy: revokedBy,
                             },
                         },
-                    },
-                },
-                device: {
-                    update: {
-                        notificationToken: null,
-                        lastActiveAt: null,
-                        notificationProvider: null,
                     },
                 },
             },

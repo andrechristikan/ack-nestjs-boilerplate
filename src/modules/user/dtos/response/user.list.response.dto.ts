@@ -7,7 +7,7 @@ import {
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 import { UserTwoFactorDto } from '@modules/user/dtos/user.two-factor.dto';
 
 export class UserListResponseDto extends UserDto {

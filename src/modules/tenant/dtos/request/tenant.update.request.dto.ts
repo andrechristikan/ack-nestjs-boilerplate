@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumTenantStatus } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { EnumTenantStatus } from '@generated/prisma-client';
+import {
+    IsEnum,
+    IsNotEmpty,
+    IsOptional,
+    IsString,
+    MaxLength,
+} from 'class-validator';
 
 export class TenantUpdateRequestDto {
     @ApiProperty({

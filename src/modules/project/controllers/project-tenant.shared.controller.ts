@@ -7,11 +7,20 @@ import {
 } from '@common/request/decorators/request.decorator';
 import { Prisma, UserAgent } from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
-import { Response, ResponsePaging } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn, IResponseReturn } from '@common/response/interfaces/response.interface';
+import {
+    Response,
+    ResponsePaging,
+} from '@common/response/decorators/response.decorator';
+import {
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-import { AuthJwtAccessProtected, AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAccessProtected,
+    AuthJwtPayload,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     ProjectMemberPolicyCreate,
     ProjectMemberPolicyRead,
@@ -47,10 +56,23 @@ import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.respo
 import { ProjectPermissionProtected } from '@modules/project/decorators/project.decorator';
 import { ProjectMemberService } from '@modules/project/services/project-member.service';
 import { ProjectService } from '@modules/project/services/project.service';
-import { TenantCurrent, TenantMemberProtected, TenantPermissionProtected, TenantProtected } from '@modules/tenant/decorators/tenant.decorator';
+import {
+    TenantCurrent,
+    TenantMemberProtected,
+    TenantPermissionProtected,
+    TenantProtected,
+} from '@modules/tenant/decorators/tenant.decorator';
 import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Param,
+    Patch,
+    Post,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.shared.project')

@@ -3,6 +3,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { FirebaseStaleTokenThresholdInDays } from '@common/firebase/constants/firebase.constant';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
+    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -11,18 +12,19 @@ import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     Device,
+    DeviceOwnership,
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
     Prisma,
 } from '@generated/prisma-client';
-import { DeviceDto } from '@modules/device/dtos/device.dto';
-import { IDevice } from '@modules/device/interfaces/device.interface';
+import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
+import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { Injectable } from '@nestjs/common';
 import { Duration } from 'luxon';
 
 @Injectable()
-export class DeviceRepository {
+export class DeviceOwnershipRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperService: HelperService,
@@ -36,30 +38,32 @@ export class DeviceRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<
-            Prisma.DeviceSelect,
-            Prisma.DeviceWhereInput
-        >
-    ): Promise<IResponsePagingReturn<IDevice>> {
+            Prisma.DeviceOwnershipSelect,
+            Prisma.DeviceOwnershipWhereInput
+        >,
+        isRevoked?: Record<string, IPaginationEqual>
+    ): Promise<IResponsePagingReturn<IDeviceOwnership>> {
         const today = this.helperService.dateCreate();
 
         return this.paginationService.offset<
-            IDevice,
-            Prisma.DeviceSelect,
-            Prisma.DeviceWhereInput
-        >(this.databaseService.device, {
+            IDeviceOwnership,
+            Prisma.DeviceOwnershipSelect,
+            Prisma.DeviceOwnershipWhereInput
+        >(this.databaseService.deviceOwnership, {
             ...others,
             where: {
                 ...where,
+                ...isRevoked,
                 userId,
             },
-            select: {
+            include: {
+                device: true,
                 user: true,
                 _count: {
                     select: {
                         sessions: {
                             where: {
                                 isRevoked: false,
-                                revokedAt: null,
                                 expiredAt: {
                                     gt: today,
                                 },
@@ -71,37 +75,38 @@ export class DeviceRepository {
         });
     }
 
-    async findWithPaginationCursor(
+    async findActiveWithPaginationCursor(
         userId: string,
         sessionId: string,
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<
-            Prisma.DeviceSelect,
-            Prisma.DeviceWhereInput
+            Prisma.DeviceOwnershipSelect,
+            Prisma.DeviceOwnershipWhereInput
         >
-    ): Promise<IResponsePagingReturn<IDevice>> {
+    ): Promise<IResponsePagingReturn<IDeviceOwnership>> {
         const today = this.helperService.dateCreate();
 
         return this.paginationService.cursor<
-            IDevice,
-            Prisma.DeviceSelect,
-            Prisma.DeviceWhereInput
-        >(this.databaseService.passwordHistory, {
+            IDeviceOwnership,
+            Prisma.DeviceOwnershipSelect,
+            Prisma.DeviceOwnershipWhereInput
+        >(this.databaseService.deviceOwnership, {
             ...others,
             where: {
                 ...where,
                 userId,
+                isRevoked: false,
             },
-            select: {
+            include: {
+                device: true,
                 user: true,
                 _count: {
                     select: {
                         sessions: {
                             where: {
                                 isRevoked: false,
-                                revokedAt: null,
                                 expiredAt: {
                                     gt: today,
                                 },
@@ -119,48 +124,31 @@ export class DeviceRepository {
         });
     }
 
-    async findByUserId(
-        userId: string,
-        excludeFingerprint?: string[],
-        shouldHaveToken?: boolean
-    ): Promise<Device[]> {
-        return this.databaseService.device.findMany({
+    async findTokensByUserId(
+        userId: string
+    ): Promise<(DeviceOwnership & { device: Device })[]> {
+        return this.databaseService.deviceOwnership.findMany({
             where: {
                 userId,
-                ...(excludeFingerprint &&
-                    excludeFingerprint.length > 0 && {
-                        fingerprint: { notIn: excludeFingerprint },
-                    }),
-                ...(shouldHaveToken && {
+                device: {
                     notificationToken: { not: null },
-                }),
-            },
-        });
-    }
-
-    async exist(
-        userId: string,
-        deviceId: string
-    ): Promise<{ id: string } | null> {
-        return this.databaseService.device.findUnique({
-            where: {
-                id: deviceId,
-                userId,
-            },
-            select: { id: true },
-        });
-    }
-
-    async existByFingerprint(
-        userId: string,
-        fingerprint: string
-    ): Promise<{ id: string } | null> {
-        return this.databaseService.device.findUnique({
-            where: {
-                userId_fingerprint: {
-                    userId,
-                    fingerprint,
                 },
+            },
+            include: {
+                device: true,
+            },
+        });
+    }
+
+    async existActive(
+        userId: string,
+        deviceOwnershipId: string
+    ): Promise<{ id: string } | null> {
+        return this.databaseService.deviceOwnership.findUnique({
+            where: {
+                id: deviceOwnershipId,
+                userId,
+                isRevoked: false,
             },
             select: { id: true },
         });
@@ -168,9 +156,10 @@ export class DeviceRepository {
 
     async refresh(
         userId: string,
-        { fingerprint, name, notificationToken, platform }: DeviceDto,
+        deviceOwnershipId: string,
+        { name, notificationToken, platform }: DeviceRefreshRequestDto,
         { ipAddress, userAgent, geoLocation }: IRequestLog
-    ): Promise<Device> {
+    ): Promise<DeviceOwnership> {
         const today = this.helperService.dateCreate();
 
         let notificationProvider: EnumDeviceNotificationProvider | null = null;
@@ -192,23 +181,6 @@ export class DeviceRepository {
                 lastLoginAt: today,
                 lastIPAddress: ipAddress,
                 updatedBy: userId,
-                devices: {
-                    update: {
-                        where: {
-                            userId_fingerprint: {
-                                userId,
-                                fingerprint,
-                            },
-                        },
-                        data: {
-                            name,
-                            platform,
-                            notificationProvider,
-                            notificationToken,
-                            lastActiveAt: today,
-                        },
-                    },
-                },
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userDeviceRefresh,
@@ -219,49 +191,130 @@ export class DeviceRepository {
                         createdBy: userId,
                     },
                 },
-            },
-            include: {
-                devices: {
-                    take: 1,
-                    where: {
-                        userId,
-                        fingerprint,
+                deviceOwnerships: {
+                    update: {
+                        where: {
+                            id: deviceOwnershipId,
+                        },
+                        data: {
+                            device: {
+                                update: {
+                                    name,
+                                    platform,
+                                    notificationProvider,
+                                    notificationToken,
+                                    lastActiveAt: today,
+                                },
+                            },
+                        },
                     },
                 },
             },
-        });
-
-        return user.devices[0];
-    }
-
-    async remove(
-        userId: string,
-        deviceId: string,
-        { ipAddress, userAgent, geoLocation }: IRequestLog,
-        removedBy: string
-    ): Promise<IDevice> {
-        return this.databaseService.$transaction(
-            async (tx: Prisma.TransactionClient) => {
-                const today = this.helperService.dateCreate();
-                const device = await tx.device.update({
+            include: {
+                deviceOwnerships: {
+                    take: 1,
                     where: {
-                        id: deviceId,
-                        userId,
-                    },
-                    data: {
-                        notificationToken: null,
-                        notificationProvider: null,
-                        lastActiveAt: today,
-                        updatedBy: removedBy,
+                        id: deviceOwnershipId,
                     },
                     include: {
+                        device: true,
                         user: true,
                         _count: {
                             select: {
                                 sessions: {
                                     where: {
                                         isRevoked: false,
-                                        revokedAt: null,
+                                        expiredAt: {
+                                            gt: today,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        return user.deviceOwnerships[0];
+    }
+
+    async remove(
+        userId: string,
+        deviceOwnershipId: string,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
+        removedBy: string
+    ): Promise<IDeviceOwnership> {
+        return this.databaseService.$transaction(
+            async (tx: Prisma.TransactionClient) => {
+                const today = this.helperService.dateCreate();
+                const deviceOwnership = await tx.deviceOwnership.update({
+                    where: {
+                        id: deviceOwnershipId,
+                        userId,
+                    },
+                    data: {
+                        isRevoked: true,
+                        revokedAt: today,
+                        revokedBy: {
+                            connect: {
+                                id: removedBy,
+                            },
+                        },
+                        updatedBy: removedBy,
+                        device: {
+                            update: {
+                                notificationToken: null,
+                                notificationProvider: null,
+                                lastActiveAt: today,
+                                updatedBy: removedBy,
+                            },
+                        },
+                        sessions: {
+                            updateMany: {
+                                where: {
+                                    isRevoked: false,
+                                    expiredAt: {
+                                        gt: today,
+                                    },
+                                    deviceOwnershipId: deviceOwnershipId,
+                                },
+                                data: {
+                                    isRevoked: true,
+                                    revokedAt: today,
+                                    revokedById: removedBy,
+                                    updatedBy: removedBy,
+                                },
+                            },
+                        },
+                        user: {
+                            update: {
+                                activityLogs: {
+                                    create: {
+                                        action: EnumActivityLogAction.userRemoveDevice,
+                                        ipAddress,
+                                        userAgent:
+                                            this.databaseUtil.toPlainObject(
+                                                userAgent
+                                            ),
+                                        geoLocation:
+                                            this.databaseUtil.toPlainObject(
+                                                geoLocation
+                                            ),
+                                        createdBy: removedBy,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    include: {
+                        device: true,
+                        user: true,
+                        _count: {
+                            select: {
+                                sessions: {
+                                    where: {
+                                        isRevoked: false,
                                         expiredAt: {
                                             gt: today,
                                         },
@@ -272,48 +325,36 @@ export class DeviceRepository {
                     },
                 });
 
-                await Promise.all([
-                    tx.session.updateMany({
-                        where: {
-                            device: {
-                                id: deviceId,
-                            },
-                        },
-                        data: {
-                            isRevoked: true,
-                            revokedAt: today,
-                            updatedBy: removedBy,
-                        },
-                    }),
-                    tx.activityLog.create({
-                        data: {
-                            userId,
-                            action: EnumActivityLogAction.userRemoveDevice,
-                            ipAddress,
-                            userAgent:
-                                this.databaseUtil.toPlainObject(userAgent),
-                            geoLocation:
-                                this.databaseUtil.toPlainObject(geoLocation),
-                            createdBy: removedBy,
-                        },
-                    }),
-                ]);
-
-                return device;
+                return deviceOwnership;
             }
         );
     }
 
-    async cleanupTokensByIds(
+    async cleanupTokens(
         userId: string,
-        deviceIds: string[]
+        tokens: string[]
     ): Promise<Prisma.BatchPayload> {
+        const deviceIds = await this.databaseService.deviceOwnership.findMany({
+            where: {
+                userId,
+                device: {
+                    notificationToken: {
+                        in: tokens,
+                    },
+                },
+            },
+            select: {
+                deviceId: true,
+            },
+        });
+
+        const deviceIdList = deviceIds.map(d => d.deviceId);
+
         return this.databaseService.device.updateMany({
             where: {
                 id: {
-                    in: deviceIds,
+                    in: deviceIdList,
                 },
-                userId,
             },
             data: {
                 notificationToken: null,

@@ -162,13 +162,10 @@ export function ProjectTenantSharedCreateMemberInviteDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
             dto: ProjectMemberInviteCreateRequestDto,
         }),
-        DocResponse<InviteCreateResponseDto>(
-            'project.member.invite.create',
-            {
-                httpStatus: HttpStatus.CREATED,
-                dto: InviteCreateResponseDto,
-            }
-        )
+        DocResponse<InviteCreateResponseDto>('project.member.invite.create', {
+            httpStatus: HttpStatus.CREATED,
+            dto: InviteCreateResponseDto,
+        })
     );
 }
 

@@ -23,9 +23,7 @@ export class InviteConfigRegistry {
     getOrThrow(inviteType: string): InviteConfig {
         const config = this.registry.get(inviteType);
         if (!config) {
-            throw new Error(
-                `Invite config not registered for "${inviteType}"`
-            );
+            throw new Error(`Invite config not registered for "${inviteType}"`);
         }
 
         return config;

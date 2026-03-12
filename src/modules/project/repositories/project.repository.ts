@@ -20,7 +20,7 @@ import {
     EnumProjectStatus,
     Project,
     ProjectMember,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @Injectable()
 export class ProjectRepository {
@@ -32,7 +32,10 @@ export class ProjectRepository {
 
     async findWithPaginationOffsetByTenant(
         tenantId: string,
-        { where, ...params }: IPaginationQueryOffsetParams<
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
             Prisma.ProjectSelect,
             Prisma.ProjectWhereInput
         >
@@ -180,7 +183,10 @@ export class ProjectRepository {
 
     async findMembersWithPaginationOffsetByProject(
         projectId: string,
-        { where, ...params }: IPaginationQueryOffsetParams<
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
             Prisma.ProjectMemberSelect,
             Prisma.ProjectMemberWhereInput
         >
@@ -238,7 +244,10 @@ export class ProjectRepository {
 
     async findMembersWithPaginationOffsetByUser(
         userId: string,
-        { where, ...params }: IPaginationQueryOffsetParams<
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
             Prisma.ProjectMemberSelect,
             Prisma.ProjectMemberWhereInput
         >

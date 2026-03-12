@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
-import { EnumRoleScope, EnumRoleType } from '@prisma/client';
+import { EnumRoleScope, EnumRoleType } from '@generated/prisma-client';
 
 export class RoleUpdateRequestDto {
     @ApiProperty({

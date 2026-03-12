@@ -34,7 +34,12 @@ import { SessionModule } from '@modules/session/session.module';
     ],
     providers: [],
     exports: [],
-    imports: [UserModule, PasswordHistoryModule, DeviceModule, SessionModule,
-        ...withTenancyRoute('/admin', TenantRoutesAdminModule)],
+    imports: [
+        UserModule,
+        PasswordHistoryModule,
+        DeviceModule,
+        SessionModule,
+        ...withTenancyRoute('/admin', TenantRoutesAdminModule),
+    ],
 })
 export class RoutesAdminModule {}

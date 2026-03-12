@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { EnumProjectStatus } from '@prisma/client';
+import { EnumProjectStatus } from '@generated/prisma-client';
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ProjectUpdateRequestDto {

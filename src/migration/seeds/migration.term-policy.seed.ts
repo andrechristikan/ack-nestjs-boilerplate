@@ -7,7 +7,7 @@ import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumTermPolicyStatus } from '@prisma/client';
+import { EnumTermPolicyStatus } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 
 @Command({

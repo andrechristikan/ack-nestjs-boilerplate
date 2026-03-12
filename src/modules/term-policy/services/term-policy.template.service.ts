@@ -5,7 +5,7 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ITermPolicyTemplateService } from '@modules/term-policy/interfaces/term-policy.template-service.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable, Logger } from '@nestjs/common';
-import { EnumTermPolicyType } from '@prisma/client';
+import { EnumTermPolicyType } from '@generated/prisma-client';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 

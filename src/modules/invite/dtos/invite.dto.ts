@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumRoleScope } from '@prisma/client';
+import { EnumRoleScope } from '@generated/prisma-client';
 import { InviteVerificationDto } from './invite-verification.dto';
 
 export class InviteDto extends InviteVerificationDto {

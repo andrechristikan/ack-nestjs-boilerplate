@@ -70,6 +70,10 @@ export class NotificationEmailUtil {
             payload,
             {
                 jobId: `${EnumNotificationProcess.welcomeByAdmin}-${userId}`,
+                deduplication: {
+                    id: `${EnumNotificationProcess.welcomeByAdmin}-${userId}`,
+                    ttl: 1000,
+                },
                 priority: EnumQueuePriority.medium,
             }
         );
@@ -232,7 +236,10 @@ export class NotificationEmailUtil {
             EnumNotificationProcess.verificationEmail,
             payload,
             {
-                jobId: `${EnumNotificationProcess.verificationEmail}-${userId}`,
+                deduplication: {
+                    id: `${EnumNotificationProcess.verificationEmail}-${userId}`,
+                    ttl: expiredInMinutes * 60 * 1000,
+                },
                 priority: EnumQueuePriority.high,
             }
         );
@@ -261,6 +268,10 @@ export class NotificationEmailUtil {
 
         await this.emailQueue.add(EnumNotificationProcess.welcome, payload, {
             jobId: `${EnumNotificationProcess.welcome}-${userId}`,
+            deduplication: {
+                id: `${EnumNotificationProcess.welcome}-${userId}`,
+                ttl: 1000,
+            },
             priority: EnumQueuePriority.low,
         });
     }
@@ -291,6 +302,10 @@ export class NotificationEmailUtil {
             payload,
             {
                 jobId: `${EnumNotificationProcess.welcomeSocial}-${userId}`,
+                deduplication: {
+                    id: `${EnumNotificationProcess.welcomeSocial}-${userId}`,
+                    ttl: 1000,
+                },
                 priority: EnumQueuePriority.low,
             }
         );
@@ -330,6 +345,10 @@ export class NotificationEmailUtil {
             payload,
             {
                 jobId: `${EnumNotificationProcess.verifiedEmail}-${userId}`,
+                deduplication: {
+                    id: `${EnumNotificationProcess.verifiedEmail}-${userId}`,
+                    ttl: 1000,
+                },
                 priority: EnumQueuePriority.low,
             }
         );
@@ -426,6 +445,7 @@ export class NotificationEmailUtil {
             EnumNotificationProcess.verifiedMobileNumber,
             payload,
             {
+                jobId: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
                 deduplication: {
                     id: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
                     ttl: resendInMinutes * 60 * 1000,
@@ -460,7 +480,10 @@ export class NotificationEmailUtil {
             EnumNotificationProcess.resetTwoFactorByAdmin,
             payload,
             {
-                jobId: `${EnumNotificationProcess.resetTwoFactorByAdmin}-${userId}`,
+                deduplication: {
+                    id: `${EnumNotificationProcess.resetTwoFactorByAdmin}-${userId}`,
+                    ttl: 1000,
+                },
                 priority: EnumQueuePriority.high,
             }
         );

@@ -125,6 +125,7 @@ When using multiple protection decorators, apply them in this **EXACT** order (t
 @AuthJwtAccessProtected()                 // JWT access token validation
 @FeatureFlagProtected(...)                // Feature flag check
 @ApiKeyProtected()                        // API key authentication
+@HttpCode(HttpStatus.OK)                  // HTTP status override (only when needed, always directly above HTTP method)
 @Get('/endpoint')                         // HTTP method (always last)
 async method() { }
 ```

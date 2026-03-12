@@ -29,7 +29,12 @@ export class TenantAuthService {
         //    if the membership gate below throws, that session will be orphaned.
         const [loginResult, user] = await Promise.all([
             this.userService.loginCredential(
-                { email: dto.email, password: dto.password, from: dto.from, device: dto.device },
+                {
+                    email: dto.email,
+                    password: dto.password,
+                    from: dto.from,
+                    device: dto.device,
+                },
                 requestLog
             ),
             this.userRepository.findOneActiveByEmail(dto.email),

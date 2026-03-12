@@ -5,11 +5,7 @@ import { NextFunction, Response } from 'express';
 
 @Injectable()
 export class RequestTenantMiddleware implements NestMiddleware {
-    use(
-        req: IRequestAppWithTenant,
-        _res: Response,
-        next: NextFunction
-    ): void {
+    use(req: IRequestAppWithTenant, _res: Response, next: NextFunction): void {
         const tenantId = req.headers[TenantHeaderId];
         if (tenantId && typeof tenantId === 'string') {
             req.__tenantId = tenantId;

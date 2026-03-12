@@ -15,7 +15,7 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@generated/prisma-client';
 
 export interface IInviteService {
     createInvite(

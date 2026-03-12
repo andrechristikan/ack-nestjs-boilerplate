@@ -423,10 +423,10 @@ db.ActivityLogs.aggregate([
 
 **Business Priority:** 🟠 High — security signal; high admin-revoke rate may indicate incident response activity.
 
-**Source:** `Sessions` — `isRevoked`, `revokedAt`, `updatedBy`
+**Source:** `Sessions` — `isRevoked`, `revokedAt`, `revokedById`, `userId`
 
-- **User-initiated:** `isRevoked = true` AND `updatedBy = userId`
-- **Admin-initiated:** `isRevoked = true` AND `updatedBy ≠ userId`
+- **User-initiated:** `isRevoked = true` AND `revokedById = userId`
+- **Admin-initiated:** `isRevoked = true` AND `revokedById ≠ userId`
 
 **Formula:**
 $$\text{revocation rate} = \frac{\text{COUNT}(isRevoked = true\ AND\ revokedAt \in [start, end])}{\text{COUNT}(createdAt \leq end)} \times 100$$
@@ -440,7 +440,7 @@ db.Sessions.aggregate([
   },
   {
     $project: {
-      isAdminRevoke: { $ne: ["$userId", "$updatedBy"] },
+      isAdminRevoke: { $ne: ["$userId", "$revokedById"] },
     },
   },
   {
@@ -1098,14 +1098,14 @@ db.ActivityLogs.aggregate([
 
 ### 31. Session-to-Device Ratio Anomaly
 
-**Business Priority:** 🟠 High — devices generating abnormally many sessions may indicate token refresh abuse or compromised devices.
+**Business Priority:** 🟠 High — device-user pairs generating abnormally many sessions may indicate token refresh abuse or compromised devices.
 
-**Source:** `Sessions` (non-revoked, non-expired) joined with `Devices`
+**Source:** `Sessions` (non-revoked, non-expired) grouped by `DeviceOwnership`
 
 ```js
 const now = new Date();
 
-// Active sessions per device
+// Active sessions per device-user pair (DeviceOwnership)
 db.Sessions.aggregate([
   {
     $match: {
@@ -1113,20 +1113,20 @@ db.Sessions.aggregate([
       expiredAt: { $gt: now },
     },
   },
-  { $group: { _id: "$deviceId", sessionCount: { $sum: 1 } } },
+  { $group: { _id: "$deviceOwnershipId", sessionCount: { $sum: 1 } } },
   {
     $group: {
       _id:    null,
       avg:    { $avg: "$sessionCount" },
       stdDev: { $stdDevPop: "$sessionCount" },
-      all:    { $push: { deviceId: "$_id", sessionCount: "$sessionCount" } },
+      all:    { $push: { deviceOwnershipId: "$_id", sessionCount: "$sessionCount" } },
     },
   },
   { $unwind: "$all" },
   {
     $project: {
-      deviceId:     "$all.deviceId",
-      sessionCount: "$all.sessionCount",
+      deviceOwnershipId: "$all.deviceOwnershipId",
+      sessionCount:     "$all.sessionCount",
       zScore: {
         $divide: [
           { $subtract: ["$all.sessionCount", "$avg"] },
@@ -2219,7 +2219,7 @@ Ensure the following indexes exist for optimal query performance:
 | Collection | Required Indexes |
 |---|---|
 | `Users` | `{ signUpAt: -1 }`, `{ deletedAt: 1, signUpAt: -1 }`, `{ status: 1, deletedAt: 1 }` |
-| `Sessions` | `{ isRevoked: 1, expiredAt: -1 }`, `{ createdAt: -1 }`, `{ deviceId: 1, isRevoked: 1 }` |
+| `Sessions` | `{ isRevoked: 1, expiredAt: -1 }`, `{ createdAt: -1 }`, `{ deviceOwnershipId: 1, isRevoked: 1 }` |
 | `ActivityLogs` | `{ action: 1, createdAt: -1 }`, `{ userId: 1, action: 1, createdAt: -1 }` |
 | `Notifications` | `{ type: 1, isRead: 1, createdAt: -1 }`, `{ userId: 1, priority: 1, isRead: 1, createdAt: -1 }` |
 | `NotificationDeliveries` | `{ channel: 1, processedAt: 1, createdAt: -1 }` |

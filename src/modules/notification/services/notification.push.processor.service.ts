@@ -2,7 +2,7 @@ import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumNotificationChannel } from '@generated/prisma-client';
-import { DeviceRepository } from '@modules/device/repositories/device.repository';
+import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import {
     INotificationNewDeviceLoginPayload,
@@ -27,7 +27,7 @@ export class NotificationPushProcessorService
         private readonly messageService: MessageService,
         private readonly helperService: HelperService,
         private readonly notificationPushUtil: NotificationPushUtil,
-        private readonly deviceRepository: DeviceRepository
+        private readonly deviceOwnershipRepository: DeviceOwnershipRepository
     ) {}
 
     async onModuleInit(): Promise<void> {
@@ -69,7 +69,9 @@ export class NotificationPushProcessorService
         const city = this.helperService.resolveCity(
             data.requestLog.geoLocation
         );
-        const loginAt = this.helperService.dateFormatToRFC2822(data.loginAt);
+        const loginAt = this.helperService.dateFormatToRFC2822(
+            this.helperService.dateCreateFromIso(data.loginAt)
+        );
         const title = this.messageService.setMessage(notification.title);
         const body = this.messageService.setMessage(notification.body, {
             properties: { device, city, username, loginAt },
@@ -83,7 +85,7 @@ export class NotificationPushProcessorService
             }
         );
 
-        await Promise.all([
+        await Promise.allSettled([
             this.notificationPushUtil.sendCleanupTokens(
                 userId,
                 result.failureTokens
@@ -98,6 +100,7 @@ export class NotificationPushProcessorService
 
         return {
             message: 'New login notification processed',
+            result,
         };
     }
 
@@ -157,6 +160,7 @@ export class NotificationPushProcessorService
 
         return {
             message: 'Reset two-factor notification processed',
+            result,
         };
     }
 
@@ -190,7 +194,7 @@ export class NotificationPushProcessorService
         }
 
         const passwordExpiredAt = this.helperService.dateFormatToRFC2822(
-            data.passwordExpiredAt
+            this.helperService.dateCreateFromIso(data.passwordExpiredAt)
         );
 
         const title = this.messageService.setMessage(notification.title);
@@ -221,6 +225,7 @@ export class NotificationPushProcessorService
 
         return {
             message: 'Temporary password notification processed',
+            result,
         };
     }
 
@@ -280,6 +285,7 @@ export class NotificationPushProcessorService
 
         return {
             message: 'Reset password notification processed',
+            result,
         };
     }
 
@@ -339,6 +345,7 @@ export class NotificationPushProcessorService
 
         return {
             message: 'Forgot password notification processed',
+            result,
         };
     }
 
@@ -351,7 +358,7 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        const result = await this.deviceRepository.cleanupTokensByIds(
+        const result = await this.deviceOwnershipRepository.cleanupTokens(
             userId,
             failureTokens
         );
@@ -364,7 +371,8 @@ export class NotificationPushProcessorService
     }
 
     async processCleanupStaleTokens(): Promise<IQueueResponse> {
-        const staleTokens = await this.deviceRepository.cleanupStaleTokens();
+        const staleTokens =
+            await this.deviceOwnershipRepository.cleanupStaleTokens();
 
         return {
             message: `Processed stale token cleanup`,

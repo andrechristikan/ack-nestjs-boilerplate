@@ -263,24 +263,54 @@ LOGGER_AUTO=false
 ### CORS Settings
 
 **`CORS_ALLOWED_ORIGIN`** *(required)*  
-Comma-separated list of allowed CORS origins. Supports subdomain wildcards but not port wildcards.
+Comma-separated list of allowed CORS origins. Supports subdomain wildcards and explicit ports, but not port wildcards.
+
+**Syntax:**
+- `*` — Allow all origins (credentials disabled)
+- `hostname` — Single origin (e.g., `example.com`)
+- `*.subdomain` — Wildcard subdomains (e.g., `*.example.com` matches `api.example.com` and `example.com`)
+- `hostname:port` — Specific hostname with port (e.g., `api.example.com:3000`)
+- `*.subdomain:port` — Wildcard with explicit port (e.g., `*.example.com:3000`)
 
 **Examples:**
 ```bash
-# Allow all origins (development only)
+# Allow all origins (development only) — credentials NOT allowed
 CORS_ALLOWED_ORIGIN=*
 
 # Specific origins
 CORS_ALLOWED_ORIGIN=example.com,app.example.com
 
-# Subdomain wildcard (supported)
+# Subdomain wildcard (matches api.example.com and example.com)
 CORS_ALLOWED_ORIGIN=*.example.com,api.myapp.com
 
-# Multiple domains with subdomains
-CORS_ALLOWED_ORIGIN=*.example.com,*.myapp.com,localhost:3000
+# Multiple domains with explicit ports
+CORS_ALLOWED_ORIGIN=*.example.com:3000,api.myapp.com:8080,localhost:3000
+
+# Mixed — wildcards and specific ports
+CORS_ALLOWED_ORIGIN=*.example.com,api.production.com:443,localhost:3000
 ```
 
-> **Note**: While subdomain wildcards (`*.example.com`) are supported, port wildcards (`example.com:*`) are not supported. Specify exact ports when needed.
+**Port Matching Behavior:**
+```bash
+# ✅ SUPPORTED — Exact port matching
+CORS_ALLOWED_ORIGIN=api.example.com:3000  # Matches: http://api.example.com:3000, https://api.example.com:3000
+
+# ❌ NOT SUPPORTED — Port wildcards
+CORS_ALLOWED_ORIGIN=api.example.com:*     # Does NOT work
+
+# ✅ SUPPORTED — Default port (implicit)
+CORS_ALLOWED_ORIGIN=api.example.com       # Matches: http://api.example.com, https://api.example.com (no explicit port)
+```
+
+**Protocol Behavior:**
+- Both `http` and `https` are automatically allowed for the same origin
+- Protocol is **not** part of the pattern (no need to specify `https://` in the pattern)
+
+**Credentials Behavior:**
+- **Wildcard (`*`)**: Credentials are **disabled** (CORS security restriction)
+- **Specific origins**: Credentials are **enabled**
+
+> **Best Practice**: For production, always specify explicit origins instead of using wildcard. Wildcard origins with credentials disabled should only be used in development environments.
 
 ### URL Versioning Settings
 

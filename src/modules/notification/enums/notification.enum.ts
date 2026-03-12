@@ -13,6 +13,7 @@ export enum EnumNotificationProcess {
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
     publishTermPolicy = 'publishTermPolicy',
     invite = 'invite',
+    userAcceptTermPolicy = 'userAcceptTermPolicy',
 }
 
 export enum EnumNotificationPushProcess {

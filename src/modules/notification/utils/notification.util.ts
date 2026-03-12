@@ -1,4 +1,3 @@
-import { HelperService } from '@common/helper/services/helper.service';
 import { MessageService } from '@common/message/services/message.service';
 import {
     EnumNotificationChannel,
@@ -12,6 +11,7 @@ import { NotificationResponseDto } from '@modules/notification/dtos/response/not
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
 import {
+    INotificationAcceptTermPolicyPayload,
     INotificationForgotPasswordPayload,
     INotificationInvitePayload,
     INotificationNewDeviceLoginPayload,
@@ -40,8 +40,7 @@ export class NotificationUtil {
     constructor(
         @InjectQueue(EnumQueue.notification)
         private readonly notificationQueue: Queue,
-        private readonly messageService: MessageService,
-        private readonly helperService: HelperService
+        private readonly messageService: MessageService
     ) {}
 
     /**
@@ -61,15 +60,13 @@ export class NotificationUtil {
         }: INotificationWelcomeByAdminPayload,
         createdBy: string
     ): Promise<void> {
-        const encryptedPassword = this.helperService.simpleEncrypt(password);
-
         await this.notificationQueue.add(
             EnumNotificationProcess.welcomeByAdmin,
             {
                 userId,
                 proceedBy: createdBy,
                 data: {
-                    password: encryptedPassword,
+                    password,
                     passwordCreatedAt,
                     passwordExpiredAt,
                 },
@@ -100,14 +97,12 @@ export class NotificationUtil {
             reference,
         }: INotificationVerificationEmailPayload
     ): Promise<void> {
-        const encryptedLink = this.helperService.simpleEncrypt(link);
-
         await this.notificationQueue.add(
             EnumNotificationProcess.welcome,
             {
                 userId,
                 data: {
-                    link: encryptedLink,
+                    link,
                     expiredAt,
                     expiredInMinutes,
                     reference,
@@ -164,14 +159,12 @@ export class NotificationUtil {
         }: INotificationTemporaryPasswordPayload,
         createdBy: string
     ): Promise<void> {
-        const encryptedPassword = this.helperService.simpleEncrypt(password);
-
         await this.notificationQueue.add(
             EnumNotificationProcess.temporaryPasswordByAdmin,
             {
                 userId,
                 data: {
-                    password: encryptedPassword,
+                    password,
                     passwordCreatedAt,
                     passwordExpiredAt,
                 },
@@ -254,14 +247,12 @@ export class NotificationUtil {
             reference,
         }: INotificationVerificationEmailPayload
     ): Promise<void> {
-        const encryptedLink = this.helperService.simpleEncrypt(link);
-
         await this.notificationQueue.add(
             EnumNotificationProcess.verificationEmail,
             {
                 userId,
                 data: {
-                    link: encryptedLink,
+                    link,
                     expiredAt,
                     expiredInMinutes,
                     reference,
@@ -295,14 +286,12 @@ export class NotificationUtil {
             resendInMinutes,
         }: INotificationForgotPasswordPayload
     ): Promise<void> {
-        const encryptedLink = this.helperService.simpleEncrypt(link);
-
         await this.notificationQueue.add(
             EnumNotificationProcess.forgotPassword,
             {
                 userId,
                 data: {
-                    link: encryptedLink,
+                    link,
                     expiredAt,
                     expiredInMinutes,
                     reference,
@@ -454,6 +443,34 @@ export class NotificationUtil {
     }
 
     /**
+     * Queues user acceptance of term policy notification.
+     *
+     * @param userId - User receiving the notification
+     * @param payload - Term policy version accepted by the user
+     * @returns Promise resolving when job is enqueued
+     */
+    async sendUserAcceptTermPolicy(
+        userId: string,
+        payload: INotificationAcceptTermPolicyPayload
+    ): Promise<void> {
+        await this.notificationQueue.add(
+            EnumNotificationProcess.userAcceptTermPolicy,
+            {
+                userId,
+                data: payload,
+                proceedBy: userId,
+            } as INotificationWorkerPayload<INotificationAcceptTermPolicyPayload>,
+            {
+                priority: EnumQueuePriority.low,
+                deduplication: {
+                    id: `${EnumNotificationProcess.userAcceptTermPolicy}-${userId}-${payload.termPolicyId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /**
      * Queues invite notification for a user.
      *
      * @param userId - User receiving the invitation
@@ -474,14 +491,12 @@ export class NotificationUtil {
         }: INotificationInvitePayload,
         proceedBy: string
     ): Promise<void> {
-        const encryptedLink = this.helperService.simpleEncrypt(link);
-
         await this.notificationQueue.add(
             EnumNotificationProcess.invite,
             {
                 userId,
                 data: {
-                    link: encryptedLink,
+                    link,
                     expiredAt,
                     expiredInMinutes,
                     reference,

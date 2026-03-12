@@ -23,9 +23,8 @@ import { ConfigService } from '@nestjs/config';
                 expiredInMinutes: configService.getOrThrow<number>(
                     'invite.expiredInMinutes'
                 ),
-                linkBaseUrl: configService.getOrThrow<string>(
-                    'invite.linkBaseUrl'
-                ),
+                linkBaseUrl:
+                    configService.getOrThrow<string>('invite.linkBaseUrl'),
             }),
         }),
     ],
@@ -37,11 +36,7 @@ import { ConfigService } from '@nestjs/config';
         ProjectMemberGuard,
         ProjectPermissionGuard,
     ],
-    exports: [
-        ProjectService,
-        ProjectMemberService,
-        ProjectRepository,
-    ],
+    exports: [ProjectService, ProjectMemberService, ProjectRepository],
     controllers: [ProjectPublicController],
 })
 export class ProjectModule {}

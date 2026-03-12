@@ -8,7 +8,10 @@ import {
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumProjectMemberStatus, EnumProjectStatus } from '@prisma/client';
+import {
+    EnumProjectMemberStatus,
+    EnumProjectStatus,
+} from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 
 @Command({
@@ -46,7 +49,9 @@ export class MigrationProjectSeed
 
         for (const p of this.projects) {
             tenantNames.add(p.tenantName);
-            if (p.ownerUserEmail) {emails.add(p.ownerUserEmail);}
+            if (p.ownerUserEmail) {
+                emails.add(p.ownerUserEmail);
+            }
             for (const m of p.members) {
                 emails.add(m.userEmail);
                 roleNames.add(m.projectRole);

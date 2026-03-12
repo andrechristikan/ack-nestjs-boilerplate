@@ -18,7 +18,7 @@ import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-p
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumTermPolicyType, Prisma } from '@prisma/client';
+import { EnumTermPolicyType, Prisma } from '@generated/prisma-client';
 
 @ApiTags('modules.public.termPolicy')
 @Controller({
@@ -34,7 +34,7 @@ export class TermPolicyPublicController {
     @Get('/list')
     async list(
         @PaginationCursorQuery({
-            availableSearch: TermPolicyDefaultAvailableOrderBy,
+            availableOrderBy: TermPolicyDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryCursorParams<
             Prisma.TermPolicySelect,

@@ -10,7 +10,7 @@ import {
     Injectable,
     InternalServerErrorException,
 } from '@nestjs/common';
-import { EnumRoleType } from '@prisma/client';
+import { EnumRoleType } from '@generated/prisma-client';
 
 @Injectable()
 export class PolicyService implements IPolicyService {
@@ -56,7 +56,8 @@ export class PolicyService implements IPolicyService {
 
         const abilities =
             __abilities ??
-            ((__user.role.abilities ?? []) as unknown as RoleAbilityRequestDto[]);
+            ((__user.role.abilities ??
+                []) as unknown as RoleAbilityRequestDto[]);
         const userAbilities = this.createAbility(abilities);
         const policyHandler = this.hasAbilities(
             userAbilities,

@@ -1,7 +1,10 @@
 import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumTermPolicyStatus, EnumTermPolicyType } from '@prisma/client';
+import {
+    EnumTermPolicyStatus,
+    EnumTermPolicyType,
+} from '@generated/prisma-client';
 import { Type } from 'class-transformer';
 
 export class TermPolicyResponseDto extends DatabaseDto {

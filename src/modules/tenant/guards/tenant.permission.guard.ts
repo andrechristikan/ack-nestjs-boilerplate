@@ -31,8 +31,9 @@ export class TenantPermissionGuard implements CanActivate {
                 context.getHandler()
             ) ?? [];
 
-        const request =
-            context.switchToHttp().getRequest<IRequestAppWithTenant>();
+        const request = context
+            .switchToHttp()
+            .getRequest<IRequestAppWithTenant>();
 
         return this.tenantService.validateTenantPermissionGuard(
             request,

@@ -406,16 +406,22 @@ timeoutInMs: number             // Request timeout in milliseconds (default: 300
 ```typescript
 cors: {
   allowedMethod: string[];        // Allowed HTTP methods (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS)
-  allowedOrigin: string[];        // Allowed origins (from CORS_ALLOWED_ORIGIN env variable, supports subdomain wildcards)
+  allowedOrigin: string[] | string | boolean;  // Allowed origins (from CORS_ALLOWED_ORIGIN env variable)
+                                               // - string[]: Array of origins (e.g., ["*.example.com", "api.myapp.com"])
+                                               // - string: Single origin or wildcard (e.g., "*.example.com" or "*")
+                                               // - boolean: true=allow all, false=deny all
   allowedHeader: string[];        // Allowed headers for CORS requests
 }
 ```
 
 > **CORS Configuration Notes**:
-> - `allowedOrigin` is populated from `CORS_ALLOWED_ORIGIN` environment variable
-> - Multiple origins can be specified using comma separation
-> - Subdomain wildcards are supported (e.g., `*.example.com`)
-> - Default headers include standard headers plus custom headers like `x-api-key`, `x-timezone`, etc.
+> - `allowedOrigin` is populated from `CORS_ALLOWED_ORIGIN` environment variable or configuration
+> - Multiple origins can be specified using comma separation (converted to array)
+> - **Subdomain wildcards** are supported (e.g., `*.example.com` matches `api.example.com` and `example.com`)
+> - **Exact port matching** is supported (e.g., `api.example.com:3000`) — port wildcards are NOT supported
+> - **Protocol-agnostic** — both HTTP and HTTPS are allowed for the same hostname
+> - **Credentials** are automatically allowed only for specific origins; wildcard (`*`) disables credentials
+> - Default headers include standard headers plus custom headers like `x-api-key`, `x-timezone`, `x-request-id`, etc.
 
 **`throttle`** - Rate limiting configuration
 ```typescript

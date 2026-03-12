@@ -13,7 +13,12 @@ import {
 } from '@modules/auth/interfaces/auth.interface';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { HelperService } from '@common/helper/services/helper.service';
-import { EnumUserLoginFrom, EnumUserLoginWith, User } from '@prisma/client';
+import {
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
+    PasswordHistory,
+    User,
+} from '@generated/prisma-client';
 import { createPrivateKey, createPublicKey } from 'crypto';
 import verifyAppleToken, {
     VerifyAppleIdTokenResponse,
@@ -24,15 +29,9 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 
 /**
- * Authentication Utility Service
- *
- * Provides comprehensive authentication and authorization features including:
- * - JWT token management (access and refresh tokens) with ES512 algorithm
- * - Password operations (hashing, validation, expiration tracking)
- * - Social authentication integration (Google OAuth2, Apple Sign-In)
- *
- * All cryptographic operations use industry-standard algorithms and secure
- * configurations from the application's authentication configuration.
+ * Authentication Utility Service.
+ * Handles JWT tokens, password operations, and social authentication (Google, Apple).
+ * See documentation: docs/authentication.md
  */
 @Injectable()
 export class AuthUtil {
@@ -197,16 +196,11 @@ export class AuthUtil {
     }
 
     /**
-     * Creates a JWT access token for the given subject and payload.
-     *
-     * Generates a signed JWT token using the configured private key and ES512 algorithm.
-     * The token includes issuer, audience, and expiration claims based on configuration.
-     *
-     * @param subject - The unique subject identifier for the token (typically user ID)
-     * @param jti - The unique token identifier for security tracking and validation
-     * @param payload - The payload data to include in the token
-     * @returns The signed JWT access token string
-     * @throws {Error} When token signing fails
+     * Creates a JWT access token with the given subject and payload.
+     * @param subject - The subject identifier (user ID)
+     * @param jti - The unique token identifier
+     * @param payload - The token payload data
+     * @returns The signed JWT access token
      */
     createAccessToken(
         subject: string,
@@ -226,17 +220,12 @@ export class AuthUtil {
     }
 
     /**
-     * Creates a JWT refresh token for the given subject and payload.
-     *
-     * Generates a signed JWT token using the configured private key and ES512 algorithm.
-     * Allows optional custom expiration time; defaults to configuration value if not provided.
-     *
-     * @param subject - The unique subject identifier for the token (typically user ID)
-     * @param jti - The unique token identifier for security tracking and validation
-     * @param payload - The refresh token payload data to include in the token
-     * @param expiresIn - Optional custom expiration time in seconds. Uses default from configuration if not provided
-     * @returns The signed JWT refresh token string
-     * @throws {Error} When token signing fails
+     * Creates a JWT refresh token with the given subject and payload.
+     * @param subject - The subject identifier (user ID)
+     * @param jti - The unique token identifier
+     * @param payload - The refresh token payload
+     * @param expiresIn - Optional custom expiration time in seconds
+     * @returns The signed JWT refresh token
      */
     createRefreshToken(
         subject: string,
@@ -257,15 +246,11 @@ export class AuthUtil {
     }
 
     /**
-     * Validates an access token for the given subject.
-     *
-     * Verifies the token signature using the configured public key and validates all claims
-     * including expiration, audience, issuer, subject, and token identifier (jti).
-     *
-     * @param subject - The subject identifier to validate against
-     * @param jti - The unique token identifier to validate
-     * @param token - The JWT access token to validate
-     * @returns True if the token is valid and all claims match, false otherwise
+     * Validates an access token signature and claims for the given subject.
+     * @param subject - The subject identifier to validate
+     * @param jti - The unique token identifier
+     * @param token - The JWT access token
+     * @returns True if token is valid
      */
     validateAccessToken(subject: string, jti: string, token: string): boolean {
         try {
@@ -285,15 +270,11 @@ export class AuthUtil {
     }
 
     /**
-     * Validates a refresh token for the given subject.
-     *
-     * Verifies the token signature using the configured public key and validates all claims
-     * including expiration, audience, issuer, subject, and token identifier (jti).
-     *
-     * @param subject - The subject identifier to validate against
-     * @param jti - The unique token identifier to validate
-     * @param token - The JWT refresh token to validate
-     * @returns True if the token is valid and all claims match, false otherwise
+     * Validates a refresh token signature and claims for the given subject.
+     * @param subject - The subject identifier to validate
+     * @param jti - The unique token identifier
+     * @param token - The JWT refresh token
+     * @returns True if token is valid
      */
     validateRefreshToken(subject: string, jti: string, token: string): boolean {
         try {
@@ -313,35 +294,27 @@ export class AuthUtil {
     }
 
     /**
-     * Decodes and returns the payload from a JWT token without verification.
-     *
-     * WARNING: This method does not validate the token signature, expiration, or any claims.
-     * Use only for extracting payload information when you don't need validation.
-     * Always verify tokens using validateAccessToken() or validateRefreshToken() before trusting the data.
-     *
-     * @param token - The JWT token to decode
-     * @returns The decoded payload of generic type T
+     * Decodes JWT payload without signature verification. WARNING: Use only on verified tokens.
+     * @param token - The JWT token
+     * @returns The decoded payload
      */
     payloadToken<T>(token: string): T {
         return this.jwtService.decode<T>(token);
     }
 
     /**
-     * Creates the payload for an access token from user data and login information.
-     *
-     * Constructs a structured payload containing user identification, role information,
-     * and session tracking data to be embedded in the JWT access token.
-     *
-     * @param data - The user entity from database containing profile and role information
-     * @param sessionId - The unique session identifier for this login session
-     * @param loginAt - The date and time when the login occurred
-     * @param loginFrom - The source/platform of the login (e.g., website, mobile app)
-     * @param loginWith - The authentication method used (email, google, apple, etc.)
-     * @returns The formatted access token payload containing user and session data
+     * Creates access token payload from user and login data.
+     * @param data - User entity
+     * @param sessionId - Session identifier
+     * @param loginAt - Login timestamp
+     * @param loginFrom - Login source/platform
+     * @param loginWith - Authentication method
+     * @returns Formatted access token payload
      */
     createPayloadAccessToken(
         data: User,
         sessionId: string,
+        deviceOwnershipId: string,
         loginAt: Date,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith
@@ -352,6 +325,7 @@ export class AuthUtil {
             username: data.username,
             email: data.email,
             sessionId,
+            deviceOwnershipId,
             loginAt,
             loginFrom,
             loginWith,
@@ -359,22 +333,14 @@ export class AuthUtil {
     }
 
     /**
-     * Creates a refresh token payload from an access token payload.
-     *
-     * Extracts only the essential fields from the access token payload needed for
-     * token refresh operations, following the principle of least privilege.
-     *
-     * @param payload - The access token payload containing session and user information
-     * @param payload.sessionId - The unique session identifier
-     * @param payload.userId - The user's unique identifier
-     * @param payload.loginFrom - The source/platform of the login
-     * @param payload.loginAt - The date and time when the login occurred
-     * @param payload.loginWith - The authentication method used
-     * @returns The formatted refresh token payload with minimal required data for token refresh
+     * Creates refresh token payload from access token payload.
+     * @param payload - Access token payload with sessionId, userId, loginFrom, loginAt, loginWith
+     * @returns Minimal refresh token payload
      */
     createPayloadRefreshToken({
         sessionId,
         userId,
+        deviceOwnershipId,
         loginFrom,
         loginAt,
         loginWith,
@@ -384,32 +350,25 @@ export class AuthUtil {
             loginFrom,
             loginWith,
             sessionId,
+            deviceOwnershipId,
             userId,
         };
     }
 
     /**
-     * Validates a password by comparing it with the stored hash using bcrypt.
-     *
-     * Uses the bcrypt algorithm for secure password comparison, defending against
-     * timing attacks through constant-time comparison.
-     *
-     * @param passwordString - The plain text password to validate
-     * @param passwordHash - The bcrypt hashed password to compare against
-     * @returns True if the password matches the hash, false otherwise
+     * Validates password against bcrypt hash.
+     * @param passwordString - Plain text password
+     * @param passwordHash - Bcrypt hash to compare
+     * @returns True if password matches
      */
     validatePassword(passwordString: string, passwordHash: string): boolean {
         return this.helperService.bcryptCompare(passwordString, passwordHash);
     }
 
     /**
-     * Checks if a user has exceeded the maximum password attempt limit.
-     *
-     * Validates whether the user's failed login attempts have exceeded the configured
-     * maximum. Returns false if password attempt checking is disabled in configuration.
-     *
-     * @param user - The user entity containing password attempt information
-     * @returns True if password attempts exceeded the configured limit, false if within limit or checking disabled
+     * Checks if user exceeded maximum password attempt limit.
+     * @param user - User entity
+     * @returns True if attempts exceeded limit
      */
     checkPasswordAttempt(user: User): boolean {
         return this.passwordAttempt
@@ -418,17 +377,14 @@ export class AuthUtil {
     }
 
     /**
-     * Creates a new password hash with salt and expiration tracking.
-     *
-     * Generates a bcrypt hash with random salt and sets both regular and period expiration dates.
-     * Supports temporary passwords with shorter expiration times for password reset scenarios.
-     *
-     * @param password - The plain text password to hash
-     * @param options - Optional settings for password creation
-     * @param options.temporary - If true, uses temporary password expiration time instead of regular expiration
-     * @returns Object containing the password hash, creation date, expiration date, and period expiration date
+     * Creates password hash with salt and expiration tracking.
+     * @param userId - User identifier
+     * @param password - Plain text password
+     * @param options - Optional settings (temporary flag)
+     * @returns Password object with hash, expiration, and encrypted password
      */
     createPassword(
+        userId: string,
         password: string,
         options?: IAuthPasswordOptions
     ): IAuthPassword {
@@ -451,36 +407,53 @@ export class AuthUtil {
                 seconds: this.passwordPeriodInSeconds,
             })
         );
+        const passwordEncrypted: string = this.encryptPassword(
+            userId,
+            password
+        );
 
         return {
             passwordHash,
             passwordExpired,
             passwordCreated: today,
             passwordPeriodExpired,
+            passwordEncrypted,
         };
     }
 
     /**
-     * Generates a random password string.
-     *
-     * Creates a cryptographically random 10-character alphanumeric string suitable
-     * for temporary passwords or password reset scenarios.
-     *
-     * @returns A randomly generated 10-character alphanumeric password string
+     * Encrypts password using AES-256 encryption with user ID as key.
+     * Used for emergency password storage/recovery purposes.
+     * @param userId - User identifier used as encryption key
+     * @param password - Plain text password to encrypt
+     * @returns AES-256 encrypted password
+     */
+    encryptPassword(userId: string, password: string): string {
+        return this.helperService.aes256EncryptSimple(password, userId);
+    }
+
+    /**
+     * Decrypts password using AES-256 decryption with user ID as key.
+     * @param userId - User identifier used as decryption key
+     * @param encrypted - AES-256 encrypted password
+     * @returns Decrypted plain text password
+     */
+    decryptPassword(userId: string, encrypted: string): string {
+        return this.helperService.aes256DecryptSimple(encrypted, userId);
+    }
+
+    /**
+     * Generates a random 10-character alphanumeric password string.
+     * @returns Random password
      */
     createPasswordRandom(): string {
         return this.helperService.randomString(10);
     }
 
     /**
-     * Checks if a password has expired based on its expiration date.
-     *
-     * Compares the password expiration date with the current date to determine
-     * if the user should be prompted to change their password. Returns false if
-     * no expiration date is provided.
-     *
-     * @param passwordExpired - Optional date when the password expires. If not provided, returns false
-     * @returns True if the password has expired (current date > expiration date), false if password has not expired or no expiration date is provided
+     * Checks if password has expired.
+     * @param passwordExpired - Optional password expiration date
+     * @returns True if password expired
      */
     checkPasswordExpired(passwordExpired?: Date): boolean {
         if (!passwordExpired) {
@@ -493,12 +466,8 @@ export class AuthUtil {
 
     /**
      * Extracts Google OAuth token from request headers.
-     *
-     * Looks for the configured Google header name and splits the header value
-     * by the configured prefix (typically 'Bearer ') to extract the token.
-     *
-     * @param request - The incoming HTTP request containing Google OAuth headers
-     * @returns Array of strings from the header split by prefix, or empty array if header not found
+     * @param request - HTTP request with Google OAuth headers
+     * @returns Header split by prefix or empty array
      */
     extractHeaderGoogle(request: IRequestApp<IAuthSocialPayload>): string[] {
         return (
@@ -509,14 +478,9 @@ export class AuthUtil {
     }
 
     /**
-     * Verifies a Google OAuth ID token and extracts the payload.
-     *
-     * Validates the token signature against Google's public keys and verifies all claims.
-     * Extracts the decoded payload containing user information if verification succeeds.
-     *
-     * @param token - The Google OAuth ID token to verify
-     * @returns Promise resolving to the verified token payload containing user information
-     * @throws {Error} When token verification fails, token is invalid, expired, or signature is invalid
+     * Verifies Google OAuth ID token.
+     * @param token - Google OAuth ID token
+     * @returns Promise resolving to verified token payload
      */
     async verifyGoogle(token: string): Promise<TokenPayload> {
         const login: LoginTicket = await this.googleClient.verifyIdToken({
@@ -530,12 +494,8 @@ export class AuthUtil {
 
     /**
      * Extracts Apple Sign-In token from request headers.
-     *
-     * Looks for the configured Apple header name and splits the header value
-     * by the configured prefix (typically 'Bearer ') to extract the token.
-     *
-     * @param request - The incoming HTTP request containing Apple Sign-In headers
-     * @returns Array of strings from the header split by prefix, or empty array if header not found
+     * @param request - HTTP request with Apple Sign-In headers
+     * @returns Header split by prefix or empty array
      */
     extractHeaderApple(request: IRequestApp<IAuthSocialPayload>): string[] {
         return (
@@ -546,15 +506,9 @@ export class AuthUtil {
     }
 
     /**
-     * Verifies an Apple Sign-In ID token and extracts the payload.
-     *
-     * Validates the token signature against Apple's public keys and verifies all claims.
-     * Supports both regular Apple ID and Sign-In with Apple client IDs for compatibility.
-     * Extracts the decoded payload containing user information if verification succeeds.
-     *
-     * @param token - The Apple ID token to verify
-     * @returns Promise resolving to the verified token response containing user information
-     * @throws {Error} When token verification fails, token is invalid, expired, or signature is invalid
+     * Verifies Apple Sign-In ID token.
+     * @param token - Apple ID token
+     * @returns Promise resolving to verified token response
      */
     async verifyApple(token: string): Promise<VerifyAppleIdTokenResponse> {
         return verifyAppleToken({
@@ -564,12 +518,8 @@ export class AuthUtil {
     }
 
     /**
-     * Generates a unique token identifier for session tracking.
-     *
-     * Creates a 32-character random string used to track unique sessions or devices
-     * and provide additional security validation during token verification.
-     *
-     * @returns A 32-character random alphanumeric string
+     * Generates a unique 32-character token identifier for session tracking.
+     * @returns Random token identifier
      */
     generateJti(): string {
         return this.helperService.randomString(32);
@@ -577,12 +527,8 @@ export class AuthUtil {
 
     /**
      * Extracts JWT token from request headers.
-     *
-     * Looks for the configured JWT header name and splits the header value
-     * by the configured prefix (typically 'Bearer ') to extract the token.
-     *
-     * @param request - The incoming HTTP request containing JWT headers
-     * @returns Array of strings from the header split by prefix, or empty array if header not found
+     * @param request - HTTP request with JWT headers
+     * @returns Header split by prefix or empty array
      */
     extractHeaderJwt(request: IRequestApp): string[] {
         return (
@@ -593,15 +539,11 @@ export class AuthUtil {
     }
 
     /**
-     * Creates both access and refresh tokens for a user session.
-     *
-     * Generates JWT tokens with current timestamp, unique session ID, and unique token identifier (jti)
-     * for session tracking and security validation.
-     *
-     * @param user - The user entity containing profile and role information
-     * @param loginFrom - The source/platform of the login (website, mobile, etc.)
-     * @param loginWith - The authentication method used for login (email, google, apple, etc.)
-     * @returns Token response object containing access token, refresh token, expiration time, jti, and sessionId
+     * Creates access and refresh tokens for user session.
+     * @param user - User entity
+     * @param loginFrom - Login source/platform
+     * @param loginWith - Authentication method
+     * @returns Token response with access/refresh tokens, jti, and sessionId
      */
     createTokens(
         user: IUser,
@@ -611,11 +553,13 @@ export class AuthUtil {
         const loginDate = this.helperService.dateCreate();
 
         const sessionId = this.databaseUtil.createId();
+        const deviceOwnershipId = this.databaseUtil.createId();
         const jti = this.generateJti();
         const payloadAccessToken: IAuthJwtAccessTokenPayload =
             this.createPayloadAccessToken(
                 user,
                 sessionId,
+                deviceOwnershipId,
                 loginDate,
                 loginFrom,
                 loginWith
@@ -650,22 +594,19 @@ export class AuthUtil {
     }
 
     /**
-     * Refreshes an access token using a valid refresh token.
-     *
-     * This method extracts session and user information from the provided refresh token, then generates a new access token
-     * and a new refresh token with a new token identifier (jti). The new refresh token's expiration is adjusted based on the
-     * remaining validity of the original refresh token, ensuring the session does not extend beyond its original lifetime.
-     *
-     * @param user - The user entity containing profile and role information
-     * @param refreshTokenFromRequest - The existing refresh token to extract session and expiration data from
-     * @returns IAuthRefreshTokenGenerate object containing the new access token, new refresh token (with adjusted expiry), new jti, sessionId, and remaining expiration in ms
-     * @throws {UnauthorizedException} If the refresh token is invalid or session validation fails
+     * Refreshes access token using valid refresh token.
+     * Validates refresh token, extracts session context, and generates new access token.
+     * Maintains session continuity while issuing new access token with remaining refresh token validity.
+     * @param user - User entity
+     * @param refreshTokenFromRequest - Valid refresh token from client
+     * @returns New tokens with new JTI, adjusted expiry time, and session metadata
      */
     refreshToken(
         user: IUser,
         refreshTokenFromRequest: string
     ): IAuthRefreshTokenGenerate {
         const {
+            deviceOwnershipId,
             sessionId,
             loginAt,
             loginFrom,
@@ -680,6 +621,7 @@ export class AuthUtil {
             this.createPayloadAccessToken(
                 user,
                 sessionId,
+                deviceOwnershipId,
                 loginAt,
                 loginFrom,
                 loginWith
@@ -727,5 +669,34 @@ export class AuthUtil {
             sessionId,
             expiredInMs: newRefreshTokenExpire.milliseconds,
         };
+    }
+
+    /**
+     * Checks if provided password matches any password in user's history.
+     * Used to prevent reusing recent passwords during password change.
+     * @param histories - Array of password history records (bcrypt hashed)
+     * @param password - Plain text password to check against history
+     * @returns Password history record if found, null if password is not in history
+     */
+    checkPasswordPeriod(
+        histories: PasswordHistory[],
+        password: string
+    ): PasswordHistory | null {
+        for (const history of histories) {
+            if (this.helperService.bcryptCompare(password, history.password)) {
+                return history;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Converts password period setting from seconds to days.
+     * Used for display/UI purposes (e.g., "Password must not repeat for X days").
+     * @returns Password period in days
+     */
+    getPasswordPeriodInDays(): number {
+        return Math.floor(this.passwordPeriodInSeconds / (60 * 60 * 24));
     }
 }

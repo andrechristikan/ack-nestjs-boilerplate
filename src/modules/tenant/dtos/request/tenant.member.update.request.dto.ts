@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumTenantMemberStatus } from '@prisma/client';
+import { EnumTenantMemberStatus } from '@generated/prisma-client';
 import {
     IsEnum,
     IsMongoId,

@@ -14,7 +14,7 @@ import {
     TenantRolePlatformSupport,
     TenantRoleUser,
 } from '@modules/tenant/constants/tenant.constant';
-import { EnumRoleScope, EnumRoleType } from '@prisma/client';
+import { EnumRoleScope, EnumRoleType } from '@generated/prisma-client';
 
 const roleData: RoleCreateRequestDto[] = [
     {
@@ -66,10 +66,7 @@ const roleData: RoleCreateRequestDto[] = [
         abilities: [
             {
                 subject: EnumPolicySubject.tenant,
-                action: [
-                    EnumPolicyAction.read,
-                    EnumPolicyAction.update,
-                ],
+                action: [EnumPolicyAction.read, EnumPolicyAction.update],
             },
             {
                 subject: EnumPolicySubject.tenantMember,
@@ -166,10 +163,7 @@ const roleData: RoleCreateRequestDto[] = [
         abilities: [
             {
                 subject: EnumPolicySubject.project,
-                action: [
-                    EnumPolicyAction.read,
-                    EnumPolicyAction.update,
-                ],
+                action: [EnumPolicyAction.read, EnumPolicyAction.update],
             },
             {
                 subject: EnumPolicySubject.projectMember,

@@ -26,7 +26,7 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumRoleScope, EnumRoleType, Prisma } from '@prisma/client';
+import { EnumRoleScope, EnumRoleType, Prisma } from '@generated/prisma-client';
 
 @Injectable()
 export class RoleService implements IRoleService {

@@ -10,9 +10,7 @@ import {
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
-import {
-    TenantDocParamsMemberId,
-} from '@modules/tenant/constants/tenant.doc.constant';
+import { TenantDocParamsMemberId } from '@modules/tenant/constants/tenant.doc.constant';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
 import { TenantMemberInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member-invite.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
@@ -106,13 +104,10 @@ export function TenantSharedCreateMemberInviteDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
             dto: TenantMemberInviteCreateRequestDto,
         }),
-        DocResponse<InviteCreateResponseDto>(
-            'tenant.member.invite.create',
-            {
-                httpStatus: HttpStatus.CREATED,
-                dto: InviteCreateResponseDto,
-            }
-        )
+        DocResponse<InviteCreateResponseDto>('tenant.member.invite.create', {
+            httpStatus: HttpStatus.CREATED,
+            dto: InviteCreateResponseDto,
+        })
     );
 }
 
@@ -129,12 +124,9 @@ export function TenantSharedSendMemberInviteDoc(): MethodDecorator {
         DocRequest({
             params: TenantDocParamsMemberId,
         }),
-        DocResponse<InviteSendResponseDto>(
-            'tenant.member.invite.send',
-            {
-                dto: InviteSendResponseDto,
-            }
-        )
+        DocResponse<InviteSendResponseDto>('tenant.member.invite.send', {
+            dto: InviteSendResponseDto,
+        })
     );
 }
 

@@ -50,7 +50,7 @@ import {
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumActivityLogAction } from '@prisma/client';
+import { EnumActivityLogAction } from '@generated/prisma-client';
 
 @ApiTags('modules.admin.tenant')
 @Controller({

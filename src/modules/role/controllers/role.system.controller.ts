@@ -30,7 +30,7 @@ import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.respo
 import { RoleService } from '@modules/role/services/role.service';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType, Prisma } from '@prisma/client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
 @ApiTags('modules.system.role')
 @Controller({

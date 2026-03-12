@@ -31,7 +31,7 @@ import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/t
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Body, Controller, Get, Param, Patch, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType, Prisma } from '@prisma/client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
 @ApiTags('common.admin.featureFlag')
 @Controller({

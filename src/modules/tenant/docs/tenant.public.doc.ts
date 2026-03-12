@@ -44,7 +44,8 @@ export function TenantPublicClaimInviteDoc(): MethodDecorator {
 export function TenantPublicLoginCredentialDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'Agency application login with tenant membership validation',
+            summary:
+                'Agency application login with tenant membership validation',
             description:
                 'Authenticate user credentials and validate tenant membership. Only users with active tenant memberships can login. Returns tokens and list of available tenants.',
         }),

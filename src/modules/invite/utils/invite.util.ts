@@ -10,7 +10,7 @@ import {
     InviteTokenCreate,
 } from '@modules/invite/interfaces/invite.interface';
 import { ConfigService } from '@nestjs/config';
-import { Invite as InviteModel, Prisma, User } from '@prisma/client';
+import { Invite as InviteModel, Prisma, User } from '@generated/prisma-client';
 import { Duration } from 'luxon';
 import { ValidationError, validateSync } from 'class-validator';
 

@@ -1,5 +1,11 @@
-import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    PaginationOffsetQuery,
+    PaginationQueryFilterEqualBoolean,
+} from '@common/pagination/decorators/pagination.decorator';
+import {
+    IPaginationEqual,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import {
     RequestGeoLocation,
     RequestIPAddress,
@@ -7,7 +13,10 @@ import {
 } from '@common/request/decorators/request.decorator';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
-import { ResponsePaging } from '@common/response/decorators/response.decorator';
+import {
+    Response,
+    ResponsePaging,
+} from '@common/response/decorators/response.decorator';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -41,7 +50,7 @@ import {
     GeoLocation,
     Prisma,
     UserAgent,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @ApiTags('modules.admin.user.session')
 @Controller({
@@ -78,14 +87,19 @@ export class SessionAdminController {
             Prisma.SessionWhereInput
         >,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-        userId: string
+        userId: string,
+        @PaginationQueryFilterEqualBoolean('isRevoked')
+        isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        return this.sessionService.getListOffsetByAdmin(userId, pagination);
+        return this.sessionService.getListOffsetByAdmin(
+            userId,
+            pagination,
+            isRevoked
+        );
     }
 
     @SessionAdminRevokeDoc()
-    @ResponsePaging('session.revoke')
-    @ActivityLog(EnumActivityLogAction.adminSessionRevoke)
+    @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
@@ -98,6 +112,7 @@ export class SessionAdminController {
         }
     )
     @RoleProtected(EnumRoleType.admin)
+    @ActivityLog(EnumActivityLogAction.adminSessionRevoke)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -105,7 +120,8 @@ export class SessionAdminController {
     async revoke(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
-        @Param('sessionId', RequestRequiredPipe) sessionId: string,
+        @Param('sessionId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        sessionId: string,
         @AuthJwtPayload('userId') revokedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,

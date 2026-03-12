@@ -20,7 +20,7 @@ import {
     Invite,
     Prisma,
     User,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 import {
     InviteCreate,
     InviteTokenCreate,
@@ -146,20 +146,17 @@ export class InviteRepository {
             InviteWithUser,
             Prisma.InviteSelect,
             Prisma.InviteWhereInput
-        >(
-            this.databaseService.invite,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    ...inviteType,
-                    ...contextId,
-                    ...userId,
-                    user: { deletedAt: null },
-                },
-                include: { user: true },
-            }
-        );
+        >(this.databaseService.invite, {
+            ...params,
+            where: {
+                ...where,
+                ...inviteType,
+                ...contextId,
+                ...userId,
+                user: { deletedAt: null },
+            },
+            include: { user: true },
+        });
     }
 
     async findWithPaginationCursor(
@@ -178,20 +175,17 @@ export class InviteRepository {
             InviteWithUser,
             Prisma.InviteSelect,
             Prisma.InviteWhereInput
-        >(
-            this.databaseService.invite,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    ...inviteType,
-                    ...contextId,
-                    ...userId,
-                    user: { deletedAt: null },
-                },
-                include: { user: true },
-            }
-        );
+        >(this.databaseService.invite, {
+            ...params,
+            where: {
+                ...where,
+                ...inviteType,
+                ...contextId,
+                ...userId,
+                user: { deletedAt: null },
+            },
+            include: { user: true },
+        });
     }
 
     async softDelete(id: string, deletedBy: string): Promise<void> {

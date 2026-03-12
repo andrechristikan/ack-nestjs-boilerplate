@@ -1,9 +1,4 @@
-import {
-    DynamicModule,
-    FactoryProvider,
-    Global,
-    Module,
-} from '@nestjs/common';
+import { DynamicModule, FactoryProvider, Global, Module } from '@nestjs/common';
 import { InviteService } from '@modules/invite/services/invite.service';
 import { InviteRepository } from '@modules/invite/repositories/invite.repository';
 import {

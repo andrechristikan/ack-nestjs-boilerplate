@@ -11,7 +11,7 @@ import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.cr
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { Injectable } from '@nestjs/common';
-import { ApiKey, Prisma } from '@prisma/client';
+import { ApiKey, Prisma } from '@generated/prisma-client';
 
 @Injectable()
 export class ApiKeyRepository {
@@ -42,9 +42,11 @@ export class ApiKeyRepository {
                 ...isActive,
                 ...type,
             },
-            orderBy: {
-                createdAt: EnumPaginationOrderDirectionType.desc,
-            },
+            orderBy: [
+                {
+                    createdAt: EnumPaginationOrderDirectionType.desc,
+                },
+            ],
         });
     }
 

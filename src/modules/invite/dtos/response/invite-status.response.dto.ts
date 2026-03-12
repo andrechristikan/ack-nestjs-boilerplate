@@ -14,7 +14,8 @@ export class InviteStatusResponseDto {
 
     @ApiProperty({
         required: false,
-        description: 'Seconds remaining before expiration when status is pending',
+        description:
+            'Seconds remaining before expiration when status is pending',
     })
     remainingSeconds?: number;
 

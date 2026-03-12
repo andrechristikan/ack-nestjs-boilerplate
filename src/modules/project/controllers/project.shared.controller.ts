@@ -1,11 +1,20 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client';
-import { Response, ResponsePaging } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn, IResponseReturn } from '@common/response/interfaces/response.interface';
+import {
+    Response,
+    ResponsePaging,
+} from '@common/response/decorators/response.decorator';
+import {
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected, AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAccessProtected,
+    AuthJwtPayload,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project.access.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
@@ -53,7 +62,8 @@ export class ProjectSharedController {
     @Get('')
     async list(
         @AuthJwtPayload('userId') userId: string,
-        @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams<
+        @PaginationOffsetQuery()
+        pagination: IPaginationQueryOffsetParams<
             Prisma.ProjectMemberSelect,
             Prisma.ProjectMemberWhereInput
         >

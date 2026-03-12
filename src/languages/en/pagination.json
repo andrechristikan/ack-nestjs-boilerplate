@@ -9,6 +9,7 @@
         "filterInvalidValueEnum": "'{property}' value provided is invalid. Allowed values are: {allowedValues}.",
         "filterInvalidValue": "'{property}' value provided is invalid.",
         "orderByNotAllowed": "The 'orderBy' field '{field}' is not allowed. Allowed fields are: {allowedFields}.",
+        "orderDirectionNotAllowed": "The 'orderBy' direction is not allowed. Allowed directions are: {allowedDirections}.",
         "pageExceedsMaximum": "The 'page' parameter exceeds the maximum allowed value of {maxPage}. Received: {receivedPage}.",
         "pageCannotBeLessThanOne": "The 'page' parameter cannot be less than {minPage}. Received: {receivedPage}.",
         "perPageExceedsMaximum": "The 'perPage' parameter exceeds the maximum allowed value of {maxPerPage}. Received: {receivedPerPage}.",

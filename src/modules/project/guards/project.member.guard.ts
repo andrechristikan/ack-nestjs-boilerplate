@@ -10,8 +10,9 @@ export class ProjectMemberGuard implements CanActivate {
     constructor(private readonly projectService: ProjectService) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const request =
-            context.switchToHttp().getRequest<IRequestAppWithProjectTenant>();
+        const request = context
+            .switchToHttp()
+            .getRequest<IRequestAppWithProjectTenant>();
         const projectMember =
             await this.projectService.validateProjectMemberGuard(request);
 

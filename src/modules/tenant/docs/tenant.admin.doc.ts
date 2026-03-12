@@ -8,9 +8,7 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
-import {
-    TenantDocParamsId,
-} from '@modules/tenant/constants/tenant.doc.constant';
+import { TenantDocParamsId } from '@modules/tenant/constants/tenant.doc.constant';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
 import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.jit-access.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';

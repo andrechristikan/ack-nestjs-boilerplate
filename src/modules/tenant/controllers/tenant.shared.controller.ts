@@ -1,8 +1,6 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import {
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import {
     RequestIPAddress,
     RequestUserAgent,
@@ -142,9 +140,7 @@ export class TenantSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/current/members/roles')
-    async listMemberRoles(): Promise<
-        IResponseReturn<RoleListResponseDto[]>
-    > {
+    async listMemberRoles(): Promise<IResponseReturn<RoleListResponseDto[]>> {
         return this.tenantMemberService.getMemberRoles();
     }
 
@@ -163,7 +159,11 @@ export class TenantSharedController {
         @Body() body: TenantMemberCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.tenantMemberService.createMember(tenant.id, body, createdBy);
+        return this.tenantMemberService.createMember(
+            tenant.id,
+            body,
+            createdBy
+        );
     }
 
     @TenantSharedCreateMemberInviteDoc()

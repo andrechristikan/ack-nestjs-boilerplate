@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorResult } from '@nestjs/terminus';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@generated/prisma-client';
 import { IDatabaseService } from 'src/common/database/interfaces/database.service.interface';
 
 /**

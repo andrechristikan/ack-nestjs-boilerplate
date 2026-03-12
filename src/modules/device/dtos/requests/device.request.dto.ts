@@ -2,7 +2,7 @@ import { EnumDevicePlatform } from '@generated/prisma-client';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class DeviceDto {
+export class DeviceRequestDto {
     @ApiProperty({
         description: 'Device fingerprint to uniquely identify the device',
         example: 'abc123def456ghi789jkl012mno345pq',

@@ -22,7 +22,7 @@ import {
     EnumUserStatus,
     Prisma,
     TermPolicy,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @Injectable()
 export class TermPolicyRepository {
@@ -115,6 +115,8 @@ export class TermPolicyRepository {
 
     async existLatestPublishedByType(type: EnumTermPolicyType): Promise<{
         id: string;
+        type: EnumTermPolicyType;
+        version: number;
     } | null> {
         return this.databaseService.termPolicy.findFirst({
             where: {
@@ -123,6 +125,11 @@ export class TermPolicyRepository {
             },
             orderBy: {
                 version: Prisma.SortOrder.desc,
+            },
+            select: {
+                id: true,
+                type: true,
+                version: true,
             },
         });
     }
@@ -135,6 +142,9 @@ export class TermPolicyRepository {
             where: {
                 userId,
                 termPolicyId,
+            },
+            select: {
+                id: true,
             },
         });
     }

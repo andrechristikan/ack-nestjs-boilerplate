@@ -5,7 +5,7 @@ import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-f
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { FeatureFlag } from '@prisma/client';
+import { FeatureFlag } from '@generated/prisma-client';
 import { Cache } from 'cache-manager';
 import { plainToInstance } from 'class-transformer';
 

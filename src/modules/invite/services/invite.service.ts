@@ -33,7 +33,7 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumUserStatus, Prisma } from '@prisma/client';
+import { EnumUserStatus, Prisma } from '@generated/prisma-client';
 import { Duration } from 'luxon';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 
@@ -170,11 +170,13 @@ export class InviteService implements IInviteService {
         }
 
         try {
-
             await this.notificationUtil.sendInvite(
                 invite.user.id,
                 {
-                    link: this.inviteUtil.createInviteLink(invite.token, config),
+                    link: this.inviteUtil.createInviteLink(
+                        invite.token,
+                        config
+                    ),
                     expiredAt: invite.expiresAt,
                     expiredInMinutes: config.expiredInMinutes,
                     reference: invite.reference,
@@ -206,7 +208,8 @@ export class InviteService implements IInviteService {
                     remainingSeconds: Math.max(
                         0,
                         Math.floor(
-                            (invite.expiresAt.getTime() - today.getTime()) / 1000
+                            (invite.expiresAt.getTime() - today.getTime()) /
+                                1000
                         )
                     ),
                     sentAt: today,
@@ -458,7 +461,10 @@ export class InviteService implements IInviteService {
 
         try {
             const name = `${firstName.trim()} ${lastName.trim()}`.trim();
-            const passwordPayload = this.authUtil.createPassword(password);
+            const passwordPayload = this.authUtil.createPassword(
+                invite.userId,
+                password
+            );
 
             await this.inviteRepository.signupByInvite(
                 invite.id,
@@ -468,10 +474,9 @@ export class InviteService implements IInviteService {
                 requestLog
             );
 
-            this.notificationUtil.sendVerifiedEmail(
-                invite.user.id,
-                { reference: invite.reference }
-            );
+            this.notificationUtil.sendVerifiedEmail(invite.user.id, {
+                reference: invite.reference,
+            });
 
             return;
         } catch (err: unknown) {

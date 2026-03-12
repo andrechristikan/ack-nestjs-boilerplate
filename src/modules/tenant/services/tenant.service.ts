@@ -1,9 +1,7 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
-import {
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client';
 import {
     IResponsePagingReturn,
@@ -32,10 +30,7 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
-import {
-    EnumRoleScope,
-    EnumTenantStatus,
-} from '@prisma/client';
+import { EnumRoleScope, EnumTenantStatus } from '@generated/prisma-client';
 
 @Injectable()
 export class TenantService implements ITenantService {
@@ -182,8 +177,8 @@ export class TenantService implements ITenantService {
             });
         }
 
-        const abilities =
-            (request.__tenantMember?.role?.abilities ?? []) as RoleAbilityRequestDto[];
+        const abilities = (request.__tenantMember?.role?.abilities ??
+            []) as RoleAbilityRequestDto[];
 
         const abilityRule = this.policyService.createAbility(abilities);
         const isAllowed = this.policyService.hasAbilities(
@@ -276,7 +271,10 @@ export class TenantService implements ITenantService {
         return {};
     }
 
-    async delete(id: string, deletedBy: string): Promise<IResponseReturn<void>> {
+    async delete(
+        id: string,
+        deletedBy: string
+    ): Promise<IResponseReturn<void>> {
         try {
             await this.tenantRepository.delete(id, deletedBy);
         } catch (error) {
@@ -287,5 +285,4 @@ export class TenantService implements ITenantService {
 
         return {};
     }
-
 }

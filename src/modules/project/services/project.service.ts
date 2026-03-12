@@ -1,7 +1,5 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
-import {
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client';
 import {
     IResponsePagingReturn,
@@ -36,7 +34,7 @@ import {
     EnumProjectMemberStatus,
     EnumProjectStatus,
     EnumRoleScope,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @Injectable()
 export class ProjectService {
@@ -64,11 +62,12 @@ export class ProjectService {
 
         const projectId = this.resolveProjectIdFromRequest(request);
 
-        const projectMember = await this.projectRepository.findMemberByProjectAndUser(
-            projectId,
-            user.userId,
-            EnumProjectMemberStatus.active
-        );
+        const projectMember =
+            await this.projectRepository.findMemberByProjectAndUser(
+                projectId,
+                user.userId,
+                EnumProjectMemberStatus.active
+            );
 
         if (!projectMember) {
             throw new ForbiddenException({
@@ -107,11 +106,10 @@ export class ProjectService {
         }
 
         if (!request.__projectAbilities) {
-            const abilities =
-                (request.__projectMember?.role?.abilities ?? []) as RoleAbilityRequestDto[];
-            request.__projectAbilities = this.policyService.createAbility(
-                abilities
-            );
+            const abilities = (request.__projectMember?.role?.abilities ??
+                []) as RoleAbilityRequestDto[];
+            request.__projectAbilities =
+                this.policyService.createAbility(abilities);
         }
 
         const isAllowed = this.policyService.hasAbilities(
@@ -198,7 +196,6 @@ export class ProjectService {
         dto: ProjectUpdateRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-
         const data: {
             name?: string;
             status?: EnumProjectStatus;

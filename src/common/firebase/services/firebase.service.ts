@@ -40,7 +40,9 @@ export class FirebaseService implements OnModuleInit {
         this.clientEmail = this.configService.get<string>(
             'firebase.clientEmail'
         );
-        this.privateKeyRaw = this.configService.get<string>('firebase.privateKey');
+        this.privateKeyRaw = this.configService.get<string>(
+            'firebase.privateKey'
+        );
     }
 
     /**

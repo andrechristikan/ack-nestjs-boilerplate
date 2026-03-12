@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumProjectMemberStatus } from '@prisma/client';
+import { EnumProjectMemberStatus } from '@generated/prisma-client';
 import { InviteStatusResponseDto } from '@modules/invite/dtos/response/invite-status.response.dto';
 
 export class ProjectMemberResponseDto {

@@ -22,7 +22,7 @@ import {
     EnumTenantStatus,
     Tenant,
     TenantMember,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @Injectable()
 export class TenantRepository {
@@ -76,10 +76,7 @@ export class TenantRepository {
         });
     }
 
-    async update(
-        id: string,
-        data: ITenantUpdate
-    ): Promise<Tenant> {
+    async update(id: string, data: ITenantUpdate): Promise<Tenant> {
         return this.databaseService.tenant.update({
             where: { id },
             data,
@@ -153,7 +150,7 @@ export class TenantRepository {
                 },
             },
             include: {
-                role: true
+                role: true,
             },
         });
     }
@@ -177,9 +174,7 @@ export class TenantRepository {
         });
     }
 
-    async createMember(
-        data: ITenantMemberCreate
-    ): Promise<TenantMember> {
+    async createMember(data: ITenantMemberCreate): Promise<TenantMember> {
         return this.databaseService.tenantMember.create({
             data,
         });
@@ -205,7 +200,10 @@ export class TenantRepository {
 
     async findMembersWithPaginationOffset(
         tenantId: string,
-        { where, ...params }: IPaginationQueryOffsetParams<
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
             Prisma.TenantMemberSelect,
             Prisma.TenantMemberWhereInput
         >
@@ -261,7 +259,9 @@ export class TenantRepository {
         });
     }
 
-    async findAllMembershipsByUser(userId: string): Promise<ITenantMemberWithTenant[]> {
+    async findAllMembershipsByUser(
+        userId: string
+    ): Promise<ITenantMemberWithTenant[]> {
         return this.databaseService.tenantMember.findMany({
             where: {
                 userId,
@@ -280,7 +280,10 @@ export class TenantRepository {
 
     async findMembershipsWithPaginationCursorByUser(
         userId: string,
-        { where, ...params }: IPaginationQueryCursorParams<
+        {
+            where,
+            ...params
+        }: IPaginationQueryCursorParams<
             Prisma.TenantMemberSelect,
             Prisma.TenantMemberWhereInput
         >

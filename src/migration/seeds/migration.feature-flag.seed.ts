@@ -5,7 +5,7 @@ import { migrationFeatureFlagData } from '@migration/data/migration.feature-flag
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 
 @Command({

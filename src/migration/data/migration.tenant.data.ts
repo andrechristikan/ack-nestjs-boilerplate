@@ -22,9 +22,7 @@ const tenantData: IMigrationTenantData[] = [
     },
     {
         name: 'Another Organization',
-        members: [
-            { userEmail: 'admin@mail.com', tenantRole: TenantRoleAdmin }
-        ],
+        members: [{ userEmail: 'admin@mail.com', tenantRole: TenantRoleAdmin }],
     },
 ];
 

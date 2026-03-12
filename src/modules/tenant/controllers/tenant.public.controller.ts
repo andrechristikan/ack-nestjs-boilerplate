@@ -68,7 +68,9 @@ export class TenantPublicController {
     async getInvite(
         @Param('token', RequestRequiredPipe) token: string
     ): Promise<IResponseReturn<InvitePublicResponseDto>> {
-        return this.inviteService.getInvite(token, TenantInviteType).then(data => ({ data }));
+        return this.inviteService
+            .getInvite(token, TenantInviteType)
+            .then(data => ({ data }));
     }
 
     @TenantPublicClaimInviteDoc()

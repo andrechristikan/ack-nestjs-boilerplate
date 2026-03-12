@@ -21,10 +21,7 @@ import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
-import {
-    ProjectInviteEmailTypeLabel,
-    ProjectInviteType,
-} from '@modules/project/constants/project.constant';
+import { ProjectInviteType } from '@modules/project/constants/project.constant';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserService } from '@modules/user/services/user.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -42,7 +39,7 @@ import {
     EnumRoleScope,
     EnumRoleType,
     EnumUserSignUpFrom,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @Injectable()
 export class ProjectMemberService {

@@ -2,7 +2,7 @@ import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { faker } from '@faker-js/faker';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { EnumPasswordHistoryType } from '@prisma/client';
+import { EnumPasswordHistoryType } from '@generated/prisma-client';
 import { Exclude, Type } from 'class-transformer';
 
 export class PasswordHistoryResponseDto extends DatabaseDto {

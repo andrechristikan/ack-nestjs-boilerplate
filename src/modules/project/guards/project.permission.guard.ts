@@ -22,8 +22,9 @@ export class ProjectPermissionGuard implements CanActivate {
                 context.getHandler()
             ) ?? [];
 
-        const request =
-            context.switchToHttp().getRequest<IRequestAppWithProject>();
+        const request = context
+            .switchToHttp()
+            .getRequest<IRequestAppWithProject>();
 
         return this.projectService.validateProjectPermissionGuard(
             request,

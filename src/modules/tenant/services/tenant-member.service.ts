@@ -41,7 +41,7 @@ import {
     EnumRoleType,
     EnumTenantMemberStatus,
     EnumUserSignUpFrom,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 @Injectable()
 export class TenantMemberService {

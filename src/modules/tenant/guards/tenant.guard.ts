@@ -21,8 +21,9 @@ export class TenantGuard implements CanActivate {
      * @throws ForbiddenException if the tenant is inactive
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const request =
-            context.switchToHttp().getRequest<IRequestAppWithTenant>();
+        const request = context
+            .switchToHttp()
+            .getRequest<IRequestAppWithTenant>();
         const tenant = await this.tenantService.validateTenantGuard(request);
 
         request.__tenant = tenant;

@@ -39,9 +39,11 @@ import {
 import {
     DocContentTypeMapping,
     DocFileErrorResponses,
+    DocPaginationCursorErrorResponses,
     DocPaginationCursorQueries,
-    DocPaginationErrorResponses,
+    DocPaginationOffsetErrorResponses,
     DocPaginationOffsetQueries,
+    DocPaginationSharedErrorResponses,
     DocStandardErrorResponse,
 } from '@common/doc/constants/doc.constant';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
@@ -642,6 +644,13 @@ export function DocResponse<T = void>(
  * - **OFFSET**: Uses offset-based pagination queries (page, perPage, limit, offset)
  *
  * It also supports optional search and ordering functionality.
+ *
+ * Ordering documented here reflects the request query format:
+ * - `orderBy` is a single field name
+ * - `orderDirection` is the direction for that field
+ *
+ * Internal pagination services may support richer `orderBy` structures, but this decorator
+ * documents the public HTTP query contract only.
  * @template T - Type of the DTO for paginated response data
  * @param {string} messagePath - The message path/key for internationalization
  * @param {IDocResponsePagingOptions<T>} options - Configuration for paginated response documentation
@@ -682,7 +691,10 @@ export function DocResponsePaging<T>(
                 },
             },
         }),
-        ...Object.values(DocPaginationErrorResponses),
+        ...Object.values(DocPaginationSharedErrorResponses),
+        ...(options.type === EnumPaginationType.cursor
+            ? Object.values(DocPaginationCursorErrorResponses)
+            : Object.values(DocPaginationOffsetErrorResponses)),
     ];
 
     if (options.type === EnumPaginationType.cursor) {
@@ -709,19 +721,10 @@ export function DocResponsePaging<T>(
                 name: 'orderBy',
                 required: false,
                 allowEmptyValue: true,
-                example: options.availableOrder[0],
-                enum: options.availableOrder,
+                isArray: true,
+                example: `${options.availableOrder[0]}:${EnumPaginationOrderDirectionType.desc}`,
                 type: 'string',
-                description: `Order by field, available fields: ${options.availableOrder.join(', ')}.`,
-            }),
-            ApiQuery({
-                name: 'orderDirection',
-                required: false,
-                allowEmptyValue: true,
-                example: EnumPaginationOrderDirectionType.asc,
-                enum: EnumPaginationOrderDirectionType,
-                type: 'string',
-                description: `Order direction, available values: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${options.availableOrder.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
             })
         );
     }

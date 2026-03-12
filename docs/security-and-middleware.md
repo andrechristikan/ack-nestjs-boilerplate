@@ -94,15 +94,52 @@ async endpoint() {}
 
 ## CORS
 
-Manages cross-origin resource sharing.
+Manages cross-origin resource sharing (CORS) with flexible origin matching, credential handling, and security controls.
 
 **Implementation:** `RequestCorsMiddleware`
 
 **Features:**
-- Dynamic origin validation
-- Automatic credential handling
-- Configurable methods and headers
-- Preflight request support
+- **Protocol-agnostic matching** — Accepts both `http` and `https` origins
+- **Dynamic origin validation** — Supports exact hostname matching, wildcard subdomains, and specific ports
+- **Automatic credential handling** — Credentials allowed only when using specific origins (not wildcard)
+- **Configurable methods and headers** — Define allowed HTTP methods and request/response headers
+- **Preflight request support** — Handles OPTIONS requests with proper cache control (max-age: 86400s)
+- **Flexible configuration** — Accept single string, array of origins, boolean (true=allow all, false=deny all), or wildcard `*`
+
+**Origin Matching Rules:**
+
+1. **Exact Match** — Hostname and port must match exactly
+   ```bash
+   Pattern: example.com
+   Allowed: http://example.com, https://example.com
+   Denied: http://sub.example.com, http://example.com:3000
+   ```
+
+2. **With Explicit Port** — Port must match exactly
+   ```bash
+   Pattern: api.example.com:3000
+   Allowed: http://api.example.com:3000, https://api.example.com:3000
+   Denied: http://api.example.com (default port), http://api.example.com:8080
+   ```
+
+3. **Wildcard Subdomain** — Matches any subdomain (including base domain)
+   ```bash
+   Pattern: *.example.com
+   Allowed: http://api.example.com, https://app.example.com, http://example.com
+   Denied: http://api.myexample.com, http://example.org
+   ```
+
+4. **Universal Match** — Allow all origins
+   ```bash
+   Pattern: *
+   Allowed: Any origin
+   Credentials: Not allowed (CORS restriction)
+   ```
+
+**Credentials Handling:**
+- When `allowedOrigin` is wildcard (`*`), credentials are **not allowed** (CORS security restriction)
+- When using specific origins, credentials are **automatically allowed**
+- This is configured via `credentials: true|false` in CORS options
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 

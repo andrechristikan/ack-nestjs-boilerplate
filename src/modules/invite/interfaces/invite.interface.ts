@@ -1,4 +1,4 @@
-import { EnumRoleScope, Prisma } from '@prisma/client';
+import { EnumRoleScope, Prisma } from '@generated/prisma-client';
 import { ModuleMetadata } from '@nestjs/common';
 import { FactoryProvider } from '@nestjs/common/interfaces/modules/provider.interface';
 

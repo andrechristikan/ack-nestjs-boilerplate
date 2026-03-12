@@ -4,7 +4,10 @@ import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project
 import { InviteStatusResponseDto } from '@modules/invite/dtos/response/invite-status.response.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { IProject, IProjectMemberWithInvite } from '@modules/project/interfaces/project.interface';
+import {
+    IProject,
+    IProjectMemberWithInvite,
+} from '@modules/project/interfaces/project.interface';
 
 @Injectable()
 export class ProjectUtil {

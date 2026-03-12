@@ -55,21 +55,8 @@ export class ResponseMetadataDto {
     })
     repoVersion: string;
 
-    [key: string]:
-        | string
-        | number
-        | string[]
-        | number[]
-        | boolean
-        | boolean[]
-        | Record<
-              string,
-              | string
-              | number
-              | boolean
-              | Array<string | number | boolean>
-              | Date
-          >;
+    /* Allow additional properties for extensibility in metadata */
+    [key: string]: unknown;
 }
 
 /**

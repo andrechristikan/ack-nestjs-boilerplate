@@ -226,6 +226,17 @@ Enterprise-grade integrations for production readiness.
 - **Health Checks** - System monitoring endpoints
 - **Multi-language Support** - i18n with `x-custom-lang` header
 
+### 🔔 Notifications
+Multi-channel notification system for user engagement.
+
+- **Multi-Channel Delivery** - Email, push, in-app, and silent notifications
+- **User Preferences** - Per-type and per-channel opt-in/out settings
+- **AWS SES Email Templates** - Handlebars-based email templates synced to SES
+- **Firebase FCM Push** - Push notifications with multicast support and token cleanup
+- **Queue-Based Processing** - Reliable async delivery with BullMQ
+
+📖 See [Notification Documentation][ref-doc-notification] for detailed setup and usage.
+
 ### 📝 Testing & Documentation
 Comprehensive testing framework and documentation.
 
@@ -280,32 +291,13 @@ For detailed migration guides, see [Database Documentation][ref-doc-database].
 
 For detailed installation instructions (both default and Docker-based), please refer to the [Installation Documentation][ref-doc-installation].
 
-For multi-tenant setup, roles, guards, and usage examples, see the comprehensive [Tenant Documentation][ref-doc-tenant].
-
 ## License
 
 This project is licensed under the [MIT License][ref-ack-license].
 
 ## Contribute
 
-We welcome contributions to this project! To contribute, follow these steps:
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/your-feature-name`
-3. **Make your changes** and ensure they follow our coding standards
-4. **Run tests**: `pnpm test` and `pnpm lint` to verify your changes
-5. **Commit your changes**: `git commit -m 'feat: add some feature'`
-6. **Push to your branch**: `git push origin feature/your-feature-name`
-7. **Open a Pull Request** with a clear description of your changes
-
-### **Contribution Guidelines**
-- Follow the existing code style and conventions
-- Write or update tests for any new functionality
-- Ensure all tests pass before submitting
-- Use conventional commit messages (feat, fix, docs, etc.)
-- Keep PRs focused and atomic
-
-If your branch is behind the `origin/main` branch, please rebase and resolve any conflicts before opening a pull request.
+Welcome contributions! Please read [CONTRIBUTING.md][ref-doc-contributing] for guidelines on how to get started.
 
 ## Contact
 
@@ -376,29 +368,20 @@ If you find this project helpful and would like to support its development, plea
 <!-- THIRD PARTY -->
 
 [ref-nestjs]: http://nestjs.com
-[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
-[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
 [ref-prisma]: https://www.prisma.io
-[ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
-[ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-redis]: https://redis.io
 [ref-bullmq]: https://bullmq.io
 [ref-nodejs]: https://nodejs.org/
 [ref-typescript]: https://www.typescriptlang.org/
 [ref-docker]: https://docs.docker.com
-[ref-dockercompose]: https://docs.docker.com/compose/
 [ref-pnpm]: https://pnpm.io
-[ref-12factor]: https://12factor.net
-[ref-commander]: https://nest-commander.jaymcdoniel.dev
 [ref-package-json]: package.json
 [ref-jwt]: https://jwt.io
 [ref-jest]: https://jestjs.io/docs/getting-started
-[ref-git]: https://git-scm.com
-[ref-google-console]: https://console.cloud.google.com/
-[ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
 
-[ref-doc-root]: readme.md
+<!-- DOCS LINKS -->
+
 [ref-doc-activity-log]: docs/activity-log.md
 [ref-doc-authentication]: docs/authentication.md
 [ref-doc-authorization]: docs/authorization.md
@@ -412,20 +395,17 @@ If you find this project helpful and would like to support its development, plea
 [ref-doc-installation]: docs/installation.md
 [ref-doc-logger]: docs/logger.md
 [ref-doc-message]: docs/message.md
+[ref-doc-notification]: docs/notification.md
 [ref-doc-pagination]: docs/pagination.md
 [ref-doc-project-structure]: docs/project-structure.md
 [ref-doc-queue]: docs/queue.md
 [ref-doc-request-validation]: docs/request-validation.md
 [ref-doc-response]: docs/response.md
 [ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-doc]: docs/doc.md
 [ref-doc-third-party-integration]: docs/third-party-integration.md
 [ref-doc-presign]: docs/presign.md
 [ref-doc-term-policy]: docs/term-policy.md
 [ref-doc-two-factor]: docs/two-factor.md
 [ref-doc-analytics]: docs/analytics.md
-[ref-doc-tenant]: docs/tenant.md
-
-<!-- CONTRIBUTOR -->
-
-[ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-doc-contributing]: CONTRIBUTING.md
+[ref-doc-doc]: docs/doc.md

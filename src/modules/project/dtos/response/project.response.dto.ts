@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumProjectStatus } from '@prisma/client';
+import { EnumProjectStatus } from '@generated/prisma-client';
 
 export class ProjectResponseDto {
     @ApiProperty({

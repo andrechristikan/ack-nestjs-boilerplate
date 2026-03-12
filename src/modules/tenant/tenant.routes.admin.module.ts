@@ -5,7 +5,7 @@ import { UserModule } from '@modules/user/user.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 
 @Module({
-    imports: [UserModule, ActivityLogModule,TenantModule],
+    imports: [UserModule, ActivityLogModule, TenantModule],
     controllers: [TenantAdminController],
 })
 export class TenantRoutesAdminModule {}

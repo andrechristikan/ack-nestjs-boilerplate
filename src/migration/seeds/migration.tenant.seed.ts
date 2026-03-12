@@ -8,7 +8,10 @@ import {
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumTenantMemberStatus, EnumTenantStatus } from '@prisma/client';
+import {
+    EnumTenantMemberStatus,
+    EnumTenantStatus,
+} from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 
 @Command({
@@ -67,10 +70,9 @@ export class MigrationTenantSeed
 
         try {
             for (const tenant of this.tenants) {
-                let tenantRecord =
-                    await this.databaseService.tenant.findFirst({
-                        where: { name: tenant.name },
-                    });
+                let tenantRecord = await this.databaseService.tenant.findFirst({
+                    where: { name: tenant.name },
+                });
 
                 if (!tenantRecord) {
                     tenantRecord = await this.databaseService.tenant.create({

@@ -5,7 +5,7 @@ import {
     ProjectMember,
     Role,
     User,
-} from '@prisma/client';
+} from '@generated/prisma-client';
 
 export type IProject = Project;
 
