@@ -2,6 +2,7 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { ITenantMemberService } from '@modules/tenant/interfaces/tenant-member.service.interface';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client';
 import {
@@ -11,9 +12,6 @@ import {
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { InviteService } from '@modules/invite/services/invite.service';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleRepository } from '@modules/role/repositories/role.repository';
-import { RoleService } from '@modules/role/services/role.service';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
 import { TenantMemberInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member-invite.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
@@ -23,14 +21,12 @@ import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import {
     TenantInviteType,
-    TenantRolePlatformSupport,
 } from '@modules/tenant/constants/tenant.constant';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 import { UserService } from '@modules/user/services/user.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
-    BadRequestException,
     ConflictException,
     Injectable,
     InternalServerErrorException,
@@ -38,17 +34,15 @@ import {
 } from '@nestjs/common';
 import {
     EnumRoleScope,
-    EnumRoleType,
+    EnumTenantMemberRole,
     EnumTenantMemberStatus,
     EnumUserSignUpFrom,
 } from '@generated/prisma-client';
 
 @Injectable()
-export class TenantMemberService {
+export class TenantMemberService implements ITenantMemberService {
     constructor(
         private readonly tenantRepository: TenantRepository,
-        private readonly roleRepository: RoleRepository,
-        private readonly roleService: RoleService,
         private readonly userRepository: UserRepository,
         private readonly userService: UserService,
         private readonly helperService: HelperService,
@@ -61,12 +55,12 @@ export class TenantMemberService {
         dto: TenantMemberCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        const [user, role, memberExist] = await Promise.all([
+        const [user, memberExist] = await Promise.all([
             this.userRepository.findOneById(dto.userId),
-            this.resolveTenantRoleById(dto.roleId),
             this.tenantRepository.existMemberByTenantAndUser(
                 tenantId,
-                dto.userId
+                dto.userId,
+                EnumTenantMemberStatus.active
             ),
         ]);
 
@@ -87,7 +81,7 @@ export class TenantMemberService {
         const member = await this.tenantRepository.createMember({
             tenantId,
             userId: dto.userId,
-            roleId: role.id,
+            role: dto.role,
             status: EnumTenantMemberStatus.active,
             createdBy,
             updatedBy: createdBy,
@@ -118,19 +112,12 @@ export class TenantMemberService {
             });
         }
 
-        let roleId: string | undefined;
-        if (dto.roleId) {
-            const role = await this.resolveTenantRoleById(dto.roleId);
-
-            roleId = role.id;
-        }
-
-        if (dto.status === undefined && !roleId) {
+        if (dto.status === undefined && !dto.role) {
             return {};
         }
 
         await this.tenantRepository.updateMember(member.id, {
-            roleId,
+            role: dto.role,
             status: dto.status,
             updatedBy,
         });
@@ -140,8 +127,7 @@ export class TenantMemberService {
 
     async deleteMember(
         tenantId: string,
-        memberId: string,
-        _updatedBy: string
+        memberId: string
     ): Promise<IResponseReturn<void>> {
         const member = await this.tenantRepository.findOneMemberByIdAndTenant(
             memberId,
@@ -166,10 +152,7 @@ export class TenantMemberService {
         createdBy: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<InviteCreateResponseDto>> {
-        const [tenant, role] = await Promise.all([
-            this.tenantRepository.findOneById(tenantId),
-            this.resolveTenantRoleById(dto.roleId),
-        ]);
+        const tenant = await this.tenantRepository.findOneById(tenantId);
         if (!tenant) {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.notFound,
@@ -180,11 +163,10 @@ export class TenantMemberService {
         // FIXME: user creation, member creation, and invite creation
         // must be wrapped in a single transaction. If invite creation fails, the pending
         // member record and the stub user are left orphaned with no rollback.
-        const normalizedEmail = dto.email.toLowerCase().trim();
-        let user = await this.userRepository.findOneByEmail(normalizedEmail);
+        let user = await this.userRepository.findOneByEmail(dto.email);
         if (!user) {
             user = await this.userService.createForInvitation(
-                normalizedEmail,
+                dto.email,
                 EnumUserSignUpFrom.tenant,
                 requestLog,
                 createdBy
@@ -213,7 +195,7 @@ export class TenantMemberService {
                       await this.tenantRepository.createMember({
                           tenantId,
                           userId: user.id,
-                          roleId: role.id,
+                          role: dto.role,
                           status: EnumTenantMemberStatus.pending,
                           createdBy,
                           updatedBy: createdBy,
@@ -300,27 +282,26 @@ export class TenantMemberService {
             });
         }
 
-        const { id: inviteId } =
-            await this.inviteService.getOneActiveByUserAndContext(
-                member.userId,
-                TenantInviteType,
-                tenantId
-            );
+        const invite = await this.inviteService.getOneActiveByUserAndContext(
+            member.userId,
+            TenantInviteType,
+            tenantId
+        );
+
+        if (!invite) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.inviteNotFound,
+                message: 'invite.error.inviteNotFound',
+            });
+        }
 
         const data = await this.inviteService.sendInvite(
-            inviteId,
+            invite.id,
             requestLog,
             requestedBy
         );
 
         return { data };
-    }
-
-    async getMemberRoles(): Promise<IResponseReturn<RoleListResponseDto[]>> {
-        return this.roleService.getListRolesByScopeAndType(
-            EnumRoleScope.tenant,
-            EnumRoleType.user
-        );
     }
 
     async getMembersOffset(
@@ -368,24 +349,13 @@ export class TenantMemberService {
             });
         }
 
-        const role = await this.roleRepository.existByNameAndScope(
-            TenantRolePlatformSupport,
-            EnumRoleScope.tenant
-        );
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.roleNotFound,
-                message: 'tenant.role.error.notFound',
-            });
-        }
-
         const expiresAt = this.helperService.dateCreate();
         expiresAt.setHours(expiresAt.getHours() + dto.durationInHours);
 
         const member = await this.tenantRepository.createMember({
             tenantId,
             userId,
-            roleId: role.id,
+            role: EnumTenantMemberRole.admin,
             status: EnumTenantMemberStatus.active,
             isJit: true,
             expiresAt,
@@ -398,7 +368,6 @@ export class TenantMemberService {
             data: this.tenantUtil.mapJitAccess(
                 member,
                 tenant,
-                role.name,
                 expiresAt,
                 dto.reason
             ),
@@ -427,24 +396,4 @@ export class TenantMemberService {
         return {};
     }
 
-    private async resolveTenantRoleById(
-        roleId: string
-    ): Promise<{ id: string; name: string; scope: EnumRoleScope }> {
-        const role = await this.roleRepository.existById(roleId);
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.roleNotFound,
-                message: 'tenant.role.error.notFound',
-            });
-        }
-
-        if (role.scope !== EnumRoleScope.tenant) {
-            throw new BadRequestException({
-                statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
-                message: 'tenant.role.error.scopeMismatch',
-            });
-        }
-
-        return role;
-    }
 }

@@ -25,7 +25,7 @@ export class TenantUtil {
         return plainToInstance(TenantMembershipDto, {
             tenantId: membership.tenantId,
             tenantName: membership.tenant.name,
-            role: membership.role.name,
+            role: membership.role,
             status: membership.status,
         });
     }
@@ -33,7 +33,6 @@ export class TenantUtil {
     mapJitAccess(
         member: TenantMember,
         tenant: ITenant,
-        roleName: string,
         expiresAt: Date,
         reason: string
     ): TenantJitAccessResponseDto {
@@ -41,7 +40,7 @@ export class TenantUtil {
             memberId: member.id,
             tenantId: tenant.id,
             tenantName: tenant.name,
-            role: roleName,
+            role: member.role,
             expiresAt,
             reason,
         });

@@ -4,7 +4,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
-import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
+import { EnumTenantMemberRole } from '@generated/prisma-client';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
@@ -22,11 +22,7 @@ export interface ITenantService {
     ): Promise<ITenantMember>;
     validateTenantRoleGuard(
         request: IRequestAppWithTenant,
-        requiredRoleNames: string[]
-    ): Promise<boolean>;
-    validateTenantPermissionGuard(
-        request: IRequestAppWithTenant,
-        requiredAbilities: RoleAbilityRequestDto[]
+        requiredRoleNames: EnumTenantMemberRole[]
     ): Promise<boolean>;
 
     getListOffset(

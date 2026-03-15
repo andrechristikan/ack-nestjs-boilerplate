@@ -5,7 +5,7 @@ import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { Prisma, UserAgent } from '@generated/prisma-client';
+import { EnumTenantMemberRole, Prisma, UserAgent } from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -37,7 +37,6 @@ import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenan
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import {
     TenantSharedCreateMemberDoc,
     TenantSharedCreateMemberInviteDoc,
@@ -134,14 +133,16 @@ export class TenantSharedController {
     @Response('tenant.member.roles')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.create],
+        action: [EnumPolicyAction.read],
     })
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/current/members/roles')
-    async listMemberRoles(): Promise<IResponseReturn<RoleListResponseDto[]>> {
-        return this.tenantMemberService.getMemberRoles();
+    async listMemberRoles(): Promise<IResponseReturn<EnumTenantMemberRole[]>> {
+        return {
+            data: Object.values(EnumTenantMemberRole),
+        };
     }
 
     @TenantSharedCreateMemberDoc()
@@ -167,7 +168,6 @@ export class TenantSharedController {
     }
 
     @TenantSharedCreateMemberInviteDoc()
-    @FeatureFlagProtected('tenantInvites')
     @Response('tenant.member.invite.create')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenantMember,
@@ -175,6 +175,7 @@ export class TenantSharedController {
     })
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenantInvites')
     @ApiKeyProtected()
     @Post('/current/members/invites')
     async createMemberInvite(
@@ -193,7 +194,6 @@ export class TenantSharedController {
     }
 
     @TenantSharedSendMemberInviteDoc()
-    @FeatureFlagProtected('tenantInvites')
     @Response('tenant.member.invite.send')
     @TenantPermissionProtected({
         subject: EnumPolicySubject.tenantMember,
@@ -201,6 +201,7 @@ export class TenantSharedController {
     })
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenantInvites')
     @ApiKeyProtected()
     @Post('/current/members/:memberId/invites/send')
     async sendMemberInvite(
@@ -256,13 +257,11 @@ export class TenantSharedController {
     async deleteMember(
         @TenantCurrent() tenant: ITenant,
         @Param('memberId', RequestRequiredPipe)
-        memberId: string,
-        @AuthJwtPayload('userId') updatedBy: string
+        memberId: string
     ): Promise<IResponseReturn<void>> {
         return this.tenantMemberService.deleteMember(
             tenant.id,
-            memberId,
-            updatedBy
+            memberId
         );
     }
 }

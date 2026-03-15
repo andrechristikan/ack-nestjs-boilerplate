@@ -1,24 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumTenantMemberStatus } from '@generated/prisma-client';
-import {
-    IsEnum,
-    IsMongoId,
-    IsNotEmpty,
-    IsOptional,
-    IsString,
-} from 'class-validator';
+import { EnumTenantMemberStatus, EnumTenantMemberRole } from '@generated/prisma-client';
+import { IsEnum, IsOptional } from 'class-validator';
 
 export class TenantMemberUpdateRequestDto {
     @ApiProperty({
         required: false,
-        description: 'Role id',
-        example: '65f3d2e44b9a7e1bd2c9a8f1',
+        description: 'Membership role',
+        enum: EnumTenantMemberRole,
     })
-    @IsString()
     @IsOptional()
-    @IsNotEmpty()
-    @IsMongoId()
-    roleId?: string;
+    @IsEnum(EnumTenantMemberRole)
+    role?: EnumTenantMemberRole;
 
     @ApiProperty({
         required: false,

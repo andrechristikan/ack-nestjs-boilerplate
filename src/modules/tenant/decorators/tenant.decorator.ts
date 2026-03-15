@@ -1,5 +1,4 @@
 import {
-    TenantPermissionRequiredMetaKey,
     TenantRoleRequiredMetaKey,
 } from '@modules/tenant/constants/tenant.constant';
 import {
@@ -9,9 +8,8 @@ import {
 import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant.interface';
 import { TenantGuard } from '@modules/tenant/guards/tenant.guard';
 import { TenantMemberGuard } from '@modules/tenant/guards/tenant.member.guard';
-import { TenantPermissionGuard } from '@modules/tenant/guards/tenant.permission.guard';
 import { TenantRoleGuard } from '@modules/tenant/guards/tenant.role.guard';
-import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
+import { EnumTenantMemberRole } from '@generated/prisma-client';
 import {
     ExecutionContext,
     SetMetadata,
@@ -39,26 +37,32 @@ export function TenantMemberProtected(): MethodDecorator {
 /**
  * Requires the caller to have one of the specified tenant roles.
  * Swagger counterpart: `DocTenantRoleProtected`.
+ *
+ * @param requiredRoles - One or more tenant member roles that are allowed to access this endpoint
+ *
+ * @example
+ * @TenantRoleProtected(EnumTenantMemberRole.admin)
+ * @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
  */
 export function TenantRoleProtected(
-    ...requiredRoleNames: string[]
+    ...requiredRoles: EnumTenantMemberRole[]
 ): MethodDecorator {
     return applyDecorators(
         UseGuards(TenantGuard, TenantMemberGuard, TenantRoleGuard),
-        SetMetadata(TenantRoleRequiredMetaKey, requiredRoleNames)
+        SetMetadata(TenantRoleRequiredMetaKey, requiredRoles)
     );
 }
 
 /**
- * Requires the caller to have the specified tenant abilities.
- * Swagger counterpart: `DocTenantPermissionProtected`.
+ * @deprecated Tenant roles are static enums without fine-grained abilities.
+ * Use `@TenantRoleProtected()` for role-based access control instead.
+ * This decorator is kept for backward compatibility but is now a no-op.
  */
 export function TenantPermissionProtected(
-    ...requiredAbilities: RoleAbilityRequestDto[]
+    _config?: any
 ): MethodDecorator {
     return applyDecorators(
-        UseGuards(TenantGuard, TenantMemberGuard, TenantPermissionGuard),
-        SetMetadata(TenantPermissionRequiredMetaKey, requiredAbilities)
+        UseGuards(TenantGuard, TenantMemberGuard)
     );
 }
 

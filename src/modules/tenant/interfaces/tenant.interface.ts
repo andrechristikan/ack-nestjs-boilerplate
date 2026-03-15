@@ -1,7 +1,7 @@
 import {
     EnumTenantMemberStatus,
     EnumTenantStatus,
-    Role,
+    EnumTenantMemberRole,
     Tenant,
     TenantMember,
     User,
@@ -9,10 +9,8 @@ import {
 
 export type ITenant = Tenant;
 
-// Base — role always loaded (needed for auth/RBAC on every tenant-scoped request)
-export interface ITenantMember extends TenantMember {
-    role: Role;
-}
+// TenantMember now includes role enum directly (no relation join needed)
+export type ITenantMember = TenantMember;
 
 // For member listings scoped to a tenant (need to know who the user is)
 export interface ITenantMemberWithUser extends ITenantMember {
@@ -42,7 +40,7 @@ export interface ITenantUpdate {
 export interface ITenantMemberCreate {
     tenantId: string;
     userId: string;
-    roleId: string;
+    role: EnumTenantMemberRole;
     status: EnumTenantMemberStatus;
     createdBy: string;
     updatedBy: string;
@@ -53,6 +51,6 @@ export interface ITenantMemberCreate {
 
 export interface ITenantMemberUpdate {
     updatedBy: string;
-    roleId?: string;
+    role?: EnumTenantMemberRole;
     status?: EnumTenantMemberStatus;
 }

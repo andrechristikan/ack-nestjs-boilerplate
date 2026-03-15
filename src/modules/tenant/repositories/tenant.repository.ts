@@ -100,17 +100,22 @@ export class TenantRepository {
     async existMemberByTenantAndUser(
         tenantId: string,
         userId: string,
-        status: EnumTenantMemberStatus = EnumTenantMemberStatus.active
+        status?: EnumTenantMemberStatus
     ): Promise<{ id: string } | null> {
-        return this.databaseService.tenantMember.findFirst({
-            where: {
-                tenantId,
-                userId,
-                status,
-                tenant: {
-                    deletedAt: null,
-                },
+        const where: any = {
+            tenantId,
+            userId,
+            tenant: {
+                deletedAt: null,
             },
+        };
+
+        if (status !== undefined) {
+            where.status = status;
+        }
+
+        return this.databaseService.tenantMember.findFirst({
+            where,
             select: {
                 id: true,
             },
@@ -149,9 +154,6 @@ export class TenantRepository {
                     deletedAt: null,
                 },
             },
-            include: {
-                role: true,
-            },
         });
     }
 
@@ -168,7 +170,6 @@ export class TenantRepository {
                 },
             },
             include: {
-                role: true,
                 tenant: true,
             },
         });
@@ -220,7 +221,6 @@ export class TenantRepository {
                     },
                 },
                 include: {
-                    role: true,
                     user: true,
                 },
             }
@@ -240,9 +240,6 @@ export class TenantRepository {
                 tenant: {
                     deletedAt: null,
                 },
-            },
-            include: {
-                role: true,
             },
         });
     }
@@ -272,7 +269,6 @@ export class TenantRepository {
                 },
             },
             include: {
-                role: true,
                 tenant: true,
             },
         });
@@ -302,7 +298,6 @@ export class TenantRepository {
                     },
                 },
                 include: {
-                    role: true,
                     tenant: true,
                 },
             }

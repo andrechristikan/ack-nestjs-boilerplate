@@ -15,4 +15,5 @@ export enum EnumTenantStatusCodeError {
     jitAccessExpired = 5203,
     jitAccessAlreadyActive = 5204,
     jitAccessNotFound = 5205,
+    inviteNotFound = 5206,
 }

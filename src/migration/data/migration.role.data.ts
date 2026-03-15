@@ -9,11 +9,6 @@ import {
     ProjectRoleViewer,
 } from '@modules/project/constants/project.constant';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import {
-    TenantRoleAdmin,
-    TenantRolePlatformSupport,
-    TenantRoleUser,
-} from '@modules/tenant/constants/tenant.constant';
 import { EnumRoleScope, EnumRoleType } from '@generated/prisma-client';
 
 const roleData: RoleCreateRequestDto[] = [
@@ -60,7 +55,7 @@ const roleData: RoleCreateRequestDto[] = [
         scope: EnumRoleScope.platform,
     },
     {
-        name: TenantRoleAdmin,
+        name: 'tenant-admin',
         description:
             'Tenant administrator. Can manage tenant settings and members.',
         abilities: [
@@ -91,7 +86,7 @@ const roleData: RoleCreateRequestDto[] = [
         scope: EnumRoleScope.tenant,
     },
     {
-        name: TenantRoleUser,
+        name: 'tenant-user',
         description:
             'Tenant member. Can access and view tenant resources with limited permissions.',
         abilities: [
@@ -117,7 +112,7 @@ const roleData: RoleCreateRequestDto[] = [
         scope: EnumRoleScope.tenant,
     },
     {
-        name: TenantRolePlatformSupport,
+        name: 'tenant-platform-support',
         description:
             'Temporary support access for platform operators. Read-all tenant data + member management.',
         abilities: [

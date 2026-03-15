@@ -8,8 +8,6 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { PolicyService } from '@modules/policy/services/policy.service';
-import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
@@ -30,7 +28,7 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumRoleScope, EnumTenantStatus } from '@generated/prisma-client';
+import { EnumTenantStatus, EnumTenantMemberRole } from '@generated/prisma-client';
 
 @Injectable()
 export class TenantService implements ITenantService {
@@ -40,7 +38,6 @@ export class TenantService implements ITenantService {
         private readonly tenantRepository: TenantRepository,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperService: HelperService,
-        private readonly policyService: PolicyService,
         private readonly tenantUtil: TenantUtil
     ) {}
 
@@ -127,22 +124,15 @@ export class TenantService implements ITenantService {
             });
         }
 
-        if (tenantMember.role.scope !== EnumRoleScope.tenant) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
-                message: 'tenant.role.error.scopeMismatch',
-            });
-        }
-
         return tenantMember;
     }
 
     async validateTenantRoleGuard(
         request: IRequestAppWithTenant,
-        requiredRoleNames: string[]
+        requiredRoleNames: EnumTenantMemberRole[]
     ): Promise<boolean> {
         const tenantMember = request.__tenantMember;
-        if (!tenantMember?.role) {
+        if (!tenantMember) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
                 message: 'tenant.member.error.forbidden',
@@ -156,37 +146,7 @@ export class TenantService implements ITenantService {
             });
         }
 
-        if (!requiredRoleNames.includes(tenantMember.role.name)) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.memberForbidden,
-                message: 'tenant.role.error.forbidden',
-            });
-        }
-
-        return true;
-    }
-
-    async validateTenantPermissionGuard(
-        request: IRequestAppWithTenant,
-        requiredAbilities: RoleAbilityRequestDto[]
-    ): Promise<boolean> {
-        if (requiredAbilities.length === 0) {
-            throw new InternalServerErrorException({
-                statusCode: EnumTenantStatusCodeError.predefinedRoleNotFound,
-                message: 'tenant.role.error.predefinedNotFound',
-            });
-        }
-
-        const abilities = (request.__tenantMember?.role?.abilities ??
-            []) as RoleAbilityRequestDto[];
-
-        const abilityRule = this.policyService.createAbility(abilities);
-        const isAllowed = this.policyService.hasAbilities(
-            abilityRule,
-            requiredAbilities
-        );
-
-        if (!isAllowed) {
+        if (!requiredRoleNames.includes(tenantMember.role)) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
                 message: 'tenant.role.error.forbidden',
@@ -278,9 +238,11 @@ export class TenantService implements ITenantService {
         try {
             await this.tenantRepository.delete(id, deletedBy);
         } catch (error) {
-            this.logger.warn(
-                `Tenant soft-delete failed [id=${id}, deletedBy=${deletedBy}]: ${error?.message ?? error}`
+            this.logger.error(
+                error,
+                `Tenant soft-delete failed [id=${id}, deletedBy=${deletedBy}]`
             );
+            throw error;
         }
 
         return {};

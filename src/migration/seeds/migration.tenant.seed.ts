@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import {
     EnumTenantMemberStatus,
     EnumTenantStatus,
+
 } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 
@@ -24,6 +25,7 @@ export class MigrationTenantSeed
     implements IMigrationSeed
 {
     private readonly logger = new Logger(MigrationTenantSeed.name);
+    private readonly SYSTEM_ID = '000000000000000000000001'; // Sentinel system ID for audit trails
 
     private readonly env: EnumAppEnvironment;
     private readonly tenants: IMigrationTenantData[] = [];
@@ -42,33 +44,19 @@ export class MigrationTenantSeed
         this.logger.log('Seeding Tenants...');
         this.logger.log(`Found ${this.tenants.length} Tenants to seed.`);
 
-        const allMemberEmails = [
-            ...new Set(
-                this.tenants.flatMap(t => t.members.map(m => m.userEmail))
-            ),
-        ];
-        const allTenantRoleNames = [
-            ...new Set(
-                this.tenants.flatMap(t => t.members.map(m => m.tenantRole))
-            ),
-        ];
+        try {
+            const allMemberEmails = [
+                ...new Set(
+                    this.tenants.flatMap(t => t.members.map(m => m.userEmail))
+                ),
+            ];
 
-        const [users, tenantRoles] = await Promise.all([
-            allMemberEmails.length > 0
-                ? this.databaseService.user.findMany({
+            const users = allMemberEmails.length > 0
+                ? await this.databaseService.user.findMany({
                       where: { email: { in: allMemberEmails } },
                       select: { id: true, email: true },
                   })
-                : Promise.resolve([]),
-            allTenantRoleNames.length > 0
-                ? this.databaseService.role.findMany({
-                      where: { name: { in: allTenantRoleNames } },
-                      select: { id: true, name: true },
-                  })
-                : Promise.resolve([]),
-        ]);
-
-        try {
+                : [];
             for (const tenant of this.tenants) {
                 let tenantRecord = await this.databaseService.tenant.findFirst({
                     where: { name: tenant.name },
@@ -80,6 +68,8 @@ export class MigrationTenantSeed
                             name: tenant.name,
                             status: EnumTenantStatus.active,
                             deletedAt: null,
+                            createdBy: this.SYSTEM_ID,
+                            updatedBy: this.SYSTEM_ID,
                         },
                     });
                     this.logger.log(`Created tenant: ${tenant.name}`);
@@ -91,20 +81,10 @@ export class MigrationTenantSeed
 
                 for (const member of tenant.members) {
                     const user = users.find(u => u.email === member.userEmail);
-                    const role = tenantRoles.find(
-                        r => r.name === member.tenantRole
-                    );
 
                     if (!user) {
                         this.logger.warn(
                             `User ${member.userEmail} not found, skipping member...`
-                        );
-                        continue;
-                    }
-
-                    if (!role) {
-                        this.logger.warn(
-                            `Tenant role ${member.tenantRole} not found, skipping member...`
                         );
                         continue;
                     }
@@ -122,8 +102,10 @@ export class MigrationTenantSeed
                             data: {
                                 tenantId: tenantRecord.id,
                                 userId: user.id,
-                                roleId: role.id,
+                                role: member.tenantRole,
                                 status: EnumTenantMemberStatus.active,
+                                createdBy: this.SYSTEM_ID,
+                                updatedBy: this.SYSTEM_ID,
                             },
                         });
                         this.logger.log(
