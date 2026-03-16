@@ -8,6 +8,7 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
+import { TenantTransferOwnershipRequestDto } from '@modules/tenant/dtos/request/tenant.transfer-ownership.request.dto';
 import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
@@ -29,7 +30,7 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumTenantMemberRole } from '@generated/prisma-client';
+import { EnumTenantMemberRole, EnumTenantMemberStatus } from '@generated/prisma-client';
 import { HelperService } from '@common/helper/services/helper.service';
 
 @Injectable()
@@ -174,13 +175,16 @@ export class TenantService implements ITenantService {
     ): Promise<IResponseReturn<DatabaseIdDto>> {
         const name = dto.name.trim();
         const slug = await this.createUniqueSlug(name);
-        const tenant = await this.tenantRepository.create({
+        const tenant = await this.tenantRepository.createWithOwner(
+            {
             name,
             description: dto.description?.trim() ?? '',
             slug,
             createdBy,
             updatedBy: createdBy,
-        });
+            },
+            createdBy
+        );
 
         return {
             data: {
@@ -192,7 +196,8 @@ export class TenantService implements ITenantService {
     async update(
         id: string,
         dto: TenantUpdateRequestDto,
-        updatedBy: string
+        updatedBy: string,
+        actorRole: EnumTenantMemberRole
     ): Promise<IResponseReturn<void>> {
         const data: {
             name?: string;
@@ -201,10 +206,25 @@ export class TenantService implements ITenantService {
         } = { updatedBy };
 
         if (dto.name !== undefined) {
+            if (actorRole !== EnumTenantMemberRole.owner) {
+                throw new ForbiddenException({
+                    statusCode: EnumTenantStatusCodeError.memberForbidden,
+                    message: 'tenant.member.error.forbidden',
+                });
+            }
             data.name = dto.name.trim();
         }
 
         if (dto.description !== undefined) {
+            if (
+                actorRole !== EnumTenantMemberRole.owner &&
+                actorRole !== EnumTenantMemberRole.admin
+            ) {
+                throw new ForbiddenException({
+                    statusCode: EnumTenantStatusCodeError.memberForbidden,
+                    message: 'tenant.member.error.forbidden',
+                });
+            }
             data.description = dto.description.trim();
         }
 
@@ -220,8 +240,16 @@ export class TenantService implements ITenantService {
     async updateSlug(
         id: string,
         dto: TenantUpdateSlugRequestDto,
-        updatedBy: string
+        updatedBy: string,
+        actorRole: EnumTenantMemberRole
     ): Promise<IResponseReturn<void>> {
+        if (actorRole !== EnumTenantMemberRole.owner) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.memberForbidden,
+                message: 'tenant.member.error.forbidden',
+            });
+        }
+
         const slug = await this.createUniqueSlug(dto.slug, id);
         await this.tenantRepository.update(id, {
             slug,
@@ -248,6 +276,44 @@ export class TenantService implements ITenantService {
         }
 
         await this.userRepository.updateLastTenantId(userId, tenantId);
+        return {};
+    }
+
+    async transferOwnership(
+        tenantId: string,
+        { memberId }: TenantTransferOwnershipRequestDto,
+        requestedBy: string
+    ): Promise<IResponseReturn<void>> {
+        const [currentOwner, targetMember] = await Promise.all([
+            this.tenantRepository.findOneOwnerMemberByTenant(tenantId),
+            this.tenantRepository.findOneMemberByIdAndTenant(memberId, tenantId),
+        ]);
+
+        if (!currentOwner || currentOwner.userId !== requestedBy) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.memberForbidden,
+                message: 'tenant.member.error.forbidden',
+            });
+        }
+
+        if (!targetMember || targetMember.status !== EnumTenantMemberStatus.active) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.memberNotFound,
+                message: 'tenant.member.error.notFound',
+            });
+        }
+
+        if (targetMember.role === EnumTenantMemberRole.owner) {
+            return {};
+        }
+
+        await this.tenantRepository.transferOwnership(
+            tenantId,
+            currentOwner.id,
+            targetMember.id,
+            requestedBy
+        );
+
         return {};
     }
 

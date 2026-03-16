@@ -24,16 +24,14 @@ import {
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
-import {
     TenantCurrent,
-    TenantPermissionProtected,
+    TenantMemberCurrent,
+    TenantRoleProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
 import { TenantMemberInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member-invite.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
+import { TenantTransferOwnershipRequestDto } from '@modules/tenant/dtos/request/tenant.transfer-ownership.request.dto';
 import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
@@ -49,7 +47,7 @@ import {
     TenantSharedUpdateCurrentTenantDoc,
     TenantSharedUpdateMemberDoc,
 } from '@modules/tenant/docs/tenant.shared.doc';
-import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
+import { ITenant, ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
 import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
 import { TenantService } from '@modules/tenant/services/tenant.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -77,10 +75,11 @@ export class TenantSharedController {
 
     @TenantSharedGetCurrentTenantDoc()
     @Response('tenant.get')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.read],
-    })
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin,
+        EnumTenantMemberRole.member
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -93,37 +92,64 @@ export class TenantSharedController {
 
     @TenantSharedUpdateCurrentTenantDoc()
     @Response('tenant.update')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.update],
-    })
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/current/tenant')
     async updateCurrentTenant(
         @TenantCurrent() tenant: ITenant,
+        @TenantMemberCurrent() tenantMember: ITenantMember,
         @Body() body: TenantUpdateRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.tenantService.update(tenant.id, body, updatedBy);
+        return this.tenantService.update(
+            tenant.id,
+            body,
+            updatedBy,
+            tenantMember.role
+        );
     }
 
     @Response('tenant.updateSlug')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.update],
-    })
+    @TenantRoleProtected(EnumTenantMemberRole.owner)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/current/tenant/slug')
     async updateCurrentTenantSlug(
         @TenantCurrent() tenant: ITenant,
+        @TenantMemberCurrent() tenantMember: ITenantMember,
         @Body() body: TenantUpdateSlugRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.tenantService.updateSlug(tenant.id, body, updatedBy);
+        return this.tenantService.updateSlug(
+            tenant.id,
+            body,
+            updatedBy,
+            tenantMember.role
+        );
+    }
+
+    @Response('tenant.transferOwnership')
+    @TenantRoleProtected(EnumTenantMemberRole.owner)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/current/ownership/transfer')
+    async transferOwnership(
+        @TenantCurrent() tenant: ITenant,
+        @Body() body: TenantTransferOwnershipRequestDto,
+        @AuthJwtPayload('userId') requestedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.tenantService.transferOwnership(
+            tenant.id,
+            body,
+            requestedBy
+        );
     }
 
     @Response('tenant.switch')
@@ -140,10 +166,11 @@ export class TenantSharedController {
 
     @TenantSharedListMembersDoc()
     @ResponsePaging('tenant.member.list')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.read],
-    })
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin,
+        EnumTenantMemberRole.member
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -161,10 +188,11 @@ export class TenantSharedController {
 
     @TenantSharedListMemberRolesDoc()
     @Response('tenant.member.roles')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.read],
-    })
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin,
+        EnumTenantMemberRole.member
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -177,10 +205,10 @@ export class TenantSharedController {
 
     @TenantSharedCreateMemberDoc()
     @Response('tenant.member.create')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.create],
-    })
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -199,10 +227,10 @@ export class TenantSharedController {
 
     @TenantSharedCreateMemberInviteDoc()
     @Response('tenant.member.invite.create')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.create],
-    })
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('tenantInvites')
@@ -225,10 +253,10 @@ export class TenantSharedController {
 
     @TenantSharedSendMemberInviteDoc()
     @Response('tenant.member.invite.send')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.create],
-    })
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('tenantInvites')
@@ -251,10 +279,10 @@ export class TenantSharedController {
 
     @TenantSharedUpdateMemberDoc()
     @Response('tenant.member.update')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.update],
-    })
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -276,10 +304,10 @@ export class TenantSharedController {
 
     @TenantSharedDeleteMemberDoc()
     @Response('tenant.member.delete')
-    @TenantPermissionProtected({
-        subject: EnumPolicySubject.tenantMember,
-        action: [EnumPolicyAction.delete],
-    })
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

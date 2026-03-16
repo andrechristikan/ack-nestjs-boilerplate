@@ -6,6 +6,8 @@ import {
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { EnumTenantMemberRole } from '@generated/prisma-client';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
+import { TenantTransferOwnershipRequestDto } from '@modules/tenant/dtos/request/tenant.transfer-ownership.request.dto';
+import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import {
@@ -39,7 +41,19 @@ export interface ITenantService {
     update(
         id: string,
         dto: TenantUpdateRequestDto,
-        updatedBy: string
+        updatedBy: string,
+        actorRole?: EnumTenantMemberRole
+    ): Promise<IResponseReturn<void>>;
+    updateSlug(
+        id: string,
+        dto: TenantUpdateSlugRequestDto,
+        updatedBy: string,
+        actorRole?: EnumTenantMemberRole
+    ): Promise<IResponseReturn<void>>;
+    transferOwnership(
+        tenantId: string,
+        dto: TenantTransferOwnershipRequestDto,
+        requestedBy: string
     ): Promise<IResponseReturn<void>>;
     delete(id: string, updatedBy: string): Promise<IResponseReturn<void>>;
 }

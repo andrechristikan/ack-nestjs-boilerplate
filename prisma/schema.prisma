@@ -54,8 +54,8 @@ model Role {
 }
 
 model Tenant {
-  id     String           @id @default(auto()) @map("_id") @db.ObjectId
-  name   String
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
   description String @default("")
   slug        String @unique
 
@@ -76,11 +76,11 @@ model Tenant {
 }
 
 model TenantMember {
-  id        String                 @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId  String                 @db.ObjectId
-  userId    String                 @db.ObjectId
-  role      EnumTenantMemberRole   @default(member)
-  status    EnumTenantMemberStatus @default(active)
+  id       String                 @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String                 @db.ObjectId
+  userId   String                 @db.ObjectId
+  role     EnumTenantMemberRole
+  status   EnumTenantMemberStatus @default(active)
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -852,7 +852,6 @@ enum EnumActivityLogAction {
   adminUserResetTwoFactor
   adminUserImport
   adminDeviceRemove
-
 }
 
 enum EnumDevicePlatform {

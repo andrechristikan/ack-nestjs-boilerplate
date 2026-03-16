@@ -18,6 +18,7 @@ import {
 } from '@modules/tenant/interfaces/tenant.interface';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumTenantMemberRole,
     EnumTenantMemberStatus,
     Tenant,
     TenantMember,
@@ -178,9 +179,51 @@ export class TenantRepository {
         });
     }
 
+    async findOneOwnerMemberByTenant(
+        tenantId: string
+    ): Promise<TenantMember | null> {
+        return this.databaseService.tenantMember.findFirst({
+            where: {
+                tenantId,
+                role: EnumTenantMemberRole.owner,
+                status: EnumTenantMemberStatus.active,
+                tenant: {
+                    deletedAt: null,
+                },
+            },
+        });
+    }
+
     async createMember(data: ITenantMemberCreate): Promise<TenantMember> {
         return this.databaseService.tenantMember.create({
             data,
+        });
+    }
+
+    async createWithOwner(
+        data: ITenantCreate,
+        ownerUserId: string
+    ): Promise<Tenant> {
+        return this.databaseService.$transaction(async tx => {
+            const tenant = await tx.tenant.create({
+                data: {
+                    ...data,
+                    deletedAt: null,
+                },
+            });
+
+            await tx.tenantMember.create({
+                data: {
+                    tenantId: tenant.id,
+                    userId: ownerUserId,
+                    role: EnumTenantMemberRole.owner,
+                    status: EnumTenantMemberStatus.active,
+                    createdBy: ownerUserId,
+                    updatedBy: ownerUserId,
+                },
+            });
+
+            return tenant;
         });
     }
 
@@ -199,6 +242,37 @@ export class TenantRepository {
     async deleteMember(memberId: string): Promise<TenantMember> {
         return this.databaseService.tenantMember.delete({
             where: { id: memberId },
+        });
+    }
+
+    async transferOwnership(
+        tenantId: string,
+        currentOwnerMemberId: string,
+        newOwnerMemberId: string,
+        updatedBy: string
+    ): Promise<void> {
+        await this.databaseService.$transaction(async tx => {
+            await tx.tenantMember.update({
+                where: {
+                    id: currentOwnerMemberId,
+                },
+                data: {
+                    role: EnumTenantMemberRole.admin,
+                    updatedBy,
+                },
+            });
+
+            await tx.tenantMember.updateMany({
+                where: {
+                    id: newOwnerMemberId,
+                    tenantId,
+                },
+                data: {
+                    role: EnumTenantMemberRole.owner,
+                    status: EnumTenantMemberStatus.active,
+                    updatedBy,
+                },
+            });
         });
     }
 

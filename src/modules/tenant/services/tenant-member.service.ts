@@ -25,12 +25,14 @@ import { UserService } from '@modules/user/services/user.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     ConflictException,
+    ForbiddenException,
     Injectable,
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
 import {
     EnumRoleScope,
+    EnumTenantMemberRole,
     EnumTenantMemberStatus,
     EnumUserSignUpFrom,
 } from '@generated/prisma-client';
@@ -73,6 +75,13 @@ export class TenantMemberService implements ITenantMemberService {
             });
         }
 
+        if (dto.role === EnumTenantMemberRole.owner) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.memberForbidden,
+                message: 'tenant.member.error.forbidden',
+            });
+        }
+
         const member = await this.tenantRepository.createMember({
             tenantId,
             userId: dto.userId,
@@ -111,6 +120,20 @@ export class TenantMemberService implements ITenantMemberService {
             return {};
         }
 
+        if (member.role === EnumTenantMemberRole.owner) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.memberForbidden,
+                message: 'tenant.member.error.forbidden',
+            });
+        }
+
+        if (dto.role === EnumTenantMemberRole.owner) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.memberForbidden,
+                message: 'tenant.member.error.forbidden',
+            });
+        }
+
         await this.tenantRepository.updateMember(member.id, {
             role: dto.role,
             status: dto.status,
@@ -133,6 +156,13 @@ export class TenantMemberService implements ITenantMemberService {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.memberNotFound,
                 message: 'tenant.member.error.notFound',
+            });
+        }
+
+        if (member.role === EnumTenantMemberRole.owner) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.memberForbidden,
+                message: 'tenant.member.error.forbidden',
             });
         }
 
@@ -184,6 +214,13 @@ export class TenantMemberService implements ITenantMemberService {
         }
 
         try {
+            if (dto.role === EnumTenantMemberRole.owner) {
+                throw new ForbiddenException({
+                    statusCode: EnumTenantStatusCodeError.memberForbidden,
+                    message: 'tenant.member.error.forbidden',
+                });
+            }
+
             const memberId = existingMember
                 ? existingMember.id
                 : (
