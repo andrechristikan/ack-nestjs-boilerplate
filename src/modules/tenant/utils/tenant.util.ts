@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import { ITenant, ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
-import { TenantMember } from '@generated/prisma-client';
 
 @Injectable()
 export class TenantUtil {
@@ -14,22 +12,5 @@ export class TenantUtil {
 
     mapMember(member: ITenantMember): TenantMemberResponseDto {
         return plainToInstance(TenantMemberResponseDto, member);
-    }
-
-    mapJitAccess(
-        member: TenantMember,
-        tenant: ITenant,
-        roleName: string,
-        expiresAt: Date,
-        reason: string
-    ): TenantJitAccessResponseDto {
-        return plainToInstance(TenantJitAccessResponseDto, {
-            memberId: member.id,
-            tenantId: tenant.id,
-            tenantName: tenant.name,
-            role: roleName,
-            expiresAt,
-            reason,
-        });
     }
 }

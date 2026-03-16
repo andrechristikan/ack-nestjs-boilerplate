@@ -1,6 +1,5 @@
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
-import { HelperService } from '@common/helper/services/helper.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { ITenantMemberService } from '@modules/tenant/interfaces/tenant-member.service.interface';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
@@ -15,9 +14,7 @@ import { InviteService } from '@modules/invite/services/invite.service';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
 import { TenantMemberInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member-invite.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
-import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.jit-access.request.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
-import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import {
     TenantInviteType,
@@ -34,7 +31,6 @@ import {
 } from '@nestjs/common';
 import {
     EnumRoleScope,
-    EnumTenantMemberRole,
     EnumTenantMemberStatus,
     EnumUserSignUpFrom,
 } from '@generated/prisma-client';
@@ -45,7 +41,6 @@ export class TenantMemberService implements ITenantMemberService {
         private readonly tenantRepository: TenantRepository,
         private readonly userRepository: UserRepository,
         private readonly userService: UserService,
-        private readonly helperService: HelperService,
         private readonly inviteService: InviteService,
         private readonly tenantUtil: TenantUtil
     ) {}
@@ -322,78 +317,4 @@ export class TenantMemberService implements ITenantMemberService {
             data: data.map(member => this.tenantUtil.mapMember(member)),
         };
     }
-
-    async assumeAccess(
-        tenantId: string,
-        userId: string,
-        dto: TenantJitAccessRequestDto
-    ): Promise<IResponseReturn<TenantJitAccessResponseDto>> {
-        const tenant = await this.tenantRepository.findOneActiveById(tenantId);
-        if (!tenant) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.notFound,
-                message: 'tenant.error.notFound',
-            });
-        }
-
-        const existingMember =
-            await this.tenantRepository.existMemberByTenantAndUser(
-                tenantId,
-                userId
-            );
-
-        if (existingMember) {
-            throw new ConflictException({
-                statusCode: EnumTenantStatusCodeError.jitAccessAlreadyActive,
-                message: 'tenant.error.jitAccessAlreadyActive',
-            });
-        }
-
-        const expiresAt = this.helperService.dateCreate();
-        expiresAt.setHours(expiresAt.getHours() + dto.durationInHours);
-
-        const member = await this.tenantRepository.createMember({
-            tenantId,
-            userId,
-            role: EnumTenantMemberRole.admin,
-            status: EnumTenantMemberStatus.active,
-            isJit: true,
-            expiresAt,
-            reason: dto.reason,
-            createdBy: userId,
-            updatedBy: userId,
-        });
-
-        return {
-            data: this.tenantUtil.mapJitAccess(
-                member,
-                tenant,
-                expiresAt,
-                dto.reason
-            ),
-        };
-    }
-
-    async revokeJitAccess(
-        tenantId: string,
-        userId: string
-    ): Promise<IResponseReturn<void>> {
-        const jitMember =
-            await this.tenantRepository.findActiveJitMemberByTenantAndUser(
-                tenantId,
-                userId
-            );
-
-        if (!jitMember) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.jitAccessNotFound,
-                message: 'tenant.error.jitAccessNotFound',
-            });
-        }
-
-        await this.tenantRepository.revokeJitMember(jitMember.id);
-
-        return {};
-    }
-
 }

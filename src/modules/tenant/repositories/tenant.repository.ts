@@ -227,35 +227,6 @@ export class TenantRepository {
         );
     }
 
-    async findActiveJitMemberByTenantAndUser(
-        tenantId: string,
-        userId: string
-    ): Promise<ITenantMember | null> {
-        return this.databaseService.tenantMember.findFirst({
-            where: {
-                tenantId,
-                userId,
-                isJit: true,
-                status: EnumTenantMemberStatus.active,
-                tenant: {
-                    deletedAt: null,
-                },
-            },
-        });
-    }
-
-    async revokeJitMember(memberId: string): Promise<TenantMember> {
-        return this.databaseService.tenantMember.update({
-            where: {
-                id: memberId,
-            },
-            data: {
-                status: EnumTenantMemberStatus.inactive,
-                revokedAt: this.helperService.dateCreate(),
-            },
-        });
-    }
-
     async findAllMembershipsByUser(
         userId: string
     ): Promise<ITenantMemberWithTenant[]> {

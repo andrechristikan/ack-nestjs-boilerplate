@@ -48,12 +48,6 @@ const featureFlagData: Prisma.FeatureFlagCreateInput[] = [
         isEnable: true,
     },
     {
-        key: 'tenantJitAccess',
-        description: 'Enable JIT (Just-In-Time) admin access to tenants',
-        rolloutPercent: 100,
-        isEnable: true,
-    },
-    {
         key: 'projectInvites',
         description: 'Enable project member invites',
         rolloutPercent: 100,

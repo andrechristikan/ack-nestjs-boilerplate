@@ -37,8 +37,6 @@
         "xTenantIdInvalid": "Tenant header is invalid.",
         "notFound": "Tenant was not found.",
         "inactive": "Tenant is inactive.",
-        "loginNoMembership": "Your account does not have access to any agencies. Please contact your administrator.",
-        "jitAccessAlreadyActive": "JIT access is already active for this tenant.",
-        "jitAccessNotFound": "JIT access was not found for this tenant."
+        "loginNoMembership": "Your account does not have access to any agencies. Please contact your administrator."
     }
 }

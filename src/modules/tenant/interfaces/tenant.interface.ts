@@ -44,9 +44,6 @@ export interface ITenantMemberCreate {
     status: EnumTenantMemberStatus;
     createdBy: string;
     updatedBy: string;
-    isJit?: boolean;
-    expiresAt?: Date;
-    reason?: string;
 }
 
 export interface ITenantMemberUpdate {

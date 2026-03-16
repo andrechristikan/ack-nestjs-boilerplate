@@ -719,7 +719,6 @@ The tenant system includes predefined roles stored in the main `Role` model:
 |-----------|-------------|----------|
 | `tenant-admin` | Full tenant management | Manage tenant settings, members, and tenant projects |
 | `tenant-user` | Standard tenant member | Read tenant/member data and manage tenant projects |
-| `tenant-platform-support` | Temporary JIT support access | Time-limited read access + limited member/project access for platform operators |
 
 ### Role Scopes
 
@@ -761,28 +760,6 @@ To fetch assignable tenant member roles (for member updates and invitations), us
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete
             ]
-        }
-    ]
-}
-```
-
-**Tenant Platform Support Abilities (JIT):**
-
-```typescript
-{
-    name: 'tenant-platform-support',
-    abilities: [
-        {
-            subject: EnumPolicySubject.tenant,
-            action: [EnumPolicyAction.read]
-        },
-        {
-            subject: EnumPolicySubject.tenantMember,
-            action: [EnumPolicyAction.read, EnumPolicyAction.create, EnumPolicyAction.update]
-        },
-        {
-            subject: EnumPolicySubject.project,
-            action: [EnumPolicyAction.read]
         }
     ]
 }
@@ -910,49 +887,6 @@ DELETE /api/v1/admin/tenants/:tenantId
 Authorization: Bearer <access_token>
 ```
 
-**JIT (Just-in-Time) tenant access** (requires platform admin with `tenant:update` ability):
-
-```typescript
-// Assume temporary access to a tenant (creates time-limited membership)
-POST /api/v1/admin/tenants/:tenantId/assume-access
-Authorization: Bearer <access_token>
-Body: {
-    durationInHours: 2,
-    reason: "Customer support ticket #123"
-}
-Response: {
-    data: {
-        memberId: "...",
-        tenantId: "...",
-        tenantName: "Acme Corp",
-        role: "tenant-platform-support",
-        expiresAt: "2025-01-15T14:00:00.000Z",
-        reason: "Customer support ticket #123"
-    }
-}
-
-// Revoke JIT access to a tenant
-DELETE /api/v1/admin/tenants/:tenantId/revoke-access
-Authorization: Bearer <access_token>
-```
-
-`durationInHours` accepts a value between `1` and `12`.
-Request fails with `409 Conflict` (`tenant.error.jitAccessAlreadyActive`) if the caller already has an active membership for the tenant.
-
-**JIT Access Flow:**
-
-1. Platform admin calls `POST /assume-access` with `durationInHours` (1-12) and a required `reason`
-2. A temporary `TenantMember` is created with `role: tenant-platform-support`, `isJit: true`, and an `expiresAt` timestamp
-3. The admin can now use `x-tenant-id` header to access tenant-scoped endpoints
-4. Access is automatically denied after expiry (membership auto-deactivated on next guard check)
-5. Admin can also manually revoke via `DELETE /revoke-access`
-
-- Access is time-limited (1-12 hours controlled via `durationInHours`)
-- Reason is required for audit trail
-- Activity log records both assume and revoke actions
-- Expired JIT memberships are auto-deactivated by the tenant member guard
-- Uses `tenant-platform-support` role with limited abilities (read-all + member management)
-
 ### Shared Endpoints
 
 Base path: `/api/v1/shared/tenants`
@@ -1055,7 +989,6 @@ nest build migration --config nest-cli.json && node dist/migration.js role --typ
 **What gets seeded:**
 - `tenant-admin` role with full tenant management abilities
 - `tenant-user` role with standard tenant member abilities
-- `tenant-platform-support` role for JIT support access
 
 See `src/migration/data/migration.role.data.ts` for the exact seeded abilities.
 
@@ -1072,8 +1005,6 @@ reports(@TenantCurrent() tenant: ITenant) {
 ```
 
 - **Member and role gating:** use `@TenantRoleProtected('tenant-admin')` or `@TenantPermissionProtected(...)` directly with `@AuthJwtAccessProtected()` and `@UserProtected()`. The tenant decorators already include tenant + membership guards.
-
-- **JIT helper:** admin endpoints `POST /api/v1/admin/tenants/:tenantId/assume-access` and `DELETE .../revoke-access` issue temporary `tenant-platform-support` memberships for support workflows.
 
 ### Complete Flow Example
 

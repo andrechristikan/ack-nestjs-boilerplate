@@ -11,9 +11,7 @@ import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
 import { TenantMemberInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member-invite.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
-import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.jit-access.request.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
-import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 
 export interface ITenantMemberService {
     createMember(
@@ -63,15 +61,4 @@ export interface ITenantMemberService {
             Prisma.TenantMemberWhereInput
         >
     ): Promise<IResponsePagingReturn<TenantMemberResponseDto>>;
-
-    assumeAccess(
-        tenantId: string,
-        userId: string,
-        dto: TenantJitAccessRequestDto
-    ): Promise<IResponseReturn<TenantJitAccessResponseDto>>;
-
-    revokeJitAccess(
-        tenantId: string,
-        userId: string
-    ): Promise<IResponseReturn<void>>;
 }

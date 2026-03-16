@@ -112,31 +112,6 @@ const roleData: RoleCreateRequestDto[] = [
         scope: EnumRoleScope.tenant,
     },
     {
-        name: 'tenant-platform-support',
-        description:
-            'Temporary support access for platform operators. Read-all tenant data + member management.',
-        abilities: [
-            {
-                subject: EnumPolicySubject.tenant,
-                action: [EnumPolicyAction.read],
-            },
-            {
-                subject: EnumPolicySubject.tenantMember,
-                action: [
-                    EnumPolicyAction.read,
-                    EnumPolicyAction.create,
-                    EnumPolicyAction.update,
-                ],
-            },
-            {
-                subject: EnumPolicySubject.project,
-                action: [EnumPolicyAction.read],
-            },
-        ],
-        type: EnumRoleType.admin,
-        scope: EnumRoleScope.tenant,
-    },
-    {
         name: ProjectRoleAdmin,
         description: 'Project administrator. Full project access.',
         abilities: [

@@ -80,10 +80,6 @@ model TenantMember {
   userId    String                 @db.ObjectId
   role      EnumTenantMemberRole   @default(member)
   status    EnumTenantMemberStatus @default(active)
-  isJit     Boolean                @default(false)
-  expiresAt DateTime?
-  revokedAt DateTime?
-  reason    String?
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -856,8 +852,6 @@ enum EnumActivityLogAction {
   adminUserImport
   adminDeviceRemove
 
-  tenantJitAccessAssumed
-  tenantJitAccessRevoked
 }
 
 enum EnumDevicePlatform {

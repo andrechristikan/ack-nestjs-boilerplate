@@ -12,8 +12,5 @@ export enum EnumTenantStatusCodeError {
     memberIdInvalid = 5200,
     loginNoMembership = 5201,
     roleScopeMismatch = 5202,
-    jitAccessExpired = 5203,
-    jitAccessAlreadyActive = 5204,
-    jitAccessNotFound = 5205,
     inviteNotFound = 5206,
 }

@@ -11,9 +11,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -24,17 +22,13 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
-import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.jit-access.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
-import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import {
-    TenantAdminAssumeAccessDoc,
     TenantAdminCreateDoc,
     TenantAdminDeleteDoc,
     TenantAdminGetDoc,
     TenantAdminListDoc,
-    TenantAdminRevokeAccessDoc,
     TenantAdminUpdateDoc,
 } from '@modules/tenant/docs/tenant.admin.doc';
 import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
@@ -50,7 +44,6 @@ import {
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumActivityLogAction } from '@generated/prisma-client';
 
 @ApiTags('modules.admin.tenant')
 @Controller({
@@ -154,40 +147,4 @@ export class TenantAdminController {
         return this.tenantService.delete(tenantId, deletedBy);
     }
 
-    @TenantAdminAssumeAccessDoc()
-    @FeatureFlagProtected('tenantJitAccess')
-    @Response('tenant.assumeAccess')
-    @ActivityLog(EnumActivityLogAction.tenantJitAccessAssumed)
-    @PolicyAbilityProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.update],
-    })
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @Post('/:tenantId/assume-access')
-    async assumeAccess(
-        @Param('tenantId', RequestRequiredPipe) tenantId: string,
-        @Body() body: TenantJitAccessRequestDto,
-        @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponseReturn<TenantJitAccessResponseDto>> {
-        return this.tenantMemberService.assumeAccess(tenantId, userId, body);
-    }
-
-    @TenantAdminRevokeAccessDoc()
-    @FeatureFlagProtected('tenantJitAccess')
-    @Response('tenant.revokeAccess')
-    @ActivityLog(EnumActivityLogAction.tenantJitAccessRevoked)
-    @PolicyAbilityProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.delete],
-    })
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @Delete('/:tenantId/revoke-access')
-    async revokeAccess(
-        @Param('tenantId', RequestRequiredPipe) tenantId: string,
-        @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponseReturn<void>> {
-        return this.tenantMemberService.revokeJitAccess(tenantId, userId);
-    }
 }

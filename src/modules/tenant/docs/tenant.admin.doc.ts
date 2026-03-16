@@ -10,9 +10,7 @@ import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { TenantDocParamsId } from '@modules/tenant/constants/tenant.doc.constant';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
-import { TenantJitAccessRequestDto } from '@modules/tenant/dtos/request/tenant.jit-access.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
-import { TenantJitAccessResponseDto } from '@modules/tenant/dtos/response/tenant.jit-access.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
@@ -103,42 +101,5 @@ export function TenantAdminDeleteDoc(): MethodDecorator {
         }),
         DocGuard({ policy: true }),
         DocResponse('tenant.delete')
-    );
-}
-
-export function TenantAdminAssumeAccessDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'assume jit tenant access',
-        }),
-        DocAuth({
-            jwtAccessToken: true,
-        }),
-        DocRequest({
-            params: TenantDocParamsId,
-            bodyType: EnumDocRequestBodyType.json,
-            dto: TenantJitAccessRequestDto,
-        }),
-        DocGuard({ policy: true }),
-        DocResponse<TenantJitAccessResponseDto>('tenant.assumeAccess', {
-            httpStatus: HttpStatus.CREATED,
-            dto: TenantJitAccessResponseDto,
-        })
-    );
-}
-
-export function TenantAdminRevokeAccessDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'revoke jit tenant access',
-        }),
-        DocAuth({
-            jwtAccessToken: true,
-        }),
-        DocRequest({
-            params: TenantDocParamsId,
-        }),
-        DocGuard({ policy: true }),
-        DocResponse('tenant.revokeAccess')
     );
 }

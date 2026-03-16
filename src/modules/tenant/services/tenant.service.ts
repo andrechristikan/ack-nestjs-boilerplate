@@ -1,6 +1,5 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client';
 import {
@@ -37,7 +36,6 @@ export class TenantService implements ITenantService {
     constructor(
         private readonly tenantRepository: TenantRepository,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperService: HelperService,
         private readonly tenantUtil: TenantUtil
     ) {}
 
@@ -105,19 +103,6 @@ export class TenantService implements ITenantService {
             );
 
         if (!tenantMember) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.memberForbidden,
-                message: 'tenant.member.error.forbidden',
-            });
-        }
-
-        if (
-            tenantMember.isJit &&
-            tenantMember.expiresAt &&
-            tenantMember.expiresAt < this.helperService.dateCreate()
-        ) {
-            await this.tenantRepository.revokeJitMember(tenantMember.id);
-
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
                 message: 'tenant.member.error.forbidden',
