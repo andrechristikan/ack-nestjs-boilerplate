@@ -18,7 +18,6 @@ export class TenantGuard implements CanActivate {
      *
      * @throws BadRequestException if the tenant id is missing or invalid
      * @throws NotFoundException if the tenant does not exist
-     * @throws ForbiddenException if the tenant is inactive
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context

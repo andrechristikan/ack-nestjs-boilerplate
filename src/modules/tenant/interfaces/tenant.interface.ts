@@ -1,7 +1,6 @@
 import {
-    EnumTenantMemberStatus,
-    EnumTenantStatus,
     EnumTenantMemberRole,
+    EnumTenantMemberStatus,
     Tenant,
     TenantMember,
     User,
@@ -24,7 +23,8 @@ export interface ITenantMemberWithTenant extends ITenantMember {
 
 export interface ITenantCreate {
     name: string;
-    status: EnumTenantStatus;
+    description: string;
+    slug: string;
     createdBy: string;
     updatedBy: string;
 }
@@ -32,7 +32,8 @@ export interface ITenantCreate {
 export interface ITenantUpdate {
     updatedBy: string;
     name?: string;
-    status?: EnumTenantStatus;
+    description?: string;
+    slug?: string;
     deletedAt?: Date | null;
     deletedBy?: string;
 }

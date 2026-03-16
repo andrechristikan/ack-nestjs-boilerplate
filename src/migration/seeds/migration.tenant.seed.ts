@@ -10,8 +10,6 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumTenantMemberStatus,
-    EnumTenantStatus,
-
 } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 
@@ -66,7 +64,8 @@ export class MigrationTenantSeed
                     tenantRecord = await this.databaseService.tenant.create({
                         data: {
                             name: tenant.name,
-                            status: EnumTenantStatus.active,
+                            description: tenant.description ?? '',
+                            slug: this.createSlug(tenant.name),
                             deletedAt: null,
                             createdBy: this.SYSTEM_ID,
                             updatedBy: this.SYSTEM_ID,
@@ -144,5 +143,19 @@ export class MigrationTenantSeed
         this.logger.log('Tenants removed successfully.');
 
         return;
+    }
+
+    private createSlug(value: string): string {
+        const normalized = value
+            .trim()
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[^\w\s-]/g, '')
+            .replace(/_/g, '-')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+
+        return normalized || `tenant-${Date.now()}`;
     }
 }

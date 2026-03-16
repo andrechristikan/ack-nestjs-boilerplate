@@ -3,6 +3,7 @@ import { EnumTenantMemberRole } from '@generated/prisma-client';
 
 export interface IMigrationTenantData {
     name: string;
+    description?: string;
     members: {
         userEmail: string;
         tenantRole: EnumTenantMemberRole;
@@ -12,6 +13,7 @@ export interface IMigrationTenantData {
 const tenantData: IMigrationTenantData[] = [
     {
         name: 'Default Organization',
+        description: 'Default workspace for local development',
         members: [
             { userEmail: 'admin@mail.com', tenantRole: EnumTenantMemberRole.admin },
             { userEmail: 'user@mail.com', tenantRole: EnumTenantMemberRole.member },
@@ -19,6 +21,7 @@ const tenantData: IMigrationTenantData[] = [
     },
     {
         name: 'Another Organization',
+        description: 'Secondary workspace for local development',
         members: [{ userEmail: 'admin@mail.com', tenantRole: EnumTenantMemberRole.admin }],
     },
 ];

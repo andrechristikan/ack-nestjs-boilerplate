@@ -8,6 +8,7 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
+import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
@@ -19,6 +20,7 @@ import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant
 import { ITenantService } from '@modules/tenant/interfaces/tenant.service.interface';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { TenantUtil } from '@modules/tenant/utils/tenant.util';
+import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     BadRequestException,
     ForbiddenException,
@@ -27,7 +29,8 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumTenantStatus, EnumTenantMemberRole } from '@generated/prisma-client';
+import { EnumTenantMemberRole } from '@generated/prisma-client';
+import { HelperService } from '@common/helper/services/helper.service';
 
 @Injectable()
 export class TenantService implements ITenantService {
@@ -36,7 +39,9 @@ export class TenantService implements ITenantService {
     constructor(
         private readonly tenantRepository: TenantRepository,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly tenantUtil: TenantUtil
+        private readonly tenantUtil: TenantUtil,
+        private readonly helperService: HelperService,
+        private readonly userRepository: UserRepository
     ) {}
 
     async validateTenantGuard(
@@ -63,13 +68,6 @@ export class TenantService implements ITenantService {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.notFound,
                 message: 'tenant.error.notFound',
-            });
-        }
-
-        if (tenant.status !== EnumTenantStatus.active) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.inactive,
-                message: 'tenant.error.inactive',
             });
         }
 
@@ -174,9 +172,12 @@ export class TenantService implements ITenantService {
         dto: TenantCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
+        const name = dto.name.trim();
+        const slug = await this.createUniqueSlug(name);
         const tenant = await this.tenantRepository.create({
-            name: dto.name.trim(),
-            status: EnumTenantStatus.active,
+            name,
+            description: dto.description?.trim() ?? '',
+            slug,
             createdBy,
             updatedBy: createdBy,
         });
@@ -195,7 +196,7 @@ export class TenantService implements ITenantService {
     ): Promise<IResponseReturn<void>> {
         const data: {
             name?: string;
-            status?: EnumTenantStatus;
+            description?: string;
             updatedBy: string;
         } = { updatedBy };
 
@@ -203,16 +204,50 @@ export class TenantService implements ITenantService {
             data.name = dto.name.trim();
         }
 
-        if (dto.status !== undefined) {
-            data.status = dto.status;
+        if (dto.description !== undefined) {
+            data.description = dto.description.trim();
         }
 
-        if (dto.name === undefined && dto.status === undefined) {
+        if (dto.name === undefined && dto.description === undefined) {
             return {};
         }
 
         await this.tenantRepository.update(id, data);
 
+        return {};
+    }
+
+    async updateSlug(
+        id: string,
+        dto: TenantUpdateSlugRequestDto,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        const slug = await this.createUniqueSlug(dto.slug, id);
+        await this.tenantRepository.update(id, {
+            slug,
+            updatedBy,
+        });
+
+        return {};
+    }
+
+    async switchTenant(
+        tenantId: string,
+        userId: string
+    ): Promise<IResponseReturn<void>> {
+        const member = await this.tenantRepository.findOneActiveMemberByTenantAndUser(
+            tenantId,
+            userId
+        );
+
+        if (!member) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.memberForbidden,
+                message: 'tenant.member.error.forbidden',
+            });
+        }
+
+        await this.userRepository.updateLastTenantId(userId, tenantId);
         return {};
     }
 
@@ -231,5 +266,24 @@ export class TenantService implements ITenantService {
         }
 
         return {};
+    }
+
+    private async createUniqueSlug(
+        value: string,
+        excludeTenantId?: string
+    ): Promise<string> {
+        const baseSlug = this.tenantUtil.createSlug(value);
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await this.tenantRepository.findOneBySlug(slug);
+            if (!existing || existing.id === excludeTenantId) {
+                return slug;
+            }
+
+            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
+        }
+
+        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
     }
 }

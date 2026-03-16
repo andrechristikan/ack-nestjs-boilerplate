@@ -19,7 +19,6 @@ import {
 import { Injectable } from '@nestjs/common';
 import {
     EnumTenantMemberStatus,
-    EnumTenantStatus,
     Tenant,
     TenantMember,
 } from '@generated/prisma-client';
@@ -61,9 +60,14 @@ export class TenantRepository {
         return this.databaseService.tenant.findFirst({
             where: {
                 id,
-                status: EnumTenantStatus.active,
                 deletedAt: null,
             },
+        });
+    }
+
+    async findOneBySlug(slug: string): Promise<Tenant | null> {
+        return this.databaseService.tenant.findFirst({
+            where: { slug },
         });
     }
 
@@ -89,7 +93,6 @@ export class TenantRepository {
         return this.databaseService.tenant.update({
             where: { id, deletedAt: null },
             data: {
-                status: EnumTenantStatus.inactive,
                 updatedBy: deletedBy,
                 deletedAt,
                 deletedBy,
@@ -235,7 +238,6 @@ export class TenantRepository {
                 userId,
                 status: EnumTenantMemberStatus.active,
                 tenant: {
-                    status: EnumTenantStatus.active,
                     deletedAt: null,
                 },
             },
@@ -264,7 +266,6 @@ export class TenantRepository {
                     userId,
                     status: EnumTenantMemberStatus.active,
                     tenant: {
-                        status: EnumTenantStatus.active,
                         deletedAt: null,
                     },
                 },

@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumTenantStatus } from '@generated/prisma-client';
 
 export class TenantResponseDto {
     @ApiProperty({
@@ -16,10 +15,15 @@ export class TenantResponseDto {
 
     @ApiProperty({
         required: true,
-        description: 'Tenant status',
-        enum: EnumTenantStatus,
+        description: 'Tenant description',
     })
-    status: EnumTenantStatus;
+    description: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Tenant slug',
+    })
+    slug: string;
 
     @ApiProperty({
         required: true,
@@ -32,4 +36,10 @@ export class TenantResponseDto {
         description: 'Date updated',
     })
     updatedAt: Date;
+
+    @ApiProperty({
+        required: false,
+        description: 'Date deleted',
+    })
+    deletedAt?: Date;
 }

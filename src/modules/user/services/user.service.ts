@@ -116,6 +116,7 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
+import { ProjectRoleAdmin } from '@modules/project/constants/project.constant';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -1172,15 +1173,25 @@ export class UserService implements IUserService {
         }: UserSignUpRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
-        const [role, emailExist, checkCountry] = await Promise.all([
+        const [role, projectAdminRole, emailExist, checkCountry] =
+            await Promise.all([
             this.roleRepository.existByNameAndScope(
                 this.userRoleName,
                 EnumRoleScope.platform
+            ),
+            this.roleRepository.existByNameAndScope(
+                ProjectRoleAdmin.trim(),
+                EnumRoleScope.project
             ),
             this.userRepository.existByEmail(email),
             this.countryRepository.existById(countryId),
         ]);
         if (!role) {
+            throw new NotFoundException({
+                statusCode: EnumRoleStatusCodeError.notFound,
+                message: 'role.error.notFound',
+            });
+        } else if (!projectAdminRole) {
             throw new NotFoundException({
                 statusCode: EnumRoleStatusCodeError.notFound,
                 message: 'role.error.notFound',
@@ -1214,6 +1225,7 @@ export class UserService implements IUserService {
                 userId,
                 randomUsername,
                 role.id,
+                projectAdminRole.id,
                 {
                     countryId,
                     email,

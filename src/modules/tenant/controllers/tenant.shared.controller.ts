@@ -34,6 +34,7 @@ import {
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
 import { TenantMemberInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member-invite.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
+import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
@@ -106,6 +107,35 @@ export class TenantSharedController {
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.tenantService.update(tenant.id, body, updatedBy);
+    }
+
+    @Response('tenant.updateSlug')
+    @TenantPermissionProtected({
+        subject: EnumPolicySubject.tenant,
+        action: [EnumPolicyAction.update],
+    })
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/current/tenant/slug')
+    async updateCurrentTenantSlug(
+        @TenantCurrent() tenant: ITenant,
+        @Body() body: TenantUpdateSlugRequestDto,
+        @AuthJwtPayload('userId') updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.tenantService.updateSlug(tenant.id, body, updatedBy);
+    }
+
+    @Response('tenant.switch')
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/switch/:tenantId')
+    async switchTenant(
+        @Param('tenantId', RequestRequiredPipe) tenantId: string,
+        @AuthJwtPayload('userId') userId: string
+    ): Promise<IResponseReturn<void>> {
+        return this.tenantService.switchTenant(tenantId, userId);
     }
 
     @TenantSharedListMembersDoc()

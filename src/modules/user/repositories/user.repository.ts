@@ -45,7 +45,11 @@ import {
     EnumNotificationChannel,
     EnumNotificationType,
     EnumPasswordHistoryType,
+    EnumProjectMemberStatus,
+    EnumProjectStatus,
     EnumRoleType,
+    EnumTenantMemberRole,
+    EnumTenantMemberStatus,
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     EnumUserLoginWith,
@@ -1342,6 +1346,7 @@ export class UserRepository {
         userId: string,
         username: string,
         roleId: string,
+        projectAdminRoleId: string,
         {
             countryId,
             email,
@@ -1375,122 +1380,194 @@ export class UserRepository {
                 id: true,
             },
         });
+        const tenantName = this.createDefaultTenantName(name, email);
+        const tenantDescription = `Default workspace for ${email}`;
+        const defaultProjectName = 'Default Project';
+        const tenantId = this.databaseUtil.createId();
 
-        const [user] = await this.databaseService.$transaction([
-            this.databaseService.user.create({
-                data: {
-                    id: userId,
-                    email,
-                    countryId,
-                    name,
-                    roleId,
-                    signUpFrom: from,
-                    signUpWith: EnumUserSignUpWith.credential,
-                    username,
-                    isVerified: false,
-                    status: EnumUserStatus.active,
-                    passwordCreated,
-                    passwordExpired,
-                    password: passwordHash,
-                    passwordAttempt: 0,
-                    passwordHistories: {
-                        create: {
-                            password: passwordHash,
-                            type: EnumPasswordHistoryType.signUp,
-                            expiredAt: passwordPeriodExpired,
-                            createdAt: passwordCreated,
-                            createdBy: userId,
-                        },
-                    },
-                    termPolicy: {
-                        [EnumTermPolicyType.cookies]: cookies,
-                        [EnumTermPolicyType.marketing]: marketing,
-                        [EnumTermPolicyType.privacy]: true,
-                        [EnumTermPolicyType.termsOfService]: true,
-                    },
-                    createdBy: userId,
-                    deletedAt: null,
-                    activityLogs: {
-                        createMany: {
-                            data: [
-                                {
-                                    action: EnumActivityLogAction.userSignedUp,
-                                    ipAddress,
-                                    userAgent:
-                                        this.databaseUtil.toPlainObject(
-                                            userAgent
-                                        ),
-                                    geoLocation:
-                                        this.databaseUtil.toPlainObject(
-                                            geoLocation
-                                        ),
-                                    createdBy: userId,
-                                },
-                                {
-                                    action: EnumActivityLogAction.userSendVerificationEmail,
-                                    ipAddress,
-                                    userAgent:
-                                        this.databaseUtil.toPlainObject(
-                                            userAgent
-                                        ),
-                                    geoLocation:
-                                        this.databaseUtil.toPlainObject(
-                                            geoLocation
-                                        ),
-                                    createdBy: userId,
-                                },
-                            ],
-                        },
-                    },
-                    notificationSettings: {
-                        createMany: {
-                            data: Object.values(EnumNotificationChannel)
-                                .map(channel =>
-                                    Object.values(EnumNotificationType).map(
-                                        type => ({
-                                            channel,
-                                            type,
-                                            isActive: true,
-                                        })
-                                    )
-                                )
-                                .flat(),
-                        },
-                    },
-                    verifications: {
-                        create: {
-                            expiredAt,
-                            reference,
-                            token: hashedToken,
-                            type,
-                            to: email,
-                            createdBy: userId,
-                        },
-                    },
-                    twoFactor: {
-                        create: {
-                            enabled: false,
-                            requiredSetup: false,
-                            createdBy: userId,
-                        },
-                    },
-                },
-                include: {
-                    role: true,
-                },
-            }),
-            ...termPolicies.map(termPolicy =>
-                this.databaseService.termPolicyUserAcceptance.create({
+        return this.databaseService.$transaction(
+            async (client: Prisma.TransactionClient) => {
+                const tenantSlug = await this.createUniqueTenantSlug(
+                    client,
+                    tenantName
+                );
+
+                const user = await client.user.create({
                     data: {
-                        userId,
-                        termPolicyId: termPolicy.id,
+                        id: userId,
+                        email,
+                        countryId,
+                        name,
+                        roleId,
+                        signUpFrom: from,
+                        signUpWith: EnumUserSignUpWith.credential,
+                        username,
+                        isVerified: false,
+                        status: EnumUserStatus.active,
+                        passwordCreated,
+                        passwordExpired,
+                        password: passwordHash,
+                        passwordAttempt: 0,
+                        lastTenantId: tenantId,
+                        passwordHistories: {
+                            create: {
+                                password: passwordHash,
+                                type: EnumPasswordHistoryType.signUp,
+                                expiredAt: passwordPeriodExpired,
+                                createdAt: passwordCreated,
+                                createdBy: userId,
+                            },
+                        },
+                        termPolicy: {
+                            [EnumTermPolicyType.cookies]: cookies,
+                            [EnumTermPolicyType.marketing]: marketing,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
+                        },
                         createdBy: userId,
+                        deletedAt: null,
+                        activityLogs: {
+                            createMany: {
+                                data: [
+                                    {
+                                        action: EnumActivityLogAction.userSignedUp,
+                                        ipAddress,
+                                        userAgent:
+                                            this.databaseUtil.toPlainObject(
+                                                userAgent
+                                            ),
+                                        geoLocation:
+                                            this.databaseUtil.toPlainObject(
+                                                geoLocation
+                                            ),
+                                        createdBy: userId,
+                                    },
+                                    {
+                                        action: EnumActivityLogAction.userSendVerificationEmail,
+                                        ipAddress,
+                                        userAgent:
+                                            this.databaseUtil.toPlainObject(
+                                                userAgent
+                                            ),
+                                        geoLocation:
+                                            this.databaseUtil.toPlainObject(
+                                                geoLocation
+                                            ),
+                                        createdBy: userId,
+                                    },
+                                ],
+                            },
+                        },
+                        notificationSettings: {
+                            createMany: {
+                                data: Object.values(EnumNotificationChannel)
+                                    .map(channel =>
+                                        Object.values(EnumNotificationType).map(
+                                            type => ({
+                                                channel,
+                                                type,
+                                                isActive: true,
+                                            })
+                                        )
+                                    )
+                                    .flat(),
+                            },
+                        },
+                        verifications: {
+                            create: {
+                                expiredAt,
+                                reference,
+                                token: hashedToken,
+                                type,
+                                to: email,
+                                createdBy: userId,
+                            },
+                        },
+                        twoFactor: {
+                            create: {
+                                enabled: false,
+                                requiredSetup: false,
+                                createdBy: userId,
+                            },
+                        },
                     },
-                })
-            ),
-        ]);
+                    include: {
+                        role: true,
+                    },
+                });
 
-        return user;
+                await Promise.all([
+                    client.tenant.create({
+                        data: {
+                            id: tenantId,
+                            name: tenantName,
+                            description: tenantDescription,
+                            slug: tenantSlug,
+                            createdBy: userId,
+                            updatedBy: userId,
+                        },
+                    }),
+                    client.tenantMember.create({
+                        data: {
+                            tenantId,
+                            userId,
+                            role: EnumTenantMemberRole.owner,
+                            status: EnumTenantMemberStatus.active,
+                            createdBy: userId,
+                            updatedBy: userId,
+                        },
+                    }),
+                    ...termPolicies.map(termPolicy =>
+                        client.termPolicyUserAcceptance.create({
+                            data: {
+                                userId,
+                                termPolicyId: termPolicy.id,
+                                createdBy: userId,
+                            },
+                        })
+                    ),
+                ]);
+
+                const project = await client.project.create({
+                    data: {
+                        tenantId,
+                        name: defaultProjectName,
+                        status: EnumProjectStatus.active,
+                        createdBy: userId,
+                        updatedBy: userId,
+                    },
+                    select: {
+                        id: true,
+                    },
+                });
+
+                await client.projectMember.create({
+                    data: {
+                        projectId: project.id,
+                        userId,
+                        roleId: projectAdminRoleId,
+                        status: EnumProjectMemberStatus.active,
+                        createdBy: userId,
+                        updatedBy: userId,
+                    },
+                });
+
+                return user;
+            }
+        );
+    }
+
+    async updateLastTenantId(userId: string, lastTenantId: string): Promise<void> {
+        await this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                lastTenantId,
+                updatedBy: userId,
+            },
+            select: {
+                id: true,
+            },
+        });
     }
 
     async forgotPassword(
@@ -2213,5 +2290,55 @@ export class UserRepository {
         );
 
         return users;
+    }
+
+    private createDefaultTenantName(
+        name: string | undefined,
+        email: string
+    ): string {
+        const cleanName = name?.trim();
+        if (cleanName) {
+            return `${cleanName} Workspace`;
+        }
+
+        const username = email.split('@')[0]?.trim() || 'workspace';
+        return `${username} Workspace`;
+    }
+
+    private createTenantSlug(value: string): string {
+        const normalized = value
+            .trim()
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[^\w\s-]/g, '')
+            .replace(/_/g, '-')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+
+        return normalized || 'tenant';
+    }
+
+    private async createUniqueTenantSlug(
+        client: Prisma.TransactionClient,
+        value: string
+    ): Promise<string> {
+        const baseSlug = this.createTenantSlug(value);
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await client.tenant.findFirst({
+                where: { slug },
+                select: { id: true },
+            });
+
+            if (!existing) {
+                return slug;
+            }
+
+            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
+        }
+
+        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
     }
 }

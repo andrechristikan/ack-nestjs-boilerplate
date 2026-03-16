@@ -56,7 +56,8 @@ model Role {
 model Tenant {
   id     String           @id @default(auto()) @map("_id") @db.ObjectId
   name   String
-  status EnumTenantStatus @default(active)
+  description String @default("")
+  slug        String @unique
 
   // timestamps fields
   createdAt DateTime  @default(now())
@@ -69,7 +70,7 @@ model Tenant {
   members  TenantMember[] @relation("TenantMembers")
   projects Project[]      @relation("TenantProjects")
 
-  @@index(fields: [name, status, createdAt])
+  @@index(fields: [name, createdAt])
   @@index(fields: [createdAt])
   @@map("Tenants")
 }

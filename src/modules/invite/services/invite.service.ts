@@ -36,6 +36,7 @@ import {
 import { EnumUserStatus, Prisma } from '@generated/prisma-client';
 import { Duration } from 'luxon';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
+import { TenantInviteType } from '@modules/tenant/constants/tenant.constant';
 
 @Injectable()
 export class InviteService implements IInviteService {
@@ -407,7 +408,10 @@ export class InviteService implements IInviteService {
             await this.inviteRepository.acceptInvite(
                 invite.id,
                 invite.userId,
-                requestLog
+                requestLog,
+                invite.inviteType === TenantInviteType
+                    ? invite.contextId
+                    : undefined
             );
 
             return;
@@ -471,7 +475,10 @@ export class InviteService implements IInviteService {
                 invite.userId,
                 name,
                 passwordPayload,
-                requestLog
+                requestLog,
+                invite.inviteType === TenantInviteType
+                    ? invite.contextId
+                    : undefined
             );
 
             this.notificationUtil.sendVerifiedEmail(invite.user.id, {

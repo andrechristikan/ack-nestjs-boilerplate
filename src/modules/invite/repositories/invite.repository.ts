@@ -208,7 +208,8 @@ export class InviteRepository {
     async acceptInvite(
         inviteId: string,
         userId: string,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent }: IRequestLog,
+        lastTenantId?: string
     ): Promise<void> {
         const today = this.helperService.dateCreate();
 
@@ -238,6 +239,7 @@ export class InviteRepository {
                 await client.user.update({
                     where: { id: userId, deletedAt: null },
                     data: {
+                        ...(lastTenantId ? { lastTenantId } : {}),
                         activityLogs: {
                             create: {
                                 action: EnumActivityLogAction.userCompleteInvite,
@@ -263,7 +265,8 @@ export class InviteRepository {
             passwordHash,
             passwordPeriodExpired,
         }: IAuthPassword,
-        { ipAddress, userAgent }: IRequestLog
+        { ipAddress, userAgent }: IRequestLog,
+        lastTenantId?: string
     ): Promise<User> {
         const today = this.helperService.dateCreate();
 
@@ -300,6 +303,7 @@ export class InviteRepository {
                 return client.user.update({
                     where: { id: userId, deletedAt: null },
                     data: {
+                        ...(lastTenantId ? { lastTenantId } : {}),
                         name,
                         password: passwordHash,
                         passwordCreated,

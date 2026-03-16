@@ -22,6 +22,7 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
+import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import {
@@ -127,6 +128,24 @@ export class TenantAdminController {
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.tenantService.update(tenantId, body, updatedBy);
+    }
+
+    @Response('tenant.updateSlug')
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.tenant,
+        action: [EnumPolicyAction.update],
+    })
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/:tenantId/slug')
+    async updateSlug(
+        @Param('tenantId', RequestRequiredPipe)
+        tenantId: string,
+        @Body() body: TenantUpdateSlugRequestDto,
+        @AuthJwtPayload('userId') updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.tenantService.updateSlug(tenantId, body, updatedBy);
     }
 
     @TenantAdminDeleteDoc()
