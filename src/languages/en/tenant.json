@@ -6,7 +6,6 @@
     "create": "Tenant created successfully.",
     "update": "Tenant updated successfully.",
     "delete": "Tenant deleted successfully.",
-    "loginCredential": "Logged in successfully to agency application.",
     "member": {
         "list": "Tenant members retrieved successfully.",
         "create": "Tenant member created successfully.",

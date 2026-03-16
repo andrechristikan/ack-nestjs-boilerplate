@@ -5,7 +5,7 @@ import { TenantRepository } from '@modules/tenant/repositories/tenant.repository
 import { TenantGuard } from '@modules/tenant/guards/tenant.guard';
 import { TenantMemberGuard } from '@modules/tenant/guards/tenant.member.guard';
 import { TenantRoleGuard } from '@modules/tenant/guards/tenant.role.guard';
-import { TenantAuthService } from '@modules/tenant/services/tenant-auth.service';
+import { TenantPermissionGuard } from '@modules/tenant/guards/tenant.permission.guard';
 import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 import { InviteModule } from '@modules/invite/invite.module';
 import { UserModule } from '@modules/user/user.module';
@@ -20,16 +20,15 @@ import { ConfigService } from '@nestjs/config';
         TenantService,
         TenantMemberService,
         TenantRepository,
-        TenantAuthService,
         TenantUtil,
         TenantGuard,
         TenantMemberGuard,
         TenantRoleGuard,
+        TenantPermissionGuard,
     ],
     exports: [
         TenantService,
         TenantMemberService,
-        TenantAuthService,
         TenantRepository,
         TenantUtil,
     ],

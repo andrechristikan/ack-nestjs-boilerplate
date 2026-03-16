@@ -223,6 +223,7 @@ model User {
   lastIPAddress   String?
   lastLoginFrom   EnumUserLoginFrom?
   lastLoginWith   EnumUserLoginWith?
+  lastTenantId    String?            @db.ObjectId
   termPolicy      UserTermPolicy
   photo           UserPhoto?
 

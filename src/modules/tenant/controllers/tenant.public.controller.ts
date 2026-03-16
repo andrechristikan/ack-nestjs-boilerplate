@@ -2,12 +2,11 @@ import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { UserAgent } from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { UserAgent } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
 import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
 import { InviteService } from '@modules/invite/services/invite.service';
@@ -15,11 +14,7 @@ import { TenantInviteType } from '@modules/tenant/constants/tenant.constant';
 import {
     TenantPublicClaimInviteDoc,
     TenantPublicGetInviteDoc,
-    TenantPublicLoginCredentialDoc,
 } from '@modules/tenant/docs/tenant.public.doc';
-import { TenantLoginRequestDto } from '@modules/tenant/dtos/request/tenant.login.request.dto';
-import { TenantLoginResponseDto } from '@modules/tenant/dtos/response/tenant.login.response.dto';
-import { TenantAuthService } from '@modules/tenant/services/tenant-auth.service';
 import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
 import {
     Body,
@@ -39,27 +34,9 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class TenantPublicController {
     constructor(
-        private readonly tenantAuthService: TenantAuthService,
         private readonly inviteService: InviteService,
         private readonly tenantMemberService: TenantMemberService
     ) {}
-
-    @TenantPublicLoginCredentialDoc()
-    @Response('tenant.loginCredential')
-    @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @FeatureFlagProtected('loginWithCredential')
-    @Post('/login/credential')
-    async loginWithCredential(
-        @Body() body: TenantLoginRequestDto,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent
-    ): Promise<IResponseReturn<TenantLoginResponseDto>> {
-        return this.tenantAuthService.loginCredential(body, {
-            ipAddress,
-            userAgent,
-        });
-    }
 
     @TenantPublicGetInviteDoc()
     @Response('tenant.invite.get')
