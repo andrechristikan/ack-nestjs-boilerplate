@@ -8,6 +8,7 @@ import {
     IProjectCreate,
     IProjectMember,
     IProjectMemberCreate,
+    IProjectMemberDelete,
     IProjectMemberUpdate,
     IProjectMemberWithInvite,
     IProjectMemberWithUser,
@@ -16,6 +17,7 @@ import {
 import { ProjectInviteType } from '@modules/project/constants/project.constant';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumProjectMemberRole,
     EnumProjectMemberStatus,
     Project,
     ProjectMember,
@@ -283,33 +285,99 @@ export class ProjectRepository {
         );
     }
 
-    async findMembersWithPaginationOffsetByUser(
-        userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<
-            Prisma.ProjectMemberSelect,
-            Prisma.ProjectMemberWhereInput
-        >
-    ): Promise<IResponsePagingReturn<IProjectMember>> {
-        return this.paginationService.offset<IProjectMember>(
-            this.databaseService.projectMember,
-            {
-                ...params,
+async softDeleteMember(
+        memberId: string,
+        data: IProjectMemberDelete
+    ): Promise<ProjectMember> {
+        return this.databaseService.projectMember.update({
+            where: { id: memberId },
+            data,
+        });
+    }
+
+    async countActiveMembersByProject(
+        projectId: string,
+        excludeUserId?: string
+    ): Promise<number> {
+        return this.databaseService.projectMember.count({
+            where: {
+                projectId,
+                status: EnumProjectMemberStatus.active,
+                deletedAt: null,
+                ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
+            },
+        });
+    }
+
+    async findAnotherAdminMember(
+        projectId: string,
+        excludeUserId: string
+    ): Promise<Pick<ProjectMember, 'id'> | null> {
+        return this.databaseService.projectMember.findFirst({
+            where: {
+                projectId,
+                status: EnumProjectMemberStatus.active,
+                role: EnumProjectMemberRole.admin,
+                deletedAt: null,
+                userId: { not: excludeUserId },
+            },
+            select: { id: true },
+        });
+    }
+
+    async deleteWithCascade(
+        projectId: string,
+        deletedBy: string
+    ): Promise<Project> {
+        const deletedAt = this.helperService.dateCreate();
+
+        return this.databaseService.$transaction(async tx => {
+            const project = await tx.project.update({
+                where: { id: projectId, deletedAt: null },
+                data: { updatedBy: deletedBy, deletedAt, deletedBy },
+            });
+
+            await tx.projectMember.updateMany({
+                where: { projectId, deletedAt: null },
+                data: { updatedBy: deletedBy, deletedAt, deletedBy },
+            });
+
+            await tx.invite.updateMany({
                 where: {
-                    ...where,
-                    userId,
-                    status: EnumProjectMemberStatus.active,
+                    inviteType: ProjectInviteType,
+                    contextId: projectId,
                     deletedAt: null,
-                    project: {
-                        deletedAt: null,
-                    },
+                    acceptedAt: null,
                 },
-                include: {
-                    project: true,
-                },
+                data: { deletedAt },
+            });
+
+            return project;
+        });
+    }
+
+    async createWithMembers(
+        data: IProjectCreate,
+        members: Array<{
+            userId: string;
+            role: EnumProjectMemberRole;
+            status: EnumProjectMemberStatus;
+            createdBy: string;
+            updatedBy: string;
+        }>
+    ): Promise<Project> {
+        return this.databaseService.$transaction(async tx => {
+            const project = await tx.project.create({
+                data: { ...data, deletedAt: null },
+            });
+
+            for (const member of members) {
+                await tx.projectMember.create({
+                    data: { ...member, projectId: project.id, deletedAt: null },
+                });
             }
-        );
+
+            return project;
+        });
     }
 }

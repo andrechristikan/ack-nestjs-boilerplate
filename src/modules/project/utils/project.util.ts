@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project.access.response.dto';
 import { InviteStatusResponseDto } from '@modules/invite/dtos/response/invite-status.response.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
@@ -28,13 +27,6 @@ export class ProjectUtil {
             status: member.status,
             createdAt: member.createdAt,
             invite,
-        });
-    }
-
-    mapMemberProjectAccess(project: IProject): ProjectAccessResponseDto {
-        return plainToInstance(ProjectAccessResponseDto, {
-            accessType: 'member',
-            project: this.mapProject(project),
         });
     }
 }

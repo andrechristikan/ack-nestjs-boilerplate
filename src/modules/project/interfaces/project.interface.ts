@@ -65,4 +65,12 @@ export interface IProjectMemberUpdate {
     updatedBy: string;
     role?: EnumProjectMemberRole;
     status?: EnumProjectMemberStatus;
+    deletedAt?: Date | null;
+    deletedBy?: string;
+}
+
+export interface IProjectMemberDelete {
+    deletedAt: Date;
+    deletedBy: string;
+    updatedBy: string;
 }

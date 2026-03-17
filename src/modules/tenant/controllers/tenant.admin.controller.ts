@@ -1,7 +1,7 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { Prisma } from '@generated/prisma-client';
+import { EnumTenantMemberRole, Prisma } from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -45,6 +45,7 @@ import {
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { TenantRoleProtected } from '@modules/tenant/decorators/tenant.decorator';
 
 @ApiTags('modules.admin.tenant')
 @Controller({
@@ -96,10 +97,11 @@ export class TenantAdminController {
 
     @TenantAdminGetDoc()
     @Response('tenant.get')
-    @PolicyAbilityProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.read],
-    })
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin,
+        EnumTenantMemberRole.member
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -113,10 +115,7 @@ export class TenantAdminController {
 
     @TenantAdminUpdateDoc()
     @Response('tenant.update')
-    @PolicyAbilityProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.update],
-    })
+    @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -131,10 +130,7 @@ export class TenantAdminController {
     }
 
     @Response('tenant.updateSlug')
-    @PolicyAbilityProtected({
-        subject: EnumPolicySubject.tenant,
-        action: [EnumPolicyAction.update],
-    })
+    @TenantRoleProtected(EnumTenantMemberRole.owner)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -165,5 +161,4 @@ export class TenantAdminController {
     ): Promise<IResponseReturn<void>> {
         return this.tenantService.delete(tenantId, deletedBy);
     }
-
 }

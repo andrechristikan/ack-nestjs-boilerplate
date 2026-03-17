@@ -1,6 +1,17 @@
+import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { Prisma } from '@generated/prisma-client';
+import {
+    RequestIPAddress,
+    RequestUserAgent,
+} from '@common/request/decorators/request.decorator';
+import {
+    EnumProjectMemberRole,
+    EnumTenantMemberRole,
+    Prisma,
+    UserAgent,
+} from '@generated/prisma-client';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
     ResponsePaging,
@@ -9,31 +20,77 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    ProjectMemberPolicyCreate,
+    ProjectMemberPolicyDelete,
+    ProjectMemberPolicyRead,
+    ProjectMemberPolicyUpdate,
+    ProjectPolicyDelete,
+    ProjectPolicyRead,
+    ProjectPolicyUpdate,
+} from '@modules/project/constants/project.policy.constant';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project.access.response.dto';
+import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
+import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
+import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
+import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
+import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
+import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
+import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import {
-    ProjectSharedCreateDoc,
-    ProjectSharedGetDoc,
-    ProjectSharedListDoc,
-} from '@modules/project/docs/project.shared.doc';
+    ProjectTenantSharedCreateDoc,
+    ProjectTenantSharedCreateMemberDoc,
+    ProjectTenantSharedCreateMemberInviteDoc,
+    ProjectTenantSharedDeleteDoc,
+    ProjectTenantSharedGetDoc,
+    ProjectTenantSharedLeaveMemberDoc,
+    ProjectTenantSharedListDoc,
+    ProjectTenantSharedListMemberRolesDoc,
+    ProjectTenantSharedListMembersDoc,
+    ProjectTenantSharedRevokeMemberDoc,
+    ProjectTenantSharedSendMemberInviteDoc,
+    ProjectTenantSharedUpdateDoc,
+    ProjectTenantSharedUpdateMemberDoc,
+    ProjectTenantSharedUpdateSlugDoc,
+} from '@modules/project/docs/project.tenant.shared.doc';
+import {
+    ProjectMemberCurrent,
+    ProjectPermissionProtected,
+} from '@modules/project/decorators/project.decorator';
+import { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberService } from '@modules/project/services/project-member.service';
 import { ProjectService } from '@modules/project/services/project.service';
+import {
+    TenantCurrent,
+    TenantMemberCurrent,
+    TenantMemberProtected,
+    TenantRoleProtected,
+} from '@modules/tenant/decorators/tenant.decorator';
+import { ITenant, ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Param,
+    Patch,
+    Post,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 
 @ApiTags('modules.shared.project')
 @Controller({
     version: '1',
-    path: '/projects',
+    path: '/tenants/projects',
 })
 export class ProjectSharedController {
     constructor(
@@ -41,46 +98,272 @@ export class ProjectSharedController {
         private readonly projectMemberService: ProjectMemberService
     ) {}
 
-    @ProjectSharedCreateDoc()
-    @Response('project.create')
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Post('')
-    async create(
-        @Body() body: ProjectCreateRequestDto,
-        @AuthJwtPayload('userId') createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.projectService.createForUser(body, createdBy);
-    }
-
-    @ProjectSharedListDoc()
-    @ResponsePaging('project.shared.list')
+    @ProjectTenantSharedListDoc()
+    @ResponsePaging('project.list')
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin,
+        EnumTenantMemberRole.member
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('')
     async list(
+        @TenantCurrent() tenant: ITenant,
+        @TenantMemberCurrent() tenantMember: ITenantMember,
         @AuthJwtPayload('userId') userId: string,
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectMemberSelect,
-            Prisma.ProjectMemberWhereInput
+            Prisma.ProjectSelect,
+            Prisma.ProjectWhereInput
         >
-    ): Promise<IResponsePagingReturn<ProjectAccessResponseDto>> {
-        return this.projectMemberService.list(userId, pagination);
+    ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
+        return this.projectService.getListByTenant(
+            tenant.id,
+            userId,
+            tenantMember.role,
+            pagination
+        );
     }
 
-    @ProjectSharedGetDoc()
-    @Response('project.shared.get')
+    @ProjectTenantSharedCreateDoc()
+    @Response('project.create')
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('')
+    async create(
+        @TenantCurrent() tenant: ITenant,
+        @Body() body: ProjectCreateRequestDto,
+        @AuthJwtPayload('userId') createdBy: string
+    ): Promise<IResponseReturn<DatabaseIdDto>> {
+        return this.projectService.createForTenant(tenant.id, body, createdBy);
+    }
+
+    @ProjectTenantSharedGetDoc()
+    @Response('project.get')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectPolicyRead)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/:projectId')
     async get(
+        @Param('projectId', RequestRequiredPipe) projectId: string
+    ): Promise<IResponseReturn<ProjectResponseDto>> {
+        return this.projectService.getOne(projectId);
+    }
+
+    @ProjectTenantSharedUpdateDoc()
+    @Response('project.update')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectPolicyUpdate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/:projectId')
+    async update(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Body() body: ProjectUpdateRequestDto,
+        @AuthJwtPayload('userId') updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.projectService.update(projectId, body, updatedBy);
+    }
+
+    @ProjectTenantSharedUpdateSlugDoc()
+    @Response('project.update')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectPolicyUpdate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/:projectId/slug')
+    async updateSlug(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Body() body: ProjectUpdateSlugRequestDto,
+        @AuthJwtPayload('userId') updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.projectService.updateSlug(projectId, body, updatedBy);
+    }
+
+    @ProjectTenantSharedDeleteDoc()
+    @Response('project.delete')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectPolicyDelete)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Delete('/:projectId')
+    async delete(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @AuthJwtPayload('userId') updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.projectService.delete(projectId, updatedBy);
+    }
+
+    @ProjectTenantSharedCreateMemberDoc()
+    @Response('project.member.create')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/:projectId/members')
+    async createMember(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Body() body: ProjectMemberCreateRequestDto,
+        @AuthJwtPayload('userId') createdBy: string
+    ): Promise<IResponseReturn<DatabaseIdDto>> {
+        return this.projectMemberService.create(projectId, body, createdBy);
+    }
+
+    @ProjectTenantSharedCreateMemberInviteDoc()
+    @FeatureFlagProtected('projectInvites')
+    @Response('project.member.invite.create')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/:projectId/members/invites')
+    async createMemberInvite(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Body() body: ProjectMemberInviteCreateRequestDto,
+        @AuthJwtPayload('userId') createdBy: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: UserAgent
+    ): Promise<IResponseReturn<InviteCreateResponseDto>> {
+        return this.projectMemberService.createInvite(
+            projectId,
+            body,
+            createdBy,
+            { ipAddress, userAgent }
+        );
+    }
+
+    @ProjectTenantSharedSendMemberInviteDoc()
+    @FeatureFlagProtected('projectInvites')
+    @Response('project.member.invite.send')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/:projectId/members/:memberId/invites/send')
+    async sendMemberInvite(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('memberId', RequestRequiredPipe) memberId: string,
+        @AuthJwtPayload('userId') requestedBy: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: UserAgent
+    ): Promise<IResponseReturn<InviteSendResponseDto>> {
+        return this.projectMemberService.sendInvite(
+            projectId,
+            memberId,
+            requestedBy,
+            {
+                ipAddress,
+                userAgent,
+            }
+        );
+    }
+
+    @ProjectTenantSharedUpdateMemberDoc()
+    @Response('project.member.update')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectMemberPolicyUpdate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/:projectId/members/:memberId')
+    async updateMember(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('memberId', RequestRequiredPipe) memberId: string,
+        @Body() body: ProjectMemberUpdateRequestDto,
+        @AuthJwtPayload('userId') updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.projectMemberService.update(
+            projectId,
+            memberId,
+            body,
+            updatedBy
+        );
+    }
+
+    @ProjectTenantSharedListMembersDoc()
+    @ResponsePaging('project.member.list')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectMemberPolicyRead)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/:projectId/members')
+    async listMembers(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @PaginationOffsetQuery()
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ProjectMemberSelect,
+            Prisma.ProjectMemberWhereInput
+        >
+    ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
+        return this.projectMemberService.listMembers(projectId, pagination);
+    }
+
+    @ProjectTenantSharedListMemberRolesDoc()
+    @Response('project.member.roles')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/:projectId/members/roles')
+    async listMemberRoles(
+        @Param('projectId', RequestRequiredPipe) projectId: string
+    ): Promise<IResponseReturn<EnumProjectMemberRole[]>> {
+        return this.projectMemberService.getMemberRoles(projectId);
+    }
+
+    @ProjectTenantSharedLeaveMemberDoc()
+    @Response('project.member.leave')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectMemberPolicyRead)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Delete('/:projectId/members/me')
+    async leaveMember(
         @Param('projectId', RequestRequiredPipe) projectId: string,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponseReturn<ProjectResponseDto>> {
-        return this.projectMemberService.getOne(projectId, userId);
+    ): Promise<IResponseReturn<void>> {
+        return this.projectMemberService.leave(projectId, userId);
+    }
+
+    @ProjectTenantSharedRevokeMemberDoc()
+    @Response('project.member.revoke')
+    @TenantMemberProtected()
+    @ProjectPermissionProtected(ProjectMemberPolicyDelete)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Delete('/:projectId/members/:memberId')
+    async revokeMember(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('memberId', RequestRequiredPipe) memberId: string,
+        @AuthJwtPayload('userId') revokedBy: string,
+        @TenantMemberCurrent() tenantMember: ITenantMember,
+        @ProjectMemberCurrent() projectMember: IProjectMember | undefined
+    ): Promise<IResponseReturn<void>> {
+        return this.projectMemberService.revoke(
+            projectId,
+            memberId,
+            revokedBy,
+            tenantMember.role,
+            projectMember?.role
+        );
     }
 }

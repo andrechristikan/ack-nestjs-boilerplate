@@ -268,3 +268,39 @@ export function ProjectTenantSharedListMemberRolesDoc(): MethodDecorator {
         DocResponse('project.member.roles')
     );
 }
+
+export function ProjectTenantSharedLeaveMemberDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'leave project',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocTenantMemberProtected(),
+        DocProjectPermissionProtected(),
+        DocRequest({
+            params: ProjectDocParamsId,
+        }),
+        DocResponse('project.member.leave')
+    );
+}
+
+export function ProjectTenantSharedRevokeMemberDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'revoke project member access',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocTenantMemberProtected(),
+        DocProjectPermissionProtected(),
+        DocRequest({
+            params: ProjectDocParamsProjectMemberId,
+        }),
+        DocResponse('project.member.revoke')
+    );
+}

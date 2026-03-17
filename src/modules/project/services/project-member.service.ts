@@ -14,7 +14,6 @@ import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/reque
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
-import { ProjectAccessResponseDto } from '@modules/project/dtos/response/project.access.response.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
@@ -29,13 +28,16 @@ import {
     Injectable,
     InternalServerErrorException,
     NotFoundException,
+    UnprocessableEntityException,
 } from '@nestjs/common';
 import {
     EnumProjectMemberRole,
     EnumProjectMemberStatus,
     EnumRoleScope,
+    EnumTenantMemberRole,
     EnumTenantMemberStatus,
 } from '@generated/prisma-client';
+import { HelperService } from '@common/helper/services/helper.service';
 
 @Injectable()
 export class ProjectMemberService {
@@ -45,7 +47,8 @@ export class ProjectMemberService {
         private readonly userRepository: UserRepository,
         private readonly inviteService: InviteService,
         private readonly inviteUtil: InviteUtil,
-        private readonly projectUtil: ProjectUtil
+        private readonly projectUtil: ProjectUtil,
+        private readonly helperService: HelperService
     ) {}
 
     async create(
@@ -327,37 +330,15 @@ export class ProjectMemberService {
         };
     }
 
-    async list(
-        userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectMemberSelect,
-            Prisma.ProjectMemberWhereInput
-        >
-    ): Promise<IResponsePagingReturn<ProjectAccessResponseDto>> {
-        const { data, ...others } =
-            await this.projectRepository.findMembersWithPaginationOffsetByUser(
-                userId,
-                pagination
-            );
-
-        return {
-            ...others,
-            data: data.map(member =>
-                this.projectUtil.mapMemberProjectAccess(member.project)
-            ),
-        };
-    }
-
-    async getOne(
+async leave(
         projectId: string,
         userId: string
-    ): Promise<IResponseReturn<ProjectResponseDto>> {
+    ): Promise<IResponseReturn<void>> {
         const member = await this.projectRepository.findMemberByProjectAndUser(
             projectId,
             userId,
             EnumProjectMemberStatus.active
         );
-
         if (!member) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
@@ -365,9 +346,117 @@ export class ProjectMemberService {
             });
         }
 
-        return {
-            data: this.projectUtil.mapProject(member.project),
-        };
+        const deletedAt = this.helperService.dateCreate();
+
+        if (member.role !== EnumProjectMemberRole.admin) {
+            await this.projectRepository.softDeleteMember(member.id, {
+                deletedAt,
+                deletedBy: userId,
+                updatedBy: userId,
+            });
+            return {};
+        }
+
+        // Caller is an admin — check remaining members
+        const otherMemberCount =
+            await this.projectRepository.countActiveMembersByProject(
+                projectId,
+                userId
+            );
+
+        if (otherMemberCount === 0) {
+            // Last member: soft-delete the entire project with cascade
+            await this.projectRepository.deleteWithCascade(projectId, userId);
+            return {};
+        }
+
+        // Other members exist — ensure at least one other admin
+        const anotherAdmin =
+            await this.projectRepository.findAnotherAdminMember(
+                projectId,
+                userId
+            );
+        if (!anotherAdmin) {
+            throw new UnprocessableEntityException({
+                statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+                message: 'project.member.error.lastAdmin',
+            });
+        }
+
+        await this.projectRepository.softDeleteMember(member.id, {
+            deletedAt,
+            deletedBy: userId,
+            updatedBy: userId,
+        });
+
+        return {};
+    }
+
+    async revoke(
+        projectId: string,
+        memberId: string,
+        revokedBy: string,
+        tenantMemberRole: EnumTenantMemberRole | undefined,
+        projectMemberRole: EnumProjectMemberRole | undefined
+    ): Promise<IResponseReturn<void>> {
+        const isTenantPrivileged =
+            tenantMemberRole === EnumTenantMemberRole.owner ||
+            tenantMemberRole === EnumTenantMemberRole.admin;
+        const isProjectAdmin =
+            projectMemberRole === EnumProjectMemberRole.admin;
+
+        if (!isTenantPrivileged && !isProjectAdmin) {
+            throw new ForbiddenException({
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'project.member.error.cannotRevoke',
+            });
+        }
+
+        const member = await this.projectRepository.findOneMemberByIdAndProject(
+            memberId,
+            projectId
+        );
+        if (!member) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'project.member.error.forbidden',
+            });
+        }
+
+        const deletedAt = this.helperService.dateCreate();
+
+        try {
+            await this.projectRepository.softDeleteMember(member.id, {
+                deletedAt,
+                deletedBy: revokedBy,
+                updatedBy: revokedBy,
+            });
+
+            // Revoke any pending invite for this member
+            if (member.user) {
+                const activeInvite =
+                    await this.inviteService.getOneActiveByUserAndContext(
+                        member.user.id,
+                        ProjectInviteType,
+                        projectId
+                    ).catch(() => null);
+
+                if (activeInvite) {
+                    await this.inviteService.deleteInvite(
+                        activeInvite.id,
+                        revokedBy
+                    );
+                }
+            }
+
+            return {};
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
     private async assertIsActiveTenantMember(
@@ -380,9 +469,9 @@ export class ProjectMemberService {
                 userId
             );
         if (!tenantMember || tenantMember.status !== EnumTenantMemberStatus.active) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'project.member.error.userNotFound',
+            throw new ForbiddenException({
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'project.member.error.notTenantMember',
             });
         }
     }

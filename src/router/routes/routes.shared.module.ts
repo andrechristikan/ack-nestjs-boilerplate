@@ -9,8 +9,6 @@ import { TermPolicySharedController } from '@modules/term-policy/controllers/ter
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
-import { ProjectModule } from '@modules/project/project.module';
-import { ProjectSharedController } from '@modules/project/controllers/project.shared.controller';
 import { withTenancyRoute } from '@modules/tenant/utils/tenant.toggle';
 import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.module';
 
@@ -28,7 +26,6 @@ import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.m
         TermPolicySharedController,
         DeviceSharedController,
         NotificationSharedController,
-        ProjectSharedController,
     ],
     providers: [],
     exports: [],
@@ -36,7 +33,6 @@ import { TenantRoutesSharedModule } from '@modules/tenant/tenant.routes.shared.m
         UserModule,
         PasswordHistoryModule,
         DeviceModule,
-        ProjectModule,
         ...withTenancyRoute('/shared', TenantRoutesSharedModule),
     ],
 })

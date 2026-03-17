@@ -41,14 +41,12 @@ export interface ITenantService {
     update(
         id: string,
         dto: TenantUpdateRequestDto,
-        updatedBy: string,
-        actorRole?: EnumTenantMemberRole
+        updatedBy: string
     ): Promise<IResponseReturn<void>>;
     updateSlug(
         id: string,
         dto: TenantUpdateSlugRequestDto,
-        updatedBy: string,
-        actorRole?: EnumTenantMemberRole
+        updatedBy: string
     ): Promise<IResponseReturn<void>>;
     transferOwnership(
         tenantId: string,

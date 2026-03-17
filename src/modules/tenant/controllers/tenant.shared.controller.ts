@@ -25,7 +25,6 @@ import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-cr
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import {
     TenantCurrent,
-    TenantMemberCurrent,
     TenantRoleProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
@@ -47,7 +46,7 @@ import {
     TenantSharedUpdateCurrentTenantDoc,
     TenantSharedUpdateMemberDoc,
 } from '@modules/tenant/docs/tenant.shared.doc';
-import { ITenant, ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
+import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
 import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
 import { TenantService } from '@modules/tenant/services/tenant.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -102,16 +101,10 @@ export class TenantSharedController {
     @Patch('/current/tenant')
     async updateCurrentTenant(
         @TenantCurrent() tenant: ITenant,
-        @TenantMemberCurrent() tenantMember: ITenantMember,
         @Body() body: TenantUpdateRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.tenantService.update(
-            tenant.id,
-            body,
-            updatedBy,
-            tenantMember.role
-        );
+        return this.tenantService.update(tenant.id, body, updatedBy);
     }
 
     @Response('tenant.updateSlug')
@@ -122,16 +115,10 @@ export class TenantSharedController {
     @Patch('/current/tenant/slug')
     async updateCurrentTenantSlug(
         @TenantCurrent() tenant: ITenant,
-        @TenantMemberCurrent() tenantMember: ITenantMember,
         @Body() body: TenantUpdateSlugRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.tenantService.updateSlug(
-            tenant.id,
-            body,
-            updatedBy,
-            tenantMember.role
-        );
+        return this.tenantService.updateSlug(tenant.id, body, updatedBy);
     }
 
     @Response('tenant.transferOwnership')

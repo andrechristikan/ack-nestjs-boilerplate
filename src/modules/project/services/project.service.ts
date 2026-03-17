@@ -165,41 +165,7 @@ export class ProjectService {
         return true;
     }
 
-    async createForUser(
-        dto: ProjectCreateRequestDto,
-        createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>> {
-        const user = await this.userRepository.findOneById(createdBy);
-        const tenantId = user?.lastTenantId;
-        if (!tenantId) {
-            throw new ForbiddenException({
-                statusCode: HttpStatus.FORBIDDEN,
-                message: 'project.member.error.forbidden',
-            });
-        }
-
-        const tenantMember =
-            await this.tenantRepository.findOneActiveMemberByTenantAndUser(
-                tenantId,
-                createdBy
-            );
-        if (!tenantMember) {
-            throw new ForbiddenException({
-                statusCode: HttpStatus.FORBIDDEN,
-                message: 'project.member.error.forbidden',
-            });
-        }
-
-        return this.createWithMembers(
-            {
-                tenantId,
-            },
-            dto,
-            createdBy
-        );
-    }
-
-    async createForTenant(
+async createForTenant(
         tenantId: string,
         dto: ProjectCreateRequestDto,
         createdBy: string
@@ -321,7 +287,7 @@ export class ProjectService {
         projectId: string,
         deletedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.projectRepository.delete(projectId, deletedBy);
+        await this.projectRepository.deleteWithCascade(projectId, deletedBy);
 
         return {};
     }
@@ -382,41 +348,39 @@ export class ProjectService {
             });
         }
 
-        // FIXME: project creation and all subsequent createMember calls must be
-        // wrapped in a single transaction. If any member creation fails, the project record
-        // is left without its intended members and no rollback occurs.
         try {
             const name = dto.name.trim();
             const description = dto.description.trim();
             const slug = await this.createUniqueSlug(name, ownership.tenantId);
-            const project = await this.projectRepository.create({
-                ...ownership,
-                name,
-                description,
-                slug,
-                createdBy,
-                updatedBy: createdBy,
-            });
 
-            await this.projectRepository.createMember({
-                projectId: project.id,
-                userId: createdBy,
-                role: EnumProjectMemberRole.admin,
-                status: EnumProjectMemberStatus.active,
-                createdBy,
-                updatedBy: createdBy,
-            });
-
-            for (const member of resolvedMembers) {
-                await this.projectRepository.createMember({
-                    projectId: project.id,
+            const allMembers = [
+                {
+                    userId: createdBy,
+                    role: EnumProjectMemberRole.admin,
+                    status: EnumProjectMemberStatus.active,
+                    createdBy,
+                    updatedBy: createdBy,
+                },
+                ...resolvedMembers.map(member => ({
                     userId: member.userId,
                     role: member.role,
                     status: EnumProjectMemberStatus.active,
                     createdBy,
                     updatedBy: createdBy,
-                });
-            }
+                })),
+            ];
+
+            const project = await this.projectRepository.createWithMembers(
+                {
+                    ...ownership,
+                    name,
+                    description,
+                    slug,
+                    createdBy,
+                    updatedBy: createdBy,
+                },
+                allMembers
+            );
 
             return {
                 data: {

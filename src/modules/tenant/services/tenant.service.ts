@@ -196,9 +196,12 @@ export class TenantService implements ITenantService {
     async update(
         id: string,
         dto: TenantUpdateRequestDto,
-        updatedBy: string,
-        actorRole: EnumTenantMemberRole
+        updatedBy: string
     ): Promise<IResponseReturn<void>> {
+        if (dto.name === undefined && dto.description === undefined) {
+            return {};
+        }
+
         const data: {
             name?: string;
             description?: string;
@@ -206,30 +209,11 @@ export class TenantService implements ITenantService {
         } = { updatedBy };
 
         if (dto.name !== undefined) {
-            if (actorRole !== EnumTenantMemberRole.owner) {
-                throw new ForbiddenException({
-                    statusCode: EnumTenantStatusCodeError.memberForbidden,
-                    message: 'tenant.member.error.forbidden',
-                });
-            }
             data.name = dto.name.trim();
         }
 
         if (dto.description !== undefined) {
-            if (
-                actorRole !== EnumTenantMemberRole.owner &&
-                actorRole !== EnumTenantMemberRole.admin
-            ) {
-                throw new ForbiddenException({
-                    statusCode: EnumTenantStatusCodeError.memberForbidden,
-                    message: 'tenant.member.error.forbidden',
-                });
-            }
             data.description = dto.description.trim();
-        }
-
-        if (dto.name === undefined && dto.description === undefined) {
-            return {};
         }
 
         await this.tenantRepository.update(id, data);
@@ -240,16 +224,8 @@ export class TenantService implements ITenantService {
     async updateSlug(
         id: string,
         dto: TenantUpdateSlugRequestDto,
-        updatedBy: string,
-        actorRole: EnumTenantMemberRole
+        updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        if (actorRole !== EnumTenantMemberRole.owner) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.memberForbidden,
-                message: 'tenant.member.error.forbidden',
-            });
-        }
-
         const slug = await this.createUniqueSlug(dto.slug, id);
         await this.tenantRepository.update(id, {
             slug,
