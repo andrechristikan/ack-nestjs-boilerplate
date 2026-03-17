@@ -106,7 +106,7 @@ export class TenantRepository {
         userId: string,
         status?: EnumTenantMemberStatus
     ): Promise<{ id: string } | null> {
-        const where: any = {
+        const where: Prisma.TenantMemberWhereInput = {
             tenantId,
             userId,
             tenant: {

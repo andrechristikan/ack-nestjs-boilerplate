@@ -81,6 +81,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @ApiKeyProtected()
     @Get('/current')
     async getCurrentTenant(
@@ -97,6 +98,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @ApiKeyProtected()
     @Patch('/current/tenant')
     async updateCurrentTenant(
@@ -111,6 +113,7 @@ export class TenantSharedController {
     @TenantRoleProtected(EnumTenantMemberRole.owner)
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @ApiKeyProtected()
     @Patch('/current/tenant/slug')
     async updateCurrentTenantSlug(
@@ -125,6 +128,7 @@ export class TenantSharedController {
     @TenantRoleProtected(EnumTenantMemberRole.owner)
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @ApiKeyProtected()
     @Patch('/current/ownership/transfer')
     async transferOwnership(
@@ -142,6 +146,7 @@ export class TenantSharedController {
     @Response('tenant.switch')
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @ApiKeyProtected()
     @Patch('/switch/:tenantId')
     async switchTenant(
@@ -160,6 +165,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @ApiKeyProtected()
     @Get('/current/members')
     async listMembers(
@@ -182,6 +188,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @ApiKeyProtected()
     @Get('/current/members/roles')
     async listMemberRoles(): Promise<IResponseReturn<EnumTenantMemberRole[]>> {
@@ -198,6 +205,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @ApiKeyProtected()
     @Post('/current/members')
     async createMember(
@@ -220,6 +228,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @FeatureFlagProtected('tenantInvites')
     @ApiKeyProtected()
     @Post('/current/members/invites')
@@ -246,6 +255,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @FeatureFlagProtected('tenantInvites')
     @ApiKeyProtected()
     @Post('/current/members/:memberId/invites/send')
@@ -272,6 +282,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @ApiKeyProtected()
     @Patch('/current/members/:memberId')
     async updateMember(
@@ -297,6 +308,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
     @ApiKeyProtected()
     @Delete('/current/members/:memberId')
     async deleteMember(

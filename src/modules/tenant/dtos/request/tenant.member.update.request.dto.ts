@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumTenantMemberStatus, EnumTenantMemberRole } from '@generated/prisma-client';
+import { EnumTenantMemberRole, EnumTenantMemberStatus } from '@generated/prisma-client';
 import { IsEnum, IsOptional } from 'class-validator';
 
 export class TenantMemberUpdateRequestDto {

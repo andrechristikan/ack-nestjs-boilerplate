@@ -42,6 +42,12 @@ const featureFlagData: Prisma.FeatureFlagCreateInput[] = [
         },
     },
     {
+        key: 'tenancy',
+        description: 'Enable multi-tenancy feature',
+        rolloutPercent: 100,
+        isEnable: true,
+    },
+    {
         key: 'tenantInvites',
         description: 'Enable tenant member invites',
         rolloutPercent: 100,

@@ -53,7 +53,6 @@ export function TenantRoleProtected(
     );
 }
 
-
 /**
  * Injects the current tenant resolved by tenant guards.
  */

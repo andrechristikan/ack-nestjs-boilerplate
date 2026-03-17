@@ -10,7 +10,6 @@ import {
 } from '@modules/role/constants/role.constant';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import {
-    EnumProjectMemberRole,
     EnumRoleScope,
     EnumRoleType,
 } from '@generated/prisma-client';

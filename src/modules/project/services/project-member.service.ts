@@ -15,7 +15,6 @@ import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-cr
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
-import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectInviteType } from '@modules/project/constants/project.constant';
 import { ProjectUtil } from '@modules/project/utils/project.util';
