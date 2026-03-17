@@ -9,7 +9,11 @@ import {
     PlatformRoleUser,
 } from '@modules/role/constants/role.constant';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { EnumRoleScope, EnumRoleType } from '@generated/prisma-client';
+import {
+    EnumProjectMemberRole,
+    EnumRoleScope,
+    EnumRoleType,
+} from '@generated/prisma-client';
 
 const roleData: RoleCreateRequestDto[] = [
     {
@@ -35,7 +39,7 @@ const roleData: RoleCreateRequestDto[] = [
         abilities: [],
         type: EnumRoleType.user,
         scope: EnumRoleScope.platform,
-    }
+    },
 ];
 
 export const migrationRoleData: Record<

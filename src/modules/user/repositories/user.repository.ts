@@ -45,6 +45,7 @@ import {
     EnumNotificationChannel,
     EnumNotificationType,
     EnumPasswordHistoryType,
+    EnumProjectMemberRole,
     EnumProjectMemberStatus,
     EnumRoleType,
     EnumTenantMemberRole,
@@ -1345,7 +1346,6 @@ export class UserRepository {
         userId: string,
         username: string,
         roleId: string,
-        projectAdminRoleId: string,
         {
             countryId,
             email,
@@ -1551,7 +1551,7 @@ export class UserRepository {
                     data: {
                         projectId: project.id,
                         userId,
-                        roleId: projectAdminRoleId,
+                        role: EnumProjectMemberRole.admin,
                         status: EnumProjectMemberStatus.active,
                         createdBy: userId,
                         updatedBy: userId,

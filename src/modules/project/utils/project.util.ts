@@ -24,7 +24,7 @@ export class ProjectUtil {
             projectId: member.projectId,
             userId: member.userId,
             email: member.user.email,
-            roleName: member.role.name,
+            role: member.role,
             status: member.status,
             createdAt: member.createdAt,
             invite,

@@ -11,7 +11,7 @@ import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.c
 import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { ProjectRoleAdmin } from '@modules/project/constants/project.constant';
+import { getProjectRoleAbilities } from '@modules/project/constants/project.role-policy.constant';
 import { IProjectMember } from '@modules/project/interfaces/project.interface';
 import {
     IRequestAppWithProject,
@@ -20,7 +20,6 @@ import {
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
-import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
@@ -34,8 +33,8 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import {
+    EnumProjectMemberRole,
     EnumProjectMemberStatus,
-    EnumRoleScope,
     EnumTenantMemberRole,
 } from '@generated/prisma-client';
 
@@ -45,7 +44,6 @@ export class ProjectService {
         private readonly projectRepository: ProjectRepository,
         private readonly policyService: PolicyService,
         private readonly projectUtil: ProjectUtil,
-        private readonly roleRepository: RoleRepository,
         private readonly userRepository: UserRepository,
         private readonly tenantRepository: TenantRepository,
         private readonly helperService: HelperService
@@ -83,10 +81,11 @@ export class ProjectService {
                 (tenantMemberRole === EnumTenantMemberRole.owner ||
                     tenantMemberRole === EnumTenantMemberRole.admin)
             ) {
-                const project = await this.projectRepository.findOneByIdAndTenant(
-                    projectId,
-                    tenantId
-                );
+                const project =
+                    await this.projectRepository.findOneByIdAndTenant(
+                        projectId,
+                        tenantId
+                    );
                 if (!project) {
                     throw new ForbiddenException({
                         statusCode: HttpStatus.FORBIDDEN,
@@ -97,13 +96,6 @@ export class ProjectService {
                 return null;
             }
 
-            throw new ForbiddenException({
-                statusCode: HttpStatus.FORBIDDEN,
-                message: 'project.member.error.forbidden',
-            });
-        }
-
-        if (projectMember.role.scope !== EnumRoleScope.project) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'project.member.error.forbidden',
@@ -152,8 +144,8 @@ export class ProjectService {
         }
 
         if (!request.__projectAbilities) {
-            const abilities = (request.__projectMember?.role?.abilities ??
-                []) as RoleAbilityRequestDto[];
+            const role = request.__projectMember?.role;
+            const abilities = role ? getProjectRoleAbilities(role) : [];
             request.__projectAbilities =
                 this.policyService.createAbility(abilities);
         }
@@ -354,7 +346,10 @@ export class ProjectService {
     ): Promise<IResponseReturn<DatabaseIdDto>> {
         const members = dto.members ?? [];
         const uniqueUserIds = new Set<string>();
-        const resolvedMembers: Array<{ userId: string; roleId: string }> = [];
+        const resolvedMembers: Array<{
+            userId: string;
+            role: EnumProjectMemberRole;
+        }> = [];
 
         for (const member of members) {
             if (member.userId === createdBy) {
@@ -372,10 +367,7 @@ export class ProjectService {
             }
             uniqueUserIds.add(member.userId);
 
-            const [user, role] = await Promise.all([
-                this.userRepository.findOneById(member.userId),
-                this.roleRepository.existById(member.roleId),
-            ]);
+            const user = await this.userRepository.findOneById(member.userId);
 
             if (!user) {
                 throw new NotFoundException({
@@ -384,34 +376,9 @@ export class ProjectService {
                 });
             }
 
-            if (!role) {
-                throw new NotFoundException({
-                    statusCode: HttpStatus.NOT_FOUND,
-                    message: 'project.role.error.notFound',
-                });
-            }
-
-            if (role.scope !== EnumRoleScope.project) {
-                throw new NotFoundException({
-                    statusCode: HttpStatus.NOT_FOUND,
-                    message: 'project.role.error.notFound',
-                });
-            }
-
             resolvedMembers.push({
                 userId: member.userId,
-                roleId: role.id,
-            });
-        }
-
-        const adminRole = await this.roleRepository.existByNameAndScope(
-            ProjectRoleAdmin.trim(),
-            EnumRoleScope.project
-        );
-        if (!adminRole) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'project.role.error.notFound',
+                role: member.role,
             });
         }
 
@@ -434,7 +401,7 @@ export class ProjectService {
             await this.projectRepository.createMember({
                 projectId: project.id,
                 userId: createdBy,
-                roleId: adminRole.id,
+                role: EnumProjectMemberRole.admin,
                 status: EnumProjectMemberStatus.active,
                 createdBy,
                 updatedBy: createdBy,
@@ -444,7 +411,7 @@ export class ProjectService {
                 await this.projectRepository.createMember({
                     projectId: project.id,
                     userId: member.userId,
-                    roleId: member.roleId,
+                    role: member.role,
                     status: EnumProjectMemberStatus.active,
                     createdBy,
                     updatedBy: createdBy,
@@ -488,10 +455,11 @@ export class ProjectService {
         let slug = baseSlug;
 
         for (let attempt = 0; attempt < 10; attempt++) {
-            const existing = await this.projectRepository.findOneBySlugAndTenant(
-                tenantId,
-                slug
-            );
+            const existing =
+                await this.projectRepository.findOneBySlugAndTenant(
+                    tenantId,
+                    slug
+                );
             if (!existing || existing.id === excludeProjectId) {
                 return slug;
             }

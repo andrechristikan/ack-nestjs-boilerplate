@@ -9,9 +9,6 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { InviteService } from '@modules/invite/services/invite.service';
 import { InviteUtil } from '@modules/invite/utils/invite.util';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleService } from '@modules/role/services/role.service';
-import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
@@ -23,8 +20,8 @@ import { ProjectResponseDto } from '@modules/project/dtos/response/project.respo
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectInviteType } from '@modules/project/constants/project.constant';
 import { ProjectUtil } from '@modules/project/utils/project.util';
-import { UserService } from '@modules/user/services/user.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
+import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import {
     ConflictException,
     ForbiddenException,
@@ -34,20 +31,18 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import {
+    EnumProjectMemberRole,
     EnumProjectMemberStatus,
     EnumRoleScope,
-    EnumRoleType,
-    EnumUserSignUpFrom,
+    EnumTenantMemberStatus,
 } from '@generated/prisma-client';
 
 @Injectable()
 export class ProjectMemberService {
     constructor(
         private readonly projectRepository: ProjectRepository,
-        private readonly roleRepository: RoleRepository,
-        private readonly roleService: RoleService,
+        private readonly tenantRepository: TenantRepository,
         private readonly userRepository: UserRepository,
-        private readonly userService: UserService,
         private readonly inviteService: InviteService,
         private readonly inviteUtil: InviteUtil,
         private readonly projectUtil: ProjectUtil
@@ -58,13 +53,20 @@ export class ProjectMemberService {
         dto: ProjectMemberCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        const [user, member] = await Promise.all([
+        const [project, user, member] = await Promise.all([
+            this.projectRepository.findOneById(projectId),
             this.userRepository.findOneById(dto.userId),
             this.projectRepository.findMemberByProjectAndUser(
                 projectId,
                 dto.userId
             ),
         ]);
+        if (!project) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'project.error.notFound',
+            });
+        }
 
         if (!user) {
             throw new NotFoundException({
@@ -72,6 +74,7 @@ export class ProjectMemberService {
                 message: 'project.member.error.userNotFound',
             });
         }
+        await this.assertIsActiveTenantMember(project.tenantId, user.id);
 
         if (member) {
             throw new ConflictException({
@@ -80,26 +83,11 @@ export class ProjectMemberService {
             });
         }
 
-        const role = await this.roleRepository.existById(dto.roleId);
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'project.role.error.notFound',
-            });
-        }
-
-        if (role.scope !== EnumRoleScope.project) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'project.role.error.notFound',
-            });
-        }
-
         try {
             const projectMember = await this.projectRepository.createMember({
                 projectId,
                 userId: dto.userId,
-                roleId: role.id,
+                role: dto.role,
                 status: EnumProjectMemberStatus.active,
                 createdBy,
                 updatedBy: createdBy,
@@ -136,33 +124,13 @@ export class ProjectMemberService {
             });
         }
 
-        let roleId: string | undefined;
-        if (dto.roleId) {
-            const role = await this.roleRepository.existById(dto.roleId);
-            if (!role) {
-                throw new NotFoundException({
-                    statusCode: HttpStatus.NOT_FOUND,
-                    message: 'project.role.error.notFound',
-                });
-            }
-
-            if (role.scope !== EnumRoleScope.project) {
-                throw new NotFoundException({
-                    statusCode: HttpStatus.NOT_FOUND,
-                    message: 'project.role.error.notFound',
-                });
-            }
-
-            roleId = role.id;
-        }
-
-        if (dto.status === undefined && roleId === undefined) {
+        if (dto.status === undefined && dto.role === undefined) {
             return {};
         }
 
         try {
             await this.projectRepository.updateMember(member.id, {
-                roleId,
+                role: dto.role,
                 status: dto.status,
                 updatedBy,
             });
@@ -181,12 +149,9 @@ export class ProjectMemberService {
         projectId: string,
         dto: ProjectMemberInviteCreateRequestDto,
         createdBy: string,
-        requestLog: IRequestLog
+        _requestLog: IRequestLog
     ): Promise<IResponseReturn<InviteCreateResponseDto>> {
-        const [project, role] = await Promise.all([
-            this.projectRepository.findOneById(projectId),
-            this.roleRepository.existById(dto.roleId),
-        ]);
+        const project = await this.projectRepository.findOneById(projectId);
         if (!project) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
@@ -194,26 +159,15 @@ export class ProjectMemberService {
             });
         }
 
-        if (!role || role.scope !== EnumRoleScope.project) {
+        const normalizedEmail = dto.email.toLowerCase().trim();
+        const user = await this.userRepository.findOneByEmail(normalizedEmail);
+        if (!user) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
-                message: 'project.role.error.notFound',
+                message: 'project.member.error.userNotFound',
             });
         }
-
-        // FIXME: user creation, member creation, and invite creation
-        // must be wrapped in a single transaction. If invite creation fails, the pending
-        // member record and the stub user are left orphaned with no rollback.
-        const normalizedEmail = dto.email.toLowerCase().trim();
-        let user = await this.userRepository.findOneByEmail(normalizedEmail);
-        if (!user) {
-            user = await this.userService.createForInvitation(
-                normalizedEmail,
-                EnumUserSignUpFrom.project,
-                requestLog,
-                createdBy
-            );
-        }
+        await this.assertIsActiveTenantMember(project.tenantId, user.id);
 
         const existingMember =
             await this.projectRepository.findMemberByProjectAndUser(
@@ -237,7 +191,7 @@ export class ProjectMemberService {
                       await this.projectRepository.createMember({
                           projectId,
                           userId: user.id,
-                          roleId: role.id,
+                          role: dto.role,
                           status: EnumProjectMemberStatus.pending,
                           createdBy,
                           updatedBy: createdBy,
@@ -341,13 +295,12 @@ export class ProjectMemberService {
 
     async getMemberRoles(
         projectId: string
-    ): Promise<IResponseReturn<RoleListResponseDto[]>> {
+    ): Promise<IResponseReturn<EnumProjectMemberRole[]>> {
         void projectId;
 
-        return this.roleService.getListRolesByScopeAndType(
-            EnumRoleScope.project,
-            EnumRoleType.user
-        );
+        return {
+            data: Object.values(EnumProjectMemberRole),
+        };
     }
 
     async listMembers(
@@ -415,5 +368,22 @@ export class ProjectMemberService {
         return {
             data: this.projectUtil.mapProject(member.project),
         };
+    }
+
+    private async assertIsActiveTenantMember(
+        tenantId: string,
+        userId: string
+    ): Promise<void> {
+        const tenantMember =
+            await this.tenantRepository.findMemberByTenantAndUser(
+                tenantId,
+                userId
+            );
+        if (!tenantMember || tenantMember.status !== EnumTenantMemberStatus.active) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'project.member.error.userNotFound',
+            });
+        }
     }
 }

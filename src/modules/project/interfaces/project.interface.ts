@@ -1,8 +1,8 @@
 import {
+    EnumProjectMemberRole,
     EnumProjectMemberStatus,
     Project,
     ProjectMember,
-    Role,
     User,
 } from '@generated/prisma-client';
 
@@ -17,7 +17,6 @@ export interface IProjectMemberInvite {
 }
 
 export interface IProjectMember extends ProjectMember {
-    role: Role;
     project: Project;
 }
 
@@ -56,7 +55,7 @@ export interface IProjectUpdate {
 export interface IProjectMemberCreate {
     projectId: string;
     userId: string;
-    roleId: string;
+    role: EnumProjectMemberRole;
     status: EnumProjectMemberStatus;
     createdBy: string;
     updatedBy: string;
@@ -64,6 +63,6 @@ export interface IProjectMemberCreate {
 
 export interface IProjectMemberUpdate {
     updatedBy: string;
-    roleId?: string;
+    role?: EnumProjectMemberRole;
     status?: EnumProjectMemberStatus;
 }

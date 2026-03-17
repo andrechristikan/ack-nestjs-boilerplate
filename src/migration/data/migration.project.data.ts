@@ -1,8 +1,5 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import {
-    ProjectRoleAdmin,
-    ProjectRoleViewer,
-} from '@modules/project/constants/project.constant';
+import { EnumProjectMemberRole } from '@generated/prisma-client';
 
 export interface IMigrationProjectData {
     name: string;
@@ -10,7 +7,7 @@ export interface IMigrationProjectData {
     tenantName: string;
     members: {
         userEmail: string;
-        projectRole: string;
+        projectRole: EnumProjectMemberRole;
     }[];
 }
 
@@ -20,8 +17,14 @@ const projectData: IMigrationProjectData[] = [
         description: 'Primary project for default organization',
         tenantName: 'Default Organization',
         members: [
-            { userEmail: 'admin@mail.com', projectRole: ProjectRoleAdmin },
-            { userEmail: 'user@mail.com', projectRole: ProjectRoleViewer },
+            {
+                userEmail: 'admin@mail.com',
+                projectRole: EnumProjectMemberRole.admin,
+            },
+            {
+                userEmail: 'user@mail.com',
+                projectRole: EnumProjectMemberRole.viewer,
+            },
         ],
     },
     {
@@ -29,7 +32,10 @@ const projectData: IMigrationProjectData[] = [
         description: 'Primary project for another organization',
         tenantName: 'Another Organization',
         members: [
-            { userEmail: 'admin@mail.com', projectRole: ProjectRoleAdmin },
+            {
+                userEmail: 'admin@mail.com',
+                projectRole: EnumProjectMemberRole.admin,
+            },
         ],
     },
 ];

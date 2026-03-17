@@ -45,8 +45,7 @@ model Role {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  users          User[]          @relation("UserRole")
-  projectMembers ProjectMember[] @relation("ProjectMemberRole")
+  users User[] @relation("UserRole")
 
   @@unique(fields: [name, scope])
   @@index(fields: [type, scope, createdAt(sort: Desc)])
@@ -126,7 +125,7 @@ model ProjectMember {
   id        String                  @id @default(auto()) @map("_id") @db.ObjectId
   projectId String                  @db.ObjectId
   userId    String                  @db.ObjectId
-  roleId    String                  @db.ObjectId
+  role      EnumProjectMemberRole
   status    EnumProjectMemberStatus @default(active)
 
   // timestamps fields
@@ -139,12 +138,11 @@ model ProjectMember {
 
   project Project? @relation("ProjectMembers", fields: [projectId], references: [id])
   user    User?    @relation("UserProjectMembers", fields: [userId], references: [id])
-  role    Role?    @relation("ProjectMemberRole", fields: [roleId], references: [id])
 
   @@unique(fields: [projectId, userId])
   @@index(fields: [projectId, status, deletedAt, createdAt])
   @@index(fields: [userId, status, deletedAt, createdAt])
-  @@index(fields: [roleId])
+  @@index(fields: [role])
   @@index(fields: [createdAt])
   @@map("ProjectMembers")
 }
@@ -760,6 +758,12 @@ enum EnumProjectMemberStatus {
   pending
   active
   inactive
+}
+
+enum EnumProjectMemberRole {
+  admin
+  member
+  viewer
 }
 
 enum EnumTermPolicyType {

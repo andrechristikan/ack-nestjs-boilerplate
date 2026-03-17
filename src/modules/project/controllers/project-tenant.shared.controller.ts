@@ -5,7 +5,12 @@ import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { EnumTenantMemberRole, Prisma, UserAgent } from '@generated/prisma-client';
+import {
+    EnumProjectMemberRole,
+    EnumTenantMemberRole,
+    Prisma,
+    UserAgent,
+} from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -53,7 +58,6 @@ import {
     ProjectTenantSharedUpdateMemberDoc,
     ProjectTenantSharedUpdateSlugDoc,
 } from '@modules/project/docs/project.tenant.shared.doc';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { ProjectPermissionProtected } from '@modules/project/decorators/project.decorator';
 import { ProjectMemberService } from '@modules/project/services/project-member.service';
 import { ProjectService } from '@modules/project/services/project.service';
@@ -151,10 +155,6 @@ export class ProjectTenantSharedController {
     @ProjectTenantSharedUpdateDoc()
     @Response('project.update')
     @TenantMemberProtected()
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
     @ProjectPermissionProtected(ProjectPolicyUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -171,10 +171,6 @@ export class ProjectTenantSharedController {
     @ProjectTenantSharedUpdateSlugDoc()
     @Response('project.update')
     @TenantMemberProtected()
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
     @ProjectPermissionProtected(ProjectPolicyUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -191,10 +187,6 @@ export class ProjectTenantSharedController {
     @ProjectTenantSharedDeleteDoc()
     @Response('project.delete')
     @TenantMemberProtected()
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
     @ProjectPermissionProtected(ProjectPolicyDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -210,10 +202,6 @@ export class ProjectTenantSharedController {
     @ProjectTenantSharedCreateMemberDoc()
     @Response('project.member.create')
     @TenantMemberProtected()
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -231,10 +219,6 @@ export class ProjectTenantSharedController {
     @FeatureFlagProtected('projectInvites')
     @Response('project.member.invite.create')
     @TenantMemberProtected()
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -259,10 +243,6 @@ export class ProjectTenantSharedController {
     @FeatureFlagProtected('projectInvites')
     @Response('project.member.invite.send')
     @TenantMemberProtected()
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -289,10 +269,6 @@ export class ProjectTenantSharedController {
     @ProjectTenantSharedUpdateMemberDoc()
     @Response('project.member.update')
     @TenantMemberProtected()
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
     @ProjectPermissionProtected(ProjectMemberPolicyUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -341,7 +317,7 @@ export class ProjectTenantSharedController {
     @Get('/:projectId/members/roles')
     async listMemberRoles(
         @Param('projectId', RequestRequiredPipe) projectId: string
-    ): Promise<IResponseReturn<RoleListResponseDto[]>> {
+    ): Promise<IResponseReturn<EnumProjectMemberRole[]>> {
         return this.projectMemberService.getMemberRoles(projectId);
     }
 }

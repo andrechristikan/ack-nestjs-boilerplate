@@ -188,7 +188,6 @@ export class ProjectRepository {
                 ...(status ? { status } : {}),
             },
             include: {
-                role: true,
                 project: true,
             },
         });
@@ -208,7 +207,6 @@ export class ProjectRepository {
                 },
             },
             include: {
-                role: true,
                 project: true,
                 user: true,
             },
@@ -255,7 +253,6 @@ export class ProjectRepository {
                 },
                 include: {
                     project: true,
-                    role: true,
                     user: {
                         select: {
                             id: true,
@@ -311,7 +308,6 @@ export class ProjectRepository {
                 },
                 include: {
                     project: true,
-                    role: true,
                 },
             }
         );

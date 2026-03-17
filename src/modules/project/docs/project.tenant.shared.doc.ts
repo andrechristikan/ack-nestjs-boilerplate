@@ -25,7 +25,6 @@ import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/proje
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function ProjectTenantSharedListDoc(): MethodDecorator {
@@ -266,8 +265,6 @@ export function ProjectTenantSharedListMemberRolesDoc(): MethodDecorator {
         DocRequest({
             params: ProjectDocParamsId,
         }),
-        DocResponse<RoleListResponseDto>('project.member.roles', {
-            dto: RoleListResponseDto,
-        })
+        DocResponse('project.member.roles')
     );
 }

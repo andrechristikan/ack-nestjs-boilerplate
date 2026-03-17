@@ -43,26 +43,20 @@ export class MigrationProjectSeed
 
         // Collect unique lookup keys in one pass
         const emails = new Set<string>();
-        const roleNames = new Set<string>();
         const tenantNames = new Set<string>();
 
         for (const p of this.projects) {
             tenantNames.add(p.tenantName);
             for (const m of p.members) {
                 emails.add(m.userEmail);
-                roleNames.add(m.projectRole);
             }
         }
 
         // Fetch dependencies
-        const [userRows, roleRows, tenantRows] = await Promise.all([
+        const [userRows, tenantRows] = await Promise.all([
             this.databaseService.user.findMany({
                 where: { email: { in: [...emails] } },
                 select: { id: true, email: true },
-            }),
-            this.databaseService.role.findMany({
-                where: { name: { in: [...roleNames] } },
-                select: { id: true, name: true },
             }),
             this.databaseService.tenant.findMany({
                 where: { name: { in: [...tenantNames] } },
@@ -72,7 +66,6 @@ export class MigrationProjectSeed
 
         // Build lookup Maps for O(1) access
         const userByEmail = new Map(userRows.map(u => [u.email, u]));
-        const roleByName = new Map(roleRows.map(r => [r.name, r]));
         const tenantByName = new Map(tenantRows.map(t => [t.name, t]));
 
         try {
@@ -119,18 +112,10 @@ export class MigrationProjectSeed
 
                 for (const member of project.members) {
                     const user = userByEmail.get(member.userEmail);
-                    const role = roleByName.get(member.projectRole);
 
                     if (!user) {
                         this.logger.warn(
                             `User ${member.userEmail} not found, skipping project member...`
-                        );
-                        continue;
-                    }
-
-                    if (!role) {
-                        this.logger.warn(
-                            `Project role ${member.projectRole} not found, skipping project member...`
                         );
                         continue;
                     }
@@ -148,7 +133,7 @@ export class MigrationProjectSeed
                             data: {
                                 projectId: projectRecord.id,
                                 userId: user.id,
-                                roleId: role.id,
+                                role: member.projectRole,
                                 status: EnumProjectMemberStatus.active,
                             },
                         });
