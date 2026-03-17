@@ -5,7 +5,7 @@ import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { Prisma, UserAgent } from '@generated/prisma-client';
+import { EnumTenantMemberRole, Prisma, UserAgent } from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -58,11 +58,12 @@ import { ProjectMemberService } from '@modules/project/services/project-member.s
 import { ProjectService } from '@modules/project/services/project.service';
 import {
     TenantCurrent,
+    TenantMemberCurrent,
     TenantMemberProtected,
-    TenantPermissionProtected,
+    TenantRoleProtected,
     TenantProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
-import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
+import { ITenant, ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     Body,
@@ -88,26 +89,39 @@ export class ProjectTenantSharedController {
 
     @ProjectTenantSharedListDoc()
     @ResponsePaging('project.list')
-    @TenantPermissionProtected(ProjectPolicyRead)
-    @TenantProtected()
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin,
+        EnumTenantMemberRole.member
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('')
     async list(
         @TenantCurrent() tenant: ITenant,
+        @TenantMemberCurrent() tenantMember: ITenantMember,
+        @AuthJwtPayload('userId') userId: string,
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams<
             Prisma.ProjectSelect,
             Prisma.ProjectWhereInput
         >
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
-        return this.projectService.getListByTenant(tenant.id, pagination);
+        return this.projectService.getListByTenant(
+            tenant.id,
+            userId,
+            tenantMember.role,
+            pagination
+        );
     }
 
     @ProjectTenantSharedCreateDoc()
     @Response('project.create')
-    @TenantPermissionProtected(ProjectPolicyCreate)
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -137,6 +151,10 @@ export class ProjectTenantSharedController {
     @ProjectTenantSharedUpdateDoc()
     @Response('project.update')
     @TenantMemberProtected()
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @ProjectPermissionProtected(ProjectPolicyUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -153,6 +171,10 @@ export class ProjectTenantSharedController {
     @ProjectTenantSharedDeleteDoc()
     @Response('project.delete')
     @TenantMemberProtected()
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @ProjectPermissionProtected(ProjectPolicyDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -168,6 +190,10 @@ export class ProjectTenantSharedController {
     @ProjectTenantSharedCreateMemberDoc()
     @Response('project.member.create')
     @TenantMemberProtected()
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -185,6 +211,10 @@ export class ProjectTenantSharedController {
     @FeatureFlagProtected('projectInvites')
     @Response('project.member.invite.create')
     @TenantMemberProtected()
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -209,6 +239,10 @@ export class ProjectTenantSharedController {
     @FeatureFlagProtected('projectInvites')
     @Response('project.member.invite.send')
     @TenantMemberProtected()
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -235,6 +269,10 @@ export class ProjectTenantSharedController {
     @ProjectTenantSharedUpdateMemberDoc()
     @Response('project.member.update')
     @TenantMemberProtected()
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
     @ProjectPermissionProtected(ProjectMemberPolicyUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()

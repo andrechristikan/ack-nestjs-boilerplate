@@ -7,7 +7,7 @@ import {
     DocResponse,
     DocResponsePaging,
     DocTenantMemberProtected,
-    DocTenantPermissionProtected,
+    DocTenantRoleProtected,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -36,7 +36,7 @@ export function ProjectTenantSharedListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocTenantPermissionProtected(),
+        DocTenantRoleProtected(),
         DocResponsePaging<ProjectResponseDto>('project.list', {
             dto: ProjectResponseDto,
             type: EnumPaginationType.offset,
@@ -53,7 +53,7 @@ export function ProjectTenantSharedCreateDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocTenantPermissionProtected(),
+        DocTenantRoleProtected(),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
             dto: ProjectCreateRequestDto,

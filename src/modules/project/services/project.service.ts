@@ -34,6 +34,7 @@ import {
     EnumProjectMemberStatus,
     EnumProjectStatus,
     EnumRoleScope,
+    EnumTenantMemberRole,
 } from '@generated/prisma-client';
 
 @Injectable()
@@ -51,7 +52,7 @@ export class ProjectService {
 
     async validateProjectMemberGuard(
         request: IRequestAppWithProjectTenant
-    ): Promise<IProjectMember> {
+    ): Promise<IProjectMember | null> {
         const { user } = request;
         if (!user) {
             throw new ForbiddenException({
@@ -69,7 +70,29 @@ export class ProjectService {
                 EnumProjectMemberStatus.active
             );
 
+        const tenantId = request.__tenant?.id;
+        const tenantMemberRole = request.__tenantMember?.role;
+
         if (!projectMember) {
+            if (
+                tenantId &&
+                (tenantMemberRole === EnumTenantMemberRole.owner ||
+                    tenantMemberRole === EnumTenantMemberRole.admin)
+            ) {
+                const project = await this.projectRepository.findOneByIdAndTenant(
+                    projectId,
+                    tenantId
+                );
+                if (!project) {
+                    throw new ForbiddenException({
+                        statusCode: HttpStatus.FORBIDDEN,
+                        message: 'project.member.error.forbidden',
+                    });
+                }
+
+                return null;
+            }
+
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'project.member.error.forbidden',
@@ -83,7 +106,6 @@ export class ProjectService {
             });
         }
 
-        const tenantId = request.__tenant?.id;
         if (tenantId && projectMember.project.tenantId !== tenantId) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
@@ -103,6 +125,26 @@ export class ProjectService {
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                 message: 'policy.error.predefinedNotFound',
             });
+        }
+
+        const tenantMemberRole = (request as IRequestAppWithProjectTenant)
+            .__tenantMember?.role;
+        const tenantId = (request as IRequestAppWithProjectTenant).__tenant?.id;
+        if (
+            tenantId &&
+            (tenantMemberRole === EnumTenantMemberRole.owner ||
+                tenantMemberRole === EnumTenantMemberRole.admin)
+        ) {
+            const projectId = this.resolveProjectIdFromRequest(
+                request as IRequestAppWithProjectTenant
+            );
+            const project = await this.projectRepository.findOneByIdAndTenant(
+                projectId,
+                tenantId
+            );
+            if (project) {
+                return true;
+            }
         }
 
         if (!request.__projectAbilities) {
@@ -158,16 +200,25 @@ export class ProjectService {
 
     async getListByTenant(
         tenantId: string,
+        userId: string,
+        tenantMemberRole: EnumTenantMemberRole,
         pagination: IPaginationQueryOffsetParams<
             Prisma.ProjectSelect,
             Prisma.ProjectWhereInput
         >
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
         const { data, ...others } =
-            await this.projectRepository.findWithPaginationOffsetByTenant(
-                tenantId,
-                pagination
-            );
+            tenantMemberRole === EnumTenantMemberRole.owner ||
+            tenantMemberRole === EnumTenantMemberRole.admin
+                ? await this.projectRepository.findWithPaginationOffsetByTenant(
+                      tenantId,
+                      pagination
+                  )
+                : await this.projectRepository.findWithPaginationOffsetByTenantAndUser(
+                      tenantId,
+                      userId,
+                      pagination
+                  );
 
         return {
             ...others,

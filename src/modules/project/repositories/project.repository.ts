@@ -53,6 +53,37 @@ export class ProjectRepository {
         );
     }
 
+    async findWithPaginationOffsetByTenantAndUser(
+        tenantId: string,
+        userId: string,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.ProjectSelect,
+            Prisma.ProjectWhereInput
+        >
+    ): Promise<IResponsePagingReturn<Project>> {
+        return this.paginationService.offset<Project>(
+            this.databaseService.project,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    tenantId,
+                    deletedAt: null,
+                    members: {
+                        some: {
+                            userId,
+                            status: EnumProjectMemberStatus.active,
+                            deletedAt: null,
+                        },
+                    },
+                },
+            }
+        );
+    }
+
     async findOneById(projectId: string): Promise<Project | null> {
         return this.databaseService.project.findFirst({
             where: {

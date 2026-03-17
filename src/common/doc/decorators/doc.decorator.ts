@@ -495,18 +495,6 @@ export function DocTenantRoleProtected(): MethodDecorator {
 }
 
 /**
- * Documents `TenantPermissionProtected` requirements and possible failures.
- */
-export function DocTenantPermissionProtected(): MethodDecorator {
-    return applyDecorators(
-        DocTenantHeader,
-        ...DocTenantBaseErrors,
-        DocTenantForbiddenByDecorator.permissionOrRole,
-        DocTenantPredefinedRoleNotFound
-    );
-}
-
-/**
  * Documents project membership requirements (project member validation).
  */
 export function DocProjectMemberProtected(): MethodDecorator {

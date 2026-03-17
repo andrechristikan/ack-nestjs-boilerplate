@@ -16,7 +16,9 @@ export class ProjectMemberGuard implements CanActivate {
         const projectMember =
             await this.projectService.validateProjectMemberGuard(request);
 
-        request.__projectMember = projectMember;
+        if (projectMember) {
+            request.__projectMember = projectMember;
+        }
 
         return true;
     }

@@ -1,6 +1,5 @@
-export const ProjectRoleAdmin = 'project-admin';
-export const ProjectRoleEditor = 'project-editor';
-export const ProjectRoleViewer = 'project-viewer';
+export const ProjectRoleAdmin = 'admin';
+export const ProjectRoleViewer = 'viewer';
 export const ProjectInviteType = 'projectMember';
 export const ProjectInviteEmailTypeLabel = 'project_member';
 

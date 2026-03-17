@@ -4,7 +4,6 @@ This documentation explains the features and usage of the Multi-Tenant system:
 - **TenantProtected**: Located at `src/modules/tenant/decorators`
 - **TenantMemberProtected**: Located at `src/modules/tenant/decorators`
 - **TenantRoleProtected**: Located at `src/modules/tenant/decorators`
-- **TenantPermissionProtected**: Located at `src/modules/tenant/decorators`
 
 ## Overview
 
@@ -50,14 +49,12 @@ The tenant system provides multi-tenancy support for SaaS applications where mul
     - [TenantProtected() Decorator](#tenantprotected-decorator)
     - [TenantMemberProtected() Decorator](#tenantmemberprotected-decorator)
     - [TenantRoleProtected() Decorator](#tenantroleprotected-decorator)
-    - [TenantPermissionProtected() Decorator](#tenantpermissionprotected-decorator)
     - [TenantCurrent Parameter Decorator](#tenantcurrent-parameter-decorator)
     - [TenantMemberCurrent Parameter Decorator](#tenantmembercurrent-parameter-decorator)
   - [Guards](#guards)
     - [TenantGuard](#tenantguard)
     - [TenantMemberGuard](#tenantmemberguard)
     - [TenantRoleGuard](#tenantroleguard)
-    - [TenantPermissionGuard](#tenantpermissionguard)
 - [Tenant Roles](#tenant-roles)
   - [Built-in Roles](#built-in-roles)
   - [Role Scopes](#role-scopes)
@@ -180,8 +177,6 @@ Client Request
 3. @TenantMemberProtected() → TenantMemberGuard → Validates user is active member
     ↓
 4. @TenantRoleProtected() → TenantRoleGuard → Checks role name
-    ↓
-5. @TenantPermissionProtected() → TenantPermissionGuard → Checks abilities
     ↓
 Controller Handler
 ```
@@ -481,43 +476,6 @@ This mirrors the platform role-based decorators described in `docs/authorization
 - All `TenantMemberProtected` errors
 - `403 Forbidden` - Member's role doesn't match required roles
 - `500 Internal Server Error` - No required roles configured (developer error)
-
-#### TenantPermissionProtected Decorator
-
-**Method decorator** that checks fine-grained permissions based on CASL abilities.
-
-**Parameters:**
-- `...requiredAbilities: RoleAbilityRequestDto[]` - Array of subject-action pairs
-
-**What it does:**
-- Applies `TenantMemberProtected` first
-- Uses member role abilities from `request.__tenantMember.role.abilities`
-- Checks each required ability against member's abilities
-- Uses CASL `PolicyAbilityFactory` for permission checks
-
-**Usage:**
-
-Use `@TenantPermissionProtected({ subject: EnumPolicySubject.tenant, action: [EnumPolicyAction.read] })` to gate tenant-level reads, updates, or tenant member operations. Example:
-
-```typescript
-@TenantPermissionProtected({
-    subject: EnumPolicySubject.tenantMember,
-    action: [EnumPolicyAction.create]
-})
-@UserProtected()
-@AuthJwtAccessProtected()
-@Post('members')
-createMember(@TenantCurrent() tenant: ITenant) {
-    // Handler assumes the member has the tenantMember:create ability in this tenant
-}
-```
-
-The permission metadata feeds the same CASL-based check as described in `docs/authorization.md`, scoped to the current `request.__tenantMember`.
-
-**Error Responses:**
-- All `TenantMemberProtected` errors
-- `403 Forbidden` - Member doesn't have required abilities
-- `500 Internal Server Error` - No required abilities configured (developer error)
 
 #### TenantCurrent Parameter Decorator
 
@@ -1004,7 +962,7 @@ reports(@TenantCurrent() tenant: ITenant) {
 }
 ```
 
-- **Member and role gating:** use `@TenantRoleProtected('tenant-admin')` or `@TenantPermissionProtected(...)` directly with `@AuthJwtAccessProtected()` and `@UserProtected()`. The tenant decorators already include tenant + membership guards.
+- **Member and role gating:** use `@TenantRoleProtected('tenant-admin')` directly with `@AuthJwtAccessProtected()` and `@UserProtected()`. The tenant decorators already include tenant + membership guards.
 
 ### Complete Flow Example
 
@@ -1050,7 +1008,6 @@ handler() {}
 **Notes:**
 - `TenantMemberProtected` automatically applies `TenantProtected` logic
 - `TenantRoleProtected` automatically applies `TenantMemberProtected` logic
-- `TenantPermissionProtected` automatically applies `TenantMemberProtected` logic
 - Add `@AuthJwtAccessProtected()` and `@UserProtected()` for tenant member operations
 
 ### Soft Delete Behavior
@@ -1070,7 +1027,7 @@ handler() {}
 
 1. **Always validate tenant context** - Use `@TenantProtected()` or higher
 2. **Filter queries by tenantId** - Never expose cross-tenant data
-3. **Validate member permissions** - Use `@TenantRoleProtected()` or `@TenantPermissionProtected()`
+3. **Validate member permissions** - Use `@TenantRoleProtected()`
 4. **Audit tenant operations** - Use `@ActivityLog()` for tenant changes
 5. **Validate `x-tenant-id` in guards** - middleware only copies header value to request context
 

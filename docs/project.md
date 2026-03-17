@@ -98,7 +98,7 @@ flowchart TD
 
 The module uses two authorization scopes:
 
-1. Tenant-level permission (`@TenantPermissionProtected`) for tenant-wide project actions such as list/create.
+1. Tenant-level role (`@TenantRoleProtected`) for tenant-wide project actions such as list/create.
 2. Project-level membership + abilities (`@ProjectPermissionProtected`) for project resource actions such as read/update/delete/member operations.
 
 This separation keeps tenant governance and project resource governance explicit.

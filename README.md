@@ -183,7 +183,7 @@ Enterprise-grade multi-tenant architecture for SaaS applications.
 - **Membership Management** - Users can belong to multiple tenants with different roles
 - **Context Switching** - Seamless switching between tenant workspaces via `x-tenant-id` header
 - **Tenant Roles** - Built-in `tenant-admin` and `tenant-user` roles with customizable abilities
-- **Permission Guards** - `@TenantProtected()`, `@TenantMemberProtected()`, `@TenantRoleProtected()`, `@TenantPermissionProtected()`
+- **Permission Guards** - `@TenantProtected()`, `@TenantMemberProtected()`, `@TenantRoleProtected()`
 - **Soft Delete** - Safe tenant and member deactivation without data loss
 - **Legacy Migration** - Automatic migration from old TenantRole model to unified Role system
 

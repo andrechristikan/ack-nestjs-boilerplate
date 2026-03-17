@@ -53,18 +53,6 @@ export function TenantRoleProtected(
     );
 }
 
-/**
- * @deprecated Tenant roles are static enums without fine-grained abilities.
- * Use `@TenantRoleProtected()` for role-based access control instead.
- * This decorator is kept for backward compatibility but is now a no-op.
- */
-export function TenantPermissionProtected(
-    _config?: any
-): MethodDecorator {
-    return applyDecorators(
-        UseGuards(TenantGuard, TenantMemberGuard)
-    );
-}
 
 /**
  * Injects the current tenant resolved by tenant guards.
