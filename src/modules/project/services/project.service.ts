@@ -8,6 +8,7 @@ import {
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
+import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectRoleAdmin } from '@modules/project/constants/project.constant';
@@ -20,8 +21,10 @@ import { ProjectRepository } from '@modules/project/repositories/project.reposit
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
+import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { HelperService } from '@common/helper/services/helper.service';
 import {
     ConflictException,
     ForbiddenException,
@@ -32,7 +35,6 @@ import {
 } from '@nestjs/common';
 import {
     EnumProjectMemberStatus,
-    EnumProjectStatus,
     EnumRoleScope,
     EnumTenantMemberRole,
 } from '@generated/prisma-client';
@@ -44,7 +46,9 @@ export class ProjectService {
         private readonly policyService: PolicyService,
         private readonly projectUtil: ProjectUtil,
         private readonly roleRepository: RoleRepository,
-        private readonly userRepository: UserRepository
+        private readonly userRepository: UserRepository,
+        private readonly tenantRepository: TenantRepository,
+        private readonly helperService: HelperService
     ) {}
 
     // Tenant permissions authorize tenant-wide actions,
@@ -173,10 +177,30 @@ export class ProjectService {
         dto: ProjectCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
+        const user = await this.userRepository.findOneById(createdBy);
+        const tenantId = user?.lastTenantId;
+        if (!tenantId) {
+            throw new ForbiddenException({
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'project.member.error.forbidden',
+            });
+        }
+
+        const tenantMember =
+            await this.tenantRepository.findOneActiveMemberByTenantAndUser(
+                tenantId,
+                createdBy
+            );
+        if (!tenantMember) {
+            throw new ForbiddenException({
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'project.member.error.forbidden',
+            });
+        }
+
         return this.createWithMembers(
             {
-                ownerUserId: createdBy,
-                tenantId: undefined,
+                tenantId,
             },
             dto,
             createdBy
@@ -191,7 +215,6 @@ export class ProjectService {
         return this.createWithMembers(
             {
                 tenantId,
-                ownerUserId: undefined,
             },
             dto,
             createdBy
@@ -249,7 +272,7 @@ export class ProjectService {
     ): Promise<IResponseReturn<void>> {
         const data: {
             name?: string;
-            status?: EnumProjectStatus;
+            description?: string;
             updatedBy: string;
         } = { updatedBy };
 
@@ -257,15 +280,47 @@ export class ProjectService {
             data.name = dto.name.trim();
         }
 
-        if (dto.status !== undefined) {
-            data.status = dto.status;
+        if (dto.description !== undefined) {
+            data.description = dto.description.trim();
         }
 
-        if (dto.name === undefined && dto.status === undefined) {
+        if (dto.name === undefined && dto.description === undefined) {
             return {};
         }
 
         await this.projectRepository.update(projectId, data);
+
+        return {};
+    }
+
+    async updateSlug(
+        projectId: string,
+        dto: ProjectUpdateSlugRequestDto,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        const project = await this.projectRepository.findOneById(projectId);
+        if (!project) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'project.error.notFound',
+            });
+        }
+        if (!project.tenantId) {
+            throw new ForbiddenException({
+                statusCode: HttpStatus.FORBIDDEN,
+                message: 'project.member.error.forbidden',
+            });
+        }
+
+        const slug = await this.createUniqueSlug(
+            dto.slug,
+            project.tenantId,
+            project.id
+        );
+        await this.projectRepository.update(projectId, {
+            slug,
+            updatedBy,
+        });
 
         return {};
     }
@@ -292,8 +347,7 @@ export class ProjectService {
 
     private async createWithMembers(
         ownership: {
-            tenantId?: string;
-            ownerUserId?: string;
+            tenantId: string;
         },
         dto: ProjectCreateRequestDto,
         createdBy: string
@@ -365,10 +419,14 @@ export class ProjectService {
         // wrapped in a single transaction. If any member creation fails, the project record
         // is left without its intended members and no rollback occurs.
         try {
+            const name = dto.name.trim();
+            const description = dto.description.trim();
+            const slug = await this.createUniqueSlug(name, ownership.tenantId);
             const project = await this.projectRepository.create({
                 ...ownership,
-                name: dto.name.trim(),
-                status: EnumProjectStatus.active,
+                name,
+                description,
+                slug,
                 createdBy,
                 updatedBy: createdBy,
             });
@@ -405,5 +463,42 @@ export class ProjectService {
                 _error: err,
             });
         }
+    }
+
+    private createSlug(value: string): string {
+        const normalized = value
+            .trim()
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[^\w\s-]/g, '')
+            .replace(/_/g, '-')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+
+        return normalized || 'project';
+    }
+
+    private async createUniqueSlug(
+        value: string,
+        tenantId: string,
+        excludeProjectId?: string
+    ): Promise<string> {
+        const baseSlug = this.createSlug(value);
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await this.projectRepository.findOneBySlugAndTenant(
+                tenantId,
+                slug
+            );
+            if (!existing || existing.id === excludeProjectId) {
+                return slug;
+            }
+
+            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
+        }
+
+        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
     }
 }

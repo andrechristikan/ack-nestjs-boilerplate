@@ -6,8 +6,8 @@ import {
 
 export interface IMigrationProjectData {
     name: string;
+    description?: string;
     tenantName: string;
-    ownerUserEmail?: string;
     members: {
         userEmail: string;
         projectRole: string;
@@ -17,8 +17,8 @@ export interface IMigrationProjectData {
 const projectData: IMigrationProjectData[] = [
     {
         name: 'First Project',
+        description: 'Primary project for default organization',
         tenantName: 'Default Organization',
-        ownerUserEmail: 'admin@mail.com',
         members: [
             { userEmail: 'admin@mail.com', projectRole: ProjectRoleAdmin },
             { userEmail: 'user@mail.com', projectRole: ProjectRoleViewer },
@@ -26,8 +26,8 @@ const projectData: IMigrationProjectData[] = [
     },
     {
         name: 'First Project',
+        description: 'Primary project for another organization',
         tenantName: 'Another Organization',
-        ownerUserEmail: 'admin@mail.com',
         members: [
             { userEmail: 'admin@mail.com', projectRole: ProjectRoleAdmin },
         ],

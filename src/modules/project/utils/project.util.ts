@@ -12,10 +12,7 @@ import {
 @Injectable()
 export class ProjectUtil {
     mapProject(project: IProject): ProjectResponseDto {
-        return plainToInstance(ProjectResponseDto, {
-            ...project,
-            tenantId: project.tenantId ?? undefined,
-        });
+        return plainToInstance(ProjectResponseDto, project);
     }
 
     mapMember(

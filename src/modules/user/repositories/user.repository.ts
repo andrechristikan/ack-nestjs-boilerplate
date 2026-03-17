@@ -46,7 +46,6 @@ import {
     EnumNotificationType,
     EnumPasswordHistoryType,
     EnumProjectMemberStatus,
-    EnumProjectStatus,
     EnumRoleType,
     EnumTenantMemberRole,
     EnumTenantMemberStatus,
@@ -1383,6 +1382,7 @@ export class UserRepository {
         const tenantName = this.createDefaultTenantName(name, email);
         const tenantDescription = `Default workspace for ${email}`;
         const defaultProjectName = 'Default Project';
+        const defaultProjectDescription = 'Default project for your workspace';
         const tenantId = this.databaseUtil.createId();
 
         return this.databaseService.$transaction(
@@ -1390,6 +1390,11 @@ export class UserRepository {
                 const tenantSlug = await this.createUniqueTenantSlug(
                     client,
                     tenantName
+                );
+                const projectSlug = await this.createUniqueProjectSlug(
+                    client,
+                    tenantId,
+                    defaultProjectName
                 );
 
                 const user = await client.user.create({
@@ -1532,7 +1537,8 @@ export class UserRepository {
                     data: {
                         tenantId,
                         name: defaultProjectName,
-                        status: EnumProjectStatus.active,
+                        description: defaultProjectDescription,
+                        slug: projectSlug,
                         createdBy: userId,
                         updatedBy: userId,
                     },
@@ -2329,6 +2335,48 @@ export class UserRepository {
         for (let attempt = 0; attempt < 10; attempt++) {
             const existing = await client.tenant.findFirst({
                 where: { slug },
+                select: { id: true },
+            });
+
+            if (!existing) {
+                return slug;
+            }
+
+            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
+        }
+
+        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
+    }
+
+    private createProjectSlug(value: string): string {
+        const normalized = value
+            .trim()
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[^\w\s-]/g, '')
+            .replace(/_/g, '-')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+
+        return normalized || 'project';
+    }
+
+    private async createUniqueProjectSlug(
+        client: Prisma.TransactionClient,
+        tenantId: string,
+        value: string
+    ): Promise<string> {
+        const baseSlug = this.createProjectSlug(value);
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await client.project.findFirst({
+                where: {
+                    tenantId,
+                    slug,
+                    deletedAt: null,
+                },
                 select: { id: true },
             });
 

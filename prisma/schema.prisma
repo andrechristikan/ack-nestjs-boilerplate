@@ -99,11 +99,11 @@ model TenantMember {
 }
 
 model Project {
-  id          String            @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId    String?           @db.ObjectId
-  ownerUserId String?           @db.ObjectId
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
   name        String
-  status      EnumProjectStatus @default(active)
+  description String
+  slug        String
 
   // timestamps fields
   createdAt DateTime  @default(now())
@@ -113,11 +113,11 @@ model Project {
   deletedAt DateTime?
   deletedBy String?   @db.ObjectId
 
-  tenant  Tenant?         @relation("TenantProjects", fields: [tenantId], references: [id])
+  tenant  Tenant          @relation("TenantProjects", fields: [tenantId], references: [id])
   members ProjectMember[] @relation("ProjectMembers")
 
-  @@index(fields: [tenantId, status, deletedAt, createdAt])
-  @@index(fields: [ownerUserId, status, deletedAt, createdAt])
+  @@unique(fields: [tenantId, slug])
+  @@index(fields: [tenantId, deletedAt, createdAt])
   @@index(fields: [createdAt])
   @@map("Projects")
 }
@@ -754,11 +754,6 @@ enum EnumTenantMemberRole {
   owner
   admin
   member
-}
-
-enum EnumProjectStatus {
-  active
-  inactive
 }
 
 enum EnumProjectMemberStatus {

@@ -35,7 +35,6 @@ import {
 } from '@nestjs/common';
 import {
     EnumProjectMemberStatus,
-    EnumProjectStatus,
     EnumRoleScope,
     EnumRoleType,
     EnumUserSignUpFrom,
@@ -410,13 +409,6 @@ export class ProjectMemberService {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'project.member.error.forbidden',
-            });
-        }
-
-        if (member.project.status !== EnumProjectStatus.active) {
-            throw new NotFoundException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: 'project.error.notFound',
             });
         }
 

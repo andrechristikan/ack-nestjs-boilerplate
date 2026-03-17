@@ -17,7 +17,6 @@ import { ProjectInviteType } from '@modules/project/constants/project.constant';
 import { Injectable } from '@nestjs/common';
 import {
     EnumProjectMemberStatus,
-    EnumProjectStatus,
     Project,
     ProjectMember,
 } from '@generated/prisma-client';
@@ -114,8 +113,23 @@ export class ProjectRepository {
             where: {
                 id: projectId,
                 tenantId,
-                status: EnumProjectStatus.active,
                 deletedAt: null,
+            },
+        });
+    }
+
+    async findOneBySlugAndTenant(
+        tenantId: string,
+        slug: string
+    ): Promise<Pick<Project, 'id'> | null> {
+        return this.databaseService.project.findFirst({
+            where: {
+                tenantId,
+                slug,
+                deletedAt: null,
+            },
+            select: {
+                id: true,
             },
         });
     }
@@ -142,7 +156,6 @@ export class ProjectRepository {
         return this.databaseService.project.update({
             where: { id: projectId, deletedAt: null },
             data: {
-                status: EnumProjectStatus.inactive,
                 updatedBy: deletedBy,
                 deletedAt,
                 deletedBy,
@@ -293,7 +306,6 @@ export class ProjectRepository {
                     status: EnumProjectMemberStatus.active,
                     deletedAt: null,
                     project: {
-                        status: EnumProjectStatus.active,
                         deletedAt: null,
                     },
                 },

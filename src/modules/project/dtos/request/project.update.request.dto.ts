@@ -1,6 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { EnumProjectStatus } from '@generated/prisma-client';
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ProjectUpdateRequestDto {
     @ApiPropertyOptional({
@@ -13,10 +12,11 @@ export class ProjectUpdateRequestDto {
     name?: string;
 
     @ApiPropertyOptional({
-        description: 'Project status',
-        enum: EnumProjectStatus,
+        description: 'Project description',
+        example: 'Workspace for Q3 expansion initiatives',
     })
-    @IsEnum(EnumProjectStatus)
+    @IsString()
     @IsOptional()
-    status?: EnumProjectStatus;
+    @MaxLength(255)
+    description?: string;
 }

@@ -17,7 +17,7 @@ import { HttpStatus, applyDecorators } from '@nestjs/common';
 export function ProjectSharedCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'create project for current user',
+            summary: 'create project in current user default tenant',
         }),
         DocAuth({
             xApiKey: true,

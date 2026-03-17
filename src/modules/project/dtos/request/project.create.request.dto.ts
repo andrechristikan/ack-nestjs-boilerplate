@@ -21,6 +21,16 @@ export class ProjectCreateRequestDto {
     @MaxLength(100)
     name: string;
 
+    @ApiProperty({
+        required: true,
+        description: 'Project description',
+        example: 'Workspace for Q3 expansion initiatives',
+    })
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(255)
+    description: string;
+
     @ApiPropertyOptional({
         required: false,
         type: () => ProjectMemberCreateRequestDto,

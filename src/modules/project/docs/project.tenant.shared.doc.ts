@@ -21,6 +21,7 @@ import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.c
 import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
+import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
@@ -100,6 +101,26 @@ export function ProjectTenantSharedUpdateDoc(): MethodDecorator {
             params: ProjectDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
             dto: ProjectUpdateRequestDto,
+        }),
+        DocResponse('project.update')
+    );
+}
+
+export function ProjectTenantSharedUpdateSlugDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'update tenant project slug',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocTenantMemberProtected(),
+        DocProjectPermissionProtected(),
+        DocRequest({
+            params: ProjectDocParamsId,
+            bodyType: EnumDocRequestBodyType.json,
+            dto: ProjectUpdateSlugRequestDto,
         }),
         DocResponse('project.update')
     );

@@ -1,6 +1,5 @@
 import {
     EnumProjectMemberStatus,
-    EnumProjectStatus,
     Project,
     ProjectMember,
     Role,
@@ -37,10 +36,10 @@ export interface IProjectMemberWithInvite extends IProjectMember {
 }
 
 export interface IProjectCreate {
-    tenantId?: string;
-    ownerUserId?: string;
+    tenantId: string;
     name: string;
-    status: EnumProjectStatus;
+    description: string;
+    slug: string;
     createdBy: string;
     updatedBy: string;
 }
@@ -48,7 +47,8 @@ export interface IProjectCreate {
 export interface IProjectUpdate {
     updatedBy: string;
     name?: string;
-    status?: EnumProjectStatus;
+    description?: string;
+    slug?: string;
     deletedAt?: Date | null;
     deletedBy?: string;
 }

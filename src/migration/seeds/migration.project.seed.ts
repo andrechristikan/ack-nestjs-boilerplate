@@ -10,7 +10,6 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumProjectMemberStatus,
-    EnumProjectStatus,
 } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 
@@ -49,9 +48,6 @@ export class MigrationProjectSeed
 
         for (const p of this.projects) {
             tenantNames.add(p.tenantName);
-            if (p.ownerUserEmail) {
-                emails.add(p.ownerUserEmail);
-            }
             for (const m of p.members) {
                 emails.add(m.userEmail);
                 roleNames.add(m.projectRole);
@@ -90,16 +86,6 @@ export class MigrationProjectSeed
                     continue;
                 }
 
-                const ownerUser = project.ownerUserEmail
-                    ? userByEmail.get(project.ownerUserEmail)
-                    : undefined;
-
-                if (project.ownerUserEmail && !ownerUser) {
-                    this.logger.warn(
-                        `Owner user ${project.ownerUserEmail} not found for project ${project.name}, creating without owner...`
-                    );
-                }
-
                 let projectRecord =
                     await this.databaseService.project.findFirst({
                         where: {
@@ -109,12 +95,16 @@ export class MigrationProjectSeed
                     });
 
                 if (!projectRecord) {
+                    const slug = await this.createUniqueProjectSlug(
+                        tenant.id,
+                        project.name
+                    );
                     projectRecord = await this.databaseService.project.create({
                         data: {
                             tenantId: tenant.id,
-                            ownerUserId: ownerUser?.id ?? null,
                             name: project.name,
-                            status: EnumProjectStatus.active,
+                            description: project.description ?? '',
+                            slug,
                             deletedAt: null,
                         },
                     });
@@ -196,5 +186,48 @@ export class MigrationProjectSeed
         this.logger.log('Projects removed successfully.');
 
         return;
+    }
+
+    private createSlug(value: string): string {
+        const normalized = value
+            .trim()
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[^\w\s-]/g, '')
+            .replace(/_/g, '-')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+
+        return normalized || 'project';
+    }
+
+    private async createUniqueProjectSlug(
+        tenantId: string,
+        value: string
+    ): Promise<string> {
+        const baseSlug = this.createSlug(value);
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await this.databaseService.project.findFirst({
+                where: {
+                    tenantId,
+                    slug,
+                    deletedAt: null,
+                },
+                select: { id: true },
+            });
+
+            if (!existing) {
+                return slug;
+            }
+
+            const suffix = Math.random().toString(36).slice(2, 8);
+            slug = `${baseSlug}-${suffix}`;
+        }
+
+        const fallbackSuffix = Date.now().toString(36);
+        return `${baseSlug}-${fallbackSuffix}`;
     }
 }

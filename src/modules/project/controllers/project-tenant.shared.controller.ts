@@ -25,7 +25,6 @@ import {
     ProjectMemberPolicyCreate,
     ProjectMemberPolicyRead,
     ProjectMemberPolicyUpdate,
-    ProjectPolicyCreate,
     ProjectPolicyDelete,
     ProjectPolicyRead,
     ProjectPolicyUpdate,
@@ -36,6 +35,7 @@ import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/reque
 import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
+import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
@@ -51,6 +51,7 @@ import {
     ProjectTenantSharedSendMemberInviteDoc,
     ProjectTenantSharedUpdateDoc,
     ProjectTenantSharedUpdateMemberDoc,
+    ProjectTenantSharedUpdateSlugDoc,
 } from '@modules/project/docs/project.tenant.shared.doc';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { ProjectPermissionProtected } from '@modules/project/decorators/project.decorator';
@@ -61,7 +62,6 @@ import {
     TenantMemberCurrent,
     TenantMemberProtected,
     TenantRoleProtected,
-    TenantProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
 import { ITenant, ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -166,6 +166,26 @@ export class ProjectTenantSharedController {
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.projectService.update(projectId, body, updatedBy);
+    }
+
+    @ProjectTenantSharedUpdateSlugDoc()
+    @Response('project.update')
+    @TenantMemberProtected()
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
+    @ProjectPermissionProtected(ProjectPolicyUpdate)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/:projectId/slug')
+    async updateSlug(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Body() body: ProjectUpdateSlugRequestDto,
+        @AuthJwtPayload('userId') updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.projectService.updateSlug(projectId, body, updatedBy);
     }
 
     @ProjectTenantSharedDeleteDoc()
