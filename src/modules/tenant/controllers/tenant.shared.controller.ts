@@ -315,11 +315,13 @@ export class TenantSharedController {
     async deleteMember(
         @TenantCurrent() tenant: ITenant,
         @Param('memberId', RequestRequiredPipe)
-        memberId: string
+        memberId: string,
+        @AuthJwtPayload('userId') requestedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.tenantMemberService.deleteMember(
             tenant.id,
-            memberId
+            memberId,
+            requestedBy
         );
     }
 }

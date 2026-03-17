@@ -194,6 +194,18 @@ export class TenantRepository {
         });
     }
 
+    async countActiveMembersByTenant(tenantId: string): Promise<number> {
+        return this.databaseService.tenantMember.count({
+            where: {
+                tenantId,
+                status: EnumTenantMemberStatus.active,
+                tenant: {
+                    deletedAt: null,
+                },
+            },
+        });
+    }
+
     async createMember(data: ITenantMemberCreate): Promise<TenantMember> {
         return this.databaseService.tenantMember.create({
             data,
@@ -242,6 +254,29 @@ export class TenantRepository {
     async deleteMember(memberId: string): Promise<TenantMember> {
         return this.databaseService.tenantMember.delete({
             where: { id: memberId },
+        });
+    }
+
+    async deleteTenantAndMember(
+        tenantId: string,
+        memberId: string,
+        deletedBy: string
+    ): Promise<void> {
+        const deletedAt = this.helperService.dateCreate();
+
+        await this.databaseService.$transaction(async tx => {
+            await tx.tenant.update({
+                where: { id: tenantId, deletedAt: null },
+                data: {
+                    updatedBy: deletedBy,
+                    deletedAt,
+                    deletedBy,
+                },
+            });
+
+            await tx.tenantMember.delete({
+                where: { id: memberId },
+            });
         });
     }
 

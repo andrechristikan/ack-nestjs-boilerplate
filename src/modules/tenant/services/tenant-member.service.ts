@@ -16,9 +16,7 @@ import { TenantMemberInviteCreateRequestDto } from '@modules/tenant/dtos/request
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
-import {
-    TenantInviteType,
-} from '@modules/tenant/constants/tenant.constant';
+import { TenantInviteType } from '@modules/tenant/constants/tenant.constant';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 import { UserService } from '@modules/user/services/user.service';
@@ -145,7 +143,8 @@ export class TenantMemberService implements ITenantMemberService {
 
     async deleteMember(
         tenantId: string,
-        memberId: string
+        memberId: string,
+        deletedBy: string
     ): Promise<IResponseReturn<void>> {
         const member = await this.tenantRepository.findOneMemberByIdAndTenant(
             memberId,
@@ -160,6 +159,26 @@ export class TenantMemberService implements ITenantMemberService {
         }
 
         if (member.role === EnumTenantMemberRole.owner) {
+            if (member.userId !== deletedBy) {
+                throw new ForbiddenException({
+                    statusCode: EnumTenantStatusCodeError.memberForbidden,
+                    message: 'tenant.member.error.forbidden',
+                });
+            }
+
+            const activeMemberCount =
+                await this.tenantRepository.countActiveMembersByTenant(
+                    tenantId
+                );
+            if (activeMemberCount <= 1) {
+                await this.tenantRepository.deleteTenantAndMember(
+                    tenantId,
+                    member.id,
+                    deletedBy
+                );
+                return {};
+            }
+
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
                 message: 'tenant.member.error.forbidden',

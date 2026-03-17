@@ -29,7 +29,8 @@ export interface ITenantMemberService {
 
     deleteMember(
         tenantId: string,
-        memberId: string
+        memberId: string,
+        deletedBy: string
     ): Promise<IResponseReturn<void>>;
 
     createInvite(
