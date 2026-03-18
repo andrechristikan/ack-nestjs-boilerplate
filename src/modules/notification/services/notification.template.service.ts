@@ -628,6 +628,54 @@ export class NotificationTemplateService implements INotificationTemplateService
         }
     }
 
+    async emailImportTenantInvite(): Promise<boolean> {
+        try {
+            const templatePath = join(
+                this.templatesDir,
+                'notification.tenant-invite.template.hbs'
+            );
+
+            await this.awsSESService.createTemplate({
+                name: EnumNotificationProcess.tenantInvite,
+                subject: `Tenant Invite`,
+                htmlBody: readFileSync(templatePath, 'utf8'),
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err, 'Failed to import tenant invite template');
+
+            return false;
+        }
+    }
+
+    async emailGetTenantInvite(): Promise<GetTemplateCommandOutput | null> {
+        try {
+            const template = await this.awsSESService.getTemplate({
+                name: EnumNotificationProcess.tenantInvite,
+            });
+            return template;
+        } catch (err: unknown) {
+            this.logger.warn(err);
+
+            return null;
+        }
+    }
+
+    async emailDeleteTenantInvite(): Promise<boolean> {
+        try {
+            await this.awsSESService.deleteTemplate({
+                name: EnumNotificationProcess.tenantInvite,
+            });
+
+            return true;
+        } catch (err: unknown) {
+            this.logger.error(err, 'Failed to delete tenant invite template');
+
+            return false;
+        }
+    }
+
     async emailImportPublishTermPolicy(): Promise<boolean> {
         try {
             const templatePath = join(

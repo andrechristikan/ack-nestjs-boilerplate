@@ -6,7 +6,7 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
-import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
+import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function TenantPublicGetInviteDoc(): MethodDecorator {
@@ -20,15 +20,15 @@ export function TenantPublicGetInviteDoc(): MethodDecorator {
         DocRequest({
             params: [{ name: 'token', required: true, type: 'string' }],
         }),
-        DocResponse<InvitePublicResponseDto>('tenant.invite.get', {
-            dto: InvitePublicResponseDto,
+        DocResponse<TenantInviteResponseDto>('tenant.invite.get', {
+            dto: TenantInviteResponseDto,
         })
     );
 }
 
-export function TenantPublicClaimInviteDoc(): MethodDecorator {
+export function TenantPublicSignupAndClaimDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ summary: 'Complete signup via a tenant invite token' }),
+        Doc({ summary: 'Sign up and claim a tenant invite (unregistered users)' }),
         DocAuth({ xApiKey: true }),
         DocRequest({
             params: [{ name: 'token', required: true, type: 'string' }],

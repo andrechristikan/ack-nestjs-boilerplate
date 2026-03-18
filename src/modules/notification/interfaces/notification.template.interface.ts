@@ -37,6 +37,9 @@ export interface INotificationTemplateService {
     emailImportNewDeviceLogin(): Promise<boolean>;
     emailGetNewDeviceLogin(): Promise<GetTemplateCommandOutput | null>;
     emailDeleteNewDeviceLogin(): Promise<boolean>;
+    emailImportTenantInvite(): Promise<boolean>;
+    emailGetTenantInvite(): Promise<GetTemplateCommandOutput | null>;
+    emailDeleteTenantInvite(): Promise<boolean>;
     emailImportPublishTermPolicy(): Promise<boolean>;
     emailGetPublishTermPolicy(): Promise<GetTemplateCommandOutput | null>;
     emailDeletePublishTermPolicy(): Promise<boolean>;

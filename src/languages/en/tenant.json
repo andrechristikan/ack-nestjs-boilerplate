@@ -24,6 +24,18 @@
             "send": "Invitation sent successfully."
         }
     },
+    "invite": {
+        "get": "Invitation details fetched successfully.",
+        "list": "Invitations retrieved successfully.",
+        "revoke": "Invitation revoked successfully.",
+        "error": {
+            "expired": "This invitation has expired.",
+            "revoked": "This invitation has been revoked.",
+            "alreadyAccepted": "This invitation has already been accepted.",
+            "ownerRoleForbidden": "Owner role cannot be assigned via invitation.",
+            "tokenInvalid": "Invalid or inactive invitation token."
+        }
+    },
     "role": {
         "error": {
             "notFound": "Tenant role was not found.",

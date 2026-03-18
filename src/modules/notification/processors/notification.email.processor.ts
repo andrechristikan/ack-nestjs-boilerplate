@@ -12,6 +12,7 @@ import {
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
@@ -177,6 +178,15 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     return this.notificationEmailProcessorService.processInvite(
                         job as Job<
                             INotificationEmailWorkerPayload<INotificationInvitePayload>,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
+
+                case EnumNotificationProcess.tenantInvite:
+                    return this.notificationEmailProcessorService.processTenantInvite(
+                        job as Job<
+                            INotificationEmailWorkerPayload<INotificationTenantInviteEmailPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >

@@ -31,7 +31,7 @@ export class ProjectCreateRequestDto {
     @MaxLength(255)
     description: string;
 
-    @ApiPropertyOptional({
+    @ApiProperty({
         required: false,
         type: () => ProjectMemberCreateRequestDto,
         isArray: true,

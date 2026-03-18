@@ -52,3 +52,14 @@ export interface ITenantMemberUpdate {
     role?: EnumTenantMemberRole;
     status?: EnumTenantMemberStatus;
 }
+export interface ITenantInviteCreate {
+    tenantId: string;
+    invitedById: string;
+    invitedEmail: string;
+    tenantRole: EnumTenantMemberRole;
+    type: import('@generated/prisma-client').EnumTenantInviteType;
+    token: string;
+    expiresAt: Date;
+    createdBy?: string;
+    updatedBy?: string;
+}

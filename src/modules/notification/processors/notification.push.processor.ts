@@ -7,6 +7,7 @@ import {
     INotificationNewDeviceLoginPayload,
     INotificationPushWorkerCleanupTokenPayload,
     INotificationPushWorkerPayload,
+    INotificationTenantInviteEmailPayload,
     INotificationTemporaryPasswordPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushProcessorService } from '@modules/notification/services/notification.push.processor.service';
@@ -78,6 +79,14 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                     return this.notificationPushProcessorService.processResetPassword(
                         job as Job<
                             INotificationPushWorkerPayload,
+                            IQueueResponse,
+                            EnumNotificationPushProcess
+                        >
+                    );
+                case EnumNotificationPushProcess.tenantInvite:
+                    return this.notificationPushProcessorService.processTenantInvite(
+                        job as Job<
+                            INotificationPushWorkerPayload<INotificationTenantInviteEmailPayload>,
                             IQueueResponse,
                             EnumNotificationPushProcess
                         >

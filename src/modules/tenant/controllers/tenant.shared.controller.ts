@@ -21,32 +21,34 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
-import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import {
     TenantCurrent,
     TenantRoleProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
+import { TenantInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant-invite.create.request.dto';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
-import { TenantMemberInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member-invite.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
 import { TenantTransferOwnershipRequestDto } from '@modules/tenant/dtos/request/tenant.transfer-ownership.request.dto';
 import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
+import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import {
+    TenantSharedClaimInviteDoc,
     TenantSharedCreateMemberDoc,
     TenantSharedCreateMemberInviteDoc,
     TenantSharedDeleteMemberDoc,
+    TenantSharedDeleteMemberInviteDoc,
     TenantSharedGetCurrentTenantDoc,
+    TenantSharedListMemberInvitesDoc,
     TenantSharedListMemberRolesDoc,
     TenantSharedListMembersDoc,
-    TenantSharedSendMemberInviteDoc,
     TenantSharedUpdateCurrentTenantDoc,
     TenantSharedUpdateMemberDoc,
 } from '@modules/tenant/docs/tenant.shared.doc';
 import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
+import { TenantInviteService } from '@modules/tenant/services/tenant-invite.service';
 import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
 import { TenantService } from '@modules/tenant/services/tenant.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -55,6 +57,8 @@ import {
     Controller,
     Delete,
     Get,
+    HttpCode,
+    HttpStatus,
     Param,
     Patch,
     Post,
@@ -69,7 +73,8 @@ import { ApiTags } from '@nestjs/swagger';
 export class TenantSharedController {
     constructor(
         private readonly tenantService: TenantService,
-        private readonly tenantMemberService: TenantMemberService
+        private readonly tenantMemberService: TenantMemberService,
+        private readonly tenantInviteService: TenantInviteService
     ) {}
 
     @TenantSharedGetCurrentTenantDoc()
@@ -231,15 +236,15 @@ export class TenantSharedController {
     @FeatureFlagProtected('tenancy')
     @FeatureFlagProtected('tenantInvites')
     @ApiKeyProtected()
-    @Post('/current/members/invites')
+    @Post('/current/invites')
     async createMemberInvite(
         @TenantCurrent() tenant: ITenant,
-        @Body() body: TenantMemberInviteCreateRequestDto,
+        @Body() body: TenantInviteCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
-    ): Promise<IResponseReturn<InviteCreateResponseDto>> {
-        return this.tenantMemberService.createInvite(
+    ): Promise<IResponseReturn<TenantInviteResponseDto>> {
+        return this.tenantInviteService.createInvite(
             tenant.id,
             body,
             createdBy,
@@ -247,8 +252,8 @@ export class TenantSharedController {
         );
     }
 
-    @TenantSharedSendMemberInviteDoc()
-    @Response('tenant.member.invite.send')
+    @TenantSharedDeleteMemberInviteDoc()
+    @Response('tenant.invite.revoke')
     @TenantRoleProtected(
         EnumTenantMemberRole.owner,
         EnumTenantMemberRole.admin
@@ -258,20 +263,54 @@ export class TenantSharedController {
     @FeatureFlagProtected('tenancy')
     @FeatureFlagProtected('tenantInvites')
     @ApiKeyProtected()
-    @Post('/current/members/:memberId/invites/send')
-    async sendMemberInvite(
+    @Delete('/current/invites/:inviteId')
+    async revokeInvite(
         @TenantCurrent() tenant: ITenant,
-        @Param('memberId', RequestRequiredPipe) memberId: string,
-        @AuthJwtPayload('userId') requestedBy: string,
+        @Param('inviteId', RequestRequiredPipe) inviteId: string,
+        @AuthJwtPayload('userId') revokedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.tenantInviteService.revokeInvite(inviteId, tenant.id, revokedBy);
+    }
+
+    @TenantSharedListMemberInvitesDoc()
+    @ResponsePaging('tenant.invite.list')
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin
+    )
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenancy')
+    @FeatureFlagProtected('tenantInvites')
+    @ApiKeyProtected()
+    @Get('/current/invites')
+    async listInvites(
+        @TenantCurrent() tenant: ITenant,
+        @PaginationOffsetQuery()
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TenantInviteSelect,
+            Prisma.TenantInviteWhereInput
+        >
+    ): Promise<IResponsePagingReturn<TenantInviteResponseDto>> {
+        return this.tenantInviteService.listInvites(tenant.id, pagination);
+    }
+
+    @TenantSharedClaimInviteDoc()
+    @HttpCode(HttpStatus.OK)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenantInvites')
+    @ApiKeyProtected()
+    @Post('/invites/:token/claim')
+    async claimInvite(
+        @Param('token', RequestRequiredPipe) token: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
-    ): Promise<IResponseReturn<InviteSendResponseDto>> {
-        return this.tenantMemberService.sendInvite(
-            tenant.id,
-            memberId,
-            requestedBy,
-            { ipAddress, userAgent }
-        );
+    ): Promise<void> {
+        return this.tenantInviteService.claimRegistered(token, {
+            ipAddress,
+            userAgent,
+        });
     }
 
     @TenantSharedUpdateMemberDoc()

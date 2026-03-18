@@ -9,14 +9,12 @@ import { UserAgent } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
-import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
-import { InviteService } from '@modules/invite/services/invite.service';
-import { TenantInviteType } from '@modules/tenant/constants/tenant.constant';
 import {
-    TenantPublicClaimInviteDoc,
     TenantPublicGetInviteDoc,
+    TenantPublicSignupAndClaimDoc,
 } from '@modules/tenant/docs/tenant.public.doc';
-import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
+import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
+import { TenantInviteService } from '@modules/tenant/services/tenant-invite.service';
 import {
     Body,
     Controller,
@@ -34,10 +32,7 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/tenants',
 })
 export class TenantPublicController {
-    constructor(
-        private readonly inviteService: InviteService,
-        private readonly tenantMemberService: TenantMemberService
-    ) {}
+    constructor(private readonly tenantInviteService: TenantInviteService) {}
 
     @TenantPublicGetInviteDoc()
     @Response('tenant.invite.get')
@@ -46,24 +41,22 @@ export class TenantPublicController {
     @Get('/invites/:token')
     async getInvite(
         @Param('token', RequestRequiredPipe) token: string
-    ): Promise<IResponseReturn<InvitePublicResponseDto>> {
-        return this.inviteService
-            .getInvite(token, TenantInviteType)
-            .then(data => ({ data }));
+    ): Promise<IResponseReturn<TenantInviteResponseDto>> {
+        return this.tenantInviteService.getInviteByToken(token);
     }
 
-    @TenantPublicClaimInviteDoc()
+    @TenantPublicSignupAndClaimDoc()
     @HttpCode(HttpStatus.OK)
     @FeatureFlagProtected('tenantInvites')
     @ApiKeyProtected()
-    @Post('/invites/:token/claim')
-    async claimInvite(
+    @Post('/invites/:token/signup')
+    async signupAndClaim(
         @Param('token', RequestRequiredPipe) token: string,
         @Body() { firstName, lastName, password }: InviteClaimRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
     ): Promise<void> {
-        return this.tenantMemberService.claimInvite(
+        return this.tenantInviteService.signupAndClaim(
             token,
             firstName,
             lastName,

@@ -66,8 +66,9 @@ model Tenant {
   deletedAt DateTime?
   deletedBy String?   @db.ObjectId
 
-  members  TenantMember[] @relation("TenantMembers")
-  projects Project[]      @relation("TenantProjects")
+  members  TenantMember[]  @relation("TenantMembers")
+  projects Project[]       @relation("TenantProjects")
+  invites  TenantInvite[]  @relation("TenantInvites")
 
   @@index(fields: [name, createdAt])
   @@index(fields: [createdAt])
@@ -95,6 +96,36 @@ model TenantMember {
   @@index(fields: [userId, status, createdAt])
   @@index(fields: [createdAt])
   @@map("TenantMembers")
+}
+
+model TenantInvite {
+  id           String                 @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String                 @db.ObjectId
+  invitedById  String                 @db.ObjectId
+  invitedEmail String
+  tenantRole   EnumTenantMemberRole
+  type         EnumTenantInviteType
+  status       EnumTenantInviteStatus @default(pending)
+  token        String                 @unique
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  revokedAt    DateTime?
+  revokedById  String?                @db.ObjectId
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  tenant    Tenant? @relation("TenantInvites", fields: [tenantId], references: [id])
+  invitedBy User?   @relation("UserSentTenantInvites", fields: [invitedById], references: [id])
+
+  @@index(fields: [tenantId, status, createdAt])
+  @@index(fields: [token, status, expiresAt])
+  @@index(fields: [invitedEmail, tenantId, status, createdAt])
+  @@index(fields: [createdAt])
+  @@map("TenantInvites")
 }
 
 model Project {
@@ -248,6 +279,7 @@ model User {
   tenantMemberships       TenantMember[]             @relation("UserTenantMembers")
   projectMemberships      ProjectMember[]            @relation("UserProjectMembers")
   invites                 Invite[]                   @relation("UserInvites")
+  sentTenantInvites       TenantInvite[]             @relation("UserSentTenantInvites")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -752,6 +784,18 @@ enum EnumTenantMemberRole {
   owner
   admin
   member
+}
+
+enum EnumTenantInviteType {
+  registered
+  unregistered
+}
+
+enum EnumTenantInviteStatus {
+  pending
+  accepted
+  expired
+  revoked
 }
 
 enum EnumProjectMemberStatus {

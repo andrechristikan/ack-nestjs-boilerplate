@@ -1,8 +1,9 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ProjectUpdateRequestDto {
-    @ApiPropertyOptional({
+    @ApiProperty({
+        required: false,
         description: 'Project name',
         example: 'Q3 Expansion',
     })
@@ -11,9 +12,10 @@ export class ProjectUpdateRequestDto {
     @MaxLength(100)
     name?: string;
 
-    @ApiPropertyOptional({
+    @ApiProperty({
         description: 'Project description',
         example: 'Workspace for Q3 expansion initiatives',
+        required: false,
     })
     @IsString()
     @IsOptional()

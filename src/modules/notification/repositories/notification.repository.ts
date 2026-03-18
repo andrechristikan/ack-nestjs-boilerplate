@@ -435,6 +435,47 @@ export class NotificationRepository {
         });
     }
 
+    async createTenantInvite(
+        notificationId: string,
+        userId: string,
+        username: string,
+        tenantName: string,
+        role: string,
+        createdBy: string
+    ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
+        return this.databaseService.notification.create({
+            data: {
+                id: notificationId,
+                type: EnumNotificationType.userActivity,
+                title: 'notification.notify.tenantInvite.title',
+                body: 'notification.notify.tenantInvite.body',
+                userId,
+                metadata: { username, tenantName, role },
+                isRead: false,
+                priority: EnumNotificationPriority.normal,
+                createdBy,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
+                            {
+                                channel: EnumNotificationChannel.email,
+                            },
+                            {
+                                channel: EnumNotificationChannel.push,
+                            },
+                        ],
+                    },
+                },
+            },
+        });
+    }
+
     async createForgotPassword(
         notificationId: string,
         userId: string,

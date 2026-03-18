@@ -21,6 +21,10 @@
             "title": "Password Reset",
             "body": "Hi {username}, your password has been reset successfully."
         },
+        "tenantInvite": {
+            "title": "Tenant Invitation",
+            "body": "Hi {username}, you have been invited to join tenant {tenantName} as {role}."
+        },
         "userAcceptTermPolicy": {
             "title": "Term Policy Accepted",
             "body": "Hi {username}, you have accepted the {type} term policy version {version}."
