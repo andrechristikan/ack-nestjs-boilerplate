@@ -145,11 +145,42 @@ model Project {
 
   tenant  Tenant          @relation("TenantProjects", fields: [tenantId], references: [id])
   members ProjectMember[] @relation("ProjectMembers")
+  invites ProjectInvite[] @relation("ProjectInvites")
 
   @@unique(fields: [tenantId, slug])
   @@index(fields: [tenantId, deletedAt, createdAt])
   @@index(fields: [createdAt])
   @@map("Projects")
+}
+
+model ProjectInvite {
+  id           String                  @id @default(auto()) @map("_id") @db.ObjectId
+  invitedById  String                  @db.ObjectId
+  invitedEmail String
+  projectId    String                  @db.ObjectId
+  projectRole  EnumProjectMemberRole
+  status       EnumProjectInviteStatus @default(pending)
+  token        String                  @unique
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  sentAt       DateTime?
+  revokedAt    DateTime?
+  revokedById  String?                 @db.ObjectId
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  project   Project? @relation("ProjectInvites", fields: [projectId], references: [id])
+  invitedBy User?    @relation("UserSentProjectInvites", fields: [invitedById], references: [id])
+
+  @@index(fields: [projectId, status, createdAt])
+  @@index(fields: [token, status, expiresAt])
+  @@index(fields: [invitedEmail, projectId, status, createdAt])
+  @@index(fields: [createdAt])
+  @@map("ProjectInvites")
 }
 
 model ProjectMember {
@@ -278,8 +309,8 @@ model User {
   revokedDeviceOwnerships DeviceOwnership[]          @relation("DeviceOwnershipRevokedByUser")
   tenantMemberships       TenantMember[]             @relation("UserTenantMembers")
   projectMemberships      ProjectMember[]            @relation("UserProjectMembers")
-  invites                 Invite[]                   @relation("UserInvites")
   sentTenantInvites       TenantInvite[]             @relation("UserSentTenantInvites")
+  sentProjectInvites      ProjectInvite[]            @relation("UserSentProjectInvites")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -314,43 +345,6 @@ model Verification {
   @@unique(fields: [reference])
   @@index(fields: [token, expiredAt, isUsed, type])
   @@map("Verifications")
-}
-
-model Invite {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String        @db.ObjectId
-  to          String
-  token       String
-  reference   String
-  expiresAt   DateTime
-  acceptedAt  DateTime?
-  sentAt      DateTime?
-  inviteType  String
-  roleScope   EnumRoleScope
-  contextId   String        @db.ObjectId
-  contextName String
-  memberId    String        @db.ObjectId
-  metadata    Json?
-
-  // timestamps fields
-  createdAt DateTime  @default(now())
-  createdBy String?   @db.ObjectId
-  updatedAt DateTime  @updatedAt
-  updatedBy String?   @db.ObjectId
-  deletedAt DateTime?
-  deletedBy String?   @db.ObjectId
-
-  user User? @relation("UserInvites", fields: [userId], references: [id])
-
-  @@unique(fields: [reference])
-  @@unique(fields: [token])
-  @@index(fields: [token, expiresAt, acceptedAt, deletedAt])
-  @@index(fields: [userId, createdAt])
-  @@index(fields: [userId, inviteType, contextId, createdAt])
-  @@index(fields: [memberId, createdAt])
-  @@index(fields: [inviteType, contextId, createdAt])
-  @@index(fields: [createdAt])
-  @@map("Invites")
 }
 
 model PasswordHistory {
@@ -792,6 +786,13 @@ enum EnumTenantInviteType {
 }
 
 enum EnumTenantInviteStatus {
+  pending
+  accepted
+  expired
+  revoked
+}
+
+enum EnumProjectInviteStatus {
   pending
   accepted
   expired

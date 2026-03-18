@@ -1,7 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsPositive, Max, MaxLength } from 'class-validator';
 import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
 import { Transform } from 'class-transformer';
+import {
+    IsEnum,
+    IsNotEmpty,
+    IsOptional,
+    IsPositive,
+    Max,
+    MaxLength,
+} from 'class-validator';
 import { EnumTenantMemberRole } from '@generated/prisma-client';
 
 export class TenantInviteCreateRequestDto {

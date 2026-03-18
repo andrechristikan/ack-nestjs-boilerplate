@@ -19,11 +19,18 @@
             "lastAdmin": "You are the only admin. Promote another member to admin before leaving.",
             "cannotRevoke": "You are not authorized to revoke this member's access.",
             "inviteResendLimitExceeded": "Invitation resend limit exceeded. Please wait before retrying.",
-            "inviteAlreadyCompleted": "This user account is already activated."
+            "inviteAlreadyCompleted": "This user account is already activated.",
+            "inviteRoleMissing": "Project invite role is missing or invalid.",
+            "inviteAlreadyAccepted": "This invite has already been accepted.",
+            "inviteAlreadyRevoked": "This invite has already been revoked.",
+            "inviteAlreadyExpired": "This invite has already expired."
         },
         "invite": {
             "create": "Invitation member created successfully.",
-            "send": "Invitation sent successfully."
+            "send": "Invitation sent successfully.",
+            "list": "Project member invites retrieved successfully.",
+            "revoke": "Project member invite revoked successfully.",
+            "claim": "Project invite claimed successfully."
         }
     },
     "role": {

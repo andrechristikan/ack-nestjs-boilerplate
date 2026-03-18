@@ -38,32 +38,36 @@ import {
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
-import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
+import { ProjectInviteResponseDto } from '@modules/project/dtos/response/project-invite.response.dto';
 import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import {
-    ProjectTenantSharedCreateDoc,
-    ProjectTenantSharedCreateMemberDoc,
-    ProjectTenantSharedCreateMemberInviteDoc,
-    ProjectTenantSharedDeleteDoc,
-    ProjectTenantSharedGetDoc,
-    ProjectTenantSharedLeaveMemberDoc,
-    ProjectTenantSharedListDoc,
-    ProjectTenantSharedListMemberRolesDoc,
-    ProjectTenantSharedListMembersDoc,
-    ProjectTenantSharedRevokeMemberDoc,
-    ProjectTenantSharedSendMemberInviteDoc,
-    ProjectTenantSharedUpdateDoc,
-    ProjectTenantSharedUpdateMemberDoc,
-    ProjectTenantSharedUpdateSlugDoc,
+    ProjectSharedCreateDoc,
+    ProjectSharedCreateMemberDoc,
+    ProjectSharedCreateMemberInviteDoc,
+    ProjectSharedClaimInviteDoc,
+    ProjectSharedDeleteDoc,
+    ProjectSharedGetDoc,
+    ProjectSharedLeaveMemberDoc,
+    ProjectSharedListInvitesDoc,
+    ProjectSharedListDoc,
+    ProjectSharedListMemberRolesDoc,
+    ProjectSharedListMembersDoc,
+    ProjectSharedRevokeMemberDoc,
+    ProjectSharedRevokeInviteDoc,
+    ProjectSharedSendMemberInviteDoc,
+    ProjectSharedUpdateDoc,
+    ProjectSharedUpdateMemberDoc,
+    ProjectSharedUpdateSlugDoc,
 } from '@modules/project/docs/project.tenant.shared.doc';
 import {
     ProjectMemberCurrent,
     ProjectPermissionProtected,
+    ProjectRoleProtected,
 } from '@modules/project/decorators/project.decorator';
 import { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberService } from '@modules/project/services/project-member.service';
@@ -81,6 +85,8 @@ import {
     Controller,
     Delete,
     Get,
+    HttpCode,
+    HttpStatus,
     Param,
     Patch,
     Post,
@@ -98,7 +104,7 @@ export class ProjectSharedController {
         private readonly projectMemberService: ProjectMemberService
     ) {}
 
-    @ProjectTenantSharedListDoc()
+    @ProjectSharedListDoc()
     @ResponsePaging('project.list')
     @TenantRoleProtected(
         EnumTenantMemberRole.owner,
@@ -127,7 +133,7 @@ export class ProjectSharedController {
         );
     }
 
-    @ProjectTenantSharedCreateDoc()
+    @ProjectSharedCreateDoc()
     @Response('project.create')
     @TenantRoleProtected(
         EnumTenantMemberRole.owner,
@@ -145,7 +151,7 @@ export class ProjectSharedController {
         return this.projectService.createForTenant(tenant.id, body, createdBy);
     }
 
-    @ProjectTenantSharedGetDoc()
+    @ProjectSharedGetDoc()
     @Response('project.get')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectPolicyRead)
@@ -159,7 +165,7 @@ export class ProjectSharedController {
         return this.projectService.getOne(projectId);
     }
 
-    @ProjectTenantSharedUpdateDoc()
+    @ProjectSharedUpdateDoc()
     @Response('project.update')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectPolicyUpdate)
@@ -175,7 +181,7 @@ export class ProjectSharedController {
         return this.projectService.update(projectId, body, updatedBy);
     }
 
-    @ProjectTenantSharedUpdateSlugDoc()
+    @ProjectSharedUpdateSlugDoc()
     @Response('project.update')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectPolicyUpdate)
@@ -191,7 +197,7 @@ export class ProjectSharedController {
         return this.projectService.updateSlug(projectId, body, updatedBy);
     }
 
-    @ProjectTenantSharedDeleteDoc()
+    @ProjectSharedDeleteDoc()
     @Response('project.delete')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectPolicyDelete)
@@ -206,7 +212,7 @@ export class ProjectSharedController {
         return this.projectService.delete(projectId, updatedBy);
     }
 
-    @ProjectTenantSharedCreateMemberDoc()
+    @ProjectSharedCreateMemberDoc()
     @Response('project.member.create')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
@@ -222,11 +228,10 @@ export class ProjectSharedController {
         return this.projectMemberService.create(projectId, body, createdBy);
     }
 
-    @ProjectTenantSharedCreateMemberInviteDoc()
+    @ProjectSharedCreateMemberInviteDoc()
     @FeatureFlagProtected('projectInvites')
     @Response('project.member.invite.create')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -237,7 +242,7 @@ export class ProjectSharedController {
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
-    ): Promise<IResponseReturn<InviteCreateResponseDto>> {
+    ): Promise<IResponseReturn<ProjectInviteResponseDto>> {
         return this.projectMemberService.createInvite(
             projectId,
             body,
@@ -246,25 +251,78 @@ export class ProjectSharedController {
         );
     }
 
-    @ProjectTenantSharedSendMemberInviteDoc()
+    @ProjectSharedListInvitesDoc()
     @FeatureFlagProtected('projectInvites')
-    @Response('project.member.invite.send')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
+    @ResponsePaging('project.member.invite.list')
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Post('/:projectId/members/:memberId/invites/send')
+    @Get('/:projectId/members/invites')
+    async listMemberInvites(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @PaginationOffsetQuery()
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ProjectInviteSelect,
+            Prisma.ProjectInviteWhereInput
+        >
+    ): Promise<IResponsePagingReturn<ProjectInviteResponseDto>> {
+        return this.projectMemberService.listInvites(projectId, pagination);
+    }
+
+    @ProjectSharedRevokeInviteDoc()
+    @FeatureFlagProtected('projectInvites')
+    @Response('project.member.invite.revoke')
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Delete('/:projectId/members/invites/:inviteId')
+    async revokeMemberInvite(
+        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('inviteId', RequestRequiredPipe) inviteId: string,
+        @AuthJwtPayload('userId') revokedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.projectMemberService.revokeInvite(projectId, inviteId, revokedBy);
+    }
+
+    @ProjectSharedClaimInviteDoc()
+    @FeatureFlagProtected('projectInvites')
+    @HttpCode(HttpStatus.OK)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/invites/:token/claim')
+    async claimInvite(
+        @Param('token', RequestRequiredPipe) token: string,
+        @AuthJwtPayload('userId') userId: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: UserAgent
+    ): Promise<void> {
+        return this.projectMemberService.claimRegistered(token, userId, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @ProjectSharedSendMemberInviteDoc()
+    @FeatureFlagProtected('projectInvites')
+    @Response('project.member.invite.send')
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Post('/:projectId/members/invites/:inviteId/send')
     async sendMemberInvite(
         @Param('projectId', RequestRequiredPipe) projectId: string,
-        @Param('memberId', RequestRequiredPipe) memberId: string,
+        @Param('inviteId', RequestRequiredPipe) inviteId: string,
         @AuthJwtPayload('userId') requestedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
     ): Promise<IResponseReturn<InviteSendResponseDto>> {
         return this.projectMemberService.sendInvite(
             projectId,
-            memberId,
+            inviteId,
             requestedBy,
             {
                 ipAddress,
@@ -273,7 +331,7 @@ export class ProjectSharedController {
         );
     }
 
-    @ProjectTenantSharedUpdateMemberDoc()
+    @ProjectSharedUpdateMemberDoc()
     @Response('project.member.update')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyUpdate)
@@ -295,7 +353,7 @@ export class ProjectSharedController {
         );
     }
 
-    @ProjectTenantSharedListMembersDoc()
+    @ProjectSharedListMembersDoc()
     @ResponsePaging('project.member.list')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyRead)
@@ -314,7 +372,7 @@ export class ProjectSharedController {
         return this.projectMemberService.listMembers(projectId, pagination);
     }
 
-    @ProjectTenantSharedListMemberRolesDoc()
+    @ProjectSharedListMemberRolesDoc()
     @Response('project.member.roles')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyCreate)
@@ -328,7 +386,7 @@ export class ProjectSharedController {
         return this.projectMemberService.getMemberRoles(projectId);
     }
 
-    @ProjectTenantSharedLeaveMemberDoc()
+    @ProjectSharedLeaveMemberDoc()
     @Response('project.member.leave')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyRead)
@@ -343,7 +401,7 @@ export class ProjectSharedController {
         return this.projectMemberService.leave(projectId, userId);
     }
 
-    @ProjectTenantSharedRevokeMemberDoc()
+    @ProjectSharedRevokeMemberDoc()
     @Response('project.member.revoke')
     @TenantMemberProtected()
     @ProjectPermissionProtected(ProjectMemberPolicyDelete)

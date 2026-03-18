@@ -1,87 +1,126 @@
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { HelperService } from '@common/helper/services/helper.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { IConfigInvite } from '@configs/invite.config';
+import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
+import { TenantInviteCreateRequestDto } from '@modules/invite/dtos/request/tenant-invite.create.request.dto';
+import { TenantInviteResponseDto } from '@modules/invite/dtos/response/tenant-invite.response.dto';
+import { InviteUtil } from '@modules/invite/utils/invite.util';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { ConfigService } from '@nestjs/config';
-import { ITenantConfig } from '@configs/tenant.config';
-import { TenantInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant-invite.create.request.dto';
-import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
-import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
-import { ITenantInviteService } from '@modules/tenant/interfaces/tenant-invite.service.interface';
 import { TenantInviteRepository } from '@modules/tenant/repositories/tenant-invite.repository';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
+import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
 import {
+    ConflictException,
     ForbiddenException,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
-    UnprocessableEntityException,
 } from '@nestjs/common';
 import {
     EnumTenantInviteStatus,
     EnumTenantInviteType,
     EnumTenantMemberRole,
+    EnumTenantMemberStatus,
+    TenantInvite,
     EnumUserSignUpFrom,
     Prisma,
-    TenantInvite,
 } from '@generated/prisma-client';
 import { plainToInstance } from 'class-transformer';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class TenantInviteService implements ITenantInviteService {
-    private readonly defaultInviteExpiresInDays: number;
-
+export class TenantInviteService {
     constructor(
         private readonly tenantInviteRepository: TenantInviteRepository,
         private readonly tenantRepository: TenantRepository,
         private readonly userRepository: UserRepository,
         private readonly userService: UserService,
         private readonly authUtil: AuthUtil,
+        private readonly inviteUtil: InviteUtil,
         private readonly notificationUtil: NotificationUtil,
-        private readonly helperService: HelperService,
         private readonly configService: ConfigService
-    ) {
-        this.defaultInviteExpiresInDays = this.configService.get<ITenantConfig['invite']>(
-            'tenant.invite'
-        ).expiresInDays;
-    }
+    ) {}
 
-    private mapToResponseDto(invite: TenantInvite): TenantInviteResponseDto {
-        const now = this.helperService.dateCreate();
-        const effectiveStatus =
-            invite.status === EnumTenantInviteStatus.pending &&
-            invite.expiresAt <= now
-                ? EnumTenantInviteStatus.expired
-                : invite.status;
+    private mapStatus(
+        invite: Pick<TenantInvite, 'status' | 'expiresAt' | 'acceptedAt' | 'revokedAt'>
+    ): Pick<
+        TenantInviteResponseDto,
+        'status' | 'remainingSeconds' | 'expiresAt' | 'acceptedAt' | 'revokedAt'
+    > {
+        const now = Date.now();
 
-        const dto = plainToInstance(TenantInviteResponseDto, {
-            ...invite,
-            status: effectiveStatus,
-        });
-
-        if (
-            effectiveStatus === EnumTenantInviteStatus.pending &&
-            invite.expiresAt > now
-        ) {
-            dto.remainingSeconds = Math.floor(
-                (invite.expiresAt.getTime() - now.getTime()) / 1000
-            );
+        if (invite.status === EnumTenantInviteStatus.revoked || invite.revokedAt) {
+            return {
+                status: EnumTenantInviteStatus.revoked,
+                revokedAt: invite.revokedAt ?? undefined,
+                expiresAt: invite.expiresAt,
+            };
         }
 
-        return dto;
+        if (invite.status === EnumTenantInviteStatus.accepted || invite.acceptedAt) {
+            return {
+                status: EnumTenantInviteStatus.accepted,
+                acceptedAt: invite.acceptedAt,
+                expiresAt: invite.expiresAt,
+            };
+        }
+
+        if (invite.expiresAt.getTime() <= now) {
+            return {
+                status: EnumTenantInviteStatus.expired,
+                expiresAt: invite.expiresAt,
+            };
+        }
+
+        return {
+            status: EnumTenantInviteStatus.pending,
+            expiresAt: invite.expiresAt,
+            remainingSeconds: Math.max(
+                0,
+                Math.floor((invite.expiresAt.getTime() - now) / 1000)
+            ),
+        };
+    }
+
+    private mapInvite(
+        invite: Pick<
+            TenantInvite,
+            | 'id'
+            | 'tenantId'
+            | 'invitedEmail'
+            | 'tenantRole'
+            | 'type'
+            | 'expiresAt'
+            | 'acceptedAt'
+            | 'status'
+            | 'revokedAt'
+            | 'createdAt'
+        >
+    ): TenantInviteResponseDto {
+        return plainToInstance(TenantInviteResponseDto, {
+            id: invite.id,
+            tenantId: invite.tenantId,
+            invitedEmail: invite.invitedEmail,
+            tenantRole: invite.tenantRole,
+            type: invite.type,
+            createdAt: invite.createdAt,
+            ...this.mapStatus(invite),
+        });
     }
 
     async createInvite(
         tenantId: string,
         dto: TenantInviteCreateRequestDto,
         invitedById: string,
-        _requestLog: IRequestLog
+        requestLog: IRequestLog
     ): Promise<IResponseReturn<TenantInviteResponseDto>> {
         if (dto.role === EnumTenantMemberRole.owner) {
             throw new ForbiddenException({
@@ -98,62 +137,175 @@ export class TenantInviteService implements ITenantInviteService {
             });
         }
 
-        const existingUser = await this.userRepository.findOneByEmail(dto.email);
-        const type = existingUser
-            ? EnumTenantInviteType.registered
-            : EnumTenantInviteType.unregistered;
+        try {
+            const existingUser = await this.userRepository.findOneByEmail(dto.email);
+            const inviteeType = existingUser
+                ? EnumTenantInviteType.registered
+                : EnumTenantInviteType.unregistered;
+            const user =
+                existingUser ??
+                (await this.userService.createForInvitation(
+                    dto.email,
+                    EnumUserSignUpFrom.tenant,
+                    requestLog,
+                    invitedById
+                ));
 
-        // Revoke existing pending invite for same email+tenant
-        const existingPending =
-            await this.tenantInviteRepository.findOnePendingByEmailAndTenant(
+            const existingMember =
+                await this.tenantRepository.findMemberByTenantAndUser(
+                    tenantId,
+                    user.id
+                );
+            if (
+                existingMember &&
+                existingMember.status !== EnumTenantMemberStatus.pending
+            ) {
+                throw new ConflictException({
+                    statusCode: EnumTenantStatusCodeError.memberExist,
+                    message: 'tenant.member.error.exist',
+                });
+            }
+
+            const memberId = existingMember
+                ? existingMember.id
+                : (
+                      await this.tenantRepository.createMember({
+                          tenantId,
+                          userId: user.id,
+                          role: dto.role,
+                          status: EnumTenantMemberStatus.pending,
+                          createdBy: invitedById,
+                          updatedBy: invitedById,
+                      })
+                  ).id;
+
+            const existingPending =
+                await this.tenantInviteRepository.findOnePendingByEmailAndTenant(
+                    dto.email,
+                    tenantId
+                );
+            if (existingPending) {
+                await this.tenantInviteRepository.revoke(
+                    existingPending.id,
+                    invitedById
+                );
+            }
+
+            const inviteConfig = this.configService.getOrThrow<IConfigInvite>(
+                'invite'
+            ).tenant;
+            const effectiveExpiredInMinutes = dto.expiresInDays
+                ? dto.expiresInDays * 24 * 60
+                : inviteConfig.expiredInMinutes;
+            const tokenInfo = this.inviteUtil.createInviteToken({
+                ...inviteConfig,
+                expiredInMinutes: effectiveExpiredInMinutes,
+            });
+
+            const invite = await this.tenantInviteRepository.create({
+                tenantId,
+                invitedById,
+                invitedEmail: dto.email,
+                tenantRole: dto.role,
+                type: inviteeType,
+                status: EnumTenantInviteStatus.pending,
+                token: tokenInfo.token,
+                expiresAt: tokenInfo.expiresAt,
+                createdBy: invitedById,
+                updatedBy: invitedById,
+            });
+            if (!invite) {
+                throw new NotFoundException({
+                    statusCode: EnumTenantStatusCodeError.inviteNotFound,
+                    message: 'tenant.invite.error.tokenInvalid',
+                });
+            }
+
+            await this.notificationUtil.sendTenantInvite(
                 dto.email,
-                tenantId
+                {
+                    tenantName: tenant.name,
+                    token: tokenInfo.token,
+                    expiresAt: tokenInfo.expiresAt,
+                    role: dto.role,
+                },
+                invitedById,
+                inviteeType === EnumTenantInviteType.registered
+                    ? existingUser?.id
+                    : undefined
             );
-        if (existingPending) {
-            await this.tenantInviteRepository.revoke(existingPending.id, invitedById);
+
+            return { data: this.mapInvite(invite) };
+        } catch (err: unknown) {
+            if (
+                err instanceof ConflictException ||
+                err instanceof ForbiddenException ||
+                err instanceof NotFoundException
+            ) {
+                throw err;
+            }
+
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
         }
-
-        const expiresInDays = dto.expiresInDays ?? this.defaultInviteExpiresInDays;
-        const now = this.helperService.dateCreate();
-        const expiresAt = this.helperService.dateForward(
-            now,
-            this.helperService.dateCreateDuration({ days: expiresInDays })
-        );
-        const token = this.helperService.randomString(64);
-
-        const invite = await this.tenantInviteRepository.create({
-            tenantId,
-            invitedById,
-            invitedEmail: dto.email,
-            tenantRole: dto.role,
-            type,
-            token,
-            expiresAt,
-            createdBy: invitedById,
-            updatedBy: invitedById,
-        });
-
-        this.notificationUtil.sendTenantInvite(
-            dto.email,
-            {
-                tenantName: tenant.name,
-                token,
-                expiresAt,
-                role: dto.role,
-            },
-            invitedById,
-            type === EnumTenantInviteType.registered ? existingUser?.id : undefined
-        );
-
-        return { data: this.mapToResponseDto(invite) };
     }
 
-    async claimRegistered(token: string, requestLog: IRequestLog): Promise<void> {
-        const invite =
-            await this.tenantInviteRepository.findOneActiveByToken(token);
+    async claimRegistered(
+        token: string,
+        userId: string,
+        requestLog: IRequestLog
+    ): Promise<void> {
+        const invite = await this.tenantInviteRepository.findOneActiveByToken(
+            token
+        );
         if (!invite) {
             throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.inviteNotFound,
+                message: 'tenant.invite.error.tokenInvalid',
+            });
+        }
+
+        const user = await this.userRepository.findOneById(userId);
+        if (!user || user.email !== invite.invitedEmail) {
+            throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.tenantInviteTokenInvalid,
+                message: 'tenant.invite.error.tokenInvalid',
+            });
+        }
+
+        const pendingMember = await this.tenantRepository.findMemberByTenantAndUser(
+            invite.tenantId,
+            userId
+        );
+        if (!pendingMember || pendingMember.status !== EnumTenantMemberStatus.pending) {
+            throw new ConflictException({
+                statusCode: EnumTenantStatusCodeError.memberExist,
+                message: 'tenant.member.error.exist',
+            });
+        }
+
+        await this.tenantInviteRepository.accept(
+            invite.id,
+            userId,
+            requestLog,
+            pendingMember.id
+        );
+    }
+
+    async signupAndClaim(
+        token: string,
+        { firstName, lastName, password }: InviteClaimRequestDto,
+        requestLog: IRequestLog
+    ): Promise<void> {
+        const invite = await this.tenantInviteRepository.findOneActiveByToken(
+            token
+        );
+        if (!invite) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.inviteNotFound,
                 message: 'tenant.invite.error.tokenInvalid',
             });
         }
@@ -166,54 +318,24 @@ export class TenantInviteService implements ITenantInviteService {
             });
         }
 
-        await this.tenantInviteRepository.acceptAndCreateMembership(
-            invite.id,
-            user.id,
+        const pendingMember = await this.tenantRepository.findMemberByTenantAndUser(
             invite.tenantId,
-            invite.tenantRole,
-            requestLog
+            user.id
         );
-    }
-
-    async signupAndClaim(
-        token: string,
-        firstName: string,
-        lastName: string,
-        password: string,
-        requestLog: IRequestLog
-    ): Promise<void> {
-        const invite =
-            await this.tenantInviteRepository.findOneActiveByToken(token);
-        if (!invite) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.tenantInviteTokenInvalid,
-                message: 'tenant.invite.error.tokenInvalid',
+        if (!pendingMember || pendingMember.status !== EnumTenantMemberStatus.pending) {
+            throw new ConflictException({
+                statusCode: EnumTenantStatusCodeError.memberExist,
+                message: 'tenant.member.error.exist',
             });
         }
-
-        if (invite.type !== EnumTenantInviteType.unregistered) {
-            throw new UnprocessableEntityException({
-                statusCode: EnumTenantStatusCodeError.tenantInviteTokenInvalid,
-                message: 'tenant.invite.error.tokenInvalid',
-            });
-        }
-
-        // TODO: We need to wrap this in try-catch and perform db ops under a single transaction
-        const stubUser = await this.userService.createForInvitation(
-            invite.invitedEmail,
-            EnumUserSignUpFrom.tenant,
-            requestLog,
-            invite.invitedById
-        );
 
         const name = `${firstName.trim()} ${lastName.trim()}`.trim();
-        const passwordPayload = this.authUtil.createPassword(stubUser.id, password);
+        const passwordPayload = this.authUtil.createPassword(user.id, password);
 
         await this.tenantInviteRepository.signupAndAccept(
             invite.id,
-            stubUser.id,
-            invite.tenantId,
-            invite.tenantRole,
+            user.id,
+            pendingMember.id,
             name,
             passwordPayload,
             requestLog
@@ -236,14 +358,15 @@ export class TenantInviteService implements ITenantInviteService {
             });
         }
 
-        if (invite.status === EnumTenantInviteStatus.accepted) {
+        const status = this.mapStatus(invite);
+        if (status.status === EnumTenantInviteStatus.accepted) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.tenantInviteAlreadyAccepted,
                 message: 'tenant.invite.error.alreadyAccepted',
             });
         }
 
-        if (invite.status === EnumTenantInviteStatus.revoked) {
+        if (status.status === EnumTenantInviteStatus.revoked) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.tenantInviteRevoked,
                 message: 'tenant.invite.error.revoked',
@@ -266,7 +389,7 @@ export class TenantInviteService implements ITenantInviteService {
             });
         }
 
-        return { data: this.mapToResponseDto(invite) };
+        return { data: this.mapInvite(invite) };
     }
 
     async listInvites(
@@ -284,7 +407,7 @@ export class TenantInviteService implements ITenantInviteService {
 
         return {
             ...others,
-            data: data.map(invite => this.mapToResponseDto(invite)),
+            data: data.map(invite => this.mapInvite(invite)),
         };
     }
 }

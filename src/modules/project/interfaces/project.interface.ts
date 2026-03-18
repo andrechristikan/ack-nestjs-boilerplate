@@ -13,7 +13,7 @@ export interface IProjectMemberInvite {
     createdAt: Date;
     expiresAt: Date;
     acceptedAt: Date | null;
-    deletedAt: Date | null;
+    revokedAt: Date | null;
 }
 
 export interface IProjectMember extends ProjectMember {
@@ -30,7 +30,7 @@ export interface IProjectMemberWithInvite extends IProjectMember {
         email: string;
         isVerified: boolean;
         verifiedAt: Date | null;
-        invites: IProjectMemberInvite[];
+        projectInvites: IProjectMemberInvite[];
     };
 }
 

@@ -12,8 +12,8 @@ import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim
 import {
     TenantPublicGetInviteDoc,
     TenantPublicSignupAndClaimDoc,
-} from '@modules/tenant/docs/tenant.public.doc';
-import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
+} from '@modules/invite/docs/tenant.public.doc';
+import { TenantInviteResponseDto } from '@modules/invite/dtos/response/tenant-invite.response.dto';
 import { TenantInviteService } from '@modules/tenant/services/tenant-invite.service';
 import {
     Body,
@@ -52,16 +52,13 @@ export class TenantPublicController {
     @Post('/invites/:token/signup')
     async signupAndClaim(
         @Param('token', RequestRequiredPipe) token: string,
-        @Body() { firstName, lastName, password }: InviteClaimRequestDto,
+        @Body() body: InviteClaimRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
     ): Promise<void> {
-        return this.tenantInviteService.signupAndClaim(
-            token,
-            firstName,
-            lastName,
-            password,
-            { ipAddress, userAgent }
-        );
+        return this.tenantInviteService.signupAndClaim(token, body, {
+            ipAddress,
+            userAgent,
+        });
     }
 }

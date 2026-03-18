@@ -1,54 +1,33 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
     EnumTenantInviteStatus,
-    EnumTenantMemberRole,
     EnumTenantMemberStatus,
     Prisma,
     TenantInvite,
 } from '@generated/prisma-client';
-import { ITenantInviteCreate } from '@modules/tenant/interfaces/tenant.interface';
 
 @Injectable()
 export class TenantInviteRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService,
         private readonly helperService: HelperService,
+        private readonly paginationService: PaginationService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    async findOnePendingByEmailAndTenant(
-        email: string,
-        tenantId: string
-    ): Promise<TenantInvite | null> {
-        return this.databaseService.tenantInvite.findFirst({
-            where: {
-                invitedEmail: email,
-                tenantId,
-                status: EnumTenantInviteStatus.pending,
-            },
-        });
-    }
-
-    async findOneActiveByToken(token: string): Promise<TenantInvite | null> {
-        const now = this.helperService.dateCreate();
-        return this.databaseService.tenantInvite.findFirst({
-            where: {
-                token,
-                status: EnumTenantInviteStatus.pending,
-                expiresAt: { gt: now },
-            },
-        });
+    async findOneById(id: string): Promise<TenantInvite | null> {
+        return this.databaseService.tenantInvite.findFirst({ where: { id } });
     }
 
     async findOneByIdAndTenant(
@@ -61,19 +40,51 @@ export class TenantInviteRepository {
     }
 
     async findOneByToken(token: string): Promise<TenantInvite | null> {
+        return this.databaseService.tenantInvite.findFirst({ where: { token } });
+    }
+
+    async findOneActiveByToken(token: string): Promise<TenantInvite | null> {
+        const now = this.helperService.dateCreate();
+
         return this.databaseService.tenantInvite.findFirst({
-            where: { token },
+            where: {
+                token,
+                status: EnumTenantInviteStatus.pending,
+                expiresAt: { gt: now },
+            },
         });
     }
 
-    async create(data: ITenantInviteCreate): Promise<TenantInvite> {
+    async findOnePendingByEmailAndTenant(
+        invitedEmail: string,
+        tenantId: string
+    ): Promise<TenantInvite | null> {
+        return this.databaseService.tenantInvite.findFirst({
+            where: {
+                invitedEmail,
+                tenantId,
+                status: EnumTenantInviteStatus.pending,
+            },
+            orderBy: {
+                createdAt: EnumPaginationOrderDirectionType.desc,
+            },
+        });
+    }
+
+    async create(
+        data: Prisma.TenantInviteUncheckedCreateInput
+    ): Promise<TenantInvite> {
         return this.databaseService.tenantInvite.create({ data });
     }
 
-    async revoke(id: string, revokedById: string): Promise<void> {
+    async revoke(inviteId: string, revokedById: string): Promise<void> {
         const now = this.helperService.dateCreate();
+
         await this.databaseService.tenantInvite.updateMany({
-            where: { id },
+            where: {
+                id: inviteId,
+                status: EnumTenantInviteStatus.pending,
+            },
             data: {
                 status: EnumTenantInviteStatus.revoked,
                 revokedAt: now,
@@ -83,12 +94,11 @@ export class TenantInviteRepository {
         });
     }
 
-    async acceptAndCreateMembership(
+    async accept(
         inviteId: string,
-        userId: string,
-        tenantId: string,
-        role: EnumTenantMemberRole,
-        _requestLog: IRequestLog
+        acceptedById: string,
+        requestLog: IRequestLog,
+        pendingMemberId: string
     ): Promise<void> {
         const now = this.helperService.dateCreate();
 
@@ -98,24 +108,32 @@ export class TenantInviteRepository {
                 data: {
                     status: EnumTenantInviteStatus.accepted,
                     acceptedAt: now,
-                    updatedBy: userId,
+                    updatedBy: acceptedById,
                 },
             });
 
-            await tx.tenantMember.create({
+            await tx.tenantMember.update({
+                where: { id: pendingMemberId },
                 data: {
-                    tenantId,
-                    userId,
-                    role,
                     status: EnumTenantMemberStatus.active,
-                    createdBy: userId,
-                    updatedBy: userId,
+                    updatedBy: acceptedById,
                 },
             });
 
             await tx.user.update({
-                where: { id: userId },
-                data: { lastTenantId: tenantId, updatedBy: userId },
+                where: { id: acceptedById },
+                data: {
+                    activityLogs: {
+                        create: {
+                            action: EnumActivityLogAction.userCompleteInvite,
+                            ipAddress: requestLog.ipAddress,
+                            userAgent: this.databaseUtil.toPlainObject(
+                                requestLog.userAgent
+                            ),
+                            createdBy: acceptedById,
+                        },
+                    },
+                },
             });
         });
     }
@@ -123,8 +141,7 @@ export class TenantInviteRepository {
     async signupAndAccept(
         inviteId: string,
         userId: string,
-        tenantId: string,
-        role: EnumTenantMemberRole,
+        pendingMemberId: string,
         name: string,
         {
             passwordHash,
@@ -156,7 +173,6 @@ export class TenantInviteRepository {
                     passwordAttempt: 0,
                     isVerified: true,
                     verifiedAt: now,
-                    lastTenantId: tenantId,
                     updatedBy: userId,
                     passwordHistories: {
                         create: {
@@ -179,13 +195,10 @@ export class TenantInviteRepository {
                 },
             });
 
-            await tx.tenantMember.create({
+            await tx.tenantMember.update({
+                where: { id: pendingMemberId },
                 data: {
-                    tenantId,
-                    userId,
-                    role,
                     status: EnumTenantMemberStatus.active,
-                    createdBy: userId,
                     updatedBy: userId,
                 },
             });

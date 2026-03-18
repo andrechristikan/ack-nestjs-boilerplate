@@ -13,21 +13,22 @@ import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
     ProjectDocParamsId,
+    ProjectDocParamsInviteId,
     ProjectDocParamsProjectMemberId,
 } from '@modules/project/constants/project.doc.constant';
-import { InviteCreateResponseDto } from '@modules/invite/dtos/response/invite-create.response.dto';
 import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
+import { ProjectInviteResponseDto } from '@modules/project/dtos/response/project-invite.response.dto';
 import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
-export function ProjectTenantSharedListDoc(): MethodDecorator {
+export function ProjectSharedListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'list tenant projects',
@@ -44,7 +45,7 @@ export function ProjectTenantSharedListDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedCreateDoc(): MethodDecorator {
+export function ProjectSharedCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'create tenant project',
@@ -65,7 +66,7 @@ export function ProjectTenantSharedCreateDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedGetDoc(): MethodDecorator {
+export function ProjectSharedGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'get tenant project detail',
@@ -85,7 +86,7 @@ export function ProjectTenantSharedGetDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedUpdateDoc(): MethodDecorator {
+export function ProjectSharedUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'update tenant project',
@@ -105,7 +106,7 @@ export function ProjectTenantSharedUpdateDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedUpdateSlugDoc(): MethodDecorator {
+export function ProjectSharedUpdateSlugDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'update tenant project slug',
@@ -125,7 +126,7 @@ export function ProjectTenantSharedUpdateSlugDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedDeleteDoc(): MethodDecorator {
+export function ProjectSharedDeleteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'delete tenant project',
@@ -143,7 +144,7 @@ export function ProjectTenantSharedDeleteDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedCreateMemberDoc(): MethodDecorator {
+export function ProjectSharedCreateMemberDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'create project member',
@@ -166,7 +167,7 @@ export function ProjectTenantSharedCreateMemberDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedCreateMemberInviteDoc(): MethodDecorator {
+export function ProjectSharedCreateMemberInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'create project member invite',
@@ -176,20 +177,19 @@ export function ProjectTenantSharedCreateMemberInviteDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
         DocRequest({
             params: ProjectDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
             dto: ProjectMemberInviteCreateRequestDto,
         }),
-        DocResponse<InviteCreateResponseDto>('project.member.invite.create', {
+        DocResponse<ProjectInviteResponseDto>('project.member.invite.create', {
             httpStatus: HttpStatus.CREATED,
-            dto: InviteCreateResponseDto,
+            dto: ProjectInviteResponseDto,
         })
     );
 }
 
-export function ProjectTenantSharedSendMemberInviteDoc(): MethodDecorator {
+export function ProjectSharedSendMemberInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'send project member invite',
@@ -199,9 +199,8 @@ export function ProjectTenantSharedSendMemberInviteDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
         DocRequest({
-            params: ProjectDocParamsProjectMemberId,
+            params: ProjectDocParamsInviteId,
         }),
         DocResponse<InviteSendResponseDto>('project.member.invite.send', {
             httpStatus: HttpStatus.CREATED,
@@ -210,7 +209,58 @@ export function ProjectTenantSharedSendMemberInviteDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedUpdateMemberDoc(): MethodDecorator {
+export function ProjectSharedListInvitesDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'list project member invites',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocTenantMemberProtected(),
+        DocRequest({
+            params: ProjectDocParamsId,
+        }),
+        DocResponsePaging<ProjectInviteResponseDto>('project.member.invite.list', {
+            dto: ProjectInviteResponseDto,
+            type: EnumPaginationType.offset,
+        })
+    );
+}
+
+export function ProjectSharedRevokeInviteDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'revoke project member invite',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocTenantMemberProtected(),
+        DocRequest({
+            params: ProjectDocParamsInviteId,
+        }),
+        DocResponse('project.member.invite.revoke')
+    );
+}
+
+export function ProjectSharedClaimInviteDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({ summary: 'claim project invite (registered users)' }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocRequest({
+            params: [{ name: 'token', required: true, type: 'string' }],
+        }),
+        DocResponse('project.member.invite.claim')
+    );
+}
+
+export function ProjectSharedUpdateMemberDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'update project member',
@@ -230,7 +280,7 @@ export function ProjectTenantSharedUpdateMemberDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedListMembersDoc(): MethodDecorator {
+export function ProjectSharedListMembersDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'list project members',
@@ -251,7 +301,7 @@ export function ProjectTenantSharedListMembersDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedListMemberRolesDoc(): MethodDecorator {
+export function ProjectSharedListMemberRolesDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'list project member roles',
@@ -269,7 +319,7 @@ export function ProjectTenantSharedListMemberRolesDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedLeaveMemberDoc(): MethodDecorator {
+export function ProjectSharedLeaveMemberDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'leave project',
@@ -287,7 +337,7 @@ export function ProjectTenantSharedLeaveMemberDoc(): MethodDecorator {
     );
 }
 
-export function ProjectTenantSharedRevokeMemberDoc(): MethodDecorator {
+export function ProjectSharedRevokeMemberDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'revoke project member access',

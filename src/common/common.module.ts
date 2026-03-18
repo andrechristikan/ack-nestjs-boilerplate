@@ -61,7 +61,7 @@ import { NotificationModule } from '@modules/notification/notification.module';
         TermPolicyModule,
         SessionModule,
         NotificationModule,
-        InviteModule.forRoot(),
+        InviteModule,
         TenantModule,
     ],
 })

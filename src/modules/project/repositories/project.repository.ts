@@ -14,9 +14,9 @@ import {
     IProjectMemberWithUser,
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
-import { ProjectInviteType } from '@modules/project/constants/project.constant';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumProjectInviteStatus,
     EnumProjectMemberRole,
     EnumProjectMemberStatus,
     Project,
@@ -261,10 +261,9 @@ export class ProjectRepository {
                             email: true,
                             isVerified: true,
                             verifiedAt: true,
-                            invites: {
+                            projectInvites: {
                                 where: {
-                                    inviteType: ProjectInviteType,
-                                    contextId: projectId,
+                                    projectId,
                                 },
                                 orderBy: {
                                     createdAt: 'desc',
@@ -275,7 +274,7 @@ export class ProjectRepository {
                                     createdAt: true,
                                     expiresAt: true,
                                     acceptedAt: true,
-                                    deletedAt: true,
+                                    revokedAt: true,
                                 },
                             },
                         },
@@ -342,14 +341,23 @@ async softDeleteMember(
                 data: { updatedBy: deletedBy, deletedAt, deletedBy },
             });
 
-            await tx.invite.updateMany({
+            await tx.projectInvite.updateMany({
                 where: {
-                    inviteType: ProjectInviteType,
-                    contextId: projectId,
-                    deletedAt: null,
+                    projectId,
+                    status: {
+                        in: [
+                            EnumProjectInviteStatus.pending,
+                            EnumProjectInviteStatus.expired,
+                        ],
+                    },
+                    revokedAt: null,
                     acceptedAt: null,
                 },
-                data: { deletedAt },
+                data: {
+                    status: EnumProjectInviteStatus.revoked,
+                    revokedAt: deletedAt,
+                    updatedBy: deletedBy,
+                },
             });
 
             return project;

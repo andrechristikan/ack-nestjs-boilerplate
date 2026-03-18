@@ -2,15 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { HelperService } from '@common/helper/services/helper.service';
 import { InviteStatusResponseDto } from '@modules/invite/dtos/response/invite-status.response.dto';
-import { InviteListResponseDto } from '@modules/invite/dtos/response/invite-list.response.dto';
 import { InviteConfigDto } from '@modules/invite/dtos/invite.config.dto';
-import {
-    InviteConfig,
-    InviteConfigOverride,
-    InviteTokenCreate,
-} from '@modules/invite/interfaces/invite.interface';
+import { InviteConfig, InviteTokenCreate } from '@modules/invite/interfaces/invite.interface';
 import { ConfigService } from '@nestjs/config';
-import { Invite as InviteModel, Prisma, User } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client';
 import { Duration } from 'luxon';
 import { ValidationError, validateSync } from 'class-validator';
 
@@ -39,23 +34,6 @@ function collectValidationMessages(
     }
 
     return messages;
-}
-
-export function mergeInviteConfig(
-    defaults: InviteConfig,
-    override?: InviteConfigOverride
-): InviteConfig {
-    return {
-        expiredInMinutes:
-            override?.expiredInMinutes ?? defaults.expiredInMinutes,
-        tokenLength: override?.tokenLength ?? defaults.tokenLength,
-        linkBaseUrl: override?.linkBaseUrl ?? defaults.linkBaseUrl,
-        resendInMinutes: override?.resendInMinutes ?? defaults.resendInMinutes,
-        reference: {
-            prefix: override?.reference?.prefix ?? defaults.reference.prefix,
-            length: override?.reference?.length ?? defaults.reference.length,
-        },
-    };
 }
 
 export function validateInviteConfig(
@@ -186,25 +164,4 @@ export class InviteUtil {
         });
     }
 
-    mapListItem(v: InviteModel & { user: User }): InviteListResponseDto {
-        return plainToInstance(InviteListResponseDto, {
-            id: v.id,
-            userId: v.userId,
-            email: v.to,
-            status: this.mapInviteStatus({
-                expiresAt: v.expiresAt,
-                sentAt: v.sentAt,
-                acceptedAt: v.acceptedAt,
-                deletedAt: v.deletedAt,
-            }),
-            metadata: this.toMetadataObject(v.metadata),
-            createdAt: v.createdAt,
-        });
-    }
-
-    mapList(
-        invites: (InviteModel & { user: User })[]
-    ): InviteListResponseDto[] {
-        return invites.map(v => this.mapListItem(v));
-    }
 }

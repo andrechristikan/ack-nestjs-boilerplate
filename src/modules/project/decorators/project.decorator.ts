@@ -1,9 +1,16 @@
-import { ProjectPermissionRequiredMetaKey } from '@modules/project/constants/project.constant';
+import {
+    ProjectPermissionRequiredMetaKey,
+    ProjectRoleRequiredMetaKey,
+} from '@modules/project/constants/project.constant';
 import { IRequestAppWithProject } from '@modules/project/interfaces/request.project.interface';
 import { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
 import { ProjectPermissionGuard } from '@modules/project/guards/project.permission.guard';
+import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
+import { TenantGuard } from '@modules/tenant/guards/tenant.guard';
+import { TenantMemberGuard } from '@modules/tenant/guards/tenant.member.guard';
+import { EnumProjectMemberRole } from '@generated/prisma-client';
 import {
     ExecutionContext,
     SetMetadata,
@@ -22,6 +29,15 @@ export function ProjectPermissionProtected(
     return applyDecorators(
         UseGuards(ProjectMemberGuard, ProjectPermissionGuard),
         SetMetadata(ProjectPermissionRequiredMetaKey, requiredAbilities)
+    );
+}
+
+export function ProjectRoleProtected(
+    ...requiredRoles: EnumProjectMemberRole[]
+): MethodDecorator {
+    return applyDecorators(
+        UseGuards(TenantGuard, TenantMemberGuard, ProjectRoleGuard),
+        SetMetadata(ProjectRoleRequiredMetaKey, requiredRoles)
     );
 }
 

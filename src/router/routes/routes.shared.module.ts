@@ -34,7 +34,7 @@ import { TenantModule } from '@modules/tenant/tenant.module';
         UserModule,
         PasswordHistoryModule,
         DeviceModule,
-        TenantModule
+        TenantModule,
     ],
 })
 export class RoutesSharedModule {}

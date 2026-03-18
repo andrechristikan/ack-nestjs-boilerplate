@@ -25,23 +25,25 @@ import {
     TenantCurrent,
     TenantRoleProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
-import { TenantInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant-invite.create.request.dto';
+import { TenantInviteCreateRequestDto } from '@modules/invite/dtos/request/tenant-invite.create.request.dto';
 import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
 import { TenantTransferOwnershipRequestDto } from '@modules/tenant/dtos/request/tenant.transfer-ownership.request.dto';
 import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
-import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
+import { TenantInviteResponseDto } from '@modules/invite/dtos/response/tenant-invite.response.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import {
     TenantSharedClaimInviteDoc,
-    TenantSharedCreateMemberDoc,
     TenantSharedCreateMemberInviteDoc,
-    TenantSharedDeleteMemberDoc,
     TenantSharedDeleteMemberInviteDoc,
-    TenantSharedGetCurrentTenantDoc,
     TenantSharedListMemberInvitesDoc,
+} from '@modules/invite/docs/tenant.shared.doc';
+import {
+    TenantSharedCreateMemberDoc,
+    TenantSharedDeleteMemberDoc,
+    TenantSharedGetCurrentTenantDoc,
     TenantSharedListMemberRolesDoc,
     TenantSharedListMembersDoc,
     TenantSharedUpdateCurrentTenantDoc,
@@ -304,10 +306,11 @@ export class TenantSharedController {
     @Post('/invites/:token/claim')
     async claimInvite(
         @Param('token', RequestRequiredPipe) token: string,
+        @AuthJwtPayload('userId') userId: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
     ): Promise<void> {
-        return this.tenantInviteService.claimRegistered(token, {
+        return this.tenantInviteService.claimRegistered(token, userId, {
             ipAddress,
             userAgent,
         });
