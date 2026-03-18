@@ -29,9 +29,7 @@ export class ProjectPublicController {
     async getInvite(
         @Param('token', RequestRequiredPipe) token: string
     ): Promise<IResponseReturn<InvitePublicResponseDto>> {
-        return this.projectMemberService
-            .getInviteByToken(token)
-            .then(data => ({ data }));
+        return this.projectMemberService.getInviteByToken(token);
     }
 
 }

@@ -7,8 +7,8 @@ import {
     INotificationNewDeviceLoginPayload,
     INotificationPushWorkerCleanupTokenPayload,
     INotificationPushWorkerPayload,
-    INotificationTenantInviteEmailPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushProcessorService } from '@modules/notification/services/notification.push.processor.service';
 import { Logger } from '@nestjs/common';

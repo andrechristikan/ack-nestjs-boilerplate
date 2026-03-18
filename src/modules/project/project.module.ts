@@ -10,9 +10,10 @@ import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
 import { ProjectPublicController } from '@modules/project/controllers/project.public.controller';
+import { InviteModule } from '@modules/invite/invite.module';
 
 @Module({
-    imports: [UserModule, RoleModule],
+    imports: [UserModule, RoleModule, InviteModule],
     providers: [
         ProjectService,
         ProjectMemberService,

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { EnumProjectInviteStatus } from '@prisma/client';
 
 export class InvitePublicResponseDto {
     @ApiProperty({
@@ -13,9 +14,9 @@ export class InvitePublicResponseDto {
 
     @ApiProperty({
         required: true,
-        enum: ['pending', 'expired', 'completed', 'deleted'],
+        enum: EnumProjectInviteStatus,
     })
-    status: 'pending' | 'expired' | 'completed' | 'deleted';
+    status: EnumProjectInviteStatus;
 
     @ApiProperty({
         required: false,

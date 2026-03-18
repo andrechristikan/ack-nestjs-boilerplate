@@ -2,59 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { HelperService } from '@common/helper/services/helper.service';
 import { InviteStatusResponseDto } from '@modules/invite/dtos/response/invite-status.response.dto';
-import { InviteConfigDto } from '@modules/invite/dtos/invite.config.dto';
 import { InviteConfig, InviteTokenCreate } from '@modules/invite/interfaces/invite.interface';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@generated/prisma-client';
 import { Duration } from 'luxon';
-import { ValidationError, validateSync } from 'class-validator';
-
-function collectValidationMessages(
-    errors: ValidationError[],
-    parentPath = ''
-): string[] {
-    const messages: string[] = [];
-
-    for (const error of errors) {
-        const currentPath = parentPath
-            ? `${parentPath}.${error.property}`
-            : error.property;
-
-        if (error.constraints) {
-            for (const constraint of Object.values(error.constraints)) {
-                messages.push(`${currentPath}: ${constraint}`);
-            }
-        }
-
-        if (error.children?.length) {
-            messages.push(
-                ...collectValidationMessages(error.children, currentPath)
-            );
-        }
-    }
-
-    return messages;
-}
-
-export function validateInviteConfig(
-    config: InviteConfig,
-    inviteType: string
-): void {
-    const payload = plainToInstance(InviteConfigDto, config);
-    const errors = validateSync(payload, {
-        whitelist: true,
-        forbidNonWhitelisted: false,
-    });
-
-    if (!errors.length) {
-        return;
-    }
-
-    const messages = collectValidationMessages(errors);
-    throw new Error(
-        `Invalid invite config for "${inviteType}": ${messages.join('; ')}`
-    );
-}
 
 @Injectable()
 export class InviteUtil {
@@ -67,31 +17,21 @@ export class InviteUtil {
         this.homeUrl = this.configService.get<string>('home.url');
     }
 
-    private toMetadataObject(
-        metadata: Prisma.JsonValue | null
-    ): Record<string, unknown> | null {
-        if (
-            !metadata ||
-            typeof metadata !== 'object' ||
-            Array.isArray(metadata)
-        ) {
-            return null;
-        }
-
-        return metadata as Record<string, unknown>;
-    }
-
-    inviteCreateReference(config: InviteConfig): string {
+    inviteCreateReference(
+        config: Pick<InviteConfig, 'reference'>
+    ): string {
         const random = this.helperService.randomString(config.reference.length);
 
         return `${config.reference.prefix}-${random}`;
     }
 
-    inviteCreateToken(config: InviteConfig): string {
+    inviteCreateToken(config: Pick<InviteConfig, 'tokenLength'>): string {
         return this.helperService.randomString(config.tokenLength);
     }
 
-    inviteSetExpiredDate(config: InviteConfig): Date {
+    inviteSetExpiredDate(
+        config: Pick<InviteConfig, 'expiredInMinutes'>
+    ): Date {
         const now = this.helperService.dateCreate();
 
         return this.helperService.dateForward(
@@ -113,8 +53,17 @@ export class InviteUtil {
         };
     }
 
-    createInviteLink(token: string, config: InviteConfig): string {
+    createInviteLink(
+        token: string,
+        config: Pick<InviteConfig, 'linkBaseUrl'>
+    ): string {
         return `${this.homeUrl}/${config.linkBaseUrl}/${token}`;
+    }
+
+    inviteRemainingSeconds(expiresAt: Date): number {
+        return this.helperService
+            .dateDiff(expiresAt, this.helperService.dateCreate())
+            .as('seconds');
     }
 
     mapInviteStatus(invite?: {
@@ -163,5 +112,4 @@ export class InviteUtil {
             ),
         });
     }
-
 }

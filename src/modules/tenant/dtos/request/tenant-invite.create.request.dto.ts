@@ -3,6 +3,7 @@ import { IsCustomEmail } from '@common/request/validations/request.custom-email.
 import { Transform } from 'class-transformer';
 import {
     IsEnum,
+    IsIn,
     IsNotEmpty,
     IsOptional,
     IsPositive,
@@ -12,6 +13,11 @@ import {
 import { EnumTenantMemberRole } from '@generated/prisma-client';
 
 export class TenantInviteCreateRequestDto {
+    private static readonly AllowedRoles = [
+        EnumTenantMemberRole.admin,
+        EnumTenantMemberRole.member,
+    ] as const;
+
     @ApiProperty({
         required: true,
         description: 'Email address to invite',
@@ -24,13 +30,13 @@ export class TenantInviteCreateRequestDto {
 
     @ApiProperty({
         required: true,
-        description:
-            'Membership role for the invited member (owner is forbidden)',
-        enum: EnumTenantMemberRole,
+        description: 'Membership role for the invited member',
+        enum: TenantInviteCreateRequestDto.AllowedRoles,
     })
     @IsEnum(EnumTenantMemberRole)
+    @IsIn(TenantInviteCreateRequestDto.AllowedRoles)
     @IsNotEmpty()
-    role: EnumTenantMemberRole;
+    role: (typeof TenantInviteCreateRequestDto.AllowedRoles)[number];
 
     @ApiProperty({
         description:

@@ -4,8 +4,8 @@ import {
     INotificationPushWorkerCleanupTokenPayload,
     INotificationPushWorkerPayload,
     INotificationSendPushPayload,
-    INotificationTenantInviteEmailPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';

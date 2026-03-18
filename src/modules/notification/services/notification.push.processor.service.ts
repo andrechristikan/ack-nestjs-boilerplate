@@ -8,8 +8,8 @@ import {
     INotificationNewDeviceLoginPayload,
     INotificationPushWorkerCleanupTokenPayload,
     INotificationPushWorkerPayload,
-    INotificationTenantInviteEmailPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { INotificationPushProcessorService } from '@modules/notification/interfaces/notification.push.processor.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';

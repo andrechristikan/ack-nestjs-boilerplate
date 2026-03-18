@@ -12,8 +12,8 @@ import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim
 import {
     TenantPublicGetInviteDoc,
     TenantPublicSignupAndClaimDoc,
-} from '@modules/invite/docs/tenant.public.doc';
-import { TenantInviteResponseDto } from '@modules/invite/dtos/response/tenant-invite.response.dto';
+} from '@modules/tenant/docs/tenant.invite.public.doc';
+import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
 import { TenantInviteService } from '@modules/tenant/services/tenant-invite.service';
 import {
     Body,

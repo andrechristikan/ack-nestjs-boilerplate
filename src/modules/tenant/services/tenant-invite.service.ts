@@ -8,8 +8,9 @@ import {
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { IConfigInvite } from '@configs/invite.config';
 import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
-import { TenantInviteCreateRequestDto } from '@modules/invite/dtos/request/tenant-invite.create.request.dto';
-import { TenantInviteResponseDto } from '@modules/invite/dtos/response/tenant-invite.response.dto';
+import { EnumInviteStatusCodeError } from '@modules/invite/enums/invite.status-code.enum';
+import { TenantInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant-invite.create.request.dto';
+import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
 import { InviteUtil } from '@modules/invite/utils/invite.util';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { TenantInviteRepository } from '@modules/tenant/repositories/tenant-invite.repository';
@@ -24,17 +25,16 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
     EnumTenantInviteStatus,
     EnumTenantInviteType,
-    EnumTenantMemberRole,
     EnumTenantMemberStatus,
-    TenantInvite,
     EnumUserSignUpFrom,
     Prisma,
+    TenantInvite,
 } from '@generated/prisma-client';
 import { plainToInstance } from 'class-transformer';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class TenantInviteService {
@@ -46,7 +46,7 @@ export class TenantInviteService {
         private readonly authUtil: AuthUtil,
         private readonly inviteUtil: InviteUtil,
         private readonly notificationUtil: NotificationUtil,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
     ) {}
 
     private mapStatus(
@@ -122,13 +122,6 @@ export class TenantInviteService {
         invitedById: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<TenantInviteResponseDto>> {
-        if (dto.role === EnumTenantMemberRole.owner) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.tenantInviteOwnerForbidden,
-                message: 'tenant.invite.error.ownerRoleForbidden',
-            });
-        }
-
         const tenant = await this.tenantRepository.findOneById(tenantId);
         if (!tenant) {
             throw new NotFoundException({
@@ -166,18 +159,16 @@ export class TenantInviteService {
                 });
             }
 
-            const memberId = existingMember
-                ? existingMember.id
-                : (
-                      await this.tenantRepository.createMember({
-                          tenantId,
-                          userId: user.id,
-                          role: dto.role,
-                          status: EnumTenantMemberStatus.pending,
-                          createdBy: invitedById,
-                          updatedBy: invitedById,
-                      })
-                  ).id;
+            if (!existingMember) {
+                await this.tenantRepository.createMember({
+                    tenantId,
+                    userId: user.id,
+                    role: dto.role,
+                    status: EnumTenantMemberStatus.pending,
+                    createdBy: invitedById,
+                    updatedBy: invitedById,
+                });
+            }
 
             const existingPending =
                 await this.tenantInviteRepository.findOnePendingByEmailAndTenant(
@@ -216,7 +207,7 @@ export class TenantInviteService {
             });
             if (!invite) {
                 throw new NotFoundException({
-                    statusCode: EnumTenantStatusCodeError.inviteNotFound,
+                    statusCode: EnumInviteStatusCodeError.notFound,
                     message: 'tenant.invite.error.tokenInvalid',
                 });
             }
@@ -263,7 +254,7 @@ export class TenantInviteService {
         );
         if (!invite) {
             throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.inviteNotFound,
+                statusCode: EnumInviteStatusCodeError.notFound,
                 message: 'tenant.invite.error.tokenInvalid',
             });
         }
@@ -271,7 +262,7 @@ export class TenantInviteService {
         const user = await this.userRepository.findOneById(userId);
         if (!user || user.email !== invite.invitedEmail) {
             throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.tenantInviteTokenInvalid,
+                statusCode: EnumInviteStatusCodeError.tokenInvalid,
                 message: 'tenant.invite.error.tokenInvalid',
             });
         }
@@ -305,7 +296,7 @@ export class TenantInviteService {
         );
         if (!invite) {
             throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.inviteNotFound,
+                statusCode: EnumInviteStatusCodeError.notFound,
                 message: 'tenant.invite.error.tokenInvalid',
             });
         }
@@ -353,7 +344,7 @@ export class TenantInviteService {
         );
         if (!invite) {
             throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.inviteNotFound,
+                statusCode: EnumInviteStatusCodeError.notFound,
                 message: 'tenant.invite.error.tokenInvalid',
             });
         }
@@ -361,14 +352,14 @@ export class TenantInviteService {
         const status = this.mapStatus(invite);
         if (status.status === EnumTenantInviteStatus.accepted) {
             throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.tenantInviteAlreadyAccepted,
+                statusCode: EnumInviteStatusCodeError.alreadyAccepted,
                 message: 'tenant.invite.error.alreadyAccepted',
             });
         }
 
         if (status.status === EnumTenantInviteStatus.revoked) {
             throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.tenantInviteRevoked,
+                statusCode: EnumInviteStatusCodeError.revoked,
                 message: 'tenant.invite.error.revoked',
             });
         }
@@ -384,7 +375,7 @@ export class TenantInviteService {
         const invite = await this.tenantInviteRepository.findOneByToken(token);
         if (!invite) {
             throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.inviteNotFound,
+                statusCode: EnumInviteStatusCodeError.notFound,
                 message: 'tenant.invite.error.tokenInvalid',
             });
         }

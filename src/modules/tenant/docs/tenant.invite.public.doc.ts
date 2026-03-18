@@ -4,10 +4,10 @@ import {
     DocRequest,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
-import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
-import { TenantInviteResponseDto } from '@modules/invite/dtos/response/tenant-invite.response.dto';
-import { applyDecorators } from '@nestjs/common';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
+import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
+import { applyDecorators } from '@nestjs/common';
 
 export function TenantPublicGetInviteDoc(): MethodDecorator {
     return applyDecorators(

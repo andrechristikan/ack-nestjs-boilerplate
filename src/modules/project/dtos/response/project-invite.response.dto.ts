@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumProjectMemberRole } from '@generated/prisma-client';
-import { EnumProjectInviteStatus } from '@modules/project/enums/project-invite.status.enum';
+import {
+    EnumProjectInviteStatus,
+    EnumProjectMemberRole,
+} from '@generated/prisma-client';
 
 export class ProjectInviteResponseDto {
     @ApiProperty({ required: true })

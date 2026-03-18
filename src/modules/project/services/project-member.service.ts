@@ -18,11 +18,9 @@ import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/pro
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectInviteResponseDto } from '@modules/project/dtos/response/project-invite.response.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
-import { EnumProjectInviteStatus } from '@modules/project/enums/project-invite.status.enum';
 import { ProjectInviteRepository } from '@modules/project/repositories/project-invite.repository';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
-import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     ConflictException,
@@ -35,16 +33,13 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-    EnumProjectInviteStatus as EnumProjectInviteStatusDb,
+    EnumProjectInviteStatus,
     EnumProjectMemberRole,
     EnumProjectMemberStatus,
     EnumRoleScope,
     EnumTenantMemberRole,
-    EnumTenantMemberStatus,
     Prisma,
-    ProjectInvite,
 } from '@generated/prisma-client';
-import { plainToInstance } from 'class-transformer';
 import { Duration } from 'luxon';
 
 @Injectable()
@@ -52,95 +47,16 @@ export class ProjectMemberService {
     constructor(
         private readonly projectRepository: ProjectRepository,
         private readonly projectInviteRepository: ProjectInviteRepository,
-        private readonly tenantRepository: TenantRepository,
         private readonly userRepository: UserRepository,
         private readonly inviteUtil: InviteUtil,
         private readonly notificationUtil: NotificationUtil,
         private readonly projectUtil: ProjectUtil,
         private readonly helperService: HelperService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
     ) {}
 
     private getInviteConfig(): IConfigInvite['project'] {
         return this.configService.getOrThrow<IConfigInvite>('invite').project;
-    }
-
-    private mapInviteStatus(
-        invite: Pick<
-            ProjectInvite,
-            'status' | 'expiresAt' | 'acceptedAt' | 'revokedAt'
-        >
-    ): Pick<
-        ProjectInviteResponseDto,
-        'status' | 'remainingSeconds' | 'expiresAt' | 'acceptedAt' | 'revokedAt'
-    > {
-        const now = Date.now();
-
-        if (
-            invite.status === EnumProjectInviteStatusDb.revoked ||
-            invite.revokedAt
-        ) {
-            return {
-                status: EnumProjectInviteStatus.revoked,
-                revokedAt: invite.revokedAt ?? undefined,
-                expiresAt: invite.expiresAt,
-            };
-        }
-
-        if (
-            invite.status === EnumProjectInviteStatusDb.accepted ||
-            invite.acceptedAt
-        ) {
-            return {
-                status: EnumProjectInviteStatus.accepted,
-                acceptedAt: invite.acceptedAt,
-                expiresAt: invite.expiresAt,
-            };
-        }
-
-        if (invite.expiresAt.getTime() <= now) {
-            return {
-                status: EnumProjectInviteStatus.expired,
-                expiresAt: invite.expiresAt,
-            };
-        }
-
-        return {
-            status: EnumProjectInviteStatus.pending,
-            expiresAt: invite.expiresAt,
-            remainingSeconds: Math.max(
-                0,
-                Math.floor((invite.expiresAt.getTime() - now) / 1000)
-            ),
-        };
-    }
-
-    private mapInvite(
-        invite: Pick<
-            ProjectInvite,
-            | 'id'
-            | 'invitedById'
-            | 'invitedEmail'
-            | 'projectId'
-            | 'projectRole'
-            | 'status'
-            | 'expiresAt'
-            | 'acceptedAt'
-            | 'revokedAt'
-            | 'revokedById'
-            | 'createdAt'
-        >
-    ): ProjectInviteResponseDto {
-        return plainToInstance(ProjectInviteResponseDto, {
-            id: invite.id,
-            invitedById: invite.invitedById,
-            invitedEmail: invite.invitedEmail,
-            projectId: invite.projectId,
-            projectRole: invite.projectRole,
-            revokedById: invite.revokedById,
-            createdAt: invite.createdAt,
-            ...this.mapInviteStatus(invite),
-        });
     }
 
     async create(
@@ -169,7 +85,6 @@ export class ProjectMemberService {
                 message: 'project.member.error.userNotFound',
             });
         }
-        await this.assertIsActiveTenantMember(project.tenantId, user.id);
 
         if (member) {
             throw new ConflictException({
@@ -263,8 +178,6 @@ export class ProjectMemberService {
             });
         }
 
-        await this.assertIsActiveTenantMember(project.tenantId, user.id);
-
         const existingMember = await this.projectRepository.findMemberByProjectAndUser(
             projectId,
             user.id
@@ -306,7 +219,7 @@ export class ProjectMemberService {
                 invitedEmail: normalizedEmail,
                 projectId,
                 projectRole: dto.role,
-                status: EnumProjectInviteStatusDb.pending,
+                status: EnumProjectInviteStatus.pending,
                 token: tokenInfo.token,
                 expiresAt: tokenInfo.expiresAt,
                 createdBy,
@@ -329,7 +242,7 @@ export class ProjectMemberService {
 
             await this.projectInviteRepository.markSent(invite.id, createdBy);
 
-            return { data: this.mapInvite(invite) };
+            return { data: this.projectUtil.mapInvite(invite) };
         } catch (err: unknown) {
             if (
                 err instanceof ConflictException ||
@@ -347,7 +260,9 @@ export class ProjectMemberService {
         }
     }
 
-    async getInviteByToken(token: string): Promise<InvitePublicResponseDto> {
+    async getInviteByToken(
+        token: string
+    ): Promise<IResponseReturn<InvitePublicResponseDto>> {
         const invite = await this.projectInviteRepository.findOneByToken(token);
         if (!invite) {
             throw new NotFoundException({
@@ -364,19 +279,19 @@ export class ProjectMemberService {
             });
         }
 
-        const status = this.mapInviteStatus(invite);
+        const remainingSeconds =
+            invite.status === EnumProjectInviteStatus.pending
+                ? this.inviteUtil.inviteRemainingSeconds(invite.expiresAt)
+                : undefined;
 
         return {
-            email: invite.invitedEmail,
-            isVerified: user.isVerified,
-            status:
-                status.status === EnumProjectInviteStatus.accepted
-                    ? 'completed'
-                    : status.status === EnumProjectInviteStatus.revoked
-                      ? 'deleted'
-                      : status.status,
-            expiresAt: status.expiresAt,
-            remainingSeconds: status.remainingSeconds,
+            data: {
+                email: invite.invitedEmail,
+                isVerified: user.isVerified,
+                status: invite.status,
+                expiresAt: invite.expiresAt,
+                remainingSeconds,
+            },
         };
     }
 
@@ -410,8 +325,6 @@ export class ProjectMemberService {
                 message: 'project.error.notFound',
             });
         }
-
-        await this.assertIsActiveTenantMember(project.tenantId, userId);
 
         try {
             const existingMember =
@@ -479,8 +392,7 @@ export class ProjectMemberService {
             });
         }
 
-        const status = this.mapInviteStatus(invite);
-        if (status.status !== EnumProjectInviteStatus.pending) {
+        if (invite.status !== EnumProjectInviteStatus.pending) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'project.member.error.inviteAlreadyExpired',
@@ -569,22 +481,21 @@ export class ProjectMemberService {
             });
         }
 
-        const status = this.mapInviteStatus(invite);
-        if (status.status === EnumProjectInviteStatus.accepted) {
+        if (invite.status === EnumProjectInviteStatus.accepted) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'project.member.error.inviteAlreadyAccepted',
             });
         }
 
-        if (status.status === EnumProjectInviteStatus.revoked) {
+        if (invite.status === EnumProjectInviteStatus.revoked) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'project.member.error.inviteAlreadyRevoked',
             });
         }
 
-        if (status.status === EnumProjectInviteStatus.expired) {
+        if (invite.status === EnumProjectInviteStatus.expired) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'project.member.error.inviteAlreadyExpired',
@@ -610,7 +521,7 @@ export class ProjectMemberService {
 
         return {
             ...others,
-            data: data.map(invite => this.mapInvite(invite)),
+            data: data.map(invite => this.projectUtil.mapInvite(invite)),
         };
     }
 
@@ -783,20 +694,4 @@ export class ProjectMemberService {
         }
     }
 
-    private async assertIsActiveTenantMember(
-        tenantId: string,
-        userId: string
-    ): Promise<void> {
-        const tenantMember =
-            await this.tenantRepository.findMemberByTenantAndUser(
-                tenantId,
-                userId
-            );
-        if (!tenantMember || tenantMember.status !== EnumTenantMemberStatus.active) {
-            throw new ForbiddenException({
-                statusCode: HttpStatus.FORBIDDEN,
-                message: 'project.member.error.notTenantMember',
-            });
-        }
-    }
 }

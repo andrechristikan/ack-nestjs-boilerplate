@@ -3,8 +3,8 @@ import {
     INotificationNewDeviceLoginPayload,
     INotificationPushWorkerCleanupTokenPayload,
     INotificationPushWorkerPayload,
-    INotificationTenantInviteEmailPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { Job } from 'bullmq';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';

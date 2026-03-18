@@ -5,10 +5,10 @@ import {
     DocResponse,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { TenantInviteCreateRequestDto } from '@modules/invite/dtos/request/tenant-invite.create.request.dto';
-import { TenantInviteResponseDto } from '@modules/invite/dtos/response/tenant-invite.response.dto';
-import { applyDecorators } from '@nestjs/common';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { TenantInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant-invite.create.request.dto';
+import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
+import { applyDecorators } from '@nestjs/common';
 
 export function TenantSharedCreateMemberInviteDoc(): MethodDecorator {
     return applyDecorators(

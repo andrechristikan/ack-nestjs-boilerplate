@@ -1,21 +1,12 @@
 import { registerAs } from '@nestjs/config';
 import { InviteConfig } from '@modules/invite/interfaces/invite.interface';
-import {
-    ProjectInviteType,
-    TenantInviteType,
-} from '@modules/invite/constants/invite-type.constant';
 
-export interface IInviteContextConfig extends InviteConfig {}
+export type IInviteContextConfig = InviteConfig;
 
 export interface IConfigInvite {
     tenant: IInviteContextConfig;
     project: IInviteContextConfig;
 }
-
-export const InviteTypeConfigSectionMap = {
-    [TenantInviteType]: 'tenant',
-    [ProjectInviteType]: 'project',
-} as const;
 
 export default registerAs(
     'invite',

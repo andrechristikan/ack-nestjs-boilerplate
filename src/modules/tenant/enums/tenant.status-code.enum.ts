@@ -12,10 +12,4 @@ export enum EnumTenantStatusCodeError {
     memberIdInvalid = 5200,
     loginNoMembership = 5201,
     roleScopeMismatch = 5202,
-    inviteNotFound = 5206,
-    tenantInviteExpired = 5207,
-    tenantInviteRevoked = 5208,
-    tenantInviteAlreadyAccepted = 5209,
-    tenantInviteOwnerForbidden = 5210,
-    tenantInviteTokenInvalid = 5211,
 }
