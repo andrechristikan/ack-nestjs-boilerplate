@@ -11,7 +11,6 @@ import { TenantInviteRepository } from '@modules/tenant/repositories/tenant-invi
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
 import { AuthModule } from '@modules/auth/auth.module';
-import { InviteModule } from '@modules/invite/invite.module';
 
 @Global()
 @Module({
@@ -38,7 +37,6 @@ import { InviteModule } from '@modules/invite/invite.module';
         UserModule,
         RoleModule,
         AuthModule,
-        InviteModule,
     ],
     controllers: [],
 })

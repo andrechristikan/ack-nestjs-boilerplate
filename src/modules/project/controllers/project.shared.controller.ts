@@ -38,9 +38,9 @@ import {
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
-import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectInviteResponseDto } from '@modules/project/dtos/response/project-invite.response.dto';
+import { ProjectInviteSendResponseDto } from '@modules/project/dtos/response/project-invite-send.response.dto';
 import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
@@ -78,7 +78,10 @@ import {
     TenantMemberProtected,
     TenantRoleProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
-import { ITenant, ITenantMember } from '@modules/tenant/interfaces/tenant.interface';
+import {
+    ITenant,
+    ITenantMember,
+} from '@modules/tenant/interfaces/tenant.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     Body,
@@ -135,10 +138,7 @@ export class ProjectSharedController {
 
     @ProjectSharedCreateDoc()
     @Response('project.create')
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
+    @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -283,7 +283,11 @@ export class ProjectSharedController {
         @Param('inviteId', RequestRequiredPipe) inviteId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.projectMemberService.revokeInvite(projectId, inviteId, revokedBy);
+        return this.projectMemberService.revokeInvite(
+            projectId,
+            inviteId,
+            revokedBy
+        );
     }
 
     @ProjectSharedClaimInviteDoc()
@@ -319,7 +323,7 @@ export class ProjectSharedController {
         @AuthJwtPayload('userId') requestedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
-    ): Promise<IResponseReturn<InviteSendResponseDto>> {
+    ): Promise<IResponseReturn<ProjectInviteSendResponseDto>> {
         return this.projectMemberService.sendInvite(
             projectId,
             inviteId,

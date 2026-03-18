@@ -3,7 +3,7 @@ import {
     EnumProjectMemberRole,
     EnumProjectMemberStatus,
 } from '@generated/prisma-client';
-import { InviteStatusResponseDto } from '@modules/invite/dtos/response/invite-status.response.dto';
+import { ProjectInviteStatusResponseDto } from '@modules/project/dtos/response/project-invite-status.response.dto';
 
 export class ProjectMemberResponseDto {
     @ApiProperty({
@@ -51,8 +51,8 @@ export class ProjectMemberResponseDto {
     createdAt: Date;
 
     @ApiProperty({
-        required: true,
-        type: InviteStatusResponseDto,
+        required: false,
+        type: ProjectInviteStatusResponseDto,
     })
-    invite: InviteStatusResponseDto;
+    invite?: ProjectInviteStatusResponseDto;
 }

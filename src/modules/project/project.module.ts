@@ -9,11 +9,9 @@ import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
-import { ProjectPublicController } from '@modules/project/controllers/project.public.controller';
-import { InviteModule } from '@modules/invite/invite.module';
 
 @Module({
-    imports: [UserModule, RoleModule, InviteModule],
+    imports: [UserModule, RoleModule],
     providers: [
         ProjectService,
         ProjectMemberService,
@@ -30,6 +28,6 @@ import { InviteModule } from '@modules/invite/invite.module';
         ProjectRepository,
         ProjectInviteRepository,
     ],
-    controllers: [ProjectPublicController],
+    controllers: [],
 })
 export class ProjectModule {}

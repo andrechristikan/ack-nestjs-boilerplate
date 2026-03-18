@@ -272,6 +272,7 @@ export class ProjectRepository {
                                 select: {
                                     id: true,
                                     createdAt: true,
+                                    status: true,
                                     expiresAt: true,
                                     acceptedAt: true,
                                     revokedAt: true,

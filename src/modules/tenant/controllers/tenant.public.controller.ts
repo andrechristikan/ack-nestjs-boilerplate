@@ -8,11 +8,11 @@ import { IResponseReturn } from '@common/response/interfaces/response.interface'
 import { UserAgent } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
 import {
     TenantPublicGetInviteDoc,
     TenantPublicSignupAndClaimDoc,
 } from '@modules/tenant/docs/tenant.invite.public.doc';
+import { TenantInviteSignupRequestDto } from '@modules/tenant/dtos/request/tenant-invite-signup.request.dto';
 import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
 import { TenantInviteService } from '@modules/tenant/services/tenant-invite.service';
 import {
@@ -52,7 +52,7 @@ export class TenantPublicController {
     @Post('/invites/:token/signup')
     async signupAndClaim(
         @Param('token', RequestRequiredPipe) token: string,
-        @Body() body: InviteClaimRequestDto,
+        @Body() body: TenantInviteSignupRequestDto,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
     ): Promise<void> {

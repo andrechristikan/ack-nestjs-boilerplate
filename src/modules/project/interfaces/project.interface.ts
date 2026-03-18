@@ -1,4 +1,5 @@
 import {
+    EnumProjectInviteStatus,
     EnumProjectMemberRole,
     EnumProjectMemberStatus,
     Project,
@@ -11,6 +12,7 @@ export type IProject = Project;
 export interface IProjectMemberInvite {
     id: string;
     createdAt: Date;
+    status: EnumProjectInviteStatus;
     expiresAt: Date;
     acceptedAt: Date | null;
     revokedAt: Date | null;

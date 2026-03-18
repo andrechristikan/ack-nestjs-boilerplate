@@ -16,12 +16,12 @@ import {
     ProjectDocParamsInviteId,
     ProjectDocParamsProjectMemberId,
 } from '@modules/project/constants/project.doc.constant';
-import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectInviteResponseDto } from '@modules/project/dtos/response/project-invite.response.dto';
+import { ProjectInviteSendResponseDto } from '@modules/project/dtos/response/project-invite-send.response.dto';
 import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
@@ -202,9 +202,9 @@ export function ProjectSharedSendMemberInviteDoc(): MethodDecorator {
         DocRequest({
             params: ProjectDocParamsInviteId,
         }),
-        DocResponse<InviteSendResponseDto>('project.member.invite.send', {
+        DocResponse<ProjectInviteSendResponseDto>('project.member.invite.send', {
             httpStatus: HttpStatus.CREATED,
-            dto: InviteSendResponseDto,
+            dto: ProjectInviteSendResponseDto,
         })
     );
 }

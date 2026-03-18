@@ -7,16 +7,15 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { IConfigInvite } from '@configs/invite.config';
-import { InvitePublicResponseDto } from '@modules/invite/dtos/response/invite-public.response.dto';
-import { InviteSendResponseDto } from '@modules/invite/dtos/response/invite-send.response.dto';
-import { InviteUtil } from '@modules/invite/utils/invite.util';
+import { IConfigProject } from '@configs/project.config';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ProjectInviteType } from '@modules/project/constants/project.constant';
 import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectInviteResponseDto } from '@modules/project/dtos/response/project-invite.response.dto';
+import { ProjectInvitePublicResponseDto } from '@modules/project/dtos/response/project-invite-public.response.dto';
+import { ProjectInviteSendResponseDto } from '@modules/project/dtos/response/project-invite-send.response.dto';
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectInviteRepository } from '@modules/project/repositories/project-invite.repository';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
@@ -48,15 +47,14 @@ export class ProjectMemberService {
         private readonly projectRepository: ProjectRepository,
         private readonly projectInviteRepository: ProjectInviteRepository,
         private readonly userRepository: UserRepository,
-        private readonly inviteUtil: InviteUtil,
         private readonly notificationUtil: NotificationUtil,
         private readonly projectUtil: ProjectUtil,
         private readonly helperService: HelperService,
         private readonly configService: ConfigService,
     ) {}
 
-    private getInviteConfig(): IConfigInvite['project'] {
-        return this.configService.getOrThrow<IConfigInvite>('invite').project;
+    private getInviteConfig(): IConfigProject['invite'] {
+        return this.configService.getOrThrow<IConfigProject>('project').invite;
     }
 
     async create(
@@ -209,7 +207,7 @@ export class ProjectMemberService {
             const effectiveExpiredInMinutes = dto.expiresIn
                 ? dto.expiresIn * 24 * 60
                 : inviteConfig.expiredInMinutes;
-            const tokenInfo = this.inviteUtil.createInviteToken({
+            const tokenInfo = this.projectUtil.createInviteToken({
                 ...inviteConfig,
                 expiredInMinutes: effectiveExpiredInMinutes,
             });
@@ -262,7 +260,7 @@ export class ProjectMemberService {
 
     async getInviteByToken(
         token: string
-    ): Promise<IResponseReturn<InvitePublicResponseDto>> {
+    ): Promise<IResponseReturn<ProjectInvitePublicResponseDto>> {
         const invite = await this.projectInviteRepository.findOneByToken(token);
         if (!invite) {
             throw new NotFoundException({
@@ -279,19 +277,8 @@ export class ProjectMemberService {
             });
         }
 
-        const remainingSeconds =
-            invite.status === EnumProjectInviteStatus.pending
-                ? this.inviteUtil.inviteRemainingSeconds(invite.expiresAt)
-                : undefined;
-
         return {
-            data: {
-                email: invite.invitedEmail,
-                isVerified: user.isVerified,
-                status: invite.status,
-                expiresAt: invite.expiresAt,
-                remainingSeconds,
-            },
+            data: this.projectUtil.mapPublicInvite(invite, user.isVerified),
         };
     }
 
@@ -380,7 +367,7 @@ export class ProjectMemberService {
         inviteId: string,
         requestedBy: string,
         _requestLog: IRequestLog
-    ): Promise<IResponseReturn<InviteSendResponseDto>> {
+    ): Promise<IResponseReturn<ProjectInviteSendResponseDto>> {
         const invite = await this.projectInviteRepository.findOneByIdAndProject(
             inviteId,
             projectId
@@ -429,7 +416,7 @@ export class ProjectMemberService {
             }
         }
 
-        const link = this.inviteUtil.createInviteLink(invite.token, inviteConfig);
+        const link = this.projectUtil.createInviteLink(invite.token, inviteConfig);
         await this.notificationUtil.sendInvite(
             user.id,
             {
@@ -451,11 +438,12 @@ export class ProjectMemberService {
 
         return {
             data: {
-                invite: this.inviteUtil.mapInviteStatus({
+                invite: this.projectUtil.mapInviteStatus({
+                    status: invite.status,
                     expiresAt: invite.expiresAt,
                     sentAt,
                     acceptedAt: invite.acceptedAt,
-                    deletedAt: invite.revokedAt,
+                    revokedAt: invite.revokedAt,
                 }),
                 resendAvailableAt: this.helperService.dateForward(
                     sentAt,
@@ -553,18 +541,14 @@ export class ProjectMemberService {
             data: data.map(member =>
                 this.projectUtil.mapMember(
                     member,
-                    this.inviteUtil.mapInviteStatus(
-                        member.user.projectInvites[0]
-                            ? {
-                                  expiresAt: member.user.projectInvites[0]
-                                      .expiresAt,
-                                  acceptedAt: member.user.projectInvites[0]
-                                      .acceptedAt,
-                                  deletedAt:
-                                      member.user.projectInvites[0].revokedAt,
-                              }
-                            : undefined
-                    )
+                    member.user.projectInvites[0]
+                        ? this.projectUtil.mapInviteStatus({
+                              status: member.user.projectInvites[0].status,
+                              expiresAt: member.user.projectInvites[0].expiresAt,
+                              acceptedAt: member.user.projectInvites[0].acceptedAt,
+                              revokedAt: member.user.projectInvites[0].revokedAt,
+                          })
+                        : undefined
                 )
             ),
         };

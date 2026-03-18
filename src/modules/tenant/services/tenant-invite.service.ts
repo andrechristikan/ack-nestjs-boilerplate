@@ -6,16 +6,16 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { IConfigInvite } from '@configs/invite.config';
-import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
-import { EnumInviteStatusCodeError } from '@modules/invite/enums/invite.status-code.enum';
+import { IConfigTenant } from '@configs/tenant.config';
+import { EnumInviteStatusCodeError } from '@modules/tenant/enums/tenant-invite.status-code.enum';
+import { TenantInviteSignupRequestDto } from '@modules/tenant/dtos/request/tenant-invite-signup.request.dto';
 import { TenantInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant-invite.create.request.dto';
 import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
-import { InviteUtil } from '@modules/invite/utils/invite.util';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { TenantInviteRepository } from '@modules/tenant/repositories/tenant-invite.repository';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
+import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
 import {
@@ -44,51 +44,10 @@ export class TenantInviteService {
         private readonly userRepository: UserRepository,
         private readonly userService: UserService,
         private readonly authUtil: AuthUtil,
-        private readonly inviteUtil: InviteUtil,
+        private readonly tenantUtil: TenantUtil,
         private readonly notificationUtil: NotificationUtil,
         private readonly configService: ConfigService,
     ) {}
-
-    private mapStatus(
-        invite: Pick<TenantInvite, 'status' | 'expiresAt' | 'acceptedAt' | 'revokedAt'>
-    ): Pick<
-        TenantInviteResponseDto,
-        'status' | 'remainingSeconds' | 'expiresAt' | 'acceptedAt' | 'revokedAt'
-    > {
-        const now = Date.now();
-
-        if (invite.status === EnumTenantInviteStatus.revoked || invite.revokedAt) {
-            return {
-                status: EnumTenantInviteStatus.revoked,
-                revokedAt: invite.revokedAt ?? undefined,
-                expiresAt: invite.expiresAt,
-            };
-        }
-
-        if (invite.status === EnumTenantInviteStatus.accepted || invite.acceptedAt) {
-            return {
-                status: EnumTenantInviteStatus.accepted,
-                acceptedAt: invite.acceptedAt,
-                expiresAt: invite.expiresAt,
-            };
-        }
-
-        if (invite.expiresAt.getTime() <= now) {
-            return {
-                status: EnumTenantInviteStatus.expired,
-                expiresAt: invite.expiresAt,
-            };
-        }
-
-        return {
-            status: EnumTenantInviteStatus.pending,
-            expiresAt: invite.expiresAt,
-            remainingSeconds: Math.max(
-                0,
-                Math.floor((invite.expiresAt.getTime() - now) / 1000)
-            ),
-        };
-    }
 
     private mapInvite(
         invite: Pick<
@@ -105,6 +64,13 @@ export class TenantInviteService {
             | 'createdAt'
         >
     ): TenantInviteResponseDto {
+        const inviteStatus = this.tenantUtil.mapInviteStatus({
+            status: invite.status,
+            expiresAt: invite.expiresAt,
+            acceptedAt: invite.acceptedAt,
+            revokedAt: invite.revokedAt,
+        });
+
         return plainToInstance(TenantInviteResponseDto, {
             id: invite.id,
             tenantId: invite.tenantId,
@@ -112,7 +78,11 @@ export class TenantInviteService {
             tenantRole: invite.tenantRole,
             type: invite.type,
             createdAt: invite.createdAt,
-            ...this.mapStatus(invite),
+            status: inviteStatus.status,
+            expiresAt: inviteStatus.expiresAt,
+            acceptedAt: inviteStatus.acceptedAt,
+            revokedAt: inviteStatus.revokedAt,
+            remainingSeconds: inviteStatus.remainingSeconds,
         });
     }
 
@@ -182,13 +152,13 @@ export class TenantInviteService {
                 );
             }
 
-            const inviteConfig = this.configService.getOrThrow<IConfigInvite>(
-                'invite'
-            ).tenant;
+            const inviteConfig = this.configService.getOrThrow<IConfigTenant>(
+                'tenant'
+            ).invite;
             const effectiveExpiredInMinutes = dto.expiresInDays
                 ? dto.expiresInDays * 24 * 60
                 : inviteConfig.expiredInMinutes;
-            const tokenInfo = this.inviteUtil.createInviteToken({
+            const tokenInfo = this.tenantUtil.createInviteToken({
                 ...inviteConfig,
                 expiredInMinutes: effectiveExpiredInMinutes,
             });
@@ -288,7 +258,7 @@ export class TenantInviteService {
 
     async signupAndClaim(
         token: string,
-        { firstName, lastName, password }: InviteClaimRequestDto,
+        { password }: TenantInviteSignupRequestDto,
         requestLog: IRequestLog
     ): Promise<void> {
         const invite = await this.tenantInviteRepository.findOneActiveByToken(
@@ -320,7 +290,8 @@ export class TenantInviteService {
             });
         }
 
-        const name = `${firstName.trim()} ${lastName.trim()}`.trim();
+        const emailName = invite.invitedEmail.split('@')[0]?.trim();
+        const name = user.name?.trim() || emailName || 'User';
         const passwordPayload = this.authUtil.createPassword(user.id, password);
 
         await this.tenantInviteRepository.signupAndAccept(
@@ -349,7 +320,12 @@ export class TenantInviteService {
             });
         }
 
-        const status = this.mapStatus(invite);
+        const status = this.tenantUtil.mapInviteStatus({
+            status: invite.status,
+            expiresAt: invite.expiresAt,
+            acceptedAt: invite.acceptedAt,
+            revokedAt: invite.revokedAt,
+        });
         if (status.status === EnumTenantInviteStatus.accepted) {
             throw new ForbiddenException({
                 statusCode: EnumInviteStatusCodeError.alreadyAccepted,

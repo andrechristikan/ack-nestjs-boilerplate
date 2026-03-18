@@ -5,7 +5,7 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
-import { InviteClaimRequestDto } from '@modules/invite/dtos/request/invite-claim.request.dto';
+import { TenantInviteSignupRequestDto } from '@modules/tenant/dtos/request/tenant-invite-signup.request.dto';
 import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
@@ -31,7 +31,7 @@ export function TenantPublicSignupAndClaimDoc(): MethodDecorator {
         DocRequest({
             params: [{ name: 'token', required: true, type: 'string' }],
             bodyType: EnumDocRequestBodyType.json,
-            dto: InviteClaimRequestDto,
+            dto: TenantInviteSignupRequestDto,
         }),
         DocResponse('tenant.invite.claim')
     );

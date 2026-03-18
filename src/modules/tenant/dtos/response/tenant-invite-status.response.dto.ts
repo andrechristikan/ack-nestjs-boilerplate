@@ -1,11 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { EnumTenantInviteStatus } from '@generated/prisma-client';
 
-export class InviteStatusResponseDto {
+export class TenantInviteStatusResponseDto {
     @ApiProperty({
         required: true,
-        enum: ['not_sent', 'pending', 'expired', 'completed', 'deleted'],
+        enum: EnumTenantInviteStatus,
     })
-    status: 'not_sent' | 'pending' | 'expired' | 'completed' | 'deleted';
+    status: EnumTenantInviteStatus;
 
     @ApiProperty({
         required: false,
@@ -27,11 +28,11 @@ export class InviteStatusResponseDto {
     @ApiProperty({
         required: false,
     })
-    completedAt?: Date;
+    acceptedAt?: Date;
 
     @ApiProperty({
         required: false,
-        description: 'Timestamp when the invitation was deleted',
+        description: 'Timestamp when the invitation was revoked',
     })
-    deletedAt?: Date;
+    revokedAt?: Date;
 }
