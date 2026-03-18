@@ -80,7 +80,7 @@ export class TenantInviteRepository {
     async revoke(inviteId: string, revokedById: string): Promise<void> {
         const now = this.helperService.dateCreate();
 
-        await this.databaseService.tenantInvite.updateMany({
+        await this.databaseService.tenantInvite.update({
             where: {
                 id: inviteId,
                 status: EnumTenantInviteStatus.pending,

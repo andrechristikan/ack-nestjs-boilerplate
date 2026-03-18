@@ -3,18 +3,12 @@ import {
     EnumTenantMemberStatus,
     Tenant,
     TenantMember,
-    User,
 } from '@generated/prisma-client';
 
 export type ITenant = Tenant;
 
 // TenantMember now includes role enum directly (no relation join needed)
 export type ITenantMember = TenantMember;
-
-// For member listings scoped to a tenant (need to know who the user is)
-export interface ITenantMemberWithUser extends ITenantMember {
-    user: User;
-}
 
 // For membership listings scoped to a user (need to know which tenant)
 export interface ITenantMemberWithTenant extends ITenantMember {

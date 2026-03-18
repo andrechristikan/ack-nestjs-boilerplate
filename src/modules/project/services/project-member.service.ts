@@ -416,7 +416,7 @@ export class ProjectMemberService {
             }
         }
 
-        const link = this.projectUtil.createInviteLink(invite.token, inviteConfig);
+        const link = this.projectUtil.createInviteLink(invite.token, inviteConfig.linkBaseUrl);
         await this.notificationUtil.sendInvite(
             user.id,
             {

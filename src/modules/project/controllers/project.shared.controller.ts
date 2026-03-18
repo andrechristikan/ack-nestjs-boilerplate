@@ -26,15 +26,6 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import {
-    ProjectMemberPolicyCreate,
-    ProjectMemberPolicyDelete,
-    ProjectMemberPolicyRead,
-    ProjectMemberPolicyUpdate,
-    ProjectPolicyDelete,
-    ProjectPolicyRead,
-    ProjectPolicyUpdate,
-} from '@modules/project/constants/project.policy.constant';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
@@ -66,7 +57,6 @@ import {
 } from '@modules/project/docs/project.tenant.shared.doc';
 import {
     ProjectMemberCurrent,
-    ProjectPermissionProtected,
     ProjectRoleProtected,
 } from '@modules/project/decorators/project.decorator';
 import { IProjectMember } from '@modules/project/interfaces/project.interface';
@@ -75,7 +65,6 @@ import { ProjectService } from '@modules/project/services/project.service';
 import {
     TenantCurrent,
     TenantMemberCurrent,
-    TenantMemberProtected,
     TenantRoleProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
 import {
@@ -153,8 +142,11 @@ export class ProjectSharedController {
 
     @ProjectSharedGetDoc()
     @Response('project.get')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectPolicyRead)
+    @ProjectRoleProtected(
+        EnumProjectMemberRole.admin,
+        EnumProjectMemberRole.member,
+        EnumProjectMemberRole.viewer
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -167,8 +159,7 @@ export class ProjectSharedController {
 
     @ProjectSharedUpdateDoc()
     @Response('project.update')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectPolicyUpdate)
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -183,8 +174,7 @@ export class ProjectSharedController {
 
     @ProjectSharedUpdateSlugDoc()
     @Response('project.update')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectPolicyUpdate)
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -199,8 +189,7 @@ export class ProjectSharedController {
 
     @ProjectSharedDeleteDoc()
     @Response('project.delete')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectPolicyDelete)
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -214,8 +203,7 @@ export class ProjectSharedController {
 
     @ProjectSharedCreateMemberDoc()
     @Response('project.member.create')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -229,11 +217,11 @@ export class ProjectSharedController {
     }
 
     @ProjectSharedCreateMemberInviteDoc()
-    @FeatureFlagProtected('projectInvites')
     @Response('project.member.invite.create')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('project.inviteAllowed')
     @ApiKeyProtected()
     @Post('/:projectId/members/invites')
     async createMemberInvite(
@@ -252,11 +240,11 @@ export class ProjectSharedController {
     }
 
     @ProjectSharedListInvitesDoc()
-    @FeatureFlagProtected('projectInvites')
     @ResponsePaging('project.member.invite.list')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('project.inviteAllowed')
     @ApiKeyProtected()
     @Get('/:projectId/members/invites')
     async listMemberInvites(
@@ -271,11 +259,11 @@ export class ProjectSharedController {
     }
 
     @ProjectSharedRevokeInviteDoc()
-    @FeatureFlagProtected('projectInvites')
     @Response('project.member.invite.revoke')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('project.inviteAllowed')
     @ApiKeyProtected()
     @Delete('/:projectId/members/invites/:inviteId')
     async revokeMemberInvite(
@@ -291,11 +279,11 @@ export class ProjectSharedController {
     }
 
     @ProjectSharedClaimInviteDoc()
-    @FeatureFlagProtected('projectInvites')
-    @HttpCode(HttpStatus.OK)
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('project.inviteAllowed')
     @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
     @Post('/invites/:token/claim')
     async claimInvite(
         @Param('token', RequestRequiredPipe) token: string,
@@ -310,11 +298,11 @@ export class ProjectSharedController {
     }
 
     @ProjectSharedSendMemberInviteDoc()
-    @FeatureFlagProtected('projectInvites')
     @Response('project.member.invite.send')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
+    @FeatureFlagProtected('project.inviteAllowed')
     @ApiKeyProtected()
     @Post('/:projectId/members/invites/:inviteId/send')
     async sendMemberInvite(
@@ -337,8 +325,7 @@ export class ProjectSharedController {
 
     @ProjectSharedUpdateMemberDoc()
     @Response('project.member.update')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectMemberPolicyUpdate)
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -359,8 +346,11 @@ export class ProjectSharedController {
 
     @ProjectSharedListMembersDoc()
     @ResponsePaging('project.member.list')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectMemberPolicyRead)
+    @ProjectRoleProtected(
+        EnumProjectMemberRole.admin,
+        EnumProjectMemberRole.member,
+        EnumProjectMemberRole.viewer
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -378,8 +368,7 @@ export class ProjectSharedController {
 
     @ProjectSharedListMemberRolesDoc()
     @Response('project.member.roles')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectMemberPolicyCreate)
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -392,8 +381,11 @@ export class ProjectSharedController {
 
     @ProjectSharedLeaveMemberDoc()
     @Response('project.member.leave')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectMemberPolicyRead)
+    @ProjectRoleProtected(
+        EnumProjectMemberRole.admin,
+        EnumProjectMemberRole.member,
+        EnumProjectMemberRole.viewer
+    )
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -407,8 +399,7 @@ export class ProjectSharedController {
 
     @ProjectSharedRevokeMemberDoc()
     @Response('project.member.revoke')
-    @TenantMemberProtected()
-    @ProjectPermissionProtected(ProjectMemberPolicyDelete)
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

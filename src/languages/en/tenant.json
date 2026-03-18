@@ -49,6 +49,7 @@
         "xTenantIdInvalid": "Tenant header is invalid.",
         "notFound": "Tenant was not found.",
         "inactive": "Tenant is inactive.",
-        "loginNoMembership": "Your account does not have access to any agencies. Please contact your administrator."
+        "loginNoMembership": "Your account does not have access to any agencies. Please contact your administrator.",
+        "nameUpdateForbidden": "Only the tenant owner can update the tenant name."
     }
 }

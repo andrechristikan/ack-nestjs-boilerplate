@@ -2,6 +2,17 @@ import { ApiProperty } from '@nestjs/swagger';
 import { UserTwoFactorResponseDto } from '@modules/user/dtos/response/user.two-factor.response.dto';
 import { Type } from 'class-transformer';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { faker } from '@faker-js/faker';
+
+export class UserLoginTenantResponseDto {
+    @ApiProperty({
+        description: 'Last active tenant ID for the user',
+        example: faker.database.mongodbObjectId(),
+        required: false,
+        nullable: true,
+    })
+    id?: string | null;
+}
 
 export class UserLoginResponseDto {
     @ApiProperty({
@@ -28,4 +39,12 @@ export class UserLoginResponseDto {
     })
     @Type(() => UserTwoFactorResponseDto)
     twoFactor?: UserTwoFactorResponseDto;
+
+    @ApiProperty({
+        required: false,
+        type: UserLoginTenantResponseDto,
+        description: 'Last active tenant for the user',
+    })
+    @Type(() => UserLoginTenantResponseDto)
+    tenant?: UserLoginTenantResponseDto;
 }

@@ -11,6 +11,8 @@ import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 import { TenantSharedController } from '@modules/tenant/controllers/tenant.shared.controller';
 import { TenantModule } from '@modules/tenant/tenant.module';
+import { ProjectSharedController } from '@modules/project/controllers/project.shared.controller';
+import { ProjectModule } from '@modules/project/project.module';
 
 /**
  * Shared routes module providing endpoints accessible by multiple user types.
@@ -27,14 +29,10 @@ import { TenantModule } from '@modules/tenant/tenant.module';
         DeviceSharedController,
         NotificationSharedController,
         TenantSharedController,
+        ProjectSharedController,
     ],
     providers: [],
     exports: [],
-    imports: [
-        UserModule,
-        PasswordHistoryModule,
-        DeviceModule,
-        TenantModule,
-    ],
+    imports: [UserModule, PasswordHistoryModule, DeviceModule, TenantModule, ProjectModule],
 })
 export class RoutesSharedModule {}

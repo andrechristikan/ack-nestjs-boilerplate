@@ -115,6 +115,15 @@ export class MigrationTenantSeed
                             `Member ${member.userEmail} already in ${tenant.name}, skipping...`
                         );
                     }
+
+                    await this.databaseService.user.update({
+                        where: { id: user.id, deletedAt: null },
+                        data: { lastTenantId: tenantRecord.id, updatedBy: this.SYSTEM_ID },
+                        select: { id: true },
+                    });
+                    this.logger.log(
+                        `Updated lastTenantId for ${member.userEmail} to ${tenant.name}`
+                    );
                 }
             }
         } catch (error: unknown) {

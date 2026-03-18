@@ -1683,6 +1683,7 @@ export class UserService implements IUserService {
                 data: {
                     isTwoFactorEnable: false,
                     tokens,
+                    tenant: { id: user.lastTenantId },
                 },
             };
         }
@@ -1716,6 +1717,7 @@ export class UserService implements IUserService {
                         otpauthUrl,
                         secret,
                     },
+                    tenant: { id: user.lastTenantId },
                 },
             };
         }
@@ -1730,6 +1732,7 @@ export class UserService implements IUserService {
                     backupCodesRemaining:
                         user.twoFactor.backupCodes.length ?? 0,
                 },
+                tenant: { id: user.lastTenantId },
             },
         };
     }

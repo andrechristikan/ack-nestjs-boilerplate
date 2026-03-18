@@ -15,6 +15,7 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { TenantInviteRepository } from '@modules/tenant/repositories/tenant-invite.repository';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
+import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
 import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
@@ -87,19 +88,11 @@ export class TenantInviteService {
     }
 
     async createInvite(
-        tenantId: string,
+        tenant: ITenant,
         dto: TenantInviteCreateRequestDto,
         invitedById: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<TenantInviteResponseDto>> {
-        const tenant = await this.tenantRepository.findOneById(tenantId);
-        if (!tenant) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.notFound,
-                message: 'tenant.error.notFound',
-            });
-        }
-
         try {
             const existingUser = await this.userRepository.findOneByEmail(dto.email);
             const inviteeType = existingUser
@@ -116,7 +109,7 @@ export class TenantInviteService {
 
             const existingMember =
                 await this.tenantRepository.findMemberByTenantAndUser(
-                    tenantId,
+                    tenant.id,
                     user.id
                 );
             if (
@@ -131,7 +124,7 @@ export class TenantInviteService {
 
             if (!existingMember) {
                 await this.tenantRepository.createMember({
-                    tenantId,
+                    tenantId: tenant.id,
                     userId: user.id,
                     role: dto.role,
                     status: EnumTenantMemberStatus.pending,
@@ -143,7 +136,7 @@ export class TenantInviteService {
             const existingPending =
                 await this.tenantInviteRepository.findOnePendingByEmailAndTenant(
                     dto.email,
-                    tenantId
+                    tenant.id
                 );
             if (existingPending) {
                 await this.tenantInviteRepository.revoke(
@@ -164,7 +157,7 @@ export class TenantInviteService {
             });
 
             const invite = await this.tenantInviteRepository.create({
-                tenantId,
+                tenantId: tenant.id,
                 invitedById,
                 invitedEmail: dto.email,
                 tenantRole: dto.role,
@@ -175,12 +168,6 @@ export class TenantInviteService {
                 createdBy: invitedById,
                 updatedBy: invitedById,
             });
-            if (!invite) {
-                throw new NotFoundException({
-                    statusCode: EnumInviteStatusCodeError.notFound,
-                    message: 'tenant.invite.error.tokenInvalid',
-                });
-            }
 
             await this.notificationUtil.sendTenantInvite(
                 dto.email,

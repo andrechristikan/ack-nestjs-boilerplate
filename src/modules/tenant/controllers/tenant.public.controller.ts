@@ -36,7 +36,7 @@ export class TenantPublicController {
 
     @TenantPublicGetInviteDoc()
     @Response('tenant.invite.get')
-    @FeatureFlagProtected('tenantInvites')
+    @FeatureFlagProtected('tenant.inviteAllowed')
     @ApiKeyProtected()
     @Get('/invites/:token')
     async getInvite(
@@ -46,9 +46,9 @@ export class TenantPublicController {
     }
 
     @TenantPublicSignupAndClaimDoc()
-    @HttpCode(HttpStatus.OK)
-    @FeatureFlagProtected('tenantInvites')
+    @FeatureFlagProtected('tenant.inviteAllowed')
     @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
     @Post('/invites/:token/signup')
     async signupAndClaim(
         @Param('token', RequestRequiredPipe) token: string,

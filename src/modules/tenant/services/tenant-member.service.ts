@@ -101,7 +101,7 @@ export class TenantMemberService implements ITenantMemberService {
             });
         }
 
-        if (dto.status === undefined && !dto.role) {
+        if (dto.status === undefined && dto.role === undefined) {
             return {};
         }
 

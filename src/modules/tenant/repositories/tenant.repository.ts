@@ -13,7 +13,6 @@ import {
     ITenantMemberCreate,
     ITenantMemberUpdate,
     ITenantMemberWithTenant,
-    ITenantMemberWithUser,
     ITenantUpdate,
 } from '@modules/tenant/interfaces/tenant.interface';
 import { Injectable } from '@nestjs/common';
@@ -54,15 +53,6 @@ export class TenantRepository {
     async findOneById(id: string): Promise<Tenant | null> {
         return this.databaseService.tenant.findFirst({
             where: { id, deletedAt: null },
-        });
-    }
-
-    async findOneActiveById(id: string): Promise<Tenant | null> {
-        return this.databaseService.tenant.findFirst({
-            where: {
-                id,
-                deletedAt: null,
-            },
         });
     }
 
@@ -164,7 +154,7 @@ export class TenantRepository {
     async findOneMemberByIdAndTenant(
         memberId: string,
         tenantId: string
-    ): Promise<ITenantMemberWithTenant | null> {
+    ): Promise<TenantMember | null> {
         return this.databaseService.tenantMember.findFirst({
             where: {
                 id: memberId,
@@ -172,9 +162,6 @@ export class TenantRepository {
                 tenant: {
                     deletedAt: null,
                 },
-            },
-            include: {
-                tenant: true,
             },
         });
     }
@@ -281,7 +268,7 @@ export class TenantRepository {
     }
 
     async transferOwnership(
-        tenantId: string,
+        _tenantId: string,
         currentOwnerMemberId: string,
         newOwnerMemberId: string,
         updatedBy: string
@@ -297,10 +284,9 @@ export class TenantRepository {
                 },
             });
 
-            await tx.tenantMember.updateMany({
+            await tx.tenantMember.update({
                 where: {
                     id: newOwnerMemberId,
-                    tenantId,
                 },
                 data: {
                     role: EnumTenantMemberRole.owner,
@@ -320,8 +306,8 @@ export class TenantRepository {
             Prisma.TenantMemberSelect,
             Prisma.TenantMemberWhereInput
         >
-    ): Promise<IResponsePagingReturn<ITenantMemberWithUser>> {
-        return this.paginationService.offset<ITenantMemberWithUser>(
+    ): Promise<IResponsePagingReturn<TenantMember>> {
+        return this.paginationService.offset<TenantMember>(
             this.databaseService.tenantMember,
             {
                 ...params,
@@ -331,9 +317,6 @@ export class TenantRepository {
                     tenant: {
                         deletedAt: null,
                     },
-                },
-                include: {
-                    user: true,
                 },
             }
         );

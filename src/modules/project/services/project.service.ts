@@ -1,6 +1,11 @@
 import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { Prisma } from '@generated/prisma-client';
+import {
+    EnumProjectMemberRole,
+    EnumProjectMemberStatus,
+    EnumTenantMemberRole,
+    Prisma,
+} from '@generated/prisma-client';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -32,11 +37,6 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import {
-    EnumProjectMemberRole,
-    EnumProjectMemberStatus,
-    EnumTenantMemberRole,
-} from '@generated/prisma-client';
 
 @Injectable()
 export class ProjectService {
@@ -165,7 +165,7 @@ export class ProjectService {
         return true;
     }
 
-async createForTenant(
+    async createForTenant(
         tenantId: string,
         dto: ProjectCreateRequestDto,
         createdBy: string

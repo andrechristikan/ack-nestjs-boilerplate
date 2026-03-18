@@ -13,30 +13,22 @@ export interface IMigrationProjectData {
 
 const projectData: IMigrationProjectData[] = [
     {
-        name: 'First Project',
-        description: 'Primary project for default organization',
-        tenantName: 'Default Organization',
-        members: [
-            {
-                userEmail: 'admin@mail.com',
-                projectRole: EnumProjectMemberRole.admin,
-            },
-            {
-                userEmail: 'user@mail.com',
-                projectRole: EnumProjectMemberRole.viewer,
-            },
-        ],
+        name: 'Default Project',
+        description: "Default project for Super Admin's Workspace",
+        tenantName: "Super Admin's Workspace",
+        members: [{ userEmail: 'superadmin@mail.com', projectRole: EnumProjectMemberRole.admin }],
     },
     {
-        name: 'First Project',
-        description: 'Primary project for another organization',
-        tenantName: 'Another Organization',
-        members: [
-            {
-                userEmail: 'admin@mail.com',
-                projectRole: EnumProjectMemberRole.admin,
-            },
-        ],
+        name: 'Default Project',
+        description: "Default project for Admin's Workspace",
+        tenantName: "Admin's Workspace",
+        members: [{ userEmail: 'admin@mail.com', projectRole: EnumProjectMemberRole.admin }],
+    },
+    {
+        name: 'Default Project',
+        description: "Default project for User's Workspace",
+        tenantName: "User's Workspace",
+        members: [{ userEmail: 'user@mail.com', projectRole: EnumProjectMemberRole.admin }],
     },
 ];
 
@@ -46,6 +38,6 @@ export const migrationProjectData: Record<
 > = {
     [EnumAppEnvironment.local]: projectData,
     [EnumAppEnvironment.development]: projectData,
-    [EnumAppEnvironment.staging]: projectData,
+    [EnumAppEnvironment.staging]: [],
     [EnumAppEnvironment.production]: [],
 };

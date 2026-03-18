@@ -41,7 +41,8 @@ export interface ITenantService {
     update(
         id: string,
         dto: TenantUpdateRequestDto,
-        updatedBy: string
+        updatedBy: string,
+        callerRole: EnumTenantMemberRole
     ): Promise<IResponseReturn<void>>;
     updateSlug(
         id: string,

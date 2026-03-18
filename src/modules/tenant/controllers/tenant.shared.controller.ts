@@ -23,6 +23,7 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     TenantCurrent,
+    TenantMemberCurrent,
     TenantRoleProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
 import { TenantInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant-invite.create.request.dto';
@@ -49,7 +50,10 @@ import {
     TenantSharedUpdateCurrentTenantDoc,
     TenantSharedUpdateMemberDoc,
 } from '@modules/tenant/docs/tenant.shared.doc';
-import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
+import {
+    ITenant,
+    ITenantMember,
+} from '@modules/tenant/interfaces/tenant.interface';
 import { TenantInviteService } from '@modules/tenant/services/tenant-invite.service';
 import { TenantMemberService } from '@modules/tenant/services/tenant-member.service';
 import { TenantService } from '@modules/tenant/services/tenant.service';
@@ -88,7 +92,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
+    @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Get('/current')
     async getCurrentTenant(
@@ -105,22 +109,23 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
+    @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Patch('/current/tenant')
     async updateCurrentTenant(
         @TenantCurrent() tenant: ITenant,
+        @TenantMemberCurrent() tenantMember: ITenantMember,
         @Body() body: TenantUpdateRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.tenantService.update(tenant.id, body, updatedBy);
+        return this.tenantService.update(tenant.id, body, updatedBy, tenantMember.role);
     }
 
     @Response('tenant.updateSlug')
     @TenantRoleProtected(EnumTenantMemberRole.owner)
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
+    @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Patch('/current/tenant/slug')
     async updateCurrentTenantSlug(
@@ -135,7 +140,7 @@ export class TenantSharedController {
     @TenantRoleProtected(EnumTenantMemberRole.owner)
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
+    @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Patch('/current/ownership/transfer')
     async transferOwnership(
@@ -153,7 +158,7 @@ export class TenantSharedController {
     @Response('tenant.switch')
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
+    @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Patch('/switch/:tenantId')
     async switchTenant(
@@ -172,7 +177,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
+    @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Get('/current/members')
     async listMembers(
@@ -195,7 +200,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
+    @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Get('/current/members/roles')
     async listMemberRoles(): Promise<IResponseReturn<EnumTenantMemberRole[]>> {
@@ -212,7 +217,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
+    @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Post('/current/members')
     async createMember(
@@ -235,8 +240,8 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
-    @FeatureFlagProtected('tenantInvites')
+    @FeatureFlagProtected('tenant')
+    @FeatureFlagProtected('tenant.inviteAllowed')
     @ApiKeyProtected()
     @Post('/current/invites')
     async createMemberInvite(
@@ -247,7 +252,7 @@ export class TenantSharedController {
         @RequestUserAgent() userAgent: UserAgent
     ): Promise<IResponseReturn<TenantInviteResponseDto>> {
         return this.tenantInviteService.createInvite(
-            tenant.id,
+            tenant,
             body,
             createdBy,
             { ipAddress, userAgent }
@@ -262,8 +267,8 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
-    @FeatureFlagProtected('tenantInvites')
+    @FeatureFlagProtected('tenant')
+    @FeatureFlagProtected('tenant.inviteAllowed')
     @ApiKeyProtected()
     @Delete('/current/invites/:inviteId')
     async revokeInvite(
@@ -282,8 +287,8 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
-    @FeatureFlagProtected('tenantInvites')
+    @FeatureFlagProtected('tenant')
+    @FeatureFlagProtected('tenant.inviteAllowed')
     @ApiKeyProtected()
     @Get('/current/invites')
     async listInvites(
@@ -298,11 +303,11 @@ export class TenantSharedController {
     }
 
     @TenantSharedClaimInviteDoc()
-    @HttpCode(HttpStatus.OK)
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenantInvites')
+    @FeatureFlagProtected('tenant.inviteAllowed')
     @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
     @Post('/invites/:token/claim')
     async claimInvite(
         @Param('token', RequestRequiredPipe) token: string,
@@ -324,7 +329,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
+    @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Patch('/current/members/:memberId')
     async updateMember(
@@ -350,7 +355,7 @@ export class TenantSharedController {
     )
     @UserProtected()
     @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenancy')
+    @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Delete('/current/members/:memberId')
     async deleteMember(

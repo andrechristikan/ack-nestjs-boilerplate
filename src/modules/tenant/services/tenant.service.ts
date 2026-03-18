@@ -27,7 +27,6 @@ import {
     ForbiddenException,
     Injectable,
     InternalServerErrorException,
-    Logger,
     NotFoundException,
 } from '@nestjs/common';
 import { EnumTenantMemberRole, EnumTenantMemberStatus } from '@generated/prisma-client';
@@ -35,8 +34,6 @@ import { HelperService } from '@common/helper/services/helper.service';
 
 @Injectable()
 export class TenantService implements ITenantService {
-    private readonly logger = new Logger(TenantService.name);
-
     constructor(
         private readonly tenantRepository: TenantRepository,
         private readonly databaseUtil: DatabaseUtil,
@@ -196,10 +193,18 @@ export class TenantService implements ITenantService {
     async update(
         id: string,
         dto: TenantUpdateRequestDto,
-        updatedBy: string
+        updatedBy: string,
+        callerRole: EnumTenantMemberRole
     ): Promise<IResponseReturn<void>> {
         if (dto.name === undefined && dto.description === undefined) {
             return {};
+        }
+
+        if (dto.name !== undefined && callerRole !== EnumTenantMemberRole.owner) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.nameUpdateForbidden,
+                message: 'tenant.error.nameUpdateForbidden',
+            });
         }
 
         const data: {
@@ -297,15 +302,7 @@ export class TenantService implements ITenantService {
         id: string,
         deletedBy: string
     ): Promise<IResponseReturn<void>> {
-        try {
-            await this.tenantRepository.delete(id, deletedBy);
-        } catch (error) {
-            this.logger.error(
-                error,
-                `Tenant soft-delete failed [id=${id}, deletedBy=${deletedBy}]`
-            );
-            throw error;
-        }
+        await this.tenantRepository.delete(id, deletedBy);
 
         return {};
     }

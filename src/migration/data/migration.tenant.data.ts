@@ -12,26 +12,26 @@ export interface IMigrationTenantData {
 
 const tenantData: IMigrationTenantData[] = [
     {
-        name: 'Default Organization',
-        description: 'Default workspace for local development',
-        members: [
-            { userEmail: 'admin@mail.com', tenantRole: EnumTenantMemberRole.admin },
-            { userEmail: 'user@mail.com', tenantRole: EnumTenantMemberRole.member },
-        ],
+        name: "Super Admin's Workspace",
+        description: 'Personal workspace for Super Admin',
+        members: [{ userEmail: 'superadmin@mail.com', tenantRole: EnumTenantMemberRole.admin }],
     },
     {
-        name: 'Another Organization',
-        description: 'Secondary workspace for local development',
+        name: "Admin's Workspace",
+        description: 'Personal workspace for Admin',
         members: [{ userEmail: 'admin@mail.com', tenantRole: EnumTenantMemberRole.admin }],
+    },
+    {
+        name: "User's Workspace",
+        description: 'Personal workspace for User',
+        members: [{ userEmail: 'user@mail.com', tenantRole: EnumTenantMemberRole.admin }],
     },
 ];
 
-export const migrationTenantData: Record<
-    EnumAppEnvironment,
-    IMigrationTenantData[]
-> = {
-    [EnumAppEnvironment.local]: tenantData,
-    [EnumAppEnvironment.development]: tenantData,
-    [EnumAppEnvironment.staging]: tenantData,
-    [EnumAppEnvironment.production]: [],
-};
+export const migrationTenantData: Record<EnumAppEnvironment, IMigrationTenantData[]> =
+    {
+        [EnumAppEnvironment.local]: tenantData,
+        [EnumAppEnvironment.development]: tenantData,
+        [EnumAppEnvironment.staging]: [],
+        [EnumAppEnvironment.production]: [],
+    };
