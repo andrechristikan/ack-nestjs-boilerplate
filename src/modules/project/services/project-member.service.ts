@@ -539,17 +539,21 @@ export class ProjectMemberService {
         return {
             ...others,
             data: data.map(member =>
-                this.projectUtil.mapMember(
-                    member,
-                    member.user.projectInvites[0]
-                        ? this.projectUtil.mapInviteStatus({
-                              status: member.user.projectInvites[0].status,
-                              expiresAt: member.user.projectInvites[0].expiresAt,
-                              acceptedAt: member.user.projectInvites[0].acceptedAt,
-                              revokedAt: member.user.projectInvites[0].revokedAt,
-                          })
-                        : undefined
-                )
+                {
+                    const latestInvite = member.user.projectInvites?.[0];
+
+                    return this.projectUtil.mapMember(
+                        member,
+                        latestInvite
+                            ? this.projectUtil.mapInviteStatus({
+                                  status: latestInvite.status,
+                                  expiresAt: latestInvite.expiresAt,
+                                  acceptedAt: latestInvite.acceptedAt,
+                                  revokedAt: latestInvite.revokedAt,
+                              })
+                            : undefined
+                    );
+                }
             ),
         };
     }

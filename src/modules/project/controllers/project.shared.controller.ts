@@ -84,6 +84,7 @@ import {
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 
 @ApiTags('modules.shared.project')
 @Controller({
@@ -152,7 +153,8 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Get('/:projectId')
     async get(
-        @Param('projectId', RequestRequiredPipe) projectId: string
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string
     ): Promise<IResponseReturn<ProjectResponseDto>> {
         return this.projectService.getOne(projectId);
     }
@@ -165,7 +167,8 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Patch('/:projectId')
     async update(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string,
         @Body() body: ProjectUpdateRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
@@ -180,7 +183,8 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Patch('/:projectId/slug')
     async updateSlug(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string,
         @Body() body: ProjectUpdateSlugRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
@@ -195,7 +199,7 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Delete('/:projectId')
     async delete(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.projectService.delete(projectId, updatedBy);
@@ -209,7 +213,7 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Post('/:projectId/members')
     async createMember(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
         @Body() body: ProjectMemberCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
@@ -225,7 +229,7 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Post('/:projectId/members/invites')
     async createMemberInvite(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
         @Body() body: ProjectMemberInviteCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
@@ -248,7 +252,7 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Get('/:projectId/members/invites')
     async listMemberInvites(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams<
             Prisma.ProjectInviteSelect,
@@ -267,8 +271,8 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Delete('/:projectId/members/invites/:inviteId')
     async revokeMemberInvite(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
-        @Param('inviteId', RequestRequiredPipe) inviteId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
+        @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe) inviteId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.projectMemberService.revokeInvite(
@@ -306,8 +310,8 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Post('/:projectId/members/invites/:inviteId/send')
     async sendMemberInvite(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
-        @Param('inviteId', RequestRequiredPipe) inviteId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
+        @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe) inviteId: string,
         @AuthJwtPayload('userId') requestedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
@@ -331,8 +335,8 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Patch('/:projectId/members/:memberId')
     async updateMember(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
-        @Param('memberId', RequestRequiredPipe) memberId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
+        @Param('memberId', RequestRequiredPipe, RequestIsValidObjectIdPipe) memberId: string,
         @Body() body: ProjectMemberUpdateRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
@@ -356,7 +360,7 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Get('/:projectId/members')
     async listMembers(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams<
             Prisma.ProjectMemberSelect,
@@ -374,7 +378,7 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Get('/:projectId/members/roles')
     async listMemberRoles(
-        @Param('projectId', RequestRequiredPipe) projectId: string
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string
     ): Promise<IResponseReturn<EnumProjectMemberRole[]>> {
         return this.projectMemberService.getMemberRoles(projectId);
     }
@@ -391,7 +395,7 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Delete('/:projectId/members/me')
     async leaveMember(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
         return this.projectMemberService.leave(projectId, userId);
@@ -405,8 +409,8 @@ export class ProjectSharedController {
     @ApiKeyProtected()
     @Delete('/:projectId/members/:memberId')
     async revokeMember(
-        @Param('projectId', RequestRequiredPipe) projectId: string,
-        @Param('memberId', RequestRequiredPipe) memberId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
+        @Param('memberId', RequestRequiredPipe, RequestIsValidObjectIdPipe) memberId: string,
         @AuthJwtPayload('userId') revokedBy: string,
         @TenantMemberCurrent() tenantMember: ITenantMember,
         @ProjectMemberCurrent() projectMember: IProjectMember | undefined

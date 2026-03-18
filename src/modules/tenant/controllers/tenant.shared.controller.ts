@@ -7,6 +7,7 @@ import {
 } from '@common/request/decorators/request.decorator';
 import { EnumTenantMemberRole, Prisma, UserAgent } from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import {
     Response,
     ResponsePaging,
@@ -162,7 +163,7 @@ export class TenantSharedController {
     @ApiKeyProtected()
     @Patch('/switch/:tenantId')
     async switchTenant(
-        @Param('tenantId', RequestRequiredPipe) tenantId: string,
+        @Param('tenantId', RequestRequiredPipe, RequestIsValidObjectIdPipe) tenantId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
         return this.tenantService.switchTenant(tenantId, userId);
@@ -189,47 +190,6 @@ export class TenantSharedController {
         >
     ): Promise<IResponsePagingReturn<TenantMemberResponseDto>> {
         return this.tenantMemberService.getMembersOffset(tenant.id, pagination);
-    }
-
-    @TenantSharedListMemberRolesDoc()
-    @Response('tenant.member.roles')
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin,
-        EnumTenantMemberRole.member
-    )
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenant')
-    @ApiKeyProtected()
-    @Get('/current/members/roles')
-    async listMemberRoles(): Promise<IResponseReturn<EnumTenantMemberRole[]>> {
-        return {
-            data: Object.values(EnumTenantMemberRole),
-        };
-    }
-
-    @TenantSharedCreateMemberDoc()
-    @Response('tenant.member.create')
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenant')
-    @ApiKeyProtected()
-    @Post('/current/members')
-    async createMember(
-        @TenantCurrent() tenant: ITenant,
-        @Body() body: TenantMemberCreateRequestDto,
-        @AuthJwtPayload('userId') createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.tenantMemberService.createMember(
-            tenant.id,
-            body,
-            createdBy
-        );
     }
 
     @TenantSharedCreateMemberInviteDoc()
@@ -273,7 +233,7 @@ export class TenantSharedController {
     @Delete('/current/invites/:inviteId')
     async revokeInvite(
         @TenantCurrent() tenant: ITenant,
-        @Param('inviteId', RequestRequiredPipe) inviteId: string,
+        @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe) inviteId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.tenantInviteService.revokeInvite(inviteId, tenant.id, revokedBy);
@@ -334,7 +294,7 @@ export class TenantSharedController {
     @Patch('/current/members/:memberId')
     async updateMember(
         @TenantCurrent() tenant: ITenant,
-        @Param('memberId', RequestRequiredPipe)
+        @Param('memberId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         memberId: string,
         @Body() body: TenantMemberUpdateRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
@@ -360,7 +320,7 @@ export class TenantSharedController {
     @Delete('/current/members/:memberId')
     async deleteMember(
         @TenantCurrent() tenant: ITenant,
-        @Param('memberId', RequestRequiredPipe)
+        @Param('memberId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         memberId: string,
         @AuthJwtPayload('userId') requestedBy: string
     ): Promise<IResponseReturn<void>> {

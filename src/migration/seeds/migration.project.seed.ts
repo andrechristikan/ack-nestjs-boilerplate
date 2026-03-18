@@ -135,6 +135,7 @@ export class MigrationProjectSeed
                                 userId: user.id,
                                 role: member.projectRole,
                                 status: EnumProjectMemberStatus.active,
+                                deletedAt: null,
                             },
                         });
                         this.logger.log(

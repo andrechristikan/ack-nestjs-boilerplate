@@ -105,6 +105,7 @@ export class MigrationTenantSeed
                                 status: EnumTenantMemberStatus.active,
                                 createdBy: this.SYSTEM_ID,
                                 updatedBy: this.SYSTEM_ID,
+                                deletedAt: null
                             },
                         });
                         this.logger.log(

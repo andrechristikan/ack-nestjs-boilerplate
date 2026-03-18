@@ -66,9 +66,9 @@ model Tenant {
   deletedAt DateTime?
   deletedBy String?   @db.ObjectId
 
-  members  TenantMember[]  @relation("TenantMembers")
-  projects Project[]       @relation("TenantProjects")
-  invites  TenantInvite[]  @relation("TenantInvites")
+  members  TenantMember[] @relation("TenantMembers")
+  projects Project[]      @relation("TenantProjects")
+  invites  TenantInvite[] @relation("TenantInvites")
 
   @@index(fields: [name, createdAt])
   @@index(fields: [createdAt])
@@ -83,10 +83,12 @@ model TenantMember {
   status   EnumTenantMemberStatus @default(active)
 
   // timestamps fields
-  createdAt DateTime @default(now())
-  createdBy String?  @db.ObjectId
-  updatedAt DateTime @updatedAt
-  updatedBy String?  @db.ObjectId
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
+  deletedAt DateTime?
+  deletedBy String?   @db.ObjectId
 
   tenant Tenant? @relation("TenantMembers", fields: [tenantId], references: [id])
   user   User?   @relation("UserTenantMembers", fields: [userId], references: [id])
@@ -119,7 +121,7 @@ model TenantInvite {
   updatedBy String?  @db.ObjectId
 
   tenant    Tenant? @relation("TenantInvites", fields: [tenantId], references: [id])
-  invitedBy User?   @relation("UserSentTenantInvites", fields: [invitedById], references: [id])
+  invitedBy User?   @relation("UserTenantInvites", fields: [invitedById], references: [id])
 
   @@index(fields: [tenantId, status, createdAt])
   @@index(fields: [token, status, expiresAt])
@@ -129,8 +131,8 @@ model TenantInvite {
 }
 
 model Project {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId    String   @db.ObjectId
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String @db.ObjectId
   name        String
   description String
   slug        String
@@ -174,7 +176,7 @@ model ProjectInvite {
   updatedBy String?  @db.ObjectId
 
   project   Project? @relation("ProjectInvites", fields: [projectId], references: [id])
-  invitedBy User?    @relation("UserSentProjectInvites", fields: [invitedById], references: [id])
+  invitedBy User?    @relation("UserProjectInvites", fields: [invitedById], references: [id])
 
   @@index(fields: [projectId, status, createdAt])
   @@index(fields: [token, status, expiresAt])
@@ -309,8 +311,8 @@ model User {
   revokedDeviceOwnerships DeviceOwnership[]          @relation("DeviceOwnershipRevokedByUser")
   tenantMemberships       TenantMember[]             @relation("UserTenantMembers")
   projectMemberships      ProjectMember[]            @relation("UserProjectMembers")
-  sentTenantInvites       TenantInvite[]             @relation("UserSentTenantInvites")
-  sentProjectInvites      ProjectInvite[]            @relation("UserSentProjectInvites")
+  tenantInvites           TenantInvite[]             @relation("UserTenantInvites")
+  projectInvites          ProjectInvite[]            @relation("UserProjectInvites")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
