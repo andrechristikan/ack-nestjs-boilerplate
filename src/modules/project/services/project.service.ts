@@ -10,47 +10,57 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { PolicyService } from '@modules/policy/services/policy.service';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { getProjectRoleAbilities } from '@modules/project/constants/project.role-policy.constant';
-import { IProjectMember } from '@modules/project/interfaces/project.interface';
+import { IProject, IProjectMember } from '@modules/project/interfaces/project.interface';
 import {
     IRequestAppWithProject,
     IRequestAppWithProjectTenant,
 } from '@modules/project/interfaces/request.project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
-import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
-import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
-import { UserRepository } from '@modules/user/repositories/user.repository';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
-    ConflictException,
     ForbiddenException,
     HttpStatus,
     Injectable,
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 
 @Injectable()
 export class ProjectService {
     constructor(
         private readonly projectRepository: ProjectRepository,
-        private readonly policyService: PolicyService,
         private readonly projectUtil: ProjectUtil,
-        private readonly userRepository: UserRepository,
-        private readonly tenantRepository: TenantRepository,
         private readonly helperService: HelperService
     ) {}
 
     // Tenant permissions authorize tenant-wide actions,
     // while project-resource actions are validated by project member permissions.
+
+    async validateProjectGuard(
+        request: IRequestAppWithProjectTenant
+    ): Promise<IProject> {
+        const projectId = request.params?.['projectId'];
+        const project = await this.projectRepository.findOneByIdAndTenant(
+            projectId,
+            request.__tenant!.id
+        );
+
+        if (!project) {
+            throw new NotFoundException({
+                statusCode: HttpStatus.NOT_FOUND,
+                message: 'project.error.notFound',
+            });
+        }
+
+        return project;
+    }
 
     async validateProjectMemberGuard(
         request: IRequestAppWithProjectTenant
@@ -63,7 +73,15 @@ export class ProjectService {
             });
         }
 
-        const projectId = this.resolveProjectIdFromRequest(request);
+        const projectId = request.__project!.id;
+        const tenantMemberRole = request.__tenantMember?.role;
+
+        if (
+            tenantMemberRole === EnumTenantMemberRole.owner ||
+            tenantMemberRole === EnumTenantMemberRole.admin
+        ) {
+            return null;
+        }
 
         const projectMember =
             await this.projectRepository.findMemberByProjectAndUser(
@@ -72,37 +90,7 @@ export class ProjectService {
                 EnumProjectMemberStatus.active
             );
 
-        const tenantId = request.__tenant?.id;
-        const tenantMemberRole = request.__tenantMember?.role;
-
         if (!projectMember) {
-            if (
-                tenantId &&
-                (tenantMemberRole === EnumTenantMemberRole.owner ||
-                    tenantMemberRole === EnumTenantMemberRole.admin)
-            ) {
-                const project =
-                    await this.projectRepository.findOneByIdAndTenant(
-                        projectId,
-                        tenantId
-                    );
-                if (!project) {
-                    throw new ForbiddenException({
-                        statusCode: HttpStatus.FORBIDDEN,
-                        message: 'project.member.error.forbidden',
-                    });
-                }
-
-                return null;
-            }
-
-            throw new ForbiddenException({
-                statusCode: HttpStatus.FORBIDDEN,
-                message: 'project.member.error.forbidden',
-            });
-        }
-
-        if (tenantId && projectMember.project.tenantId !== tenantId) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'project.member.error.forbidden',
@@ -112,90 +100,59 @@ export class ProjectService {
         return projectMember;
     }
 
-    async validateProjectPermissionGuard(
-        request: IRequestAppWithProject,
-        requiredAbilities: RoleAbilityRequestDto[]
-    ): Promise<boolean> {
-        if (requiredAbilities.length === 0) {
-            throw new InternalServerErrorException({
-                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-                message: 'policy.error.predefinedNotFound',
-            });
-        }
-
-        const tenantMemberRole = (request as IRequestAppWithProjectTenant)
-            .__tenantMember?.role;
-        const tenantId = (request as IRequestAppWithProjectTenant).__tenant?.id;
-        if (
-            tenantId &&
-            (tenantMemberRole === EnumTenantMemberRole.owner ||
-                tenantMemberRole === EnumTenantMemberRole.admin)
-        ) {
-            const projectId = this.resolveProjectIdFromRequest(
-                request as IRequestAppWithProjectTenant
-            );
-            const project = await this.projectRepository.findOneByIdAndTenant(
-                projectId,
-                tenantId
-            );
-            if (project) {
-                return true;
-            }
-        }
-
-        if (!request.__projectAbilities) {
-            const role = request.__projectMember?.role;
-            const abilities = role ? getProjectRoleAbilities(role) : [];
-            request.__projectAbilities =
-                this.policyService.createAbility(abilities);
-        }
-
-        const isAllowed = this.policyService.hasAbilities(
-            request.__projectAbilities,
-            requiredAbilities
-        );
-
-        if (!isAllowed) {
-            throw new ForbiddenException({
-                statusCode: HttpStatus.FORBIDDEN,
-                message: 'project.member.error.forbidden',
-            });
-        }
-
-        return true;
-    }
-
-    async createForTenant(
+    async create(
         tenantId: string,
         dto: ProjectCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.createWithMembers(
-            {
-                tenantId,
-            },
-            dto,
-            createdBy
-        );
+        try {
+            const name = dto.name.trim();
+            const description = dto.description.trim();
+            const slug = await this.createUniqueSlug(name);
+
+            const project = await this.projectRepository.create(
+                {
+                    tenantId,
+                    name,
+                    description,
+                    slug,
+                    createdBy,
+                    updatedBy: createdBy,
+                },
+                [
+                    {
+                        userId: createdBy,
+                        role: EnumProjectMemberRole.admin,
+                        status: EnumProjectMemberStatus.active,
+                        createdBy,
+                        updatedBy: createdBy,
+                    },
+                ]
+            );
+
+            return {
+                data: {
+                    id: project.id,
+                },
+            };
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 
     async getListByTenant(
         tenantId: string,
         userId: string,
-        tenantMemberRole: EnumTenantMemberRole,
         pagination: IPaginationQueryOffsetParams<
             Prisma.ProjectSelect,
             Prisma.ProjectWhereInput
         >
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
-        const { data, ...others } =
-            tenantMemberRole === EnumTenantMemberRole.owner ||
-            tenantMemberRole === EnumTenantMemberRole.admin
-                ? await this.projectRepository.findWithPaginationOffsetByTenant(
-                      tenantId,
-                      pagination
-                  )
-                : await this.projectRepository.findWithPaginationOffsetByTenantAndUser(
+        const { data, ...others } = await this.projectRepository.findWithPaginationOffsetByTenantAndUser(
                       tenantId,
                       userId,
                       pagination
@@ -272,7 +229,6 @@ export class ProjectService {
 
         const slug = await this.createUniqueSlug(
             dto.slug,
-            project.tenantId,
             project.id
         );
         await this.projectRepository.update(projectId, {
@@ -287,7 +243,7 @@ export class ProjectService {
         projectId: string,
         deletedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.projectRepository.deleteWithCascade(projectId, deletedBy);
+        await this.projectRepository.delete(projectId, deletedBy);
 
         return {};
     }
@@ -301,99 +257,6 @@ export class ProjectService {
 
         request.__projectId = projectId;
         return projectId;
-    }
-
-    private async createWithMembers(
-        ownership: {
-            tenantId: string;
-        },
-        dto: ProjectCreateRequestDto,
-        createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>> {
-        const members = dto.members ?? [];
-        const uniqueUserIds = new Set<string>();
-        const resolvedMembers: Array<{
-            userId: string;
-            role: EnumProjectMemberRole;
-        }> = [];
-
-        for (const member of members) {
-            if (member.userId === createdBy) {
-                throw new ConflictException({
-                    statusCode: HttpStatus.CONFLICT,
-                    message: 'project.member.error.exist',
-                });
-            }
-
-            if (uniqueUserIds.has(member.userId)) {
-                throw new ConflictException({
-                    statusCode: HttpStatus.CONFLICT,
-                    message: 'project.member.error.exist',
-                });
-            }
-            uniqueUserIds.add(member.userId);
-
-            const user = await this.userRepository.findOneById(member.userId);
-
-            if (!user) {
-                throw new NotFoundException({
-                    statusCode: HttpStatus.NOT_FOUND,
-                    message: 'project.member.error.userNotFound',
-                });
-            }
-
-            resolvedMembers.push({
-                userId: member.userId,
-                role: member.role,
-            });
-        }
-
-        try {
-            const name = dto.name.trim();
-            const description = dto.description.trim();
-            const slug = await this.createUniqueSlug(name, ownership.tenantId);
-
-            const allMembers = [
-                {
-                    userId: createdBy,
-                    role: EnumProjectMemberRole.admin,
-                    status: EnumProjectMemberStatus.active,
-                    createdBy,
-                    updatedBy: createdBy,
-                },
-                ...resolvedMembers.map(member => ({
-                    userId: member.userId,
-                    role: member.role,
-                    status: EnumProjectMemberStatus.active,
-                    createdBy,
-                    updatedBy: createdBy,
-                })),
-            ];
-
-            const project = await this.projectRepository.createWithMembers(
-                {
-                    ...ownership,
-                    name,
-                    description,
-                    slug,
-                    createdBy,
-                    updatedBy: createdBy,
-                },
-                allMembers
-            );
-
-            return {
-                data: {
-                    id: project.id,
-                },
-            };
-        } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
-        }
     }
 
     private createSlug(value: string): string {
@@ -412,7 +275,6 @@ export class ProjectService {
 
     private async createUniqueSlug(
         value: string,
-        tenantId: string,
         excludeProjectId?: string
     ): Promise<string> {
         const baseSlug = this.createSlug(value);
@@ -420,8 +282,7 @@ export class ProjectService {
 
         for (let attempt = 0; attempt < 10; attempt++) {
             const existing =
-                await this.projectRepository.findOneBySlugAndTenant(
-                    tenantId,
+                await this.projectRepository.findOneBySlug(
                     slug
                 );
             if (!existing || existing.id === excludeProjectId) {

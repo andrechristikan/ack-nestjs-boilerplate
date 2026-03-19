@@ -27,7 +27,6 @@ import { ConfigService } from '@nestjs/config';
 import {
     EnumTenantInviteStatus,
     EnumTenantInviteType,
-    EnumTenantMemberStatus,
     Prisma,
     TenantInvite,
 } from '@generated/prisma-client';
@@ -101,24 +100,10 @@ export class TenantInviteService {
                         existingUserId!
                     );
 
-                if (
-                    existingMember &&
-                    existingMember.status !== EnumTenantMemberStatus.pending
-                ) {
+                if (existingMember) {
                     throw new ConflictException({
                         statusCode: EnumTenantStatusCodeError.memberExist,
                         message: 'tenant.member.error.exist',
-                    });
-                }
-
-                if (!existingMember) {
-                    await this.tenantRepository.createMember({
-                        tenantId: tenant.id,
-                        userId: existingUserId!,
-                        role: dto.role,
-                        status: EnumTenantMemberStatus.pending,
-                        createdBy: invitedById,
-                        updatedBy: invitedById,
                     });
                 }
             }
@@ -131,7 +116,8 @@ export class TenantInviteService {
             if (existingPending) {
                 await this.tenantInviteRepository.revoke(
                     existingPending.id,
-                    invitedById
+                    invitedById,
+                    requestLog
                 );
             }
 
@@ -145,18 +131,21 @@ export class TenantInviteService {
                 expiredInMinutes: effectiveExpiredInMinutes,
             });
 
-            const invite = await this.tenantInviteRepository.create({
-                tenantId: tenant.id,
-                invitedById,
-                invitedEmail: dto.email,
-                tenantRole: dto.role,
-                type: inviteeType,
-                status: EnumTenantInviteStatus.pending,
-                token: tokenInfo.token,
-                expiresAt: tokenInfo.expiresAt,
-                createdBy: invitedById,
-                updatedBy: invitedById,
-            });
+            const invite = await this.tenantInviteRepository.create(
+                {
+                    tenantId: tenant.id,
+                    invitedById,
+                    invitedEmail: dto.email,
+                    tenantRole: dto.role,
+                    type: inviteeType,
+                    status: EnumTenantInviteStatus.pending,
+                    token: tokenInfo.token,
+                    expiresAt: tokenInfo.expiresAt,
+                    createdBy: invitedById,
+                    updatedBy: invitedById,
+                },
+                requestLog
+            );
 
             await this.notificationUtil.sendTenantInvite(
                 dto.email,
@@ -210,15 +199,12 @@ export class TenantInviteService {
             });
         }
 
-        const pendingMember =
+        const existingMember =
             await this.tenantRepository.findMemberByTenantAndUser(
                 invite.tenantId,
                 userId
             );
-        if (
-            !pendingMember ||
-            pendingMember.status !== EnumTenantMemberStatus.pending
-        ) {
+        if (existingMember) {
             throw new ConflictException({
                 statusCode: EnumTenantStatusCodeError.memberExist,
                 message: 'tenant.member.error.exist',
@@ -229,14 +215,16 @@ export class TenantInviteService {
             invite.id,
             userId,
             requestLog,
-            pendingMember.id
+            invite.tenantId,
+            invite.tenantRole
         );
     }
 
     async revokeInvite(
         inviteId: string,
         tenantId: string,
-        revokedById: string
+        revokedById: string,
+        requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         const invite = await this.tenantInviteRepository.findOneByIdAndTenant(
             inviteId,
@@ -269,7 +257,7 @@ export class TenantInviteService {
             });
         }
 
-        await this.tenantInviteRepository.revoke(inviteId, revokedById);
+        await this.tenantInviteRepository.revoke(inviteId, revokedById, requestLog);
 
         return {};
     }

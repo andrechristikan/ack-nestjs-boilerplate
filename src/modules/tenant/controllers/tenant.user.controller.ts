@@ -76,7 +76,7 @@ import { ApiTags } from '@nestjs/swagger';
 @ApiTags('modules.user.tenant')
 @Controller({
     version: '1',
-    path: '/user/tenants',
+    path: '/tenants',
 })
 export class TenantUserController {
     constructor(
@@ -84,6 +84,23 @@ export class TenantUserController {
         private readonly tenantMemberService: TenantMemberService,
         private readonly tenantInviteService: TenantInviteService
     ) {}
+
+    @ResponsePaging('tenant.list')
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenant')
+    @ApiKeyProtected()
+    @Get()
+    async list(
+        @AuthJwtPayload('userId') userId: string,
+        @PaginationOffsetQuery()
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TenantSelect,
+            Prisma.TenantWhereInput
+        >
+    ): Promise<IResponsePagingReturn<TenantResponseDto>> {
+        return this.tenantService.getListByUserOffset(userId, pagination);
+    }
 
     @TenantUserGetDoc()
     @Response('tenant.get')
@@ -97,7 +114,7 @@ export class TenantUserController {
     @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Get('/:tenantId')
-    async getTenant(
+    async get(
         @TenantCurrent() tenant: ITenant
     ): Promise<IResponseReturn<TenantResponseDto>> {
         return this.tenantService.getOne(tenant.id);
@@ -111,7 +128,7 @@ export class TenantUserController {
     @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Patch('/:tenantId')
-    async updateTenant(
+    async update(
         @TenantCurrent() tenant: ITenant,
         @TenantMemberCurrent() tenantMember: ITenantMember,
         @Body() body: TenantUpdateRequestDto,
@@ -132,7 +149,7 @@ export class TenantUserController {
     @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
     @Patch('/:tenantId/slug')
-    async updateTenantSlug(
+    async updateSlug(
         @TenantCurrent() tenant: ITenant,
         @Body() body: TenantUpdateSlugRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
@@ -267,7 +284,7 @@ export class TenantUserController {
     @FeatureFlagProtected('tenant.inviteAllowed')
     @ApiKeyProtected()
     @Post('/:tenantId/invites')
-    async createMemberInvite(
+    async createInvite(
         @TenantCurrent() tenant: ITenant,
         @Body() body: TenantInviteCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
@@ -292,12 +309,18 @@ export class TenantUserController {
         @TenantCurrent() tenant: ITenant,
         @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         inviteId: string,
-        @AuthJwtPayload('userId') revokedBy: string
+        @AuthJwtPayload('userId') revokedBy: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: UserAgent
     ): Promise<IResponseReturn<void>> {
         return this.tenantInviteService.revokeInvite(
             inviteId,
             tenant.id,
-            revokedBy
+            revokedBy,
+            {
+                ipAddress,
+                userAgent,
+            }
         );
     }
 

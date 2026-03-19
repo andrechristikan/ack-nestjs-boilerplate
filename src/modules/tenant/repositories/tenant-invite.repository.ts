@@ -12,6 +12,7 @@ import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
     EnumTenantInviteStatus,
+    EnumTenantMemberRole,
     EnumTenantMemberStatus,
     Prisma,
     TenantInvite,
@@ -32,10 +33,6 @@ export class TenantInviteRepository {
             select: { id: true },
         });
         return user?.id ?? null;
-    }
-
-    async findOneById(id: string): Promise<TenantInvite | null> {
-        return this.databaseService.tenantInvite.findFirst({ where: { id } });
     }
 
     async findOneByIdAndTenant(
@@ -80,33 +77,78 @@ export class TenantInviteRepository {
     }
 
     async create(
-        data: Prisma.TenantInviteUncheckedCreateInput
+        data: Prisma.TenantInviteUncheckedCreateInput,
+        requestLog: IRequestLog
     ): Promise<TenantInvite> {
-        return this.databaseService.tenantInvite.create({ data });
+        const createdBy = data.createdBy as string;
+
+        return this.databaseService.$transaction(async tx => {
+            const invite = await tx.tenantInvite.create({ data });
+
+            await tx.user.update({
+                where: { id: createdBy, deletedAt: null },
+                data: {
+                    activityLogs: {
+                        create: {
+                            action: EnumActivityLogAction.userCreateTenantInvite,
+                            ipAddress: requestLog.ipAddress,
+                            userAgent: this.databaseUtil.toPlainObject(
+                                requestLog.userAgent
+                            ),
+                            createdBy,
+                        },
+                    },
+                },
+            });
+
+            return invite;
+        });
     }
 
-    async revoke(inviteId: string, revokedById: string): Promise<void> {
+    async revoke(
+        inviteId: string,
+        revokedById: string,
+        requestLog: IRequestLog
+    ): Promise<void> {
         const now = this.helperService.dateCreate();
 
-        await this.databaseService.tenantInvite.update({
-            where: {
-                id: inviteId,
-                status: EnumTenantInviteStatus.pending,
-            },
-            data: {
-                status: EnumTenantInviteStatus.revoked,
-                revokedAt: now,
-                revokedById,
-                updatedBy: revokedById,
-            },
-        });
+        await this.databaseService.$transaction([
+            this.databaseService.tenantInvite.update({
+                where: {
+                    id: inviteId,
+                    status: EnumTenantInviteStatus.pending,
+                },
+                data: {
+                    status: EnumTenantInviteStatus.revoked,
+                    revokedAt: now,
+                    revokedById,
+                    updatedBy: revokedById,
+                },
+            }),
+            this.databaseService.user.update({
+                where: { id: revokedById, deletedAt: null },
+                data: {
+                    activityLogs: {
+                        create: {
+                            action: EnumActivityLogAction.userRevokeTenantInvite,
+                            ipAddress: requestLog.ipAddress,
+                            userAgent: this.databaseUtil.toPlainObject(
+                                requestLog.userAgent
+                            ),
+                            createdBy: revokedById,
+                        },
+                    },
+                },
+            }),
+        ]);
     }
 
     async accept(
         inviteId: string,
         acceptedById: string,
         requestLog: IRequestLog,
-        pendingMemberId: string
+        tenantId: string,
+        role: EnumTenantMemberRole
     ): Promise<void> {
         const now = this.helperService.dateCreate();
 
@@ -116,14 +158,18 @@ export class TenantInviteRepository {
                 data: {
                     status: EnumTenantInviteStatus.accepted,
                     acceptedAt: now,
+                    acceptedById: acceptedById,
                     updatedBy: acceptedById,
                 },
             });
 
-            await tx.tenantMember.update({
-                where: { id: pendingMemberId },
+            await tx.tenantMember.create({
                 data: {
+                    tenantId,
+                    userId: acceptedById,
+                    role,
                     status: EnumTenantMemberStatus.active,
+                    createdBy: acceptedById,
                     updatedBy: acceptedById,
                 },
             });
@@ -133,7 +179,7 @@ export class TenantInviteRepository {
                 data: {
                     activityLogs: {
                         create: {
-                            action: EnumActivityLogAction.userCompleteInvite,
+                            action: EnumActivityLogAction.userAcceptTenantInvite,
                             ipAddress: requestLog.ipAddress,
                             userAgent: this.databaseUtil.toPlainObject(
                                 requestLog.userAgent
@@ -149,7 +195,8 @@ export class TenantInviteRepository {
     async signupAndAccept(
         inviteId: string,
         userId: string,
-        pendingMemberId: string,
+        tenantId: string,
+        role: EnumTenantMemberRole,
         name: string,
         {
             passwordHash,
@@ -193,7 +240,7 @@ export class TenantInviteRepository {
                     },
                     activityLogs: {
                         create: {
-                            action: EnumActivityLogAction.userCompleteInvite,
+                            action: EnumActivityLogAction.userAcceptTenantInvite,
                             ipAddress,
                             userAgent:
                                 this.databaseUtil.toPlainObject(userAgent),
@@ -203,10 +250,13 @@ export class TenantInviteRepository {
                 },
             });
 
-            await tx.tenantMember.update({
-                where: { id: pendingMemberId },
+            await tx.tenantMember.create({
                 data: {
+                    tenantId,
+                    userId,
+                    role,
                     status: EnumTenantMemberStatus.active,
+                    createdBy: userId,
                     updatedBy: userId,
                 },
             });

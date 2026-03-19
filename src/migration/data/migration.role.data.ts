@@ -10,7 +10,6 @@ import {
 } from '@modules/role/constants/role.constant';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import {
-    EnumRoleScope,
     EnumRoleType,
 } from '@generated/prisma-client';
 
@@ -20,7 +19,6 @@ const roleData: RoleCreateRequestDto[] = [
         description: 'Super Admin Role',
         abilities: [],
         type: EnumRoleType.superAdmin,
-        scope: EnumRoleScope.platform,
     },
     {
         name: PlatformRoleAdmin,
@@ -30,14 +28,12 @@ const roleData: RoleCreateRequestDto[] = [
             action: Object.values(EnumPolicyAction),
         })),
         type: EnumRoleType.admin,
-        scope: EnumRoleScope.platform,
     },
     {
         name: PlatformRoleUser,
         description: 'User Role',
         abilities: [],
         type: EnumRoleType.user,
-        scope: EnumRoleScope.platform,
     },
 ];
 

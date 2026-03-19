@@ -560,7 +560,6 @@ export class NotificationEmailUtil {
             expiredInMinutes,
             reference,
             inviteType,
-            roleScope,
             contextName,
         }: INotificationInvitePayload
     ): Promise<void> {
@@ -578,13 +577,12 @@ export class NotificationEmailUtil {
                     expiredInMinutes,
                     reference,
                     inviteType,
-                    roleScope,
                     contextName,
                 },
             };
 
-        await this.emailQueue.add(EnumNotificationProcess.invite, payload, {
-            jobId: `${EnumNotificationProcess.invite}-${userId}`,
+        await this.emailQueue.add(EnumNotificationProcess.projectInvite, payload, {
+            jobId: `${EnumNotificationProcess.projectInvite}-${userId}`,
             priority: EnumQueuePriority.medium,
         });
     }

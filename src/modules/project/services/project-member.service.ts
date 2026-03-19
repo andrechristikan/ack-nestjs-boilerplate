@@ -35,7 +35,6 @@ import {
     EnumProjectInviteStatus,
     EnumProjectMemberRole,
     EnumProjectMemberStatus,
-    EnumRoleScope,
     EnumTenantMemberRole,
     Prisma,
 } from '@generated/prisma-client';
@@ -157,7 +156,7 @@ export class ProjectMemberService {
         projectId: string,
         dto: ProjectMemberInviteCreateRequestDto,
         createdBy: string,
-        _requestLog: IRequestLog
+        requestLog: IRequestLog
     ): Promise<IResponseReturn<ProjectInviteResponseDto>> {
         const project = await this.projectRepository.findOneById(projectId);
         if (!project) {
@@ -199,7 +198,8 @@ export class ProjectMemberService {
             if (existingPendingInvite) {
                 await this.projectInviteRepository.revoke(
                     existingPendingInvite.id,
-                    createdBy
+                    createdBy,
+                    requestLog
                 );
             }
 
@@ -222,7 +222,7 @@ export class ProjectMemberService {
                 expiresAt: tokenInfo.expiresAt,
                 createdBy,
                 updatedBy: createdBy,
-            });
+            }, requestLog);
 
             await this.notificationUtil.sendInvite(
                 user.id,
@@ -232,7 +232,6 @@ export class ProjectMemberService {
                     expiredInMinutes: effectiveExpiredInMinutes,
                     reference: tokenInfo.reference,
                     inviteType: ProjectInviteType,
-                    roleScope: EnumRoleScope.project,
                     contextName: project.name,
                 },
                 createdBy
@@ -285,7 +284,7 @@ export class ProjectMemberService {
     async claimRegistered(
         token: string,
         userId: string,
-        _requestLog: IRequestLog
+        requestLog: IRequestLog
     ): Promise<void> {
         const invite = await this.projectInviteRepository.findOneActiveByToken(
             token
@@ -343,7 +342,7 @@ export class ProjectMemberService {
                 });
             }
 
-            await this.projectInviteRepository.accept(invite.id, userId);
+            await this.projectInviteRepository.accept(invite.id, userId, requestLog);
         } catch (err: unknown) {
             if (
                 err instanceof ConflictException ||
@@ -425,7 +424,6 @@ export class ProjectMemberService {
                 expiredInMinutes: inviteConfig.expiredInMinutes,
                 reference: invite.id,
                 inviteType: ProjectInviteType,
-                roleScope: EnumRoleScope.project,
                 contextName: project.name,
             },
             requestedBy
@@ -456,7 +454,8 @@ export class ProjectMemberService {
     async revokeInvite(
         projectId: string,
         inviteId: string,
-        revokedBy: string
+        revokedBy: string,
+        requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         const invite = await this.projectInviteRepository.findOneByIdAndProject(
             inviteId,
@@ -490,7 +489,7 @@ export class ProjectMemberService {
             });
         }
 
-        await this.projectInviteRepository.revoke(invite.id, revokedBy);
+        await this.projectInviteRepository.revoke(invite.id, revokedBy, requestLog);
         return {};
     }
 
@@ -592,7 +591,7 @@ export class ProjectMemberService {
             );
 
         if (otherMemberCount === 0) {
-            await this.projectRepository.deleteWithCascade(projectId, userId);
+            await this.projectRepository.delete(projectId, userId);
             return {};
         }
 
@@ -622,8 +621,10 @@ export class ProjectMemberService {
         memberId: string,
         revokedBy: string,
         tenantMemberRole: EnumTenantMemberRole | undefined,
-        projectMemberRole: EnumProjectMemberRole | undefined
+        projectMemberRole: EnumProjectMemberRole | undefined,
+        requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
+        //TODO: I Don't like these check here, but not sure where to put them
         const isTenantPrivileged =
             tenantMemberRole === EnumTenantMemberRole.owner ||
             tenantMemberRole === EnumTenantMemberRole.admin;
@@ -651,6 +652,7 @@ export class ProjectMemberService {
         const deletedAt = this.helperService.dateCreate();
 
         try {
+            //TODO: Within project.softDelete we should also take care of revoking any invites.
             await this.projectRepository.softDeleteMember(member.id, {
                 deletedAt,
                 deletedBy: revokedBy,
@@ -667,7 +669,8 @@ export class ProjectMemberService {
                 if (activeInvite) {
                     await this.projectInviteRepository.revoke(
                         activeInvite.id,
-                        revokedBy
+                        revokedBy,
+                        requestLog
                     );
                 }
             }

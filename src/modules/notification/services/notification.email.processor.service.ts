@@ -361,14 +361,13 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 expiredInMinutes,
                 reference,
                 inviteType,
-                roleScope,
                 contextName,
             } = job.data.data;
 
             const link = this.userUtil.decryptedLink(userId, encryptedLink);
 
             await this.awsSESService.send({
-                templateName: EnumNotificationProcess.invite,
+                templateName: EnumNotificationProcess.projectInvite,
                 recipients: [email],
                 sender: this.noreplyEmail,
                 templateData: {
@@ -380,7 +379,6 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     expiredInMinutes,
                     reference,
                     inviteType,
-                    roleScope,
                     contextName,
                 },
                 ...(cc?.length && { cc }),

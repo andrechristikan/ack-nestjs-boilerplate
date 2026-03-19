@@ -153,6 +153,25 @@ export class TenantService implements ITenantService {
         };
     }
 
+    async getListByUserOffset(
+        userId: string,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TenantSelect,
+            Prisma.TenantWhereInput
+        >
+    ): Promise<IResponsePagingReturn<TenantResponseDto>> {
+        const { data, ...others } =
+            await this.tenantRepository.findWithPaginationOffsetByUser(
+                userId,
+                pagination
+            );
+
+        return {
+            ...others,
+            data: data.map(tenant => this.tenantUtil.mapTenant(tenant)),
+        };
+    }
+
     async getOne(id: string): Promise<IResponseReturn<TenantResponseDto>> {
         const tenant = await this.tenantRepository.findOneById(id);
         if (!tenant) {

@@ -489,13 +489,12 @@ export class NotificationUtil {
             expiredInMinutes,
             reference,
             inviteType,
-            roleScope,
             contextName,
         }: INotificationInvitePayload,
         proceedBy: string
     ): Promise<void> {
         await this.notificationQueue.add(
-            EnumNotificationProcess.invite,
+            EnumNotificationProcess.projectInvite,
             {
                 userId,
                 data: {
@@ -504,7 +503,6 @@ export class NotificationUtil {
                     expiredInMinutes,
                     reference,
                     inviteType,
-                    roleScope,
                     contextName,
                 },
                 proceedBy,
@@ -512,7 +510,7 @@ export class NotificationUtil {
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
-                    id: `${EnumNotificationProcess.invite}-${userId}`,
+                    id: `${EnumNotificationProcess.projectInvite}-${userId}`,
                     ttl: 1000,
                 },
             }

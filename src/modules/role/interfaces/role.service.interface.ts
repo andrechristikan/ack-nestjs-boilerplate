@@ -14,7 +14,7 @@ import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abili
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
-import { EnumRoleScope, EnumRoleType, Prisma } from '@generated/prisma-client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
 export interface IRoleService {
     getListOffsetByAdmin(
@@ -34,8 +34,7 @@ export interface IRoleService {
         >,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>>;
-    getListRolesByScopeAndType(
-        scope: EnumRoleScope,
+    getListRolesByType(
         type: EnumRoleType
     ): Promise<IResponseReturn<RoleListResponseDto[]>>;
     getOne(id: string): Promise<IResponseReturn<RoleDto>>;

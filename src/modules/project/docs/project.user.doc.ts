@@ -28,7 +28,7 @@ import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
-export function ProjectSharedListDoc(): MethodDecorator {
+export function ProjectUserListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'list tenant projects',
@@ -45,7 +45,7 @@ export function ProjectSharedListDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedCreateDoc(): MethodDecorator {
+export function ProjectUserCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'create tenant project',
@@ -66,7 +66,7 @@ export function ProjectSharedCreateDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedGetDoc(): MethodDecorator {
+export function ProjectUserGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'get tenant project detail',
@@ -86,7 +86,7 @@ export function ProjectSharedGetDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedUpdateDoc(): MethodDecorator {
+export function ProjectUserUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'update tenant project',
@@ -106,7 +106,7 @@ export function ProjectSharedUpdateDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedUpdateSlugDoc(): MethodDecorator {
+export function ProjectUserUpdateSlugDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'update tenant project slug',
@@ -126,7 +126,7 @@ export function ProjectSharedUpdateSlugDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedDeleteDoc(): MethodDecorator {
+export function ProjectUserDeleteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'delete tenant project',
@@ -144,7 +144,7 @@ export function ProjectSharedDeleteDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedCreateMemberDoc(): MethodDecorator {
+export function ProjectUserCreateMemberDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'create project member',
@@ -167,7 +167,7 @@ export function ProjectSharedCreateMemberDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedCreateMemberInviteDoc(): MethodDecorator {
+export function ProjectUserCreateMemberInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'create project member invite',
@@ -189,7 +189,7 @@ export function ProjectSharedCreateMemberInviteDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedSendMemberInviteDoc(): MethodDecorator {
+export function ProjectUserSendMemberInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'send project member invite',
@@ -209,7 +209,7 @@ export function ProjectSharedSendMemberInviteDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedListInvitesDoc(): MethodDecorator {
+export function ProjectUserListInvitesDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'list project member invites',
@@ -229,7 +229,7 @@ export function ProjectSharedListInvitesDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedRevokeInviteDoc(): MethodDecorator {
+export function ProjectUserRevokeInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'revoke project member invite',
@@ -246,21 +246,7 @@ export function ProjectSharedRevokeInviteDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedClaimInviteDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({ summary: 'claim project invite (registered users)' }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocRequest({
-            params: [{ name: 'token', required: true, type: 'string' }],
-        }),
-        DocResponse('project.member.invite.claim')
-    );
-}
-
-export function ProjectSharedUpdateMemberDoc(): MethodDecorator {
+export function ProjectUserUpdateMemberDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'update project member',
@@ -280,7 +266,7 @@ export function ProjectSharedUpdateMemberDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedListMembersDoc(): MethodDecorator {
+export function ProjectUserListMembersDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'list project members',
@@ -301,7 +287,7 @@ export function ProjectSharedListMembersDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedListMemberRolesDoc(): MethodDecorator {
+export function ProjectUserListMemberRolesDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'list project member roles',
@@ -319,7 +305,7 @@ export function ProjectSharedListMemberRolesDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedLeaveMemberDoc(): MethodDecorator {
+export function ProjectUserLeaveMemberDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'leave project',
@@ -337,7 +323,7 @@ export function ProjectSharedLeaveMemberDoc(): MethodDecorator {
     );
 }
 
-export function ProjectSharedRevokeMemberDoc(): MethodDecorator {
+export function ProjectUserRevokeMemberDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'revoke project member access',
@@ -352,5 +338,19 @@ export function ProjectSharedRevokeMemberDoc(): MethodDecorator {
             params: ProjectDocParamsProjectMemberId,
         }),
         DocResponse('project.member.revoke')
+    );
+}
+
+export function ProjectUserClaimInviteDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({ summary: 'claim project invite (registered users)' }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocRequest({
+            params: [{ name: 'token', required: true, type: 'string' }],
+        }),
+        DocResponse('project.member.invite.claim')
     );
 }

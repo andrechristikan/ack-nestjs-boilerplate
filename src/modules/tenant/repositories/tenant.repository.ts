@@ -385,6 +385,34 @@ export class TenantRepository {
         });
     }
 
+    async findWithPaginationOffsetByUser(
+        userId: string,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.TenantSelect,
+            Prisma.TenantWhereInput
+        >
+    ): Promise<IResponsePagingReturn<Tenant>> {
+        return this.paginationService.offset<Tenant>(
+            this.databaseService.tenant,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    deletedAt: null,
+                    members: {
+                        some: {
+                            userId,
+                            status: EnumTenantMemberStatus.active,
+                        },
+                    },
+                },
+            }
+        );
+    }
+
     async updateLastTenant(userId: string, tenantId: string): Promise<void> {
         await this.databaseService.user.update({
             where: { id: userId, deletedAt: null },

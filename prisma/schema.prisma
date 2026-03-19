@@ -32,11 +32,10 @@ model ApiKey {
 }
 
 model Role {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String?
-  type        EnumRoleType  @default(user)
-  scope       EnumRoleScope @default(platform)
+  type        EnumRoleType @default(user)
   abilities   RoleAbility[]
 
   // timestamps fields
@@ -47,8 +46,8 @@ model Role {
 
   users User[] @relation("UserRole")
 
-  @@unique(fields: [name, scope])
-  @@index(fields: [type, scope, createdAt(sort: Desc)])
+  @@unique(fields: [name])
+  @@index(fields: [type, createdAt(sort: Desc)])
   @@map("Roles")
 }
 
@@ -110,9 +109,10 @@ model TenantInvite {
   status       EnumTenantInviteStatus @default(pending)
   token        String                 @unique
   expiresAt    DateTime
-  acceptedAt   DateTime?
   revokedAt    DateTime?
   revokedById  String?                @db.ObjectId
+  acceptedAt   DateTime?
+  acceptedById String?                @db.ObjectId
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -120,8 +120,9 @@ model TenantInvite {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  tenant    Tenant? @relation("TenantInvites", fields: [tenantId], references: [id])
-  invitedBy User?   @relation("UserTenantInvites", fields: [invitedById], references: [id])
+  tenant     Tenant? @relation("TenantInvites", fields: [tenantId], references: [id])
+  invitedBy  User?   @relation("UserTenantInvitesSent", fields: [invitedById], references: [id])
+  acceptedBy User?   @relation("UserTenantInvites", fields: [acceptedById], references: [id])
 
   @@index(fields: [tenantId, status, createdAt])
   @@index(fields: [token, status, expiresAt])
@@ -164,10 +165,11 @@ model ProjectInvite {
   status       EnumProjectInviteStatus @default(pending)
   token        String                  @unique
   expiresAt    DateTime
-  acceptedAt   DateTime?
   sentAt       DateTime?
   revokedAt    DateTime?
   revokedById  String?                 @db.ObjectId
+  acceptedAt   DateTime?
+  acceptedById String?                 @db.ObjectId
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -175,8 +177,9 @@ model ProjectInvite {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  project   Project? @relation("ProjectInvites", fields: [projectId], references: [id])
-  invitedBy User?    @relation("UserProjectInvites", fields: [invitedById], references: [id])
+  project    Project? @relation("ProjectInvites", fields: [projectId], references: [id])
+  invitedBy  User?    @relation("UserProjectInvitesSent", fields: [invitedById], references: [id])
+  acceptedBy User?    @relation("UserProjectInvites", fields: [acceptedById], references: [id])
 
   @@index(fields: [projectId, status, createdAt])
   @@index(fields: [token, status, expiresAt])
@@ -311,6 +314,8 @@ model User {
   revokedDeviceOwnerships DeviceOwnership[]          @relation("DeviceOwnershipRevokedByUser")
   tenantMemberships       TenantMember[]             @relation("UserTenantMembers")
   projectMemberships      ProjectMember[]            @relation("UserProjectMembers")
+  tenantInvitesSent       TenantInvite[]             @relation("UserTenantInvitesSent")
+  projectInvitesSent      ProjectInvite[]            @relation("UserProjectInvitesSent")
   tenantInvites           TenantInvite[]             @relation("UserTenantInvites")
   projectInvites          ProjectInvite[]            @relation("UserProjectInvites")
 
@@ -754,12 +759,6 @@ enum EnumRoleType {
   user
 }
 
-enum EnumRoleScope {
-  platform
-  tenant
-  project
-}
-
 enum EnumApiKeyType {
   system
   default
@@ -857,9 +856,13 @@ enum EnumActivityLogAction {
   userRefreshToken
   userVerifiedEmail
   userSendVerificationEmail
-  userSendInviteEmail
+  userCreateTenantInvite
+  userRevokeTenantInvite
+  userAcceptTenantInvite
+  userCreateProjectInvite
+  userRevokeProjectInvite
+  userAcceptProjectInvite
   userSignedUp
-  userCompleteInvite
   userResetPassword
   userRevokeSession
   userRevokeSessionByAdmin

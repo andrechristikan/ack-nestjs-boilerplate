@@ -53,7 +53,6 @@ export interface INotificationInvitePayload {
     expiredInMinutes: number;
     reference: string;
     inviteType: string;
-    roleScope: string;
     contextName: string;
 }
 export interface INotificationTenantInviteEmailPayload {

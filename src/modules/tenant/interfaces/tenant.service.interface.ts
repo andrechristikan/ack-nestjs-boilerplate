@@ -33,6 +33,13 @@ export interface ITenantService {
             Prisma.TenantWhereInput
         >
     ): Promise<IResponsePagingReturn<TenantResponseDto>>;
+    getListByUserOffset(
+        userId: string,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TenantSelect,
+            Prisma.TenantWhereInput
+        >
+    ): Promise<IResponsePagingReturn<TenantResponseDto>>;
     getOne(id: string): Promise<IResponseReturn<TenantResponseDto>>;
     create(
         dto: TenantCreateRequestDto,

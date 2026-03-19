@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { DatabaseDto } from '@common/database/dtos/database.dto';
-import { EnumRoleScope, EnumRoleType } from '@generated/prisma-client';
+import { EnumRoleType } from '@generated/prisma-client';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 
 export class RoleDto extends DatabaseDto {
@@ -28,14 +28,6 @@ export class RoleDto extends DatabaseDto {
         enum: EnumRoleType,
     })
     type: EnumRoleType;
-
-    @ApiProperty({
-        description: 'Scope of role (platform or tenant)',
-        example: EnumRoleScope.platform,
-        required: true,
-        enum: EnumRoleScope,
-    })
-    scope: EnumRoleScope;
 
     @ApiProperty({
         type: [RoleAbilityDto],

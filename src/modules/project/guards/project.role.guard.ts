@@ -1,6 +1,5 @@
 import { IRequestAppWithProjectTenant } from '@modules/project/interfaces/request.project.interface';
 import { ProjectRoleRequiredMetaKey } from '@modules/project/constants/project.constant';
-import { ProjectService } from '@modules/project/services/project.service';
 import {
     CanActivate,
     ExecutionContext,
@@ -11,13 +10,22 @@ import {
 import { Reflector } from '@nestjs/core';
 import { EnumProjectMemberRole, EnumTenantMemberRole } from '@generated/prisma-client';
 
+/**
+ * Enforces project role requirements based on role metadata.
+ *
+ * Reads the required project member roles from route metadata and ensures the
+ * current member's role matches at least one of them. Tenant owners and admins
+ * bypass this check and are always granted access.
+ */
 @Injectable()
 export class ProjectRoleGuard implements CanActivate {
-    constructor(
-        private readonly reflector: Reflector,
-        private readonly projectService: ProjectService
-    ) {}
+    constructor(private readonly reflector: Reflector) {}
 
+    /**
+     * Validates that the current member has one of the required project roles.
+     *
+     * @throws ForbiddenException if the member's role does not satisfy the required roles
+     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredRoles =
             this.reflector.get<EnumProjectMemberRole[]>(
@@ -32,11 +40,6 @@ export class ProjectRoleGuard implements CanActivate {
         const request = context
             .switchToHttp()
             .getRequest<IRequestAppWithProjectTenant>();
-        const projectMember =
-            await this.projectService.validateProjectMemberGuard(request);
-        if (projectMember) {
-            request.__projectMember = projectMember;
-        }
 
         const tenantRole = request.__tenantMember?.role;
         if (
@@ -46,6 +49,7 @@ export class ProjectRoleGuard implements CanActivate {
             return true;
         }
 
+        const projectMember = request.__projectMember;
         if (projectMember && requiredRoles.includes(projectMember.role)) {
             return true;
         }

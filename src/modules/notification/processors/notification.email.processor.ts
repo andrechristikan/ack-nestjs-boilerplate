@@ -174,7 +174,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                         >
                     );
 
-                case EnumNotificationProcess.invite:
+                case EnumNotificationProcess.projectInvite:
                     return this.notificationEmailProcessorService.processInvite(
                         job as Job<
                             INotificationEmailWorkerPayload<INotificationInvitePayload>,

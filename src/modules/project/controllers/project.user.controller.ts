@@ -37,24 +37,24 @@ import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.u
 import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project-member.response.dto';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import {
-    ProjectSharedClaimInviteDoc,
-    ProjectSharedCreateDoc,
-    ProjectSharedCreateMemberDoc,
-    ProjectSharedCreateMemberInviteDoc,
-    ProjectSharedDeleteDoc,
-    ProjectSharedGetDoc,
-    ProjectSharedLeaveMemberDoc,
-    ProjectSharedListDoc,
-    ProjectSharedListInvitesDoc,
-    ProjectSharedListMemberRolesDoc,
-    ProjectSharedListMembersDoc,
-    ProjectSharedRevokeInviteDoc,
-    ProjectSharedRevokeMemberDoc,
-    ProjectSharedSendMemberInviteDoc,
-    ProjectSharedUpdateDoc,
-    ProjectSharedUpdateMemberDoc,
-    ProjectSharedUpdateSlugDoc,
-} from '@modules/project/docs/project.tenant.shared.doc';
+    ProjectUserClaimInviteDoc,
+    ProjectUserCreateDoc,
+    ProjectUserCreateMemberDoc,
+    ProjectUserCreateMemberInviteDoc,
+    ProjectUserDeleteDoc,
+    ProjectUserGetDoc,
+    ProjectUserLeaveMemberDoc,
+    ProjectUserListDoc,
+    ProjectUserListInvitesDoc,
+    ProjectUserListMemberRolesDoc,
+    ProjectUserListMembersDoc,
+    ProjectUserRevokeInviteDoc,
+    ProjectUserRevokeMemberDoc,
+    ProjectUserSendMemberInviteDoc,
+    ProjectUserUpdateDoc,
+    ProjectUserUpdateMemberDoc,
+    ProjectUserUpdateSlugDoc,
+} from '@modules/project/docs/project.user.doc';
 import {
     ProjectMemberCurrent,
     ProjectRoleProtected,
@@ -86,18 +86,18 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 
-@ApiTags('modules.shared.project')
+@ApiTags('modules.user.project')
 @Controller({
     version: '1',
-    path: '/tenants/projects',
+    path: '/user/projects',
 })
-export class ProjectSharedController {
+export class ProjectUserController {
     constructor(
         private readonly projectService: ProjectService,
         private readonly projectMemberService: ProjectMemberService
     ) {}
 
-    @ProjectSharedListDoc()
+    @ProjectUserListDoc()
     @ResponsePaging('project.list')
     @TenantRoleProtected(
         EnumTenantMemberRole.owner,
@@ -110,7 +110,6 @@ export class ProjectSharedController {
     @Get('')
     async list(
         @TenantCurrent() tenant: ITenant,
-        @TenantMemberCurrent() tenantMember: ITenantMember,
         @AuthJwtPayload('userId') userId: string,
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams<
@@ -121,12 +120,11 @@ export class ProjectSharedController {
         return this.projectService.getListByTenant(
             tenant.id,
             userId,
-            tenantMember.role,
             pagination
         );
     }
 
-    @ProjectSharedCreateDoc()
+    @ProjectUserCreateDoc()
     @Response('project.create')
     @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
     @UserProtected()
@@ -138,10 +136,10 @@ export class ProjectSharedController {
         @Body() body: ProjectCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.projectService.createForTenant(tenant.id, body, createdBy);
+        return this.projectService.create(tenant.id, body, createdBy);
     }
 
-    @ProjectSharedGetDoc()
+    @ProjectUserGetDoc()
     @Response('project.get')
     @ProjectRoleProtected(
         EnumProjectMemberRole.admin,
@@ -159,7 +157,7 @@ export class ProjectSharedController {
         return this.projectService.getOne(projectId);
     }
 
-    @ProjectSharedUpdateDoc()
+    @ProjectUserUpdateDoc()
     @Response('project.update')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
@@ -175,7 +173,7 @@ export class ProjectSharedController {
         return this.projectService.update(projectId, body, updatedBy);
     }
 
-    @ProjectSharedUpdateSlugDoc()
+    @ProjectUserUpdateSlugDoc()
     @Response('project.update')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
@@ -191,7 +189,7 @@ export class ProjectSharedController {
         return this.projectService.updateSlug(projectId, body, updatedBy);
     }
 
-    @ProjectSharedDeleteDoc()
+    @ProjectUserDeleteDoc()
     @Response('project.delete')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
@@ -205,7 +203,7 @@ export class ProjectSharedController {
         return this.projectService.delete(projectId, updatedBy);
     }
 
-    @ProjectSharedCreateMemberDoc()
+    @ProjectUserCreateMemberDoc()
     @Response('project.member.create')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
@@ -220,7 +218,7 @@ export class ProjectSharedController {
         return this.projectMemberService.create(projectId, body, createdBy);
     }
 
-    @ProjectSharedCreateMemberInviteDoc()
+    @ProjectUserCreateMemberInviteDoc()
     @Response('project.member.invite.create')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
@@ -228,7 +226,7 @@ export class ProjectSharedController {
     @FeatureFlagProtected('project.inviteAllowed')
     @ApiKeyProtected()
     @Post('/:projectId/members/invites')
-    async createMemberInvite(
+    async createInvite(
         @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
         @Body() body: ProjectMemberInviteCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
@@ -243,46 +241,7 @@ export class ProjectSharedController {
         );
     }
 
-    @ProjectSharedListInvitesDoc()
-    @ResponsePaging('project.member.invite.list')
-    @ProjectRoleProtected(EnumProjectMemberRole.admin)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @FeatureFlagProtected('project.inviteAllowed')
-    @ApiKeyProtected()
-    @Get('/:projectId/members/invites')
-    async listMemberInvites(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectInviteSelect,
-            Prisma.ProjectInviteWhereInput
-        >
-    ): Promise<IResponsePagingReturn<ProjectInviteResponseDto>> {
-        return this.projectMemberService.listInvites(projectId, pagination);
-    }
-
-    @ProjectSharedRevokeInviteDoc()
-    @Response('project.member.invite.revoke')
-    @ProjectRoleProtected(EnumProjectMemberRole.admin)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @FeatureFlagProtected('project.inviteAllowed')
-    @ApiKeyProtected()
-    @Delete('/:projectId/members/invites/:inviteId')
-    async revokeMemberInvite(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
-        @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe) inviteId: string,
-        @AuthJwtPayload('userId') revokedBy: string
-    ): Promise<IResponseReturn<void>> {
-        return this.projectMemberService.revokeInvite(
-            projectId,
-            inviteId,
-            revokedBy
-        );
-    }
-
-    @ProjectSharedClaimInviteDoc()
+    @ProjectUserClaimInviteDoc()
     @UserProtected()
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('project.inviteAllowed')
@@ -301,7 +260,49 @@ export class ProjectSharedController {
         });
     }
 
-    @ProjectSharedSendMemberInviteDoc()
+    @ProjectUserListInvitesDoc()
+    @ResponsePaging('project.member.invite.list')
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @FeatureFlagProtected('project.inviteAllowed')
+    @ApiKeyProtected()
+    @Get('/:projectId/members/invites')
+    async listMemberInvites(
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
+        @PaginationOffsetQuery()
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ProjectInviteSelect,
+            Prisma.ProjectInviteWhereInput
+        >
+    ): Promise<IResponsePagingReturn<ProjectInviteResponseDto>> {
+        return this.projectMemberService.listInvites(projectId, pagination);
+    }
+
+    @ProjectUserRevokeInviteDoc()
+    @Response('project.member.invite.revoke')
+    @ProjectRoleProtected(EnumProjectMemberRole.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @FeatureFlagProtected('project.inviteAllowed')
+    @ApiKeyProtected()
+    @Delete('/:projectId/members/invites/:inviteId')
+    async revokeInvite(
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
+        @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe) inviteId: string,
+        @AuthJwtPayload('userId') revokedBy: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: UserAgent
+    ): Promise<IResponseReturn<void>> {
+        return this.projectMemberService.revokeInvite(
+            projectId,
+            inviteId,
+            revokedBy,
+            { ipAddress, userAgent }
+        );
+    }
+
+    @ProjectUserSendMemberInviteDoc()
     @Response('project.member.invite.send')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
@@ -327,7 +328,7 @@ export class ProjectSharedController {
         );
     }
 
-    @ProjectSharedUpdateMemberDoc()
+    @ProjectUserUpdateMemberDoc()
     @Response('project.member.update')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
@@ -348,7 +349,7 @@ export class ProjectSharedController {
         );
     }
 
-    @ProjectSharedListMembersDoc()
+    @ProjectUserListMembersDoc()
     @ResponsePaging('project.member.list')
     @ProjectRoleProtected(
         EnumProjectMemberRole.admin,
@@ -370,7 +371,7 @@ export class ProjectSharedController {
         return this.projectMemberService.listMembers(projectId, pagination);
     }
 
-    @ProjectSharedListMemberRolesDoc()
+    @ProjectUserListMemberRolesDoc()
     @Response('project.member.roles')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
@@ -383,7 +384,7 @@ export class ProjectSharedController {
         return this.projectMemberService.getMemberRoles(projectId);
     }
 
-    @ProjectSharedLeaveMemberDoc()
+    @ProjectUserLeaveMemberDoc()
     @Response('project.member.leave')
     @ProjectRoleProtected(
         EnumProjectMemberRole.admin,
@@ -401,7 +402,7 @@ export class ProjectSharedController {
         return this.projectMemberService.leave(projectId, userId);
     }
 
-    @ProjectSharedRevokeMemberDoc()
+    @ProjectUserRevokeMemberDoc()
     @Response('project.member.revoke')
     @ProjectRoleProtected(EnumProjectMemberRole.admin)
     @UserProtected()
@@ -413,14 +414,17 @@ export class ProjectSharedController {
         @Param('memberId', RequestRequiredPipe, RequestIsValidObjectIdPipe) memberId: string,
         @AuthJwtPayload('userId') revokedBy: string,
         @TenantMemberCurrent() tenantMember: ITenantMember,
-        @ProjectMemberCurrent() projectMember: IProjectMember | undefined
+        @ProjectMemberCurrent() projectMember: IProjectMember | undefined,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: UserAgent
     ): Promise<IResponseReturn<void>> {
         return this.projectMemberService.revoke(
             projectId,
             memberId,
             revokedBy,
             tenantMember.role,
-            projectMember?.role
+            projectMember?.role,
+            { ipAddress, userAgent }
         );
     }
 }

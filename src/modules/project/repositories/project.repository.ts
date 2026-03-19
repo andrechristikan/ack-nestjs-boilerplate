@@ -120,27 +120,15 @@ export class ProjectRepository {
         });
     }
 
-    async findOneBySlugAndTenant(
-        tenantId: string,
+    async findOneBySlug(
         slug: string
     ): Promise<Pick<Project, 'id'> | null> {
         return this.databaseService.project.findFirst({
             where: {
-                tenantId,
                 slug,
-                deletedAt: null,
             },
             select: {
                 id: true,
-            },
-        });
-    }
-
-    async create(data: IProjectCreate): Promise<Project> {
-        return this.databaseService.project.create({
-            data: {
-                ...data,
-                deletedAt: null,
             },
         });
     }
@@ -149,19 +137,6 @@ export class ProjectRepository {
         return this.databaseService.project.update({
             where: { id: projectId },
             data,
-        });
-    }
-
-    async delete(projectId: string, deletedBy: string): Promise<Project> {
-        const deletedAt = this.helperService.dateCreate();
-
-        return this.databaseService.project.update({
-            where: { id: projectId, deletedAt: null },
-            data: {
-                updatedBy: deletedBy,
-                deletedAt,
-                deletedBy,
-            },
         });
     }
 
@@ -325,7 +300,7 @@ async softDeleteMember(
         });
     }
 
-    async deleteWithCascade(
+    async delete(
         projectId: string,
         deletedBy: string
     ): Promise<Project> {
@@ -347,8 +322,7 @@ async softDeleteMember(
                     projectId,
                     status: {
                         in: [
-                            EnumProjectInviteStatus.pending,
-                            EnumProjectInviteStatus.expired,
+                            EnumProjectInviteStatus.pending
                         ],
                     },
                     revokedAt: null,
@@ -357,6 +331,7 @@ async softDeleteMember(
                 data: {
                     status: EnumProjectInviteStatus.revoked,
                     revokedAt: deletedAt,
+                    revokedById: deletedBy,
                     updatedBy: deletedBy,
                 },
             });
@@ -365,7 +340,7 @@ async softDeleteMember(
         });
     }
 
-    async createWithMembers(
+    async create(
         data: IProjectCreate,
         members: Array<{
             userId: string;
