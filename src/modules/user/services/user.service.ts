@@ -90,6 +90,7 @@ import {
 } from '@nestjs/common';
 import {
     EnumRoleScope,
+    EnumTenantMemberStatus,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
@@ -116,6 +117,10 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
+import { TenantInviteRepository } from '@modules/tenant/repositories/tenant-invite.repository';
+import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
+import { EnumInviteStatusCodeError } from '@modules/tenant/enums/tenant-invite.status-code.enum';
+import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -140,7 +145,9 @@ export class UserService implements IUserService {
         private readonly featureFlagUtil: FeatureFlagUtil,
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
         private readonly configService: ConfigService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly tenantInviteRepository: TenantInviteRepository,
+        private readonly tenantRepository: TenantRepository
     ) {
         this.userRoleName = this.configService.get<string>('user.default.role');
         this.userCountryName = this.configService.get<string>(
@@ -1164,14 +1171,15 @@ export class UserService implements IUserService {
     }
 
     async signUp(
-        {
-            countryId,
-            email,
-            password: passwordString,
-            ...others
-        }: UserSignUpRequestDto,
+        dto: UserSignUpRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
+        if (dto.inviteToken) {
+            return this.signUpViaInvite(dto, requestLog);
+        }
+
+        const { countryId, email, password: passwordString, ...others } = dto;
+
         const [role, emailExist, checkCountry] = await Promise.all([
             this.roleRepository.existByNameAndScope(
                 this.userRoleName,
@@ -1236,6 +1244,121 @@ export class UserService implements IUserService {
             });
             return;
         } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    private async signUpViaInvite(
+        dto: UserSignUpRequestDto,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const invite = await this.tenantInviteRepository.findOneActiveByToken(
+            dto.inviteToken!
+        );
+        if (!invite) {
+            throw new NotFoundException({
+                statusCode: EnumInviteStatusCodeError.notFound,
+                message: 'tenant.invite.error.tokenInvalid',
+            });
+        }
+
+        if (invite.invitedEmail !== dto.email) {
+            throw new ForbiddenException({
+                statusCode: EnumInviteStatusCodeError.tokenInvalid,
+                message: 'tenant.invite.error.tokenInvalid',
+            });
+        }
+
+        try {
+            let user = await this.userRepository.findOneByEmail(dto.email);
+
+            if (!user) {
+                const [role, checkCountry] = await Promise.all([
+                    this.roleRepository.existByNameAndScope(
+                        this.userRoleName,
+                        EnumRoleScope.platform
+                    ),
+                    this.countryRepository.existById(dto.countryId),
+                ]);
+                if (!role) {
+                    throw new NotFoundException({
+                        statusCode: EnumRoleStatusCodeError.notFound,
+                        message: 'role.error.notFound',
+                    });
+                }
+                if (!checkCountry) {
+                    throw new NotFoundException({
+                        statusCode: EnumCountryStatusCodeError.notFound,
+                        message: 'country.error.notFound',
+                    });
+                }
+
+                const randomUsername = this.userUtil.createRandomUsername();
+                user = await this.userRepository.createByInvitation(
+                    randomUsername,
+                    dto.email,
+                    role.id,
+                    dto.countryId,
+                    invite.invitedById,
+                    EnumUserSignUpFrom.tenant,
+                    requestLog
+                );
+            }
+
+            let pendingMember =
+                await this.tenantRepository.findMemberByTenantAndUser(
+                    invite.tenantId,
+                    user.id
+                );
+
+            if (!pendingMember) {
+                const member = await this.tenantRepository.createMember({
+                    tenantId: invite.tenantId,
+                    userId: user.id,
+                    role: invite.tenantRole,
+                    status: EnumTenantMemberStatus.pending,
+                    createdBy: invite.invitedById,
+                    updatedBy: invite.invitedById,
+                });
+                pendingMember = { id: member.id, status: member.status };
+            } else if (
+                pendingMember.status !== EnumTenantMemberStatus.pending
+            ) {
+                throw new ConflictException({
+                    statusCode: EnumTenantStatusCodeError.memberExist,
+                    message: 'tenant.member.error.exist',
+                });
+            }
+
+            const emailName = invite.invitedEmail.split('@')[0]?.trim();
+            const name = dto.name?.trim() || emailName || 'User';
+            const passwordPayload = this.authUtil.createPassword(
+                user.id,
+                dto.password
+            );
+
+            await this.tenantInviteRepository.signupAndAccept(
+                invite.id,
+                user.id,
+                pendingMember.id,
+                name,
+                passwordPayload,
+                requestLog
+            );
+
+            return {};
+        } catch (err: unknown) {
+            if (
+                err instanceof NotFoundException ||
+                err instanceof ForbiddenException ||
+                err instanceof ConflictException
+            ) {
+                throw err;
+            }
             throw new InternalServerErrorException({
                 statusCode: EnumAppStatusCodeError.unknown,
                 message: 'http.serverError.internalServerError',

@@ -26,6 +26,14 @@ export class TenantInviteRepository {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
+    async findUserIdByEmail(email: string): Promise<string | null> {
+        const user = await this.databaseService.user.findUnique({
+            where: { email, deletedAt: null },
+            select: { id: true },
+        });
+        return user?.id ?? null;
+    }
+
     async findOneById(id: string): Promise<TenantInvite | null> {
         return this.databaseService.tenantInvite.findFirst({ where: { id } });
     }

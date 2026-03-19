@@ -8,7 +8,6 @@ import {
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { IConfigTenant } from '@configs/tenant.config';
 import { EnumInviteStatusCodeError } from '@modules/tenant/enums/tenant-invite.status-code.enum';
-import { TenantInviteSignupRequestDto } from '@modules/tenant/dtos/request/tenant-invite-signup.request.dto';
 import { TenantInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant-invite.create.request.dto';
 import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
@@ -17,8 +16,6 @@ import { TenantRepository } from '@modules/tenant/repositories/tenant.repository
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import { ITenant } from '@modules/tenant/interfaces/tenant.interface';
 import { TenantUtil } from '@modules/tenant/utils/tenant.util';
-import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserService } from '@modules/user/services/user.service';
 import {
     ConflictException,
     ForbiddenException,
@@ -31,7 +28,6 @@ import {
     EnumTenantInviteStatus,
     EnumTenantInviteType,
     EnumTenantMemberStatus,
-    EnumUserSignUpFrom,
     Prisma,
     TenantInvite,
 } from '@generated/prisma-client';
@@ -42,12 +38,10 @@ export class TenantInviteService {
     constructor(
         private readonly tenantInviteRepository: TenantInviteRepository,
         private readonly tenantRepository: TenantRepository,
-        private readonly userRepository: UserRepository,
-        private readonly userService: UserService,
         private readonly authUtil: AuthUtil,
         private readonly tenantUtil: TenantUtil,
         private readonly notificationUtil: NotificationUtil,
-        private readonly configService: ConfigService,
+        private readonly configService: ConfigService
     ) {}
 
     private mapInvite(
@@ -94,43 +88,39 @@ export class TenantInviteService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<TenantInviteResponseDto>> {
         try {
-            const existingUser = await this.userRepository.findOneByEmail(dto.email);
-            const inviteeType = existingUser
+            const existingUserId =
+                await this.tenantInviteRepository.findUserIdByEmail(dto.email);
+            const inviteeType = existingUserId
                 ? EnumTenantInviteType.registered
                 : EnumTenantInviteType.unregistered;
-            const user =
-                existingUser ??
-                (await this.userService.createForInvitation(
-                    dto.email,
-                    EnumUserSignUpFrom.tenant,
-                    requestLog,
-                    invitedById
-                ));
 
-            const existingMember =
-                await this.tenantRepository.findMemberByTenantAndUser(
-                    tenant.id,
-                    user.id
-                );
-            if (
-                existingMember &&
-                existingMember.status !== EnumTenantMemberStatus.pending
-            ) {
-                throw new ConflictException({
-                    statusCode: EnumTenantStatusCodeError.memberExist,
-                    message: 'tenant.member.error.exist',
-                });
-            }
+            if (inviteeType === EnumTenantInviteType.registered) {
+                const existingMember =
+                    await this.tenantRepository.findMemberByTenantAndUser(
+                        tenant.id,
+                        existingUserId!
+                    );
 
-            if (!existingMember) {
-                await this.tenantRepository.createMember({
-                    tenantId: tenant.id,
-                    userId: user.id,
-                    role: dto.role,
-                    status: EnumTenantMemberStatus.pending,
-                    createdBy: invitedById,
-                    updatedBy: invitedById,
-                });
+                if (
+                    existingMember &&
+                    existingMember.status !== EnumTenantMemberStatus.pending
+                ) {
+                    throw new ConflictException({
+                        statusCode: EnumTenantStatusCodeError.memberExist,
+                        message: 'tenant.member.error.exist',
+                    });
+                }
+
+                if (!existingMember) {
+                    await this.tenantRepository.createMember({
+                        tenantId: tenant.id,
+                        userId: existingUserId!,
+                        role: dto.role,
+                        status: EnumTenantMemberStatus.pending,
+                        createdBy: invitedById,
+                        updatedBy: invitedById,
+                    });
+                }
             }
 
             const existingPending =
@@ -145,9 +135,8 @@ export class TenantInviteService {
                 );
             }
 
-            const inviteConfig = this.configService.getOrThrow<IConfigTenant>(
-                'tenant'
-            ).invite;
+            const inviteConfig =
+                this.configService.getOrThrow<IConfigTenant>('tenant').invite;
             const effectiveExpiredInMinutes = dto.expiresInDays
                 ? dto.expiresInDays * 24 * 60
                 : inviteConfig.expiredInMinutes;
@@ -178,9 +167,7 @@ export class TenantInviteService {
                     role: dto.role,
                 },
                 invitedById,
-                inviteeType === EnumTenantInviteType.registered
-                    ? existingUser?.id
-                    : undefined
+                existingUserId ?? undefined
             );
 
             return { data: this.mapInvite(invite) };
@@ -204,11 +191,11 @@ export class TenantInviteService {
     async claimRegistered(
         token: string,
         userId: string,
+        userEmail: string,
         requestLog: IRequestLog
     ): Promise<void> {
-        const invite = await this.tenantInviteRepository.findOneActiveByToken(
-            token
-        );
+        const invite =
+            await this.tenantInviteRepository.findOneActiveByToken(token);
         if (!invite) {
             throw new NotFoundException({
                 statusCode: EnumInviteStatusCodeError.notFound,
@@ -216,19 +203,22 @@ export class TenantInviteService {
             });
         }
 
-        const user = await this.userRepository.findOneById(userId);
-        if (!user || user.email !== invite.invitedEmail) {
+        if (userEmail !== invite.invitedEmail) {
             throw new ForbiddenException({
                 statusCode: EnumInviteStatusCodeError.tokenInvalid,
                 message: 'tenant.invite.error.tokenInvalid',
             });
         }
 
-        const pendingMember = await this.tenantRepository.findMemberByTenantAndUser(
-            invite.tenantId,
-            userId
-        );
-        if (!pendingMember || pendingMember.status !== EnumTenantMemberStatus.pending) {
+        const pendingMember =
+            await this.tenantRepository.findMemberByTenantAndUser(
+                invite.tenantId,
+                userId
+            );
+        if (
+            !pendingMember ||
+            pendingMember.status !== EnumTenantMemberStatus.pending
+        ) {
             throw new ConflictException({
                 statusCode: EnumTenantStatusCodeError.memberExist,
                 message: 'tenant.member.error.exist',
@@ -240,54 +230,6 @@ export class TenantInviteService {
             userId,
             requestLog,
             pendingMember.id
-        );
-    }
-
-    async signupAndClaim(
-        token: string,
-        { password }: TenantInviteSignupRequestDto,
-        requestLog: IRequestLog
-    ): Promise<void> {
-        const invite = await this.tenantInviteRepository.findOneActiveByToken(
-            token
-        );
-        if (!invite) {
-            throw new NotFoundException({
-                statusCode: EnumInviteStatusCodeError.notFound,
-                message: 'tenant.invite.error.tokenInvalid',
-            });
-        }
-
-        const user = await this.userRepository.findOneByEmail(invite.invitedEmail);
-        if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.memberNotFound,
-                message: 'tenant.member.error.userNotFound',
-            });
-        }
-
-        const pendingMember = await this.tenantRepository.findMemberByTenantAndUser(
-            invite.tenantId,
-            user.id
-        );
-        if (!pendingMember || pendingMember.status !== EnumTenantMemberStatus.pending) {
-            throw new ConflictException({
-                statusCode: EnumTenantStatusCodeError.memberExist,
-                message: 'tenant.member.error.exist',
-            });
-        }
-
-        const emailName = invite.invitedEmail.split('@')[0]?.trim();
-        const name = user.name?.trim() || emailName || 'User';
-        const passwordPayload = this.authUtil.createPassword(user.id, password);
-
-        await this.tenantInviteRepository.signupAndAccept(
-            invite.id,
-            user.id,
-            pendingMember.id,
-            name,
-            passwordPayload,
-            requestLog
         );
     }
 

@@ -13,4 +13,5 @@ export enum EnumTenantStatusCodeError {
     loginNoMembership = 5201,
     roleScopeMismatch = 5202,
     nameUpdateForbidden = 5203,
+    ownerMustTransferBeforeLeaving = 5204,
 }

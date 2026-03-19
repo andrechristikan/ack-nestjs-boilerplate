@@ -1,11 +1,14 @@
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import {
     RequestIPAddress,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
-import { EnumTenantMemberRole, Prisma, UserAgent } from '@generated/prisma-client';
+import {
+    EnumTenantMemberRole,
+    Prisma,
+    UserAgent,
+} from '@generated/prisma-client';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import {
@@ -28,7 +31,6 @@ import {
     TenantRoleProtected,
 } from '@modules/tenant/decorators/tenant.decorator';
 import { TenantInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant-invite.create.request.dto';
-import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
 import { TenantTransferOwnershipRequestDto } from '@modules/tenant/dtos/request/tenant.transfer-ownership.request.dto';
 import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
@@ -37,20 +39,19 @@ import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-in
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import {
-    TenantSharedClaimInviteDoc,
-    TenantSharedCreateMemberInviteDoc,
-    TenantSharedDeleteMemberInviteDoc,
-    TenantSharedListMemberInvitesDoc,
-} from '@modules/tenant/docs/tenant.invite.shared.doc';
+    TenantUserClaimInviteDoc,
+    TenantUserCreateMemberInviteDoc,
+    TenantUserDeleteMemberInviteDoc,
+    TenantUserListMemberInvitesDoc,
+} from '@modules/tenant/docs/tenant.invite.user.doc';
 import {
-    TenantSharedCreateMemberDoc,
-    TenantSharedDeleteMemberDoc,
-    TenantSharedGetCurrentTenantDoc,
-    TenantSharedListMemberRolesDoc,
-    TenantSharedListMembersDoc,
-    TenantSharedUpdateCurrentTenantDoc,
-    TenantSharedUpdateMemberDoc,
-} from '@modules/tenant/docs/tenant.shared.doc';
+    TenantUserDeleteMemberDoc,
+    TenantUserGetDoc,
+    TenantUserLeaveDoc,
+    TenantUserListMembersDoc,
+    TenantUserUpdateDoc,
+    TenantUserUpdateMemberDoc,
+} from '@modules/tenant/docs/tenant.user.doc';
 import {
     ITenant,
     ITenantMember,
@@ -72,19 +73,19 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
-@ApiTags('modules.shared.tenant')
+@ApiTags('modules.user.tenant')
 @Controller({
     version: '1',
-    path: '/tenants',
+    path: '/user/tenants',
 })
-export class TenantSharedController {
+export class TenantUserController {
     constructor(
         private readonly tenantService: TenantService,
         private readonly tenantMemberService: TenantMemberService,
         private readonly tenantInviteService: TenantInviteService
     ) {}
 
-    @TenantSharedGetCurrentTenantDoc()
+    @TenantUserGetDoc()
     @Response('tenant.get')
     @TenantRoleProtected(
         EnumTenantMemberRole.owner,
@@ -95,31 +96,33 @@ export class TenantSharedController {
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
-    @Get('/current')
-    async getCurrentTenant(
+    @Get('/:tenantId')
+    async getTenant(
         @TenantCurrent() tenant: ITenant
     ): Promise<IResponseReturn<TenantResponseDto>> {
         return this.tenantService.getOne(tenant.id);
     }
 
-    @TenantSharedUpdateCurrentTenantDoc()
+    @TenantUserUpdateDoc()
     @Response('tenant.update')
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
+    @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
-    @Patch('/current/tenant')
-    async updateCurrentTenant(
+    @Patch('/:tenantId')
+    async updateTenant(
         @TenantCurrent() tenant: ITenant,
         @TenantMemberCurrent() tenantMember: ITenantMember,
         @Body() body: TenantUpdateRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.tenantService.update(tenant.id, body, updatedBy, tenantMember.role);
+        return this.tenantService.update(
+            tenant.id,
+            body,
+            updatedBy,
+            tenantMember.role
+        );
     }
 
     @Response('tenant.updateSlug')
@@ -128,8 +131,8 @@ export class TenantSharedController {
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
-    @Patch('/current/tenant/slug')
-    async updateCurrentTenantSlug(
+    @Patch('/:tenantId/slug')
+    async updateTenantSlug(
         @TenantCurrent() tenant: ITenant,
         @Body() body: TenantUpdateSlugRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
@@ -143,7 +146,7 @@ export class TenantSharedController {
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
-    @Patch('/current/ownership/transfer')
+    @Patch('/:tenantId/transfer')
     async transferOwnership(
         @TenantCurrent() tenant: ITenant,
         @Body() body: TenantTransferOwnershipRequestDto,
@@ -161,15 +164,16 @@ export class TenantSharedController {
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
-    @Patch('/switch/:tenantId')
+    @Patch('/:tenantId/switch')
     async switchTenant(
-        @Param('tenantId', RequestRequiredPipe, RequestIsValidObjectIdPipe) tenantId: string,
+        @Param('tenantId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        tenantId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
         return this.tenantService.switchTenant(tenantId, userId);
     }
 
-    @TenantSharedListMembersDoc()
+    @TenantUserListMembersDoc()
     @ResponsePaging('tenant.member.list')
     @TenantRoleProtected(
         EnumTenantMemberRole.owner,
@@ -180,7 +184,7 @@ export class TenantSharedController {
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
-    @Get('/current/members')
+    @Get('/:tenantId/members')
     async listMembers(
         @TenantCurrent() tenant: ITenant,
         @PaginationOffsetQuery()
@@ -192,106 +196,14 @@ export class TenantSharedController {
         return this.tenantMemberService.getMembersOffset(tenant.id, pagination);
     }
 
-    @TenantSharedCreateMemberInviteDoc()
-    @Response('tenant.member.invite.create')
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenant')
-    @FeatureFlagProtected('tenant.inviteAllowed')
-    @ApiKeyProtected()
-    @Post('/current/invites')
-    async createMemberInvite(
-        @TenantCurrent() tenant: ITenant,
-        @Body() body: TenantInviteCreateRequestDto,
-        @AuthJwtPayload('userId') createdBy: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent
-    ): Promise<IResponseReturn<TenantInviteResponseDto>> {
-        return this.tenantInviteService.createInvite(
-            tenant,
-            body,
-            createdBy,
-            { ipAddress, userAgent }
-        );
-    }
-
-    @TenantSharedDeleteMemberInviteDoc()
-    @Response('tenant.invite.revoke')
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenant')
-    @FeatureFlagProtected('tenant.inviteAllowed')
-    @ApiKeyProtected()
-    @Delete('/current/invites/:inviteId')
-    async revokeInvite(
-        @TenantCurrent() tenant: ITenant,
-        @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe) inviteId: string,
-        @AuthJwtPayload('userId') revokedBy: string
-    ): Promise<IResponseReturn<void>> {
-        return this.tenantInviteService.revokeInvite(inviteId, tenant.id, revokedBy);
-    }
-
-    @TenantSharedListMemberInvitesDoc()
-    @ResponsePaging('tenant.invite.list')
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenant')
-    @FeatureFlagProtected('tenant.inviteAllowed')
-    @ApiKeyProtected()
-    @Get('/current/invites')
-    async listInvites(
-        @TenantCurrent() tenant: ITenant,
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.TenantInviteSelect,
-            Prisma.TenantInviteWhereInput
-        >
-    ): Promise<IResponsePagingReturn<TenantInviteResponseDto>> {
-        return this.tenantInviteService.listInvites(tenant.id, pagination);
-    }
-
-    @TenantSharedClaimInviteDoc()
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @FeatureFlagProtected('tenant.inviteAllowed')
-    @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/invites/:token/claim')
-    async claimInvite(
-        @Param('token', RequestRequiredPipe) token: string,
-        @AuthJwtPayload('userId') userId: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent
-    ): Promise<void> {
-        return this.tenantInviteService.claimRegistered(token, userId, {
-            ipAddress,
-            userAgent,
-        });
-    }
-
-    @TenantSharedUpdateMemberDoc()
+    @TenantUserUpdateMemberDoc()
     @Response('tenant.member.update')
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
+    @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
-    @Patch('/current/members/:memberId')
+    @Patch('/:tenantId/members/:memberId')
     async updateMember(
         @TenantCurrent() tenant: ITenant,
         @Param('memberId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -307,17 +219,14 @@ export class TenantSharedController {
         );
     }
 
-    @TenantSharedDeleteMemberDoc()
+    @TenantUserDeleteMemberDoc()
     @Response('tenant.member.delete')
-    @TenantRoleProtected(
-        EnumTenantMemberRole.owner,
-        EnumTenantMemberRole.admin
-    )
+    @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('tenant')
     @ApiKeyProtected()
-    @Delete('/current/members/:memberId')
+    @Delete('/:tenantId/members/:memberId')
     async deleteMember(
         @TenantCurrent() tenant: ITenant,
         @Param('memberId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -329,5 +238,105 @@ export class TenantSharedController {
             memberId,
             requestedBy
         );
+    }
+
+    @TenantUserLeaveDoc()
+    @Response('tenant.leave')
+    @TenantRoleProtected(
+        EnumTenantMemberRole.owner,
+        EnumTenantMemberRole.admin,
+        EnumTenantMemberRole.member
+    )
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenant')
+    @ApiKeyProtected()
+    @Delete('/:tenantId/leave')
+    async leave(
+        @TenantCurrent() tenant: ITenant,
+        @AuthJwtPayload('userId') userId: string
+    ): Promise<IResponseReturn<void>> {
+        return this.tenantMemberService.leave(tenant.id, userId);
+    }
+
+    @TenantUserCreateMemberInviteDoc()
+    @Response('tenant.member.invite.create')
+    @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenant.inviteAllowed')
+    @ApiKeyProtected()
+    @Post('/:tenantId/invites')
+    async createMemberInvite(
+        @TenantCurrent() tenant: ITenant,
+        @Body() body: TenantInviteCreateRequestDto,
+        @AuthJwtPayload('userId') createdBy: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: UserAgent
+    ): Promise<IResponseReturn<TenantInviteResponseDto>> {
+        return this.tenantInviteService.createInvite(tenant, body, createdBy, {
+            ipAddress,
+            userAgent,
+        });
+    }
+
+    @TenantUserDeleteMemberInviteDoc()
+    @Response('tenant.invite.revoke')
+    @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenant.inviteAllowed')
+    @ApiKeyProtected()
+    @Delete('/:tenantId/invites/:inviteId')
+    async revokeInvite(
+        @TenantCurrent() tenant: ITenant,
+        @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        inviteId: string,
+        @AuthJwtPayload('userId') revokedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.tenantInviteService.revokeInvite(
+            inviteId,
+            tenant.id,
+            revokedBy
+        );
+    }
+
+    @TenantUserListMemberInvitesDoc()
+    @ResponsePaging('tenant.invite.list')
+    @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenant.inviteAllowed')
+    @ApiKeyProtected()
+    @Get('/:tenantId/invites')
+    async listInvites(
+        @TenantCurrent() tenant: ITenant,
+        @PaginationOffsetQuery()
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TenantInviteSelect,
+            Prisma.TenantInviteWhereInput
+        >
+    ): Promise<IResponsePagingReturn<TenantInviteResponseDto>> {
+        return this.tenantInviteService.listInvites(tenant.id, pagination);
+    }
+
+    @TenantUserClaimInviteDoc()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @FeatureFlagProtected('tenant.inviteAllowed')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/invites/:token/claim')
+    async claimInvite(
+        @Param('token', RequestRequiredPipe) token: string,
+        @AuthJwtPayload('userId') userId: string,
+        @AuthJwtPayload('email') userEmail: string,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: UserAgent
+    ): Promise<void> {
+        return this.tenantInviteService.claimRegistered(token, userId, userEmail, {
+            ipAddress,
+            userAgent,
+        });
     }
 }

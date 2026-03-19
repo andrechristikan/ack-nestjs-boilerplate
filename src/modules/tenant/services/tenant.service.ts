@@ -21,7 +21,6 @@ import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant
 import { ITenantService } from '@modules/tenant/interfaces/tenant.service.interface';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { TenantUtil } from '@modules/tenant/utils/tenant.util';
-import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     BadRequestException,
     ForbiddenException,
@@ -29,7 +28,10 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumTenantMemberRole, EnumTenantMemberStatus } from '@generated/prisma-client';
+import {
+    EnumTenantMemberRole,
+    EnumTenantMemberStatus,
+} from '@generated/prisma-client';
 import { HelperService } from '@common/helper/services/helper.service';
 
 @Injectable()
@@ -38,8 +40,7 @@ export class TenantService implements ITenantService {
         private readonly tenantRepository: TenantRepository,
         private readonly databaseUtil: DatabaseUtil,
         private readonly tenantUtil: TenantUtil,
-        private readonly helperService: HelperService,
-        private readonly userRepository: UserRepository
+        private readonly helperService: HelperService
     ) {}
 
     async validateTenantGuard(
@@ -174,11 +175,11 @@ export class TenantService implements ITenantService {
         const slug = await this.createUniqueSlug(name);
         const tenant = await this.tenantRepository.createWithOwner(
             {
-            name,
-            description: dto.description?.trim() ?? '',
-            slug,
-            createdBy,
-            updatedBy: createdBy,
+                name,
+                description: dto.description?.trim() ?? '',
+                slug,
+                createdBy,
+                updatedBy: createdBy,
             },
             createdBy
         );
@@ -200,7 +201,10 @@ export class TenantService implements ITenantService {
             return {};
         }
 
-        if (dto.name !== undefined && callerRole !== EnumTenantMemberRole.owner) {
+        if (
+            dto.name !== undefined &&
+            callerRole !== EnumTenantMemberRole.owner
+        ) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.nameUpdateForbidden,
                 message: 'tenant.error.nameUpdateForbidden',
@@ -244,10 +248,11 @@ export class TenantService implements ITenantService {
         tenantId: string,
         userId: string
     ): Promise<IResponseReturn<void>> {
-        const member = await this.tenantRepository.findOneActiveMemberByTenantAndUser(
-            tenantId,
-            userId
-        );
+        const member =
+            await this.tenantRepository.findOneActiveMemberByTenantAndUser(
+                tenantId,
+                userId
+            );
 
         if (!member) {
             throw new ForbiddenException({
@@ -256,7 +261,7 @@ export class TenantService implements ITenantService {
             });
         }
 
-        await this.userRepository.updateLastTenantId(userId, tenantId);
+        await this.tenantRepository.updateLastTenant(userId, tenantId);
         return {};
     }
 
@@ -267,7 +272,10 @@ export class TenantService implements ITenantService {
     ): Promise<IResponseReturn<void>> {
         const [currentOwner, targetMember] = await Promise.all([
             this.tenantRepository.findOneOwnerMemberByTenant(tenantId),
-            this.tenantRepository.findOneMemberByIdAndTenant(memberId, tenantId),
+            this.tenantRepository.findOneMemberByIdAndTenant(
+                memberId,
+                tenantId
+            ),
         ]);
 
         if (!currentOwner || currentOwner.userId !== requestedBy) {
@@ -277,7 +285,10 @@ export class TenantService implements ITenantService {
             });
         }
 
-        if (!targetMember || targetMember.status !== EnumTenantMemberStatus.active) {
+        if (
+            !targetMember ||
+            targetMember.status !== EnumTenantMemberStatus.active
+        ) {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.memberNotFound,
                 message: 'tenant.member.error.notFound',
@@ -302,7 +313,7 @@ export class TenantService implements ITenantService {
         id: string,
         deletedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.tenantRepository.delete(id, deletedBy);
+        await this.tenantRepository.deleteWithCascade(id, deletedBy);
 
         return {};
     }

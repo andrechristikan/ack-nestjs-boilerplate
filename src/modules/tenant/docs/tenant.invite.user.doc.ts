@@ -10,7 +10,7 @@ import { TenantInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenan
 import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
-export function TenantSharedCreateMemberInviteDoc(): MethodDecorator {
+export function TenantUserCreateMemberInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'create tenant invite',
@@ -26,7 +26,7 @@ export function TenantSharedCreateMemberInviteDoc(): MethodDecorator {
     );
 }
 
-export function TenantSharedDeleteMemberInviteDoc(): MethodDecorator {
+export function TenantUserDeleteMemberInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'revoke tenant invite',
@@ -39,7 +39,7 @@ export function TenantSharedDeleteMemberInviteDoc(): MethodDecorator {
     );
 }
 
-export function TenantSharedListMemberInvitesDoc(): MethodDecorator {
+export function TenantUserListMemberInvitesDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'list tenant invites',
@@ -51,7 +51,7 @@ export function TenantSharedListMemberInvitesDoc(): MethodDecorator {
     );
 }
 
-export function TenantSharedClaimInviteDoc(): MethodDecorator {
+export function TenantUserClaimInviteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'claim a tenant invite (registered users)',

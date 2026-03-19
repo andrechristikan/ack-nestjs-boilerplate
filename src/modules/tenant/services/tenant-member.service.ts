@@ -12,12 +12,12 @@ import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.me
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
 import { TenantUtil } from '@modules/tenant/utils/tenant.util';
-import { UserRepository } from '@modules/user/repositories/user.repository';
 import {
     ConflictException,
     ForbiddenException,
     Injectable,
     NotFoundException,
+    UnprocessableEntityException,
 } from '@nestjs/common';
 import {
     EnumTenantMemberRole,
@@ -28,7 +28,6 @@ import {
 export class TenantMemberService implements ITenantMemberService {
     constructor(
         private readonly tenantRepository: TenantRepository,
-        private readonly userRepository: UserRepository,
         private readonly tenantUtil: TenantUtil
     ) {}
 
@@ -37,21 +36,12 @@ export class TenantMemberService implements ITenantMemberService {
         dto: TenantMemberCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdDto>> {
-        const [user, memberExist] = await Promise.all([
-            this.userRepository.findOneById(dto.userId),
-            this.tenantRepository.existMemberByTenantAndUser(
+        const memberExist =
+            await this.tenantRepository.existMemberByTenantAndUser(
                 tenantId,
                 dto.userId,
                 EnumTenantMemberStatus.active
-            ),
-        ]);
-
-        if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumTenantStatusCodeError.memberNotFound,
-                message: 'tenant.member.error.userNotFound',
-            });
-        }
+            );
 
         if (memberExist) {
             throw new ConflictException({
@@ -158,10 +148,10 @@ export class TenantMemberService implements ITenantMemberService {
                     tenantId
                 );
             if (activeMemberCount <= 1) {
-                await this.tenantRepository.deleteTenantAndMember(
+                await this.tenantRepository.deleteWithCascade(
                     tenantId,
-                    member.id,
-                    deletedBy
+                    deletedBy,
+                    member.id
                 );
                 return {};
             }
@@ -175,6 +165,47 @@ export class TenantMemberService implements ITenantMemberService {
         await this.tenantRepository.deleteMember(member.id);
 
         return {};
+    }
+
+    async leave(
+        tenantId: string,
+        userId: string
+    ): Promise<IResponseReturn<void>> {
+        const member =
+            await this.tenantRepository.findOneActiveMemberByTenantAndUser(
+                tenantId,
+                userId
+            );
+
+        if (!member) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.memberNotFound,
+                message: 'tenant.member.error.notFound',
+            });
+        }
+
+        if (member.role !== EnumTenantMemberRole.owner) {
+            await this.tenantRepository.deleteMember(member.id);
+            return {};
+        }
+
+        const activeMemberCount =
+            await this.tenantRepository.countActiveMembersByTenant(tenantId);
+
+        if (activeMemberCount <= 1) {
+            await this.tenantRepository.deleteWithCascade(
+                tenantId,
+                userId,
+                member.id
+            );
+            return {};
+        }
+
+        throw new UnprocessableEntityException({
+            statusCode:
+                EnumTenantStatusCodeError.ownerMustTransferBeforeLeaving,
+            message: 'tenant.member.error.ownerMustTransferBeforeLeaving',
+        });
     }
 
     async getMembersOffset(

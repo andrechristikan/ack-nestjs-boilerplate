@@ -1,5 +1,6 @@
 {
     "list": "Tenants retrieved successfully.",
+    "leave": "You have successfully left the tenant.",
     "memberships": "Tenant memberships retrieved successfully.",
     "get": "Tenant details fetched successfully.",
     "current": "Current tenant fetched successfully.",
@@ -17,7 +18,8 @@
             "userNotFound": "User was not found.",
             "userIdInvalid": "Tenant member userId is invalid.",
             "memberIdInvalid": "Tenant member id is invalid.",
-            "exist": "User is already assigned to this tenant."
+            "exist": "User is already assigned to this tenant.",
+            "ownerMustTransferBeforeLeaving": "You must transfer ownership before leaving the tenant."
         },
         "invite": {
             "create": "Invitation member created successfully.",

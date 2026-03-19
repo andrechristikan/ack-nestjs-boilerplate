@@ -36,4 +36,6 @@ export interface ITenantMemberService {
             Prisma.TenantMemberWhereInput
         >
     ): Promise<IResponsePagingReturn<TenantMemberResponseDto>>;
+
+    leave(tenantId: string, userId: string): Promise<IResponseReturn<void>>;
 }

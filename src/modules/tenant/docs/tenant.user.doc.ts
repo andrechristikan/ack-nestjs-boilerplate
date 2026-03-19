@@ -1,4 +1,3 @@
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import {
     Doc,
     DocAuth,
@@ -9,14 +8,13 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { TenantDocParamsMemberId } from '@modules/tenant/constants/tenant.doc.constant';
-import { TenantMemberCreateRequestDto } from '@modules/tenant/dtos/request/tenant.member.create.request.dto';
 import { TenantMemberUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.member.update.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
-import { HttpStatus, applyDecorators } from '@nestjs/common';
+import { applyDecorators } from '@nestjs/common';
 
-export function TenantSharedGetCurrentTenantDoc(): MethodDecorator {
+export function TenantUserGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'get current tenant',
@@ -32,7 +30,7 @@ export function TenantSharedGetCurrentTenantDoc(): MethodDecorator {
     );
 }
 
-export function TenantSharedUpdateCurrentTenantDoc(): MethodDecorator {
+export function TenantUserUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'update current tenant',
@@ -50,7 +48,7 @@ export function TenantSharedUpdateCurrentTenantDoc(): MethodDecorator {
     );
 }
 
-export function TenantSharedListMembersDoc(): MethodDecorator {
+export function TenantUserListMembersDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'list current tenant members',
@@ -66,42 +64,7 @@ export function TenantSharedListMembersDoc(): MethodDecorator {
     );
 }
 
-export function TenantSharedCreateMemberDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'create tenant member',
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocTenantRoleProtected(),
-        DocRequest({
-            bodyType: EnumDocRequestBodyType.json,
-            dto: TenantMemberCreateRequestDto,
-        }),
-        DocResponse<DatabaseIdDto>('tenant.member.create', {
-            httpStatus: HttpStatus.CREATED,
-            dto: DatabaseIdDto,
-        })
-    );
-}
-
-export function TenantSharedListMemberRolesDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'list tenant member roles',
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocTenantRoleProtected(),
-        DocResponse('tenant.member.roles')
-    );
-}
-
-export function TenantSharedUpdateMemberDoc(): MethodDecorator {
+export function TenantUserUpdateMemberDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'update tenant member',
@@ -120,7 +83,7 @@ export function TenantSharedUpdateMemberDoc(): MethodDecorator {
     );
 }
 
-export function TenantSharedDeleteMemberDoc(): MethodDecorator {
+export function TenantUserDeleteMemberDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'delete tenant member',
@@ -134,5 +97,19 @@ export function TenantSharedDeleteMemberDoc(): MethodDecorator {
             params: TenantDocParamsMemberId,
         }),
         DocResponse('tenant.member.delete')
+    );
+}
+
+export function TenantUserLeaveDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'leave current tenant',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocTenantRoleProtected(),
+        DocResponse('tenant.leave')
     );
 }

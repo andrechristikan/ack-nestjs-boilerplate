@@ -23,6 +23,9 @@ export class TenantGuard implements CanActivate {
         const request = context
             .switchToHttp()
             .getRequest<IRequestAppWithTenant>();
+
+        request.__tenantId = request.params?.tenantId ?? request.__tenantId;
+
         const tenant = await this.tenantService.validateTenantGuard(request);
 
         request.__tenant = tenant;

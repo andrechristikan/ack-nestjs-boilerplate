@@ -9,9 +9,10 @@ import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserModule } from '@modules/user/user.module';
 import { RoleModule } from '@modules/role/role.module';
+import { TenantModule } from '@modules/tenant/tenant.module';
 
 @Module({
-    imports: [UserModule, RoleModule],
+    imports: [UserModule, RoleModule, TenantModule],
     providers: [
         ProjectService,
         ProjectMemberService,

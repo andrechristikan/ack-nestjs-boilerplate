@@ -17,6 +17,8 @@ import {
 } from '@modules/tenant/interfaces/tenant.interface';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumProjectInviteStatus,
+    EnumTenantInviteStatus,
     EnumTenantMemberRole,
     EnumTenantMemberStatus,
     Tenant,
@@ -244,10 +246,10 @@ export class TenantRepository {
         });
     }
 
-    async deleteTenantAndMember(
+    async deleteWithCascade(
         tenantId: string,
-        memberId: string,
-        deletedBy: string
+        deletedBy: string,
+        memberId?: string
     ): Promise<void> {
         const deletedAt = this.helperService.dateCreate();
 
@@ -261,8 +263,52 @@ export class TenantRepository {
                 },
             });
 
-            await tx.tenantMember.delete({
-                where: { id: memberId },
+            if (memberId) {
+                await tx.tenantMember.delete({
+                    where: { id: memberId },
+                });
+            }
+
+            await tx.project.updateMany({
+                where: { tenantId, deletedAt: null },
+                data: {
+                    updatedBy: deletedBy,
+                    deletedAt,
+                    deletedBy,
+                },
+            });
+
+            await tx.tenantInvite.updateMany({
+                where: {
+                    tenantId,
+                    status: EnumTenantInviteStatus.pending,
+                    revokedAt: null,
+                },
+                data: {
+                    status: EnumTenantInviteStatus.revoked,
+                    revokedAt: deletedAt,
+                    revokedById: deletedBy,
+                    updatedBy: deletedBy,
+                },
+            });
+
+            await tx.projectInvite.updateMany({
+                where: {
+                    project: { tenantId },
+                    status: {
+                        in: [
+                            EnumProjectInviteStatus.pending,
+                            EnumProjectInviteStatus.expired,
+                        ],
+                    },
+                    revokedAt: null,
+                    acceptedAt: null,
+                },
+                data: {
+                    status: EnumProjectInviteStatus.revoked,
+                    revokedAt: deletedAt,
+                    updatedBy: deletedBy,
+                },
             });
         });
     }
@@ -336,6 +382,14 @@ export class TenantRepository {
             include: {
                 tenant: true,
             },
+        });
+    }
+
+    async updateLastTenant(userId: string, tenantId: string): Promise<void> {
+        await this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: { lastTenantId: tenantId, updatedBy: userId },
+            select: { id: true },
         });
     }
 
