@@ -9,10 +9,10 @@ export class ProjectInviteResponseDto {
     id: string;
 
     @ApiProperty({ required: true })
-    invitedById: string;
+    inviteeById: string;
 
     @ApiProperty({ required: true })
-    invitedEmail: string;
+    inviteeEmail: string;
 
     @ApiProperty({ required: true })
     projectId: string;

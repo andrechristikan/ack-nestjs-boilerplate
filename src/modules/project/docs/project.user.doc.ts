@@ -2,7 +2,7 @@ import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import {
     Doc,
     DocAuth,
-    DocProjectPermissionProtected,
+    DocProjectMemberProtected,
     DocRequest,
     DocResponse,
     DocResponsePaging,
@@ -17,8 +17,7 @@ import {
     ProjectDocParamsProjectMemberId,
 } from '@modules/project/constants/project.doc.constant';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
-import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
+import { ProjectInviteCreateRequestDto } from '@modules/project/dtos/request/project-invite.create.request.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectInviteResponseDto } from '@modules/project/dtos/response/project-invite.response.dto';
 import { ProjectInviteSendResponseDto } from '@modules/project/dtos/response/project-invite-send.response.dto';
@@ -76,7 +75,7 @@ export function ProjectUserGetDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsId,
         }),
@@ -96,7 +95,7 @@ export function ProjectUserUpdateDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
@@ -116,7 +115,7 @@ export function ProjectUserUpdateSlugDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
@@ -136,34 +135,11 @@ export function ProjectUserDeleteDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsId,
         }),
         DocResponse('project.delete')
-    );
-}
-
-export function ProjectUserCreateMemberDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'create project member',
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
-        DocRequest({
-            params: ProjectDocParamsId,
-            bodyType: EnumDocRequestBodyType.json,
-            dto: ProjectMemberCreateRequestDto,
-        }),
-        DocResponse<DatabaseIdDto>('project.member.create', {
-            httpStatus: HttpStatus.CREATED,
-            dto: DatabaseIdDto,
-        })
     );
 }
 
@@ -177,10 +153,11 @@ export function ProjectUserCreateMemberInviteDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: ProjectMemberInviteCreateRequestDto,
+            dto: ProjectInviteCreateRequestDto,
         }),
         DocResponse<ProjectInviteResponseDto>('project.member.invite.create', {
             httpStatus: HttpStatus.CREATED,
@@ -199,13 +176,17 @@ export function ProjectUserSendMemberInviteDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsInviteId,
         }),
-        DocResponse<ProjectInviteSendResponseDto>('project.member.invite.send', {
-            httpStatus: HttpStatus.CREATED,
-            dto: ProjectInviteSendResponseDto,
-        })
+        DocResponse<ProjectInviteSendResponseDto>(
+            'project.member.invite.send',
+            {
+                httpStatus: HttpStatus.CREATED,
+                dto: ProjectInviteSendResponseDto,
+            }
+        )
     );
 }
 
@@ -219,13 +200,17 @@ export function ProjectUserListInvitesDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsId,
         }),
-        DocResponsePaging<ProjectInviteResponseDto>('project.member.invite.list', {
-            dto: ProjectInviteResponseDto,
-            type: EnumPaginationType.offset,
-        })
+        DocResponsePaging<ProjectInviteResponseDto>(
+            'project.member.invite.list',
+            {
+                dto: ProjectInviteResponseDto,
+                type: EnumPaginationType.offset,
+            }
+        )
     );
 }
 
@@ -239,6 +224,7 @@ export function ProjectUserRevokeInviteDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsInviteId,
         }),
@@ -256,7 +242,7 @@ export function ProjectUserUpdateMemberDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsProjectMemberId,
             bodyType: EnumDocRequestBodyType.json,
@@ -276,7 +262,7 @@ export function ProjectUserListMembersDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsId,
         }),
@@ -287,21 +273,19 @@ export function ProjectUserListMembersDoc(): MethodDecorator {
     );
 }
 
-export function ProjectUserListMemberRolesDoc(): MethodDecorator {
+export function ProjectUserListUserInvitesDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'list project member roles',
+            summary: 'list pending project invites for the current user',
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
-        DocRequest({
-            params: ProjectDocParamsId,
-        }),
-        DocResponse('project.member.roles')
+        DocResponsePaging<ProjectInviteResponseDto>('project.invite.list', {
+            dto: ProjectInviteResponseDto,
+            type: EnumPaginationType.offset,
+        })
     );
 }
 
@@ -315,7 +299,7 @@ export function ProjectUserLeaveMemberDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsId,
         }),
@@ -333,7 +317,7 @@ export function ProjectUserRevokeMemberDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocTenantMemberProtected(),
-        DocProjectPermissionProtected(),
+        DocProjectMemberProtected(),
         DocRequest({
             params: ProjectDocParamsProjectMemberId,
         }),

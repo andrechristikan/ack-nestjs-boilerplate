@@ -40,9 +40,9 @@ import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.me
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import {
     TenantUserClaimInviteDoc,
-    TenantUserCreateMemberInviteDoc,
-    TenantUserDeleteMemberInviteDoc,
-    TenantUserListMemberInvitesDoc,
+    TenantUserCreateInviteDoc,
+    TenantUserDeleteInviteDoc,
+    TenantUserListInvitesDoc,
 } from '@modules/tenant/docs/tenant.invite.user.doc';
 import {
     TenantUserDeleteMemberDoc,
@@ -276,7 +276,7 @@ export class TenantUserController {
         return this.tenantMemberService.leave(tenant.id, userId);
     }
 
-    @TenantUserCreateMemberInviteDoc()
+    @TenantUserCreateInviteDoc()
     @Response('tenant.member.invite.create')
     @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
     @UserProtected()
@@ -297,7 +297,7 @@ export class TenantUserController {
         });
     }
 
-    @TenantUserDeleteMemberInviteDoc()
+    @TenantUserDeleteInviteDoc()
     @Response('tenant.invite.revoke')
     @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
     @UserProtected()
@@ -324,7 +324,7 @@ export class TenantUserController {
         );
     }
 
-    @TenantUserListMemberInvitesDoc()
+    @TenantUserListInvitesDoc()
     @ResponsePaging('tenant.invite.list')
     @TenantRoleProtected(EnumTenantMemberRole.owner, EnumTenantMemberRole.admin)
     @UserProtected()
@@ -357,9 +357,14 @@ export class TenantUserController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
     ): Promise<void> {
-        return this.tenantInviteService.claimRegistered(token, userId, userEmail, {
-            ipAddress,
-            userAgent,
-        });
+        return this.tenantInviteService.claimRegistered(
+            token,
+            userId,
+            userEmail,
+            {
+                ipAddress,
+                userAgent,
+            }
+        );
     }
 }

@@ -52,12 +52,12 @@ export class ProjectInviteRepository {
     }
 
     async findOnePendingByEmailAndProject(
-        invitedEmail: string,
+        inviteeEmail: string,
         projectId: string
     ): Promise<ProjectInvite | null> {
         return this.databaseService.projectInvite.findFirst({
             where: {
-                invitedEmail,
+                inviteeEmail,
                 projectId,
                 status: EnumProjectInviteStatus.pending,
             },
@@ -174,6 +174,31 @@ export class ProjectInviteRepository {
                 },
             });
         });
+    }
+
+    async findPendingByInvitee(
+        inviteeById: string,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.ProjectInviteSelect,
+            Prisma.ProjectInviteWhereInput
+        >
+    ): Promise<IResponsePagingReturn<ProjectInvite>> {
+        const now = this.helperService.dateCreate();
+        return this.paginationService.offset<ProjectInvite>(
+            this.databaseService.projectInvite,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    inviteeById,
+                    status: EnumProjectInviteStatus.pending,
+                    expiresAt: { gt: now },
+                },
+            }
+        );
     }
 
     async findWithPaginationOffset(

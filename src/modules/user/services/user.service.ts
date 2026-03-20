@@ -1172,9 +1172,10 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
         if (dto.inviteToken) {
-            const invite = await this.tenantInviteRepository.findOneActiveByToken(
-                dto.inviteToken
-            );
+            const invite =
+                await this.tenantInviteRepository.findOneActiveByToken(
+                    dto.inviteToken
+                );
             if (!invite) {
                 throw new NotFoundException({
                     statusCode: EnumInviteStatusCodeError.notFound,
@@ -1183,6 +1184,10 @@ export class UserService implements IUserService {
             }
 
             if (invite.invitedEmail !== dto.email) {
+                // CAREFUL: Ensure that the email in the invite matches the provided email
+                // If we reach this point, the invite is valid but the email does not match
+                // 1.  The user is trying to use a different email then the invited one.
+                // 2.  Invite token leakage.
                 throw new ForbiddenException({
                     statusCode: EnumInviteStatusCodeError.tokenInvalid,
                     message: 'tenant.invite.error.tokenInvalid',
@@ -1244,6 +1249,7 @@ export class UserService implements IUserService {
                     dto.password
                 );
 
+                //TODO: Check if we should create a Default Tenant and Project
                 await this.tenantInviteRepository.signupAndAccept(
                     invite.id,
                     user.id,

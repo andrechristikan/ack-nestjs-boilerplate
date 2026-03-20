@@ -47,8 +47,8 @@
         }
     },
     "error": {
-        "xTenantIdRequired": "Tenant header is required.",
-        "xTenantIdInvalid": "Tenant header is invalid.",
+        "xTenantIdRequired": "Tenant is required.",
+        "xTenantIdInvalid": "Tenant is invalid.",
         "notFound": "Tenant was not found.",
         "inactive": "Tenant is inactive.",
         "loginNoMembership": "Your account does not have access to any agencies. Please contact your administrator.",

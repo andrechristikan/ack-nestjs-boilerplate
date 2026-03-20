@@ -124,11 +124,11 @@ export class ProjectUtil {
     }
 
     mapPublicInvite(
-        invite: Pick<ProjectInvite, 'invitedEmail' | 'status' | 'expiresAt'>,
+        invite: Pick<ProjectInvite, 'inviteeEmail' | 'status' | 'expiresAt'>,
         isVerified: boolean
     ): ProjectInvitePublicResponseDto {
         return plainToInstance(ProjectInvitePublicResponseDto, {
-            email: invite.invitedEmail,
+            email: invite.inviteeEmail,
             isVerified,
             status: invite.status,
             expiresAt: invite.expiresAt,
@@ -142,8 +142,8 @@ export class ProjectUtil {
     mapInvite(invite: ProjectInvite): ProjectInviteResponseDto {
         return plainToInstance(ProjectInviteResponseDto, {
             id: invite.id,
-            invitedById: invite.invitedById,
-            invitedEmail: invite.invitedEmail,
+            inviteeById: invite.inviteeById,
+            inviteeEmail: invite.inviteeEmail,
             projectId: invite.projectId,
             projectRole: invite.projectRole,
             status: invite.status,

@@ -228,6 +228,7 @@ export class TenantInviteRepository {
                     passwordAttempt: 0,
                     isVerified: true,
                     verifiedAt: now,
+                    lastTenantId: tenantId,
                     updatedBy: userId,
                     passwordHistories: {
                         create: {

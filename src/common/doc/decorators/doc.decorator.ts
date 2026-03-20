@@ -502,20 +502,6 @@ export function DocProjectMemberProtected(): MethodDecorator {
 }
 
 /**
- * Documents `ProjectPermissionProtected` requirements and possible failures.
- */
-export function DocProjectPermissionProtected(): MethodDecorator {
-    return applyDecorators(
-        DocProjectMemberForbidden,
-        DocDefault({
-            httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-            messagePath: 'policy.error.predefinedNotFound',
-        })
-    );
-}
-
-/**
  * Creates an API documentation decorator for endpoints that require authentication.
  * This decorator handles various authentication methods and their corresponding error responses.
  * @param {IDocAuthOptions} [options] - Optional configuration for authentication documentation

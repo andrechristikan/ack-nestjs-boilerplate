@@ -157,19 +157,19 @@ model Project {
 }
 
 model ProjectInvite {
-  id           String                  @id @default(auto()) @map("_id") @db.ObjectId
-  invitedById  String                  @db.ObjectId
-  invitedEmail String
-  projectId    String                  @db.ObjectId
-  projectRole  EnumProjectMemberRole
-  status       EnumProjectInviteStatus @default(pending)
-  token        String                  @unique
-  expiresAt    DateTime
-  sentAt       DateTime?
-  revokedAt    DateTime?
-  revokedById  String?                 @db.ObjectId
-  acceptedAt   DateTime?
-  acceptedById String?                 @db.ObjectId
+  id            String                  @id @default(auto()) @map("_id") @db.ObjectId
+  inviteeById String                  @db.ObjectId
+  inviteeEmail  String
+  projectId     String                  @db.ObjectId
+  projectRole   EnumProjectMemberRole
+  status        EnumProjectInviteStatus @default(pending)
+  token         String                  @unique
+  expiresAt     DateTime
+  sentAt        DateTime?
+  revokedAt     DateTime?
+  revokedById   String?                 @db.ObjectId
+  acceptedAt    DateTime?
+  acceptedById  String?                 @db.ObjectId
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -178,12 +178,12 @@ model ProjectInvite {
   updatedBy String?  @db.ObjectId
 
   project    Project? @relation("ProjectInvites", fields: [projectId], references: [id])
-  invitedBy  User?    @relation("UserProjectInvitesSent", fields: [invitedById], references: [id])
+  invitee    User?    @relation("UserProjectInvitesReceived", fields: [inviteeById], references: [id])
   acceptedBy User?    @relation("UserProjectInvites", fields: [acceptedById], references: [id])
 
   @@index(fields: [projectId, status, createdAt])
   @@index(fields: [token, status, expiresAt])
-  @@index(fields: [invitedEmail, projectId, status, createdAt])
+  @@index(fields: [inviteeById, status, expiresAt])
   @@index(fields: [createdAt])
   @@map("ProjectInvites")
 }
@@ -315,7 +315,7 @@ model User {
   tenantMemberships       TenantMember[]             @relation("UserTenantMembers")
   projectMemberships      ProjectMember[]            @relation("UserProjectMembers")
   tenantInvitesSent       TenantInvite[]             @relation("UserTenantInvitesSent")
-  projectInvitesSent      ProjectInvite[]            @relation("UserProjectInvitesSent")
+  projectInvitesReceived  ProjectInvite[]            @relation("UserProjectInvitesReceived")
   tenantInvites           TenantInvite[]             @relation("UserTenantInvites")
   projectInvites          ProjectInvite[]            @relation("UserProjectInvites")
 

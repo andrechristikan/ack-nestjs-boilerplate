@@ -11,9 +11,13 @@ import { ProjectModule } from '@modules/project/project.module';
  * Contains controllers for user operations that require user-level authentication and authorization.
  */
 @Module({
-    controllers: [UserUserController, TenantUserController, ProjectUserController],
+    controllers: [
+        UserUserController,
+        TenantUserController,
+        ProjectUserController,
+    ],
     providers: [],
     exports: [],
-    imports: [UserModule, TenantModule,ProjectModule],
+    imports: [UserModule, TenantModule, ProjectModule],
 })
 export class RoutesUserModule {}

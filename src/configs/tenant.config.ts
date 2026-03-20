@@ -1,15 +1,16 @@
 import { registerAs } from '@nestjs/config';
 import { InviteConfig } from '@modules/invite/interfaces/invite.interface';
+import { TenantHeaderId } from '@modules/tenant/constants/tenant.constant';
 
 export interface IConfigTenant {
-    headerName: string;
+    header: string;
     invite: InviteConfig;
 }
 
 export default registerAs(
     'tenant',
     (): IConfigTenant => ({
-        headerName: 'x-tenant-id',
+        header: TenantHeaderId,
         invite: {
             expiredInMinutes: 10080,
             tokenLength: 100,

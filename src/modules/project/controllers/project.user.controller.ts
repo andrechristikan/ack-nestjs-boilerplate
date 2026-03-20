@@ -27,8 +27,7 @@ import {
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
-import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
+import { ProjectInviteCreateRequestDto } from '@modules/project/dtos/request/project-invite.create.request.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectInviteResponseDto } from '@modules/project/dtos/response/project-invite.response.dto';
 import { ProjectInviteSendResponseDto } from '@modules/project/dtos/response/project-invite-send.response.dto';
@@ -39,15 +38,14 @@ import { ProjectResponseDto } from '@modules/project/dtos/response/project.respo
 import {
     ProjectUserClaimInviteDoc,
     ProjectUserCreateDoc,
-    ProjectUserCreateMemberDoc,
     ProjectUserCreateMemberInviteDoc,
     ProjectUserDeleteDoc,
     ProjectUserGetDoc,
     ProjectUserLeaveMemberDoc,
     ProjectUserListDoc,
     ProjectUserListInvitesDoc,
-    ProjectUserListMemberRolesDoc,
     ProjectUserListMembersDoc,
+    ProjectUserListUserInvitesDoc,
     ProjectUserRevokeInviteDoc,
     ProjectUserRevokeMemberDoc,
     ProjectUserSendMemberInviteDoc,
@@ -89,13 +87,30 @@ import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-val
 @ApiTags('modules.user.project')
 @Controller({
     version: '1',
-    path: '/user/projects',
+    path: '/projects',
 })
 export class ProjectUserController {
     constructor(
         private readonly projectService: ProjectService,
         private readonly projectMemberService: ProjectMemberService
     ) {}
+
+    @ProjectUserListUserInvitesDoc()
+    @ResponsePaging('project.invite.list')
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/invites')
+    async listUserInvites(
+        @AuthJwtPayload('userId') userId: string,
+        @PaginationOffsetQuery()
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ProjectInviteSelect,
+            Prisma.ProjectInviteWhereInput
+        >
+    ): Promise<IResponsePagingReturn<ProjectInviteResponseDto>> {
+        return this.projectMemberService.listInvitesForUser(userId, pagination);
+    }
 
     @ProjectUserListDoc()
     @ResponsePaging('project.list')
@@ -197,25 +212,11 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Delete('/:projectId')
     async delete(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.projectService.delete(projectId, updatedBy);
-    }
-
-    @ProjectUserCreateMemberDoc()
-    @Response('project.member.create')
-    @ProjectRoleProtected(EnumProjectMemberRole.admin)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Post('/:projectId/members')
-    async createMember(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
-        @Body() body: ProjectMemberCreateRequestDto,
-        @AuthJwtPayload('userId') createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>> {
-        return this.projectMemberService.create(projectId, body, createdBy);
     }
 
     @ProjectUserCreateMemberInviteDoc()
@@ -225,10 +226,11 @@ export class ProjectUserController {
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('project.inviteAllowed')
     @ApiKeyProtected()
-    @Post('/:projectId/members/invites')
+    @Post('/:projectId/invites')
     async createInvite(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
-        @Body() body: ProjectMemberInviteCreateRequestDto,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string,
+        @Body() body: ProjectInviteCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
@@ -267,9 +269,10 @@ export class ProjectUserController {
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('project.inviteAllowed')
     @ApiKeyProtected()
-    @Get('/:projectId/members/invites')
-    async listMemberInvites(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
+    @Get('/:projectId/invites')
+    async listProjectInvites(
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string,
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams<
             Prisma.ProjectInviteSelect,
@@ -286,10 +289,12 @@ export class ProjectUserController {
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('project.inviteAllowed')
     @ApiKeyProtected()
-    @Delete('/:projectId/members/invites/:inviteId')
-    async revokeInvite(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
-        @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe) inviteId: string,
+    @Delete('/:projectId/invites/:inviteId')
+    async revokeProjectInvite(
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string,
+        @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        inviteId: string,
         @AuthJwtPayload('userId') revokedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
@@ -309,10 +314,12 @@ export class ProjectUserController {
     @AuthJwtAccessProtected()
     @FeatureFlagProtected('project.inviteAllowed')
     @ApiKeyProtected()
-    @Post('/:projectId/members/invites/:inviteId/send')
-    async sendMemberInvite(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
-        @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe) inviteId: string,
+    @Post('/:projectId/invites/:inviteId/send')
+    async sendProjectInvite(
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string,
+        @Param('inviteId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        inviteId: string,
         @AuthJwtPayload('userId') requestedBy: string,
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent
@@ -335,9 +342,11 @@ export class ProjectUserController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/:projectId/members/:memberId')
-    async updateMember(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
-        @Param('memberId', RequestRequiredPipe, RequestIsValidObjectIdPipe) memberId: string,
+    async updateProjectMember(
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string,
+        @Param('memberId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        memberId: string,
         @Body() body: ProjectMemberUpdateRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
@@ -360,8 +369,9 @@ export class ProjectUserController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/:projectId/members')
-    async listMembers(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
+    async listProjectMembers(
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string,
         @PaginationOffsetQuery()
         pagination: IPaginationQueryOffsetParams<
             Prisma.ProjectMemberSelect,
@@ -369,19 +379,6 @@ export class ProjectUserController {
         >
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
         return this.projectMemberService.listMembers(projectId, pagination);
-    }
-
-    @ProjectUserListMemberRolesDoc()
-    @Response('project.member.roles')
-    @ProjectRoleProtected(EnumProjectMemberRole.admin)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/:projectId/members/roles')
-    async listMemberRoles(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string
-    ): Promise<IResponseReturn<EnumProjectMemberRole[]>> {
-        return this.projectMemberService.getMemberRoles(projectId);
     }
 
     @ProjectUserLeaveMemberDoc()
@@ -396,7 +393,8 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Delete('/:projectId/members/me')
     async leaveMember(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
         return this.projectMemberService.leave(projectId, userId);
@@ -409,9 +407,11 @@ export class ProjectUserController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/:projectId/members/:memberId')
-    async revokeMember(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe) projectId: string,
-        @Param('memberId', RequestRequiredPipe, RequestIsValidObjectIdPipe) memberId: string,
+    async revokeProjectMember(
+        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        projectId: string,
+        @Param('memberId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        memberId: string,
         @AuthJwtPayload('userId') revokedBy: string,
         @TenantMemberCurrent() tenantMember: ITenantMember,
         @ProjectMemberCurrent() projectMember: IProjectMember | undefined,

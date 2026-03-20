@@ -1,5 +1,4 @@
 import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant.interface';
-import { TenantHeaderId } from '@modules/tenant/constants/tenant.constant';
 import { IConfigTenant } from '@configs/tenant.config';
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -11,7 +10,7 @@ export class RequestTenantMiddleware implements NestMiddleware {
 
     constructor(private readonly configService: ConfigService) {
         this.headerName =
-            this.configService.get<IConfigTenant>('tenant')?.headerName ?? TenantHeaderId;
+            this.configService.get<IConfigTenant>('tenant').header;
     }
 
     use(req: IRequestAppWithTenant, _res: Response, next: NextFunction): void {

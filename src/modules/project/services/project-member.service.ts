@@ -10,7 +10,7 @@ import {
 import { IConfigProject } from '@configs/project.config';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ProjectInviteType } from '@modules/project/constants/project.constant';
-import { ProjectMemberInviteCreateRequestDto } from '@modules/project/dtos/request/project-member-invite.create.request.dto';
+import { ProjectInviteCreateRequestDto } from '@modules/project/dtos/request/project-invite.create.request.dto';
 import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
 import { ProjectMemberUpdateRequestDto } from '@modules/project/dtos/request/project-member.update.request.dto';
 import { ProjectInviteResponseDto } from '@modules/project/dtos/response/project-invite.response.dto';
@@ -49,7 +49,7 @@ export class ProjectMemberService {
         private readonly notificationUtil: NotificationUtil,
         private readonly projectUtil: ProjectUtil,
         private readonly helperService: HelperService,
-        private readonly configService: ConfigService,
+        private readonly configService: ConfigService
     ) {}
 
     private getInviteConfig(): IConfigProject['invite'] {
@@ -154,7 +154,7 @@ export class ProjectMemberService {
 
     async createInvite(
         projectId: string,
-        dto: ProjectMemberInviteCreateRequestDto,
+        dto: ProjectInviteCreateRequestDto,
         createdBy: string,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<ProjectInviteResponseDto>> {
@@ -175,10 +175,11 @@ export class ProjectMemberService {
             });
         }
 
-        const existingMember = await this.projectRepository.findMemberByProjectAndUser(
-            projectId,
-            user.id
-        );
+        const existingMember =
+            await this.projectRepository.findMemberByProjectAndUser(
+                projectId,
+                user.id
+            );
         if (
             existingMember &&
             existingMember.status === EnumProjectMemberStatus.active
@@ -204,25 +205,28 @@ export class ProjectMemberService {
             }
 
             const inviteConfig = this.getInviteConfig();
-            const effectiveExpiredInMinutes = dto.expiresIn
-                ? dto.expiresIn * 24 * 60
+            const effectiveExpiredInMinutes = dto.expiresInDays
+                ? dto.expiresInDays * 24 * 60
                 : inviteConfig.expiredInMinutes;
             const tokenInfo = this.projectUtil.createInviteToken({
                 ...inviteConfig,
                 expiredInMinutes: effectiveExpiredInMinutes,
             });
 
-            const invite = await this.projectInviteRepository.create({
-                invitedById: createdBy,
-                invitedEmail: normalizedEmail,
-                projectId,
-                projectRole: dto.role,
-                status: EnumProjectInviteStatus.pending,
-                token: tokenInfo.token,
-                expiresAt: tokenInfo.expiresAt,
-                createdBy,
-                updatedBy: createdBy,
-            }, requestLog);
+            const invite = await this.projectInviteRepository.create(
+                {
+                    inviteeById: user.id,
+                    inviteeEmail: normalizedEmail,
+                    projectId,
+                    projectRole: dto.role,
+                    status: EnumProjectInviteStatus.pending,
+                    token: tokenInfo.token,
+                    expiresAt: tokenInfo.expiresAt,
+                    createdBy,
+                    updatedBy: createdBy,
+                },
+                requestLog
+            );
 
             await this.notificationUtil.sendInvite(
                 user.id,
@@ -268,7 +272,9 @@ export class ProjectMemberService {
             });
         }
 
-        const user = await this.userRepository.findOneByEmail(invite.invitedEmail);
+        const user = await this.userRepository.findOneByEmail(
+            invite.inviteeEmail
+        );
         if (!user) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
@@ -286,9 +292,8 @@ export class ProjectMemberService {
         userId: string,
         requestLog: IRequestLog
     ): Promise<void> {
-        const invite = await this.projectInviteRepository.findOneActiveByToken(
-            token
-        );
+        const invite =
+            await this.projectInviteRepository.findOneActiveByToken(token);
         if (!invite) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
@@ -297,14 +302,16 @@ export class ProjectMemberService {
         }
 
         const user = await this.userRepository.findOneById(userId);
-        if (!user || user.email !== invite.invitedEmail) {
+        if (!user || user.email !== invite.inviteeEmail) {
             throw new ForbiddenException({
                 statusCode: HttpStatus.FORBIDDEN,
                 message: 'http.clientError.forbidden',
             });
         }
 
-        const project = await this.projectRepository.findOneById(invite.projectId);
+        const project = await this.projectRepository.findOneById(
+            invite.projectId
+        );
         if (!project) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
@@ -342,7 +349,11 @@ export class ProjectMemberService {
                 });
             }
 
-            await this.projectInviteRepository.accept(invite.id, userId, requestLog);
+            await this.projectInviteRepository.accept(
+                invite.id,
+                userId,
+                requestLog
+            );
         } catch (err: unknown) {
             if (
                 err instanceof ConflictException ||
@@ -385,7 +396,9 @@ export class ProjectMemberService {
             });
         }
 
-        const user = await this.userRepository.findOneByEmail(invite.invitedEmail);
+        const user = await this.userRepository.findOneByEmail(
+            invite.inviteeEmail
+        );
         if (!user) {
             throw new NotFoundException({
                 statusCode: HttpStatus.NOT_FOUND,
@@ -415,7 +428,10 @@ export class ProjectMemberService {
             }
         }
 
-        const link = this.projectUtil.createInviteLink(invite.token, inviteConfig.linkBaseUrl);
+        const link = this.projectUtil.createInviteLink(
+            invite.token,
+            inviteConfig.linkBaseUrl
+        );
         await this.notificationUtil.sendInvite(
             user.id,
             {
@@ -445,7 +461,9 @@ export class ProjectMemberService {
                 }),
                 resendAvailableAt: this.helperService.dateForward(
                     sentAt,
-                    Duration.fromObject({ minutes: inviteConfig.resendInMinutes })
+                    Duration.fromObject({
+                        minutes: inviteConfig.resendInMinutes,
+                    })
                 ),
             },
         };
@@ -489,7 +507,11 @@ export class ProjectMemberService {
             });
         }
 
-        await this.projectInviteRepository.revoke(invite.id, revokedBy, requestLog);
+        await this.projectInviteRepository.revoke(
+            invite.id,
+            revokedBy,
+            requestLog
+        );
         return {};
     }
 
@@ -512,13 +534,22 @@ export class ProjectMemberService {
         };
     }
 
-    async getMemberRoles(
-        projectId: string
-    ): Promise<IResponseReturn<EnumProjectMemberRole[]>> {
-        void projectId;
+    async listInvitesForUser(
+        userId: string,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ProjectInviteSelect,
+            Prisma.ProjectInviteWhereInput
+        >
+    ): Promise<IResponsePagingReturn<ProjectInviteResponseDto>> {
+        const { data, ...others } =
+            await this.projectInviteRepository.findPendingByInvitee(
+                userId,
+                pagination
+            );
 
         return {
-            data: Object.values(EnumProjectMemberRole),
+            ...others,
+            data: data.map(invite => this.projectUtil.mapInvite(invite)),
         };
     }
 
@@ -537,23 +568,21 @@ export class ProjectMemberService {
 
         return {
             ...others,
-            data: data.map(member =>
-                {
-                    const latestInvite = member.user.projectInvites?.[0];
+            data: data.map(member => {
+                const latestInvite = member.user.projectInvites?.[0];
 
-                    return this.projectUtil.mapMember(
-                        member,
-                        latestInvite
-                            ? this.projectUtil.mapInviteStatus({
-                                  status: latestInvite.status,
-                                  expiresAt: latestInvite.expiresAt,
-                                  acceptedAt: latestInvite.acceptedAt,
-                                  revokedAt: latestInvite.revokedAt,
-                              })
-                            : undefined
-                    );
-                }
-            ),
+                return this.projectUtil.mapMember(
+                    member,
+                    latestInvite
+                        ? this.projectUtil.mapInviteStatus({
+                              status: latestInvite.status,
+                              expiresAt: latestInvite.expiresAt,
+                              acceptedAt: latestInvite.acceptedAt,
+                              revokedAt: latestInvite.revokedAt,
+                          })
+                        : undefined
+                );
+            }),
         };
     }
 
@@ -684,5 +713,4 @@ export class ProjectMemberService {
             });
         }
     }
-
 }
