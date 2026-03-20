@@ -86,11 +86,11 @@ This boilerplate is perfect for:
 - [x] Add migration script to migrate AWS S3 Policy for public and private, include config for presign expiration
 - [x] Device awareness, Geo Location with `geoip-lite`
 - [x] Notification System includes silent, inApp, push, and email.
+- [x] Activity Log support bidirectional logging
+- [x] Login with biometrics (fingerprint or face detection)
 
 ### Next Features
 
-- [ ] Activity Log support bidirectional logging
-- [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
 - [ ] Login with Github SSO
 - [ ] Analytics Dashboard (Docs is provided at [docs/analytics.md][ref-doc-analytics])

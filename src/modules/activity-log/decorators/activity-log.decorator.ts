@@ -19,7 +19,6 @@ export function ActivityLog(
     action: EnumActivityLogAction,
     metadata?: IActivityLogMetadata
 ): MethodDecorator {
-    // TODO: Implement bidirectional logging support, and record when failed attempts occur
     return applyDecorators(
         UseInterceptors(ActivityLogInterceptor),
         SetMetadata(ActivityLogActionMetaKey, action),

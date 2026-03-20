@@ -24,6 +24,7 @@ import {
 } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 import { UAParser } from 'ua-parser-js';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 
 @Command({
     name: 'user',
@@ -51,7 +52,8 @@ export class MigrationUserSeed
         private readonly databaseUtil: DatabaseUtil,
         private readonly authUtil: AuthUtil,
         private readonly userUtil: UserUtil,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly activityLogUtil: ActivityLogUtil
     ) {
         super();
 
@@ -197,6 +199,10 @@ export class MigrationUserSeed
                                     data: [
                                         {
                                             action: EnumActivityLogAction.userCreated,
+                                            description:
+                                                this.activityLogUtil.getDescription(
+                                                    EnumActivityLogAction.userCreated
+                                                ),
                                             ipAddress: ip,
                                             userAgent:
                                                 this.databaseUtil.toPlainObject(
@@ -206,6 +212,10 @@ export class MigrationUserSeed
                                         },
                                         {
                                             action: EnumActivityLogAction.userVerifiedEmail,
+                                            description:
+                                                this.activityLogUtil.getDescription(
+                                                    EnumActivityLogAction.userVerifiedEmail
+                                                ),
                                             ipAddress: ip,
                                             userAgent:
                                                 this.databaseUtil.toPlainObject(
@@ -215,6 +225,16 @@ export class MigrationUserSeed
                                         },
                                         ...termPolicies.map(termPolicy => ({
                                             action: EnumActivityLogAction.userAcceptTermPolicy,
+                                            description:
+                                                this.activityLogUtil.getDescription(
+                                                    EnumActivityLogAction.userAcceptTermPolicy,
+                                                    {
+                                                        termPolicyType:
+                                                            termPolicy.type,
+                                                        termPolicyId:
+                                                            termPolicy.id,
+                                                    }
+                                                ),
                                             metadata: {
                                                 termPolicyType: termPolicy.type,
                                                 termPolicyId: termPolicy.id,

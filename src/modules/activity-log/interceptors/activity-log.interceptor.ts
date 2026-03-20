@@ -1,11 +1,13 @@
 import {
     CallHandler,
     ExecutionContext,
+    HttpException,
     Injectable,
+    Logger,
     NestInterceptor,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
@@ -21,95 +23,170 @@ import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-
 import { Response } from 'express';
 import { IResponseActivityLogReturn } from '@common/response/interfaces/response.interface';
 import geoIp from 'geoip-lite';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 
-/**
- * Interceptor that automatically logs user activities to the database.
- * Captures user actions, IP addresses, user agents, geolocation, and metadata for audit trail purposes.
- * Runs after successful response and asynchronously saves activity logs without blocking the response.
- */
 @Injectable()
 export class ActivityLogInterceptor implements NestInterceptor {
+    private readonly logger: Logger = new Logger(ActivityLogInterceptor.name);
+
     constructor(
         private readonly reflector: Reflector,
-        private readonly activityRepository: ActivityLogRepository
+        private readonly activityRepository: ActivityLogRepository,
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
-    /**
-     * Intercepts HTTP requests to log user activities after successful responses.
-     * Extracts user info, IP address, user agent, geolocation, and action metadata from decorators.
-     * Activity is saved asynchronously so it doesn't block the response.
-     *
-     * @param context - Execution context containing request/response information
-     * @param next - The next handler in the chain
-     * @returns Observable that emits the response with background activity logging
-     */
+    private async saveActivityLog(
+        context: ExecutionContext,
+        request: IRequestApp,
+        payload: {
+            rawError: unknown;
+            metadataActivityLog: IActivityLogMetadata;
+        }
+    ): Promise<void> {
+        const { headers, user } = request;
+        const { metadataActivityLog, rawError } = payload;
+
+        const { userId } = user;
+        const userAgent = UAParser(headers['user-agent']) as UserAgent;
+        const ipAddress = getClientIp(request);
+        const geo = ipAddress ? geoIp.lookup(ipAddress) : null;
+        const geoLocation =
+            geo && ipAddress
+                ? {
+                      latitude: geo.ll[0],
+                      longitude: geo.ll[1],
+                      country: geo.country,
+                      region: geo.region,
+                      city: geo.city,
+                  }
+                : null;
+
+        const action: EnumActivityLogAction =
+            this.reflector.get<EnumActivityLogAction>(
+                ActivityLogActionMetaKey,
+                context.getHandler()
+            );
+        const metadata: IActivityLogMetadata =
+            this.reflector.get<IActivityLogMetadata>(
+                ActivityLogMetadataMetaKey,
+                context.getHandler()
+            ) ?? {};
+
+        if (!action) {
+            return;
+        }
+
+        try {
+            let description = this.activityLogUtil.getDescription(action, {
+                ...metadata,
+                ...metadataActivityLog,
+            });
+            let error: {
+                errorMessage?: string;
+                errorStack?: string;
+            } = {};
+            if (rawError) {
+                error = this.serializeError(rawError);
+                description += ` - Error: ${error.errorMessage}`;
+            }
+
+            await this.activityRepository.create(
+                userId,
+                action,
+                description,
+                {
+                    ipAddress,
+                    userAgent,
+                    geoLocation,
+                },
+                {
+                    ...metadata,
+                    ...metadataActivityLog,
+                    ...error,
+                }
+            );
+        } catch (error: unknown) {
+            this.logger.error(
+                error,
+                `Failed to save activity log for user ${userId} and action ${action}`
+            );
+        }
+    }
+
+    private serializeError(rawError: unknown): {
+        errorMessage: string;
+        errorStack?: string;
+    } {
+        if (rawError instanceof HttpException) {
+            const response = rawError.getResponse();
+            const errorMessage =
+                typeof response === 'string'
+                    ? response
+                    : ((response as { message: string }).message ??
+                      rawError.message);
+            return {
+                errorMessage,
+                errorStack: rawError.stack,
+            };
+        } else if (rawError instanceof Error) {
+            return {
+                errorMessage: rawError.message,
+                errorStack: rawError.stack,
+            };
+        } else if (typeof rawError === 'object' && rawError !== null) {
+            return {
+                errorMessage: JSON.stringify(rawError),
+            };
+        }
+
+        return {
+            errorMessage: String(rawError),
+        };
+    }
+
     intercept(
         context: ExecutionContext,
         next: CallHandler
     ): Observable<Promise<Response>> {
-        if (context.getType() === 'http') {
-            return next.handle().pipe(
-                tap(async (res: Promise<Response>) => {
-                    const ctx: HttpArgumentsHost = context.switchToHttp();
-                    const request: IRequestApp = ctx.getRequest<IRequestApp>();
-
-                    const { headers, user } = request;
-                    if (user) {
-                        const responseData =
-                            (await res) as IResponseActivityLogReturn;
-                        let { metadataActivityLog } = responseData;
-                        metadataActivityLog = metadataActivityLog ?? {};
-
-                        const { userId } = user;
-                        const userAgent = UAParser(
-                            headers['user-agent']
-                        ) as UserAgent;
-                        const ipAddress = getClientIp(request);
-                        const geo = ipAddress ? geoIp.lookup(ipAddress) : null;
-                        const geoLocation =
-                            geo && ipAddress
-                                ? {
-                                      latitude: geo.ll[0],
-                                      longitude: geo.ll[1],
-                                      country: geo.country,
-                                      region: geo.region,
-                                      city: geo.city,
-                                  }
-                                : null;
-
-                        const action: EnumActivityLogAction =
-                            this.reflector.get<EnumActivityLogAction>(
-                                ActivityLogActionMetaKey,
-                                context.getHandler()
-                            );
-                        const metadata: IActivityLogMetadata =
-                            this.reflector.get<IActivityLogMetadata>(
-                                ActivityLogMetadataMetaKey,
-                                context.getHandler()
-                            ) ?? {};
-
-                        try {
-                            await this.activityRepository.create(
-                                userId,
-                                action,
-                                {
-                                    ipAddress,
-                                    userAgent,
-                                    geoLocation,
-                                },
-                                {
-                                    ...metadata,
-                                    ...metadataActivityLog,
-                                }
-                            );
-                        } catch {}
-                    }
-
-                    return;
-                })
-            );
+        if (context.getType() !== 'http') {
+            return next.handle();
         }
 
-        return next.handle();
+        const ctx: HttpArgumentsHost = context.switchToHttp();
+        const request: IRequestApp = ctx.getRequest<IRequestApp>();
+
+        return next.handle().pipe(
+            tap(async (res: Promise<Response<IResponseActivityLogReturn>>) => {
+                const { user } = request;
+                if (user) {
+                    const responseData =
+                        (await res) as IResponseActivityLogReturn;
+                    const metadataActivityLog =
+                        responseData?.metadataActivityLog ?? {};
+
+                    // non blocking log saving
+                    this.saveActivityLog(context, request, {
+                        rawError: null,
+                        metadataActivityLog,
+                    }).catch(() => {});
+                }
+
+                return;
+            }),
+            catchError((error: unknown) => {
+                const { user } = request;
+                if (user) {
+                    const rawError = error;
+
+                    // non blocking log saving
+                    this.saveActivityLog(context, request, {
+                        rawError,
+                        metadataActivityLog: {},
+                    }).catch(() => {});
+                }
+
+                return throwError(() => error);
+            })
+        );
     }
 }

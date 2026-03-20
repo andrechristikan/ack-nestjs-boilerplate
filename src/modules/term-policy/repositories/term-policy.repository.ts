@@ -23,6 +23,7 @@ import {
     Prisma,
     TermPolicy,
 } from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 
 @Injectable()
 export class TermPolicyRepository {
@@ -30,7 +31,8 @@ export class TermPolicyRepository {
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
         private readonly helperService: HelperService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
     async find(
@@ -203,6 +205,12 @@ export class TermPolicyRepository {
                     activityLogs: {
                         create: {
                             action: EnumActivityLogAction.userAcceptTermPolicy,
+                            description: this.activityLogUtil.getDescription(
+                                EnumActivityLogAction.userAcceptTermPolicy,
+                                {
+                                    type,
+                                }
+                            ),
                             ipAddress,
                             userAgent:
                                 this.databaseUtil.toPlainObject(userAgent),

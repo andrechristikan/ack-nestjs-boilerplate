@@ -243,4 +243,10 @@ export interface IUserService {
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponseFileReturn>;
+    logout(
+        userId: string,
+        sessionId: string,
+        deviceOwnershipId: string,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>>;
 }

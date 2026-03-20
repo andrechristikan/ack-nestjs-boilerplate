@@ -112,6 +112,7 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
+import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -2230,5 +2231,43 @@ export class UserService implements IUserService {
             data: csvString,
             extension: EnumFileExtensionDocument.csv,
         };
+    }
+
+    async logout(
+        userId: string,
+        sessionId: string,
+        deviceOwnershipId: string,
+        requestLog: IRequestLog
+    ): Promise<IResponseReturn<void>> {
+        const checkActive = await this.sessionRepository.findOneActive(
+            userId,
+            sessionId
+        );
+        if (!checkActive) {
+            throw new NotFoundException({
+                statusCode: EnumSessionStatusCodeError.notFound,
+                message: 'session.error.notFound',
+            });
+        }
+
+        try {
+            await Promise.all([
+                this.userRepository.logout(
+                    userId,
+                    sessionId,
+                    deviceOwnershipId,
+                    requestLog
+                ),
+                this.sessionUtil.deleteOneLogin(userId, sessionId),
+            ]);
+
+            return;
+        } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
     }
 }

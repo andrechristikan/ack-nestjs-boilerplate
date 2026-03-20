@@ -350,3 +350,20 @@ export function UserSharedTwoFactorRegenerateBackupDoc(): MethodDecorator {
         })
     );
 }
+
+export function UserSharedLogoutDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary:
+                'Logout from current session, invalidating the access token and deleting the session.',
+        }),
+        DocGuard({
+            termPolicy: true,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocResponse('user.logout')
+    );
+}

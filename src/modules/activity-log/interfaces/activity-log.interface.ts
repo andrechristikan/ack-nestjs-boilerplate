@@ -4,4 +4,7 @@ export interface IActivityLog extends ActivityLog {
     user: User;
 }
 
-export type IActivityLogMetadata = Record<string, string | number | Date>;
+export type IActivityLogMetadata = Record<
+    string,
+    string | number | Date | boolean
+>;

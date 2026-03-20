@@ -206,6 +206,7 @@ model ActivityLog {
   action      EnumActivityLogAction
   ipAddress   String
   userAgent   UserAgent
+  description String
   geoLocation GeoLocation?
   metadata    Json?
 
@@ -270,7 +271,6 @@ model Device {
   ownerships DeviceOwnership[] @relation("DeviceOwnershipDevice")
 
   @@unique(fields: [fingerprint])
-  @@unique(fields: [notificationToken])
   @@map("Devices")
 }
 
@@ -282,6 +282,11 @@ model DeviceOwnership {
   isRevoked    Boolean   @default(false)
   revokedById  String?   @db.ObjectId
   lastActiveAt DateTime  @default(now())
+
+  biometricEnabled   Boolean            @default(false)
+  biometricToken     String?
+  biometricType      EnumBiometricType?
+  biometricEnabledAt DateTime?
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
@@ -651,6 +656,7 @@ enum EnumActivityLogAction {
   userVerifyTwoFactor
   userRegenerateTwoFactorBackupCodes
   userDeviceRefresh
+  userLogout
 
   adminSessionRevoke
   adminApiKeyCreate
@@ -706,4 +712,9 @@ enum EnumNotificationPriority {
   normal
   high
   critical
+}
+
+enum EnumBiometricType {
+  fingerprint
+  faceId
 }

@@ -30,7 +30,15 @@ export class ActivityLogResponseDto extends DatabaseDto {
 
     @ApiProperty({
         required: true,
+        example: 'User login with credential',
+        description: 'Description of the activity log',
+    })
+    description: string;
+
+    @ApiProperty({
+        required: true,
         example: faker.internet.ipv4(),
+        description: 'IP address of the user performing the action',
     })
     ipAddress: string;
 
@@ -51,6 +59,7 @@ export class ActivityLogResponseDto extends DatabaseDto {
     @ApiProperty({
         required: false,
         example: { exampleKey: 'exampleValue' },
+        description: 'Additional metadata related to the activity log',
     })
     metadata?: unknown;
 }

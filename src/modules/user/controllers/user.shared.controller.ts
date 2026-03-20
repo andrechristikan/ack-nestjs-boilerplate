@@ -22,6 +22,7 @@ import {
     AuthJwtToken,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
@@ -34,6 +35,7 @@ import {
     UserSharedClaimUsernameDoc,
     UserSharedDeleteMobileNumberDoc,
     UserSharedGeneratePhotoProfilePresignDoc,
+    UserSharedLogoutDoc,
     UserSharedProfileDoc,
     UserSharedRefreshDoc,
     UserSharedTwoFactorDisableDoc,
@@ -443,7 +445,27 @@ export class UserSharedController {
         });
     }
 
-    // TODO: LAST - Implement logout api
+    @UserSharedLogoutDoc()
+    @Response('user.logout')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/logout')
+    async logout(
+        @AuthJwtPayload()
+        { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation | null
+    ): Promise<IResponseReturn<void>> {
+        return this.userService.logout(userId, sessionId, deviceOwnershipId, {
+            ipAddress,
+            userAgent,
+            geoLocation,
+        });
+    }
 
     // TODO: Verify number implementation, but which provider?
 }

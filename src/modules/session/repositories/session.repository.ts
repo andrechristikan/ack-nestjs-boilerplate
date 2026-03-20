@@ -16,6 +16,7 @@ import {
     Prisma,
     Session,
 } from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 
 @Injectable()
 export class SessionRepository {
@@ -23,7 +24,8 @@ export class SessionRepository {
         private readonly databaseService: DatabaseService,
         private readonly helperService: HelperService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
     async findWithPaginationOffsetByAdmin(
@@ -162,6 +164,10 @@ export class SessionRepository {
                         activityLogs: {
                             create: {
                                 action: EnumActivityLogAction.userRevokeSession,
+                                description:
+                                    this.activityLogUtil.getDescription(
+                                        EnumActivityLogAction.userRevokeSession
+                                    ),
                                 ipAddress,
                                 userAgent:
                                     this.databaseUtil.toPlainObject(userAgent),
@@ -201,6 +207,10 @@ export class SessionRepository {
                         activityLogs: {
                             create: {
                                 action: EnumActivityLogAction.userRevokeSessionByAdmin,
+                                description:
+                                    this.activityLogUtil.getDescription(
+                                        EnumActivityLogAction.userRevokeSessionByAdmin
+                                    ),
                                 ipAddress,
                                 userAgent:
                                     this.databaseUtil.toPlainObject(userAgent),
