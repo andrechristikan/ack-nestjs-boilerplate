@@ -28,6 +28,7 @@ import { TenantModule } from '@modules/tenant/tenant.module';
         ProjectMemberService,
         ProjectRepository,
         ProjectInviteRepository,
+        ProjectUtil,
     ],
     controllers: [],
 })

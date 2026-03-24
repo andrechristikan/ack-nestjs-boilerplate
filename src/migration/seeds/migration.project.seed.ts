@@ -1,5 +1,6 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
+import { HelperService } from '@common/helper/services/helper.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import {
     IMigrationProjectData,
@@ -12,6 +13,7 @@ import {
     EnumProjectMemberStatus,
 } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
+import { ProjectUtil } from '@modules/project/utils/project.util';
 
 @Command({
     name: 'project',
@@ -29,7 +31,9 @@ export class MigrationProjectSeed
 
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperService: HelperService,
+        private readonly projectUtil: ProjectUtil
     ) {
         super();
 
@@ -174,25 +178,11 @@ export class MigrationProjectSeed
         return;
     }
 
-    private createSlug(value: string): string {
-        const normalized = value
-            .trim()
-            .toLowerCase()
-            .normalize('NFKD')
-            .replace(/[^\w\s-]/g, '')
-            .replace(/_/g, '-')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-+|-+$/g, '');
-
-        return normalized || 'project';
-    }
-
     private async createUniqueProjectSlug(
         tenantId: string,
         value: string
     ): Promise<string> {
-        const baseSlug = this.createSlug(value);
+        const baseSlug = this.projectUtil.createSlug(value);
         let slug = baseSlug;
 
         for (let attempt = 0; attempt < 10; attempt++) {
@@ -209,7 +199,7 @@ export class MigrationProjectSeed
                 return slug;
             }
 
-            const suffix = Math.random().toString(36).slice(2, 8);
+            const suffix = this.helperService.randomString(6).toLowerCase();
             slug = `${baseSlug}-${suffix}`;
         }
 

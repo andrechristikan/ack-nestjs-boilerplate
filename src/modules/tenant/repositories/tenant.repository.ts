@@ -64,6 +64,25 @@ export class TenantRepository {
         });
     }
 
+    async findUniqueSlug(baseSlug: string): Promise<string> {
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await this.databaseService.tenant.findFirst({
+                where: { slug },
+                select: { id: true },
+            });
+
+            if (!existing) {
+                return slug;
+            }
+
+            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
+        }
+
+        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
+    }
+
     async create(data: ITenantCreate): Promise<Tenant> {
         return this.databaseService.tenant.create({
             data: {
@@ -209,6 +228,8 @@ export class TenantRepository {
             const tenant = await tx.tenant.create({
                 data: {
                     ...data,
+                    createdBy: ownerUserId,
+                    updatedBy: ownerUserId,
                     deletedAt: null,
                 },
             });

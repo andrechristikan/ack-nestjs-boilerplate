@@ -19,8 +19,6 @@ export interface ITenantCreate {
     name: string;
     description: string;
     slug: string;
-    createdBy: string;
-    updatedBy: string;
 }
 
 export interface ITenantUpdate {

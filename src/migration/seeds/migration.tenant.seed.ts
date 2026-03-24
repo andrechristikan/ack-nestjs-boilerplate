@@ -1,5 +1,6 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
+import { HelperService } from '@common/helper/services/helper.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import {
     IMigrationTenantData,
@@ -12,6 +13,7 @@ import {
     EnumTenantMemberStatus,
 } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
+import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 
 @Command({
     name: 'tenant',
@@ -30,12 +32,39 @@ export class MigrationTenantSeed
 
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperService: HelperService,
+        private readonly tenantUtil: TenantUtil
     ) {
         super();
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env');
         this.tenants = migrationTenantData[this.env];
+    }
+
+    private async createUniqueTenantSlug(value: string): Promise<string> {
+        const baseSlug = this.tenantUtil.createSlug(value);
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await this.databaseService.tenant.findFirst({
+                where: {
+                    slug,
+                    deletedAt: null,
+                },
+                select: { id: true },
+            });
+
+            if (!existing) {
+                return slug;
+            }
+
+            const suffix = this.helperService.randomString(6).toLowerCase();
+            slug = `${baseSlug}-${suffix}`;
+        }
+
+        const fallbackSuffix = Date.now().toString(36);
+        return `${baseSlug}-${fallbackSuffix}`;
     }
 
     async seed(): Promise<void> {
@@ -61,11 +90,12 @@ export class MigrationTenantSeed
                 });
 
                 if (!tenantRecord) {
+                    const slug = await this.createUniqueTenantSlug(tenant.name);
                     tenantRecord = await this.databaseService.tenant.create({
                         data: {
                             name: tenant.name,
                             description: tenant.description ?? '',
-                            slug: this.createSlug(tenant.name),
+                            slug,
                             deletedAt: null,
                             createdBy: this.SYSTEM_ID,
                             updatedBy: this.SYSTEM_ID,
@@ -153,19 +183,5 @@ export class MigrationTenantSeed
         this.logger.log('Tenants removed successfully.');
 
         return;
-    }
-
-    private createSlug(value: string): string {
-        const normalized = value
-            .trim()
-            .toLowerCase()
-            .normalize('NFKD')
-            .replace(/[^\w\s-]/g, '')
-            .replace(/_/g, '-')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-+|-+$/g, '');
-
-        return normalized || `tenant-${Date.now()}`;
     }
 }

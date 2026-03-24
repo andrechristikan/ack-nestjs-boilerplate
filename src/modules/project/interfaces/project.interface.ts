@@ -37,12 +37,9 @@ export interface IProjectMemberWithInvite extends IProjectMember {
 }
 
 export interface IProjectCreate {
-    tenantId: string;
     name: string;
     description: string;
     slug: string;
-    createdBy: string;
-    updatedBy: string;
 }
 
 export interface IProjectUpdate {

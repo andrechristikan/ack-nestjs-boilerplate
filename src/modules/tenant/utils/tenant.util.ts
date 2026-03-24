@@ -28,17 +28,17 @@ export class TenantUtil {
     }
 
     createSlug(value: string): string {
-        const normalized = value
-            .trim()
-            .toLowerCase()
-            .normalize('NFKD')
-            .replace(/[^\w\s-]/g, '')
-            .replace(/_/g, '-')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-+|-+$/g, '');
+        return this.helperService.createSlug(value);
+    }
 
-        return normalized || 'tenant';
+    createDefaultName(name: string | undefined, email: string): string {
+        const cleanName = name?.trim();
+        if (cleanName) {
+            return `${cleanName} Workspace`;
+        }
+
+        const username = email.split('@')[0]?.trim() || 'workspace';
+        return `${username} Workspace`;
     }
 
     mapTenant(tenant: ITenant): TenantResponseDto {

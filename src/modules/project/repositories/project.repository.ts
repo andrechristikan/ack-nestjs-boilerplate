@@ -94,6 +94,25 @@ export class ProjectRepository {
         });
     }
 
+    async findUniqueSlug(tenantId: string, baseSlug: string): Promise<string> {
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await this.databaseService.project.findFirst({
+                where: { tenantId, slug, deletedAt: null },
+                select: { id: true },
+            });
+
+            if (!existing) {
+                return slug;
+            }
+
+            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
+        }
+
+        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
+    }
+
     async findOneByIdAndTenant(
         projectId: string,
         tenantId: string
@@ -341,6 +360,8 @@ async softDeleteMember(
     }
 
     async create(
+        tenantId: string,
+        createdBy: string,
         data: IProjectCreate,
         members: Array<{
             userId: string;
@@ -352,7 +373,13 @@ async softDeleteMember(
     ): Promise<Project> {
         return this.databaseService.$transaction(async tx => {
             const project = await tx.project.create({
-                data: { ...data, deletedAt: null },
+                data: {
+                    ...data,
+                    tenantId,
+                    createdBy,
+                    updatedBy: createdBy,
+                    deletedAt: null,
+                },
             });
 
             for (const member of members) {

@@ -14,6 +14,8 @@ import { MigrationTenantSeed } from '@migration/seeds/migration.tenant.seed';
 import { MigrationProjectSeed } from '@migration/seeds/migration.project.seed';
 import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migration.template-notification.seed';
 import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
+import { TenantUtil } from '@modules/tenant/utils/tenant.util';
+import { ProjectUtil } from '@modules/project/utils/project.util';
 
 /**
  * Migration module that provides database seeding and removal functionality.
@@ -44,6 +46,8 @@ import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.temp
         MigrationTemplateEmailNotificationSeed,
         MigrationTemplateTermPolicySeed,
         MigrationAwsS3ConfigSeed,
+        TenantUtil,
+        ProjectUtil,
     ],
     exports: [],
 })

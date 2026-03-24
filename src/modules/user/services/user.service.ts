@@ -117,8 +117,13 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
 import { TenantInviteRepository } from '@modules/tenant/repositories/tenant-invite.repository';
 import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
+import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 import { EnumInviteStatusCodeError } from '@modules/tenant/enums/tenant-invite.status-code.enum';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
+import { ITenantCreate } from '@modules/tenant/interfaces/tenant.interface';
+import { IProjectCreate } from '@modules/project/interfaces/project.interface';
+import { ProjectUtil } from '@modules/project/utils/project.util';
+import { ProjectRepository } from '@modules/project/repositories/project.repository';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -145,7 +150,10 @@ export class UserService implements IUserService {
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly tenantInviteRepository: TenantInviteRepository,
-        private readonly tenantRepository: TenantRepository
+        private readonly tenantRepository: TenantRepository,
+        private readonly tenantUtil: TenantUtil,
+        private readonly projectRepository: ProjectRepository,
+        private readonly projectUtil: ProjectUtil
     ) {
         this.userRoleName = this.configService.get<string>('user.default.role');
         this.userCountryName = this.configService.get<string>(
@@ -1314,6 +1322,26 @@ export class UserService implements IUserService {
                     EnumVerificationType.email
                 );
 
+            const tenantName = this.tenantUtil.createDefaultName(
+                others.name,
+                email
+            );
+            const tenantSlug = await this.tenantRepository.findUniqueSlug(
+                this.tenantUtil.createSlug(tenantName)
+            );
+            const tenantCreate: ITenantCreate = {
+                name: tenantName,
+                description: `Default workspace for ${email}`,
+                slug: tenantSlug,
+            };
+
+            const defaultProjectName = 'Default Project';
+            const projectCreate: IProjectCreate = {
+                name: defaultProjectName,
+                description: 'Default project for your workspace',
+                slug: this.projectUtil.createSlug(defaultProjectName),
+            };
+
             const created = await this.userRepository.signUp(
                 userId,
                 randomUsername,
@@ -1326,7 +1354,9 @@ export class UserService implements IUserService {
                 },
                 password,
                 emailVerification,
-                requestLog
+                requestLog,
+                tenantCreate,
+                projectCreate
             );
 
             // @note: send email after all creation

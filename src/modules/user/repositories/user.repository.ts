@@ -12,6 +12,8 @@ import {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { ITenantCreate } from '@modules/tenant/interfaces/tenant.interface';
+import { IProjectCreate } from '@modules/project/interfaces/project.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import {
@@ -1361,8 +1363,12 @@ export class UserRepository {
             passwordPeriodExpired,
         }: IAuthPassword,
         { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
-        { ipAddress, userAgent, geoLocation }: IRequestLog
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
+        tenantCreate: ITenantCreate,
+        projectCreate: IProjectCreate
     ): Promise<User> {
+        const tenantId = this.databaseUtil.createId();
+
         const termPolicies = await this.databaseService.termPolicy.findMany({
             where: {
                 type: {
@@ -1379,24 +1385,9 @@ export class UserRepository {
                 id: true,
             },
         });
-        const tenantName = this.createDefaultTenantName(name, email);
-        const tenantDescription = `Default workspace for ${email}`;
-        const defaultProjectName = 'Default Project';
-        const defaultProjectDescription = 'Default project for your workspace';
-        const tenantId = this.databaseUtil.createId();
 
         return this.databaseService.$transaction(
             async (client: Prisma.TransactionClient) => {
-                const tenantSlug = await this.createUniqueTenantSlug(
-                    client,
-                    tenantName
-                );
-                const projectSlug = await this.createUniqueProjectSlug(
-                    client,
-                    tenantId,
-                    defaultProjectName
-                );
-
                 const user = await client.user.create({
                     data: {
                         id: userId,
@@ -1505,9 +1496,9 @@ export class UserRepository {
                     client.tenant.create({
                         data: {
                             id: tenantId,
-                            name: tenantName,
-                            description: tenantDescription,
-                            slug: tenantSlug,
+                            name: tenantCreate.name,
+                            description: tenantCreate.description,
+                            slug: tenantCreate.slug,
                             createdBy: userId,
                             updatedBy: userId,
                         },
@@ -1536,9 +1527,9 @@ export class UserRepository {
                 const project = await client.project.create({
                     data: {
                         tenantId,
-                        name: defaultProjectName,
-                        description: defaultProjectDescription,
-                        slug: projectSlug,
+                        name: projectCreate.name,
+                        description: projectCreate.description,
+                        slug: projectCreate.slug,
                         createdBy: userId,
                         updatedBy: userId,
                     },
@@ -1563,7 +1554,10 @@ export class UserRepository {
         );
     }
 
-    async updateLastTenantId(userId: string, lastTenantId: string): Promise<void> {
+    async updateLastTenantId(
+        userId: string,
+        lastTenantId: string
+    ): Promise<void> {
         await this.databaseService.user.update({
             where: { id: userId, deletedAt: null },
             data: {
@@ -2296,97 +2290,5 @@ export class UserRepository {
         );
 
         return users;
-    }
-
-    private createDefaultTenantName(
-        name: string | undefined,
-        email: string
-    ): string {
-        const cleanName = name?.trim();
-        if (cleanName) {
-            return `${cleanName} Workspace`;
-        }
-
-        const username = email.split('@')[0]?.trim() || 'workspace';
-        return `${username} Workspace`;
-    }
-
-    private createTenantSlug(value: string): string {
-        const normalized = value
-            .trim()
-            .toLowerCase()
-            .normalize('NFKD')
-            .replace(/[^\w\s-]/g, '')
-            .replace(/_/g, '-')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-+|-+$/g, '');
-
-        return normalized || 'tenant';
-    }
-
-    private async createUniqueTenantSlug(
-        client: Prisma.TransactionClient,
-        value: string
-    ): Promise<string> {
-        const baseSlug = this.createTenantSlug(value);
-        let slug = baseSlug;
-
-        for (let attempt = 0; attempt < 10; attempt++) {
-            const existing = await client.tenant.findFirst({
-                where: { slug },
-                select: { id: true },
-            });
-
-            if (!existing) {
-                return slug;
-            }
-
-            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
-        }
-
-        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
-    }
-
-    private createProjectSlug(value: string): string {
-        const normalized = value
-            .trim()
-            .toLowerCase()
-            .normalize('NFKD')
-            .replace(/[^\w\s-]/g, '')
-            .replace(/_/g, '-')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-+|-+$/g, '');
-
-        return normalized || 'project';
-    }
-
-    private async createUniqueProjectSlug(
-        client: Prisma.TransactionClient,
-        tenantId: string,
-        value: string
-    ): Promise<string> {
-        const baseSlug = this.createProjectSlug(value);
-        let slug = baseSlug;
-
-        for (let attempt = 0; attempt < 10; attempt++) {
-            const existing = await client.project.findFirst({
-                where: {
-                    tenantId,
-                    slug,
-                    deletedAt: null,
-                },
-                select: { id: true },
-            });
-
-            if (!existing) {
-                return slug;
-            }
-
-            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
-        }
-
-        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
     }
 }

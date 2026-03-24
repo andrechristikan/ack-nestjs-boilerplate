@@ -197,8 +197,6 @@ export class TenantService implements ITenantService {
                 name,
                 description: dto.description?.trim() ?? '',
                 slug,
-                createdBy,
-                updatedBy: createdBy,
             },
             createdBy
         );

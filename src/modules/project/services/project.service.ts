@@ -111,14 +111,9 @@ export class ProjectService {
             const slug = await this.createUniqueSlug(name);
 
             const project = await this.projectRepository.create(
-                {
-                    tenantId,
-                    name,
-                    description,
-                    slug,
-                    createdBy,
-                    updatedBy: createdBy,
-                },
+                tenantId,
+                createdBy,
+                { name, description, slug },
                 [
                     {
                         userId: createdBy,
@@ -259,25 +254,11 @@ export class ProjectService {
         return projectId;
     }
 
-    private createSlug(value: string): string {
-        const normalized = value
-            .trim()
-            .toLowerCase()
-            .normalize('NFKD')
-            .replace(/[^\w\s-]/g, '')
-            .replace(/_/g, '-')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-+|-+$/g, '');
-
-        return normalized || 'project';
-    }
-
     private async createUniqueSlug(
         value: string,
         excludeProjectId?: string
     ): Promise<string> {
-        const baseSlug = this.createSlug(value);
+        const baseSlug = this.projectUtil.createSlug(value);
         let slug = baseSlug;
 
         for (let attempt = 0; attempt < 10; attempt++) {

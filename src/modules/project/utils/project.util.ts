@@ -32,6 +32,10 @@ export class ProjectUtil {
         this.homeUrl = this.configService.get<string>('home.url');
     }
 
+    createSlug(value: string): string {
+        return this.helperService.createSlug(value);
+    }
+
     private inviteCreateReference(prefix: string, length: number): string {
         const random = this.helperService.randomString(length);
 
