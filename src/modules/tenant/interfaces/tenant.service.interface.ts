@@ -3,9 +3,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
-import { EnumTenantMemberRole } from '@generated/prisma-client';
-import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
+import { EnumTenantMemberRole, Prisma } from '@generated/prisma-client';
 import { TenantTransferOwnershipRequestDto } from '@modules/tenant/dtos/request/tenant.transfer-ownership.request.dto';
 import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
@@ -15,7 +13,6 @@ import {
     ITenantMember,
 } from '@modules/tenant/interfaces/tenant.interface';
 import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant.interface';
-import { Prisma } from '@generated/prisma-client';
 
 export interface ITenantService {
     validateTenantGuard(request: IRequestAppWithTenant): Promise<ITenant>;
@@ -41,10 +38,6 @@ export interface ITenantService {
         >
     ): Promise<IResponsePagingReturn<TenantResponseDto>>;
     getOne(id: string): Promise<IResponseReturn<TenantResponseDto>>;
-    create(
-        dto: TenantCreateRequestDto,
-        createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>>;
     update(
         id: string,
         dto: TenantUpdateRequestDto,

@@ -6,7 +6,6 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { IConfigTenant } from '@configs/tenant.config';
 import { EnumInviteStatusCodeError } from '@modules/tenant/enums/tenant-invite.status-code.enum';
 import { TenantInviteCreateRequestDto } from '@modules/tenant/dtos/request/tenant-invite.create.request.dto';
 import { TenantInviteResponseDto } from '@modules/tenant/dtos/response/tenant-invite.response.dto';
@@ -23,7 +22,6 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
     EnumTenantInviteStatus,
     EnumTenantInviteType,
@@ -37,10 +35,8 @@ export class TenantInviteService {
     constructor(
         private readonly tenantInviteRepository: TenantInviteRepository,
         private readonly tenantRepository: TenantRepository,
-        private readonly authUtil: AuthUtil,
         private readonly tenantUtil: TenantUtil,
-        private readonly notificationUtil: NotificationUtil,
-        private readonly configService: ConfigService
+        private readonly notificationUtil: NotificationUtil
     ) {}
 
     private mapInvite(
@@ -121,15 +117,7 @@ export class TenantInviteService {
                 );
             }
 
-            const inviteConfig =
-                this.configService.getOrThrow<IConfigTenant>('tenant').invite;
-            const effectiveExpiredInMinutes = dto.expiresInDays
-                ? dto.expiresInDays * 24 * 60
-                : inviteConfig.expiredInMinutes;
-            const tokenInfo = this.tenantUtil.createInviteToken({
-                ...inviteConfig,
-                expiredInMinutes: effectiveExpiredInMinutes,
-            });
+            const tokenInfo = this.tenantUtil.createInviteTokenInfo(dto.expiresInDays);
 
             const invite = await this.tenantInviteRepository.create(
                 {

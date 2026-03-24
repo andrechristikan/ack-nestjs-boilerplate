@@ -6,6 +6,7 @@ import {
     InviteConfig,
     InviteTokenCreate,
 } from '@modules/invite/interfaces/invite.interface';
+import { IConfigTenant } from '@configs/tenant.config';
 import { TenantInviteStatusResponseDto } from '@modules/tenant/dtos/response/tenant-invite-status.response.dto';
 import { TenantMemberResponseDto } from '@modules/tenant/dtos/response/tenant.member.response.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
@@ -19,12 +20,15 @@ import { Duration } from 'luxon';
 @Injectable()
 export class TenantUtil {
     private readonly homeUrl: string;
+    private readonly inviteConfig: InviteConfig;
 
     constructor(
         private readonly helperService: HelperService,
         private readonly configService: ConfigService
     ) {
         this.homeUrl = this.configService.get<string>('home.url');
+        this.inviteConfig =
+            this.configService.getOrThrow<InviteConfig>('tenant.invite');
     }
 
     createSlug(value: string): string {
@@ -81,6 +85,17 @@ export class TenantUtil {
             resendInMinutes: config.resendInMinutes,
             link: `${this.homeUrl}/${config.linkBaseUrl}/${token}`,
         };
+    }
+
+    createInviteTokenInfo(expiresInDays?: number): InviteTokenCreate {
+        const effectiveExpiredInMinutes = expiresInDays
+            ? expiresInDays * 24 * 60
+            : this.inviteConfig.expiredInMinutes;
+
+        return this.createInviteToken({
+            ...this.inviteConfig,
+            expiredInMinutes: effectiveExpiredInMinutes,
+        });
     }
 
     inviteRemainingSeconds(expiresAt: Date): number {

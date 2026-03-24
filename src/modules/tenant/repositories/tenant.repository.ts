@@ -15,9 +15,12 @@ import {
     ITenantMemberWithTenant,
     ITenantUpdate,
 } from '@modules/tenant/interfaces/tenant.interface';
+import { IProjectCreate } from '@modules/project/interfaces/project.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumProjectInviteStatus,
+    EnumProjectMemberRole,
+    EnumProjectMemberStatus,
     EnumTenantInviteStatus,
     EnumTenantMemberRole,
     EnumTenantMemberStatus,
@@ -81,15 +84,6 @@ export class TenantRepository {
         }
 
         return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
-    }
-
-    async create(data: ITenantCreate): Promise<Tenant> {
-        return this.databaseService.tenant.create({
-            data: {
-                ...data,
-                deletedAt: null,
-            },
-        });
     }
 
     async update(id: string, data: ITenantUpdate): Promise<Tenant> {
@@ -242,6 +236,51 @@ export class TenantRepository {
                     status: EnumTenantMemberStatus.active,
                     createdBy: ownerUserId,
                     updatedBy: ownerUserId,
+                },
+            });
+
+            return tenant;
+        });
+    }
+
+    async createWithOwnerAndProject(
+        tenantData: ITenantCreate,
+        projectData: IProjectCreate,
+        ownerUserId: string
+    ): Promise<Tenant> {
+        return this.databaseService.$transaction(async tx => {
+            const tenant = await tx.tenant.create({
+                data: {
+                    ...tenantData,
+                    createdBy: ownerUserId,
+                    updatedBy: ownerUserId,
+                    deletedAt: null,
+                    members: {
+                        create: {
+                            userId: ownerUserId,
+                            role: EnumTenantMemberRole.owner,
+                            status: EnumTenantMemberStatus.active,
+                            createdBy: ownerUserId,
+                            updatedBy: ownerUserId,
+                        },
+                    },
+                    projects: {
+                        create: {
+                            ...projectData,
+                            createdBy: ownerUserId,
+                            updatedBy: ownerUserId,
+                            deletedAt: null,
+                            members: {
+                                create: {
+                                    userId: ownerUserId,
+                                    role: EnumProjectMemberRole.admin,
+                                    status: EnumProjectMemberStatus.active,
+                                    createdBy: ownerUserId,
+                                    updatedBy: ownerUserId,
+                                },
+                            },
+                        },
+                    },
                 },
             });
 

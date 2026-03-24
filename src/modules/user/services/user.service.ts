@@ -152,7 +152,6 @@ export class UserService implements IUserService {
         private readonly tenantInviteRepository: TenantInviteRepository,
         private readonly tenantRepository: TenantRepository,
         private readonly tenantUtil: TenantUtil,
-        private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil
     ) {
         this.userRoleName = this.configService.get<string>('user.default.role');
@@ -1394,11 +1393,45 @@ export class UserService implements IUserService {
             });
         }
 
+        const user = await this.userRepository.findOneActiveById(
+            verification.userId
+        );
+
+        const tenantName = this.tenantUtil.createDefaultName(
+            user.name,
+            user.email
+        );
+        const tenantSlug = await this.tenantRepository.findUniqueSlug(
+            this.tenantUtil.createSlug(tenantName)
+        );
+
         try {
+            // TODO: the operations below (verifyEmail, createWithOwnerAndProject, updateLastTenant)
+            //  should ideally be wrapped in a single Prisma transaction for full atomicity.
             await this.userRepository.verifyEmail(
                 verification.id,
                 verification.userId,
                 requestLog
+            );
+
+            const tenant =
+                await this.tenantRepository.createWithOwnerAndProject(
+                    {
+                        name: tenantName,
+                        description: `Default workspace for ${user.email}`,
+                        slug: tenantSlug,
+                    },
+                    {
+                        name: 'Default Project',
+                        description: 'Default project for your workspace',
+                        slug: this.projectUtil.createSlug('Default Project'),
+                    },
+                    verification.userId
+                );
+
+            await this.tenantRepository.updateLastTenant(
+                verification.userId,
+                tenant.id
             );
 
             // @note: send email after all creation

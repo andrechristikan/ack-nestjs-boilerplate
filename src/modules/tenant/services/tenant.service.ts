@@ -1,13 +1,15 @@
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { Prisma } from '@generated/prisma-client';
+import {
+    EnumTenantMemberRole,
+    EnumTenantMemberStatus,
+    Prisma,
+} from '@generated/prisma-client';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
 import { TenantTransferOwnershipRequestDto } from '@modules/tenant/dtos/request/tenant.transfer-ownership.request.dto';
 import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
@@ -28,10 +30,6 @@ import {
     InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import {
-    EnumTenantMemberRole,
-    EnumTenantMemberStatus,
-} from '@generated/prisma-client';
 import { HelperService } from '@common/helper/services/helper.service';
 
 @Injectable()
@@ -186,28 +184,6 @@ export class TenantService implements ITenantService {
         };
     }
 
-    async create(
-        dto: TenantCreateRequestDto,
-        createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>> {
-        const name = dto.name.trim();
-        const slug = await this.createUniqueSlug(name);
-        const tenant = await this.tenantRepository.createWithOwner(
-            {
-                name,
-                description: dto.description?.trim() ?? '',
-                slug,
-            },
-            createdBy
-        );
-
-        return {
-            data: {
-                id: tenant.id,
-            },
-        };
-    }
-
     async update(
         id: string,
         dto: TenantUpdateRequestDto,
@@ -252,7 +228,7 @@ export class TenantService implements ITenantService {
         dto: TenantUpdateSlugRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        const slug = await this.createUniqueSlug(dto.slug, id);
+        const slug = await this.tenantRepository.findUniqueSlug(dto.slug);
         await this.tenantRepository.update(id, {
             slug,
             updatedBy,
@@ -333,24 +309,5 @@ export class TenantService implements ITenantService {
         await this.tenantRepository.deleteWithCascade(id, deletedBy);
 
         return {};
-    }
-
-    private async createUniqueSlug(
-        value: string,
-        excludeTenantId?: string
-    ): Promise<string> {
-        const baseSlug = this.tenantUtil.createSlug(value);
-        let slug = baseSlug;
-
-        for (let attempt = 0; attempt < 10; attempt++) {
-            const existing = await this.tenantRepository.findOneBySlug(slug);
-            if (!existing || existing.id === excludeTenantId) {
-                return slug;
-            }
-
-            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
-        }
-
-        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
     }
 }
