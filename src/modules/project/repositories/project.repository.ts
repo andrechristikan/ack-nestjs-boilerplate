@@ -94,7 +94,11 @@ export class ProjectRepository {
         });
     }
 
-    async findUniqueSlug(tenantId: string, baseSlug: string): Promise<string> {
+    async findUniqueSlug(
+        tenantId: string,
+        baseSlug: string,
+        excludeId?: string
+    ): Promise<string> {
         let slug = baseSlug;
 
         for (let attempt = 0; attempt < 10; attempt++) {
@@ -103,7 +107,7 @@ export class ProjectRepository {
                 select: { id: true },
             });
 
-            if (!existing) {
+            if (!existing || existing.id === excludeId) {
                 return slug;
             }
 

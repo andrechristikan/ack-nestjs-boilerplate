@@ -108,7 +108,11 @@ export class ProjectService {
         try {
             const name = dto.name.trim();
             const description = dto.description.trim();
-            const slug = await this.createUniqueSlug(name);
+            const baseSlug = this.projectUtil.createSlug(name);
+            const slug = await this.projectRepository.findUniqueSlug(
+                tenantId,
+                baseSlug
+            );
 
             const project = await this.projectRepository.create(
                 tenantId,
@@ -222,8 +226,10 @@ export class ProjectService {
             });
         }
 
-        const slug = await this.createUniqueSlug(
-            dto.slug,
+        const baseSlug = this.projectUtil.createSlug(dto.slug);
+        const slug = await this.projectRepository.findUniqueSlug(
+            project.tenantId,
+            baseSlug,
             project.id
         );
         await this.projectRepository.update(projectId, {
@@ -243,36 +249,4 @@ export class ProjectService {
         return {};
     }
 
-    private resolveProjectIdFromRequest(
-        request: IRequestAppWithProject
-    ): string {
-        const key = 'projectId';
-        const value = request.params?.[key];
-        const projectId = typeof value === 'string' ? value : undefined;
-
-        request.__projectId = projectId;
-        return projectId;
-    }
-
-    private async createUniqueSlug(
-        value: string,
-        excludeProjectId?: string
-    ): Promise<string> {
-        const baseSlug = this.projectUtil.createSlug(value);
-        let slug = baseSlug;
-
-        for (let attempt = 0; attempt < 10; attempt++) {
-            const existing =
-                await this.projectRepository.findOneBySlug(
-                    slug
-                );
-            if (!existing || existing.id === excludeProjectId) {
-                return slug;
-            }
-
-            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
-        }
-
-        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
-    }
 }
