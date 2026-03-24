@@ -1,10 +1,4 @@
-import {
-    CallHandler,
-    ExecutionContext,
-    HttpStatus,
-    Injectable,
-    NestInterceptor,
-} from '@nestjs/common';
+import { CallHandler, ExecutionContext, HttpStatus, Injectable, NestInterceptor, } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
@@ -13,10 +7,7 @@ import { MessageService } from '@common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ResponseMessagePathMetaKey } from '@common/response/constants/response.constant';
-import {
-    ResponseDto,
-    ResponseMetadataDto,
-} from '@common/response/dtos/response.dto';
+import { ResponseDto, ResponseMetadataDto, } from '@common/response/dtos/response.dto';
 import { ConfigService } from '@nestjs/config';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
@@ -161,6 +152,6 @@ export class ResponseInterceptor<T> implements NestInterceptor {
         response.setHeader('x-version', metadata.version);
         response.setHeader('x-repo-version', metadata.repoVersion);
         response.setHeader('x-request-id', String(metadata.requestId));
-        response.setHeader('x-correlation-id', String(metadata.correlation));
+        response.setHeader('x-correlation-id', String(metadata.correlationId));
     }
 }

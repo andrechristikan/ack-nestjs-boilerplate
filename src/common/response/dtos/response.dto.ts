@@ -55,6 +55,22 @@ export class ResponseMetadataDto {
     })
     repoVersion: string;
 
+    @ApiProperty({
+        required: true,
+        description: 'Unique ID of this request',
+        example: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
+        type: String,
+    })
+    requestId: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Correlation ID for distributed tracing',
+        example: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
+        type: String,
+    })
+    correlationId: string;
+
     /* Allow additional properties for extensibility in metadata */
     [key: string]: unknown;
 }
@@ -97,6 +113,8 @@ export class ResponseDto<T> {
             path: '/api/v1/test/hello',
             version: '1',
             repoVersion: '1.0.0',
+            requestId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
+            correlationId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
         },
     })
     @Type(() => ResponseMetadataDto)
